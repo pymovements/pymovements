@@ -32,16 +32,21 @@ from pymovements.events.frame import EventDataFrame
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 
+from sklearn.metrics import r2_score
+import numpy as np
+
+
 
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
         marker_size: float = 25,
         color: str = 'purple',
+        color_line: str = 'red',
         alpha: float = 0.5,
         marker: str = 'o',
         figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
+        title: str = None,
+        savepath: str = None,
         show: bool = True,
         *,
         event_df: Events | EventDataFrame | None = None,
@@ -59,6 +64,8 @@ def main_sequence_plot(
         Size of the marker symbol. (default: 25)
     color: str
         Color of the marker symbol. (default: 'purple')
+    color_line: str
+        Color of the linear fit line (default: 'red')
     alpha: float
         Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
     marker: str
@@ -139,6 +146,7 @@ def main_sequence_plot(
             'the main sequence plot. ',
         ) from exc
 
+<<<<<<< HEAD
     fig, ax, own = prepare_figure(ax, figsize, func_name='main_sequence_plot')
 
     # Use plt.scatter when we own the figure to preserve legacy test expectations.
@@ -162,6 +170,42 @@ def main_sequence_plot(
             marker=marker,
             **kwargs,
         )
+=======
+
+    
+
+    a, b = np.polyfit(amplitudes,peak_velocities,1)
+    
+    # line plotting estimation
+    min_ampl = min(amplitudes)
+    max_ampl = max(amplitudes)
+    line_x = [min_ampl,max_ampl]
+    line_y = [a*min_ampl+b,a*max_ampl+b]
+    
+    # residual calcualtion
+    y_pred = np.array(amplitudes)*a + b
+    y_true = peak_velocities
+    
+    R2 = r2_score(y_true,y_pred)
+    R2 = np.round(R2,3)
+
+    fig = plt.figure(figsize=figsize)
+
+    plt.text(0.05,0.8, f'R2 value: {R2}',bbox=dict(facecolor=None, ec=(0, 0, 0),fc=(1., 1, 1),pad =4),transform = plt.gca().transAxes)
+
+
+    plt.scatter(
+        amplitudes,
+        peak_velocities,
+        color=color,
+        alpha=alpha,
+        s=marker_size,
+        marker=marker,
+        **kwargs,
+    )
+    
+    plt.plot(line_x,line_y, c = color_line)
+>>>>>>> a306b44 (Updated plotting function!)
 
     if title:
         ax.set_title(title)
@@ -177,4 +221,11 @@ def main_sequence_plot(
         func_name='main_sequence_plot',
     )
 
+<<<<<<< HEAD
     return fig, ax
+=======
+    if show:
+        plt.show()
+
+    plt.close(fig)
+>>>>>>> a306b44 (Updated plotting function!)
