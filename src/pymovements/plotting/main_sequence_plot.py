@@ -146,7 +146,6 @@ def main_sequence_plot(
             'the main sequence plot. ',
         ) from exc
 
-<<<<<<< HEAD
     fig, ax, own = prepare_figure(ax, figsize, func_name='main_sequence_plot')
 
     # Use plt.scatter when we own the figure to preserve legacy test expectations.
@@ -170,10 +169,8 @@ def main_sequence_plot(
             marker=marker,
             **kwargs,
         )
-=======
 
-    
-
+    # code introduced by commit a306b44
     a, b = np.polyfit(amplitudes,peak_velocities,1)
     
     # line plotting estimation
@@ -189,23 +186,19 @@ def main_sequence_plot(
     R2 = r2_score(y_true,y_pred)
     R2 = np.round(R2,3)
 
-    fig = plt.figure(figsize=figsize)
+    # draw into correct axes (plt.* if own, ax.* otherwise)
+    line_axes = plt.gca() if own else ax
 
-    plt.text(0.05,0.8, f'R2 value: {R2}',bbox=dict(facecolor=None, ec=(0, 0, 0),fc=(1., 1, 1),pad =4),transform = plt.gca().transAxes)
-
-
-    plt.scatter(
-        amplitudes,
-        peak_velocities,
-        color=color,
-        alpha=alpha,
-        s=marker_size,
-        marker=marker,
-        **kwargs,
+    # R² label
+    line_axes.text(
+        0.05,
+        0.8,
+        f'R2 value: {R2}',
+        bbox=dict(facecolor=None, ec=(0, 0, 0), fc=(1., 1., 1.), pad=4),
+        transform=line_axes.transAxes,
     )
-    
-    plt.plot(line_x,line_y, c = color_line)
->>>>>>> a306b44 (Updated plotting function!)
+
+    line_axes.plot(line_x,line_y, c = color_line)
 
     if title:
         ax.set_title(title)
@@ -221,11 +214,4 @@ def main_sequence_plot(
         func_name='main_sequence_plot',
     )
 
-<<<<<<< HEAD
     return fig, ax
-=======
-    if show:
-        plt.show()
-
-    plt.close(fig)
->>>>>>> a306b44 (Updated plotting function!)
