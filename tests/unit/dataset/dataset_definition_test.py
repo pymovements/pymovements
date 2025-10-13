@@ -121,6 +121,24 @@ def test_dataset_definition_is_equal(init_kwargs):
 
         pytest.param(
             {
+                'resources': [
+                    {
+                        'content': 'gaze', 'filename_pattern': 'test.csv',
+                        'url': 'https://example.com', 'mirrors': ['https://mirror.com'],
+                    },
+                ],
+            },
+            ResourceDefinitions([
+                ResourceDefinition(
+                    content='gaze', filename_pattern='test.csv',
+                    url='https://example.com', mirrors=['https://mirror.com'],
+                ),
+            ]),
+            id='single_gaze_resource_with_url_and_mirror',
+        ),
+
+        pytest.param(
+            {
                 'filename_format': {'gaze': 'test.csv'},
             },
             ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
@@ -439,6 +457,7 @@ def test_dataset_definition_to_yaml_equal_dicts(definition, tmp_path):
     assert definition.to_dict() == yaml_dict
 
 
+@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 def test_write_yaml_already_existing_dataset_definition_w_tuple_screen(tmp_path):
     tmp_file = tmp_path / 'tmp.yaml'
     definition = DatasetLibrary.get('ToyDatasetEyeLink')
@@ -809,31 +828,13 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             {'has_files': {'gaze': True}},
             id='has_files',
         ),
-    ],
-)
-def test_dataset_definition_attribute_is_deprecated(attribute_kwarg):
-    with pytest.raises(DeprecationWarning):
-        DatasetDefinition(**attribute_kwarg)
-
-
-@pytest.mark.parametrize(
-    'attribute_kwarg',
-    [
         pytest.param(
-            {'extract': True},
-            id='extract_true',
-        ),
-        pytest.param(
-            {'extract': False},
-            id='extract_false',
-        ),
-        pytest.param(
-            {'has_files': {'gaze': True}},
-            id='has_files',
+            {'mirrors': {'gaze': ['https://mirror.com']}},
+            id='mirrors',
         ),
     ],
 )
-def test_dataset_definition_attribute_is_removed(attribute_kwarg):
+def test_dataset_definition_attribute_is_deprecated_or_removed(attribute_kwarg):
     with pytest.raises(DeprecationWarning) as info:
         DatasetDefinition(**attribute_kwarg)
 
