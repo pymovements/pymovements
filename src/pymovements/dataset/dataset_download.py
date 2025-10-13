@@ -239,10 +239,9 @@ def _download_resource_from_mirrors(
             return True  # Download successful, exit loop
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as error:
-            msg = (f'Downloading resource from mirror {mirror_idx} of {len(mirrors)} '
-                   + f'({mirror_url}) failed.')
+            msg = f'Downloading resource from mirror {mirror_url} failed.'
             if mirror_idx < len(mirrors):
-                msg = msg + ' Trying next mirror.'
+                msg = msg + f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).'
             warning = UserWarning(msg)
             warning.__cause__ = error
             warn(warning)
