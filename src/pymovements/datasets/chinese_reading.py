@@ -103,6 +103,9 @@ class ChineseReading(DatasetDefinition):
                     'filename': 'Raw Data.txt',
                     'md5': None,  # type: ignore
                     'filename_pattern': 'Raw Data.txt',
+                    'load_kwargs': {
+                        'trial_columns': ['Subject', 'Sentence_ID'],
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -119,12 +122,7 @@ class ChineseReading(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'Subject',
-            'Sentence_ID',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

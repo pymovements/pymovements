@@ -9,6 +9,10 @@ resources:
   filename_pattern_schema_overrides:
     sub_id: '!int'
     trial_id: '!int'
+  load_kwargs:
+    pixel_columns:
+    - x
+    - y
 experiment:
   eyetracker:
     sampling_rate: 60
@@ -29,6 +33,3 @@ custom_read_kwargs:
     schema_overrides:
     - '!polars.datatypes.classes.Float32'
     - '!polars.datatypes.classes.Float32'
-pixel_columns:
-- x
-- y

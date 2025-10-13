@@ -1,17 +1,21 @@
-name: "GazeBase"
+name: 'GazeBase'
 
-long_name: "GazeBase dataset"
+long_name: 'GazeBase dataset'
 
 resources:
   - content: gaze
-    url: "https://figshare.com/ndownloader/files/27039812"
-    filename: "GazeBase_v2_0.zip"
-    md5: "cb7eb895fb48f8661decf038ab998c9a"
+    url: 'https://figshare.com/ndownloader/files/27039812'
+    filename: 'GazeBase_v2_0.zip'
+    md5: 'cb7eb895fb48f8661decf038ab998c9a'
     filename_pattern: 'S_{round_id:1d}{subject_id:d}_S{session_id:d}_{task_name}.csv'
     filename_pattern_schema_overrides:
       round_id: !int
       subject_id: !int
       session_id: !int
+    load_kwargs:
+      time_column: 'n'
+      time_unit: 'ms'
+      position_columns: ['x', 'y']
 
 experiment:
   screen_width_px: 1680
@@ -19,25 +23,17 @@ experiment:
   screen_width_cm: 47.4
   screen_height_cm: 29.7
   distance_cm: 55
-  origin: "upper left"
+  origin: 'upper left'
   sampling_rate: 1000
 
-time_column: "n"
-
-time_unit: "ms"
-
-position_columns:
-  - "x"
-  - "y"
-
 column_map:
-  val: "validity"
-  xT: "x_target_pos"
-  yT: "y_target_pos"
+  val: 'validity'
+  xT: 'x_target_pos'
+  yT: 'y_target_pos'
 
 custom_read_kwargs:
   gaze:
-    null_values: "NaN"
+    null_values: 'NaN'
     schema_overrides:
       n: !polars.Int64
       x: !polars.Float32

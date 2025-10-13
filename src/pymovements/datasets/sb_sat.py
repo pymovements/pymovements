@@ -124,21 +124,27 @@ class SBSAT(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                        {
-                            'content': 'gaze',
-                            'url': 'https://osf.io/download/jgae7/',
-                            'filename': 'sbsat_csvs.zip',
-                            'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
-                            'filename_pattern': r'msd{subject_id:d}.csv',
-                            'filename_pattern_schema_overrides': {'subject_id': int},
-                        },
-                        {
-                            'content': 'precomputed_events',
-                            'url': 'https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv',  # noqa: E501 # pylint: disable=line-too-long
-                            'filename': '18sat_fixfinal.csv',
-                            'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
-                            'filename_pattern': '18sat_fixfinal.csv',
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/jgae7/',
+                    'filename': 'sbsat_csvs.zip',
+                    'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
+                    'filename_pattern': r'msd{subject_id:d}.csv',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'trial_columns': ['book_name', 'screen_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x_left', 'y_left'],
+                    },
+                },
+                {
+                    'content': 'precomputed_events',
+                    'url': 'https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': '18sat_fixfinal.csv',
+                    'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
+                    'filename_pattern': '18sat_fixfinal.csv',
+                },
             ],
         ),
     )
@@ -159,18 +165,13 @@ class SBSAT(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book_name',
-            'screen_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_left', 'y_left'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

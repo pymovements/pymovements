@@ -1,6 +1,6 @@
 name: SBSAT
 
-long_name: "Stony Brook SAT reading fixation dataset"
+long_name: 'Stony Brook SAT reading fixation dataset'
 
 resources:
   - content: gaze
@@ -10,6 +10,12 @@ resources:
     filename_pattern: 'msd{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
+    load_kwargs:
+      trial_columns: ['book_name', 'screen_id']
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['x_left', 'y_left']
+
   - content: precomputed_events
     url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
     filename: 18sat_fixfinal.csv
@@ -24,17 +30,6 @@ experiment:
   distance_cm: 70
   origin: center
   sampling_rate: 1000
-
-trial_columns:
-  - 'book_name'
-  - 'screen_id'
-
-time_column: time
-time_unit: ms
-
-pixel_columns:
-  - x_left
-  - y_left
 
 column_map: {}
 
@@ -56,4 +51,4 @@ custom_read_kwargs:
       y_left: !polars.Float32
       pupil_left: !polars.Float32
   precomputed_events:
-    separator: ","
+    separator: ','

@@ -1,17 +1,17 @@
-name: "DAEMONS"
+name: 'DAEMONS'
 
 long_name: 'Potsdam data set of eye movement on natural scenes'
 
 resources:
   - content: precomputed_events
-    url: "https://osf.io/download/ztgna/"
-    filename: "eye_movement.zip"
-    md5: "2779b4c140a0b1e3c9976488994f08f3"
-    filename_pattern: "SAC_{data_split:s}.csv"
+    url: 'https://osf.io/download/ztgna/'
+    filename: 'eye_movement.zip'
+    md5: '2779b4c140a0b1e3c9976488994f08f3'
+    filename_pattern: 'SAC_{data_split:s}.csv'
     filename_pattern_schema_overrides:
       data_split: !str
 
 custom_read_kwargs:
   precomputed_events:
     null_values:
-      - "NA"
+      - 'NA'

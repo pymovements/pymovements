@@ -246,15 +246,6 @@ class DatasetDefinition:
 
     column_map: dict[str, str] = field(default_factory=dict)
 
-    trial_columns: list[str] | None = None
-    time_column: str | None = None
-    time_unit: str | None = None
-    pixel_columns: list[str] | None = None
-    position_columns: list[str] | None = None
-    velocity_columns: list[str] | None = None
-    acceleration_columns: list[str] | None = None
-    distance_column: str | None = None
-
     def __init__(
             self,
             name: str = '.',
@@ -284,15 +275,6 @@ class DatasetDefinition:
 
         self.extract = extract
 
-        self.trial_columns = trial_columns
-        self.time_column = time_column
-        self.time_unit = time_unit
-        self.pixel_columns = pixel_columns
-        self.position_columns = position_columns
-        self.velocity_columns = velocity_columns
-        self.acceleration_columns = acceleration_columns
-        self.distance_column = distance_column
-
         if mirrors is None:
             self.mirrors = {}
         else:
@@ -321,6 +303,23 @@ class DatasetDefinition:
             filename_format_schema_overrides=filename_format_schema_overrides,
         )
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
+
+        if trial_columns is not None:
+            self.trial_columns = trial_columns
+        if time_column is not None:
+            self.time_column = time_column
+        if time_unit is not None:
+            self.time_unit = time_unit
+        if pixel_columns is not None:
+            self.pixel_columns = pixel_columns
+        if position_columns is not None:
+            self.position_columns = position_columns
+        if velocity_columns is not None:
+            self.velocity_columns = velocity_columns
+        if acceleration_columns is not None:
+            self.acceleration_columns = acceleration_columns
+        if distance_column is not None:
+            self.distance_column = distance_column
 
         if has_files is not None:
             warn(
@@ -418,6 +417,254 @@ class DatasetDefinition:
         for resource in self.resources:
             if resource.content in data:
                 resource.filename_pattern_schema_overrides = data[resource.content]
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def trial_columns(self) -> list[str] | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @trial_columns.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def trial_columns(self, data: list[str] | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def time_column(self) -> str | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @time_column.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def time_column(self, data: str | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def time_unit(self) -> str | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @time_unit.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def time_unit(self, data: str | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def pixel_columns(self) -> list[str] | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @pixel_columns.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def pixel_columns(self, data: list[str] | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def position_columns(self) -> list[str] | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @position_columns.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def position_columns(self, data: list[str] | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def velocity_columns(self) -> list[str] | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @velocity_columns.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def velocity_columns(self, data: list[str] | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def acceleration_columns(self) -> list[str] | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @acceleration_columns.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def acceleration_columns(self, data: list[str] | None) -> None:
+        return None
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def distance_column(self) -> str | None:
+        """Regular expression which will be matched before trying to load the file.
+
+        Namedgroups will appear in the `fileinfo` dataframe.
+
+        .. deprecated:: v0.23.0
+        Please use Resource.filename_pattern instead.
+        This property will be removed in v0.28.0.
+
+        Returns
+        -------
+        dict[str, str]
+            filename format for each content type
+        """
+        return None
+
+    @distance_column.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.load_kwargs instead. '
+               'This property will be removed in v0.29.0.',
+        version='v0.24.0',
+    )
+    def distance_column(self, data: str | None) -> None:
+        return None
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:

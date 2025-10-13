@@ -119,17 +119,22 @@ class HBN(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'data.zip',
-                        'md5': '2c523e911022ffc0eab700e34e9f7f30',
-                        'filename_pattern': r'{subject_id:12}_{video_id}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': str,
-                            'video_id': str,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'data.zip',
+                    'md5': '2c523e911022ffc0eab700e34e9f7f30',
+                    'filename_pattern': r'{subject_id:12}_{video_id}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': str,
+                        'video_id': str,
                     },
+                    'load_kwargs': {
+                        'time_column': 'time',
+                        'time_unit': 'step',
+                        'pixel_columns': ['x_pix', 'y_pix'],
+                    },
+                },
             ],
         ),
     )
@@ -150,11 +155,11 @@ class HBN(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'step'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

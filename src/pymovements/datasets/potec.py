@@ -125,39 +125,44 @@ class PoTeC(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/tgd9q/',
-                        'filename': 'PoTeC.zip',
-                        'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
-                        'filename_pattern': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'text_id': str,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/tgd9q/',
+                    'filename': 'PoTeC.zip',
+                    'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
+                    'filename_pattern': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'text_id': str,
                     },
-                    {
-                        'content': 'precomputed_events',
-                        'url': 'https://osf.io/download/d8pyg/',
-                        'filename': 'fixation.zip',
-                        'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
-                        'filename_pattern': r'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'text_id': str,
-                        },
+                    'load_kwargs': {
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
                     },
-                    {
-                        'content': 'precomputed_reading_measures',
-                        'url': 'https://osf.io/download/3ywhz/',
-                        'filename': 'reading_measures.zip',
-                        'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
-                        'filename_pattern': r'reader{subject_id:d}_{text_id}_merged.tsv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'text_id': str,
-                        },
+                },
+                {
+                    'content': 'precomputed_events',
+                    'url': 'https://osf.io/download/d8pyg/',
+                    'filename': 'fixation.zip',
+                    'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
+                    'filename_pattern': r'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'text_id': str,
                     },
+                },
+                {
+                    'content': 'precomputed_reading_measures',
+                    'url': 'https://osf.io/download/3ywhz/',
+                    'filename': 'reading_measures.zip',
+                    'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
+                    'filename_pattern': r'reader{subject_id:d}_{text_id}_merged.tsv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'text_id': str,
+                    },
+                },
             ],
         ),
     )
@@ -178,15 +183,11 @@ class PoTeC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x', 'y',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

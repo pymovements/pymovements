@@ -1,15 +1,20 @@
-name: "MouseCursor"
+name: 'MouseCursor'
 
-long_name: "Mouse Cursor dataset"
+long_name: 'Mouse Cursor dataset'
 
 resources:
   - content: gaze
-    url: "https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip"
-    filename: "mousecursor.zip"
-    md5: "7885e8fd44f14f02f60e9f62431aea63"
+    url: 'https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip'
+    filename: 'mousecursor.zip'
+    md5: '7885e8fd44f14f02f60e9f62431aea63'
     filename_pattern: 'Experiment {experiment_id:d}.csv'
     filename_pattern_schema_overrides:
       experiment_id: !int
+    load_kwargs:
+      trial_columns: ['Trial', 'Participant']
+      time_column: 'Time'
+      time_unit: 'ms'
+      pixel_columns: ['x', 'y']
 
 experiment:
   screen_width_px: 1920
@@ -17,20 +22,8 @@ experiment:
   screen_width_cm: 52.99
   screen_height_cm: 29.81
   distance_cm: 50
-  origin: "upper left"
+  origin: 'upper left'
   sampling_rate: 3
-
-trial_columns:
-  - "Trial"
-  - "Participant"
-
-time_column: "Time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x"
-  - "y"
 
 column_map: {}
 

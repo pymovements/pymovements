@@ -1,25 +1,27 @@
-name: "CoLAGaze"
+name: 'CoLAGaze'
 
 long_name: 'Corpus of Eye Movements for Linguistic Acceptability'
 
 resources:
   - content: gaze
     url: https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215
-    filename: "raw_data.zip"
+    filename: 'raw_data.zip'
     md5: null
     filename_pattern: '{subject_id:d}.asc'
     filename_pattern_schema_overrides:
       subject_id: !int
+
   - content: precomputed_events
     url: https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215
-    filename: "fixations.zip"
+    filename: 'fixations.zip'
     md5: null
     filename_pattern: 'fixations_report_{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
+
   - content: precomputed_reading_measures
     url: https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215
-    filename: "measures.zip"
+    filename: 'measures.zip'
     md5: null
     filename_pattern: 'raw_measures_for_features{subject_id:d}.csv'
     filename_pattern_schema_overrides:
@@ -31,7 +33,7 @@ experiment:
   screen_width_cm: 54.37
   screen_height_cm: 30.26
   distance_cm: 60
-  origin: "bottom left"
+  origin: 'bottom left'
   sampling_rate: 2000
 
 custom_read_kwargs:

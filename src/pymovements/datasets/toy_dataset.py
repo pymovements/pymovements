@@ -116,17 +116,22 @@ class ToyDataset(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'http://github.com/aeye-lab/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'pymovements-toy-dataset.zip',
-                        'md5': '4da622457637a8181d86601fe17f3aa8',
-                        'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'text_id': int,
-                            'page_id': int,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'http://github.com/aeye-lab/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'pymovements-toy-dataset.zip',
+                    'md5': '4da622457637a8181d86601fe17f3aa8',
+                    'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'text_id': int,
+                        'page_id': int,
                     },
+                    'load_kwargs': {
+                        'time_column': 'timestamp',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                    },
+                },
             ],
         ),
     )
@@ -147,11 +152,11 @@ class ToyDataset(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'timestamp'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

@@ -1,16 +1,20 @@
-name: "GazeGraph"
+name: 'GazeGraph'
 
 long_name: 'GazeGraph dataset'
 
 resources:
   - content: gaze
-    url: "https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master"
-    filename: "gaze_graph_data.zip"
-    md5: "181f4b79477cee6e0267482d989610b0"
+    url: 'https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master'
+    filename: 'gaze_graph_data.zip'
+    md5: '181f4b79477cee6e0267482d989610b0'
     filename_pattern: 'P{subject_id}_{task}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
       task: !str
+    load_kwargs:
+      time_column: null
+      time_unit: null
+      pixel_columns: ['x', 'y']
 
 experiment:
   screen_width_px: 3440
@@ -18,27 +22,18 @@ experiment:
   screen_width_cm: 79.375
   screen_height_cm: 34.0106
   distance_cm: 50
-  origin: "center"
+  origin: 'center'
   sampling_rate: 30
-
-# TODO
-time_column: null
-
-time_unit: null
-
-pixel_columns:
-  - "x"
-  - "y"
 
 column_map: {}
 
 custom_read_kwargs:
   gaze:
-    separator: ","
+    separator: ','
     has_header: false
     new_columns:
-      - "x"
-      - "y"
+      - 'x'
+      - 'y'
     schema_overrides:
       - !polars.Float32
       - !polars.Float32

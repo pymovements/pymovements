@@ -1,12 +1,12 @@
-name: "FakeNewsPerception"
+name: 'FakeNewsPerception'
 
 long_name:  'Fake News Perception Eye Tracking Corpus'
 
 resources:
   - content: precomputed_events
-    url: "https://dataverse.harvard.edu/api/access/datafile/4200164"
-    filename: "D3-Eye-movements-data.zip"
-    md5: "ab009f28cd703f433e9b6c02b0bb38d2"
+    url: 'https://dataverse.harvard.edu/api/access/datafile/4200164'
+    filename: 'D3-Eye-movements-data.zip'
+    md5: 'ab009f28cd703f433e9b6c02b0bb38d2'
     filename_pattern: 'P{subject_id:d}_S{session_id:d}_{truth_value:s}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -24,5 +24,5 @@ experiment:
 
 custom_read_kwargs:
   precomputed_events:
-    null_values: "NA"
+    null_values: 'NA'
     quote_char: '"'

@@ -120,17 +120,20 @@ class GazeOnFaces(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'gaze_csv.zip',
-                        'md5': 'fe219f07c9253cd9aaee6bd50233c034',
-                        'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'sub_id': int,
-                            'trial_id': int,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'gaze_csv.zip',
+                    'md5': 'fe219f07c9253cd9aaee6bd50233c034',
+                    'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'sub_id': int,
+                        'trial_id': int,
                     },
+                    'load_kwargs': {
+                        'pixel_columns': ['x', 'y'],
+                    },
+                },
             ],
         ),
     )
@@ -155,7 +158,7 @@ class GazeOnFaces(DatasetDefinition):
 
     time_unit: Any = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

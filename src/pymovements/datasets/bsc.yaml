@@ -1,6 +1,6 @@
 name: BSC
 
-long_name: "Beijing Sentence Corpus"
+long_name: 'Beijing Sentence Corpus'
 
 resources:
   - content: precomputed_events
@@ -8,10 +8,8 @@ resources:
     filename: BSC.EMD.zip
     md5: c7118bfe48c91264d69c45d347f11416
     filename_pattern: BSC.EMD.txt
-
-trial_columns:
-  - book_name
-  - screen_id
+    load_kwargs:
+      trial_columns: ['book_name', 'screen_id']
 
 custom_read_kwargs:
   precomputed_events:

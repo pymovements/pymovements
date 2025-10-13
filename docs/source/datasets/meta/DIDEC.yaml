@@ -14,6 +14,16 @@ resources:
     participant: '!int'
     session: '!int'
     trial: '!int'
+  load_kwargs:
+    trial_columns:
+    - Stimulus
+    time_column: Time
+    time_unit: ms
+    pixel_columns:
+    - L POR X [px]
+    - L POR Y [px]
+    - R POR X [px]
+    - R POR Y [px]
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -44,12 +54,3 @@ custom_read_kwargs:
     - L Event Info
     - R Event Info
     - Stimulus
-trial_columns:
-- Stimulus
-time_column: Time
-time_unit: ms
-pixel_columns:
-- L POR X [px]
-- L POR Y [px]
-- R POR X [px]
-- R POR Y [px]

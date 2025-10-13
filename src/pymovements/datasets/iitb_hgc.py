@@ -108,6 +108,9 @@ class IITB_HGC(DatasetDefinition):
                     'filename': 'IITB_HGC.jsonl',
                     'md5': 'cde5dd88534e87d9b2f1ab6e47133b5c',
                     'filename_pattern': 'IITB_HGC.jsonl',
+                    'load_kwargs': {
+                        'trial_columns': ['participant_id', 'trial_id'],
+                    },
                 },
             ],
         ),
@@ -117,12 +120,7 @@ class IITB_HGC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'participant_id',
-            'trial_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

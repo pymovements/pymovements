@@ -8,6 +8,15 @@ resources:
   filename_pattern: P{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'
+  load_kwargs:
+    trial_columns:
+    - paragraph_id
+    - speech_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x_right
+    - y_right
 - content: precomputed_events
   filename: FixationReports.zip
   url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=
@@ -42,11 +51,3 @@ custom_read_kwargs:
     decimal_comma: true
     quote_char: null
   precomputed_reading_measures: {}
-trial_columns:
-- paragraph_id
-- speech_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x_right
-- y_right

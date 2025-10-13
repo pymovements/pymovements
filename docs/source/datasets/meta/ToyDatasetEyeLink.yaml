@@ -9,6 +9,15 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
     session_id: '!int'
+  load_kwargs:
+    trial_columns:
+    - task
+    - trial_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x_pix
+    - y_pix
 experiment:
   eyetracker:
     sampling_rate: 1000.0
@@ -55,11 +64,3 @@ custom_read_kwargs:
       point_id: '!polars.datatypes.classes.Int64'
       task: '!polars.datatypes.classes.String'
     encoding: ascii
-trial_columns:
-- task
-- trial_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x_pix
-- y_pix

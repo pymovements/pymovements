@@ -123,17 +123,23 @@ class ToyDatasetEyeLink(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                        {
-                            'content': 'gaze',
-                            'url': 'http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/a970d090588542dad745297866e794ab9dad8795/',  # noqa: E501 # pylint: disable=line-too-long
-                            'filename': 'pymovements-toy-dataset-eyelink.zip',
-                            'md5': 'b1d426751403752c8a154fc48d1670ce',
-                            'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',  # noqa: E501 # pylint: disable=line-too-long
-                            'filename_pattern_schema_overrides': {
-                                'subject_id': int,
-                                'session_id': int,
-                            },
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/a970d090588542dad745297866e794ab9dad8795/',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'pymovements-toy-dataset-eyelink.zip',
+                    'md5': 'b1d426751403752c8a154fc48d1670ce',
+                    'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'session_id': int,
+                    },
+                    'load_kwargs': {
+                        'trial_columns': ['task', 'trial_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x_pix', 'y_pix'],
+                    },
+                },
             ],
         ),
     )
@@ -160,15 +166,13 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] | None = field(
-        default_factory=lambda: ['task', 'trial_id'],
-    )
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

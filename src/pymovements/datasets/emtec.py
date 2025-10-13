@@ -126,6 +126,12 @@ class EMTeC(DatasetDefinition):
                     'md5': 'dca99e47ef43f3696acec4fd70967750',
                     'filename_pattern': r'ET_{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'trial_columns': ['item_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -161,13 +167,13 @@ class EMTeC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(default_factory=lambda: ['item_id'])
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

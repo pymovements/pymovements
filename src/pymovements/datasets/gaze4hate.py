@@ -108,6 +108,9 @@ class Gaze4Hate(DatasetDefinition):
                     'filename': 'gaze4hate_sentence_reading_fix_report.csv',
                     'md5': 'c8cc645d1fad659f9442d61795da5481',
                     'filename_pattern': 'gaze4hate_sentence_reading_fix_report.csv',
+                    'load_kwargs': {
+                        'trial_columns': ['pno', 'sno'],
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -136,12 +139,7 @@ class Gaze4Hate(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'pno',
-            'sno',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda:

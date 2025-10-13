@@ -135,6 +135,12 @@ class JuDo1000(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
+                    'load_kwargs': {
+                        'trial_columns': ['trial_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x_left', 'y_left', 'x_right', 'y_right'],
+                    },
                 },
             ],
         ),
@@ -156,17 +162,13 @@ class JuDo1000(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(default_factory=lambda: ['trial_id'])
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x_left', 'y_left', 'x_right', 'y_right',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(
         default_factory=lambda: {

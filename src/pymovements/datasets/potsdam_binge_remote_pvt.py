@@ -130,42 +130,48 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/9vbs8/',
-                        'filename': 'a.zip',
-                        'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
-                        'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'trial_id': int,
-                            'block_id': int,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/9vbs8/',
+                    'filename': 'a.zip',
+                    'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
                     },
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/yqukn/',
-                        'filename': 'b.zip',
-                        'md5': '54038547b1a373253b38999a227dde63',
-                        'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'trial_id': int,
-                            'block_id': int,
-                        },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': ['x_pix_eyelink', 'y_pix_eyelink'],
                     },
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/yf2xa/',
-                        'filename': 'e.zip',
-                        'md5': 'a0d0203cbb273f6908c1b52a42750551',
-                        'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'trial_id': int,
-                            'block_id': int,
-                        },
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/yqukn/',
+                    'filename': 'b.zip',
+                    'md5': '54038547b1a373253b38999a227dde63',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
                     },
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/yf2xa/',
+                    'filename': 'e.zip',
+                    'md5': 'a0d0203cbb273f6908c1b52a42750551',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                },
             ],
         ),
     )
@@ -197,18 +203,13 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
 
     trial_columns: list[str] | None = None
 
-    time_column: str = 'eyelink_timestamp'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    distance_column: str = 'target_distance'
+    distance_column: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x_pix_eyelink',
-            'y_pix_eyelink',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(
         default_factory=lambda: {},

@@ -8,10 +8,8 @@ resources:
     filename: IITB_HGC.jsonl
     md5: cde5dd88534e87d9b2f1ab6e47133b5c
     filename_pattern: IITB_HGC.jsonl
-
-trial_columns:
-- participant_id
-- trial_id
+    load_kwargs:
+      trial_columns: ['participant_id', 'trial_id']
 
 custom_read_kwargs:
   precomputed_events: {}

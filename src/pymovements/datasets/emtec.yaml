@@ -1,25 +1,32 @@
-name: "EMTeC"
+name: 'EMTeC'
 
 long_name: 'Eye movements on Machine-generated Texts Corpus'
 
 resources:
   - content: gaze
-    url: "https://osf.io/download/374sk/"
-    filename: "subject_level_data.zip"
-    md5: "dca99e47ef43f3696acec4fd70967750"
+    url: 'https://osf.io/download/374sk/'
+    filename: 'subject_level_data.zip'
+    md5: 'dca99e47ef43f3696acec4fd70967750'
     filename_pattern: 'ET_{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
+    load_kwargs:
+      trial_columns: ['item_id']
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['x', 'y']
+
   - content: precomputed_events
-    url: "https://osf.io/download/2hs8p/"
-    filename: "fixations.csv"
-    md5: "5e05a364a1d8a044d8b36506aa91437e"
-    filename_pattern: "fixations.csv"
+    url: 'https://osf.io/download/2hs8p/'
+    filename: 'fixations.csv'
+    md5: '5e05a364a1d8a044d8b36506aa91437e'
+    filename_pattern: 'fixations.csv'
+
   - content: precomputed_reading_measures
-    url: "https://osf.io/download/s4ny8/"
-    filename: "reading_measures.csv"
-    md5: "56880f50af20682558065ac2d26be827"
-    filename_pattern: "reading_measures.csv"
+    url: 'https://osf.io/download/s4ny8/'
+    filename: 'reading_measures.csv'
+    md5: '56880f50af20682558065ac2d26be827'
+    filename_pattern: 'reading_measures.csv'
 
 experiment:
   screen_width_px: 1280
@@ -27,33 +34,22 @@ experiment:
   screen_width_cm: 38.2
   screen_height_cm: 30.2
   distance_cm: 60
-  origin: "center"
+  origin: 'center'
   sampling_rate: 2000
-
-trial_columns:
-  - "item_id"
-
-time_column: "time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x"
-  - "y"
 
 custom_read_kwargs:
   gaze:
     separator: "\t"
     columns:
-      - "item_id"
-      - "TRIAL_ID"
-      - "Trial_Index_"
-      - "model"
-      - "decoding_strategy"
-      - "time"
-      - "x"
-      - "y"
-      - "pupil_right"
+      - 'item_id'
+      - 'TRIAL_ID'
+      - 'Trial_Index_'
+      - 'model'
+      - 'decoding_strategy'
+      - 'time'
+      - 'x'
+      - 'y'
+      - 'pupil_right'
     schema_overrides:
       item_id: !polars.Utf8
       TRIAL_ID: !polars.Int64

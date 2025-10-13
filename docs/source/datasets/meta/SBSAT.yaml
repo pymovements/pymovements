@@ -8,6 +8,15 @@ resources:
   filename_pattern: msd{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'
+  load_kwargs:
+    trial_columns:
+    - book_name
+    - screen_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x_left
+    - y_left
 - content: precomputed_events
   filename: 18sat_fixfinal.csv
   url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
@@ -42,11 +51,3 @@ custom_read_kwargs:
       pupil_left: '!polars.datatypes.classes.Float32'
   precomputed_events:
     separator: ','
-trial_columns:
-- book_name
-- screen_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x_left
-- y_left

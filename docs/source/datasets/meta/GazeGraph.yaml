@@ -9,6 +9,12 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
     task: '!str'
+  load_kwargs:
+    time_column: null
+    time_unit: null
+    pixel_columns:
+    - x
+    - y
 experiment:
   eyetracker:
     sampling_rate: 30
@@ -29,6 +35,3 @@ custom_read_kwargs:
     schema_overrides:
     - '!polars.datatypes.classes.Float32'
     - '!polars.datatypes.classes.Float32'
-pixel_columns:
-- x
-- y

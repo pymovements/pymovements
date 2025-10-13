@@ -107,6 +107,9 @@ class MECOL1W1(DatasetDefinition):
                     'filename': 'joint_l1_fixation_version1.3.rda',
                     'md5': '3c969a930a71cd62c67b936426dd079b',
                     'filename_pattern': 'joint_l1_fixation_version1.3.rda',
+                    'load_kwargs': {
+                        'trial_columns': ['uniform_id', 'itemid'],
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -123,12 +126,7 @@ class MECOL1W1(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'uniform_id',
-            'itemid',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

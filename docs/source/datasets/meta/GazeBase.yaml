@@ -10,6 +10,12 @@ resources:
     round_id: '!int'
     subject_id: '!int'
     session_id: '!int'
+  load_kwargs:
+    time_column: n
+    time_unit: ms
+    position_columns:
+    - x
+    - y
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -36,8 +42,3 @@ column_map:
   val: validity
   xT: x_target_pos
   yT: y_target_pos
-time_column: n
-time_unit: ms
-position_columns:
-- x
-- y

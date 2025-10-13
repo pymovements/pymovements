@@ -129,6 +129,12 @@ class InteRead(DatasetDefinition):
                     'filename': 'resampled_gaze.csv.zip',
                     'md5': '06b2cdff1827086fa125a703ee9d4324',
                     'filename_pattern': r'resampled_gaze.csv',
+                    'load_kwargs': {
+                        'trial_columns': ['participant_id', 'page_id', 'interruption_state'],
+                        'time_column': '',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -157,24 +163,13 @@ class InteRead(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'participant_id',
-            'page_id',
-            'interruption_state',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    time_column: str = ''
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x',
-            'y',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

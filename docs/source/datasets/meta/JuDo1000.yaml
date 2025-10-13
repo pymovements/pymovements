@@ -9,6 +9,16 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
     session_id: '!int'
+  load_kwargs:
+    trial_columns:
+    - trial_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x_left
+    - y_left
+    - x_right
+    - y_right
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -33,12 +43,3 @@ custom_read_kwargs:
 column_map:
   trialId: trial_id
   pointId: point_id
-trial_columns:
-- trial_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x_left
-- y_left
-- x_right
-- y_right

@@ -19,6 +19,13 @@ resources:
     subject_id: '!int'
     trial_id: '!int'
     block_id: '!int'
+  load_kwargs:
+    time_column: eyelink_timestamp
+    time_unit: ms
+    distance_column: target_distance
+    pixel_columns:
+    - x_pix_pupilcore_interpolated
+    - y_pix_pupilcore_interpolated
 - content: gaze
   filename: e.zip
   url: https://osf.io/download/yf2xa/
@@ -61,9 +68,3 @@ custom_read_kwargs:
       prev_bac: '!polars.datatypes.classes.Float32'
       next_bac: '!polars.datatypes.classes.Float32'
     separator: ','
-time_column: eyelink_timestamp
-time_unit: ms
-pixel_columns:
-- x_pix_pupilcore_interpolated
-- y_pix_pupilcore_interpolated
-distance_column: target_distance

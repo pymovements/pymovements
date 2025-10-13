@@ -1,17 +1,21 @@
-name: "GazeBaseVR"
+name: 'GazeBaseVR'
 
 long_name: 'GazeBaseVR dataset'
 
 resources:
   - content: gaze
-    url: "https://figshare.com/ndownloader/files/38844024"
-    filename: "gazebasevr.zip"
-    md5: "048c04b00fd64347375cc8d37b451a22"
+    url: 'https://figshare.com/ndownloader/files/38844024'
+    filename: 'gazebasevr.zip'
+    md5: '048c04b00fd64347375cc8d37b451a22'
     filename_pattern: 'S_{round_id:1d}{subject_id:d}_S{session_id:d}_{task_name}.csv'
     filename_pattern_schema_overrides:
       round_id: !int
       subject_id: !int
       session_id: !int
+    load_kwargs:
+      time_column: 'n'
+      time_unit: 'ms'
+      position_columns: ['lx', 'ly', 'rx', 'ry', 'x', 'y']
 
 experiment:
   screen_width_px: 1680
@@ -19,25 +23,13 @@ experiment:
   screen_width_cm: 47.4
   screen_height_cm: 29.7
   distance_cm: 55
-  origin: "center"
+  origin: 'center'
   sampling_rate: 250
 
-time_column: "n"
-
-time_unit: "ms"
-
-position_columns:
-  - "lx"
-  - "ly"
-  - "rx"
-  - "ry"
-  - "x"
-  - "y"
-
 column_map:
-  xT: "x_target_pos"
-  yT: "y_target_pos"
-  zT: "z_target_pos"
+  xT: 'x_target_pos'
+  yT: 'y_target_pos'
+  zT: 'z_target_pos'
 
 custom_read_kwargs:
   gaze:

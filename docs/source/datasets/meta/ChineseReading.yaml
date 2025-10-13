@@ -4,6 +4,10 @@ resources:
   filename: Raw Data.txt
   url: https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a
   filename_pattern: Raw Data.txt
+  load_kwargs:
+    trial_columns:
+    - Subject
+    - Sentence_ID
 - content: precomputed_reading_measures
   filename: chinese_reading_measures.zip
   url: https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip=
@@ -13,6 +17,3 @@ custom_read_kwargs:
     separator: "\t"
   precomputed_reading_measures:
     sheet_name: Sheet 1
-trial_columns:
-- Subject
-- Sentence_ID

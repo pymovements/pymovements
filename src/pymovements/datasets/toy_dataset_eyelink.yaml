@@ -1,16 +1,21 @@
-name: "ToyDatasetEyeLink"
+name: 'ToyDatasetEyeLink'
 
-long_name: "pymovements Toy Dataset EyeLink"
+long_name: 'pymovements Toy Dataset EyeLink'
 
 resources:
   - content: gaze
-    url: "http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/a970d090588542dad745297866e794ab9dad8795/"
-    filename: "pymovements-toy-dataset-eyelink.zip"
-    md5: "b1d426751403752c8a154fc48d1670ce"
+    url: 'http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/a970d090588542dad745297866e794ab9dad8795/'
+    filename: 'pymovements-toy-dataset-eyelink.zip'
+    md5: 'b1d426751403752c8a154fc48d1670ce'
     filename_pattern: 'subject_{subject_id:d}_session_{session_id:d}.asc'
     filename_pattern_schema_overrides:
       subject_id: !int
       session_id: !int
+    load_kwargs:
+      trial_columns: ['task', 'trial_id']
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['x_pix', 'y_pix']
 
 experiment:
   screen_width_px: 1280
@@ -18,25 +23,13 @@ experiment:
   screen_width_cm: 38
   screen_height_cm: 30.2
   distance_cm: 68
-  origin: "upper left"
+  origin: 'upper left'
   eyetracker:
     sampling_rate: 1000.0
     left: true
     right: false
-    model: "EyeLink Portable Duo"
-    vendor: "EyeLink"
-
-trial_columns:
-  - task
-  - trial_id
-
-time_column: "time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x_pix"
-  - "y_pix"
+    model: 'EyeLink Portable Duo'
+    vendor: 'EyeLink'
 
 column_map: {}
 
@@ -44,27 +37,27 @@ custom_read_kwargs:
   gaze:
     patterns:
       - pattern: 'SYNCTIME_READING_SCREEN'
-        column: "task"
-        value: "reading"
+        column: 'task'
+        value: 'reading'
       - pattern: 'SYNCTIME_JUDO'
-        column: "task"
-        value: "judo"
+        column: 'task'
+        value: 'judo'
       - pattern:
-        - "READING[.]STOP"
-        - "JUDO[.]STOP"
-        column: "task"
+        - 'READING[.]STOP'
+        - 'JUDO[.]STOP'
+        column: 'task'
         value: null
       - 'TRIALID (?P<trial_id>\d+)'
       - pattern: 'TRIAL_RESULT'
-        column: "trial_id"
+        column: 'trial_id'
         value: null
       - 'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
       - pattern: 'READING[.]STOP'
-        column: "screen_id"
+        column: 'screen_id'
         value: null
       - 'SYNCTIME.P(?P<point_id>\d+)'
       - pattern: 'P\d[.]STOP'
-        column: "point_id"
+        column: 'point_id'
         value: null
     schema:
       trial_id: !polars.Int64

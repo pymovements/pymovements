@@ -123,6 +123,13 @@ class ETDD70(DatasetDefinition):
                     'filename': 'edd_raw.zip',
                     'md5': None,  # type: ignore
                     'filename_pattern': r'Subject_{subject_id:d}_{task:s}_raw.csv',
+                    'load_kwargs': {
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': [
+                            'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
+                        ],
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -151,15 +158,11 @@ class ETDD70(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda:

@@ -8,6 +8,14 @@ resources:
   filename_pattern: ET_{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'
+  load_kwargs:
+    trial_columns:
+    - item_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
 - content: precomputed_events
   filename: fixations.csv
   url: https://osf.io/download/2hs8p/
@@ -55,10 +63,3 @@ custom_read_kwargs:
     separator: "\t"
   precomputed_reading_measures:
     separator: "\t"
-trial_columns:
-- item_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x
-- y

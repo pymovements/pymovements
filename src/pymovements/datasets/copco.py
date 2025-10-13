@@ -132,6 +132,12 @@ class CopCo(DatasetDefinition):
                     'md5': '9dc3276714397b7fccac1e179a14c52b',  # type:ignore
                     'filename_pattern': r'P{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'trial_columns': ['paragraph_id', 'speech_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x_right', 'y_right'],
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -169,13 +175,13 @@ class CopCo(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(default_factory=lambda: ['paragraph_id', 'speech_id'])
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_right', 'y_right'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

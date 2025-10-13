@@ -126,16 +126,22 @@ class MouseCursor(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'mousecursor.zip',
-                        'md5': '7885e8fd44f14f02f60e9f62431aea63',
-                        'filename_pattern': r'Experiment {experiment_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'experiment_id': int,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'mousecursor.zip',
+                    'md5': '7885e8fd44f14f02f60e9f62431aea63',
+                    'filename_pattern': r'Experiment {experiment_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'experiment_id': int,
                     },
+                    'load_kwargs': {
+                        'trial_columns': ['Trial', 'Participant'],
+                        'time_column': 'Time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                    },
+                },
             ],
         ),
     )
@@ -159,13 +165,13 @@ class MouseCursor(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(default_factory=lambda: ['Trial', 'Participant'])
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'Time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

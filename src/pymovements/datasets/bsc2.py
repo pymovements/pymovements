@@ -114,6 +114,9 @@ class BSCII(DatasetDefinition):
                     'filename': 'BSCII.EMD.rev.zip',
                     'md5': '4daad0fa922785d8c681a883b1197e1e',
                     'filename_pattern': 'BSCII.EMD.rev.txt',
+                    'load_kwargs': {
+                        'trial_columns': ['book_name', 'screen_id'],
+                    },
                 },
             ],
         ),
@@ -123,12 +126,7 @@ class BSCII(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book_name',
-            'screen_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

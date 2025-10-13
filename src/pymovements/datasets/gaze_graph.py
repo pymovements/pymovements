@@ -128,17 +128,20 @@ class GazeGraph(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'gaze_graph_data.zip',
-                        'md5': '181f4b79477cee6e0267482d989610b0',
-                        'filename_pattern': r'P{subject_id}_{task}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'task': str,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'gaze_graph_data.zip',
+                    'md5': '181f4b79477cee6e0267482d989610b0',
+                    'filename_pattern': r'P{subject_id}_{task}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'task': str,
                     },
+                    'load_kwargs': {
+                        'pixel_columns': ['x', 'y'],
+                    },
+                },
             ],
         ),
     )
@@ -166,7 +169,7 @@ class GazeGraph(DatasetDefinition):
 
     time_unit: Any = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

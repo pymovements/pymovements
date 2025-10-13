@@ -9,6 +9,12 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!str'
     video_id: '!str'
+  load_kwargs:
+    time_column: time
+    time_unit: step
+    pixel_columns:
+    - x_pix
+    - y_pix
 experiment:
   eyetracker:
     sampling_rate: 120
@@ -30,8 +36,3 @@ custom_read_kwargs:
       time: '!polars.datatypes.classes.Int64'
       x_pix: '!polars.datatypes.classes.Float32'
       y_pix: '!polars.datatypes.classes.Float32'
-time_column: time
-time_unit: step
-pixel_columns:
-- x_pix
-- y_pix

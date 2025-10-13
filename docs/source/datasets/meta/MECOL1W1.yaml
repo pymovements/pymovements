@@ -6,6 +6,10 @@ resources:
   url: https://osf.io/download/67dc6027920cab9abae48b83/
   md5: 3c969a930a71cd62c67b936426dd079b
   filename_pattern: joint_l1_fixation_version1.3.rda
+  load_kwargs:
+    trial_columns:
+    - uniform_id
+    - itemid
 - content: precomputed_reading_measures
   filename: sentence_data_version1.3.csv
   url: https://osf.io/download/n5pvh/
@@ -15,6 +19,3 @@ custom_read_kwargs:
   precomputed_events:
     r_dataframe_key: joint.fix
   precomputed_reading_measures: {}
-trial_columns:
-- uniform_id
-- itemid

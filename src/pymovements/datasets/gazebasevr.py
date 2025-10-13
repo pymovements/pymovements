@@ -141,6 +141,11 @@ class GazeBaseVR(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
+                    'load_kwargs': {
+                        'time_column': 'n',
+                        'time_unit': 'ms',
+                        'position_columns': ['lx', 'ly', 'rx', 'ry', 'x', 'y'],
+                    },
                 },
             ],
         ),
@@ -162,11 +167,11 @@ class GazeBaseVR(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'n'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    position_columns: list[str] = field(default_factory=lambda: ['lx', 'ly', 'rx', 'ry', 'x', 'y'])
+    position_columns: list[str] | None = None
 
     column_map: dict[str, str] = field(
         default_factory=lambda: {
