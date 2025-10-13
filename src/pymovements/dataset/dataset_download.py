@@ -263,7 +263,7 @@ def _download_resource_with_legacy_mirrors(
 
     success = False
 
-    for mirror_idx, mirror in enumerate(mirrors):
+    for mirror_idx, mirror in enumerate(mirrors, start=1):
         mirror_url = f'{mirror}{resource.url}'
         try:
             download_file(
@@ -273,23 +273,18 @@ def _download_resource_with_legacy_mirrors(
                 md5=resource.md5,
                 verbose=verbose,
             )
-            success = True
-
+            return True  # Download successful
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as error:
             # Error downloading the resource, try next mirror
-            if mirror_idx < len(mirrors) - 1:
+            if mirror_idx < len(mirrors):
                 warning = UserWarning(
-                    f'Downloading resource from mirror {mirror_url} failed. Trying next mirror.',
+                    f'Downloading resource from mirror {mirror_url} failed.'
+                    f'Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
                 )
                 warning.__cause__ = error
                 warn(warning)
-            continue
 
-        # downloading the resource was successful, we don't need to try another mirror
-        break
-
-    if not success:
-        raise RuntimeError(
-            f"Downloading resource {resource.url} failed for all mirrors.",
-        )
+    raise RuntimeError(
+        f"Downloading resource {resource.url} failed for all mirrors.",
+    )
