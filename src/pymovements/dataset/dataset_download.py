@@ -271,7 +271,7 @@ def _download_resource_with_legacy_mirrors(
                 md5=resource.md5,
                 verbose=verbose,
             )
-            return True  # Download successful
+            return  # Download successful
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as error:
             # Error downloading the resource, try next mirror
