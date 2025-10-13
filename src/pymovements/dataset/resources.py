@@ -48,7 +48,7 @@ class ResourceDefinition:
         The URL to the downloadable resource. (default: None)
     mirrors: list[str] | None
         An optional list of additional mirror URLs to download the resource. If downloading the
-        resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirrors URLS are
+        resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
         used in order of appearance. (default: None)
     md5: str | None
         The MD5 checksum of the downloadable resource. (default: None)
