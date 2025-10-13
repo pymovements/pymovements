@@ -268,7 +268,7 @@ def test_load_eyelink_file(tmp_path, read_kwargs, load_function):
             '.foo',
             'from_csv',
             {'read_csv_kwargs': {'separator': '\t'}},
-            id='load_tsv_custom_extension_from_csv',
+            id='load_tsv_rename_from_csv',
         ),
         pytest.param(
             'monocular_example.feather',
