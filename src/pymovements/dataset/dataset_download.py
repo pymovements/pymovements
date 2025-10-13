@@ -279,7 +279,7 @@ def _download_resource_with_legacy_mirrors(
             if mirror_idx < len(mirrors):
                 warning = UserWarning(
                     f'Downloading resource from mirror {mirror_url} failed.'
-                    f'Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
+                    f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
                 )
                 warning.__cause__ = error
                 warn(warning)
