@@ -137,6 +137,8 @@ class DatasetDefinition:
     mirrors: dict[str, Sequence[str]] | None
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: None)
+        .. deprecated:: v0.24.0
+        Please use ``ResourceDefinition.mirrors`` instead. This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
@@ -294,6 +296,13 @@ class DatasetDefinition:
         if mirrors is None:
             self.mirrors = {}
         else:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.mirrors is deprecated since version v0.24.0. '
+                    'Please specify ResourceDefinition.mirrors instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
             self.mirrors = mirrors
 
         if custom_read_kwargs is None:
