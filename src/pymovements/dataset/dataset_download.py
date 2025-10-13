@@ -175,7 +175,6 @@ def _download_resources(
         if not mirrors:
             _download_resource(resource, target_dirpath, verbose)
         else:
-            assert mirrors is not None
             _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
 
 
