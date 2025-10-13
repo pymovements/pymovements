@@ -126,7 +126,7 @@ class PoTeC(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'https://osf.io/download/tgd9q/',
                         'filename': 'PoTeC.zip',
                         'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
@@ -190,7 +190,7 @@ class PoTeC(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'schema_overrides': {
                     'time': pl.Int64,
                     'x': pl.Float32,

@@ -87,7 +87,7 @@ def test_dataset_definition_is_equal(init_kwargs):
         ),
 
         pytest.param(
-            {'resources': [{'content': 'gaze'}]},
+            {'resources': [{'content': 'samples'}]},
             ResourceDefinitions([ResourceDefinition(content='gaze')]),
             id='single_gaze_resource',
         ),
@@ -102,7 +102,7 @@ def test_dataset_definition_is_equal(init_kwargs):
         pytest.param(
             {
                 'resources': [
-                    {'content': 'gaze', 'filename_pattern': 'test.csv'},
+                    {'content': 'samples', 'filename_pattern': 'test.csv'},
                 ],
             },
             ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
@@ -111,7 +111,7 @@ def test_dataset_definition_is_equal(init_kwargs):
 
         pytest.param(
             {
-                'resources': {'gaze': [{'content': 'gaze'}]},
+                'resources': {'gaze': [{'content': 'samples'}]},
                 'filename_format': {'gaze': 'test.csv'},
             },
             ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
@@ -148,7 +148,7 @@ def test_dataset_definition_is_equal(init_kwargs):
 
         pytest.param(
             {
-                'resources': {'gaze': [{'content': 'gaze'}]},
+                'resources': {'gaze': [{'content': 'samples'}]},
                 'filename_format': {'gaze': '{subject_id:d}.csv'},
                 'filename_format_schema_overrides': {
                     'gaze': {
@@ -176,7 +176,7 @@ def test_dataset_definition_is_equal(init_kwargs):
         pytest.param(
             {
                 'resources': [
-                    {'content': 'gaze'},
+                    {'content': 'samples'},
                     {'content': 'precomputed_events'},
                 ],
             },
@@ -875,7 +875,7 @@ def test_dataset_definition_init_raises_exception(init_kwargs, exception, except
     [
         pytest.param(
             DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
+                resources=[{'content': 'samples', 'filename_pattern': 'abc'}],
             ),
             {'gaze': 'abc'},
             id='single_gaze',
@@ -892,7 +892,7 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
     [
         pytest.param(
             DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
+                resources=[{'content': 'samples', 'filename_pattern': 'abc'}],
             ),
             {'gaze': 'def'},
             ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='def')]),
@@ -901,7 +901,7 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
         pytest.param(
             DatasetDefinition(
                 resources=[
-                    {'content': 'gaze', 'filename_pattern': 'abc'},
+                    {'content': 'samples', 'filename_pattern': 'abc'},
                     {'content': 'precomputed_events', 'filename_pattern': 'cba'},
                 ],
             ),
@@ -925,7 +925,7 @@ def test_dataset_definition_set_filename_format_expected(definition, new_value, 
     [
         pytest.param(
             DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}}],
+                resources=[{'content': 'samples', 'filename_pattern_schema_overrides': {'a': int}}],
             ),
             {'gaze': {'a': int}},
             id='single_gaze',
@@ -942,7 +942,7 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
     [
         pytest.param(
             DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}}],
+                resources=[{'content': 'samples', 'filename_pattern_schema_overrides': {'a': int}}],
             ),
             {'gaze': {'b': str}},
             ResourceDefinitions(
@@ -953,7 +953,7 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
         pytest.param(
             DatasetDefinition(
                 resources=[
-                    {'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}},
+                    {'content': 'samples', 'filename_pattern_schema_overrides': {'a': int}},
                     {'content': 'precomputed_events'},
                 ],
             ),

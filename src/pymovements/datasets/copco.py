@@ -126,7 +126,7 @@ class CopCo(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                 {
-                    'content': 'gaze',
+                    'content': 'samples',
                     'url': 'https://osf.io/download/bg9r4/',
                     'filename': 'csvs.zip',
                     'md5': '9dc3276714397b7fccac1e179a14c52b',  # type:ignore
@@ -181,7 +181,7 @@ class CopCo(DatasetDefinition):
 
     custom_read_kwargs: dict[str, Any] = field(
         default_factory=lambda: {
-            'gaze': {},
+            'samples': {},
             'precomputed_events': {
                 'separator': '\t',
                 'null_values': ['.', 'UNDEFINEDnull'],

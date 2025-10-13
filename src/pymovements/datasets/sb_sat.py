@@ -125,7 +125,7 @@ class SBSAT(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                         {
-                            'content': 'gaze',
+                            'content': 'samples',
                             'url': 'https://osf.io/download/jgae7/',
                             'filename': 'sbsat_csvs.zip',
                             'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
@@ -177,7 +177,7 @@ class SBSAT(DatasetDefinition):
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda:
             {
-                'gaze': {
+                'samples': {
                     'separator': '\t',
                     'columns': ['time', 'book_name', 'screen_id', 'x_left', 'y_left', 'pupil_left'],
                     'schema_overrides': {

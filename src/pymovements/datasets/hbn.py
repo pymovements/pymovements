@@ -120,7 +120,7 @@ class HBN(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'data.zip',
                         'md5': '2c523e911022ffc0eab700e34e9f7f30',
@@ -160,7 +160,7 @@ class HBN(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'separator': ',',
                 'columns': ['time', 'x_pix', 'y_pix'],
                 'schema_overrides': {

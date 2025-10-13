@@ -127,7 +127,7 @@ class GazeBaseVR(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                 {
-                    'content': 'gaze',
+                    'content': 'samples',
                     'url': 'https://figshare.com/ndownloader/files/38844024',
                     'filename': 'gazebasevr.zip',
                     'md5': '048c04b00fd64347375cc8d37b451a22',
@@ -178,7 +178,7 @@ class GazeBaseVR(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'schema_overrides': {
                     'n': pl.Float32,
                     'x': pl.Float32,

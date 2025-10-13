@@ -126,7 +126,7 @@ class GazeBase(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                 {
-                    'content': 'gaze',
+                    'content': 'samples',
                     'url': 'https://figshare.com/ndownloader/files/27039812',
                     'filename': 'GazeBase_v2_0.zip',
                     'md5': 'cb7eb895fb48f8661decf038ab998c9a',
@@ -176,7 +176,7 @@ class GazeBase(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'null_values': 'NaN',
                 'schema_overrides': {
                     'n': pl.Int64,

@@ -124,7 +124,7 @@ class InteRead(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                 {
-                    'content': 'gaze',
+                    'content': 'samples',
                     'url': 'https://osf.io/download/6ju3x/',
                     'filename': 'resampled_gaze.csv.zip',
                     'md5': '06b2cdff1827086fa125a703ee9d4324',
@@ -180,7 +180,7 @@ class InteRead(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {},
+            'samples': {},
             'precomputed_events': {},
         },
     )

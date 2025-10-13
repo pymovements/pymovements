@@ -120,7 +120,7 @@ class EMTeC(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                 {
-                    'content': 'gaze',
+                    'content': 'samples',
                     'url': 'https://osf.io/download/374sk/',
                     'filename': 'subject_level_data.zip',
                     'md5': 'dca99e47ef43f3696acec4fd70967750',
@@ -171,7 +171,7 @@ class EMTeC(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'separator': '\t',
                 'columns': [
                     'item_id',

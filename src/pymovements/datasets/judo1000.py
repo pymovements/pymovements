@@ -126,7 +126,7 @@ class JuDo1000(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                 {
-                    'content': 'gaze',
+                    'content': 'samples',
                     'url': 'https://osf.io/download/4wy7s/',
                     'filename': 'JuDo1000.zip',
                     'md5': 'b8b9e5bb65b78d6f2bd260451cdd89f8',
@@ -177,7 +177,7 @@ class JuDo1000(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'schema_overrides': {
                     'trialId': pl.Int64,
                     'pointId': pl.Int64,

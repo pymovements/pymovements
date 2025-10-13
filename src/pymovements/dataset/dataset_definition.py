@@ -130,7 +130,7 @@ class DatasetDefinition:
     long_name: str | None
         The entire name of the dataset. (default: None)
     has_files: dict[str, bool] | None
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
+        Indicate whether the dataset contains 'samples', 'precomputed_events', and
         'precomputed_reading_measures'. (default: None)
         .. deprecated:: v0.23.0
         This field will be removed in v0.28.0.
@@ -360,7 +360,7 @@ class DatasetDefinition:
             filename format for each content type
         """
         data: dict[str, str] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        content_types = ('samples', 'precomputed_events', 'precomputed_reading_measures')
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.
@@ -400,7 +400,7 @@ class DatasetDefinition:
             filename format schema overrides for each content type
         """
         data: dict[str, dict[str, type]] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        content_types = ('samples', 'precomputed_events', 'precomputed_reading_measures')
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.
@@ -553,7 +553,7 @@ class DatasetDefinition:
         True
 
         You can also check if a specific content type is contained in the resources:
-        >>> definition.has_resources['gaze']# doctest: +SKIP
+        >>> definition.has_resources['samples']# doctest: +SKIP
         True
 
         In this definition there are gaze resources defined, but no precomputed events.

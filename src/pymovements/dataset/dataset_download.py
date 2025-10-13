@@ -84,7 +84,7 @@ def download_dataset(
     if not definition.resources:
         raise AttributeError('resources must be specified to download a dataset.')
 
-    for content in ('gaze', 'precomputed_events', 'precomputed_reading_measures'):
+    for content in ('samples', 'precomputed_events', 'precomputed_reading_measures'):
         if definition.resources.has_content(content):
             if not definition.mirrors:
                 mirrors = None
@@ -138,7 +138,7 @@ def extract_dataset(
         each recursive archive extract. (default: 1)
     """
     content_dirnames = {
-        'gaze': 'raw',
+        'samples': 'raw',
         'precomputed_events': 'precomputed_events',
         'precomputed_reading_measures': 'precomputed_reading_measures',
     }

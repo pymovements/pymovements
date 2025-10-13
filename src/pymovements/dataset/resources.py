@@ -133,6 +133,16 @@ class ResourceDefinition:
 
         return data
 
+    def __post_init__(self) -> None:
+        if self.content == 'gaze':
+            warn(
+                DeprecationWarning(
+                    'content type "gaze" is deprecated since version v0.23.0. '
+                    'Please use "samples" instead. This field will be removed in v0.28.0.',
+                ),
+            )
+            self.content = 'samples'
+
 
 class ResourceDefinitions(list):
     """List of :py:class:`~pymovements.ResourceDefinition` instances."""

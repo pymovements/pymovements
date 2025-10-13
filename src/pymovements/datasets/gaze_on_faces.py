@@ -121,7 +121,7 @@ class GazeOnFaces(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'gaze_csv.zip',
                         'md5': 'fe219f07c9253cd9aaee6bd50233c034',
@@ -161,7 +161,7 @@ class GazeOnFaces(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'separator': ',',
                 'has_header': False,
                 'new_columns': ['x', 'y'],

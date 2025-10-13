@@ -144,7 +144,7 @@ class Dataset:
         self.scan()
         self.fileinfo = dataset_files.take_subset(fileinfo=self.fileinfo, subset=subset)
 
-        if self.definition.resources.has_content('gaze'):
+        if self.definition.resources.has_content('samples'):
             self.load_gaze_files(
                 preprocessed=preprocessed,
                 preprocessed_dirname=preprocessed_dirname,
@@ -226,7 +226,7 @@ class Dataset:
         self._check_fileinfo()
         self.gaze = dataset_files.load_gaze_files(
             definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+            fileinfo=self.fileinfo['samples'],
             paths=self.paths,
             preprocessed=preprocessed,
             preprocessed_dirname=preprocessed_dirname,
@@ -297,7 +297,7 @@ class Dataset:
         by: Sequence[str]
             Column(s) to split dataframe by.
         """
-        fileinfo_dicts = self.fileinfo['gaze'].to_dicts()
+        fileinfo_dicts = self.fileinfo['samples'].to_dicts()
 
         all_gaze_frames = []
         all_fileinfo_rows = []
@@ -308,7 +308,7 @@ class Dataset:
             all_fileinfo_rows.extend([fileinfo_row] * len(split_frames))
 
         self.gaze = all_gaze_frames
-        self.fileinfo['gaze'] = pl.concat([pl.from_dict(row) for row in all_fileinfo_rows])
+        self.fileinfo['samples'] = pl.concat([pl.from_dict(row) for row in all_fileinfo_rows])
 
     def split_precomputed_events(
             self,
@@ -361,7 +361,7 @@ class Dataset:
         self._check_fileinfo()
         self.events = dataset_files.load_event_files(
             definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+            fileinfo=self.fileinfo['samples'],
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
@@ -763,7 +763,7 @@ class Dataset:
 
         disable_progressbar = not verbose
         for file_id, (gaze, fileinfo_row) in tqdm(
-                enumerate(zip(self.gaze, self.fileinfo['gaze'].to_dicts())),
+                enumerate(zip(self.gaze, self.fileinfo['samples'].to_dicts())),
                 disable=disable_progressbar,
         ):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
@@ -964,7 +964,7 @@ class Dataset:
         """
         dataset_files.save_events(
             events=self.events,
-            fileinfo=self.fileinfo['gaze'],
+            fileinfo=self.fileinfo['samples'],
             paths=self.paths,
             events_dirname=events_dirname,
             verbose=verbose,
@@ -1008,7 +1008,7 @@ class Dataset:
         """
         dataset_files.save_preprocessed(
             gazes=self.gaze,
-            fileinfo=self.fileinfo['gaze'],
+            fileinfo=self.fileinfo['samples'],
             paths=self.paths,
             preprocessed_dirname=preprocessed_dirname,
             verbose=verbose,

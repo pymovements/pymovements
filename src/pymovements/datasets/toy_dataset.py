@@ -117,7 +117,7 @@ class ToyDataset(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'http://github.com/aeye-lab/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'pymovements-toy-dataset.zip',
                         'md5': '4da622457637a8181d86601fe17f3aa8',
@@ -157,7 +157,7 @@ class ToyDataset(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'columns': ['timestamp', 'x', 'y', 'stimuli_x', 'stimuli_y'],
                 'schema_overrides': {
                     'timestamp': pl.Float64,

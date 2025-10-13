@@ -131,7 +131,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'https://osf.io/download/9vbs8/',
                         'filename': 'a.zip',
                         'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
@@ -143,7 +143,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                         },
                     },
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'https://osf.io/download/yqukn/',
                         'filename': 'b.zip',
                         'md5': '54038547b1a373253b38999a227dde63',
@@ -155,7 +155,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                         },
                     },
                     {
-                        'content': 'gaze',
+                        'content': 'samples',
                         'url': 'https://osf.io/download/yf2xa/',
                         'filename': 'e.zip',
                         'md5': 'a0d0203cbb273f6908c1b52a42750551',
@@ -216,7 +216,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
-            'gaze': {
+            'samples': {
                 'schema_overrides': {
                     'trial_id': pl.Float32,
                     'block_id': pl.Float32,
