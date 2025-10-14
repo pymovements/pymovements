@@ -35,7 +35,7 @@ def test_parse_eyelink_equal_gaze(make_example_file):
     assert_frame_equal(gaze, gaze_depr)
 
 
-def test_parse_eyelink_removed(make_example_file, assert_deprecation_is_removed):
+def test_parse_eyelink_is_deprecated(make_example_file, assert_deprecation_is_removed):
     filepath = make_example_file('eyelink_monocular_example.asc')
 
     with pytest.raises(DeprecationWarning) as info:

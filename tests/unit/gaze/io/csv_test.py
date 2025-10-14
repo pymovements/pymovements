@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+
 import polars as pl
 import pytest
 
@@ -157,7 +158,7 @@ from pymovements.gaze import from_csv
             (10, 2),
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
             marks=pytest.mark.filterwarnings('ignore:.*from_csv.*kwargs.*:DeprecationWarning'),
-            id='gaze_on_faces_dataset_explicit_read_**kwargs_and_columns',
+            id='gaze_on_faces_dataset_**kwargs_and_columns',
         ),
 
         pytest.param(

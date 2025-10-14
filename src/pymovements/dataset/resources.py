@@ -47,7 +47,9 @@ class ResourceDefinition:
     url: str | None
         The URL to the downloadable resource. (default: None)
     mirrors: list[str] | None
-        An optional list of additional mirror URLs to the downloadable resource. (default: None)
+        An optional list of additional mirror URLs to download the resource. If downloading the
+        resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
+        used in order of appearance. (default: None)
     md5: str | None
         The MD5 checksum of the downloadable resource. (default: None)
     filename_pattern: str | None
@@ -59,6 +61,9 @@ class ResourceDefinition:
     load_function: str | None
         The name of the function used to load the data files. If None, the function is determined
         by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
+    load_kwargs: dict[str, Any] | None
+        A dictionary of additional keyword arguments that are passed to the ``load_function``.
+        (default: None)
     """
 
     content: str
@@ -72,6 +77,7 @@ class ResourceDefinition:
     filename_pattern_schema_overrides: dict[str, type] | None = None
 
     load_function: str | None = None
+    load_kwargs: dict[str, Any] | None = None
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:

@@ -30,7 +30,11 @@ def test_testfiles_dirpath_has_files(testfiles_dirpath):
 @pytest.mark.parametrize(
     'filename',
     [
+        'eyelink_binocular_example.asc',
+        'monocular_example.feather',
         'judo1000_example.csv',
+        'potec_word_aoi_b0.tsv',
+        'rda_test_file.rda',
     ],
 )
 def test_make_example_file_returns_copy(filename, make_example_file, testfiles_dirpath):

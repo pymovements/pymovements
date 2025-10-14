@@ -12,14 +12,13 @@ name = "pymovements"
 description = "A python package for processing eye movement data"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT License"}
+license = "MIT"
 maintainers = [
   {name = "Daniel Krakowczyk", email = "daniel.krakowczyk@uni-potsdam.de"}
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
@@ -80,11 +79,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aeye-lab/pymovements"
-"Source Code" = "https://github.com/aeye-lab/pymovements"
+Homepage = "https://github.com/pymovements/pymovements"
+"Source Code" = "https://github.com/pymovements/pymovements"
 Documentation = "https://pymovements.readthedocs.io/en/stable"
-"Bug Tracker" = "https://github.com/aeye-lab/pymovements/issues"
-Changelog = "https://github.com/aeye-lab/pymovements/releases"
+"Bug Tracker" = "https://github.com/pymovements/pymovements/issues"
+Changelog = "https://github.com/pymovements/pymovements/releases"
 
 [tool.autoflake]
 in-place = true

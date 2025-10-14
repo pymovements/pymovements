@@ -175,7 +175,6 @@ def _download_resources(
         if not mirrors:
             _download_resource(resource, target_dirpath, verbose)
         else:
-            assert mirrors is not None
             _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
 
 
@@ -228,9 +227,7 @@ def _download_resource_from_mirrors(
         verbose: bool,
 ) -> bool:
     """Download resource from mirrors."""
-    success = False
-
-    for mirror_idx, mirror_url in enumerate(mirrors):
+    for mirror_idx, mirror_url in enumerate(mirrors, start=1):
         try:
             download_file(
                 url=mirror_url,
@@ -239,22 +236,17 @@ def _download_resource_from_mirrors(
                 md5=md5,
                 verbose=verbose,
             )
+            return True  # Download successful, exit loop
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as error:
-            # Error downloading the resource, try next mirror if there are any left
-            if mirror_idx < len(mirrors) - 1:
-                warning = UserWarning(
-                    f'Downloading resource from mirror {mirror_url} failed. Trying next mirror.',
-                )
-                warning.__cause__ = error
-                warn(warning)
-            continue  # try next mirror if there is any left, else quit for loop
-
-        # downloading the resource was successful, we don't need to try another mirror
-        success = True
-        break
-
-    return success
+            msg = f'Downloading resource from mirror {mirror_url} failed.'
+            if mirror_idx < len(mirrors):
+                msg = msg + f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).'
+            warning = UserWarning(msg)
+            warning.__cause__ = error
+            warn(warning)
+            # Try the next mirror
+    return False  # All mirrors failed
 
 
 def _download_resource_with_legacy_mirrors(
@@ -269,9 +261,7 @@ def _download_resource_with_legacy_mirrors(
     if resource.filename is None:
         raise AttributeError('Resource.filename must not be None')
 
-    success = False
-
-    for mirror_idx, mirror in enumerate(mirrors):
+    for mirror_idx, mirror in enumerate(mirrors, start=1):
         mirror_url = f'{mirror}{resource.url}'
         try:
             download_file(
@@ -281,23 +271,18 @@ def _download_resource_with_legacy_mirrors(
                 md5=resource.md5,
                 verbose=verbose,
             )
-            success = True
-
+            return  # Download successful
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as error:
             # Error downloading the resource, try next mirror
-            if mirror_idx < len(mirrors) - 1:
+            if mirror_idx < len(mirrors):
                 warning = UserWarning(
-                    f'Downloading resource from mirror {mirror_url} failed. Trying next mirror.',
+                    f'Downloading resource from mirror {mirror_url} failed.'
+                    f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
                 )
                 warning.__cause__ = error
                 warn(warning)
-            continue
 
-        # downloading the resource was successful, we don't need to try another mirror
-        break
-
-    if not success:
-        raise RuntimeError(
-            f"Downloading resource {resource.url} failed for all mirrors.",
-        )
+    raise RuntimeError(
+        f"Downloading resource {resource.url} failed for all mirrors.",
+    )

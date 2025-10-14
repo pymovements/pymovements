@@ -38,7 +38,7 @@ def heatmap(
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
-        origin: str = 'lower',
+        origin: str = 'upper',
         figsize: tuple[float, float] = (15, 10),
         cbar_label: str | None = None,
         show_cbar: bool = True,
@@ -76,7 +76,7 @@ def heatmap(
         See matplotlib.pyplot.imshow for more information on available methods
         for interpolation. (default: 'gaussian')
     origin: str
-        Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'lower')
+        Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'upper')
     figsize: tuple[float, float]
         Figure size. (default: (15, 10))
     cbar_label: str | None

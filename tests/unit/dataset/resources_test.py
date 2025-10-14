@@ -64,6 +64,14 @@ from pymovements import ResourceDefinitions
             },
             id='gaze_content_filename_url_md5',
         ),
+
+        pytest.param(
+            {
+                'content': 'gaze',
+                'filename_pattern': '{subject_id}.csv',
+            },
+            id='gaze_content_filename_pattern',
+        ),
     ],
 )
 def test_resource_is_equal(kwargs):
@@ -113,6 +121,44 @@ def test_resource_is_equal(kwargs):
                 md5='ijklmnop',
             ),
             id='different_md5',
+        ),
+
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                filename_pattern='{subject_id}.csv',
+            ),
+            ResourceDefinition(
+                content='gaze',
+                filename_pattern='{task_id}.csv',
+            ),
+            id='different_filename_pattern',
+        ),
+
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                load_function='from_csv',
+            ),
+            ResourceDefinition(
+                content='gaze',
+                load_function='from_asc',
+            ),
+            id='different_load_function',
+        ),
+
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                load_function='from_csv',
+                load_kwargs={'pixel_columns': ['x', 'y']},
+            ),
+            ResourceDefinition(
+                content='gaze',
+                load_function='from_csv',
+                load_kwargs={'pixel_columns': ['xr', 'yr', 'xl', 'yl']},
+            ),
+            id='different_load_kwargs',
         ),
     ],
 )
@@ -246,6 +292,24 @@ def test_resource_is_not_equal(resource1, resource2):
             id='filename_pattern_schema_overrides',
         ),
 
+        pytest.param(
+            {
+                'content': 'gaze',
+                'filename_pattern': '{subject_id:d}.csv',
+                'load_function': 'from_csv',
+                'load_kwargs': {'pixel_columns': ['x', 'y']},
+            },
+            ResourceDefinition(
+                content='gaze',
+                filename=None,
+                url=None,
+                md5=None,
+                filename_pattern='{subject_id:d}.csv',
+                load_function='from_csv',
+                load_kwargs={'pixel_columns': ['x', 'y']},
+            ),
+            id='load_function_and_kwargs',
+        ),
     ],
 )
 def test_resource_from_dict_expected(resource_dict, expected_resource):

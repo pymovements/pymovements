@@ -1557,7 +1557,6 @@ def test_extract_dataset_precomputed_move_single_file(tmp_path, testfiles_dirpat
         resources=[
             {
                 'content': 'precomputed_events',
-                'url': 'https://example.com/tests/files/',
                 'filename': '18sat_fixfinal.csv',
             },
         ],
@@ -1579,7 +1578,6 @@ def test_extract_dataset_precomputed_rm_move_single_file(tmp_path, testfiles_dir
         resources=[
             {
                 'content': 'precomputed_reading_measures',
-                'url': 'https://example.com/tests/files/',
                 'filename': 'copco_rm_dummy.csv',
             },
         ],

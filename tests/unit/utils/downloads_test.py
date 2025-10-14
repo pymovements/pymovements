@@ -30,7 +30,7 @@ from pymovements.utils.downloads import download_file
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_download_and_extract_archive(tmp_path):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     _download_filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
     extract_dirpath = tmp_path / 'extracted'
@@ -64,7 +64,7 @@ def test_download_and_extract_archive(tmp_path):
     ],
 )
 def test_download_and_extract_archive_extract_dirpath_None(tmp_path, capsys, verbose):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     _download_filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
     extract_dirpath = None
@@ -77,7 +77,7 @@ def test_download_and_extract_archive_extract_dirpath_None(tmp_path, capsys, ver
 
     if verbose:
         assert out == 'Downloading '\
-            'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'\
+            'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'\
             f" to {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')}\n" \
             f'Checking integrity of pymovements-0.4.0.tar.gz\n'\
             f'Extracting pymovements-0.4.0.tar.gz to {tmp_path}\n'
@@ -100,7 +100,7 @@ def test_download_and_extract_archive_extract_dirpath_None(tmp_path, capsys, ver
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_download_and_extract_archive_invalid_md5(tmp_path):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     _download_filename = 'pymovements-0.4.0.tar.gz'
     md5 = '00000000000000000000000000000000'
     extract_dirpath = tmp_path / 'extracted'
@@ -116,7 +116,7 @@ def test_download_and_extract_archive_invalid_md5(tmp_path):
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 @pytest.mark.parametrize('download_function', [download_and_extract_archive, download_file])
 def test_deprecated_download_function(download_function, tmp_path):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
 
     download_function(url, tmp_path, filename)
@@ -124,7 +124,7 @@ def test_deprecated_download_function(download_function, tmp_path):
 
 @pytest.mark.parametrize('download_function', [download_and_extract_archive, download_file])
 def test_is_download_function_deprecated(download_function, tmp_path):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
 
     with pytest.raises(DeprecationWarning):
@@ -133,7 +133,7 @@ def test_is_download_function_deprecated(download_function, tmp_path):
 
 @pytest.mark.parametrize('download_function', [download_and_extract_archive, download_file])
 def test_is_download_function_removed(download_function, tmp_path, assert_deprecation_is_removed):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
 
     with pytest.raises(DeprecationWarning) as info:

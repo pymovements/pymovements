@@ -1,0 +1,57 @@
+name: PoTeC
+long_name: Potsdam Textbook Corpus
+resources:
+- content: gaze
+  filename: PoTeC.zip
+  url: https://osf.io/download/tgd9q/
+  md5: cffd45039757c3777e2fd130e5d8a2ad
+  filename_pattern: reader{subject_id:d}_{text_id}_raw_data.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+- content: precomputed_events
+  filename: fixation.zip
+  url: https://osf.io/download/d8pyg/
+  md5: ecd9a998d07158922bb9b8cdd52f5688
+  filename_pattern: reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+- content: precomputed_reading_measures
+  filename: reading_measures.zip
+  url: https://osf.io/download/3ywhz/
+  md5: efafec5ce074d8f492cc2409b6c4d9eb
+  filename_pattern: reader{subject_id:d}_{text_id}_merged.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1680
+    height_px: 1050
+    width_cm: 47.5
+    height_cm: 30
+    distance_cm: 65
+    origin: upper left
+custom_read_kwargs:
+  gaze:
+    schema_overrides:
+      time: '!polars.datatypes.classes.Int64'
+      x: '!polars.datatypes.classes.Float32'
+      y: '!polars.datatypes.classes.Float32'
+      pupil_diameter: '!polars.datatypes.classes.Float32'
+    separator: "\t"
+  precomputed_events:
+    separator: "\t"
+    null_values: .
+  precomputed_reading_measures:
+    separator: "\t"
+    null_values: .
+    infer_schema_length: 10000
+time_column: time
+time_unit: ms
+pixel_columns:
+- x
+- y
