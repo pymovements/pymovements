@@ -749,7 +749,7 @@ def test_map_to_aois_raises_value_error(make_example_file):
     )
     gaze = pm.gaze.io.from_csv(
         gaze_filepath,
-        **{'separator': '\t'},
+        read_csv_kwargs={'separator': '\t'},
         position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
     )
 
