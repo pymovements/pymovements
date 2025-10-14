@@ -303,6 +303,7 @@ def from_asc(
         encoding: str | None = None,
         definition: pm.DatasetDefinition | None = None,
         events: bool = False,
+        messages: bool | list[str] = False,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -339,6 +340,16 @@ def from_asc(
         (default: None)
     events: bool
         Flag indicating if events should be parsed from the asc file. (default: False)
+    messages: bool | list[str]
+        Flag indicating if all available messages should be parsed from the asc file
+        and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
+        The message format is 'MSG <timestamp> <content>'.
+        If True, all available messages will be parsed from the asc,
+        alternatively, a list of regular expressions can be passed and only the
+        messages that match any of the regular expressions will be kept.
+        When pass ing regula rexpressions, these are only applied to the message content,
+        disregarding 'MSG' and the timestamp.
+        (default: False)
 
     Returns
     -------
@@ -453,12 +464,13 @@ def from_asc(
                 encoding = custom_read_kwargs['encoding']
 
     # Read data.
-    samples, event_data, metadata = parse_eyelink(
+    samples, event_data, metadata, messages_df = parse_eyelink(
         file,
         patterns=_patterns,
         schema=schema,
         metadata_patterns=metadata_patterns,
         encoding=encoding,
+        messages=messages,
     )
 
     if add_columns is not None:
@@ -476,6 +488,8 @@ def from_asc(
 
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_metadata(experiment, metadata)
+    # Add parsed messages to experiment
+    experiment.messages = messages_df
 
     # Detect pixel / position column names (monocular or binocular) and pass them to Gaze
     # Note: column detection for ASC files now uses simple substring matching

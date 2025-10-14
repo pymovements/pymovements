@@ -136,6 +136,11 @@ STOP_RECORDING_REGEX = re.compile(
     r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*',
 )
 
+# General message format
+MSG_REGEX = re.compile(
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)',
+)
+
 
 def check_nan(sample_location: str) -> float:
     """Return position as float or np.nan depending on validity of sample.
@@ -279,7 +284,8 @@ def parse_eyelink(
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str | None = None,
-) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
+        messages: bool | list[str] = False,
+) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]:
     """Parse EyeLink asc file.
 
     Parameters
@@ -294,16 +300,29 @@ def parse_eyelink(
         list of patterns to match for additional metadata. (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
+    messages: bool | list[str]
+        Flag indicating if all available messages should be parsed
+        and returned as a DataFrame with 'timestamp' (i64) and 'content' (str) columns.
+        The message format is 'MSG <timestamp> <content>'.
+        If True, all available messages will be parsed from the asc,
+        alternatively, a list of regular expressions can be passed and only the
+        messages that match any of the regular expressions will be kept.
+        When pass ing regula rexpressions, these are only applied to the message content,
+        disregarding 'MSG' and the timestamp.
+        (default: False)
 
     Returns
     -------
-    tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]
-        A tuple containing the parsed gaze sample data, the parsed event data, and the metadata.
+    tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]
+        A tuple containing the parsed gaze sample data, the parsed event data, the metadata,
+        and, if asked for, the parsed messages.
 
     Raises
     ------
     Warning
         If no metadata is found in the file.
+    ValueError
+        If the `messages` parameter is not bool or a list of strings.
 
     Notes
     -----
@@ -356,6 +375,17 @@ def parse_eyelink(
         metadata[key] = None
 
     compiled_metadata_patterns.extend(EYELINK_META_REGEXES)
+
+    if (
+        not isinstance(messages, (bool, list)) or
+        (isinstance(messages, list) and not all(isinstance(regexp, str) for regexp in messages))
+    ):
+        raise ValueError(
+            'Make sure to pass either a bool or a list of RegExps as strings. '
+            f"Received {messages}.",
+        )
+
+    messages_list: list[list[str]] = []
 
     cal_timestamp = ''
 
@@ -496,6 +526,9 @@ def parse_eyelink(
                     num_expected_samples += round(
                         block_duration * float(current_sampling_rate) / 1000,
                     )
+
+        if messages and (match := MSG_REGEX.match(line)):
+            messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
         # Use the appropriate regex based on the file type
         eye_tracking_sample_match = (
@@ -726,7 +759,30 @@ def parse_eyelink(
     gaze_df = pl.from_dict(data=samples).cast(gaze_schema_overrides)
     event_df = pl.from_dict(data=events).cast(event_schema_overrides)
 
-    return gaze_df, event_df, pre_processed_metadata
+    # Only return messages if `messages` not False or []. Otherwise, return None.
+    if messages:
+        messages_df = pl.DataFrame(
+            data=messages_list,
+            schema={
+                'timestamp': pl.Int64,
+                'content': pl.String,
+            },
+            orient='row',
+        )
+        # Filter messages with regexp if given
+        if isinstance(messages, list):
+            # keep rows where content matches any of the regex patterns
+            # for each row check if content matches any of the regex patterns
+            messages_df = messages_df.filter(
+                pl.col('content').str.contains(
+                    pattern='|'.join(messages),  # RegExps are joined by OR
+                    strict=True,  # Raises error if regexp not valid
+                ),
+            )
+    else:
+        messages_df = None
+
+    return gaze_df, event_df, pre_processed_metadata, messages_df
 
 
 def _pre_process_metadata(metadata: defaultdict[str, Any]) -> dict[str, Any]:
