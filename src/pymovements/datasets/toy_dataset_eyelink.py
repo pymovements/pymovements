@@ -125,9 +125,9 @@ class ToyDatasetEyeLink(DatasetDefinition):
             [
                         {
                             'content': 'gaze',
-                            'url': 'http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/a970d090588542dad745297866e794ab9dad8795/',  # noqa: E501 # pylint: disable=line-too-long
+                            'url': 'https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
                             'filename': 'pymovements-toy-dataset-eyelink.zip',
-                            'md5': 'b1d426751403752c8a154fc48d1670ce',
+                            'md5': '966c0b6aefe61f32942366ed719454d3',
                             'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',  # noqa: E501 # pylint: disable=line-too-long
                             'filename_pattern_schema_overrides': {
                                 'subject_id': int,

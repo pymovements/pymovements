@@ -32,6 +32,7 @@ exclude-labels:
   - skip changelog
 
 exclude-contributors:
+  - dependabot
   - dependabot[bot]
   - pre-commit-ci
   - pre-commit-ci[bot]

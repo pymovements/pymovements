@@ -18,9 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+import re
+
 import polars as pl
 import pytest
 
+from pymovements import __version__
 from pymovements import DatasetDefinition
 from pymovements import datasets
 from pymovements.gaze import from_csv
@@ -129,7 +132,7 @@ from pymovements.gaze import from_csv
             {
                 'definition': datasets.GazeOnFaces(),
                 'pixel_columns': ['foo', 'bar'],
-                **{
+                'read_csv_kwargs': {
                     'separator': ',',
                     'has_header': False,
                     'new_columns': ['foo', 'bar'],
@@ -139,6 +142,24 @@ from pymovements.gaze import from_csv
             (10, 2),
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
             id='gaze_on_faces_dataset_explicit_read_kwargs_and_columns',
+        ),
+
+        pytest.param(
+            'gaze_on_faces_example.csv',
+            {
+                'definition': datasets.GazeOnFaces(),
+                'pixel_columns': ['foo', 'bar'],
+                **{
+                    'separator': ',',
+                    'has_header': False,
+                    'new_columns': ['foo', 'bar'],
+                    'schema_overrides': [pl.Float32, pl.Float32],
+                },
+            },
+            (10, 2),
+            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
+            marks=pytest.mark.filterwarnings('ignore:.*from_csv.*kwargs.*:DeprecationWarning'),
+            id='gaze_on_faces_dataset_**kwargs_and_columns',
         ),
 
         pytest.param(
@@ -317,3 +338,34 @@ def test_from_csv_gaze_has_expected_shape_and_columns(
 
     assert gaze.samples.shape == expected_shape
     assert gaze.samples.schema == expected_schema
+
+
+@pytest.mark.parametrize(
+    ('filename', 'kwargs'),
+    [
+        pytest.param(
+            'monocular_example.csv',
+            {
+                'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                'skip_lines': 0,
+            },
+            id='**kwargs',
+        ),
+    ],
+)
+def test_from_asc_parameter_is_deprecated(filename, kwargs, make_example_file):
+    filepath = make_example_file(filename)
+
+    with pytest.raises(DeprecationWarning) as info:
+        from_csv(filepath, **kwargs)
+
+    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+
+    msg = info.value.args[0]
+    argument_name = list(kwargs.keys())[0]
+    remove_version = regex.match(msg).groupdict()['version']
+    current_version = __version__.split('+')[0]
+    assert current_version < remove_version, (
+        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
+        f'Current version is v{current_version}.'
+    )
