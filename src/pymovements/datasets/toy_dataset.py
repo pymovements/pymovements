@@ -118,9 +118,9 @@ class ToyDataset(DatasetDefinition):
             [
                     {
                         'content': 'gaze',
-                        'url': 'http://github.com/pymovements/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/',  # noqa: E501 # pylint: disable=line-too-long
+                        'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'pymovements-toy-dataset.zip',
-                        'md5': '4ded90ed1e72e613d9f8eee074ba22ce',
+                        'md5': '256901852c1c07581d375eef705855d6',
                         'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
                         'filename_pattern_schema_overrides': {
                             'text_id': int,
