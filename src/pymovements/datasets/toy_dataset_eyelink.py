@@ -20,6 +20,7 @@
 """Provides a definition for the pymovements example eyelink toy dataset."""
 from __future__ import annotations
 
+
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
