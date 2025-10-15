@@ -1,0 +1,81 @@
+name: "RaCCooNS"
+
+has_files:
+  gaze: true
+  precomputed_events: true
+  precomputed_reading_measures: true
+
+mirrors:
+  gaze:
+    - "https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/"
+  precomputed_events:
+    - "https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/"
+  precomputed_reading_measures:
+    - "https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/"
+
+resources:
+  gaze:
+    - resource: 'download/eyetracking%2FET_raw_data.zip'
+      filename: "ET_raw_data.zip"
+      md5: null
+  precomputed_events:
+    - resource: 'download/eyetracking%2FET_fix_data.tsv'
+      filename: "ET_fix_data.tsv"
+      md5: null
+  precomputed_reading_measures:
+    - resource: 'download/eyetracking%2FET_word_data.tsv'
+      filename: "ET_word_data.tsv"
+      md5: null
+
+extract:
+  gaze: true
+  precomputed_events: false
+  precomputed_reading_measures: false
+
+experiment:
+  screen:
+    width_px: 1920
+    # double check with stefan -- 1018 in the paper
+    height_px: 1080
+    width_cm: 56.8
+    height_cm: 33.5
+    distance_cm: 105.5
+    origin: "center"
+  eyetracker:
+    sampling_rate: 1000
+    # double check once data back online
+    left: true
+    right: false
+    model: "EyeLink 1000"
+    vendor: "EyeLink"
+    mount: "Desktop"
+
+filename_format:
+  gaze: "{participant_id:s}.asc"
+  precomputed_events: "ET_fix_data.tsv"
+  precomputed_reading_measures: "ET_word_data.tsv"
+
+filename_format_schema_overrides:
+  gaze:
+    participant_id: !str
+  precomputed_events: {}
+  precomputed_reading_measures: {}
+
+trial_columns: []
+
+column_map: {}
+
+custom_read_kwargs:
+  gaze:
+    patterns:
+      - 'TRIALID (?P<trial_index0>\d+)'
+      - pattern: "TRIAL_RESULT"
+        column: "trial_index0"
+        value: null
+    encoding: "latin-1"
+  precomputed_events:
+    separator: "\t"
+    encoding: "latin-1"
+  precomputed_reading_measures:
+    separator: "\t"
+    encoding: "latin-1"
