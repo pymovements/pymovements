@@ -36,6 +36,7 @@ from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
 from typing_extensions import TypeAlias
 
+from pymovements.gaze.experiment import Screen
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -314,3 +315,53 @@ def _draw_line_data(
     line_collection.set_linewidth(2)
     line = ax.add_collection(line_collection)
     return line
+
+
+def _set_screen_axes(
+    ax: plt.Axes,
+    screen: Screen | None,
+    *,
+    func_name: str,
+) -> None:
+    """Set axes limits and aspect ratio from gaze.experiment.screen, if available.
+
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axes object to modify.
+    screen : Screen | None
+        Screen object from a Gaze's Experiment. If None, no changes are made.
+    func_name : str
+        Name of the plotting function, used in error messages.
+
+    Raises
+    ------
+    ValueError
+        If the screen origin is not 'upper left'.
+    ValueError
+        If the screen width or height is not positive.
+    """
+    if screen is None:
+        return
+
+    # If screen has no pixel info, skip silently
+    if screen.width_px is None or screen.height_px is None:
+        return
+
+    if (
+        screen.width_px is None or screen.height_px is None
+        or screen.width_px <= 0 or screen.height_px <= 0
+    ):
+        raise ValueError(
+            f'{func_name}: screen width and height must be positive, '
+            f'got width={screen.width_px}, height={screen.height_px}.',
+        )
+
+    if screen.origin != 'upper left':
+        raise ValueError(
+            f'{func_name}: screen origin must be "upper left", got "{screen.origin}".',
+        )
+
+    ax.set_xlim(0, screen.width_px)
+    ax.set_ylim(screen.height_px, 0)
+    ax.set_aspect('equal', adjustable='box')

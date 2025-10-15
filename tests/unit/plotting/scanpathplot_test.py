@@ -236,3 +236,11 @@ def test_scanpathplot_events_is_deprecated(gaze):
         f'scnpatplot argument "events" was scheduled to be removed in v{remove_version}. '
         f'Current version is v{current_version}.'
     )
+
+
+def test_scanpathplot_no_experiment(gaze):
+    # test if gaze is not None and gaze.experiment is not None:
+    gaze = gaze.clone()
+    gaze.experiment = None
+    # Should not raise any exception
+    scanpathplot(gaze=gaze, show=False)

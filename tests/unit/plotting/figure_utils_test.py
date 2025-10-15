@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from pymovements import Screen
+from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
@@ -156,3 +158,67 @@ def test_prepare_figure_external_ax_figsize_none_no_warning():
         assert own is False
     finally:
         plt.close(fig)
+
+
+def test_set_screen_axes_valid():
+    fig, ax = plt.subplots()
+    screen = Screen(width_px=1280, height_px=720, origin='upper left')
+    _set_screen_axes(ax, screen, func_name='dummyplot')
+    assert ax.get_xlim() == (0, 1280)
+    assert ax.get_ylim() == (720, 0)
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('origin', ['lower left', 'center'])
+def test_set_screen_axes_invalid_origin(origin):
+    fig, ax = plt.subplots()
+    screen = Screen(width_px=800, height_px=600, origin=origin)
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        _set_screen_axes(ax, screen, func_name='dummyplot')
+    plt.close(fig)
+
+
+class DummyScreen(Screen):
+    """Dummy Screen subclass that skips validation for testing purposes."""
+
+    def __post_init__(self):
+        """Override to disable validation in tests."""
+
+
+@pytest.mark.parametrize(
+    'width,height',
+    [
+        (None, 768),
+        (1024, None),
+    ],
+)
+def test_set_screen_axes_none_dimensions_returns(width, height):
+    """Should return silently when dimensions are None (no ValueError)."""
+    fig, ax = plt.subplots()
+    screen = DummyScreen(width_px=width, height_px=height, origin='upper left')
+    _set_screen_axes(ax, screen, func_name='dummyplot')  # should not raise
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    'width,height',
+    [
+        (0, 768),
+        (1024, 0),
+        (-1, 768),
+        (1024, -10),
+    ],
+)
+def test_set_screen_axes_nonpositive_dimensions_raises(width, height):
+    """Should raise ValueError when width or height is <= 0."""
+    fig, ax = plt.subplots()
+    screen = DummyScreen(width_px=width, height_px=height, origin='upper left')
+    with pytest.raises(ValueError, match='must be positive'):
+        _set_screen_axes(ax, screen, func_name='dummyplot')
+    plt.close(fig)
+
+
+def test_set_screen_axes_none_screen_skips():
+    fig, ax = plt.subplots()
+    _set_screen_axes(ax, None, func_name='dummyplot')
+    plt.close(fig)

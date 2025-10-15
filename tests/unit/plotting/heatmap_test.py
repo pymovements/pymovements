@@ -27,6 +27,8 @@ import polars as pl
 import pytest
 from matplotlib import figure
 
+import pymovements as pm
+import pymovements.plotting._matplotlib as pm_matplotlib  # type: ignore[attr-defined]
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.plotting import heatmap
@@ -34,7 +36,7 @@ from pymovements.plotting import heatmap
 
 @pytest.fixture(name='experiment_fixture')
 def fixture_experiment():
-    return Experiment(1024, 768, 38, 30, 60, 'center', 1000)
+    return Experiment(1024, 768, 38, 30, 60, 'upper left', 1000)
 
 
 @pytest.fixture(name='args', params=['pix', 'pos'])
@@ -212,3 +214,64 @@ def test_heatmap_no_experiment_property():
 
     with pytest.raises(ValueError):
         heatmap(gaze, show=False)
+
+
+@pytest.fixture(name='gaze')
+def gaze_fixture():
+    """Provide a minimal valid Gaze object for plotting tests."""
+    df = pl.DataFrame({
+        'x_pix': np.arange(100),
+        'y_pix': np.arange(100),
+    })
+
+    experiment = pm.Experiment(
+        screen_width_px=1024,
+        screen_height_px=768,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=60,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+
+    gaze = pm.Gaze(
+        samples=df,
+        experiment=experiment,
+        pixel_columns=['x_pix', 'y_pix'],
+    )
+
+    return gaze
+
+
+def test_heatmap_sets_screen_axes_correctly(gaze):
+    fig, ax = pm.plotting.heatmap(gaze, show=False)
+    screen = gaze.experiment.screen
+    assert ax.get_xlim() == (0, screen.width_px)
+    assert ax.get_ylim() == (screen.height_px, 0)
+    assert ax.get_aspect() == 1.0
+    plt.close(fig)
+
+
+def test_heatmap_invalid_screen_origin_raises(gaze):
+    gaze.experiment.screen.origin = 'lower left'
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        pm.plotting.heatmap(gaze, show=False)
+
+
+def test_heatmap_with_missing_experiment_raises(gaze):
+    gaze.experiment = None
+    with pytest.raises(ValueError, match='Experiment property of Gaze is None'):
+        pm.plotting.heatmap(gaze, show=False)
+
+
+def test_heatmap_skips_screen_axes_if_no_gaze(monkeypatch):
+    """Ensure _set_screen_axes is skipped when gaze is None."""
+    mock = Mock()
+    monkeypatch.setattr(pm_matplotlib, '_set_screen_axes', mock)
+
+    # Call heatmap directly with gaze=None
+    # (we expect it to raise an AttributeError or ValueError later, but not call _set_screen_axes)
+    with pytest.raises((AttributeError, TypeError)):
+        pm.plotting.heatmap(None, show=False)
+
+    mock.assert_not_called()

@@ -28,6 +28,7 @@ import numpy as np
 
 from pymovements.gaze.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
+from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
@@ -120,20 +121,6 @@ def traceplot(
     x_signal = gaze.samples[position_column].list.get(0)
     y_signal = gaze.samples[position_column].list.get(1)
 
-    screen_width_px = None
-    screen_height_px = None
-
-    if gaze.experiment is not None:
-        screen = gaze.experiment.screen
-        screen_width_px = screen.width_px
-        screen_height_px = screen.height_px
-
-        if screen.origin != 'upper left':
-            raise ValueError(
-                f"Origin of the experiment screen is set to {screen.origin}, "
-                "but only 'upper left' is supported for traceplot.",
-            )
-
     own_figure = ax is None
 
     fig, ax, cmap, cmap_norm, cval, show_cbar = _setup_axes_and_colormap(
@@ -162,10 +149,8 @@ def traceplot(
         cval,
     )
 
-    # only set axes limits if we have experiment screen info
-    if screen_width_px is not None and screen_height_px is not None:
-        ax.set_xlim(0, screen_width_px)
-        ax.set_ylim(screen_height_px, 0)
+    if gaze is not None and gaze.experiment is not None:
+        _set_screen_axes(ax, gaze.experiment.screen, func_name='traceplot')
 
     if show_cbar:
         # sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=cmap_norm)
