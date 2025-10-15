@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test from gaze.from_numpy."""
-import re
-
 import numpy as np
 import polars as pl
 import pytest
@@ -339,7 +337,7 @@ def test_from_numpy_data_argument_is_deprecated():
     assert gaze.samples.shape == (4, 4)
 
 
-def test_from_numpy_data_argument_is_removed():
+def test_from_numpy_data_argument_is_removed(assert_deprecation_is_removed):
     array = np.array(
         [
             [0, 1, 2, 3],
@@ -352,14 +350,6 @@ def test_from_numpy_data_argument_is_removed():
 
     with pytest.raises(DeprecationWarning) as info:
         from_numpy(data=array, schema=schema)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    argument_name = 'data'
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
+    assert_deprecation_is_removed(
+        'from_numpy() keyword argument "data"', info.value.args[0], __version__,
     )

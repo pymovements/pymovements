@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from IPC/feather."""
-import re
-
 import pytest
 
 from pymovements import __version__
@@ -96,19 +94,12 @@ def test_shapes(filename, kwargs, shape, make_example_file):
         ),
     ],
 )
-def test_from_ipc_parameter_is_deprecated(filename, kwargs, make_example_file):
+def test_from_asc_parameter_is_deprecated(
+        filename, kwargs, make_example_file, assert_deprecation_is_removed,
+):
     filepath = make_example_file(filename)
 
     with pytest.raises(DeprecationWarning) as info:
         from_ipc(filepath, **kwargs)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    argument_name = list(kwargs.keys())[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    function_name = f'keyword argument {list(kwargs.keys())[0]}'
+    assert_deprecation_is_removed(function_name, info.value.args[0], __version__)

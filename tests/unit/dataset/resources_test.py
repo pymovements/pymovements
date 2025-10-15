@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test dataset resources."""
-import re
-
 import pytest
 
 from pymovements import __version__
@@ -402,20 +400,13 @@ def test_resources_from_dict_expected(init_resources, expected_resources):
     assert ResourceDefinitions.from_dict(init_resources) == expected_resources
 
 
-def test_resource_definitions_from_dict_deprecated():
+def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed):
     resources_dict = {'gaze': [{'filename': 'myfile.txt'}]}
 
     with pytest.raises(DeprecationWarning) as info:
         ResourceDefinitions.from_dict(resources_dict)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'ResourceDefinitions.from_dict() was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
+    assert_deprecation_is_removed(
+        'ResourceDefinitions.from_dict()', info.value.args[0], __version__,
     )
 
 
@@ -718,17 +709,8 @@ def test_resources_from_dicts_expected(dicts, expected_resources):
     assert ResourceDefinitions.from_dicts(dicts) == expected_resources
 
 
-def test_resource_definition_from_dict_resource_key_deprecated():
+def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecation_is_removed):
     resource_dict = {'content': 'samples', 'resource': 'http://www.example.com'}
     with pytest.raises(DeprecationWarning) as info:
         ResourceDefinition.from_dict(resource_dict)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'from_dict() key "resources" was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    assert_deprecation_is_removed('from_dict() key "resources"', info.value.args[0], __version__)

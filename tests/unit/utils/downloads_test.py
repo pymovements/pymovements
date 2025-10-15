@@ -20,7 +20,6 @@
 """Tests deprecated utils.downloads."""
 import hashlib
 import os.path
-import re
 
 import pytest
 
@@ -133,19 +132,10 @@ def test_is_download_function_deprecated(download_function, tmp_path):
 
 
 @pytest.mark.parametrize('download_function', [download_and_extract_archive, download_file])
-def test_is_download_function_removed(download_function, tmp_path):
+def test_is_download_function_removed(download_function, tmp_path, assert_deprecation_is_removed):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
 
     with pytest.raises(DeprecationWarning) as info:
         download_function(url, tmp_path, filename)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/downloads.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    assert_deprecation_is_removed('utils/downloads.py', info.value.args[0], __version__)

@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements plotting utils."""
-import re
-
 import matplotlib.pyplot
 import numpy as np
 import pytest
@@ -97,47 +95,7 @@ def test_draw_line_data(axes):
         ),
     ],
 )
-def test_plotting_function_deprecated(plotting_function, kwargs):
-    with pytest.raises(DeprecationWarning):
-        plotting_function(**kwargs)
-
-
-@pytest.mark.parametrize(
-    ('plotting_function', 'kwargs'),
-    [
-        pytest.param(
-            setup_matplotlib,
-            {
-                'x_signal': np.array([0.0, 0.0]),
-                'y_signal': np.array([0.0, 0.0]),
-                'figsize': (10, 15),
-            },
-            id='_setup_matplotlib',
-        ),
-
-        pytest.param(
-            draw_image_stimulus,
-            {},
-            id='draw_image_stimulus',
-        ),
-
-        pytest.param(
-            draw_line_data,
-            {},
-            id='_draw_line_data',
-        ),
-    ],
-)
-def test_plotting_function_removed(plotting_function, kwargs):
+def test_plotting_function_removed(plotting_function, kwargs, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         plotting_function(**kwargs)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/filters.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    assert_deprecation_is_removed('utils/filters.py', info.value.args[0], __version__)

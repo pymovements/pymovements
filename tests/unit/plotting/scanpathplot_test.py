@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test scanpathplot."""
-import re
 from unittest.mock import Mock
 
 import matplotlib.colors
@@ -223,16 +222,7 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
         scanpathplot(gaze=gaze)
 
 
-def test_scanpathplot_events_is_deprecated(gaze):
+def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         scanpathplot(events=gaze.events)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'scnpatplot argument "events" was scheduled to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    assert_deprecation_is_removed('scanpathplot argument events', info.value.args[0], __version__)

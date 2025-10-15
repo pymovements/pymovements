@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.filters."""
-import re
-
 import numpy as np
 import pytest
 
@@ -38,28 +36,10 @@ def test_filter_function(filter_function):
 
 
 @pytest.mark.parametrize('filter_function', [events_split_nans, filter_candidates_remove_nans])
-def test_filter_function_deprecated(filter_function):
-    candidates = [[0, 1], [2, 3]]
-    values = np.array([(np.nan, np.nan), (0, 0), (0, 0), (0, 0)])
-
-    with pytest.raises(DeprecationWarning):
-        filter_function(candidates=candidates, values=values)
-
-
-@pytest.mark.parametrize('filter_function', [events_split_nans, filter_candidates_remove_nans])
-def test_filter_function_removed(filter_function):
+def test_filter_function_removed(filter_function, assert_deprecation_is_removed):
     candidates = [[0, 1], [2, 3]]
     values = np.array([(np.nan, np.nan), (0, 0), (0, 0), (0, 0)])
 
     with pytest.raises(DeprecationWarning) as info:
         filter_function(candidates=candidates, values=values)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/filters.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    assert_deprecation_is_removed('utils/filters.py', info.value.args[0], __version__)

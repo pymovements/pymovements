@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated GazeDataFrame alias for Gaze."""
-import re
-
 import pytest
 
 from pymovements import __version__
@@ -159,18 +157,7 @@ def test_is_gaze_df_subsubclass_deprecated():
                 ...
 
 
-def test_is_gaze_df_removed():
+def test_is_gaze_df_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         GazeDataFrame()
-
-    regex = re.compile(
-        r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*',
-    )
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'GazeDataFrame was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    assert_deprecation_is_removed('GazeDataFrame', info.value.args[0], __version__)

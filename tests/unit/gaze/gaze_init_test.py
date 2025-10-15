@@ -19,8 +19,6 @@
 # SOFTWARE.
 """Test Gaze initialization."""
 # pylint: disable=too-many-lines
-import re
-
 import numpy as np
 import polars as pl
 import pytest
@@ -2043,17 +2041,8 @@ def test_gaze_init_parameter_is_deprecated(init_kwargs):
         ),
     ],
 )
-def test_gaze_init_parameter_is_removed(init_kwargs):
+def test_gaze_init_parameter_is_removed(init_kwargs, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         Gaze(**init_kwargs)
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    argument_name = list(init_kwargs.keys())[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    function_name = f'Gaze init argument {list(init_kwargs.keys())[0]}'
+    assert_deprecation_is_removed(function_name, info.value.args[0], __version__)
