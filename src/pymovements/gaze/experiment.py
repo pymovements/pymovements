@@ -81,7 +81,7 @@ class Experiment:
     >>> print(experiment)
     Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
      distance_cm=68.0, origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
+      right=None, model=None, version=None, vendor=None, mount=None))
 
     We can also access the screen boundaries in degrees of visual angle via the
     :py:attr:`~pymovements.gaze.Screen` object. This only works if the
