@@ -27,8 +27,8 @@ import pymovements as pm
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_parse_eyelink_equal_gaze():
-    filepath = 'tests/files/eyelink_monocular_example.asc'
+def test_parse_eyelink_equal_gaze(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
 
     gaze, _, _ = pm.gaze._utils.parsing.parse_eyelink(filepath)
     gaze_depr, _ = pm.utils.parsing.parse_eyelink(filepath)
@@ -36,15 +36,15 @@ def test_parse_eyelink_equal_gaze():
     assert_frame_equal(gaze, gaze_depr)
 
 
-def test_parse_eyelink_deprecated():
-    filepath = 'tests/files/eyelink_monocular_example.asc'
+def test_parse_eyelink_deprecated(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
 
     with pytest.raises(DeprecationWarning):
         _ = pm.utils.parsing.parse_eyelink(filepath)
 
 
-def test_parse_eyelink_removed():
-    filepath = 'tests/files/eyelink_monocular_example.asc'
+def test_parse_eyelink_removed(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
 
     with pytest.raises(DeprecationWarning) as info:
         _ = pm.utils.parsing.parse_eyelink(filepath)

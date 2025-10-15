@@ -61,29 +61,14 @@ def test_setup_matplotlib(kwargs):
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-@pytest.mark.parametrize(
-    ('plotting_function', 'kwargs'),
-    [
-        pytest.param(
-            draw_image_stimulus,
-            {
-                'image_stimulus': 'tests/files/pexels-zoorg-1000498.jpg',
-            },
-            id='draw_image_stimulus',
-        ),
+def test_draw_image_stimulus(axes, make_example_file):
+    filepath = make_example_file('pexels-zoorg-1000498.jpg')
+    draw_image_stimulus(image_stimulus=filepath, ax=axes)
 
-        pytest.param(
-            draw_line_data,
-            {
-                'x_signal': np.array([0.0, 0.0]),
-                'y_signal': np.array([0.0, 0.0]),
-            },
-            id='_draw_line_data',
-        ),
-    ],
-)
-def test_plotting_function(plotting_function, kwargs, axes):
-    plotting_function(ax=axes, **kwargs)
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_draw_line_data(axes):
+    draw_line_data(x_signal=np.array([0.0, 0.0]), y_signal=np.array([0.0, 0.0]), ax=axes)
 
 
 @pytest.mark.parametrize(

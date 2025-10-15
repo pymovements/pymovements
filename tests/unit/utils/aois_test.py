@@ -29,9 +29,10 @@ from pymovements.utils.aois import get_aoi
 
 
 @pytest.fixture(name='text_stimulus')
-def fixture_text_stimulus():
+def fixture_text_stimulus(make_example_file):
+    filepath = make_example_file('toy_text_1_1_aoi.csv')
     yield text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        filepath,
         aoi_column='word',
         start_x_column='top_left_x',
         start_y_column='top_left_y',

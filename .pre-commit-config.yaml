@@ -87,6 +87,7 @@ repos:
     -   id: double-quote-string-fixer
     -   id: end-of-file-fixer
     -   id: name-tests-test
+        exclude: .*_fixtures\.py
     -   id: no-commit-to-branch
     -   id: requirements-txt-fixer
     -   id: trailing-whitespace

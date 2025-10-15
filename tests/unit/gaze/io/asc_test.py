@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
-import shutil
 from pathlib import Path
 
 import polars as pl
@@ -33,12 +32,6 @@ from pymovements.datasets import ToyDatasetEyeLink
 from pymovements.gaze import from_asc
 
 
-@pytest.fixture(name='testfiles_dirpath')
-def fixture_testfiles_dirpath(request):
-    """Return the path to tests/files."""
-    return request.config.rootpath / 'tests' / 'files'
-
-
 @pytest.fixture(name='make_custom_asc_file', scope='function')
 def fixture_make_custom_asc_file(tmp_path):
     """Make a custom eyelink asc file with self-written header and body."""
@@ -50,17 +43,6 @@ def fixture_make_custom_asc_file(tmp_path):
         filepath.write_text(content, encoding=encoding)
         return filepath
     return _make_custom_asc_file
-
-
-@pytest.fixture(name='make_example_asc_file', scope='function')
-def fixture_make_example_asc_file(testfiles_dirpath, tmp_path):
-    """Make a copy of an eyelink asc file from one of the example asc files in tests/files."""
-    def _make_example_asc_file(filename: str) -> Path:
-        source_filepath = testfiles_dirpath / filename
-        target_filepath = tmp_path / filename
-        shutil.copy2(source_filepath, target_filepath)
-        return target_filepath
-    return _make_example_asc_file
 
 
 @pytest.mark.parametrize(
@@ -263,10 +245,10 @@ def test_from_asc_has_expected_samples(
         ),
     ],
 )
-def test_from_asc_example_has_expected_samples(
-        filename, kwargs, expected_samples, make_example_asc_file,
+def test_from_asc_example_file_has_expected_samples(
+        filename, kwargs, expected_samples, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
@@ -402,10 +384,10 @@ def test_from_asc_example_has_expected_samples(
         ),
     ],
 )
-def test_from_asc_example_has_shape_and_schema(
-        filename, kwargs, shape, schema, make_example_asc_file,
+def test_from_asc_example_file_has_shape_and_schema(
+        filename, kwargs, shape, schema, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
     assert gaze.samples.shape == shape
@@ -437,10 +419,10 @@ def test_from_asc_example_has_shape_and_schema(
         ),
     ],
 )
-def test_from_asc_example_raises_exception(
-        filename, kwargs, exception, message_prefix, make_example_asc_file,
+def test_from_asc_example_file_raises_exception(
+        filename, kwargs, exception, message_prefix, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     with pytest.raises(exception) as excinfo:
         from_asc(filepath, **kwargs)
 
@@ -624,10 +606,10 @@ def test_from_asc_example_raises_exception(
         ),
     ],
 )
-def test_from_asc_example_has_expected_experiment(
-        filename, kwargs, expected_experiment, make_example_asc_file,
+def test_from_asc_example_file_has_expected_experiment(
+        filename, kwargs, expected_experiment, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert gaze.experiment == expected_experiment
 
@@ -654,10 +636,10 @@ def test_from_asc_example_has_expected_experiment(
 
     ],
 )
-def test_from_asc_example_has_expected_trial_columns(
-        filename, kwargs, expected_trial_columns, make_example_asc_file,
+def test_from_asc_example_file_has_expected_trial_columns(
+        filename, kwargs, expected_trial_columns, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert gaze.trial_columns == expected_trial_columns
 
@@ -691,10 +673,10 @@ def test_from_asc_example_has_expected_trial_columns(
 
     ],
 )
-def test_from_asc_example_has_expected_n_components(
-        filename, kwargs, expected_n_components, make_example_asc_file,
+def test_from_asc_example_file_has_expected_n_components(
+        filename, kwargs, expected_n_components, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert gaze.n_components == expected_n_components
 
@@ -767,9 +749,9 @@ def test_from_asc_example_has_expected_n_components(
     ],
 )
 def test_from_asc_detects_mismatches_in_experiment_metadata(
-        experiment_kwargs, issues, make_example_asc_file,
+        experiment_kwargs, issues, make_example_file,
 ):
-    filepath = make_example_asc_file('eyelink_monocular_example.asc')
+    filepath = make_example_file('eyelink_monocular_example.asc')
     with pytest.raises(ValueError) as excinfo:
         from_asc(filepath, experiment=Experiment(**experiment_kwargs))
 
@@ -868,10 +850,10 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
         ),
     ],
 )
-def test_from_asc_example_has_expected_metadata(
-        filename, kwargs, expected_metadata, make_example_asc_file,
+def test_from_asc_example_file_has_expected_metadata(
+        filename, kwargs, expected_metadata, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
     for key, value in expected_metadata.items():
@@ -987,10 +969,10 @@ def test_from_asc_example_has_expected_metadata(
         ),
     ],
 )
-def test_from_asc_example_has_expected_events(
-        filename, kwargs, expected_event_frame, make_example_asc_file,
+def test_from_asc_example_file_has_expected_events(
+        filename, kwargs, expected_event_frame, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)

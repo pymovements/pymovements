@@ -234,11 +234,11 @@ def test_parse_eyelink(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_metadata'),
+    ('filename', 'kwargs', 'expected_metadata'),
     [
         pytest.param(
+            'eyelink_monocular_example.asc',
             {
-                'filepath': 'tests/files/eyelink_monocular_example.asc',
                 'metadata_patterns': [
                     {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
                     r'!V TRIAL_VAR STIMULUS_COMBINATION_ID (?P<stimulus_combination_id>.+)',
@@ -251,8 +251,8 @@ def test_parse_eyelink(tmp_path):
             id='eyelink_asc_metadata_patterns',
         ),
         pytest.param(
+            'eyelink_monocular_example.asc',
             {
-                'filepath': 'tests/files/eyelink_monocular_example.asc',
                 'metadata_patterns': [r'inexistent pattern (?P<value>-?\d+)'],
             },
             {
@@ -262,8 +262,9 @@ def test_parse_eyelink(tmp_path):
         ),
     ],
 )
-def test_from_asc_metadata_patterns(kwargs, expected_metadata):
-    _, _, metadata = parsing.parse_eyelink(**kwargs)
+def test_from_asc_metadata_patterns(filename, kwargs, expected_metadata, make_example_file):
+    filepath = make_example_file(filename)
+    _, _, metadata = parsing.parse_eyelink(filepath=filepath, **kwargs)
 
     for key, value in expected_metadata.items():
         assert metadata[key] == value
@@ -507,7 +508,7 @@ def test_check_reccfg_key_warnings_and_behavior():
         assert len(w) == 0
 
 
-def test_check_samples_config_key_warnings_and_casting():
+def test_check_samples_config_key_warnings_and_casting(make_example_file):
     """Ensure _check_samples_config_key emits expected warnings and casts values."""
     # No samples config -> should warn and return None
     with pytest.warns(UserWarning, match='No samples configuration found.'):
@@ -522,7 +523,7 @@ def test_check_samples_config_key_warnings_and_casting():
     sc = [{'sampling_rate': '1000.00'}]
     assert parsing._check_samples_config_key(sc, 'sampling_rate', float) == 1000.0
 
-    example_asc_monocular_path = Path('tests/files/eyelink_monocular_example.asc')
+    example_asc_monocular_path = make_example_file('eyelink_monocular_example.asc')
     _, _, metadata = parsing.parse_eyelink(example_asc_monocular_path)
 
     expected_validation = [{
