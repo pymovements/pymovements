@@ -169,46 +169,54 @@ class Dataset:
 
     @property
     def events(self) -> tuple[Events, ...]:
-        """Return events for all Gaze objects in the Dataset.
+        """Return ``Events`` for all ``Gaze`` objects in the ``Dataset``.
+
+        Each element in the returned tuple references :py:attr:`~pymovements.Gaze.events` of the
+        corresponding :py:class:`~pymovements.Gaze` in :py:attr:`~pymovements.Dataset.gaze`.
 
         Returns
         -------
         tuple[Events, ...]
-            Immutable tuple mapping Dataset.events[i] to Dataset.gaze[i].events.
-            Attempting to assign to Dataset.events[i] will raise a TypeError.
+            Tuple mapping ``Dataset.events[i]`` to ``Dataset.gaze[i].events``.
 
         Notes
         -----
-            To modify events for a single gaze, assign directly via
-            Dataset.gaze[i].events = new_events instead.
+        Changes to ``Dataset.events[i]`` are also reflected in ``Dataset.gaze[i].events`` and vice
+        versa as they both reference the same :py:class:`~pymovements.Events` object.
         """
         return tuple(gaze.events for gaze in self.gaze)
 
     @events.setter
-    def events(self, events_list: Sequence[Events]) -> None:
-        """Assign events to each Gaze object in the Dataset.
+    def events(self, data: Sequence[Events]) -> None:
+        """Assign ``Events`` to each ``Gaze`` object in the ``Dataset``.
 
-        This updates the Dataset.events object for every Gaze in the Dataset.
+        Each :py:class:`~pymovements.Gaze` in :py:attr:`~pymovements.Dataset.gaze` is updated with
+        the corresponding :py:class:`~pymovements.Events` of the input.
 
         Parameters
         ----------
-        events_list: Sequence[Events]
-            Must have the same length as Dataset.gaze.
+        data: Sequence[Events]
+            Must have the same length as :py:attr:`~pymovements.Dataset.gaze`.
 
         Raises
         ------
         ValueError
-            If the length of input events_list does not match the length of Dataset.gaze.
+            If the lengths of ``data`` and :py:attr:`~pymovements.Dataset.gaze` do not match.
 
-        TypeError
-            If attempting to assign to Dataset.events[i] directly.
+        Notes
+        -----
+        Assigning to a single element of :py:attr:`~pymovements.Dataset.events` raises a
+        ``TypeError`` as :py:attr:`~pymovements.Dataset.events` returns an immutable tuple.
+
+        To assign to a single element, assign directly via ``Dataset.gaze[i].events = new_events``
+        instead.
         """
-        if len(events_list) != len(self.gaze):
+        if len(data) != len(self.gaze):
             raise ValueError(
-                f"Number of events ({len(events_list)}) does not match "
+                f"Number of events ({len(data)}) does not match "
                 f"number of gazes ({len(self.gaze)}).",
             )
-        for gaze, ev in zip(self.gaze, events_list):
+        for gaze, ev in zip(self.gaze, data):
             gaze.events = ev
 
     def scan(self) -> Dataset:
