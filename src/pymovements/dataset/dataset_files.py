@@ -643,7 +643,7 @@ def save_events(
     Parameters
     ----------
     events: Sequence[Events]
-        A list or sequence of event data objects to save.
+        A sequence of :py:class:`pymovements.Events` objects to save.
     fileinfo: pl.DataFrame
         A dataframe holding file information.
     paths: DatasetPaths
