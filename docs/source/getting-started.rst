@@ -57,7 +57,7 @@
 
                 .. code-block:: bash
 
-                    git clone https://github.com/aeye-lab/pymovements.git
+                    git clone https://github.com/pymovements/pymovements.git
                     pip install --upgrade pip
                     pip install -e .[dev]
 

@@ -1112,13 +1112,13 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
     if gaze_type == 'pixel':
         gaze = pm.gaze.io.from_csv(
             gaze_filepath,
-            **{'separator': '\t'},
+            read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     elif gaze_type == 'position':
         gaze = pm.gaze.io.from_csv(
             gaze_filepath,
-            **{'separator': '\t'},
+            read_csv_kwargs={'separator': '\t'},
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
@@ -1170,13 +1170,13 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
     if gaze_type == 'pixel':
         gaze = pm.gaze.io.from_csv(
             gaze_filepath,
-            **{'separator': '\t'},
+            read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     elif gaze_type == 'position':
         gaze = pm.gaze.io.from_csv(
             gaze_filepath,
-            **{'separator': '\t'},
+            read_csv_kwargs={'separator': '\t'},
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
@@ -1201,7 +1201,7 @@ def test_map_to_aois_raises_value_error(make_example_file):
     )
     gaze = pm.gaze.io.from_csv(
         gaze_filepath,
-        **{'separator': '\t'},
+        read_csv_kwargs={'separator': '\t'},
         position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
     )
 
