@@ -27,6 +27,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
+import polars as pl
 from matplotlib.patches import Circle
 
 from pymovements.events import EventDataFrame
@@ -68,6 +69,7 @@ def scanpathplot(
         stimulus_origin: str = 'upper',
         events: Events | EventDataFrame | None = None,
         *,
+        event_name: str = 'fixation',
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -120,6 +122,8 @@ def scanpathplot(
         Origin of stimuls to plot on the stimulus. (default: 'upper')
     events: Events | EventDataFrame | None
         The events to plot. (default: None)
+    event_name: str
+        Filters events for a particular value in ``name`` column. (default: 'fixation')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None
@@ -154,10 +158,12 @@ def scanpathplot(
         assert gaze is not None
         assert gaze.events is not None
         events = gaze.events
+    assert isinstance(events, Events)  # otherwise mypy complains
 
-    # pylint: disable=duplicate-code
-    x_signal = events.frame[position_column].list.get(0)
-    y_signal = events.frame[position_column].list.get(1)
+    fixations = events.frame.filter(pl.col('name') == event_name)
+
+    x_signal = fixations[position_column].list.get(0)
+    y_signal = fixations[position_column].list.get(1)
 
     own_figure = ax is None
 
@@ -178,7 +184,7 @@ def scanpathplot(
         ax=ax,
     )
 
-    for row in events.frame.iter_rows(named=True):
+    for row in fixations.iter_rows(named=True):
         fixation = Circle(
             row[position_column],
             math.sqrt(row['duration']),
