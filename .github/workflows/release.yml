@@ -1,0 +1,70 @@
+name: release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  publish-to-github:
+    name: Attach distribution packages to GitHub release
+
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download distribution packages
+      uses: actions/download-artifact@v4
+      with:
+        name: pymovements-distribution-packages
+        path: dist/
+
+    - name: Upload wheel
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./dist/
+        asset_name: pymovements-${{ github.event.release.tag_name }}-py3-none-any.whl
+        asset_content_type: application/x-wheel+zip
+
+    - name: Upload source
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./dist/
+        asset_name: pymovements-${{ github.event.release.tag_name }}.tar.gz
+        asset_content_type: application/gzip
+
+  publish-to-test-pypi:
+    name: Publish to Test PyPI
+
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pymovements
+
+    permissions:
+      contents: read
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download distribution packages
+      uses: actions/download-artifact@v4
+      with:
+        name: pymovements-distribution-packages
+        path: dist/
+
+    - name: Publish distribution to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.TEST_PYPI_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
