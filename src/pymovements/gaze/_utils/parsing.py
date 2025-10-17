@@ -25,6 +25,7 @@ import datetime
 import re
 import warnings
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -284,7 +285,7 @@ def parse_eyelink(
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str | None = None,
-        messages: bool | list[str] = False,
+        messages: bool | Sequence[str] = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]:
     """Parse EyeLink asc file.
 
@@ -300,15 +301,15 @@ def parse_eyelink(
         list of patterns to match for additional metadata. (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
-    messages: bool | list[str]
+    messages: bool | Sequence[str]
         Flag indicating if all available messages should be parsed
-        and returned as a DataFrame with 'timestamp' (i64) and 'content' (str) columns.
+        and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
         The message format is 'MSG <timestamp> <content>'.
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed and only the
         messages that match any of the regular expressions will be kept.
-        When pass ing regula rexpressions, these are only applied to the message content,
-        disregarding 'MSG' and the timestamp.
+        Regular expressions are only applied to the message content,
+        implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
 
     Returns
@@ -381,8 +382,8 @@ def parse_eyelink(
         (isinstance(messages, list) and not all(isinstance(regexp, str) for regexp in messages))
     ):
         raise ValueError(
-            'Make sure to pass either a bool or a list of RegExps as strings. '
-            f"Received {messages}.",
+            'Make sure to pass either a bool or a list of regular expressions '
+            f"as strings. Received {messages}.",
         )
 
     messages_list: list[list[str]] = []
@@ -764,13 +765,13 @@ def parse_eyelink(
         messages_df = pl.DataFrame(
             data=messages_list,
             schema={
-                'timestamp': pl.Int64,
+                'time': pl.Float64,
                 'content': pl.String,
             },
             orient='row',
         )
         # Filter messages with regexp if given
-        if isinstance(messages, list):
+        if isinstance(messages, Sequence):
             # keep rows where content matches any of the regex patterns
             # for each row check if content matches any of the regex patterns
             messages_df = messages_df.filter(

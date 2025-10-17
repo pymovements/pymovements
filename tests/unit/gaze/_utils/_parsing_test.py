@@ -232,7 +232,7 @@ MSG 14888 TRIAL 3
 
 MESSAGES_DF = pl.DataFrame(
     schema={
-        'timestamp': pl.Int64,
+        'time': pl.Float64,
         'content': pl.String,
     },
     data=[
@@ -260,9 +260,9 @@ def test_parse_eyelink(tmp_path):
     assert_frame_equal(event_df, EXPECTED_EVENT_DF, check_column_order=False, rtol=0)
     assert metadata == EXPECTED_METADATA
     assert messages_df.shape == (18, 2)
-    assert messages_df['timestamp'].min() == 2095865
+    assert messages_df['time'].min() == 2095865
     assert messages_df[0, 1] == 'DISPLAY_COORDS 0 0 1279 1023'
-    assert messages_df['timestamp'].max() == 10000017
+    assert messages_df['time'].max() == 10000017
 
 
 def test_parse_eyelink_no_messages(tmp_path):
@@ -386,7 +386,8 @@ def test_message_faulty_messages_value(tmp_path, invalid_regexps):
 
     with pytest.raises(
             ValueError,
-            match=r'Make sure to pass either a bool or a list of RegExps as strings\. Received',
+            match=r'Make sure to pass either a bool or a list of regular expressions as '
+                  r'strings\. Received',
     ):
         parsing.parse_eyelink(filepath, messages=invalid_regexps)
 

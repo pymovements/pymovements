@@ -75,8 +75,6 @@ def test_from_asc_has_expected_samples(
 
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
-    assert gaze.experiment.messages is None
-
 
 @pytest.mark.parametrize(
     ('filename', 'kwargs', 'expected_samples'),
@@ -1012,14 +1010,21 @@ def test_from_asc_warns(header, body, expected_warning, expected_message, make_c
     [
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
-            True, [(123, 152), ('message here', 'TEST 1')], id='multiple_messages',
+            True, [(123, 152), ('message here', 'TEST 1')],
+            id='multiple_messages',
         ),
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
-            [r'^.*TEST.*$'], [(152,), ('TEST 1',)], id='filter_messages',
+            [r'^.*TEST.*$'], [(152,), ('TEST 1',)],
+            id='filter_messages',
         ),
         pytest.param(
-            'MSG 123 message here\nMSG 152 TEEST 1', [r'^.*TEST.*$'], [], id='no_match',
+            'MSG 123 message here\nMSG 152 TEEST 1', [r'^.*TEST.*$'], [],
+            id='no_match',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEEST 1', False, None,
+            id='no_parsing',
         ),
     ],
 )
@@ -1027,10 +1032,14 @@ def test_from_asc_messages(make_custom_asc_file, body, messages, expected_data):
     filepath = make_custom_asc_file(filename='test.asc', header='', body=body)
 
     gaze = from_asc(filepath, messages=messages)
-    assert_frame_equal(
-        gaze.experiment.messages,
-        pl.DataFrame(
-            schema={'timestamp': pl.Int64, 'content': pl.String},
-            data=expected_data,
-        ),
-    )
+
+    if messages is False:
+        assert gaze.experiment.messages is None
+    else:
+        assert_frame_equal(
+            gaze.experiment.messages,
+            pl.DataFrame(
+                schema={'time': pl.Float64, 'content': pl.String},
+                data=expected_data,
+            ),
+        )

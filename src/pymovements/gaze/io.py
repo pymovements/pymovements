@@ -347,8 +347,8 @@ def from_asc(
         If True, all available messages will be parsed from the asc,
         alternatively, a list of regular expressions can be passed and only the
         messages that match any of the regular expressions will be kept.
-        When pass ing regula rexpressions, these are only applied to the message content,
-        disregarding 'MSG' and the timestamp.
+        Regular expressions are only applied to the message content,
+        implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
 
     Returns
@@ -488,7 +488,10 @@ def from_asc(
 
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_metadata(experiment, metadata)
+
     # Add parsed messages to experiment
+    if experiment.messages:
+        warnings.warn('Experiment already has messages, overwriting them with newly parsed ones.')
     experiment.messages = messages_df
 
     # Detect pixel / position column names (monocular or binocular) and pass them to Gaze
