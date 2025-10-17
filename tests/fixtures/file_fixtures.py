@@ -56,3 +56,31 @@ def fixture_make_example_file(testfiles_dirpath: Path, tmp_path: Path) -> Callab
         shutil.copy2(source_filepath, target_filepath)
         return target_filepath
     return _make_example_file
+
+
+@pytest.fixture(name='make_text_file', scope='function')
+def fixture_make_text_file(tmp_path: Path) -> Callable[[str, str, str, str], Path]:
+    """Make a custom file with self-written header and body.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where files are copied to. Existing fixture.
+
+    Returns
+    -------
+    Callable[[str, str, str, str], Path]
+        Function that takes a filename, the file header and body and the encoding of the file.
+        Returns the path to the created file.
+        Header and body are simply concatenated into a single string and written to the file.
+        The file is saved into a temporary directory.
+
+    """
+    def _make_text_file(
+            filename: str, header: str = '', body: str = '\n', encoding: str = 'utf-8',
+    ) -> Path:
+        content = header + body
+        filepath = tmp_path / filename
+        filepath.write_text(content, encoding=encoding)
+        return filepath
+    return _make_text_file

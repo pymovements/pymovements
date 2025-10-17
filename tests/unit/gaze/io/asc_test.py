@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
-from pathlib import Path
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -30,19 +28,6 @@ from pymovements import EyeTracker
 from pymovements import Screen
 from pymovements.datasets import ToyDatasetEyeLink
 from pymovements.gaze import from_asc
-
-
-@pytest.fixture(name='make_custom_asc_file', scope='function')
-def fixture_make_custom_asc_file(tmp_path):
-    """Make a custom eyelink asc file with self-written header and body."""
-    def _make_custom_asc_file(
-            filename: str, header: str = '', body: str = '\n', encoding: str = 'utf-8',
-    ) -> Path:
-        content = header + body
-        filepath = tmp_path / filename
-        filepath.write_text(content, encoding=encoding)
-        return filepath
-    return _make_custom_asc_file
 
 
 @pytest.mark.parametrize(
@@ -68,9 +53,9 @@ def fixture_make_custom_asc_file(tmp_path):
     ],
 )
 def test_from_asc_has_expected_samples(
-        header, body, kwargs, expected_samples, make_custom_asc_file,
+        header, body, kwargs, expected_samples, make_text_file,
 ):
-    filepath = make_custom_asc_file('test_eyelink.asc', header=header, body=body)
+    filepath = make_text_file('test_eyelink.asc', header=header, body=body)
     gaze = from_asc(filepath, **kwargs)
 
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
@@ -993,8 +978,8 @@ def test_from_asc_example_file_has_expected_events(
         ),
     ],
 )
-def test_from_asc_warns(header, body, expected_warning, expected_message, make_custom_asc_file):
-    filepath = make_custom_asc_file(filename='test.asc', header=header, body=body)
+def test_from_asc_warns(header, body, expected_warning, expected_message, make_text_file):
+    filepath = make_text_file(filename='test.asc', header=header, body=body)
 
     with pytest.warns(expected_warning, match=expected_message):
         from_asc(filepath)
@@ -1028,8 +1013,8 @@ def test_from_asc_warns(header, body, expected_warning, expected_message, make_c
         ),
     ],
 )
-def test_from_asc_messages(make_custom_asc_file, body, messages, expected_data):
-    filepath = make_custom_asc_file(filename='test.asc', header='', body=body)
+def test_from_asc_messages(make_text_file, body, messages, expected_data):
+    filepath = make_text_file(filename='test.asc', header='', body=body)
 
     gaze = from_asc(filepath, messages=messages)
 
