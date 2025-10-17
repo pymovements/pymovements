@@ -26,6 +26,7 @@ from typing import Any
 
 import numpy as np
 import yaml
+from polars import DataFrame
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
@@ -57,11 +58,14 @@ class Experiment:
         (default: None)
     sampling_rate: float | None
         Sampling rate in Hz. (default: None)
-    screen : Screen | None
+    screen: Screen | None
         Scree object for experiment. Mutually exclusive with explicit screen arguments.
         (default: None)
-    eyetracker : EyeTracker | None
+    eyetracker: EyeTracker | None
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
+    messages: DataFrame | None
+        DataFrame containing messages from the experiment.
+        The columns are 'timestamp' (i64) and 'content' (str). (default: None)
 
     Examples
     --------
@@ -105,6 +109,7 @@ class Experiment:
             *,
             screen: Screen | None = None,
             eyetracker: EyeTracker | None = None,
+            messages: DataFrame | None = None,
     ):
         _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
         _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
@@ -131,6 +136,8 @@ class Experiment:
 
         if self.sampling_rate is not None:
             _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
+
+        self.messages = messages
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> Experiment:

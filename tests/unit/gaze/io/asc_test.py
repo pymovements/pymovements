@@ -998,3 +998,48 @@ def test_from_asc_warns(header, body, expected_warning, expected_message, make_c
 
     with pytest.warns(expected_warning, match=expected_message):
         from_asc(filepath)
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.parametrize(
+    ('body', 'messages', 'expected_data'),
+    [
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEST 1',
+            True, [(123, 152), ('message here', 'TEST 1')],
+            id='multiple_messages',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEST 1',
+            [r'^.*TEST.*$'], [(152,), ('TEST 1',)],
+            id='filter_messages',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEEST 1', [r'^.*TEST.*$'], [],
+            id='no_match',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEEST 1', False, None,
+            id='no_parsing',
+        ),
+    ],
+)
+def test_from_asc_messages(make_custom_asc_file, body, messages, expected_data):
+    filepath = make_custom_asc_file(filename='test.asc', header='', body=body)
+
+    gaze = from_asc(filepath, messages=messages)
+
+    if messages is False:
+        assert gaze.experiment.messages is None
+    else:
+        assert_frame_equal(
+            gaze.experiment.messages,
+            pl.DataFrame(
+                schema={'time': pl.Float64, 'content': pl.String},
+                data=expected_data,
+            ),
+        )
