@@ -1010,20 +1010,26 @@ def test_from_asc_warns(header, body, expected_warning, expected_message, make_c
     [
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
-            True, [(123, 152), ('message here', 'TEST 1')],
+            True,
+            [(123, 152), ('message here', 'TEST 1')],
             id='multiple_messages',
         ),
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
-            [r'^.*TEST.*$'], [(152,), ('TEST 1',)],
+            [r'^.*TEST.*$'],
+            [(152,), ('TEST 1',)],
             id='filter_messages',
         ),
         pytest.param(
-            'MSG 123 message here\nMSG 152 TEEST 1', [r'^.*TEST.*$'], [],
+            'MSG 123 message here\nMSG 152 TEEST 1',
+            [r'^.*TEST.*$'],
+            [],
             id='no_match',
         ),
         pytest.param(
-            'MSG 123 message here\nMSG 152 TEEST 1', False, None,
+            'MSG 123 message here\nMSG 152 TEEST 1',
+            False,
+            None,
             id='no_parsing',
         ),
     ],
@@ -1033,7 +1039,7 @@ def test_from_asc_messages(make_custom_asc_file, body, messages, expected_data):
 
     gaze = from_asc(filepath, messages=messages)
 
-    if messages is False:
+    if expected_data is None:
         assert gaze.experiment.messages is None
     else:
         assert_frame_equal(
