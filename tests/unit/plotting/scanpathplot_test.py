@@ -160,6 +160,12 @@ def test_scanpathplot_show(gaze, kwargs, monkeypatch):
     mock.assert_called_once()
 
 
+@pytest.mark.filterwarnings('ignore::UserWarning')
+def test_scanpathplot_existing_axes(gaze):
+    _, ax = plt.subplots()
+    scanpathplot(gaze=gaze, ax=ax)
+
+
 def test_scanpathplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)

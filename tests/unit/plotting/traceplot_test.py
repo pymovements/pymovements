@@ -155,6 +155,12 @@ def test_traceplot_show(gaze, kwargs, monkeypatch):
     mock.assert_called_once()
 
 
+@pytest.mark.filterwarnings('ignore::UserWarning')
+def test_traceplot_existing_axes(gaze):
+    _, ax = plt.subplots()
+    pm.plotting.traceplot(gaze=gaze, ax=ax)
+
+
 def test_traceplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
