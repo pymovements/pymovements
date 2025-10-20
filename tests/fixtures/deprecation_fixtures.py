@@ -52,9 +52,9 @@ def fixture_assert_deprecation_is_removed():
         ------
         AssertionError
             If the warning message does not match the expected regex, or if the scheduled version
-            from the warning message does not match the expected scheduled version, or if the current
-            version is equal or above the version that was scheduled for removal of the deprecated
-            feature.
+            from the warning message does not match the expected scheduled version, or if the
+            current version is equal or above the version that was scheduled for removal of the
+            deprecated feature.
 
         """
         match = regex.match(warning_message)
