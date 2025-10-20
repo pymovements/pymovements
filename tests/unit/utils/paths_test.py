@@ -37,4 +37,10 @@ def test_downloads_function(path_function, tmp_path):
 def test_parse_eyelink_removed(path_function, tmp_path, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         path_function(path=tmp_path, regex=re.compile('foo'))
-    assert_deprecation_is_removed('utils/paths.py', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='utils/paths.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
+        current_version=__version__,
+    )

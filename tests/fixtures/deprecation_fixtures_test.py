@@ -22,12 +22,16 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    ('function_name', 'warning_message', 'current_version', 'assertion_message'),
+    (
+        'function_name', 'warning_message', 'scheduled_version', 'current_version',
+        'assertion_message',
+    ),
     [
         pytest.param(
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '-- Deprecated since version v0.21.1.',
+            '0.26.1',
             '0.26.0',
             'DeprecationWarning message does not match regex.',
             id='not_scheduled_for_removal',
@@ -35,15 +39,26 @@ import pytest
         pytest.param(
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
-            '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '(This module will be removed in v0.27.0.) -- Deprecated since version v0.21.1.',
             '0.26.0',
-            'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.26.0.',
-            id='scheduled_version',
+            '0.25.0',
+            'scheduled version from warning message does not match expected version',
+            id='scheduled_version_wrong',
         ),
         pytest.param(
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
+            '0.26.0',
+            'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.26.0.',
+            id='current_version_is_scheduled_version',
+        ),
+        pytest.param(
+            'curly_to_regex',
+            'Call to deprecated function (or staticmethod) curly_to_regex. '
+            '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.26.0+16.g7c26d6e1',
             'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.26.0.16.',
             id='scheduled_version_post_commit',
@@ -52,6 +67,7 @@ import pytest
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.26.0+16.g7c26d6e1.dirty',
             'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.26.0.*di',
             id='scheduled_version_dirty',
@@ -60,6 +76,7 @@ import pytest
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.26.0-rc.1',
             'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.26.0-rc.',
             id='scheduled_version_rc',
@@ -68,6 +85,7 @@ import pytest
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.26.1',
             'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.26.1.',
             id='patch_after_scheduled_version',
@@ -76,6 +94,7 @@ import pytest
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.27.0',
             'curly_to_regex was scheduled to be removed in v0.26.0. Current version is v0.27.0.',
             id='minor_after_scheduled_version',
@@ -83,20 +102,26 @@ import pytest
     ],
 )
 def test_assert_deprecation_fixation_test_assert_false(
-        function_name, warning_message, current_version, assertion_message,
+        function_name, warning_message, scheduled_version, current_version, assertion_message,
         assert_deprecation_is_removed,
 ):
     with pytest.raises(AssertionError, match=assertion_message):
-        assert_deprecation_is_removed(function_name, warning_message, current_version)
+        assert_deprecation_is_removed(
+            function_name=function_name,
+            warning_message=warning_message,
+            scheduled_version=scheduled_version,
+            current_version=current_version,
+        )
 
 
 @pytest.mark.parametrize(
-    ('function_name', 'warning_message', 'current_version'),
+    ('function_name', 'warning_message', 'scheduled_version', 'current_version'),
     [
         pytest.param(
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.24.0',
             id='minor_before_scheduled_version',
         ),
@@ -104,6 +129,7 @@ def test_assert_deprecation_fixation_test_assert_false(
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.25.9',
             id='patch_before_scheduled_version',
         ),
@@ -111,12 +137,19 @@ def test_assert_deprecation_fixation_test_assert_false(
             'curly_to_regex',
             'Call to deprecated function (or staticmethod) curly_to_regex. '
             '(This module will be removed in v0.26.0.) -- Deprecated since version v0.21.1.',
+            '0.26.0',
             '0.25.5+16.g7c26d6e1.dirty',
             id='patch_before_scheduled_version_dirty',
         ),
     ],
 )
 def test_assert_deprecation_fixation_test_assert_true(
-        function_name, warning_message, current_version, assert_deprecation_is_removed,
+        function_name, warning_message, scheduled_version, current_version,
+        assert_deprecation_is_removed,
 ):
-    assert_deprecation_is_removed(function_name, warning_message, current_version)
+    assert_deprecation_is_removed(
+        function_name=function_name,
+        warning_message=warning_message,
+        scheduled_version=scheduled_version,
+        current_version=current_version,
+    )

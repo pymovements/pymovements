@@ -94,12 +94,17 @@ def test_shapes(filename, kwargs, shape, make_example_file):
         ),
     ],
 )
-def test_from_asc_parameter_is_deprecated(
+def test_from_ipc_parameter_is_deprecated(
         filename, kwargs, make_example_file, assert_deprecation_is_removed,
 ):
     filepath = make_example_file(filename)
 
     with pytest.raises(DeprecationWarning) as info:
         from_ipc(filepath, **kwargs)
-    function_name = f'keyword argument {list(kwargs.keys())[0]}'
-    assert_deprecation_is_removed(function_name, info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name=f'keyword argument {list(kwargs.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.29.0',
+        current_version=__version__,
+    )

@@ -225,4 +225,10 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
 def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         scanpathplot(events=gaze.events)
-    assert_deprecation_is_removed('scanpathplot argument events', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='scanpathplot() argument events',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
+    )

@@ -1131,7 +1131,13 @@ def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed)
     definition = Gaze()
     with pytest.raises(DeprecationWarning) as info:
         getattr(definition, attribute)
-    assert_deprecation_is_removed(f'Gaze.{attribute}', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name=f'Gaze.{attribute}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
+    )
 
 
 def _create_gaze():

@@ -2044,5 +2044,10 @@ def test_gaze_init_parameter_is_deprecated(init_kwargs):
 def test_gaze_init_parameter_is_removed(init_kwargs, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         Gaze(**init_kwargs)
-    function_name = f'Gaze init argument {list(init_kwargs.keys())[0]}'
-    assert_deprecation_is_removed(function_name, info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name=f'Gaze init argument {list(init_kwargs.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
+    )

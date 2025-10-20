@@ -160,4 +160,10 @@ def test_is_gaze_df_subsubclass_deprecated():
 def test_is_gaze_df_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         GazeDataFrame()
-    assert_deprecation_is_removed('GazeDataFrame', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='GazeDataFrame',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
+    )

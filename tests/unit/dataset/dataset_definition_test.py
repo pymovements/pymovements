@@ -813,33 +813,42 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
 
 
 @pytest.mark.parametrize(
-    'attribute_kwarg',
+    ('attribute_kwarg', 'scheduled_version'),
     [
         pytest.param(
             {'extract': True},
+            '0.27.0',
             id='extract_true',
         ),
         pytest.param(
             {'extract': False},
+            '0.27.0',
             id='extract_false',
         ),
         pytest.param(
             {'has_files': {'gaze': True}},
+            '0.28.0',
             id='has_files',
         ),
         pytest.param(
             {'mirrors': {'gaze': ['https://mirror.com']}},
+            '0.29.0',
             id='mirrors',
         ),
     ],
 )
 def test_dataset_definition_attribute_is_deprecated_or_removed(
-        attribute_kwarg, assert_deprecation_is_removed,
+        attribute_kwarg, scheduled_version, assert_deprecation_is_removed,
 ):
     with pytest.raises(DeprecationWarning) as info:
         DatasetDefinition(**attribute_kwarg)
-    function_name = f'keyword argument {list(attribute_kwarg.keys())[0]}'
-    assert_deprecation_is_removed(function_name, info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name=f'keyword argument {list(attribute_kwarg.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version=scheduled_version,
+        current_version=__version__,
+    )
 
 
 @pytest.mark.parametrize(
@@ -984,14 +993,28 @@ def test_dataset_definition_set_attribute_is_deprecated(definition, attribute, v
 
 
 @pytest.mark.parametrize(
-    'attribute',
+    ('attribute', 'scheduled_version'),
     [
-        'filename_format',
-        'filename_format_schema_overrides',
+        pytest.param(
+            'filename_format', '0.28.0',
+            id='filename_format',
+        ),
+        pytest.param(
+            'filename_format_schema_overrides', '0.28.0',
+            id='filename_format_schema_overrides',
+        ),
     ],
 )
-def test_dataset_definition_get_attribute_is_removed(attribute, assert_deprecation_is_removed):
+def test_dataset_definition_get_attribute_is_removed(
+        attribute, scheduled_version, assert_deprecation_is_removed,
+):
     definition = DatasetDefinition()
     with pytest.raises(DeprecationWarning) as info:
         getattr(definition, attribute)
-    assert_deprecation_is_removed(f'DatasetDefinition.{attribute}', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name=f'DatasetDefinition.{attribute}',
+        warning_message=info.value.args[0],
+        scheduled_version=scheduled_version,
+        current_version=__version__,
+    )

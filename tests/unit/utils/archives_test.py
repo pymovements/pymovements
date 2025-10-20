@@ -51,4 +51,10 @@ def test_archive_extract(compressed_file):
 def test_archive_extract_removed(compressed_file, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         extract_archive(compressed_file)
-    assert_deprecation_is_removed('utils/archives.py', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='utils/archives.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
+        current_version=__version__,
+    )

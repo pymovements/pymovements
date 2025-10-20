@@ -98,4 +98,10 @@ def test_draw_line_data(axes):
 def test_plotting_function_removed(plotting_function, kwargs, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         plotting_function(**kwargs)
-    assert_deprecation_is_removed('utils/filters.py', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='utils/filters.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.27.0',
+        current_version=__version__,
+    )

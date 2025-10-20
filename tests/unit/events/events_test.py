@@ -523,7 +523,13 @@ def test_copy():
 def test_copy_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         Events().copy()
-    assert_deprecation_is_removed('Events.copy()', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='Events.copy()',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
+    )
 
 
 def test_clones_trial_columns():

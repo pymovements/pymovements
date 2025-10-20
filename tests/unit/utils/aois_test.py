@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.parsing."""
-import re
-
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -66,5 +64,9 @@ def test_get_aoi_removed(text_stimulus, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         get_aoi(text_stimulus, {'x': 400, 'y': 125}, 'x', 'y')
 
-    re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-    assert_deprecation_is_removed('utils/parsing.py', info.value.args[0], __version__)
+    assert_deprecation_is_removed(
+        function_name='utils/parsing.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
+        current_version=__version__,
+    )

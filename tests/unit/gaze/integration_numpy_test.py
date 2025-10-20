@@ -350,6 +350,10 @@ def test_from_numpy_data_argument_is_removed(assert_deprecation_is_removed):
 
     with pytest.raises(DeprecationWarning) as info:
         from_numpy(data=array, schema=schema)
+
     assert_deprecation_is_removed(
-        'from_numpy() keyword argument "data"', info.value.args[0], __version__,
+        function_name='from_numpy() keyword argument "data"',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
     )

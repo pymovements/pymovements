@@ -405,8 +405,12 @@ def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed
 
     with pytest.raises(DeprecationWarning) as info:
         ResourceDefinitions.from_dict(resources_dict)
+
     assert_deprecation_is_removed(
-        'ResourceDefinitions.from_dict()', info.value.args[0], __version__,
+        function_name='ResourceDefinitions.from_dict()',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
     )
 
 
@@ -713,4 +717,10 @@ def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecatio
     resource_dict = {'content': 'samples', 'resource': 'http://www.example.com'}
     with pytest.raises(DeprecationWarning) as info:
         ResourceDefinition.from_dict(resource_dict)
-    assert_deprecation_is_removed('from_dict() key "resources"', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='from_dict() key "resources"',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+        current_version=__version__,
+    )

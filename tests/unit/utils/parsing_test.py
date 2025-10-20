@@ -40,4 +40,10 @@ def test_parse_eyelink_is_deprecated(make_example_file, assert_deprecation_is_re
 
     with pytest.raises(DeprecationWarning) as info:
         pm.utils.parsing.parse_eyelink(filepath)
-    assert_deprecation_is_removed('utils/parsing.py', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='utils/parsing.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
+        current_version=__version__,
+    )

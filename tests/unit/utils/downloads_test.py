@@ -138,4 +138,10 @@ def test_is_download_function_removed(download_function, tmp_path, assert_deprec
 
     with pytest.raises(DeprecationWarning) as info:
         download_function(url, tmp_path, filename)
-    assert_deprecation_is_removed('utils/downloads.py', info.value.args[0], __version__)
+
+    assert_deprecation_is_removed(
+        function_name='utils/downloads.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
+        current_version=__version__,
+    )
