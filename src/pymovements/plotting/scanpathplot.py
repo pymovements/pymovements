@@ -178,6 +178,10 @@ def scanpathplot(
         ax=ax,
     )
 
+    if own_figure:
+        ax.set_aspect('equal')
+        ax.grid(True)
+
     for row in events.frame.iter_rows(named=True):
         fixation = Circle(
             row[position_column],

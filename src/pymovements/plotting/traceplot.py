@@ -153,6 +153,10 @@ def traceplot(
         ax=ax,
     )
 
+    if own_figure:
+        ax.set_aspect('equal')
+        ax.grid(True)
+
     line = _draw_line_data(
         x_signal,
         y_signal,
