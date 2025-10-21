@@ -179,13 +179,6 @@ def test_set_screen_axes_invalid_origin(origin):
     plt.close(fig)
 
 
-class DummyScreen(Screen):
-    """Dummy Screen subclass that skips validation for testing purposes."""
-
-    def __post_init__(self):
-        """Override to disable validation in tests."""
-
-
 @pytest.mark.parametrize(
     'width,height',
     [
@@ -198,30 +191,12 @@ def test_set_screen_axes_none_dimensions_returns(width, height):
     fig, ax = plt.subplots()
     default_xlim = ax.get_xlim()
     default_ylim = ax.get_ylim()
-    screen = DummyScreen(width_px=width, height_px=height, origin='upper left')
+    screen = Screen(width_px=width, height_px=height, origin='upper left')
     _set_screen_axes(ax, screen, func_name='dummyplot')  # should not raise
 
     assert ax.get_xlim() == default_xlim
     assert ax.get_ylim() == default_ylim
 
-    plt.close(fig)
-
-
-@pytest.mark.parametrize(
-    'width,height',
-    [
-        (0, 768),
-        (1024, 0),
-        (-1, 768),
-        (1024, -10),
-    ],
-)
-def test_set_screen_axes_nonpositive_dimensions_raises(width, height):
-    """Should raise ValueError when width or height is <= 0."""
-    fig, ax = plt.subplots()
-    screen = DummyScreen(width_px=width, height_px=height, origin='upper left')
-    with pytest.raises(ValueError, match='must be positive'):
-        _set_screen_axes(ax, screen, func_name='dummyplot')
     plt.close(fig)
 
 
