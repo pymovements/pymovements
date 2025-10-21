@@ -171,7 +171,7 @@ def test_traceplot_show(gaze, kwargs, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
     pm.plotting.traceplot(gaze=gaze, **kwargs)
-    plt.close()
+
     mock.assert_called_once()
 
 
@@ -179,7 +179,7 @@ def test_traceplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
     pm.plotting.traceplot(gaze=gaze, show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -194,7 +194,7 @@ def test_traceplot_save(gaze, monkeypatch, tmp_path):
             'test.svg',
         ),
     )
-    plt.close()
+
     mock.assert_called_once()
 
 

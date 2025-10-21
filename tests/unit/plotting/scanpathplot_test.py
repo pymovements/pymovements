@@ -201,7 +201,7 @@ def test_scanpathplot_show(gaze, kwargs, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
     scanpathplot(gaze=gaze, **kwargs)
-    plt.close()
+
     mock.assert_called_once()
 
 
@@ -209,7 +209,7 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
     scanpathplot(gaze=gaze, show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -224,7 +224,7 @@ def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
             'test.svg',
         ),
     )
-    plt.close()
+
     mock.assert_called_once()
 
 
