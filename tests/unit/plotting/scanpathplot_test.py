@@ -202,6 +202,7 @@ def test_scanpathplot_exceptions(gaze, kwargs, exception, monkeypatch):
 
     with pytest.raises(exception):
         scanpathplot(gaze=gaze, **kwargs)
+    plt.close()
 
 
 def test_scanpathplot_gaze_events_all_none_exception():
@@ -214,6 +215,7 @@ def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
     gaze.samples = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(events=None, gaze=gaze, add_traceplot=True)
+    plt.close()
 
 
 def test_scanpathplot_gaze_events_none_exception(gaze):
@@ -221,11 +223,13 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
     gaze.events = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(gaze=gaze)
+    plt.close()
 
 
 def test_scanpathplot_events_is_deprecated(gaze):
     with pytest.raises(DeprecationWarning) as info:
         scanpathplot(events=gaze.events)
+    plt.close()
 
     regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
 
