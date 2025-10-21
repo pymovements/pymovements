@@ -166,7 +166,10 @@ def heatmap(
     # Convert heatmap values from sample count to seconds
     heatmap_value /= gaze.experiment.sampling_rate
 
-    extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
+    if origin == 'upper':
+        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
+    else:
+        extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
     fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
