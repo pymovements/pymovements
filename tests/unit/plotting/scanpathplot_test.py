@@ -176,8 +176,8 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
         pytest.param('foo', 0, id='foo'),
     ],
 )
-def test_scanpathplot_filter_events(event_name, expected_n_circles, gaze):
-    fig, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
+def test_scanpathplot_filter_events_plots_expected_circles(event_name, expected_n_circles, gaze):
+    _, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
     plt.close()
 
     assert len(ax.patches) == expected_n_circles
