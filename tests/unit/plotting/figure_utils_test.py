@@ -45,7 +45,6 @@ def test_prepare_figure_figsize_none_creates_default():
     assert fig is ax.figure
 
 
-
 def test_finalize_figure_closefig_true_ignored_with_external_ax_warns(monkeypatch):
     # When an external ax is used (own_figure=False) and closefig=True is requested,
     # finalize_figure should warn and not close the figure.
@@ -64,7 +63,6 @@ def test_finalize_figure_closefig_true_ignored_with_external_ax_warns(monkeypatc
         )
 
     close_mock.assert_not_called()
-    
 
 
 def test_setup_axes_and_colormap_warns_on_external_ax_with_figsize():
@@ -94,7 +92,6 @@ def test_setup_axes_and_colormap_warns_on_external_ax_with_figsize():
 
     assert ret_ax is ax
     assert ret_fig is fig
-    
 
 
 def test_setup_axes_and_colormap_external_ax_figsize_none_no_warning():
@@ -124,7 +121,6 @@ def test_setup_axes_and_colormap_external_ax_figsize_none_no_warning():
     assert len(record) == 0
     assert ret_ax is ax
     assert ret_fig is fig
-    
 
 
 def test_prepare_figure_warns_on_external_ax_with_figsize():
@@ -135,7 +131,6 @@ def test_prepare_figure_warns_on_external_ax_with_figsize():
     assert ret_ax is ax
     assert ret_fig is fig
     assert own is False
-
 
 
 def test_prepare_figure_external_ax_figsize_none_no_warning():
@@ -149,4 +144,3 @@ def test_prepare_figure_external_ax_figsize_none_no_warning():
     assert ret_ax is ax
     assert ret_fig is fig
     assert own is False
-
