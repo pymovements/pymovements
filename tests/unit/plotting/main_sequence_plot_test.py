@@ -131,6 +131,7 @@ def test_main_sequence_plot_raises_when_no_saccades():
     events = pm.Events(df)
     with pytest.raises(ValueError):
         pm.plotting.main_sequence_plot(events=events, show=False)
+    plt.close()
 
 
 def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
@@ -147,6 +148,7 @@ def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
     events = pm.Events(df)
     with pytest.raises(KeyError):
         pm.plotting.main_sequence_plot(events=events, show=False)
+    plt.close()
 
 
 def test_main_sequence_plot_keyerror_when_missing_amplitude():
@@ -163,6 +165,7 @@ def test_main_sequence_plot_keyerror_when_missing_amplitude():
     events = pm.Events(df)
     with pytest.raises(KeyError):
         pm.plotting.main_sequence_plot(events=events, show=False)
+    plt.close()
 
 
 def test_main_sequence_plot_sets_title():

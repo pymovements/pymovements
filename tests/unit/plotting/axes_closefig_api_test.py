@@ -74,6 +74,7 @@ def test_traceplot_with_external_ax_emits_warnings_and_does_not_show_or_close(ga
     # when external ax is provided, show should not be called and figure should not be closed
     show_mock.assert_not_called()
     close_mock.assert_not_called()
+    plt.close()
 
 
 def test_heatmap_own_figure_closes_by_default(gaze, monkeypatch):
@@ -83,6 +84,7 @@ def test_heatmap_own_figure_closes_by_default(gaze, monkeypatch):
     # We do not show to avoid backend usage here
     pm.plotting.heatmap(gaze, position_column='pixel', show=False)
     close_mock.assert_called()
+    plt.close()
 
 
 def test_heatmap_with_external_ax_no_show_no_close_and_warnings(gaze, monkeypatch):
@@ -105,6 +107,7 @@ def test_heatmap_with_external_ax_no_show_no_close_and_warnings(gaze, monkeypatc
     assert ret_fig is fig
     show_mock.assert_not_called()
     close_mock.assert_not_called()
+    plt.close()
 
 
 def test_tsplot_external_ax_ignored_when_multi_channel(gaze):
@@ -123,3 +126,4 @@ def test_tsplot_external_ax_ignored_when_multi_channel(gaze):
         )
     assert ret_ax is not ax
     assert ret_fig is not fig
+    plt.close()
