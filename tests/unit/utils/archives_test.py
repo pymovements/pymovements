@@ -22,7 +22,6 @@ import gzip
 
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.archives import extract_archive
 
 
@@ -56,5 +55,5 @@ def test_archive_extract_removed(compressed_file, assert_deprecation_is_removed)
         function_name='utils/archives.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        
+
     )

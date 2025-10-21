@@ -22,7 +22,6 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
-from pymovements import __version__
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
@@ -45,5 +44,5 @@ def test_parse_eyelink_is_deprecated(make_example_file, assert_deprecation_is_re
         function_name='utils/parsing.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        
+
     )

@@ -20,7 +20,6 @@
 """Tests deprecated utils.strings."""
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.strings import curly_to_regex
 
 
@@ -37,5 +36,5 @@ def test_curly_to_regex_removed(assert_deprecation_is_removed):
         function_name='utils/strings.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        
+
     )

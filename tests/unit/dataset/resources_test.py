@@ -20,7 +20,6 @@
 """Test dataset resources."""
 import pytest
 
-from pymovements import __version__
 from pymovements import ResourceDefinition
 from pymovements import ResourceDefinitions
 
@@ -410,7 +409,7 @@ def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed
         function_name='ResourceDefinitions.from_dict()',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        
+
     )
 
 
@@ -722,5 +721,5 @@ def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecatio
         function_name='from_dict() key "resources"',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        
+
     )

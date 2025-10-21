@@ -21,7 +21,6 @@
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements.stimulus import text
 from pymovements.utils.aois import get_aoi
 
@@ -68,5 +67,5 @@ def test_get_aoi_removed(text_stimulus, assert_deprecation_is_removed):
         function_name='utils/parsing.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        
+
     )

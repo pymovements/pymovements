@@ -27,7 +27,6 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import EyeTracker
@@ -1136,7 +1135,7 @@ def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed)
         function_name=f'Gaze.{attribute}',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        
+
     )
 
 
