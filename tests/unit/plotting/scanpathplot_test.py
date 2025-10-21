@@ -275,6 +275,7 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
 def test_scanpathplot_events_is_deprecated(gaze):
     with pytest.raises(DeprecationWarning) as info:
         scanpathplot(events=gaze.events)
+    plt.close()
 
     regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
 
