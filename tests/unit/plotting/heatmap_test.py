@@ -198,7 +198,6 @@ def test_heatmap_invalid_position_columns(args):
 
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
         heatmap(gaze=args[0], position_column=position_column, show=False)
-    plt.close()
 
 
 def test_heatmap_no_experiment_property():
@@ -213,4 +212,3 @@ def test_heatmap_no_experiment_property():
 
     with pytest.raises(ValueError):
         heatmap(gaze, show=False)
-    plt.close()

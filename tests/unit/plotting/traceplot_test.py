@@ -217,13 +217,11 @@ def test_traceplot_exceptions(gaze, kwargs, exception, monkeypatch):
 
     with pytest.raises(exception):
         pm.plotting.traceplot(gaze=gaze, **kwargs)
-    plt.close()
 
 
 def test_traceplot_no_experiment(gaze_no_exp):
     # Should not raise any exception
     pm.plotting.traceplot(gaze_no_exp, show=False)
-    plt.close()
 
 
 @pytest.mark.parametrize(
@@ -241,11 +239,9 @@ def test_traceplot_screen_dims(gaze, width, height):
     gaze.experiment.screen.height_px = height
 
     pm.plotting.traceplot(gaze=gaze, show=False)
-    plt.close()
 
 
 def test_traceplot_origin_wrong(gaze):
     gaze.experiment.screen.origin = 'bottom right'
     with pytest.raises(ValueError, match="only 'upper left' is supported"):
         pm.plotting.traceplot(gaze=gaze, show=False)
-    plt.close()
