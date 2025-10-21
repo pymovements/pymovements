@@ -40,12 +40,12 @@ def event_fixture():
     yield Events(
         pl.DataFrame(
             data={
-                'trial': [1, 1],
-                'name': ['foo', 'foo'],
-                'onset': [0, 2],
-                'offset': [1, 3],
-                'duration': [1, 1],
-                'location': [(1, 2), (2, 3)],
+                'trial': [1, 1, 1],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 2, 5],
+                'offset': [1, 3, 9],
+                'duration': [1, 1, 4],
+                'location': [(1, 2), (2, 3), (6, 3)],
             },
         ),
     ).clone()
@@ -166,6 +166,22 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
     scanpathplot(gaze=gaze, show=False)
     plt.close()
     mock.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ('event_name', 'expected_n_circles'),
+    [
+        pytest.param('fixation', 2, id='fixation'),
+        pytest.param('saccade', 1, id='saccade'),
+        pytest.param('foo', 0, id='foo'),
+    ]
+)
+def test_scanpathplot_filter_events(event_name, expected_n_circles, gaze):
+    fig, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
+    plt.close()
+
+    assert len(ax.patches) == expected_n_circles
+    assert all(isinstance(patch, plt.Circle) for patch in ax.patches)
 
 
 def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
