@@ -173,5 +173,5 @@ def test_main_sequence_plot_sets_title():
         'peak_velocity': [100.0, 200.0],
     })
     events = pm.Events(df)
-    fig, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
+    _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
     assert ax.get_title() == 'Main Sequence'

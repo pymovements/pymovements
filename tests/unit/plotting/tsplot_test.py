@@ -115,5 +115,5 @@ def test_tsplot_save(gaze, monkeypatch, tmp_path):
 
 
 def test_tsplot_sets_title(gaze):
-    fig, ax = pm.plotting.tsplot(gaze, title='My Title', show=False)
+    _, ax = pm.plotting.tsplot(gaze, title='My Title', show=False)
     assert ax.get_title() == 'My Title'
