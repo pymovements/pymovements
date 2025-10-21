@@ -349,6 +349,9 @@ def parse_eyelink(
             events['offset'].append(event_offset)
 
             for additional_column in additional_columns:
+                # if an event end is found but there is no start, warn the user --> corrupt file
+                if additional_column not in current_event_additional[event_name]:
+                    current_event_additional[event_name][additional_column] = None
                 events[additional_column].append(
                     current_event_additional[event_name][additional_column],
                 )
