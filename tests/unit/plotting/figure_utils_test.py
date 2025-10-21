@@ -166,6 +166,7 @@ def test_set_screen_axes_valid():
     _set_screen_axes(ax, screen, func_name='dummyplot')
     assert ax.get_xlim() == (0, 1280)
     assert ax.get_ylim() == (720, 0)
+    assert ax.get_aspect() == 1
     plt.close(fig)
 
 
@@ -195,8 +196,14 @@ class DummyScreen(Screen):
 def test_set_screen_axes_none_dimensions_returns(width, height):
     """Should return silently when dimensions are None (no ValueError)."""
     fig, ax = plt.subplots()
+    default_xlim = ax.get_xlim()
+    default_ylim = ax.get_ylim()
     screen = DummyScreen(width_px=width, height_px=height, origin='upper left')
     _set_screen_axes(ax, screen, func_name='dummyplot')  # should not raise
+
+    assert ax.get_xlim() == default_xlim
+    assert ax.get_ylim() == default_ylim
+
     plt.close(fig)
 
 
