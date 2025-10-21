@@ -17,10 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Pytest configuration for plotting tests.
-
-Defines global fixtures to ensure Matplotlib figures are closed after each test.
-"""
+"""Pytest configuration for plotting tests."""
 from __future__ import annotations
 
 from collections.abc import Generator
