@@ -1192,15 +1192,28 @@ def test_detect_events_raises_column_not_found_error(
 )
 def test_clear_events(events_init, events_expected, tmp_path):
     dataset = Dataset('ToyDataset', path=tmp_path)
+
+    num_gazes = len(events_init)
+
+    # add dummy gazes so events and gazes stay in sync
+    for _ in range(num_gazes):
+        dummy_gaze = Gaze(
+            pl.DataFrame({
+                'time': [],
+                'pixel_x': [],
+                'pixel_y': [],
+            }),
+            pixel_columns=['pixel_x', 'pixel_y'],
+            time_column='time',
+            time_unit='ms',
+        )
+        dataset.gaze.append(dummy_gaze)
+
     dataset.events = events_init
     dataset.clear_events()
 
-    if isinstance(events_init, list) and not events_init:
-        assert dataset.events == events_expected
-
-    else:
-        for events_df_result, events_df_expected in zip(dataset.events, events_expected):
-            assert_frame_equal(events_df_result.frame, events_df_expected.frame)
+    for events_df_result, events_df_expected in zip(dataset.events, events_expected):
+        assert_frame_equal(events_df_result.frame, events_df_expected.frame)
 
 
 @pytest.mark.parametrize(
@@ -1304,7 +1317,7 @@ def test_load_previously_saved_events_gaze(
     dataset.save_events(events_dirname, **load_save_kwargs)
     dataset.save_preprocessed(**load_save_kwargs)
 
-    dataset.events = []
+    dataset.clear_events()
 
     dataset.load(events=True, preprocessed=True, events_dirname=events_dirname, **load_save_kwargs)
     assert dataset.events
@@ -2145,3 +2158,79 @@ def test_drop_event_property(gaze_dataset_configuration):
         dataset.drop_event_properties('onset')
     assert str(exinfo.value).startswith("The column 'onset' cannot be removed")
     assert 'onset' in dataset.gaze[0].events.columns
+
+
+def test_events_setter_raises_on_length_mismatch(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    # Add one gaze
+    dataset.gaze.append(
+        Gaze(
+            pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+            pixel_columns=['pixel_x', 'pixel_y'],
+            time_column='time', time_unit='ms',
+        ),
+    )
+    # Try to assign two events for one gaze
+    with pytest.raises(ValueError, match='Number of events'):
+        dataset.events = [Events(), Events()]
+
+
+@pytest.mark.parametrize('n_gazes', [1, 3])
+def test_events_getter_reflects_gazes(tmp_path, n_gazes):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+
+    for _ in range(n_gazes):
+        dataset.gaze.append(
+            Gaze(
+                pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+                pixel_columns=['pixel_x', 'pixel_y'],
+                time_column='time', time_unit='ms',
+            ),
+        )
+
+    assert len(dataset.events) == n_gazes
+    for i, ev in enumerate(dataset.events):
+        assert isinstance(ev, Events)
+        assert ev.frame.is_empty()
+        assert ev is dataset.gaze[i].events
+
+
+def test_events_setter_updates_gaze_events(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+
+    for _ in range(3):
+        dataset.gaze.append(
+            Gaze(
+                pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+                pixel_columns=['pixel_x', 'pixel_y'],
+                time_column='time', time_unit='ms',
+            ),
+        )
+
+    # create 3 Events objects
+    ev_list = [Events(), Events(), Events()]
+    dataset.events = ev_list
+    for i, ev in enumerate(dataset.events):
+        assert ev is ev_list[i]
+        assert ev is dataset.gaze[i].events
+
+
+def test_events_setter_identity_preserved(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    for _ in range(3):
+        dataset.gaze.append(
+            Gaze(
+                pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+                pixel_columns=['pixel_x', 'pixel_y'],
+                time_column='time', time_unit='ms',
+            ),
+        )
+
+    ev = Events(pl.DataFrame({'onset': [2], 'offset': [3], 'name': ['saccade']}))
+    dataset.gaze[2].events = ev
+    assert dataset.gaze[2].events is ev
+    assert dataset.events[2] is ev
+    assert dataset.gaze[0].events is not ev
+    assert dataset.events[0] is not ev
+    assert dataset.gaze[1].events is not ev
+    assert dataset.events[1] is not ev
