@@ -241,7 +241,7 @@ def _setup_axes_and_colormap(
             x_pad = (np.nanmax(x_signal) - np.nanmin(x_signal)) * pad_factor
             y_pad = (np.nanmax(y_signal) - np.nanmin(y_signal)) * pad_factor
         elif padding is None and n == 0:
-            x_pad, y_pad  = 0, 0
+            x_pad, y_pad = 0, 0
         else:
             x_pad = padding
             y_pad = padding

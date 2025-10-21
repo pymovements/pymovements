@@ -174,7 +174,7 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
         pytest.param('fixation', 2, id='fixation'),
         pytest.param('saccade', 1, id='saccade'),
         pytest.param('foo', 0, id='foo'),
-    ]
+    ],
 )
 def test_scanpathplot_filter_events(event_name, expected_n_circles, gaze):
     fig, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
