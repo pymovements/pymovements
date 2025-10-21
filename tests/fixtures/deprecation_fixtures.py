@@ -33,7 +33,7 @@ def fixture_assert_deprecation_is_removed():
             function_name: str,
             warning_message: str,
             scheduled_version: str,
-            current_version: str,
+            current_version: str = __version__,
     ) -> None:
         """Assert that function deprecation is removed as scheduled.
 
