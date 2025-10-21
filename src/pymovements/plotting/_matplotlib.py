@@ -348,10 +348,7 @@ def _set_screen_axes(
     if screen.width_px is None or screen.height_px is None:
         return
 
-    if (
-        screen.width_px is None or screen.height_px is None
-        or screen.width_px <= 0 or screen.height_px <= 0
-    ):
+    if screen.width_px <= 0 or screen.height_px <= 0:
         raise ValueError(
             f'{func_name}: screen width and height must be positive, '
             f'got width={screen.width_px}, height={screen.height_px}.',
