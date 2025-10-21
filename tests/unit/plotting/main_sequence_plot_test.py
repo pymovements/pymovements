@@ -80,7 +80,7 @@ def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(monkey
     show_mock.assert_not_called()
     close_mock.assert_not_called()
 
-    plt.close(fig)
+    
 
 
 def make_events(rows: list[dict]) -> pm.Events:
@@ -106,7 +106,7 @@ def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch
     with pytest.warns(DeprecationWarning):
         fig, ax = pm.plotting.main_sequence_plot(event_df=event_df, show=False)
     assert fig is ax.figure
-    plt.close(fig)
+    
 
 
 def test_main_sequence_plot_raises_on_empty_events():
@@ -177,7 +177,4 @@ def test_main_sequence_plot_sets_title():
     })
     events = pm.Events(df)
     fig, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
-    try:
-        assert ax.get_title() == 'Main Sequence'
-    finally:
-        plt.close(fig)
+    assert ax.get_title() == 'Main Sequence'
