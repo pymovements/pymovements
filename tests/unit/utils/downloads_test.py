@@ -143,5 +143,5 @@ def test_is_download_function_removed(download_function, tmp_path, assert_deprec
         function_name='utils/downloads.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        current_version=__version__,
+        
     )

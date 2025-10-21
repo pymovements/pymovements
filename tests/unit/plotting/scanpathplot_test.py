@@ -230,5 +230,5 @@ def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
         function_name='scanpathplot() argument events',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        current_version=__version__,
+        
     )

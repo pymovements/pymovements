@@ -410,7 +410,7 @@ def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed
         function_name='ResourceDefinitions.from_dict()',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        current_version=__version__,
+        
     )
 
 
@@ -722,5 +722,5 @@ def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecatio
         function_name='from_dict() key "resources"',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        current_version=__version__,
+        
     )

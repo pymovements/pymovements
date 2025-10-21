@@ -68,5 +68,5 @@ def test_get_aoi_removed(text_stimulus, assert_deprecation_is_removed):
         function_name='utils/parsing.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        current_version=__version__,
+        
     )

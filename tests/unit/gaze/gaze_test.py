@@ -1136,7 +1136,7 @@ def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed)
         function_name=f'Gaze.{attribute}',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        current_version=__version__,
+        
     )
 
 

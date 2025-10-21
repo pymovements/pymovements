@@ -103,5 +103,5 @@ def test_plotting_function_removed(plotting_function, kwargs, assert_deprecation
         function_name='utils/filters.py',
         warning_message=info.value.args[0],
         scheduled_version='0.27.0',
-        current_version=__version__,
+        
     )

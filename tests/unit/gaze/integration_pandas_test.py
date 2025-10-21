@@ -181,5 +181,5 @@ def test_from_pandas_data_argument_is_removed(assert_deprecation_is_removed):
         function_name='from_pandas() keyword argument data',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-        current_version=__version__,
+        
     )

@@ -22,6 +22,8 @@ import re
 
 import pytest
 
+from pymovements import __version__
+
 
 @pytest.fixture(name='assert_deprecation_is_removed', scope='session')
 def fixture_assert_deprecation_is_removed():

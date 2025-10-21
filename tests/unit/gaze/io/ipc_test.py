@@ -106,5 +106,5 @@ def test_from_ipc_parameter_is_deprecated(
         function_name=f'keyword argument {list(kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version='0.29.0',
-        current_version=__version__,
+        
     )

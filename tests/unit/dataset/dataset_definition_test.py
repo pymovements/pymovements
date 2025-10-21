@@ -847,7 +847,7 @@ def test_dataset_definition_attribute_is_deprecated_or_removed(
         function_name=f'keyword argument {list(attribute_kwarg.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version=scheduled_version,
-        current_version=__version__,
+        
     )
 
 
@@ -1016,5 +1016,5 @@ def test_dataset_definition_get_attribute_is_removed(
         function_name=f'DatasetDefinition.{attribute}',
         warning_message=info.value.args[0],
         scheduled_version=scheduled_version,
-        current_version=__version__,
+        
     )
