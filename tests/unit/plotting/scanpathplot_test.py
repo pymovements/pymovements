@@ -68,7 +68,18 @@ def event_fixture(request):
                 'location': [(1, 2)],
             },
         )
-    elif request.param == '2_fixations':
+    elif request.param == '2_events':
+        events = pl.DataFrame(
+            data={
+                'trial': [1, 1],
+                'name': ['fixation', 'saccade'],
+                'onset': [0, 2],
+                'offset': [1, 3],
+                'duration': [1, 1],
+                'location': [(1, 2), (2, 3)],
+            },
+        )
+    elif request.param == '2_fixations_equal_location':
         events = pl.DataFrame(
             data={
                 'trial': [1, 1],
@@ -76,7 +87,7 @@ def event_fixture(request):
                 'onset': [0, 2],
                 'offset': [1, 3],
                 'duration': [1, 1],
-                'location': [(1, 2), (2, 3)],
+                'location': [(1, 1), (2, 2)],
             },
         )
     elif request.param == '3_events':
