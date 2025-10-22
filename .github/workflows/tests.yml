@@ -57,16 +57,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore cached environment
-        id: cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          key:
-            test-${{ matrix.os }}-${{ matrix.tox_env }}-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
-          path: |
-            ~/.cache
-            ~/.tox
-
       - name: Setup python
         uses: actions/setup-python@v5
         with:
@@ -77,16 +67,6 @@ jobs:
 
       - name: Setup test environment
         run: tox -vv --notest -e ${{ matrix.tox_env }}
-
-      - name: Cache environment
-        uses: actions/cache/save@v4
-        if: github.ref == 'refs/heads/main'
-        with:
-          key:
-            ${{ steps.cache-restore.outputs.cache-primary-key }}
-          path: |
-            ~/.cache
-            ~/.tox
 
       - name: Run test
         run: tox --skip-pkg-install -e ${{ matrix.tox_env }}
