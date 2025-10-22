@@ -70,6 +70,7 @@ extensions = [
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
     'nbsphinx',
+    'myst_nb',
 ]
 
 
