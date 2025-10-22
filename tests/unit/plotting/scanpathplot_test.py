@@ -40,7 +40,8 @@ from pymovements.plotting import scanpathplot
     params=[
         '0_events',
         '1_fixation',
-        '2_fixations',
+        '2_fixations_equal_location',
+        '2_events',
         '3_events',
     ],
     scope='function',
@@ -68,17 +69,6 @@ def event_fixture(request):
                 'location': [(1, 2)],
             },
         )
-    elif request.param == '2_events':
-        events = pl.DataFrame(
-            data={
-                'trial': [1, 1],
-                'name': ['fixation', 'saccade'],
-                'onset': [0, 2],
-                'offset': [1, 3],
-                'duration': [1, 1],
-                'location': [(1, 2), (2, 3)],
-            },
-        )
     elif request.param == '2_fixations_equal_location':
         events = pl.DataFrame(
             data={
@@ -88,6 +78,17 @@ def event_fixture(request):
                 'offset': [1, 3],
                 'duration': [1, 1],
                 'location': [(1, 1), (2, 2)],
+            },
+        )
+    elif request.param == '2_events':
+        events = pl.DataFrame(
+            data={
+                'trial': [1, 1],
+                'name': ['fixation', 'saccade'],
+                'onset': [0, 2],
+                'offset': [1, 3],
+                'duration': [1, 1],
+                'location': [(1, 2), (2, 3)],
             },
         )
     elif request.param == '3_events':
