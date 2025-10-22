@@ -140,7 +140,7 @@ class Experiment:
         if messages is not None:
             if not isinstance(messages, DataFrame):
                 raise TypeError(
-                    "The `messages` must be a polars DataFrame with columns ['time', 'content'],"
+                    "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
                     f"not {type(messages)}.",
                 )
             required_cols = {'time', 'content'}
