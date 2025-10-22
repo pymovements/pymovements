@@ -20,7 +20,6 @@
 """Tests deprecated GazeDataFrame alias for Gaze."""
 import pytest
 
-
 from pymovements import Gaze
 from pymovements import GazeDataFrame
 
