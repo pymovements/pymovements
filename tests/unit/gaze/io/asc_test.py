@@ -984,20 +984,36 @@ def test_from_asc_example_file_has_expected_events(
 @pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
 @pytest.mark.parametrize(
-    ('header', 'body', 'expected_warning', 'expected_message'),
+    ('header', 'body', 'expected_warning', 'expected_message', 'from_asc_kwargs'),
     [
         pytest.param(
             '', 'END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
             UserWarning, 'END recording message without associated START recording message',
+            {},
             id='no_start_recording',
+        ),
+        pytest.param(
+            '', '\n',
+            UserWarning, 'Experiment already has messages, overwriting them with newly parsed ones',
+            {
+                'experiment': Experiment(
+                    messages=pl.DataFrame(
+                        schema={'time': pl.Float64, 'content': pl.String},
+                    ),
+                ),
+            },
+            id='overwriting_messages',
         ),
     ],
 )
-def test_from_asc_warns(header, body, expected_warning, expected_message, make_custom_asc_file):
+def test_from_asc_warns(
+    header, body, expected_warning, expected_message,
+    make_custom_asc_file, from_asc_kwargs,
+):
     filepath = make_custom_asc_file(filename='test.asc', header=header, body=body)
 
     with pytest.warns(expected_warning, match=expected_message):
-        from_asc(filepath)
+        from_asc(filepath, **from_asc_kwargs)
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')

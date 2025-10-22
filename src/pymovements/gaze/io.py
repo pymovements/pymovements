@@ -511,7 +511,7 @@ def from_asc(
     experiment = _fill_experiment_from_parsing_metadata(experiment, metadata)
 
     # Add parsed messages to experiment
-    if experiment.messages:
+    if experiment.messages is not None:
         warnings.warn('Experiment already has messages, overwriting them with newly parsed ones.')
     experiment.messages = messages_df
 
