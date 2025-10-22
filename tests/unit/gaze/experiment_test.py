@@ -299,9 +299,8 @@ def test_experiment_bool(experiment, expected_bool):
 def test_experiment_messages_must_be_polars_dataframe(bad_messages):
     """Ensure that non-DataFrame `messages` raises a TypeError with exact message."""
     expected = (
-        f"The `messages` must be a polars DataFrame with columns ['time', 'content'], not {
-            type(bad_messages)
-        }."
+        f"The `messages` must be a polars DataFrame with columns ['time', 'content'], "
+        f"not {type(bad_messages)}."
     )
     with pytest.raises(TypeError, match=escape(expected)):
         Experiment(messages=bad_messages)
