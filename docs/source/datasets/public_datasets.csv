@@ -28,5 +28,6 @@ Dataset,Citation,Samples,Events,Reading Measures,# Subjects,# Sessions per Subje
 :py:class:`~pymovements.datasets.PotsdamBingeRemotePVT`,:cite:p:`PotsdamBingePVT`,X,,,57,2,1000 Hz,Dots (PVT test)
 :py:class:`~pymovements.datasets.PotsdamBingeWearablePVT`,:cite:p:`PotsdamBingePVT`,X,,,57,2,200 Hz (upsampled to 1000 Hz),Dots (PVT test)
 :py:class:`~pymovements.datasets.Provo`,:cite:p:`Provo`,,X,,470,1,1000 Hz,Text (documents)
+:py:class:`~pymovements.datasets.RaCCooNS`,:cite:p:`RaCCooNS`,X,X,X,37,1,1000 Hz,Text (sentences)
 :py:class:`~pymovements.datasets.SBSAT`,:cite:p:`SB-SAT`,X,X,,95,1,1000 Hz,Text (documents)
 :py:class:`~pymovements.datasets.UCL`,:cite:p:`UCL`,,X,X,43,1,500 Hz,Text (sentences)
