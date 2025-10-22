@@ -65,7 +65,7 @@ class Experiment:
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
     messages: DataFrame | None
         DataFrame containing messages from the experiment.
-        The columns are 'timestamp' (i64) and 'content' (str). (default: None)
+        The required columns are 'time' and 'content'. (default: None)
 
     Examples
     --------
@@ -81,7 +81,7 @@ class Experiment:
     >>> print(experiment)
     Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
      distance_cm=68.0, origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None))
+      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
 
     We can also access the screen boundaries in degrees of visual angle via the
     :py:attr:`~pymovements.gaze.Screen` object. This only works if the
@@ -137,6 +137,17 @@ class Experiment:
         if self.sampling_rate is not None:
             _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
 
+        if messages is not None:
+            if not isinstance(messages, DataFrame):
+                raise TypeError(
+                    "The `messages` must be a polars DataFrame with columns ['time', 'content'],"
+                    f"not {type(messages)}.",
+                )
+            required_cols = {'time', 'content'}
+            if not required_cols.issubset(set(messages.columns)):
+                raise TypeError(
+                    "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
+                )
         self.messages = messages
 
     @staticmethod
@@ -169,7 +180,8 @@ class Experiment:
         Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
                                  distance_cm=68.0, origin=None),
                    eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
-                                        model=None, version=None, vendor=None, mount=None))
+                                        model=None, version=None, vendor=None, mount=None),
+                                        messages=None)
 
         The same result using nested dictionaries for `screen` and `eyetracker`:
 
@@ -190,7 +202,8 @@ class Experiment:
         Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
                                  distance_cm=68.0, origin='upper left'),
                    eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
-                                        model=None, version=None, vendor=None, mount=None))
+                                        model=None, version=None, vendor=None, mount=None),
+                                        messages=None)
 
         Returns
         -------
@@ -309,12 +322,28 @@ class Experiment:
             data['eyetracker'] = self.eyetracker.to_dict(exclude_none=exclude_none)
         if self.screen or not exclude_none:
             data['screen'] = self.screen.to_dict(exclude_none=exclude_none)
+        if self.messages is not None:
+            data['messages'] = self.messages.to_dict(as_series=False)
 
         return data
 
     def __str__(self: Experiment) -> str:
-        """Return Experiment string."""
-        return f'{type(self).__name__}(screen={self.screen}, eyetracker={self.eyetracker})'
+        """Return Experiment string.
+
+        The messages field expresses:
+        - 'messages=None' if no messages are provided.
+        - 'messages=<N> rows' if a messages DataFrame is provided,
+          where N is the number of rows.
+        """
+        if self.messages is None:
+            messages_repr = 'None'
+        else:
+            # polars DataFrame: use height (number of rows)
+            messages_repr = f"{self.messages.height} rows"
+        return (
+            f"{type(self).__name__}(screen={self.screen}, "
+            f"eyetracker={self.eyetracker}, messages={messages_repr})"
+        )
 
     def __bool__(self) -> bool:
         """Return True if the experiment has data defined, else False."""
