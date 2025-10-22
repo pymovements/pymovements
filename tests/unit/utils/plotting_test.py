@@ -20,7 +20,7 @@
 """Test pymovements plotting utils."""
 import re
 
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -38,7 +38,7 @@ from pymovements.utils.plotting import setup_matplotlib
     ],
 )
 def axes_fixture(request):
-    fig = matplotlib.pyplot.figure(figsize=request.param)
+    fig = plt.figure(figsize=request.param)
     yield fig.gca()
 
 
@@ -58,17 +58,20 @@ def axes_fixture(request):
 )
 def test_setup_matplotlib(kwargs):
     setup_matplotlib(**kwargs)
+    plt.close()
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_draw_image_stimulus(axes, make_example_file):
     filepath = make_example_file('pexels-zoorg-1000498.jpg')
     draw_image_stimulus(image_stimulus=filepath, ax=axes)
+    plt.close()
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_draw_line_data(axes):
     draw_line_data(x_signal=np.array([0.0, 0.0]), y_signal=np.array([0.0, 0.0]), ax=axes)
+    plt.close()
 
 
 @pytest.mark.parametrize(
@@ -100,6 +103,7 @@ def test_draw_line_data(axes):
 def test_plotting_function_deprecated(plotting_function, kwargs):
     with pytest.raises(DeprecationWarning):
         plotting_function(**kwargs)
+    plt.close()
 
 
 @pytest.mark.parametrize(
@@ -131,6 +135,7 @@ def test_plotting_function_deprecated(plotting_function, kwargs):
 def test_plotting_function_removed(plotting_function, kwargs):
     with pytest.raises(DeprecationWarning) as info:
         plotting_function(**kwargs)
+    plt.close()
 
     regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
 

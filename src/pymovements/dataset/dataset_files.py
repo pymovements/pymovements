@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -627,7 +628,7 @@ def add_fileinfo(
 
 
 def save_events(
-        events: list[Events],
+        events: Sequence[Events],
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
         events_dirname: str | None = None,
@@ -641,8 +642,8 @@ def save_events(
 
     Parameters
     ----------
-    events: list[Events]
-        The event dataframes to save.
+    events: Sequence[Events]
+        A sequence of :py:class:`pymovements.Events` objects to save.
     fileinfo: pl.DataFrame
         A dataframe holding file information.
     paths: DatasetPaths

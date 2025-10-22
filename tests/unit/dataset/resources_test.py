@@ -52,6 +52,16 @@ from pymovements import ResourceDefinitions
                 'content': 'gaze',
                 'filename': 'test.csv',
                 'url': 'https://example.com',
+                'mirrors': ['https://mirror.com'],
+            },
+            id='gaze_content_filename_mirror',
+        ),
+
+        pytest.param(
+            {
+                'content': 'gaze',
+                'filename': 'test.csv',
+                'url': 'https://example.com',
                 'md5': 'abcdefgh',
             },
             id='gaze_content_filename_url_md5',
@@ -93,15 +103,23 @@ def test_resource_is_equal(kwargs):
 
         pytest.param(
             ResourceDefinition(
-                content='gaze',
-                filename='test.csv',
-                url='https://example.com',
+                content='gaze', filename='test.csv', url='https://example.com',
+                mirrors=['https://this.mirror.com'],
+            ),
+            ResourceDefinition(
+                content='gaze', filename='test.csv', url='https://examples.com',
+                mirrors=['https://that.mirror.com'],
+            ),
+            id='different_mirror',
+        ),
+
+        pytest.param(
+            ResourceDefinition(
+                content='gaze', filename='test.csv', url='https://example.com',
                 md5='abcdefgh',
             ),
             ResourceDefinition(
-                content='gaze',
-                filename='test.csv',
-                url='https://example.com',
+                content='gaze', filename='test.csv', url='https://example.com',
                 md5='ijklmnop',
             ),
             id='different_md5',
@@ -193,6 +211,23 @@ def test_resource_is_not_equal(resource1, resource2):
                 md5=None,
             ),
             id='content_filename_url',
+        ),
+
+        pytest.param(
+            {
+                'content': 'gaze',
+                'filename': 'test.csv',
+                'url': 'https://example.com',
+                'mirrors': ['https://mirror.com'],
+            },
+            ResourceDefinition(
+                content='gaze',
+                filename='test.csv',
+                url='https://example.com',
+                mirrors=['https://mirror.com'],
+                md5=None,
+            ),
+            id='content_filename_url_mirror',
         ),
 
         pytest.param(
