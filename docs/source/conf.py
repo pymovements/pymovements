@@ -139,13 +139,17 @@ html_theme_options = {
     },
 }
 
+# -- MyST configuration --------------------------------------------------
+
+myst_links_external_new_tab = True
+
 # -- Options for favicons
 
 favicons = [
     {'href': 'icon.svg'},
 ]
 
-# -- Options for juypter notebooks
+# -- Options for jupyter notebooks
 
 nbsphinx_execute = 'auto'
 
