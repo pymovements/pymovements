@@ -101,7 +101,7 @@ import pytest
         ),
     ],
 )
-def test_assert_deprecation_fixation_test_assert_false(
+def test_assert_deprecation_fixture_test_assert_false(
         function_name, warning_message, scheduled_version, current_version, assertion_message,
         assert_deprecation_is_removed,
 ):
@@ -143,7 +143,7 @@ def test_assert_deprecation_fixation_test_assert_false(
         ),
     ],
 )
-def test_assert_deprecation_fixation_test_assert_true(
+def test_assert_deprecation_fixture_test_assert_true(
         function_name, warning_message, scheduled_version, current_version,
         assert_deprecation_is_removed,
 ):
