@@ -237,20 +237,24 @@ def _setup_axes_and_colormap(
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-        if padding is None and n > 0:
-            x_pad = (np.nanmax(x_signal) - np.nanmin(x_signal)) * pad_factor
-            y_pad = (np.nanmax(y_signal) - np.nanmin(y_signal)) * pad_factor
-        else:
-            x_pad = padding
-            y_pad = padding
+        if n > 0:  # autoset axes limits if there is at least one data point
+            x_min, x_max = np.nanmax(x_signal) - np.nanmin(x_signal)
+            y_min, y_max = np.nanmax(y_signal) - np.nanmin(y_signal)
+        
+            if padding is None:  # dynamic padding relative to data range
+                x_pad = (x_max - x_min) * pad_factor
+                y_pad = (y_max - y_min) * pad_factor
+            else:  # static padding
+                x_pad = padding
+                y_pad = padding
 
-        if n > 1:
-            x_min, x_max = np.nanmin(x_signal) - x_pad, np.nanmax(x_signal) + x_pad
-            y_min, y_max = np.nanmin(y_signal) - y_pad, np.nanmax(y_signal) + y_pad
-            if x_min != x_max:
-                ax.set_xlim()
+            x_min, x_max = x_min - x_pad, x_max + x_pad
+            y_min, y_max = y_min - y_pad, y_max + y_pad
+
+            if x_min != x_max:  # values must not be equal to set axis limits
+                ax.set_xlim(x_min, x_max)
             if y_min != y_max:
-                ax.set_ylim()
+                ax.set_ylim(y_min, y_max)
 
         ax.invert_yaxis()
 
