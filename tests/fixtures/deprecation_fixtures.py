@@ -24,8 +24,6 @@ import re
 
 import pytest
 
-from pymovements import __version__
-
 
 @pytest.fixture(name='assert_deprecation_is_removed', scope='session')
 def fixture_assert_deprecation_is_removed():
@@ -37,7 +35,7 @@ def fixture_assert_deprecation_is_removed():
             function_name: str,
             warning_message: str,
             scheduled_version: str,
-            current_version: str | None = None,
+            current_version: str,
     ) -> None:
         """Assert that function deprecation is removed as scheduled.
 
@@ -49,7 +47,7 @@ def fixture_assert_deprecation_is_removed():
             The DeprecationWarning message.
         scheduled_version: str
             The version that is scheduled for removal of the deprecated feature (without leading v).
-        current_version: str | None
+        current_version: str
             The current version without the leading v. If ``None``, use ``pymovements.__version__``.
             (default: None)
 
@@ -62,9 +60,6 @@ def fixture_assert_deprecation_is_removed():
             deprecated feature.
 
         """
-        if current_version is None:
-            current_version = __version__
-
         match = regex.match(warning_message)
 
         if not match:
