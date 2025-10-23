@@ -20,8 +20,6 @@
 """Test deprecation fixtures."""
 import pytest
 
-from pymovements import __version__
-
 
 @pytest.mark.parametrize(
     (
@@ -103,7 +101,7 @@ from pymovements import __version__
         ),
     ],
 )
-def test_assert_deprecation_fixture_assert_false(
+def test_assert_deprecation_fixation_test_assert_false(
         function_name, warning_message, scheduled_version, current_version, assertion_message,
         assert_deprecation_is_removed,
 ):
@@ -113,25 +111,6 @@ def test_assert_deprecation_fixture_assert_false(
             warning_message=warning_message,
             scheduled_version=scheduled_version,
             current_version=current_version,
-        )
-
-
-def test_assert_deprecation_fixture_default_current_version_assert_false(
-        assert_deprecation_is_removed,
-):
-    scheduled_version = __version__.split('+')[0].split('-')[0]
-    warning_message = f'(This module will be removed in v{scheduled_version}.)'
-
-    assertion_message = (
-        f'scheduled .* removed in v{scheduled_version}.'
-        f' Current version is v{scheduled_version}'
-    )
-
-    with pytest.raises(AssertionError, match=assertion_message):
-        assert_deprecation_is_removed(
-            function_name='my_function',
-            warning_message=warning_message,
-            scheduled_version=scheduled_version,
         )
 
 
@@ -164,7 +143,7 @@ def test_assert_deprecation_fixture_default_current_version_assert_false(
         ),
     ],
 )
-def test_assert_deprecation_fixture_assert_true(
+def test_assert_deprecation_fixation_test_assert_true(
         function_name, warning_message, scheduled_version, current_version,
         assert_deprecation_is_removed,
 ):

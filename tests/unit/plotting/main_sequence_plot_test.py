@@ -80,6 +80,8 @@ def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(monkey
     show_mock.assert_not_called()
     close_mock.assert_not_called()
 
+    plt.close(fig)
+
 
 def make_events(rows: list[dict]) -> pm.Events:
     return pm.Events(pl.DataFrame(rows))
@@ -104,6 +106,7 @@ def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch
     with pytest.warns(DeprecationWarning):
         fig, ax = pm.plotting.main_sequence_plot(event_df=event_df, show=False)
     assert fig is ax.figure
+    plt.close(fig)
 
 
 def test_main_sequence_plot_raises_on_empty_events():
@@ -128,7 +131,6 @@ def test_main_sequence_plot_raises_when_no_saccades():
     events = pm.Events(df)
     with pytest.raises(ValueError):
         pm.plotting.main_sequence_plot(events=events, show=False)
-    plt.close()
 
 
 def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
@@ -145,7 +147,6 @@ def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
     events = pm.Events(df)
     with pytest.raises(KeyError):
         pm.plotting.main_sequence_plot(events=events, show=False)
-    plt.close()
 
 
 def test_main_sequence_plot_keyerror_when_missing_amplitude():
@@ -162,7 +163,6 @@ def test_main_sequence_plot_keyerror_when_missing_amplitude():
     events = pm.Events(df)
     with pytest.raises(KeyError):
         pm.plotting.main_sequence_plot(events=events, show=False)
-    plt.close()
 
 
 def test_main_sequence_plot_sets_title():
@@ -176,5 +176,8 @@ def test_main_sequence_plot_sets_title():
         'peak_velocity': [100.0, 200.0],
     })
     events = pm.Events(df)
-    _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
-    assert ax.get_title() == 'Main Sequence'
+    fig, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
+    try:
+        assert ax.get_title() == 'Main Sequence'
+    finally:
+        plt.close(fig)

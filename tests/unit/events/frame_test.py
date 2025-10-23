@@ -20,6 +20,7 @@
 """Tests deprecated EventDataFrame alias for Events."""
 import pytest
 
+from pymovements import __version__
 from pymovements import EventDataFrame
 from pymovements import Events
 
@@ -164,5 +165,5 @@ def test_is_event_df_removed(assert_deprecation_is_removed):
         function_name='EventDataFrame',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
+        current_version=__version__,
     )

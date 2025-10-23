@@ -24,6 +24,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements import __version__
 from pymovements import DatasetDefinition
 from pymovements import Events
 from pymovements import Experiment
@@ -2048,5 +2049,5 @@ def test_gaze_init_parameter_is_removed(init_kwargs, assert_deprecation_is_remov
         function_name=f'Gaze init argument {list(init_kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
+        current_version=__version__,
     )

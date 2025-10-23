@@ -23,6 +23,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
@@ -354,5 +355,5 @@ def test_from_numpy_data_argument_is_removed(assert_deprecation_is_removed):
         function_name='from_numpy() keyword argument "data"',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
+        current_version=__version__,
     )

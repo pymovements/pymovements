@@ -21,6 +21,7 @@
 import numpy as np
 import pytest
 
+from pymovements import __version__
 from pymovements.utils.filters import events_split_nans
 from pymovements.utils.filters import filter_candidates_remove_nans
 
@@ -46,5 +47,5 @@ def test_filter_function_removed(filter_function, assert_deprecation_is_removed)
         function_name='utils/filters.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-
+        current_version=__version__,
     )
