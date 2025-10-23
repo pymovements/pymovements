@@ -22,7 +22,6 @@ import re
 
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.paths import get_filepaths
 from pymovements.utils.paths import match_filepaths
 
@@ -42,5 +41,5 @@ def test_parse_eyelink_removed(path_function, tmp_path, assert_deprecation_is_re
         function_name='utils/paths.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        current_version=__version__,
+
     )

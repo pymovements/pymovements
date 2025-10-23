@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.plotting import draw_image_stimulus
 from pymovements.utils.plotting import draw_line_data
 from pymovements.utils.plotting import setup_matplotlib
@@ -106,5 +105,5 @@ def test_plotting_function_removed(plotting_function, kwargs, assert_deprecation
         function_name='utils/filters.py',
         warning_message=info.value.args[0],
         scheduled_version='0.27.0',
-        current_version=__version__,
+
     )

@@ -23,7 +23,6 @@ import os.path
 
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.downloads import download_and_extract_archive
 from pymovements.utils.downloads import download_file
 
@@ -143,5 +142,5 @@ def test_is_download_function_removed(download_function, tmp_path, assert_deprec
         function_name='utils/downloads.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-        current_version=__version__,
+
     )

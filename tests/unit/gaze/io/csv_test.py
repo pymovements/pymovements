@@ -21,7 +21,6 @@
 import polars as pl
 import pytest
 
-from pymovements import __version__
 from pymovements import DatasetDefinition
 from pymovements import datasets
 from pymovements.gaze import from_csv
@@ -363,5 +362,5 @@ def test_from_asc_parameter_is_deprecated(
         function_name=f'keyword argument {list(kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version='0.29.0',
-        current_version=__version__,
+
     )
