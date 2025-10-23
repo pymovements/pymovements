@@ -237,23 +237,34 @@ def _setup_axes_and_colormap(
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-        if padding is None:
+        if padding is None and n > 0:
             x_pad = (np.nanmax(x_signal) - np.nanmin(x_signal)) * pad_factor
             y_pad = (np.nanmax(y_signal) - np.nanmin(y_signal)) * pad_factor
+        elif padding is None and n == 0:
+            x_pad, y_pad = 0, 0
         else:
             x_pad = padding
             y_pad = padding
 
-        ax.set_xlim(np.nanmin(x_signal) - x_pad, np.nanmax(x_signal) + x_pad)
-        ax.set_ylim(np.nanmin(y_signal) - y_pad, np.nanmax(y_signal) + y_pad)
+        if n > 1:
+            x_min, x_max = np.nanmin(x_signal) - x_pad, np.nanmax(x_signal) + x_pad
+            y_min, y_max = np.nanmin(y_signal) - y_pad, np.nanmax(y_signal) + y_pad
+            if x_min != x_max:
+                ax.set_xlim()
+            if y_min != y_max:
+                ax.set_ylim()
+
         ax.invert_yaxis()
 
     if cval is None:
         cval = np.zeros(n)
         show_cbar = False
 
-    cval_max = np.nanmax(np.abs(cval))
-    cval_min = np.nanmin(cval).astype(float)
+    if len(cval) == 0:
+        cval_min, cval_max = 0, 1
+    else:
+        cval_max = np.nanmax(np.abs(cval))
+        cval_min = np.nanmin(cval).astype(float)
 
     if cmap_norm is None:
         if cval_max and cval_min < 0:

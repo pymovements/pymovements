@@ -40,12 +40,12 @@ def event_fixture():
     yield Events(
         pl.DataFrame(
             data={
-                'trial': [1, 1],
-                'name': ['foo', 'foo'],
-                'onset': [0, 2],
-                'offset': [1, 3],
-                'duration': [1, 1],
-                'location': [(1, 2), (2, 3)],
+                'trial': [1, 1, 1],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [0, 2, 5],
+                'offset': [1, 3, 9],
+                'duration': [1, 1, 4],
+                'location': [(1, 2), (2, 3), (6, 3)],
             },
         ),
     ).clone()
@@ -168,6 +168,22 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
     mock.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ('event_name', 'expected_n_circles'),
+    [
+        pytest.param('fixation', 2, id='fixation'),
+        pytest.param('saccade', 1, id='saccade'),
+        pytest.param('foo', 0, id='foo'),
+    ],
+)
+def test_scanpathplot_filter_events_plots_expected_circles(event_name, expected_n_circles, gaze):
+    _, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
+    plt.close()
+
+    assert len(ax.patches) == expected_n_circles
+    assert all(isinstance(patch, plt.Circle) for patch in ax.patches)
+
+
 def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
@@ -202,6 +218,7 @@ def test_scanpathplot_exceptions(gaze, kwargs, exception, monkeypatch):
 
     with pytest.raises(exception):
         scanpathplot(gaze=gaze, **kwargs)
+    plt.close()
 
 
 def test_scanpathplot_gaze_events_all_none_exception():
@@ -214,6 +231,7 @@ def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
     gaze.samples = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(events=None, gaze=gaze, add_traceplot=True)
+    plt.close()
 
 
 def test_scanpathplot_gaze_events_none_exception(gaze):
@@ -221,11 +239,13 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
     gaze.events = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(gaze=gaze)
+    plt.close()
 
 
 def test_scanpathplot_events_is_deprecated(gaze):
     with pytest.raises(DeprecationWarning) as info:
         scanpathplot(events=gaze.events)
+    plt.close()
 
     regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
 
