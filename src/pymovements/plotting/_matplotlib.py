@@ -240,7 +240,7 @@ def _setup_axes_and_colormap(
         if n > 0:  # autoset axes limits if there is at least one data point
             x_min, x_max = np.nanmax(x_signal) - np.nanmin(x_signal)
             y_min, y_max = np.nanmax(y_signal) - np.nanmin(y_signal)
-        
+
             if padding is None:  # dynamic padding relative to data range
                 x_pad = (x_max - x_min) * pad_factor
                 y_pad = (y_max - y_min) * pad_factor
