@@ -20,13 +20,10 @@
 """Tests pymovements.events.Events."""
 from __future__ import annotations
 
-import re
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 
 
@@ -522,18 +519,15 @@ def test_copy():
     assert_frame_equal(events.frame, events_copy.frame)
 
 
-def test_copy_removed():
+def test_copy_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         Events().copy()
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='Events.copy()',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'Events.copy() was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
 
 

@@ -18,12 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
-import re
-
 import polars as pl
 import pytest
 
-from pymovements import __version__
 from pymovements import DatasetDefinition
 from pymovements import datasets
 from pymovements.gaze import from_csv
@@ -353,19 +350,17 @@ def test_from_csv_gaze_has_expected_shape_and_columns(
         ),
     ],
 )
-def test_from_asc_parameter_is_deprecated(filename, kwargs, make_example_file):
+def test_from_asc_parameter_is_deprecated(
+        filename, kwargs, make_example_file, assert_deprecation_is_removed,
+):
     filepath = make_example_file(filename)
 
     with pytest.raises(DeprecationWarning) as info:
         from_csv(filepath, **kwargs)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name=f'keyword argument {list(kwargs.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.29.0',
 
-    msg = info.value.args[0]
-    argument_name = list(kwargs.keys())[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
