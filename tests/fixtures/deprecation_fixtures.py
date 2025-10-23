@@ -26,7 +26,7 @@ import pytest
 @pytest.fixture(name='assert_deprecation_is_removed', scope='session')
 def fixture_assert_deprecation_is_removed():
     """Assert that function deprecation is removed as scheduled."""
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]+[.][0-9]+[.][0-9]+)[.)].*')
 
     def _assert_deprecation_is_removed(
             *,
