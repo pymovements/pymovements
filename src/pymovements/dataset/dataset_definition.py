@@ -224,7 +224,7 @@ class DatasetDefinition:
     which might not be accurate for the entire dataset.
     To ensure correct data types, you can pass a dictionary to the
     ``schema_overrides`` keyword argument in ``gaze_custom_read_kwargs``.
-    Use data types from the {py:mod}`polars` library.
+    Use data types from the :py:mod:`polars` library.
     For instance:
     ``gaze_custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
