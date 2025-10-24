@@ -319,7 +319,7 @@ def _draw_line_data(
 
 def _set_screen_axes(
     ax: plt.Axes,
-    screen: Screen | None,
+    screen: Screen,
     *,
     func_name: str,
 ) -> None:
@@ -329,8 +329,8 @@ def _set_screen_axes(
     ----------
     ax : plt.Axes
         Matplotlib axes object to modify.
-    screen : Screen | None
-        Screen object from a Gaze's Experiment. If None, no changes are made.
+    screen : Screen
+        Screen object from a Gaze's Experiment.
     func_name : str
         Name of the plotting function, used in error messages.
 
@@ -341,9 +341,6 @@ def _set_screen_axes(
     ValueError
         If the screen width or height is not positive.
     """
-    if screen is None:
-        return
-
     # If screen has no pixel info, skip silently
     if screen.width_px is None or screen.height_px is None:
         return
