@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test file fixtures."""
 import filecmp
+from pathlib import Path
 
 import pytest
 
@@ -43,3 +44,59 @@ def test_make_example_file_returns_copy(filename, make_example_file, testfiles_d
 
     assert fixture_filepath != testfiles_filepath  # different filepath
     assert filecmp.cmp(fixture_filepath, testfiles_filepath)  # same content
+
+
+def test_make_text_file_accepts_relative_path_object(make_text_file):
+    p = make_text_file(Path('nested') / 'custom.txt', header='H', body='B')
+    assert p.name == 'custom.txt'
+    assert p.parent.name == 'nested'
+    print(f"dir in parent: {p.parent}")
+    assert p.exists()
+    assert p.read_text(encoding='utf-8') == 'HB'
+
+
+def test_make_text_file_rejects_non_pathlike(make_text_file):
+    with pytest.raises(TypeError, match='filename must be a str or Path, got int'):
+        make_text_file(123, header='h', body='b')
+
+
+def test_make_text_file_writes_concatenated_content(make_text_file):
+    header = 'HEADER LINE\nSECOND\n'
+    body = 'BODY LINE\nEND'
+    p = make_text_file('custom.txt', header=header, body=body)
+    assert p.name == 'custom.txt'
+    assert p.exists()
+    assert p.read_text(encoding='utf-8') == header + body
+
+
+def test_make_text_file_defaults(make_text_file):
+    p = make_text_file('default.txt')
+    assert p.exists()
+    # default header is '' and default body is '\n'
+    assert p.read_text(encoding='utf-8') == '\n'
+
+
+def test_make_text_file_non_utf8_encoding(make_text_file):
+    header = 'über header\n(seit 2017 gibt es ein großgeschriebenes ß: NĀMLICH ẞ 🤷\n'
+    body = 'Le type naïf de la fête de l\'été'
+    p = make_text_file('utf16.txt', header=header, body=body, encoding='utf-16')
+    assert p.read_text(encoding='utf-16') == header + body
+
+
+def test_make_text_file_overwrites_existing(make_text_file):
+    p1 = make_text_file('same.txt', header='A', body='B')
+    p2 = make_text_file('same.txt', header='C', body='D')
+    assert p2 == p1
+    assert p1.read_text(encoding='utf-8') == 'CD'
+
+
+def test_make_text_file_rejects_absolute_paths(make_text_file):
+    with pytest.raises(ValueError, match='relative path'):
+        make_text_file(Path('/absolute.txt'), header='h', body='b')
+    with pytest.raises(ValueError, match='relative path'):
+        make_text_file('/absolute.txt', header='h', body='b')
+
+
+def test_make_text_file_rejects_tilde_home(make_text_file):
+    with pytest.raises(ValueError, match=r"~\' \(home\) is not allowed|relative path"):
+        make_text_file('~/.secret.txt', header='h', body='b')
