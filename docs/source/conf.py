@@ -60,6 +60,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
@@ -70,6 +71,7 @@ extensions = [
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
     'nbsphinx',
+    'myst_nb',
 ]
 
 
@@ -138,13 +140,27 @@ html_theme_options = {
     },
 }
 
+# -- MyST configuration --------------------------------------------------
+
+myst_links_external_new_tab = True
+
+# -- Intersphinx options -------------------------------------------------
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
+    'polars': ('https://docs.pola.rs/api/python/stable', None),
+    'feather': ('https://arrow.apache.org/docs/', None),
+    'matplotlib': ('https://matplotlib.org/stable', None),
+}
+
 # -- Options for favicons
 
 favicons = [
     {'href': 'icon.svg'},
 ]
 
-# -- Options for juypter notebooks
+# -- Options for jupyter notebooks
 
 nbsphinx_execute = 'auto'
 
