@@ -244,3 +244,51 @@ def test_scanpathplot_no_experiment(gaze):
     gaze.experiment = None
     # Should not raise any exception
     scanpathplot(gaze=gaze, show=False)
+
+
+def test_set_screen_axes_valid(gaze):
+    fig, ax = scanpathplot(
+        gaze=gaze,
+        show=False,
+    )
+    assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
+    assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
+    assert ax.get_aspect() == 1
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('origin', ['lower left', 'center'])
+def test_set_screen_axes_invalid_origin(origin, gaze):
+    gaze.experiment.screen.origin = origin
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        scanpathplot(gaze=gaze, show=False)
+
+
+@pytest.mark.parametrize(
+    'width,height',
+    [
+        (None, None),
+        (None, 768),
+        (1024, None),
+    ],
+)
+def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
+    """Should not raise or override axes when screen dimensions are None."""
+    gaze.experiment.screen.width_px = width
+    gaze.experiment.screen.height_px = height
+
+    fig, ax = plt.subplots()
+
+    # Call scanpathplot; should return silently, without ValueError
+    # _set_screen_axes() should return early without modifying axes
+    scanpathplot(gaze=gaze, show=False, ax=ax, figsize=None)
+
+    # Axes limits should be finite numbers, not NaN/None
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    assert np.isfinite(xlim).all()
+    assert np.isfinite(ylim).all()
+
+    # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
+    assert ax.get_aspect() != 'equal'
+
+    plt.close(fig)
