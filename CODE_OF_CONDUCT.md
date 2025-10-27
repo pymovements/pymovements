@@ -1,22 +1,31 @@
 # Code of Conduct
 
-The **pymovements** community is dedicated to providing a welcoming, inclusive, and harassment-free experience for everyone.
-We expect all participants -- contributors, maintainers, users, and collaborators -- to be respectful and considerate in all project interactions.
+At **pymovements**, we are dedicated to providing a welcoming, inclusive, and harassment-free experience for everyone.
 
-## Our Standards
+It is important to us that all participants treat one another’s person and contributions with respect and dignity, regardless of race, ethnicity, caste, color, age, physical appearance, neurodiversity, disability, sex, gender, gender identity or expression, sexual orientation, language, religion or philosophical belief, national or social origin, socio-economic background, education level, or any other characteristic.
 
-Examples of positive behavior include:
+All who participate in good faith and in accordance with this Code of Conduct are entitled to the same privileges of participation, whether as contributors, maintainers, users, or collaborators.
+
+## Encouraged Behaviors
+
+We recognize that we all come from different cultures, languages, and communication styles, and that misunderstandings can easily arise in large collaborative projects. We therefore strive for patience, mindfulness, and generosity toward each other, centering our shared values:
+
 - Showing empathy and kindness toward others
 - Being respectful of differing opinions and experiences
 - Giving and receiving constructive feedback gracefully
 - Focusing on what benefits the community as a whole
+- Taking responsibility for one's own actions and contributions
+- Committing to resolving conflicts when they arise
 
-Examples of unacceptable behavior include:
+## Unacceptable Behaviors
+
+The following behaviors are considered unacceptable within our community. Any instances, threats, or promotion of such behavior constitute a violation of this Code of Conduct:
+
 - Harassment, discrimination, or personal attacks
-- Sexual or discriminatory language or imagery
+- Sexualized or discriminatory language or imagery
 - Trolling, insulting, or derogatory comments
 - Publishing private information without consent
-- Other conduct that would be inappropriate in a professional setting
+- Any other conduct that would be inappropriate in a professional setting
 
 ## Enforcement
 
