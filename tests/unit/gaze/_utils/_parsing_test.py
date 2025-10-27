@@ -370,7 +370,7 @@ def test_message_example_filtered(tmp_path, regexps, matched_lines):
 
     _, _, _, messages_df = parsing.parse_eyelink(filepath, messages=regexps)
 
-    if regexps == []:  # An empty list is considered as False - no messages
+    if matched_lines is None:
         assert messages_df is None
     else:
         assert_frame_equal(messages_df, MESSAGES_DF[matched_lines])
