@@ -247,7 +247,7 @@ def test_scanpathplot_no_experiment(gaze):
 
 
 def test_set_screen_axes_valid(gaze):
-    fig, ax = scanpathplot(
+    _, ax = scanpathplot(
         gaze=gaze,
         show=False,
     )
@@ -276,7 +276,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
     gaze.experiment.screen.width_px = width
     gaze.experiment.screen.height_px = height
 
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
 
     # Call scanpathplot; should return silently, without ValueError
     # _set_screen_axes() should return early without modifying axes

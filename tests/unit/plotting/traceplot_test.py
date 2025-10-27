@@ -205,7 +205,7 @@ def test_traceplot_no_experiment(gaze_no_exp):
 
 
 def test_set_screen_axes_valid(gaze):
-    fig, ax = pm.plotting.traceplot(
+    _, ax = pm.plotting.traceplot(
         gaze=gaze,
         show=False,
     )
@@ -234,7 +234,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
     gaze.experiment.screen.width_px = width
     gaze.experiment.screen.height_px = height
 
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     assert ax.get_aspect() != 'equal'
     # Call traceplot; should return silently, without ValueError
     # _set_screen_axes() should return early without modifying axes
