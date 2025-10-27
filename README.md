@@ -74,7 +74,7 @@ The complete reference of the package can be found here:
 
 We welcome any sort of contribution to pymovements!
 
-For a detailed guide, please refer to our [CONTRIBUTING.md](CONTRIBUTING.md) first.
+For a detailed guide, please refer to our [CONTRIBUTING.md](https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md) first.
 
 If you have any questions, please [open an issue](
 https://github.com/pymovements/pymovements/issues/new/choose) or write us at

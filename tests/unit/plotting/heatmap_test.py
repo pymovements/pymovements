@@ -140,7 +140,7 @@ def test_heatmap_show(args, kwargs, monkeypatch):
         kwargs['position_column'] = 'position'
 
     heatmap(args[0], **kwargs)
-    plt.close()
+
     mock.assert_called_once()
 
 
@@ -154,7 +154,7 @@ def test_heatmap_noshow(args, monkeypatch):
         position_column = 'position'
 
     heatmap(args[0], position_column=position_column, show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -171,7 +171,7 @@ def test_heatmap_noshow_no_pixel_or_position_column(args, monkeypatch):
     gaze.samples = gaze.samples.rename({position_column: 'custom_column'})
 
     heatmap(gaze, position_column='custom_column', show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -187,7 +187,7 @@ def test_heatmap_save(args, monkeypatch, tmp_path):
     heatmap(
         args[0], position_column=position_column, show=False, savepath=str(tmp_path / 'test.svg'),
     )
-    plt.close()
+
     mock.assert_called_once()
 
 
