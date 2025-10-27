@@ -238,8 +238,8 @@ def _setup_axes_and_colormap(
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
         if n > 0:  # autoset axes limits if there is at least one data point
-            x_max, x_min = np.nanmin(x_signal), np.nanmax(x_signal)
-            y_max, y_min = np.nanmin(y_signal), np.nanmax(y_signal)
+            x_min, x_max = np.nanmin(x_signal), np.nanmax(x_signal)
+            y_min, y_max = np.nanmin(y_signal), np.nanmax(y_signal)
 
             if padding is None:  # dynamic padding relative to data range
                 x_pad = (x_max - x_min) * pad_factor
