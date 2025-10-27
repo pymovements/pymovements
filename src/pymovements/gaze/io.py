@@ -362,7 +362,7 @@ def from_asc(
     events: bool
         Flag indicating if events should be parsed from the asc file. (default: False)
     messages: bool | list[str]
-        Flag indicating if all available messages should be parsed from the asc file
+        Flag indicating if any additional messages should be parsed from the asc file
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
         The message format is 'MSG <timestamp> <content>'.
         If True, all available messages will be parsed from the asc,

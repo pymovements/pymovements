@@ -302,7 +302,7 @@ def parse_eyelink(
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
     messages: bool | Sequence[str]
-        Flag indicating if all available messages should be parsed
+        Flag indicating if any additional messages should be parsed from the asc file
         and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
         The message format is 'MSG <timestamp> <content>'.
         If True, all available messages will be parsed from the asc,

@@ -345,7 +345,7 @@ def test_message_example(make_text_file):
     ('regexps', 'matched_lines'),
     [
         pytest.param([r'^.*ERROR.*$'], [], id='no_match'),
-        pytest.param([], [], id='no_regexp'),
+        pytest.param([], None, id='no_regexp'),
         pytest.param([r'^.*TRIAL.*$'], [2, 3, 4, 7, 8, 9], id='match_trials'),
         pytest.param(
             [r'^.*TRIAL.*$', r'^.*PRACTICE.*$'],
@@ -364,7 +364,7 @@ def test_message_example_filtered(make_text_file, regexps, matched_lines):
 
     _, _, _, messages_df = parsing.parse_eyelink(filepath, messages=regexps)
 
-    if regexps == []:  # An empty list is considered as False - no messages
+    if matched_lines is None:
         assert messages_df is None
     else:
         assert_frame_equal(messages_df, MESSAGES_DF[matched_lines])
