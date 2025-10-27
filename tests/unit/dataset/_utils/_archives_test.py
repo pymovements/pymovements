@@ -81,7 +81,7 @@ def test_detect_file_type_no_suffixes():
 def fixture_archive(request, make_text_file):
     compression, extension = request.param
 
-    test_filepath = make_text_file(filename='test.file')
+    test_filepath = make_text_file(filename='test.file', body='test')
     rootpath = test_filepath.parent
 
     single_child_directory = 'singlechild'
@@ -196,7 +196,7 @@ def fixture_compressed_file(request, tmp_path):
 def fixture_unsupported_archive(request, make_text_file):
     compression, extension = request.param
 
-    filepath = make_text_file(filename='test.file')
+    filepath = make_text_file(filename='test.file', body='test')
     rootpath = filepath.parent
 
     archive_path = rootpath / f'test.{extension}.{compression}'
