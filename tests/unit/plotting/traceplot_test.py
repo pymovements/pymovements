@@ -212,7 +212,6 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
     assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
     assert ax.get_aspect() == 1
-    plt.close(fig)
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
