@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.parsing."""
-import re
-
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -36,25 +34,15 @@ def test_parse_eyelink_equal_gaze(make_example_file):
     assert_frame_equal(gaze, gaze_depr)
 
 
-def test_parse_eyelink_deprecated(make_example_file):
-    filepath = make_example_file('eyelink_monocular_example.asc')
-
-    with pytest.raises(DeprecationWarning):
-        _ = pm.utils.parsing.parse_eyelink(filepath)
-
-
-def test_parse_eyelink_removed(make_example_file):
+def test_parse_eyelink_is_deprecated(make_example_file, assert_deprecation_is_removed):
     filepath = make_example_file('eyelink_monocular_example.asc')
 
     with pytest.raises(DeprecationWarning) as info:
-        _ = pm.utils.parsing.parse_eyelink(filepath)
+        pm.utils.parsing.parse_eyelink(filepath)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='utils/parsing.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = pm.__version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/parsing.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
