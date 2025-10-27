@@ -289,4 +289,3 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
     # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
     assert ax.get_aspect() != 'equal'
-
