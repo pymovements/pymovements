@@ -350,7 +350,7 @@ def test_message_example(tmp_path):
     ('regexps', 'matched_lines'),
     [
         pytest.param([r'^.*ERROR.*$'], [], id='no_match'),
-        pytest.param([], [], id='no_regexp'),
+        pytest.param([], None, id='no_regexp'),
         pytest.param([r'^.*TRIAL.*$'], [2, 3, 4, 7, 8, 9], id='match_trials'),
         pytest.param(
             [r'^.*TRIAL.*$', r'^.*PRACTICE.*$'],
