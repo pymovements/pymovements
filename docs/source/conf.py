@@ -57,6 +57,7 @@ author = 'The pymovements Project Authors'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'myst_nb',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
@@ -67,12 +68,14 @@ extensions = [
     'sphinx_copybutton',
     'sphinx_design',
     'sphinx_favicon',
-    'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'myst_nb',
-    'nbsphinx',
 ]
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.ipynb': 'myst-nb',
+    '.myst': 'myst-nb',
+}
 
 
 def config_inited_handler(app, config):
@@ -92,6 +95,9 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 # exclude_patterns = []
+suppress_warnings = [
+    'myst.header'
+]
 
 
 copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
