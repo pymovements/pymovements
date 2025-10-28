@@ -1260,8 +1260,12 @@ class Dataset:
             print(f"  Number of Resources: {len(getattr(definition, 'resources', []))}")
         if hasattr(definition, 'mirrors') and definition.mirrors:
             print(
-                f"  Mirrors: {', '.join([f'{k}({len(v)})' for k,
-                                        v in definition.mirrors.items()])}",
+                f"  Mirrors: {
+                    ', '.join([
+                        f'{k}({len(v)})' for k,
+                        v in definition.mirrors.items()
+                    ])
+                }",
             )
         if hasattr(definition, 'extract') and definition.extract:
             print(f"  Extract: {definition.extract}")
