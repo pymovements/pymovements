@@ -74,6 +74,65 @@ extensions = [
     'myst_nb',
 ]
 
+nitpicky = True
+# Patterns for ignoring nitpicky cross-ref warnings. The regex matches the TARGET only,
+# not the full warning message. Keep these as narrow as possible.
+# See: https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-nitpick_ignore_regex
+nitpick_ignore_regex = [
+    # pathlib Path types used in type hints/docstrings which are not resolvable in our docs
+    (r'py:class', r'^(?:pathlib\._local\.)?Path$'),
+
+    # Numpy shorthand types that are usually written as np.X but not resolvable
+    (r'py:class', r'^np\..*'),
+
+    # Polars types referenced with either pl.X or fully qualified polars.*
+    (r'py:(class|mod)', r'^(?:pl|polars)(?:\..*)?$'),
+
+    # Matplotlib pyplot short alias references like plt.X
+    (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
+
+    # Our docs might reference a plain "transforms.func" symbol coming from context
+    (r'py:(func|meth|mod)', r'^transforms\..*'),
+
+    # Shorthand alias used in docs for our own package
+    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
+
+    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
+    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+
+    # Modules referenced in text but not importable via intersphinx targets
+    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
+
+    # Custom exception names mentioned in text but not importable as a symbol
+    (r'py:exc', r'^InvalidProperty$'),
+    (r'py:exc', r'^\.\.\s+deprecated:$'),
+
+    # Pandas dataframe shorthand and fully-qualified type names
+    (r'py:class', r'^(?:pd\.DataFrame|pandas\.core\.frame\.DataFrame)$'),
+
+    # Matplotlib color types referenced in plotting API
+    (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType)$'),
+
+    # Project-internal typing aliases used only in docs
+    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasureMethod)$'),
+    # Fully-qualified generic forms that appear in docstrings
+    (
+        r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
+        r'DatasetDefinitionClass|measure\.library\.SampleMeasureMethod)$',
+    ),
+
+    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
+    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
+    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
+    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
+
+    # Internal helper functions referenced in docs text
+    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
+
+    # Residual autosummary cross-refs to attributes/methods on our high-level classes
+    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+]
+
 
 def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
