@@ -64,14 +64,14 @@ extensions = [
     'sphinx.ext.linkcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
-    'myst_nb',
-    'nbsphinx',
     'sphinx_copybutton',
     'sphinx_design',
     'sphinx_favicon',
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
+    'myst_nb',
+    'nbsphinx',
 ]
 
 
