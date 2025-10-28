@@ -74,6 +74,39 @@ extensions = [
     'myst_nb',
 ]
 
+# Help Napoleon resolve common short type names in docstrings
+napoleon_type_aliases = {
+    # Builtins / stdlib typing shorthands
+    'Sequence': 'collections.abc.Sequence',
+    'Iterable': 'collections.abc.Iterable',
+    'Callable': 'collections.abc.Callable',
+
+    # Datetime
+    'datetime': 'datetime.datetime',
+
+    # Filesystem paths
+    'Path': 'pathlib.Path',
+
+    # NumPy core
+    'ndarray': 'numpy.ndarray',
+    'np.ndarray': 'numpy.ndarray',
+    'DTypeLike': 'numpy.typing.DTypeLike',
+
+    # Pandas
+    'pd.DataFrame': 'pandas.DataFrame',
+
+    # Matplotlib common types
+    'plt.Figure': 'matplotlib.figure.Figure',
+    'plt.Axes': 'matplotlib.axes.Axes',
+    'colors.Colormap': 'matplotlib.colors.Colormap',
+    'colors.Normalize': 'matplotlib.colors.Normalize',
+
+    # Polars (broken intersphinx)
+    'pl.DataFrame': 'polars.DataFrame',
+    'pl.Series': 'polars.Series',
+    'pl.Expr': 'polars.Expr',
+}
+
 nitpicky = True
 # Patterns for ignoring nitpicky cross-ref warnings. The regex matches the TARGET only,
 # not the full warning message. Keep these as narrow as possible.
@@ -86,7 +119,11 @@ nitpick_ignore_regex = [
     (r'py:class', r'^np\..*'),
 
     # Polars types referenced with either pl.X or fully qualified polars.*
+    # Context: polars intersphinx mapping is broken, https://github.com/pola-rs/polars/issues/7027
     (r'py:(class|mod)', r'^(?:pl|polars)(?:\..*)?$'),
+
+    # Allow explicit pandas shorthand in RST roles that napoleon cannot rewrite
+    (r'py:class', r'^pd\.DataFrame$'),
 
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
@@ -107,8 +144,6 @@ nitpick_ignore_regex = [
     (r'py:exc', r'^InvalidProperty$'),
     (r'py:exc', r'^\.\.\s+deprecated:$'),
 
-    # Pandas dataframe shorthand and fully-qualified type names
-    (r'py:class', r'^(?:pd\.DataFrame|pandas\.core\.frame\.DataFrame)$'),
 
     # Matplotlib color types referenced in plotting API
     (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType)$'),
@@ -208,6 +243,7 @@ myst_links_external_new_tab = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable', None),
     'polars': ('https://docs.pola.rs/api/python/stable', None),
     'feather': ('https://arrow.apache.org/docs/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
