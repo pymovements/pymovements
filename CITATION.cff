@@ -6,6 +6,29 @@ title: "pymovements: A Python Package for Processing Eye Movement Data"
 authors:
   - family-names: "Krakowczyk"
     given-names: "Daniel G."
+    orcid: "https://orcid.org/0009-0009-5100-0733"
+  - family-names: "Reich"
+    given-names: "David R."
+    orcid: "https://orcid.org/0000-0002-3524-3788"
+  - family-names: "Büth"
+    given-names: "Carlson Moses"
+    orcid: "https://orcid.org/0000-0003-2298-8438"
+  - family-names: "Prasse"
+    given-names: "Paul"
+    orcid: "https://orcid.org/0000-0003-1842-3645"
+  - family-names: "Jäger"
+    given-names: "Lena A."
+    orcid: "https://orcid.org/0000-0001-9018-9713"
+
+type: software
+license: MIT
+
+repository-code: 'https://github.com/pymovements/pymovements/'
+
+preferred-citation:
+  authors:
+  - family-names: "Krakowczyk"
+    given-names: "Daniel G."
   - family-names: "Reich"
     given-names: "David R."
   - family-names: "Chwastek"
@@ -22,7 +45,16 @@ authors:
     given-names: "Paweł"
   - family-names: "Jäger"
     given-names: "Lena A."
-
-type: conference-paper
-doi: 10.1145/3588015.3590134
-url: "https://doi.org/10.1145/3588015.3590134"
+  title: "pymovements: A Python Package for Processing Eye Movement Data"
+  type: conference-paper
+  doi: 10.1145/3588015.3590134
+  url: "https://doi.org/10.1145/3588015.3590134"
+  year: 2023
+  collection-type: proceedings
+  collection-title: "2023 Symposium on Eye Tracking Research and Applications"
+  collection-location: "Tubingen, Germany"
+  collection-series: "ETRA '23"
+  publisher:
+    name: "Association for Computing Machinery"
+    address: New York, NY, USA
+  isbn: "979-8-4007-0150-4/23/05"
