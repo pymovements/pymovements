@@ -48,7 +48,6 @@ if 'pytest' in sys.modules:  # pragma: no cover
 
 def scanpathplot(
         gaze: Gaze | None = None,
-        event_name: str = 'fixation.idt',
         position_column: str = 'location',
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
@@ -81,8 +80,6 @@ def scanpathplot(
     ----------
     gaze: Gaze | None
         Optional Gaze Dataframe. (default: None)
-    event_type: str
-        The event type to filter for. (default: 'fixation.idt')
     position_column: str
         The column name of the x and y position data (default: 'location')
     cval: np.ndarray | None
