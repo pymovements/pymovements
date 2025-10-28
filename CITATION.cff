@@ -47,14 +47,12 @@ preferred-citation:
     given-names: "Lena A."
   title: "pymovements: A Python Package for Processing Eye Movement Data"
   type: conference-paper
-  doi: 10.1145/3588015.3590134
-  url: "https://doi.org/10.1145/3588015.3590134"
   year: 2023
   collection-type: proceedings
-  collection-title: "2023 Symposium on Eye Tracking Research and Applications"
-  collection-location: "Tubingen, Germany"
-  collection-series: "ETRA '23"
+  collection-title: "ETRA '23: Proceedings of the 2023 Symposium on Eye Tracking Research and Applications"
   publisher:
     name: "Association for Computing Machinery"
     address: New York, NY, USA
-  isbn: "979-8-4007-0150-4/23/05"
+  doi: 10.1145/3588015.3590134
+  url: "https://doi.org/10.1145/3588015.3590134"
+  isbn: "979-8-4007-0150-4"
