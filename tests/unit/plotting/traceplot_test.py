@@ -29,11 +29,33 @@ from matplotlib import figure
 import pymovements as pm
 
 
-@pytest.fixture(name='gaze', scope='session')
-def gaze_fixture():
+@pytest.fixture(
+    name='gaze',
+    params=[
+        '200',
+        '0',
+        '1',
+        '2_equal',
+    ],
+    scope='function',
+)
+def gaze_fixture(request):
     # pylint: disable=duplicate-code
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
+    if request.param == '0':
+        x = np.empty((1,))
+        y = np.empty((1,))
+    elif request.param == '1':
+        x = np.array([1])
+        y = np.array([2])
+    elif request.param == '2_equal':
+        x = np.array([1, 1])
+        y = np.array([2, 2])
+    elif request.param == '200':
+        x = np.arange(-100, 100)
+        y = np.arange(-100, 100)
+    else:
+        raise ValueError(f'{request.param} not supported as gaze fixture param')
+
     arr = np.column_stack((x, y)).transpose()
 
     experiment = pm.Experiment(

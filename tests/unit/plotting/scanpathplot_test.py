@@ -33,23 +33,68 @@ from pymovements.gaze import from_numpy
 from pymovements.plotting import scanpathplot
 
 
-@pytest.fixture(name='events', scope='session')
-def event_fixture():
-    yield Events(
-        pl.DataFrame(
+@pytest.fixture(
+    name='events',
+    params=[
+        '0_events',
+        '1_fixation',
+        '2_fixations',
+        '3_events',
+    ],
+    scope='function',
+)
+def event_fixture(request):
+    if request.param == '0_events':
+        events = pl.DataFrame(
+            schema={
+                'trial': pl.Int64,
+                'name': pl.String,
+                'onset': pl.Int64,
+                'offset': pl.Int64,
+                'duration': pl.Int64,
+                'location': pl.List(pl.Int64),
+            },
+        )
+    elif request.param == '1_fixation':
+        events = pl.DataFrame(
+            data={
+                'trial': [1],
+                'name': ['fixation'],
+                'onset': [0],
+                'offset': [1],
+                'duration': [1],
+                'location': [(1, 2)],
+            },
+        )
+    elif request.param == '2_fixations':
+        events = pl.DataFrame(
             data={
                 'trial': [1, 1],
-                'name': ['foo', 'foo'],
+                'name': ['fixation', 'fixation'],
                 'onset': [0, 2],
                 'offset': [1, 3],
                 'duration': [1, 1],
                 'location': [(1, 2), (2, 3)],
             },
-        ),
-    ).clone()
+        )
+    elif request.param == '3_events':
+        events = pl.DataFrame(
+            data={
+                'trial': [1, 1, 1],
+                'name': ['fixation', 'saccade', 'foo'],
+                'onset': [0, 2, 5],
+                'offset': [1, 3, 9],
+                'duration': [1, 1, 4],
+                'location': [(1, 2), (2, 3), (5, 5)],
+            },
+        )
+    else:
+        raise ValueError(f'{request.param} not supported as dataset mock')
+
+    yield Events(events)
 
 
-@pytest.fixture(name='gaze', scope='session')
+@pytest.fixture(name='gaze', scope='function')
 def gaze_fixture(events):
     experiment = Experiment(
         screen_width_px=1280,
