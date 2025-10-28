@@ -57,6 +57,8 @@ author = 'The pymovements Project Authors'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'myst_nb',
+    'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
@@ -70,8 +72,6 @@ extensions = [
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'nbsphinx',
-    'myst_nb',
 ]
 
 
