@@ -46,6 +46,10 @@ class ResourceDefinition:
         The target filename of the downloadable resource. This may be an archive. (default: None)
     url: str | None
         The URL to the downloadable resource. (default: None)
+    mirrors: list[str] | None
+        An optional list of additional mirror URLs to download the resource. If downloading the
+        resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
+        used in order of appearance. (default: None)
     md5: str | None
         The MD5 checksum of the downloadable resource. (default: None)
     filename_pattern: str | None
@@ -66,6 +70,7 @@ class ResourceDefinition:
 
     filename: str | None = None
     url: str | None = None
+    mirrors: list[str] | None = None
     md5: str | None = None
 
     filename_pattern: str | None = None
@@ -120,7 +125,7 @@ class ResourceDefinition:
         """
         data = asdict(self)
 
-        # Delete fields that evaluate to False (False, None, [], {})
+        # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:
             for key, value in list(data.items()):
                 if not isinstance(value, (bool, int, float)) and not value:

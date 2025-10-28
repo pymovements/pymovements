@@ -50,7 +50,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 docs = [
-  "ipykernel>=6.13.0,<6.31",
+  "ipykernel>=6.13.0,<6.32",
   "ipywidgets>=8.1.7,<8.2",
   "nbconvert>=7.0.0,<7.17",
   "nbsphinx>=0.8.8,<0.10",
@@ -79,11 +79,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aeye-lab/pymovements"
-"Source Code" = "https://github.com/aeye-lab/pymovements"
+Homepage = "https://github.com/pymovements/pymovements"
+"Source Code" = "https://github.com/pymovements/pymovements"
 Documentation = "https://pymovements.readthedocs.io/en/stable"
-"Bug Tracker" = "https://github.com/aeye-lab/pymovements/issues"
-Changelog = "https://github.com/aeye-lab/pymovements/releases"
+"Bug Tracker" = "https://github.com/pymovements/pymovements/issues"
+Changelog = "https://github.com/pymovements/pymovements/releases"
 
 [tool.autoflake]
 in-place = true
@@ -148,7 +148,7 @@ disallow_untyped_defs = false
 skip-checking-raises = true
 
 [tool.pytest.ini_options]
-addopts = "-ra -l --tb=long --doctest-modules"
+addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 filterwarnings = [
   "error",

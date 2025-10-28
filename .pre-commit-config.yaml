@@ -9,21 +9,21 @@ ci:
 
 repos:
 -   repo: https://github.com/asottile/add-trailing-comma
-    rev: v3.2.0
+    rev: v4.0.0
     hooks:
     -   id: add-trailing-comma
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v3.20.0
+    rev: v3.21.0
     hooks:
     -   id: pyupgrade
         args: [--py39-plus]
 -   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.15.0
+    rev: v3.16.0
     hooks:
     -   id: reorder-python-imports
         args: [--application-directories=src, --py39-plus]
 -   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.15.0
+    rev: v3.16.0
     hooks:
     -   id: reorder-python-imports
         files: ^src/
@@ -53,7 +53,7 @@ repos:
         args: [--use-current-year]
         types: [python]
 -   repo: https://github.com/jsh9/pydoclint
-    rev: 0.7.3
+    rev: 0.7.6
     hooks:
     - id: pydoclint
       args: ["--config=pyproject.toml"]
@@ -87,6 +87,7 @@ repos:
     -   id: double-quote-string-fixer
     -   id: end-of-file-fixer
     -   id: name-tests-test
+        exclude: .*_fixtures\.py
     -   id: no-commit-to-branch
     -   id: requirements-txt-fixer
     -   id: trailing-whitespace
@@ -122,7 +123,7 @@ repos:
             '--ignore=D103,D107,D203,D213',
           ]
 -   repo: https://github.com/PyCQA/pylint
-    rev: v3.3.9
+    rev: v4.0.2
     hooks:
       - id: pylint
         name: pylint

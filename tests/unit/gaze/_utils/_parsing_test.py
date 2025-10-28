@@ -20,7 +20,6 @@
 """Tests pymovements asc to csv processing."""
 import datetime
 import warnings
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -217,28 +216,67 @@ EXPECTED_METADATA = {
     ],
 }
 
+ASC_TEXT_MSGS = r"""
+MSG 12300 TASK A
+MSG 12333 PRACTICE
+MSG 12345 TRIAL 1
+MSG 12567 TRIAL 2
+MSG 12899 TRIAL 3
+MSG 14444 TASK B
+MSG 14555 PRACTICE
+MSG 14666 TRIAL 1
+MSG 14777 TRIAL 2
+MSG 14888 TRIAL 3
+"""
 
-def test_parse_eyelink(tmp_path):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(ASC_TEXT)
+MESSAGES_DF = pl.DataFrame(
+    schema={
+        'time': pl.Float64,
+        'content': pl.String,
+    },
+    data=[
+        (12300, 12333, 12345, 12567, 12899, 14444, 14555, 14666, 14777, 14888),
+        (
+            'TASK A', 'PRACTICE', 'TRIAL 1', 'TRIAL 2', 'TRIAL 3',
+            'TASK B', 'PRACTICE', 'TRIAL 1', 'TRIAL 2', 'TRIAL 3',
+        ),
+    ],
+)
 
-    gaze_df, event_df, metadata = parsing.parse_eyelink(
+
+def test_parse_eyelink(make_text_file):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
+
+    gaze_df, event_df, metadata, messages_df = parsing.parse_eyelink(
         filepath,
         patterns=PATTERNS,
         metadata_patterns=METADATA_PATTERNS,
+        messages=True,
     )
 
     assert_frame_equal(gaze_df, EXPECTED_GAZE_DF, check_column_order=False, rtol=0)
     assert_frame_equal(event_df, EXPECTED_EVENT_DF, check_column_order=False, rtol=0)
     assert metadata == EXPECTED_METADATA
+    assert messages_df.shape == (18, 2)
+    assert messages_df['time'].min() == 2095865
+    assert messages_df[0, 1] == 'DISPLAY_COORDS 0 0 1279 1023'
+    assert messages_df['time'].max() == 10000017
+
+
+def test_parse_eyelink_no_messages(make_text_file):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
+
+    _, _, _, messages_df = parsing.parse_eyelink(filepath)
+
+    assert messages_df is None
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_metadata'),
+    ('filename', 'kwargs', 'expected_metadata'),
     [
         pytest.param(
+            'eyelink_monocular_example.asc',
             {
-                'filepath': 'tests/files/eyelink_monocular_example.asc',
                 'metadata_patterns': [
                     {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
                     r'!V TRIAL_VAR STIMULUS_COMBINATION_ID (?P<stimulus_combination_id>.+)',
@@ -251,8 +289,8 @@ def test_parse_eyelink(tmp_path):
             id='eyelink_asc_metadata_patterns',
         ),
         pytest.param(
+            'eyelink_monocular_example.asc',
             {
-                'filepath': 'tests/files/eyelink_monocular_example.asc',
                 'metadata_patterns': [r'inexistent pattern (?P<value>-?\d+)'],
             },
             {
@@ -262,8 +300,9 @@ def test_parse_eyelink(tmp_path):
         ),
     ],
 )
-def test_from_asc_metadata_patterns(kwargs, expected_metadata):
-    _, _, metadata = parsing.parse_eyelink(**kwargs)
+def test_from_asc_metadata_patterns(filename, kwargs, expected_metadata, make_example_file):
+    filepath = make_example_file(filename)
+    _, _, metadata, _ = parsing.parse_eyelink(filepath=filepath, **kwargs)
 
     for key, value in expected_metadata.items():
         assert metadata[key] == value
@@ -276,9 +315,8 @@ def test_from_asc_metadata_patterns(kwargs, expected_metadata):
         [{'pattern': 1}],
     ],
 )
-def test_parse_eyelink_raises_value_error(tmp_path, patterns):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(ASC_TEXT)
+def test_parse_eyelink_raises_value_error(patterns, make_text_file):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     with pytest.raises(ValueError) as excinfo:
         parsing.parse_eyelink(
@@ -291,6 +329,60 @@ def test_parse_eyelink_raises_value_error(tmp_path, patterns):
     expected_substrings = ['invalid pattern', '1']
     for substring in expected_substrings:
         assert substring in msg
+
+
+@pytest.mark.filterwarnings('ignore:No metadata found.')
+@pytest.mark.filterwarnings('ignore:No samples configuration found.')
+@pytest.mark.filterwarnings('ignore:No recording configuration found.')
+def test_message_example(make_text_file):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
+
+    _, _, _, messages_df = parsing.parse_eyelink(filepath, messages=True)
+    assert_frame_equal(messages_df, MESSAGES_DF)
+
+
+@pytest.mark.parametrize(
+    ('regexps', 'matched_lines'),
+    [
+        pytest.param([r'^.*ERROR.*$'], [], id='no_match'),
+        pytest.param([], None, id='no_regexp'),
+        pytest.param([r'^.*TRIAL.*$'], [2, 3, 4, 7, 8, 9], id='match_trials'),
+        pytest.param(
+            [r'^.*TRIAL.*$', r'^.*PRACTICE.*$'],
+            [1, 2, 3, 4, 6, 7, 8, 9], id='match_trials_and_practice',
+        ),
+        pytest.param([r'^.*\s3.*$'], [4, 9], id='match_trials_ending_in_whitespace_3'),
+    ],
+)
+@pytest.mark.filterwarnings('ignore:No metadata found.')
+@pytest.mark.filterwarnings('ignore:No samples configuration found.')
+@pytest.mark.filterwarnings('ignore:No recording configuration found.')
+def test_message_example_filtered(make_text_file, regexps, matched_lines):
+    # When ``messages`` is not bool but a list of strings, these are used to filter the
+    # content of the DataFrame.
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
+
+    _, _, _, messages_df = parsing.parse_eyelink(filepath, messages=regexps)
+
+    if matched_lines is None:
+        assert messages_df is None
+    else:
+        assert_frame_equal(messages_df, MESSAGES_DF[matched_lines])
+
+
+@pytest.mark.parametrize('invalid_regexps', [[r'(.*)', 5], [5], 3.5, 'aword'])
+@pytest.mark.filterwarnings('ignore:No metadata found.')
+@pytest.mark.filterwarnings('ignore:No samples configuration found.')
+@pytest.mark.filterwarnings('ignore:No recording configuration found.')
+def test_message_faulty_messages_value(make_text_file, invalid_regexps):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
+
+    with pytest.raises(
+            ValueError,
+            match=r'Make sure to pass either a bool or a list of regular expressions as '
+                  r'strings\. Received',
+    ):
+        parsing.parse_eyelink(filepath, messages=invalid_regexps)
 
 
 @pytest.mark.parametrize(
@@ -361,11 +453,10 @@ def test_parse_eyelink_raises_value_error(tmp_path, patterns):
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_parse_eyelink_version(tmp_path, metadata, expected_version, expected_model):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(metadata)
+def test_parse_eyelink_version(make_text_file, metadata, expected_version, expected_model):
+    filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, metadata = parsing.parse_eyelink(
+    _, _, metadata, _ = parsing.parse_eyelink(
         filepath,
     )
 
@@ -412,12 +503,11 @@ def test_parse_eyelink_version(tmp_path, metadata, expected_version, expected_mo
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_metadata_warnings(tmp_path, metadata, expected_msg):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(metadata)
+def test_metadata_warnings(make_text_file, metadata, expected_msg):
+    filepath = make_text_file(filename='sub.asc', body=metadata)
 
     with pytest.warns(Warning, match=expected_msg):
-        _, _, metadata = parsing.parse_eyelink(
+        _, _, metadata, _ = parsing.parse_eyelink(
             filepath,
         )
 
@@ -471,11 +561,10 @@ def test_metadata_warnings(tmp_path, metadata, expected_msg):
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_val_cal_eyelink(tmp_path, metadata, expected_validation, expected_calibration):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(metadata)
+def test_val_cal_eyelink(make_text_file, metadata, expected_validation, expected_calibration):
+    filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata = parsing.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing.parse_eyelink(filepath)
 
     assert parsed_metadata['calibrations'] == expected_calibration
     assert parsed_metadata['validations'] == expected_validation
@@ -507,7 +596,7 @@ def test_check_reccfg_key_warnings_and_behavior():
         assert len(w) == 0
 
 
-def test_check_samples_config_key_warnings_and_casting():
+def test_check_samples_config_key_warnings_and_casting(make_example_file):
     """Ensure _check_samples_config_key emits expected warnings and casts values."""
     # No samples config -> should warn and return None
     with pytest.warns(UserWarning, match='No samples configuration found.'):
@@ -522,8 +611,8 @@ def test_check_samples_config_key_warnings_and_casting():
     sc = [{'sampling_rate': '1000.00'}]
     assert parsing._check_samples_config_key(sc, 'sampling_rate', float) == 1000.0
 
-    example_asc_monocular_path = Path('tests/files/eyelink_monocular_example.asc')
-    _, _, metadata = parsing.parse_eyelink(example_asc_monocular_path)
+    example_asc_monocular_path = make_example_file('eyelink_monocular_example.asc')
+    _, _, metadata, _ = parsing.parse_eyelink(example_asc_monocular_path)
 
     expected_validation = [{
         'error': 'GOOD ERROR',
@@ -669,12 +758,11 @@ def test_check_samples_config_key_warnings_and_casting():
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
 @pytest.mark.filterwarnings("ignore:Found inconsistent values for 'sampling_rate':")
 def test_parse_eyelink_data_loss_ratio(
-        tmp_path, metadata, expected_blink_ratio, expected_overall_ratio,
+        make_text_file, metadata, expected_blink_ratio, expected_overall_ratio,
 ):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(metadata)
+    filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata = parsing.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing.parse_eyelink(filepath)
 
     assert parsed_metadata['data_loss_ratio_blinks'] == expected_blink_ratio
     assert parsed_metadata['data_loss_ratio'] == expected_overall_ratio
@@ -683,14 +771,13 @@ def test_parse_eyelink_data_loss_ratio(
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_parse_eyelink_datetime(tmp_path):
+def test_parse_eyelink_datetime(make_text_file):
     metadata = '** DATE: Wed Mar  8 09:25:20 2023\n'
     expected_datetime = datetime.datetime(2023, 3, 8, 9, 25, 20)
 
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(metadata)
+    filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata = parsing.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing.parse_eyelink(filepath)
 
     assert parsed_metadata['datetime'] == expected_datetime
 
@@ -869,11 +956,10 @@ def test_parse_eyelink_datetime(tmp_path):
     ],
 )
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_parse_eyelink_mount_config(tmp_path, metadata, expected_mount_config):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(metadata)
+def test_parse_eyelink_mount_config(make_text_file, metadata, expected_mount_config):
+    filepath = make_text_file(filename='sub.asc', body=metadata)
 
-    _, _, parsed_metadata = parsing.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing.parse_eyelink(filepath)
 
     assert parsed_metadata['mount_configuration'] == expected_mount_config
 
@@ -901,7 +987,7 @@ def test_parse_eyelink_encoding(tmp_path, bytestring, encoding, expected_text):
     filepath = tmp_path / 'sub.asc'
     filepath.write_bytes(bytestring)
 
-    _, _, parsed_metadata = parsing.parse_eyelink(
+    _, _, parsed_metadata, _ = parsing.parse_eyelink(
         filepath,
         metadata_patterns=[r'(?P<text>.+)'],
         encoding=encoding,
@@ -924,7 +1010,7 @@ def test_data_loss_zero_expected_all_zero_via_parsing_module():
     assert blink == 0.0
 
 
-def test_parse_eyelink_binocular_simple(tmp_path):
+def test_parse_eyelink_binocular_simple(make_text_file):
     """Basic test for parsing a binocular ASC snippet."""
     asc_text = r"""
 ** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED
@@ -962,10 +1048,9 @@ SBLINK R 1408793
 END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
 """
 
-    filepath = tmp_path / 'sub_binoc.asc'
-    filepath.write_text(asc_text)
+    filepath = make_text_file(filename='sub_binoc.asc', body=asc_text)
 
-    gaze_df, event_df, metadata = parsing.parse_eyelink(filepath)
+    gaze_df, event_df, metadata, _ = parsing.parse_eyelink(filepath)
 
     assert isinstance(gaze_df, pl.DataFrame)
 
@@ -1038,7 +1123,7 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_parse_eyelink_binocular_missing_samples_data_loss(tmp_path):
+def test_parse_eyelink_binocular_missing_samples_data_loss(make_text_file):
     """Ensure data loss ratios are reported for binocular ASC with missing samples.
 
     The snippet contains timestamps where the left eye becomes missing (dots) while the
@@ -1063,7 +1148,7 @@ def test_parse_eyelink_binocular_missing_samples_data_loss(tmp_path):
     ]
 
     for t in range(start, end + 1):
-        # Insert SBLINK markers at their onsets
+        # Insert SBLINK markers at their onsets…
         if t == 1408787:
             asc_lines.append(f'SBLINK L {t}')
         if t == 1408793:
@@ -1095,10 +1180,9 @@ def test_parse_eyelink_binocular_missing_samples_data_loss(tmp_path):
 
     asc_text = '\n'.join(asc_lines) + '\n'
 
-    filepath = tmp_path / 'sub_binoc_missing.asc'
-    filepath.write_text(asc_text)
+    filepath = make_text_file(filename='sub_binoc_missing.asc', body=asc_text)
 
-    _, _, parsed_metadata = parsing.parse_eyelink(filepath)
+    _, _, parsed_metadata, _ = parsing.parse_eyelink(filepath)
 
     # The parser should return both ratios and they should be numeric and valid
     assert 'data_loss_ratio_blinks' in parsed_metadata
@@ -1119,15 +1203,14 @@ def test_parse_eyelink_binocular_missing_samples_data_loss(tmp_path):
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 # @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 # @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_tracked_vs_recorded_eye_warning(tmp_path):
+def test_tracked_vs_recorded_eye_warning(make_text_file):
     """When RECCFG and SAMPLES report different eyes, a warning should be raised."""
     asc_text = (
         'MSG\t2154555 RECCFG CR 1000 2 1 LR\n'
         'SAMPLES\tGAZE\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
     )
 
-    filepath = tmp_path / 'sub_mismatch.asc'
-    filepath.write_text(asc_text)
+    filepath = make_text_file(filename='sub_mismatch.asc', body=asc_text)
 
     # The parser maps RECCFG 'LR' -> 'LR' and SAMPLES 'RIGHT' -> 'R', so expect [LR, R]
     with pytest.warns(Warning, match=r'inconsistent: \[LR, R\]'):
@@ -1137,15 +1220,14 @@ def test_tracked_vs_recorded_eye_warning(tmp_path):
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_sampling_rate_inconsistent_warning(tmp_path):
+def test_sampling_rate_inconsistent_warning(make_text_file):
     """When RECCFG and SAMPLES report different sampling rates, a warning should be raised."""
     asc_text = (
         'MSG\t2154555 RECCFG CR 2000 2 1 L\n'
         'SAMPLES\tGAZE\tLEFT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
     )
 
-    filepath = tmp_path / 'sub_rate_mismatch.asc'
-    filepath.write_text(asc_text)
+    filepath = make_text_file(filename='sub_rate_mismatch.asc', body=asc_text)
 
     # Depending on internal casting, the warning should contain both values; match the float form
     with pytest.warns(
@@ -1165,20 +1247,19 @@ def test_sampling_rate_inconsistent_warning(tmp_path):
 )
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
-def test_tracked_eye_mapping_from_samples(tmp_path, samples_line, expected_tracked):
+def test_tracked_eye_mapping_from_samples(make_text_file, samples_line, expected_tracked):
     """SAMPLES tracked_eye strings should map to metadata['tracked_eye'] correctly."""
     asc_text = samples_line
 
-    filepath = tmp_path / 'sub_tracked.asc'
-    filepath.write_text(asc_text)
+    filepath = make_text_file(filename='sub_tracked.asc', body=asc_text)
 
-    _, _, metadata = parsing.parse_eyelink(filepath)
+    _, _, metadata, _ = parsing.parse_eyelink(filepath)
 
     assert metadata['tracked_eye'] == expected_tracked
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
-def test_recording_config_missing_sampling_rate_key(monkeypatch, tmp_path):
+def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file):
     """Simulate a recording_config entry missing 'sampling_rate' to trigger KeyError path."""
 
     class DummyMatch:
@@ -1208,19 +1289,18 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, tmp_path):
         'END\t10000020 \tSAMPLES\tEVENTS\tRES\t 38.54\t 31.12\n'
     )
 
-    filepath = tmp_path / 'sub_missing_rate_key.asc'
-    filepath.write_text(asc_text)
+    filepath = make_text_file(filename='sub_missing_rate_key.asc', body=asc_text)
 
     # Now the parser should warn (e.g. missing samples or sampling rate) and
     # set data-loss metrics to None.
     with pytest.warns(Warning):
-        _, _, metadata = parsing.parse_eyelink(filepath)
+        _, _, metadata, _ = parsing.parse_eyelink(filepath)
 
     assert metadata['data_loss_ratio'] is None
     assert metadata['data_loss_ratio_blinks'] is None
 
 
-def test_parse_eyelink_stop_recording_calculates_expected_samples(tmp_path: Path) -> None:
+def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file):
     """Write a minimal asc file with RECCFG, START, and END to exercise recording_config block.
 
     The RECCFG line provides a sampling rate of 1000 Hz and the START/END span 1000 ms,
@@ -1232,12 +1312,11 @@ def test_parse_eyelink_stop_recording_calculates_expected_samples(tmp_path: Path
         'END 1000 types RES 0 0\n'
     )
 
-    p = tmp_path / 'test_stop_recording.asc'
-    p.write_text(content)
+    p = make_text_file(filename='test_stop_recording.asc', body=content)
 
     # parse_eyelink will emit a metadata warning for this minimal file; capture it
     with pytest.warns(UserWarning):
-        _, _, metadata = parsing.parse_eyelink(str(p))
+        _, _, metadata, _ = parsing.parse_eyelink(str(p))
 
     # Duration should be 1000 ms
     assert metadata['total_recording_duration_ms'] == 1000.0

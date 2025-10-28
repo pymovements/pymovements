@@ -18,11 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test dataset resources."""
-import re
-
 import pytest
 
-from pymovements import __version__
 from pymovements import ResourceDefinition
 from pymovements import ResourceDefinitions
 
@@ -45,6 +42,16 @@ from pymovements import ResourceDefinitions
                 'url': 'https://example.com',
             },
             id='gaze_content_filename_url',
+        ),
+
+        pytest.param(
+            {
+                'content': 'gaze',
+                'filename': 'test.csv',
+                'url': 'https://example.com',
+                'mirrors': ['https://mirror.com'],
+            },
+            id='gaze_content_filename_mirror',
         ),
 
         pytest.param(
@@ -93,15 +100,23 @@ def test_resource_is_equal(kwargs):
 
         pytest.param(
             ResourceDefinition(
-                content='gaze',
-                filename='test.csv',
-                url='https://example.com',
+                content='gaze', filename='test.csv', url='https://example.com',
+                mirrors=['https://this.mirror.com'],
+            ),
+            ResourceDefinition(
+                content='gaze', filename='test.csv', url='https://examples.com',
+                mirrors=['https://that.mirror.com'],
+            ),
+            id='different_mirror',
+        ),
+
+        pytest.param(
+            ResourceDefinition(
+                content='gaze', filename='test.csv', url='https://example.com',
                 md5='abcdefgh',
             ),
             ResourceDefinition(
-                content='gaze',
-                filename='test.csv',
-                url='https://example.com',
+                content='gaze', filename='test.csv', url='https://example.com',
                 md5='ijklmnop',
             ),
             id='different_md5',
@@ -193,6 +208,23 @@ def test_resource_is_not_equal(resource1, resource2):
                 md5=None,
             ),
             id='content_filename_url',
+        ),
+
+        pytest.param(
+            {
+                'content': 'gaze',
+                'filename': 'test.csv',
+                'url': 'https://example.com',
+                'mirrors': ['https://mirror.com'],
+            },
+            ResourceDefinition(
+                content='gaze',
+                filename='test.csv',
+                url='https://example.com',
+                mirrors=['https://mirror.com'],
+                md5=None,
+            ),
+            id='content_filename_url_mirror',
         ),
 
         pytest.param(
@@ -367,20 +399,17 @@ def test_resources_from_dict_expected(init_resources, expected_resources):
     assert ResourceDefinitions.from_dict(init_resources) == expected_resources
 
 
-def test_resource_definitions_from_dict_deprecated():
+def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed):
     resources_dict = {'gaze': [{'filename': 'myfile.txt'}]}
 
     with pytest.raises(DeprecationWarning) as info:
         ResourceDefinitions.from_dict(resources_dict)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='ResourceDefinitions.from_dict()',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'ResourceDefinitions.from_dict() was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
 
 
@@ -683,17 +712,14 @@ def test_resources_from_dicts_expected(dicts, expected_resources):
     assert ResourceDefinitions.from_dicts(dicts) == expected_resources
 
 
-def test_resource_definition_from_dict_resource_key_deprecated():
+def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecation_is_removed):
     resource_dict = {'content': 'samples', 'resource': 'http://www.example.com'}
     with pytest.raises(DeprecationWarning) as info:
         ResourceDefinition.from_dict(resource_dict)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='from_dict() key "resources"',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'from_dict() key "resources" was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
