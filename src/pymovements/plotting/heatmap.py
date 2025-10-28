@@ -167,9 +167,9 @@ def heatmap(
     heatmap_value /= gaze.experiment.sampling_rate
 
     if origin == 'upper':
-        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
-    else:
         extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
+    else:
+        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
     fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
