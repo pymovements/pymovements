@@ -29,5 +29,5 @@ __all__ = [
     'main_sequence_plot',
     'scanpathplot',
     'traceplot',
-    'tsplot'
+    'tsplot',
 ]

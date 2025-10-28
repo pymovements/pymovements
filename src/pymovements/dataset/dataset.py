@@ -1232,23 +1232,23 @@ class Dataset:
 
     def report(self):
         """Generate a comprehensive overview report of the dataset.
-        
-        Prints a detailed overview of the dataset including definition details, 
+
+        Prints a detailed overview of the dataset including definition details,
         eyetracker configuration, screen setup, resource files, and data structure.
-        
+
         Returns
         -------
         Dataset
             Returns self, useful for method cascading.
         """
-        print("=" * 80)
-        print(f"DATASET OVERVIEW")
-        print("=" * 80)
+        print('=' * 80)
+        print('DATASET OVERVIEW')
+        print('=' * 80)
 
         definition = self.definition
 
         # Basic information
-        print("\nDEFINITION:")
+        print('\nDEFINITION:')
         # DatasetDefinition explicit fields printed if present
         if hasattr(definition, 'name') and definition.name is not None:
             print(f"  Name: {definition.name}")
@@ -1259,7 +1259,8 @@ class Dataset:
         if hasattr(definition, 'resources') and definition.resources:
             print(f"  Number of Resources: {len(getattr(definition, 'resources', []))}")
         if hasattr(definition, 'mirrors') and definition.mirrors:
-            print(f"  Mirrors: {', '.join([f'{k}({len(v)})' for k, v in definition.mirrors.items()])}")
+            print(
+                f"  Mirrors: {', '.join([f'{k}({len(v)})' for k, v in definition.mirrors.items()])}")
         if hasattr(definition, 'extract') and definition.extract:
             print(f"  Extract: {definition.extract}")
         if hasattr(definition, 'column_map') and definition.column_map:
@@ -1282,7 +1283,7 @@ class Dataset:
             print(f"  Distance Column: {definition.distance_column}")
         if hasattr(definition, 'custom_read_kwargs') and definition.custom_read_kwargs:
             print(f"  Custom Read Kwargs keys: {list(definition.custom_read_kwargs.keys())}")
-      
+
         # Experiment information
         if hasattr(definition, 'experiment') and definition.experiment:
             exp = definition.experiment
@@ -1302,7 +1303,7 @@ class Dataset:
             # Eyetracker (check each attribute from EyeTracker class)
             if hasattr(exp, 'eyetracker') and exp.eyetracker is not None:
                 tracker = exp.eyetracker
-                print("\nEYETRACKER:")
+                print('\nEYETRACKER:')
                 if getattr(tracker, 'sampling_rate', None) is not None:
                     print(f"  Sampling Rate: {tracker.sampling_rate} Hz")
                 if getattr(tracker, 'left', None) is not None:
@@ -1321,7 +1322,7 @@ class Dataset:
             # Screen configuration
             if hasattr(exp, 'screen') and exp.screen:
                 screen = exp.screen
-                print("\nSCREEN CONFIGURATION:")
+                print('\nSCREEN CONFIGURATION:')
                 if hasattr(screen, 'width_px') and screen.width_px is not None:
                     print(f"  Width: {screen.width_px} px")
                 if hasattr(screen, 'height_px') and screen.height_px is not None:
@@ -1335,18 +1336,22 @@ class Dataset:
                 if hasattr(screen, 'framerate_hz') and screen.framerate_hz is not None:
                     print(f"  Framerate: {screen.framerate_hz} Hz")
                 # Derived metrics
-                if (hasattr(screen, 'width_px') and screen.width_px is not None and
-                    hasattr(screen, 'height_px') and screen.height_px not in (None, 0)):
+                if (
+                    hasattr(screen, 'width_px') and screen.width_px is not None and
+                    hasattr(screen, 'height_px') and screen.height_px not in (None, 0)
+                ):
                     aspect_ratio = screen.width_px / screen.height_px
                     print(f"   Aspect Ratio: {aspect_ratio:.2f}")
-                if (hasattr(screen, 'width_px') and screen.width_px is not None and
-                    hasattr(screen, 'width_cm') and screen.width_cm not in (None, 0)):
+                if (
+                    hasattr(screen, 'width_px') and screen.width_px is not None and
+                    hasattr(screen, 'width_cm') and screen.width_cm not in (None, 0)
+                ):
                     ppcm = screen.width_px / screen.width_cm
                     print(f"   Pixels per cm: {ppcm:.1f}")
-                    
+
         # Data structure snapshot
         if hasattr(self, 'gaze') and self.gaze:
-            print("\nDATA STRUCTURE:")
+            print('\nDATA STRUCTURE:')
             print(f"  Gaze Recordings: {len(self.gaze)}")
             sample_gaze = self.gaze[0]
             print(f"  Sample columns: {list(sample_gaze.samples.columns)}")
@@ -1363,42 +1368,42 @@ class Dataset:
             # Aggregate metrics across all recordings
         total_samples_all = 0
         null_counts_all = {}
-        
+
         # First pass to collect all column names
         all_columns = set()
         for gaze_recording in self.gaze:
             all_columns.update(gaze_recording.samples.columns)
             total_samples_all += len(gaze_recording.samples)
-        
+
         # Initialize null counters for all columns
         for col in all_columns:
             null_counts_all[col] = 0
-        
+
         # Count nulls in each recording
         for gaze_recording in self.gaze:
             samples = gaze_recording.samples
             for col in samples.columns:
                 null_counts_all[col] += samples[col].is_null().sum()
-        
+
         # Print overall statistics
-        print("\nDATA QUALITY:")
+        print('\nDATA QUALITY:')
         print(f"Total samples across all recordings: {total_samples_all}")
-        
+
         # Missing data summary
-        print("\nMissing Data:")
+        print('\nMissing Data:')
         has_missing = False
         for col, null_count in sorted(null_counts_all.items(), key=lambda x: x[1], reverse=True):
             if null_count > 0:
                 has_missing = True
                 percent = (null_count / total_samples_all) * 100
                 print(f"  '{col}': {null_count} missing values ({percent:.2f}%)")
-        
+
         if not has_missing:
-            print("  No missing values found in any column")
-    
+            print('  No missing values found in any column')
+
         # References (if present)
         if hasattr(definition, 'references') and definition.references:
-            print("\nREFERENCES:")
+            print('\nREFERENCES:')
             for i, ref in enumerate(definition.references, 1):
                 print(f"  {i}.")
                 for attr_name in dir(ref):
@@ -1406,13 +1411,17 @@ class Dataset:
                         attr_value = getattr(ref, attr_name)
                         if attr_value is not None and not callable(attr_value):
                             if isinstance(attr_value, list):
-                                print(f"     {attr_name.replace('_', ' ').title()}: {', '.join(attr_value)}")
+                                print(
+                                    f"     {
+                                        attr_name.replace(
+                                            '_', ' ').title()}: {
+                                        ', '.join(attr_value)}")
                             else:
                                 print(f"     {attr_name.replace('_', ' ').title()}: {attr_value}")
 
         # Participants (if present)
         if hasattr(definition, 'participants') and definition.participants:
-            print("\nPARTICIPANTS:")
+            print('\nPARTICIPANTS:')
             for i, participant in enumerate(definition.participants):
                 print(f"  Participant {i + 1}:")
                 for attr_name in dir(participant):
@@ -1422,7 +1431,7 @@ class Dataset:
                             print(f"    {attr_name.replace('_', ' ').title()}: {attr_value}")
 
         # Resource details
-        print("\nRESOURCE FILES:")
+        print('\nRESOURCE FILES:')
         for i, resource in enumerate(getattr(definition, 'resources', []), 1):
             print(f"  {i}. {resource.filename}")
             for attr_name in dir(resource):
@@ -1438,5 +1447,5 @@ class Dataset:
                         else:
                             print(f"     {attr_name.replace('_', ' ').title()}: {attr_value}")
 
-        print("=" * 80)
+        print('=' * 80)
         return self

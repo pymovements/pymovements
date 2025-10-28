@@ -1173,40 +1173,40 @@ class Gaze:
                 self.samples.group_by(self.trial_columns, maintain_order=True)
             ],
         )
-    
+
     def report(
-            self
-            ) -> None:
+            self,
+    ) -> None:
         """Generate a comprehensive report about a single gaze object.
-        
+
         Parameters
         ----------
         gaze : pymovements.gaze.Gaze
             The gaze object to report on
-        
+
         Returns
         -------
         None
             Prints the report to stdout
         """
-        print("=" * 60)
-        print("GAZE OBJECT REPORT")
-        print("=" * 60)
-        
+        print('=' * 60)
+        print('GAZE OBJECT REPORT')
+        print('=' * 60)
+
         # Basic information about samples
-        print("\nSAMPLES DATA:")
+        print('\nSAMPLES DATA:')
         if hasattr(self, 'samples') and self.samples is not None:
             samples = self.samples
             print(f"  Shape: {samples.shape}")
             print(f"  Columns: {list(samples.columns)}")
             print(f"  Data types: {[f'{col}: {samples[col].dtype}' for col in samples.columns]}")
-            
+
             # Time statistics if available
             if 'time' in samples.columns:
                 time_col = samples['time']
                 duration = (time_col.max() - time_col.min()) / 1000  # Convert to seconds
                 print(f"  Duration: {duration:.2f} seconds")
-            
+
             # Memory usage
             try:
                 mem_mb = samples.estimated_size() / (1024 * 1024)
@@ -1215,14 +1215,14 @@ class Gaze:
                 pass
 
         # Events information
-        print("\nEVENTS DATA:")
+        print('\nEVENTS DATA:')
         if hasattr(self, 'events') and self.events is not None:
             events = self.events
             if hasattr(events, 'frame') and events.frame is not None:
                 events_df = events.frame
                 print(f"  Shape: {(events_df.shape)}")
                 print(f"  Columns: {list(events_df.columns)}")
-                
+
                 # Event types (unique values in 'name' column)
                 if 'name' in events_df.columns:
                     event_types = events_df['name'].unique().to_list()
@@ -1230,17 +1230,17 @@ class Gaze:
                     for event_type in event_types:
                         count = events_df.filter(pl.col('name') == event_type).shape[0]
                         print(f"    {event_type}: {count} instances")
-                
+
                 # Event duration statistics if onset/offset are present
                 if 'onset' in events_df.columns and 'offset' in events_df.columns:
-                    durations = events_df['offset'] - events_df['onset']
-    
+                    events_df['offset'] - events_df['onset']
+
             else:
-                print("  No event data frame available")
+                print('  No event data frame available')
         else:
-            print("  No events data available")
-        
-        print("=" * 60) 
+            print('  No events data available')
+
+        print('=' * 60)
 
     @property
     def schema(self) -> pl.type_aliases.SchemaDict:
