@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test scanpathplot."""
-import re
 from unittest.mock import Mock
 
 import matplotlib.colors
@@ -28,7 +27,6 @@ import polars as pl
 import pytest
 from matplotlib import figure
 
-from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
@@ -202,11 +200,13 @@ def test_scanpathplot_exceptions(gaze, kwargs, exception, monkeypatch):
 
     with pytest.raises(exception):
         scanpathplot(gaze=gaze, **kwargs)
+    plt.close()
 
 
 def test_scanpathplot_gaze_events_all_none_exception():
     with pytest.raises(TypeError, match='must not be both None'):
         scanpathplot(gaze=None, events=None)
+    plt.close()
 
 
 def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
@@ -214,6 +214,7 @@ def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
     gaze.samples = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(events=None, gaze=gaze, add_traceplot=True)
+    plt.close()
 
 
 def test_scanpathplot_gaze_events_none_exception(gaze):
@@ -221,18 +222,70 @@ def test_scanpathplot_gaze_events_none_exception(gaze):
     gaze.events = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(gaze=gaze)
+    plt.close()
 
 
-def test_scanpathplot_events_is_deprecated(gaze):
+def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         scanpathplot(events=gaze.events)
+    plt.close()
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='scanpathplot() argument events',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'scnpatplot argument "events" was scheduled to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
+
+
+def test_scanpathplot_no_experiment(gaze):
+    # test if gaze is not None and gaze.experiment is not None:
+    gaze = gaze.clone()
+    gaze.experiment = None
+    # Should not raise any exception
+    scanpathplot(gaze=gaze, show=False)
+
+
+def test_set_screen_axes_valid(gaze):
+    _, ax = scanpathplot(
+        gaze=gaze,
+        show=False,
+    )
+    assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
+    assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
+    assert ax.get_aspect() == 1
+
+
+@pytest.mark.parametrize('origin', ['lower left', 'center'])
+def test_set_screen_axes_invalid_origin(origin, gaze):
+    gaze.experiment.screen.origin = origin
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        scanpathplot(gaze=gaze, show=False)
+
+
+@pytest.mark.parametrize(
+    'width,height',
+    [
+        (None, None),
+        (None, 768),
+        (1024, None),
+    ],
+)
+def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
+    """Should not raise or override axes when screen dimensions are None."""
+    gaze.experiment.screen.width_px = width
+    gaze.experiment.screen.height_px = height
+
+    _, ax = plt.subplots()
+
+    # Call scanpathplot; should return silently, without ValueError
+    # _set_screen_axes() should return early without modifying axes
+    scanpathplot(gaze=gaze, show=False, ax=ax, figsize=None)
+
+    # Axes limits should be finite numbers, not NaN/None
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    assert np.isfinite(xlim).all()
+    assert np.isfinite(ylim).all()
+
+    # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
+    assert ax.get_aspect() != 'equal'
