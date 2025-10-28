@@ -120,17 +120,16 @@ class GazeOnFaces(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions.from_dicts(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'gaze_csv.zip',
-                        'md5': 'fe219f07c9253cd9aaee6bd50233c034',
-                        'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'sub_id': int,
-                            'trial_id': int,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=',
+                    'filename': 'database3_sciencemuseum.zip',
+                    'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'sub_id': int,
+                        'trial_id': int,
                     },
+                },
             ],
         ),
     )
