@@ -32,11 +32,11 @@ from pymovements.dataset.resources import ResourceDefinitions
 class BSC(DatasetDefinition):
     """BSC dataset :cite:p:`BSC`.
 
-    This dataset includes monocular eye tracking data from a single participant in a single
-    session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
-    eye tracker and precomputed events on aoi level are reported.
-
-    The participant is instructed to read texts and answer questions.
+    The Beijing Sentence Corpus (BSC) is a Simplified Chinese sentence corpus of eye-tracking data,
+    including word boundaries and predictability norms for each word. The sentences were selected
+    from the People's Daily, the largest newspaper group and an official newspaper of the People's
+    Republic of China. Data was collected from 60 native Chinese university students. The eye
+    movements were recorded with an Eyelink II system running at 500 Hz.
 
     Check the respective paper for details :cite:p:`BSC`.
 
@@ -78,11 +78,11 @@ class BSC(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.SBSAT` definition:
+    :py:class:`~pymovements.datasets.BSC` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("SBSAT", path='data/SBSAT')
+    >>> dataset = pm.Dataset("BSC", path='data/BSC')
 
     Download the dataset resources:
 

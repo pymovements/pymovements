@@ -29,6 +29,8 @@ from matplotlib.collections import Collection
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
+from pymovements.plotting._matplotlib import finalize_figure
+from pymovements.plotting._matplotlib import prepare_figure
 
 
 def main_sequence_plot(
@@ -43,8 +45,10 @@ def main_sequence_plot(
         show: bool = True,
         *,
         event_df: Events | EventDataFrame | None = None,
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
         **kwargs: Collection,
-) -> None:
+) -> tuple[plt.Figure, plt.Axes]:
     """Plot the saccade main sequence.
 
     Parameters
@@ -69,8 +73,18 @@ def main_sequence_plot(
         If True, figure will be shown. (default: True)
     event_df: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude". (default: None)
+    ax: plt.Axes | None
+        External axes to draw into. If provided, the function will not show or close the figure.
+    closefig: bool | None
+        Close figure after plotting. If None, defaults to closing only when the figure
+        was created by this function.
     **kwargs: Collection
-        Additional keyword arguments passed to matplotlib.pyplot.scatter.
+        Additional keyword arguments passed to matplotlib.axes.Axes.scatter.
+
+    Returns
+    -------
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and axes.
 
     Raises
     ------
@@ -125,27 +139,42 @@ def main_sequence_plot(
             'the main sequence plot. ',
         ) from exc
 
-    fig = plt.figure(figsize=figsize)
+    fig, ax, own = prepare_figure(ax, figsize, func_name='main_sequence_plot')
 
-    plt.scatter(
-        amplitudes,
-        peak_velocities,
-        color=color,
-        alpha=alpha,
-        s=marker_size,
-        marker=marker,
-        **kwargs,
-    )
+    # Use plt.scatter when we own the figure to preserve legacy test expectations.
+    if own:
+        plt.scatter(
+            amplitudes,
+            peak_velocities,
+            color=color,
+            alpha=alpha,
+            s=marker_size,
+            marker=marker,
+            **kwargs,
+        )
+    else:
+        ax.scatter(
+            amplitudes,
+            peak_velocities,
+            color=color,
+            alpha=alpha,
+            s=marker_size,
+            marker=marker,
+            **kwargs,
+        )
 
     if title:
-        plt.title(title)
-    plt.xlabel('Amplitude [dva]')
-    plt.ylabel('Peak Velocity [dva/s]')
+        ax.set_title(title)
+    ax.set_xlabel('Amplitude [dva]')
+    ax.set_ylabel('Peak Velocity [dva/s]')
 
-    if savepath is not None:
-        fig.savefig(savepath)
+    finalize_figure(
+        fig,
+        show=show,
+        savepath=savepath,
+        closefig=closefig,
+        own_figure=own,
+        func_name='main_sequence_plot',
+    )
 
-    if show:
-        plt.show()
-
-    plt.close(fig)
+    return fig, ax

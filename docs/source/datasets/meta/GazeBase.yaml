@@ -1,0 +1,43 @@
+name: GazeBase
+long_name: GazeBase dataset
+resources:
+- content: gaze
+  filename: GazeBase_v2_0.zip
+  url: https://figshare.com/ndownloader/files/27039812
+  md5: cb7eb895fb48f8661decf038ab998c9a
+  filename_pattern: S_{round_id:1d}{subject_id:d}_S{session_id:d}_{task_name}.csv
+  filename_pattern_schema_overrides:
+    round_id: '!int'
+    subject_id: '!int'
+    session_id: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1680
+    height_px: 1050
+    width_cm: 47.4
+    height_cm: 29.7
+    distance_cm: 55
+    origin: upper left
+custom_read_kwargs:
+  gaze:
+    null_values: NaN
+    schema_overrides:
+      n: '!polars.datatypes.classes.Int64'
+      x: '!polars.datatypes.classes.Float32'
+      y: '!polars.datatypes.classes.Float32'
+      val: '!polars.datatypes.classes.Int64'
+      dP: '!polars.datatypes.classes.Float32'
+      lab: '!polars.datatypes.classes.Int64'
+      xT: '!polars.datatypes.classes.Float32'
+      yT: '!polars.datatypes.classes.Float32'
+column_map:
+  val: validity
+  xT: x_target_pos
+  yT: y_target_pos
+time_column: n
+time_unit: ms
+position_columns:
+- x
+- y

@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+data/
 downloads/
 eggs/
 .eggs/
@@ -56,6 +57,7 @@ docs/source/tutorials/data
 .tox
 .coverage
 .coverage.*
+benchmark-data.json
 coverage.xml
 htmlcov/
 tests/preprocessed/

@@ -1,0 +1,44 @@
+name: JuDo1000
+long_name: Jumping Dots 1000 Hz dataset
+resources:
+- content: gaze
+  filename: JuDo1000.zip
+  url: https://osf.io/download/4wy7s/
+  md5: b8b9e5bb65b78d6f2bd260451cdd89f8
+  filename_pattern: '{subject_id:d}_{session_id:d}.csv'
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    session_id: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1280
+    height_px: 1024
+    width_cm: 38
+    height_cm: 30.2
+    distance_cm: 68
+    origin: upper left
+custom_read_kwargs:
+  gaze:
+    schema_overrides:
+      trialId: '!polars.datatypes.classes.Int64'
+      pointId: '!polars.datatypes.classes.Int64'
+      time: '!polars.datatypes.classes.Int64'
+      x_left: '!polars.datatypes.classes.Float32'
+      y_left: '!polars.datatypes.classes.Float32'
+      x_right: '!polars.datatypes.classes.Float32'
+      y_right: '!polars.datatypes.classes.Float32'
+    separator: "\t"
+column_map:
+  trialId: trial_id
+  pointId: point_id
+trial_columns:
+- trial_id
+time_column: time
+time_unit: ms
+pixel_columns:
+- x_left
+- y_left
+- x_right
+- y_right

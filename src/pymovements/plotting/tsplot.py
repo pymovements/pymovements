@@ -21,12 +21,15 @@
 from __future__ import annotations
 
 import math
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import finalize_figure
+from pymovements.plotting._matplotlib import prepare_figure
 
 
 def tsplot(
@@ -46,7 +49,10 @@ def tsplot(
         title: str | None = None,
         savepath: str | None = None,
         show: bool = True,
-) -> None:
+        *,
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
 
     Parameters
@@ -58,10 +64,9 @@ def tsplot(
     xlabel: str | None
         Set the x label. (default: None)
     n_cols: int | None
-        Number of channel subplot colunms. If None, it will be automatically inferred.
-        (default: None)
+        Number of channel subplot columns. If None, it will be inferred. (default: None)
     n_rows: int | None
-        Number of channel subplot rows. If None, it will be automatically inferred. (default: None)
+        Number of channel subplot rows. If None, it will be inferred. (default: None)
     rotate_ylabels: bool
         Set whether to rotate ylabels. (default: True)
     share_y: bool
@@ -84,6 +89,17 @@ def tsplot(
         If given, figure will be saved to this path. (default: None)
     show: bool
         If True, figure will be shown. (default: True)
+    ax: plt.Axes | None
+        External axes to draw into when plotting a single channel. Ignored when
+        ``n_channels > 1``. (default: None)
+    closefig: bool | None
+        Whether to close the figure. If None, close only when the function created
+        the figure. (default: None)
+
+    Returns
+    -------
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and the primary axes (the first subplot).
 
     Raises
     ------
@@ -116,19 +132,33 @@ def tsplot(
     # determine number of subplots and height ratios for events
     height_ratios = [1] * n_rows
 
-    fig, axs = plt.subplots(
-        ncols=n_cols,
-        nrows=n_rows,
-        sharex=True,
-        sharey=share_y,
-        squeeze=False,
-        figsize=figsize,
-        gridspec_kw={
-            'hspace': 0,
-            'height_ratios': height_ratios,
-        },
-    )
-    axs = axs.flatten()
+    external_ax = ax is not None
+
+    if n_channels == 1:
+        fig, ax, own_figure = prepare_figure(ax, figsize, func_name='tsplot')
+        assert ax is not None
+        axs = [ax]
+    else:
+        if external_ax:
+            warn(
+                'tsplot: "ax" is ignored when plotting multiple channels.',
+                UserWarning,
+                stacklevel=2,
+            )
+        fig, axs_grid = plt.subplots(
+            ncols=n_cols,
+            nrows=n_rows,
+            sharex=True,
+            sharey=share_y,
+            squeeze=False,
+            figsize=figsize,
+            gridspec_kw={
+                'hspace': 0,
+                'height_ratios': height_ratios,
+            },
+        )
+        axs = axs_grid.flatten()
+        own_figure = True
 
     t = np.arange(n_samples)
     xlims = t.min(), t.max()
@@ -159,8 +189,10 @@ def tsplot(
             ylim_min = np.nanmin(arr)
             ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
-        ax.set_xlim(xlims)
-        ax.set_ylim(ylims)
+        if xlims[0] != xlims[1]:
+            ax.set_xlim(xlims)
+        if ylims[0] != ylims[1]:
+            ax.set_ylim(ylims)
 
         ax.grid(show_grid, which='major')
         ax.grid(show_grid, which='minor')
@@ -192,17 +224,19 @@ def tsplot(
         else:
             ax.set_ylabel(channels[channel_id])
 
-    # print x label on last used (bottom) axis
-    ax.set_xlabel(xlabel)
+    # print x label on the last axis (bottom-most in a column)
+    axs[-1].set_xlabel(xlabel)
 
-    if n_channels == 1:
-        ax.set_title(title)
-    else:
+    if title:
         axs[0].set_title(title)
 
-    if savepath is not None:
-        fig.savefig(savepath)
+    finalize_figure(
+        fig,
+        show=show,
+        savepath=savepath,
+        closefig=closefig,
+        own_figure=own_figure,
+        func_name='tsplot',
+    )
 
-    if show:
-        plt.show()
-    plt.close(fig)
+    return fig, axs[0]

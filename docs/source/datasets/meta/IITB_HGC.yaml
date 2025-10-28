@@ -1,0 +1,13 @@
+name: IITB_HGC
+long_name: IITB-Hallucination Gaze Corpus
+resources:
+- content: precomputed_events
+  filename: IITB_HGC.jsonl
+  url: https://huggingface.co/datasets/cfilt/IITB-HGC/resolve/main/IITB_HGC.jsonl?download=true
+  md5: cde5dd88534e87d9b2f1ab6e47133b5c
+  filename_pattern: IITB_HGC.jsonl
+custom_read_kwargs:
+  precomputed_events: {}
+trial_columns:
+- participant_id
+- trial_id

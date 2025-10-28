@@ -27,11 +27,11 @@ from pymovements.gaze import from_csv
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_shape', 'expected_schema'),
+    ('filename', 'kwargs', 'expected_shape', 'expected_schema'),
     [
         pytest.param(
+            'monocular_example.csv',
             {
-                'file': 'tests/files/monocular_example.csv',
                 'time_column': 'time',
                 'time_unit': 'ms',
                 'pixel_columns': ['x_left_pix', 'y_left_pix'],
@@ -42,8 +42,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'monocular_example.csv',
             {
-                'file': 'tests/files/monocular_example.csv',
                 'definition': DatasetDefinition(
                     time_column='time',
                     time_unit='ms',
@@ -56,8 +56,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'monocular_example.csv',
             {
-                'file': 'tests/files/monocular_example.csv',
                 'column_map': {
                     'x_left_pix': 'pixel_xl',
                     'y_left_pix': 'pixel_yl',
@@ -70,8 +70,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'binocular_example.csv',
             {
-                'file': 'tests/files/binocular_example.csv',
                 'time_column': 'time',
                 'time_unit': 'ms',
                 'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
@@ -83,8 +83,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'binocular_example.csv',
             {
-                'file': 'tests/files/binocular_example.csv',
                 'column_map': {
                     'x_left_pix': 'pixel_xl',
                     'y_left_pix': 'pixel_yl',
@@ -103,8 +103,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'missing_values_example.csv',
             {
-                'file': 'tests/files/missing_values_example.csv',
                 'time_column': 'time',
                 'time_unit': 'ms',
                 'pixel_columns': ['pixel_x', 'pixel_y'],
@@ -116,8 +116,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'gaze_on_faces_example.csv',
             {
-                'file': 'tests/files/gaze_on_faces_example.csv',
                 'definition': datasets.GazeOnFaces(),
             },
             (10, 2),
@@ -125,11 +125,11 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'gaze_on_faces_example.csv',
             {
-                'file': 'tests/files/gaze_on_faces_example.csv',
                 'definition': datasets.GazeOnFaces(),
                 'pixel_columns': ['foo', 'bar'],
-                **{
+                'read_csv_kwargs': {
                     'separator': ',',
                     'has_header': False,
                     'new_columns': ['foo', 'bar'],
@@ -142,8 +142,26 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'gaze_on_faces_example.csv',
             {
-                'file': 'tests/files/gazebase_example.csv',
+                'definition': datasets.GazeOnFaces(),
+                'pixel_columns': ['foo', 'bar'],
+                **{
+                    'separator': ',',
+                    'has_header': False,
+                    'new_columns': ['foo', 'bar'],
+                    'schema_overrides': [pl.Float32, pl.Float32],
+                },
+            },
+            (10, 2),
+            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
+            marks=pytest.mark.filterwarnings('ignore:.*from_csv.*kwargs.*:DeprecationWarning'),
+            id='gaze_on_faces_dataset_**kwargs_and_columns',
+        ),
+
+        pytest.param(
+            'gazebase_example.csv',
+            {
                 'definition': datasets.GazeBase(),
             },
             (10, 7),
@@ -156,8 +174,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'gazebase_example.csv',
             {
-                'file': 'tests/files/gazebase_example.csv',
                 'definition': datasets.GazeBase(),
                 'column_map': {'dP': 'test'},
             },
@@ -171,8 +189,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'gazebase_vr_example.csv',
             {
-                'file': 'tests/files/gazebase_vr_example.csv',
                 'definition': datasets.GazeBaseVR(),
             },
             (10, 11),
@@ -187,8 +205,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'hbn_example.csv',
             {
-                'file': 'tests/files/hbn_example.csv',
                 'definition': datasets.HBN(),
             },
             (10, 2),
@@ -197,8 +215,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'hbn_example.csv',
             {
-                'file': 'tests/files/hbn_example.csv',
                 'definition': datasets.HBN(),
                 'pixel_columns': [],
                 'position_columns': ['x_pix', 'y_pix'],
@@ -209,8 +227,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'judo1000_example.csv',
             {
-                'file': 'tests/files/judo1000_example.csv',
                 'definition': datasets.JuDo1000(),
             },
             (10, 4),
@@ -222,8 +240,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'judo1000_example.csv',
             {
-                'file': 'tests/files/judo1000_example.csv',
                 'definition': datasets.JuDo1000(),
                 'column_schema_overrides': {'trial_id': pl.String},
             },
@@ -236,8 +254,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'judo1000_example.csv',
             {
-                'file': 'tests/files/judo1000_example.csv',
                 'definition': datasets.JuDo1000(
                     custom_read_kwargs={
                         'gaze': {
@@ -264,8 +282,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'judo1000_example.csv',
             {
-                'file': 'tests/files/judo1000_example.csv',
                 'definition': datasets.JuDo1000(
                     custom_read_kwargs={
                         'gaze': {
@@ -296,8 +314,8 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'sbsat_example.csv',
             {
-                'file': 'tests/files/sbsat_example.csv',
                 'definition': datasets.SBSAT(),
             },
             (10, 5),
@@ -309,8 +327,40 @@ from pymovements.gaze import from_csv
         ),
     ],
 )
-def test_from_csv_gaze_has_expected_shape_and_columns(kwargs, expected_shape, expected_schema):
-    gaze = from_csv(**kwargs)
+def test_from_csv_gaze_has_expected_shape_and_columns(
+        filename, kwargs, expected_shape, expected_schema, make_example_file,
+):
+    filepath = make_example_file(filename)
+    gaze = from_csv(file=filepath, **kwargs)
 
     assert gaze.samples.shape == expected_shape
     assert gaze.samples.schema == expected_schema
+
+
+@pytest.mark.parametrize(
+    ('filename', 'kwargs'),
+    [
+        pytest.param(
+            'monocular_example.csv',
+            {
+                'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                'skip_lines': 0,
+            },
+            id='**kwargs',
+        ),
+    ],
+)
+def test_from_asc_parameter_is_deprecated(
+        filename, kwargs, make_example_file, assert_deprecation_is_removed,
+):
+    filepath = make_example_file(filename)
+
+    with pytest.raises(DeprecationWarning) as info:
+        from_csv(filepath, **kwargs)
+
+    assert_deprecation_is_removed(
+        function_name=f'keyword argument {list(kwargs.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.29.0',
+
+    )

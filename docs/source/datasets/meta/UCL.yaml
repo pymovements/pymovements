@@ -1,0 +1,20 @@
+name: UCL
+long_name: University College London corpus
+resources:
+- content: precomputed_events
+  filename: UCL_events.zip
+  url: https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip
+  md5: 77e3c0cacccb0a074a55d23aa8531ca5
+  filename_pattern: eyetracking.fix
+- content: precomputed_reading_measures
+  filename: UCL_measures.zip
+  url: https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip
+  md5: 77e3c0cacccb0a074a55d23aa8531ca5
+  filename_pattern: eyetracking.RT
+custom_read_kwargs:
+  precomputed_events:
+    separator: "\t"
+    null_values:
+    - NaN
+  precomputed_reading_measures:
+    separator: "\t"

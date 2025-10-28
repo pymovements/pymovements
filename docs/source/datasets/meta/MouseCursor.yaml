@@ -1,0 +1,39 @@
+name: MouseCursor
+long_name: Mouse Cursor dataset
+resources:
+- content: gaze
+  filename: mousecursor.zip
+  url: https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip
+  md5: 7885e8fd44f14f02f60e9f62431aea63
+  filename_pattern: Experiment {experiment_id:d}.csv
+  filename_pattern_schema_overrides:
+    experiment_id: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 3
+  screen:
+    width_px: 1920
+    height_px: 1080
+    width_cm: 52.99
+    height_cm: 29.81
+    distance_cm: 50
+    origin: upper left
+custom_read_kwargs:
+  gaze:
+    schema_overrides:
+      Tracking: '!polars.datatypes.classes.String'
+      Trial: '!polars.datatypes.classes.Int64'
+      Measurement: '!polars.datatypes.classes.Int64'
+      ExactTime: '!polars.datatypes.classes.String'
+      Time: '!polars.datatypes.classes.Float32'
+      x: '!polars.datatypes.classes.Float32'
+      y: '!polars.datatypes.classes.Float32'
+      Participant: '!polars.datatypes.classes.Int64'
+trial_columns:
+- Trial
+- Participant
+time_column: Time
+time_unit: ms
+pixel_columns:
+- x
+- y

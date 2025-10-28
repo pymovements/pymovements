@@ -35,7 +35,7 @@ from pymovements.gaze.experiment import Experiment
 class ToyDataset(DatasetDefinition):
     """Example toy dataset.
 
-    This dataset includes monocular eye tracking data from a single participants in a single
+    This dataset includes monocular eye tracking data from a single participant in a single
     session. Eye movements are recorded at a sampling frequency of 1000 Hz using an EyeLink Portable
     Duo video-based eye tracker and are provided as pixel coordinates.
 
@@ -118,9 +118,9 @@ class ToyDataset(DatasetDefinition):
             [
                     {
                         'content': 'gaze',
-                        'url': 'http://github.com/aeye-lab/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/',  # noqa: E501 # pylint: disable=line-too-long
+                        'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'pymovements-toy-dataset.zip',
-                        'md5': '4da622457637a8181d86601fe17f3aa8',
+                        'md5': '256901852c1c07581d375eef705855d6',
                         'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
                         'filename_pattern_schema_overrides': {
                             'text_id': int,

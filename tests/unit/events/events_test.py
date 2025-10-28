@@ -18,13 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements.events.Events."""
-import re
+from __future__ import annotations
 
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 
 
@@ -32,6 +31,32 @@ from pymovements import Events
 def fixture_dataset():
     schema = {'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64}
     yield schema
+
+
+@pytest.fixture(name='make_events', scope='function')
+def fixture_make_events():
+    """Make a fixture function to create simple Events objects."""
+
+    def _make_events(names: list[str], properties: list[str] | None = None) -> Events:
+        data = {
+            'name': names,
+            'onset': range(0, 2 * len(names), 2),
+            'offset': range(1, 2 * len(names) + 1, 2),
+        }
+        events = Events(pl.from_dict(data))
+
+        # adding columns afterward to not count them as non-property additional_columns
+        if properties is not None:
+            events.frame = events.frame.select(
+                [pl.all()] + [
+                    pl.int_ranges(0, 100 * len(names), 100).alias(property)
+                    for property in properties
+                ],
+            )
+
+        return events
+
+    return _make_events
 
 
 @pytest.mark.parametrize(
@@ -74,7 +99,7 @@ def fixture_dataset():
         ),
     ],
 )
-def test_event_dataframe_init_exceptions(kwargs, exception, msg_substrings):
+def test_init_exceptions(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         Events(**kwargs)
 
@@ -92,7 +117,7 @@ def test_event_dataframe_init_exceptions(kwargs, exception, msg_substrings):
         pytest.param([], {'onsets': [0, 2], 'offsets': [1, 3]}, id='dict_with_two_events_kwarg'),
     ],
 )
-def test_event_dataframe_init_expected_schema(args, kwargs, expected_schema_after_init):
+def test_init_expected_schema(args, kwargs, expected_schema_after_init):
     events = Events(*args, **kwargs)
     assert events.schema == expected_schema_after_init
 
@@ -106,7 +131,7 @@ def test_event_dataframe_init_expected_schema(args, kwargs, expected_schema_afte
         pytest.param([], {'onsets': [0, 2], 'offsets': [1, 3]}, 2, id='dict_with_two_events_kwarg'),
     ],
 )
-def test_event_dataframe_init_has_expected_length(args, kwargs, expected_length):
+def test_init_has_expected_length(args, kwargs, expected_length):
     events = Events(*args, **kwargs)
     assert len(events) == expected_length
 
@@ -128,7 +153,7 @@ def test_event_dataframe_init_has_expected_length(args, kwargs, expected_length)
         ),
     ],
 )
-def test_event_dataframe_init_has_correct_name(args, kwargs, expected_name):
+def test_init_has_correct_name(args, kwargs, expected_name):
     events = Events(*args, **kwargs)
     assert (events['name'].to_numpy() == expected_name).all()
 
@@ -142,7 +167,7 @@ def test_event_dataframe_init_has_correct_name(args, kwargs, expected_name):
         ),
     ],
 )
-def test_event_dataframe_init_has_correct_names(args, kwargs, expected_names):
+def test_init_has_correct_names(args, kwargs, expected_names):
     events = Events(*args, **kwargs)
     assert (events['name'] == expected_names).all()
 
@@ -177,7 +202,7 @@ def test_event_dataframe_init_has_correct_names(args, kwargs, expected_names):
         ),
     ],
 )
-def test_event_dataframe_init_expected(args, kwargs, expected_df_data, expected_schema_after_init):
+def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_init):
     events = Events(*args, **kwargs)
 
     expected_df = pl.DataFrame(data=expected_df_data, schema=expected_schema_after_init)
@@ -257,7 +282,7 @@ def test_event_dataframe_init_expected(args, kwargs, expected_df_data, expected_
         ),
     ],
 )
-def test_event_dataframe_init_expected_df(args, kwargs, expected_df):
+def test_init_expected_df(args, kwargs, expected_df):
     events = Events(*args, **kwargs)
 
     assert_frame_equal(events.frame, expected_df)
@@ -317,7 +342,7 @@ def test_event_dataframe_init_expected_df(args, kwargs, expected_df):
         ),
     ],
 )
-def test_event_dataframe_init_expected_trial_column_list(kwargs, expected_trial_column_list):
+def test_init_expected_trial_column_list(kwargs, expected_trial_column_list):
     events = Events(**kwargs)
 
     assert events.trial_columns == expected_trial_column_list
@@ -387,7 +412,7 @@ def test_event_dataframe_init_expected_trial_column_list(kwargs, expected_trial_
         ),
     ],
 )
-def test_event_dataframe_init_expected_trial_column_data(kwargs, expected_trial_column_data):
+def test_init_expected_trial_column_data(kwargs, expected_trial_column_data):
     events = Events(**kwargs)
 
     if isinstance(expected_trial_column_data, pl.Series):
@@ -395,14 +420,85 @@ def test_event_dataframe_init_expected_trial_column_data(kwargs, expected_trial_
     assert_frame_equal(events.frame[events.trial_columns], expected_trial_column_data)
 
 
-def test_event_dataframe_columns_same_as_frame():
+@pytest.mark.parametrize(
+    ('events_left', 'events_right', 'expected'),
+    [
+        pytest.param(
+            Events(),
+            Events(),
+            True,
+            id='empty_events',
+        ),
+        pytest.param(
+            Events(),
+            Events(onsets=[0], offsets=[1]),
+            False,
+            id='one_empty_one_not',
+        ),
+        pytest.param(
+            Events(
+                pl.from_dict({'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+            ),
+            Events(name=['saccade'], onsets=[0], offsets=[1]),
+            True,
+            id='same_events',
+        ),
+        pytest.param(
+            Events(
+                pl.from_dict({'name': ['saccade', None], 'onset': [0, 1], 'offset': [1, 2]}),
+            ),
+            Events(
+                pl.from_dict({'name': ['saccade', None], 'onset': [0, 1], 'offset': [1, 2]}),
+            ),
+            True,
+            id='same_events_with_nulls',
+        ),
+        pytest.param(
+            Events(name=['saccade'], onsets=[0], offsets=[1]),
+            Events(name=['fixation'], onsets=[0], offsets=[1]),
+            False,
+            id='different_events',
+        ),
+        pytest.param(
+            Events(name=['saccade'], onsets=[0], offsets=[1], trials=[0]),
+            Events(name=['saccade'], onsets=[0], offsets=[1], trials=[1]),
+            False,
+            id='same_events_different_trials',
+        ),
+        pytest.param(
+            Events(
+                pl.from_dict({'trial': [0], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                trial_columns='trial',
+            ),
+            Events(name=['saccade'], onsets=[0], offsets=[1], trials=[0]),
+            True,
+            id='same_events_same_trials',
+        ),
+        pytest.param(
+            Events(
+                pl.from_dict({'trial': [0], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+                trial_columns='trial',
+            ),
+            Events(
+                pl.from_dict({'trial': [0], 'name': ['saccade'], 'onset': [0], 'offset': [1]}),
+            ),
+            False,
+            id='same_events_same_trials_different_trial_columns',
+        ),
+    ],
+)
+def test_equality_as_expected(events_left, events_right, expected):
+    assert (events_left == events_right) == expected
+
+
+def test_columns_same_as_frame():
     init_kwargs = {'onsets': [0], 'offsets': [1]}
     events = Events(**init_kwargs)
 
     assert events.columns == events.frame.columns
 
 
-def test_event_dataframe_clone():
+def test_clone():
     events = Events(name='saccade', onsets=[0], offsets=[123])
     events_copy = events.clone()
 
@@ -413,7 +509,7 @@ def test_event_dataframe_clone():
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_event_dataframe_copy():
+def test_copy():
     events = Events(name='saccade', onsets=[0], offsets=[123])
     events_copy = events.copy()
 
@@ -423,22 +519,19 @@ def test_event_dataframe_copy():
     assert_frame_equal(events.frame, events_copy.frame)
 
 
-def test_event_dataframe_copy_removed():
+def test_copy_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         Events().copy()
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='Events.copy()',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'Events.copy() was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
 
 
-def test_event_dataframe_clones_trial_columns():
+def test_clones_trial_columns():
     events = Events(data=pl.DataFrame({'trial': 'trial'}), trial_columns='trial')
     events_copy = events.clone()
 
@@ -500,7 +593,7 @@ def test_event_dataframe_clones_trial_columns():
         ),
     ],
 )
-def test_event_dataframe_add_trial_column(events, kwargs, expected_df):
+def test_add_trial_column(events, kwargs, expected_df):
     events.add_trial_column(**kwargs)
     assert_frame_equal(events.frame, expected_df.frame)
 
@@ -517,35 +610,14 @@ def test_event_dataframe_add_trial_column(events, kwargs, expected_df):
         ),
     ],
 )
-def test_event_dataframe_add_trial_column_raises_exception(events, kwargs, exception, message):
+def test_add_trial_column_raises_exception(events, kwargs, exception, message):
     with pytest.raises(exception) as excinfo:
         events.add_trial_column(**kwargs)
 
     assert message == excinfo.value.args[0]
 
 
-def test_eventdataframe_split():
-    events = Events(
-        pl.DataFrame(
-            {
-                'trial_id': [0, 1, 1, 2],
-                'name': ['fixation', 'fixation', 'fixation', 'fixation'],
-                'onset': [0, 1, 2, 3],
-                'offset': [1, 2, 44, 1340],
-                'duration': [1, 1, 42, 1337],
-            },
-        ),
-    )
-
-    split_event = events.split('trial_id')
-    assert all(events.frame.n_unique('trial_id') == 1 for events in split_event)
-    assert len(split_event) == 3
-    assert_frame_equal(events.frame.filter(pl.col('trial_id') == 0), split_event[0].frame)
-    assert_frame_equal(events.frame.filter(pl.col('trial_id') == 1), split_event[1].frame)
-    assert_frame_equal(events.frame.filter(pl.col('trial_id') == 2), split_event[2].frame)
-
-
-def test_eventdataframe_split_by_str():
+def test_split_by_str():
     events = Events(
         pl.DataFrame(
             {
@@ -567,7 +639,7 @@ def test_eventdataframe_split_by_str():
     assert_frame_equal(events.frame.filter(pl.col('trial_id') == 2), split_event[2].frame)
 
 
-def test_eventdataframe_split_by_list():
+def test_split_by_list():
     events = Events(
         pl.DataFrame(
             {
@@ -587,7 +659,7 @@ def test_eventdataframe_split_by_list():
     assert len(split_event) == 4
 
 
-def test_event_dataframe_split_default():
+def test_split_default():
     events = Events(
         pl.DataFrame(
             {
@@ -609,7 +681,7 @@ def test_event_dataframe_split_default():
     assert_frame_equal(events.frame.filter(pl.col('trial_id') == 2), split_event[2].frame)
 
 
-def test_event_dataframe_split_default_no_trial_columns():
+def test_split_default_no_trial_columns_raises_typeerror():
     events = Events(
         pl.DataFrame(
             {
@@ -621,39 +693,274 @@ def test_event_dataframe_split_default_no_trial_columns():
             },
         ),
     )
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="Either 'by' or 'Events.trial_columns' must be specified"):
         events.split()
 
 
-def _edf(names):
-    """Create an EventDataFrame for tests."""
-    df = pl.DataFrame({
-        'name': names,
-        'onset': [0] * len(names),
-        'offset': [1] * len(names),
-    })
-    return Events(data=df)
+@pytest.mark.parametrize(
+    ('events', 'by', 'expected_splits'),
+    [
+        pytest.param(
+            Events(
+                pl.from_dict({
+                    'trial_id': [0, 1],
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 10],
+                    'offset': [1, 12],
+                }),
+            ),
+            'trial_id',
+            {
+                (0,): Events(
+                    pl.from_dict({
+                        'trial_id': [0],
+                        'name': ['fixation'],
+                        'onset': [0],
+                        'offset': [1],
+                    }),
+                ),
+                (1,): Events(
+                    pl.from_dict({
+                        'trial_id': [1],
+                        'name': ['saccade'],
+                        'onset': [10],
+                        'offset': [12],
+                    }),
+                ),
+            },
+            id='single_column',
+        ),
+
+        pytest.param(
+            Events(onsets=[20, 30], offsets=[24, 40], name=['blink', 'fixation'], trials=[1, 2]),
+            None,
+            {
+                (1,): Events(onsets=[20], offsets=[24], name=['blink'], trials=[1]),
+                (2,): Events(onsets=[30], offsets=[40], name=['fixation'], trials=[2]),
+            },
+            id='single_column_default',
+        ),
+
+        pytest.param(
+            Events(onsets=[20, 30], offsets=[24, 40], name=['blink', 'fixation'], trials=[1, None]),
+            None,
+            {
+                (1,): Events(onsets=[20], offsets=[24], name=['blink'], trials=[1]),
+                (None,): Events(onsets=[30], offsets=[40], name=['fixation'], trials=[None]),
+            },
+            id='single_column_two_trials_int_one_none',
+        ),
+
+        pytest.param(
+            Events(
+                onsets=[20, 30], offsets=[24, 40], name=['blink', 'fixation'], trials=['A', None],
+            ),
+            None,
+            {
+                ('A',): Events(onsets=[20], offsets=[24], name=['blink'], trials=['A']),
+                (None,): Events(onsets=[30], offsets=[40], name=['fixation'], trials=[None]),
+            },
+            id='single_column_two_trials_str_one_none',
+        ),
+
+        pytest.param(
+            Events(
+                pl.from_dict({
+                    'trial_id': [0, 1, 1, 2],
+                    'task_id': ['A', 'B', 'C', 'D'],
+                    'name': ['saccade', 'fixation', 'blink', 'fixation'],
+                    'onset': [0, 1, 2, 3],
+                    'offset': [1, 2, 44, 1340],
+                }),
+            ),
+            'task_id',
+            {
+                ('A',): Events(
+                    pl.from_dict({
+                        'trial_id': [0],
+                        'task_id': ['A'],
+                        'name': ['saccade'],
+                        'onset': [0],
+                        'offset': [1],
+                    }),
+                ),
+                ('B',): Events(
+                    pl.from_dict({
+                        'trial_id': [1],
+                        'task_id': ['B'],
+                        'name': ['fixation'],
+                        'onset': [1],
+                        'offset': [2],
+                    }),
+                ),
+                ('C',): Events(
+                    pl.from_dict({
+                        'trial_id': [1],
+                        'task_id': ['C'],
+                        'name': ['blink'],
+                        'onset': [2],
+                        'offset': [44],
+                    }),
+                ),
+                ('D',): Events(
+                    pl.from_dict({
+                        'trial_id': [2],
+                        'task_id': ['D'],
+                        'name': ['fixation'],
+                        'onset': [3],
+                        'offset': [1340],
+                    }),
+                ),
+            },
+            id='two_columns',
+        ),
+
+        pytest.param(
+            Events(
+                pl.from_dict({
+                    'trial_id': [0, 1, 1, 2],
+                    'task_id': ['A', 'B', 'C', 'D'],
+                    'name': ['saccade', 'fixation', 'blink', 'fixation'],
+                    'onset': [0, 1, 2, 3],
+                    'offset': [1, 2, 44, 1340],
+                }),
+                trial_columns=['task_id', 'trial_id'],
+            ),
+            None,
+            {
+                ('A', 0): Events(
+                    pl.from_dict({
+                        'trial_id': [0],
+                        'task_id': ['A'],
+                        'name': ['saccade'],
+                        'onset': [0],
+                        'offset': [1],
+                    }),
+                    trial_columns=['task_id', 'trial_id'],
+                ),
+                ('B', 1): Events(
+                    pl.from_dict({
+                        'trial_id': [1],
+                        'task_id': ['B'],
+                        'name': ['fixation'],
+                        'onset': [1],
+                        'offset': [2],
+                    }),
+                    trial_columns=['task_id', 'trial_id'],
+                ),
+                ('C', 1): Events(
+                    pl.from_dict({
+                        'trial_id': [1],
+                        'task_id': ['C'],
+                        'name': ['blink'],
+                        'onset': [2],
+                        'offset': [44],
+                    }),
+                    trial_columns=['task_id', 'trial_id'],
+                ),
+                ('D', 2): Events(
+                    pl.from_dict({
+                        'trial_id': [2],
+                        'task_id': ['D'],
+                        'name': ['fixation'],
+                        'onset': [3],
+                        'offset': [1340],
+                    }),
+                    trial_columns=['task_id', 'trial_id'],
+                ),
+            },
+            id='two_trial_columns_default',
+        ),
+    ],
+)
+def test_split_as_dict_returns_expected_dict(events, by, expected_splits):
+    splits = events.split(by=by, as_dict=True)
+
+    assert splits == expected_splits
 
 
-def test_fixations_filter():
-    edf = _edf(['fixation', 'fixation_ivt', 'saccade', 'blink'])
-    out = edf.fixations
+def test_fixations_filter(make_events):
+    events = make_events(['fixation', 'fixation_ivt', 'saccade', 'blink'])
+    out = events.fixations
     assert set(out['name'].to_list()) == {'fixation', 'fixation_ivt'}
 
 
-def test_saccades_filter():
-    edf = _edf(['saccade', 'saccade_algo', 'fixation'])
-    out = edf.saccades
+def test_saccades_filter(make_events):
+    events = make_events(['saccade', 'saccade_algo', 'fixation'])
+    out = events.saccades
     assert set(out['name'].to_list()) == {'saccade', 'saccade_algo'}
 
 
-def test_blinks_filter():
-    edf = _edf(['blink', 'blink_fast', 'fixation'])
-    out = edf.blinks
+def test_blinks_filter(make_events):
+    events = make_events(['blink', 'blink_fast', 'fixation'])
+    out = events.blinks
     assert set(out['name'].to_list()) == {'blink', 'blink_fast'}
 
 
-def test_microsaccades_filter():
-    edf = _edf(['microsaccade', 'microsaccade_x', 'saccade'])
-    out = edf.microsaccades
+def test_microsaccades_filter(make_events):
+    events = make_events(['microsaccade', 'microsaccade_x', 'saccade'])
+    out = events.microsaccades
     assert set(out['name'].to_list()) == {'microsaccade', 'microsaccade_x'}
+
+
+@pytest.mark.parametrize(
+    ('init_names', 'init_properties', 'remove_properties', 'expected_columns'),
+    [
+        pytest.param(
+            [], ['test1'],
+            'test1',
+            ['duration'],
+            id='empty',
+        ),
+        pytest.param(
+            ['fixation'], ['test1'],
+            'test1',
+            ['duration'],
+            id='one',
+        ),
+        pytest.param(
+            ['fixation'], ['test1', 'test2'],
+            'test1',
+            ['duration', 'test2'],
+            id='one_out_of_two',
+        ),
+        pytest.param(
+            ['fixation'], ['test1', 'test2'],
+            ['test1', 'test2'],
+            ['duration'],
+            id='two_out_of_two',
+        ),
+    ],
+)
+def test_drop_event_properties_has_expected_columns(
+        init_names, init_properties, remove_properties, expected_columns, make_events,
+):
+    events = make_events(names=init_names, properties=init_properties)
+    events.drop(remove_properties)
+    assert set(events.event_property_columns) == set(expected_columns)
+
+
+@pytest.mark.parametrize(
+    ('init_names', 'init_properties', 'remove_properties', 'exception', 'message'),
+    [
+        pytest.param(
+            [], None,
+            'foobar',
+            ValueError, 'foobar.*does not exist',
+            id='empty',
+        ),
+        pytest.param(
+            [], None,
+            'onset',
+            ValueError, 'onset.*belongs to the minimal schema',
+            id='onset',
+        ),
+    ],
+)
+def test_drop_event_properties_raises_exception(
+        init_names, init_properties, remove_properties, exception, message, make_events,
+):
+    events = make_events(names=init_names, properties=init_properties)
+
+    with pytest.raises(exception, match=message):
+        events.drop(remove_properties)

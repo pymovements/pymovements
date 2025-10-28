@@ -122,19 +122,19 @@ html_theme_options = {
     'external_links': [
         {
             'name': 'Contributing',
-            'url': 'https://github.com/aeye-lab/pymovements/blob/main/CONTRIBUTING.md',
+            'url': 'https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md',
         },
     ],
     'icon_links': [
         {
             'name': 'GitHub',
-            'url': 'https://github.com/aeye-lab/pymovements',
+            'url': 'https://github.com/pymovements/pymovements',
             'icon': 'fa-brands fa-github',
         },
     ],
     'logo': {
-        'image_light': 'https://raw.githubusercontent.com/aeye-lab/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
-        'image_dark': 'https://raw.githubusercontent.com/aeye-lab/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
+        'image_light': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
+        'image_dark': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
     },
 }
 
@@ -158,7 +158,7 @@ bibtex_reference_style = 'author_year'
 class AuthorYearLabelStyle(BaseLabelStyle):
     def format_labels(self, sorted_entries):
         for entry in sorted_entries:
-            yield f'[{entry.persons["author"][0].last_names[0]} et al., {entry.fields["year"]}]'
+            yield f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
 
 
 class AuthorYearStyle(PlainStyle):
@@ -186,13 +186,13 @@ REVISION = getrev()
 
 extlinks = {
     'repo': (
-        f'https://github.com/aeye-lab/pymovements/blob/{REVISION}/%s',
+        f'https://github.com/pymovements/pymovements/blob/{REVISION}/%s',
         '%s',
     ),
 }
 
 LINKCODE_URL = (
-    f'https://github.com/aeye-lab/pymovements/blob/{REVISION}'
+    f'https://github.com/pymovements/pymovements/blob/{REVISION}'
     '/src/pymovements/{filepath}#L{linestart}-L{linestop}'
 )
 

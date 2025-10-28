@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2023-2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,20 +17,26 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Private helper functions for matplotlib."""
+"""Internal helpers for consistent matplotlib figure handling.
+
+Not part of the public API.
+"""
 from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Literal
 from typing import Union
+from warnings import warn
 
 import matplotlib.colors
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy as np
 import PIL.Image
+from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
 from typing_extensions import TypeAlias
 
+from pymovements.gaze.experiment import Screen
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -84,8 +90,8 @@ CmapNormType: TypeAlias = Union[
 ]
 
 MatplotlibSetupType: TypeAlias = tuple[
-    matplotlib.pyplot.figure,
-    matplotlib.pyplot.Axes,
+    plt.figure,
+    plt.Axes,
     matplotlib.colors.Colormap,
     CmapNormType,
     np.ndarray,
@@ -93,83 +99,175 @@ MatplotlibSetupType: TypeAlias = tuple[
 ]
 
 
-def _setup_matplotlib(
-        x_signal: np.ndarray,
-        y_signal: np.ndarray,
-        figsize: tuple[int, int],
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
-        cmap_segmentdata: LinearSegmentedColormapType | None = None,
-        cval: np.ndarray | None = None,
-        show_cbar: bool = False,
-        add_stimulus: bool = False,
-        path_to_image_stimulus: str | None = None,
-        stimulus_origin: str = 'upper',
-        padding: float | None = None,
-        pad_factor: float | None = 0.05,
-) -> MatplotlibSetupType:
-    """Configure cmap.
+def prepare_figure(
+    ax: plt.Axes | None, figsize: tuple[int, int] | tuple[float, float] | None,
+    *, func_name: str,
+) -> tuple[plt.Figure, plt.Axes, bool]:
+    """Prepare a matplotlib figure and axes.
+
+    Create or reuse a matplotlib Figure/Axes pair. If an external Axes is provided,
+    the given figsize is ignored and a warning is emitted.
 
     Parameters
     ----------
-    x_signal: np.ndarray
-        Time-step array.
-    y_signal: np.ndarray
-        Time-step array.
-    figsize: tuple[int, int]
-        Figure size.
-    cmap: matplotlib.colors.Colormap | None
-        Color map for line color values. (default: None)
-    cmap_norm: matplotlib.colors.Normalize | str | None
-        Normalization for color values. (default: None)
-    cmap_segmentdata: LinearSegmentedColormapType | None
-        Color map segmentation to build color map. (default: None)
-    cval: np.ndarray | None
-        Line color values. (default: None)
-    show_cbar: bool
-        Shows color bar if True. (default: False)
-    add_stimulus: bool
-        Boolean value indicationg whether to plot the scanpath on the stimuls. (default: False)
-    path_to_image_stimulus: str | None
-        Path of the stimulus to be shown. (default: None)
-    stimulus_origin: str
-        Origin of stimuls to plot on the stimulus. (default: 'upper')
-    padding: float | None
-        Absolute padding value. If None it is inferred from pad_factor and limits. (default: None)
-    pad_factor: float | None
-        Relative padding factor to construct padding from value. (default: 0.05)
+    ax : plt.Axes | None
+        Existing matplotlib Axes to use. If None, a new Axes will be created.
+    figsize : tuple[int, int] | tuple[float, float] | None
+        Figure size in inches as (width, height). Ignored if `ax` is provided.
+    func_name : str
+        Name of the calling function, used for generating warnings.
 
     Returns
     -------
-    MatplotlibSetupType
-        Configures fig, ax, cmap, cmap_norm, cmap_segmentdata, cval, and show_cbar.
+    tuple[plt.Figure, plt.Axes, bool]
+        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes was
+        created internally (True) or provided externally (False).
+    """
+    if ax is None:
+        # figsize may be None for some callers
+        if figsize is None:
+            fig, ax = plt.subplots()
+        else:
+            fig, ax = plt.subplots(figsize=figsize)
+        own = True
+    else:
+        fig = ax.figure
+        own = False
+        if figsize is not None:
+            warn(
+                f'{func_name}: "figsize" is ignored because an external Axes was provided.',
+                UserWarning,
+                stacklevel=2,
+            )
+    return fig, ax, own
+
+
+def finalize_figure(
+    fig: plt.Figure,
+    *,
+    show: bool,
+    savepath: str | None,
+    closefig: bool | None,
+    own_figure: bool,
+    func_name: str,
+) -> None:
+    """Finalize a matplotlib figure (save/show/close).
+
+    Manage saving, showing, and closing behavior consistently. When plotting into an
+    external Axes, ``show=True`` and ``closefig=True`` are ignored with a warning.
+
+    Parameters
+    ----------
+    fig : plt.Figure
+        Matplotlib figure to finalize.
+    show : bool
+        Whether to display the figure.
+    savepath : str | None
+        File path to save the figure to. If None, the figure is not saved.
+    closefig : bool | None
+        Whether to close the figure. If None, close only when the figure is owned
+        by the current function (``own_figure=True``).
+    own_figure : bool
+        Indicates whether the figure was created by the current function.
+    func_name : str
+        Name of the calling function, used in warning messages.
+    """
+    if savepath is not None:
+        fig.savefig(savepath)
+
+    if show:
+        if own_figure:
+            plt.show()
+        else:
+            warn(
+                f'{func_name}: "show=True" has no effect if plotting into an external Axes.',
+                UserWarning,
+                stacklevel=2,
+            )
+
+    if closefig is None:
+        do_close = own_figure
+    else:
+        if not own_figure and closefig:
+            warn(
+                f'{func_name}: "closefig=True" is ignored if an external Axes is provided.',
+                UserWarning,
+                stacklevel=2,
+            )
+        do_close = bool(closefig) and own_figure
+
+    if do_close:
+        plt.close(fig)
+
+
+def _setup_axes_and_colormap(
+    x_signal: np.ndarray,
+    y_signal: np.ndarray,
+    figsize: tuple[int, int] | tuple[float, float],
+    cmap: matplotlib.colors.Colormap | None = None,
+    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap_segmentdata: LinearSegmentedColormapType | None = None,
+    cval: np.ndarray | None = None,
+    show_cbar: bool = False,
+    add_stimulus: bool = False,
+    path_to_image_stimulus: str | None = None,
+    stimulus_origin: str = 'upper',
+    padding: float | None = None,
+    pad_factor: float | None = 0.05,
+    ax: plt.Axes | None = None,
+) -> MatplotlibSetupType:
+    """Prepare axes limits and colormap configuration for 2D positional data.
+
+    Returns fig, ax, cmap, cmap_norm, cval, show_cbar.
     """
     n = len(x_signal)
 
-    fig = matplotlib.pyplot.figure(figsize=figsize)
-    ax = fig.gca()
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.gca()
+    else:
+        fig = ax.figure
+        if figsize is not None:
+            warn(
+                'figsize is ignored because an external Axes was provided.',
+                UserWarning,
+                stacklevel=2,
+            )
 
     if add_stimulus:
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-        if padding is None:
-            x_pad = (np.nanmax(x_signal) - np.nanmin(x_signal)) * pad_factor
-            y_pad = (np.nanmax(y_signal) - np.nanmin(y_signal)) * pad_factor
-        else:
-            x_pad = padding
-            y_pad = padding
+        if n > 0:  # autoset axes limits if there is at least one data point
+            x_min, x_max = np.nanmin(x_signal), np.nanmax(x_signal)
+            y_min, y_max = np.nanmin(y_signal), np.nanmax(y_signal)
 
-        ax.set_xlim(np.nanmin(x_signal) - x_pad, np.nanmax(x_signal) + x_pad)
-        ax.set_ylim(np.nanmin(y_signal) - y_pad, np.nanmax(y_signal) + y_pad)
+            if padding is None:  # dynamic padding relative to data range
+                x_pad = (x_max - x_min) * pad_factor
+                y_pad = (y_max - y_min) * pad_factor
+            else:  # static padding
+                x_pad = padding
+                y_pad = padding
+
+            x_min, x_max = x_min - x_pad, x_max + x_pad
+            y_min, y_max = y_min - y_pad, y_max + y_pad
+
+            if x_min != x_max:  # values must not be equal to set axis limits
+                ax.set_xlim(x_min, x_max)
+            if y_min != y_max:
+                ax.set_ylim(y_min, y_max)
+
         ax.invert_yaxis()
 
     if cval is None:
         cval = np.zeros(n)
         show_cbar = False
 
-    cval_max = np.nanmax(np.abs(cval))
-    cval_min = np.nanmin(cval).astype(float)
+    if len(cval) == 0:
+        cval_min, cval_max = 0, 1
+    else:
+        cval_max = np.nanmax(np.abs(cval))
+        cval_min = np.nanmin(cval).astype(float)
 
     if cmap_norm is None:
         if cval_max and cval_min < 0:
@@ -203,10 +301,8 @@ def _setup_matplotlib(
 
     elif isinstance(cmap_norm, str):
         # pylint: disable=protected-access
-
-        # to handle after https://github.com/pydata/xarray/pull/8030 is merged
         if (
-            scale_class := matplotlib.scale._scale_mapping.get(cmap_norm, None)  # type: ignore
+            scale_class := mpl_scale._scale_mapping.get(cmap_norm, None)  # type: ignore
         ) is None:
             raise ValueError(f'cmap_norm string {cmap_norm} is not supported')
 
@@ -217,46 +313,56 @@ def _setup_matplotlib(
 
 
 def _draw_line_data(
-        x_signal: np.ndarray,
-        y_signal: np.ndarray,
-        ax: matplotlib.pyplot.Axes,
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
-        cval: np.ndarray | None = None,
-) -> matplotlib.pyplot.Axes:
-    """Draw line data.
-
-    Parameters
-    ----------
-    x_signal: np.ndarray
-        Data to be plotted.
-    y_signal: np.ndarray
-        Data to be plotted.
-    ax: matplotlib.pyplot.Axes
-        Matplotlib axes.
-    cmap: matplotlib.colors.Colormap | None
-        Color map for line color values. (default: None)
-    cmap_norm: matplotlib.colors.Normalize | str | None
-        Normalization for color values. (default: None)
-    cval: np.ndarray | None
-        Line color values. (default: None)
-
-    Returns
-    -------
-    matplotlib.pyplot.Axes
-        Axes with added line data.
-
-    """
-    # Create a set of line segments so that we can color them individually
-    # This creates the points as a N x 1 x 2 array so that we can stack points
-    # together easily to get the segments. The segments array for line collection
-    # needs to be (numlines) x (points per line) x 2 (for x and y)
+    x_signal: np.ndarray,
+    y_signal: np.ndarray,
+    ax: plt.Axes,
+    cmap: matplotlib.colors.Colormap | None = None,
+    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cval: np.ndarray | None = None,
+) -> LineCollection:
+    """Draw line data as a colored LineCollection and return the collection."""
     points = np.array([x_signal, y_signal]).T.reshape((-1, 1, 2))
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    # Create a continuous norm to map from data points to colors
     line_collection = LineCollection(segments, cmap=cmap, norm=cmap_norm)
-    # Set the values used for colormapping
     line_collection.set_array(cval)
     line_collection.set_linewidth(2)
     line = ax.add_collection(line_collection)
     return line
+
+
+def _set_screen_axes(
+    ax: plt.Axes,
+    screen: Screen,
+    *,
+    func_name: str,
+) -> None:
+    """Set axes limits and aspect ratio from gaze.experiment.screen, if available.
+
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axes object to modify.
+    screen : Screen
+        Screen object from a Gaze's Experiment.
+    func_name : str
+        Name of the plotting function, used in error messages.
+
+    Raises
+    ------
+    ValueError
+        If the screen origin is not 'upper left'.
+    ValueError
+        If the screen width or height is not positive.
+    """
+    # If screen has no pixel info, skip silently
+    if screen.width_px is None or screen.height_px is None:
+        return
+
+    if screen.origin != 'upper left':
+        raise ValueError(
+            f'{func_name}: screen origin must be "upper left", got "{screen.origin}".',
+        )
+
+    ax.set_xlim(0, screen.width_px)
+    ax.set_ylim(screen.height_px, 0)
+    ax.set_aspect('equal', adjustable='box')
