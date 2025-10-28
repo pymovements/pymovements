@@ -37,9 +37,6 @@ and to contribute to an open, welcoming, and inclusive environment.
 
 Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) for full details.
 
-Our community guidelines build on the principles of the
-[Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
-
 ## Reporting Bugs
 
 If you discover a bug, as a first step, please check the existing
