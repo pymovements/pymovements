@@ -53,7 +53,7 @@ repos:
         args: [--use-current-year]
         types: [python]
 -   repo: https://github.com/jsh9/pydoclint
-    rev: 0.7.3
+    rev: 0.7.6
     hooks:
     - id: pydoclint
       args: ["--config=pyproject.toml"]

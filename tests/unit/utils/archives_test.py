@@ -19,11 +19,9 @@
 # SOFTWARE.
 """Tests deprecated utils.archives."""
 import gzip
-import re
 
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.archives import extract_archive
 
 
@@ -49,21 +47,13 @@ def test_archive_extract(compressed_file):
     extract_archive(compressed_file)
 
 
-def test_archive_extract_deprecated(compressed_file):
-    with pytest.raises(DeprecationWarning):
-        extract_archive(compressed_file)
-
-
-def test_archive_extract_removed(compressed_file):
+def test_archive_extract_removed(compressed_file, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         extract_archive(compressed_file)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='utils/archives.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/archives.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

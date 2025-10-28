@@ -189,8 +189,10 @@ def tsplot(
             ylim_min = np.nanmin(arr)
             ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
-        ax.set_xlim(xlims)
-        ax.set_ylim(ylims)
+        if xlims[0] != xlims[1]:
+            ax.set_xlim(xlims)
+        if ylims[0] != ylims[1]:
+            ax.set_ylim(ylims)
 
         ax.grid(show_grid, which='major')
         ax.grid(show_grid, which='minor')
