@@ -124,7 +124,6 @@ class GazeOnFaces(DatasetDefinition):
                     'content': 'gaze',
                     'url': 'https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=',
                     'filename': 'database3_sciencemuseum.zip',
-                    'md5': 'fe219f07c9253cd9aaee6bd50233c034',
                     'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
                     'filename_pattern_schema_overrides': {
                         'sub_id': int,
