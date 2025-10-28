@@ -17,24 +17,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Tests deprecated utils.strings."""
+"""Pytest configuration for plotting tests."""
+from __future__ import annotations
+
+from collections.abc import Generator
+
+import matplotlib.pyplot as plt
 import pytest
 
-from pymovements.utils.strings import curly_to_regex
 
-
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_curly_to_regex():
-    curly_to_regex('foo')
-
-
-def test_curly_to_regex_removed(assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        curly_to_regex('foo')
-
-    assert_deprecation_is_removed(
-        function_name='utils/strings.py',
-        warning_message=info.value.args[0],
-        scheduled_version='0.26.0',
-
-    )
+@pytest.fixture(autouse=True)
+def close_figures_after_test() -> Generator[None]:
+    """Automatically close all Matplotlib figures after each test."""
+    yield
+    plt.close('all')

@@ -36,6 +36,7 @@ from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
 from typing_extensions import TypeAlias
 
+from pymovements.gaze.experiment import Screen
 
 LinearSegmentedColormapType: TypeAlias = dict[
     Literal['red', 'green', 'blue', 'alpha'],
@@ -237,22 +238,24 @@ def _setup_axes_and_colormap(
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-        if padding is None and n > 0:
-            x_pad = (np.nanmax(x_signal) - np.nanmin(x_signal)) * pad_factor
-            y_pad = (np.nanmax(y_signal) - np.nanmin(y_signal)) * pad_factor
-        elif padding is None and n == 0:
-            x_pad, y_pad = 0, 0
-        else:
-            x_pad = padding
-            y_pad = padding
+        if n > 0:  # autoset axes limits if there is at least one data point
+            x_min, x_max = np.nanmin(x_signal), np.nanmax(x_signal)
+            y_min, y_max = np.nanmin(y_signal), np.nanmax(y_signal)
 
-        if n > 1:
-            x_min, x_max = np.nanmin(x_signal) - x_pad, np.nanmax(x_signal) + x_pad
-            y_min, y_max = np.nanmin(y_signal) - y_pad, np.nanmax(y_signal) + y_pad
-            if x_min != x_max:
-                ax.set_xlim()
+            if padding is None:  # dynamic padding relative to data range
+                x_pad = (x_max - x_min) * pad_factor
+                y_pad = (y_max - y_min) * pad_factor
+            else:  # static padding
+                x_pad = padding
+                y_pad = padding
+
+            x_min, x_max = x_min - x_pad, x_max + x_pad
+            y_min, y_max = y_min - y_pad, y_max + y_pad
+
+            if x_min != x_max:  # values must not be equal to set axis limits
+                ax.set_xlim(x_min, x_max)
             if y_min != y_max:
-                ax.set_ylim()
+                ax.set_ylim(y_min, y_max)
 
         ax.invert_yaxis()
 
@@ -325,3 +328,41 @@ def _draw_line_data(
     line_collection.set_linewidth(2)
     line = ax.add_collection(line_collection)
     return line
+
+
+def _set_screen_axes(
+    ax: plt.Axes,
+    screen: Screen,
+    *,
+    func_name: str,
+) -> None:
+    """Set axes limits and aspect ratio from gaze.experiment.screen, if available.
+
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axes object to modify.
+    screen : Screen
+        Screen object from a Gaze's Experiment.
+    func_name : str
+        Name of the plotting function, used in error messages.
+
+    Raises
+    ------
+    ValueError
+        If the screen origin is not 'upper left'.
+    ValueError
+        If the screen width or height is not positive.
+    """
+    # If screen has no pixel info, skip silently
+    if screen.width_px is None or screen.height_px is None:
+        return
+
+    if screen.origin != 'upper left':
+        raise ValueError(
+            f'{func_name}: screen origin must be "upper left", got "{screen.origin}".',
+        )
+
+    ax.set_xlim(0, screen.width_px)
+    ax.set_ylim(screen.height_px, 0)
+    ax.set_aspect('equal', adjustable='box')
