@@ -183,3 +183,20 @@ def test_dataset_save_load_preprocessed(dataset):
     dataset.resample(resampling_rate=2000)
     dataset.save()
     dataset.load(preprocessed=True)
+
+
+def test_dataset_apply_pipeline_per_file(dataset):
+    dataset.scan()
+
+    def pipeline(gaze: pm.GazeDataFrame, fileinfo: dict[str, Any]) -> None:
+        if 'pixel' in gaze.frame.columns:
+            gaze.pix2deg()
+        gaze.pos2vel()
+        gaze.resample(resampling_rate=2000)
+
+    dataset.apply_pipeline(pipeline)
+
+    for gaze in dataset.gaze:
+        assert 'position' in gaze.frame.columns
+        assert 'velocity' in gaze.frame.columns
+        assert gaze.experiment.sampling_rate == 2000
