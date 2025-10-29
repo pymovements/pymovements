@@ -203,9 +203,8 @@ PATTERNS = [
     'load_function',
     [None, 'from_asc'],
 )
-def test_load_eyelink_file(tmp_path, read_kwargs, load_function):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(ASC_TEXT)
+def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = pm.dataset.dataset_files.load_gaze_file(
         filepath,

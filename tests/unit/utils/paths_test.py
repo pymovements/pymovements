@@ -22,7 +22,6 @@ import re
 
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.paths import get_filepaths
 from pymovements.utils.paths import match_filepaths
 
@@ -34,22 +33,13 @@ def test_downloads_function(path_function, tmp_path):
 
 
 @pytest.mark.parametrize('path_function', [get_filepaths, match_filepaths])
-def test_parse_eyelink_deprecated(path_function, tmp_path):
-    with pytest.raises(DeprecationWarning):
-        path_function(path=tmp_path, regex=re.compile('foo'))
-
-
-@pytest.mark.parametrize('path_function', [get_filepaths, match_filepaths])
-def test_parse_eyelink_removed(path_function, tmp_path):
+def test_parse_eyelink_removed(path_function, tmp_path, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         path_function(path=tmp_path, regex=re.compile('foo'))
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='utils/paths.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/paths.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

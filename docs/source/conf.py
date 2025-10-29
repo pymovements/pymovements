@@ -70,9 +70,14 @@ extensions = [
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'nbsphinx',
-    'myst_nb',
+    'myst_nb',  # load after `sphinx_mdinclude` to supress extension error ('.md' registration)
 ]
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.ipynb': 'myst-nb',
+    '.myst': 'myst-nb',
+    '.md': 'markdown',
+}
 
 # Help Napoleon resolve common short type names in docstrings
 napoleon_type_aliases = {
@@ -186,6 +191,9 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 # exclude_patterns = []
+suppress_warnings = [
+    'myst.header',
+]
 
 
 copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
@@ -235,8 +243,13 @@ html_theme_options = {
 }
 
 # -- MyST configuration --------------------------------------------------
+# https://myst-nb.readthedocs.io/en/latest/configuration.html
 
 myst_links_external_new_tab = True
+
+nb_execution_timeout = 60
+nb_execution_mode = 'auto'
+nb_execution_show_tb = True
 
 # -- Intersphinx options -------------------------------------------------
 
@@ -254,10 +267,6 @@ intersphinx_mapping = {
 favicons = [
     {'href': 'icon.svg'},
 ]
-
-# -- Options for jupyter notebooks
-
-nbsphinx_execute = 'auto'
 
 
 # -- Options for BibTeX ------------------------------------------------------
