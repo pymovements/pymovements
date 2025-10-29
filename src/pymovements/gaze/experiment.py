@@ -63,7 +63,7 @@ class Experiment:
         (default: None)
     eyetracker: EyeTracker | None
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
-    messages: DataFrame | None
+    messages: pl.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. (default: None)
 
