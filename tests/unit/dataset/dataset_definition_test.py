@@ -987,7 +987,7 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
             DatasetDefinition(resources=None),
             {'gaze': {'a': str}},
             ResourceDefinitions(
-                [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'b': str})],
+                [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'a': str})],
             ),
             id='no_resource',
         ),

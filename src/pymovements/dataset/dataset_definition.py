@@ -324,25 +324,11 @@ class DatasetDefinition:
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         if filename_format:
-            warn(
-                DeprecationWarning(
-                    'filename_format is deprecated as an DatasetDefinition '
-                    'initalization parameter since version v0.24.0. '
-                    'Please specify ResourceDefinition.filename_pattern instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
+            # the setter will raise a deprecation warning
             self.filename_format = filename_format
 
         if filename_format_schema_overrides:
-            warn(
-                DeprecationWarning(
-                    'filename_format_schema_overrides is deprecated as an DatasetDefinition '
-                    'initalization parameter since version v0.24.0. '
-                    'Please specify ResourceDefinition.filename_pattern_schema_overrides instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
+            # the setter will raise a deprecation warning
             self.filename_format_schema_overrides = filename_format_schema_overrides
 
         if has_files is not None:
