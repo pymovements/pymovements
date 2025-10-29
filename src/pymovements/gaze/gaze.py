@@ -201,7 +201,7 @@ class Gaze:
     >>> gaze
     Experiment(screen=Screen(width_px=1024, height_px=768, width_cm=38, height_cm=30,
      distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
+      right=None, model=None, version=None, vendor=None, mount=None))
     shape: (3, 2)
     ┌──────┬────────────┐
     │ time ┆ pixel      │
@@ -1894,9 +1894,7 @@ class Gaze:
         if self.samples is not None:
             fields.append(self.samples.__str__())
 
-        if self.messages is None:
-            fields.append('messages=None')
-        else:
+        if self.messages is not None:
             fields.append(f'messages={self.messages.height} rows')
 
         return '\n'.join(fields)
