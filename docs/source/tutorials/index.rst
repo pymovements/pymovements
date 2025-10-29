@@ -16,6 +16,7 @@ These How-Tos provide detailed guides to implement the most important use cases 
     saving-loading-preprocessed
     event-handling
     plot-main-sequence
+    scanpathplot
     heatmap
     creating-synthetic-data
     R-tutorial
