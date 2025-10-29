@@ -85,11 +85,6 @@ def test_gaze_messages_dataframe_must_have_time_and_content_columns(bad_df):
     ('messages_df', 'expected_fragment'),
     [
         pytest.param(
-            None,
-            'None',
-            id='messages_none',
-        ),
-        pytest.param(
             pl.DataFrame(schema={'time': pl.Float64, 'content': pl.String}),
             '0 rows',
             id='messages_empty_df',
@@ -103,6 +98,13 @@ def test_gaze_messages_dataframe_must_have_time_and_content_columns(bad_df):
 )
 def test_gaze_str_messages_variations(messages_df, expected_fragment):
     """Check __str__ shows clear messages summary."""
-    gaze = Gaze(messages=messages_df) if messages_df is not None else Gaze()
+    gaze = Gaze(messages=messages_df)
     s = str(gaze)
     assert f"messages={expected_fragment}" in s, s
+
+
+def test_gaze_str_messages_exluded_if_none():
+    """Check __str__ shows clear messages summary."""
+    gaze = Gaze(messages=None)
+    s = str(gaze)
+    assert 'messages=' not in s, s
