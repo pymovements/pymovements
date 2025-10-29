@@ -116,7 +116,7 @@ def test_dataset_definition_is_equal(init_kwargs):
             marks=[
                 pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
                 pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-             ],
+            ],
             id='single_gaze_resource_filename_format_legacy',
         ),
 
@@ -146,7 +146,7 @@ def test_dataset_definition_is_equal(init_kwargs):
             marks=[
                 pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
                 pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-             ],
+            ],
             id='filename_format_without_resources_legacy',
         ),
 
@@ -170,7 +170,7 @@ def test_dataset_definition_is_equal(init_kwargs):
             marks=[
                 pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
                 pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-             ],
+            ],
             id='single_gaze_resource_filename_format_schema_overrides_legacy',
         ),
 
@@ -235,7 +235,7 @@ def test_dataset_definition_is_equal(init_kwargs):
             marks=[
                 pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
                 pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
-             ],
+            ],
             id='two_resources_filename_format_legacy',
         ),
     ],
