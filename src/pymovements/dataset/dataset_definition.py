@@ -453,7 +453,7 @@ class DatasetDefinition:
             content_resources = self.resources.filter(content_type)
 
             if not content_resources:
-                # legacy DatasetDefinitions may have defined filename_format without resources.
+                # legacy DatasetDefinitions may have defined fields without resources.
                 resource = ResourceDefinition(
                     content=content_type,
                     filename_pattern_schema_overrides=content_schema_overrides,

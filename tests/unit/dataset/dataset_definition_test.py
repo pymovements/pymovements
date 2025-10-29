@@ -927,7 +927,7 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
     [
         pytest.param(
             DatasetDefinition(resources=None),
-            {'gaze': {'filename_pattern': 'abc'}},
+            {'gaze': 'abc'},
             ResourceDefinitions(
                 [ResourceDefinition(content='gaze', filename_pattern='abc')],
             ),
@@ -985,7 +985,7 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
     [
         pytest.param(
             DatasetDefinition(resources=None),
-            {'gaze': {'b': str}},
+            {'gaze': {'a': str}},
             ResourceDefinitions(
                 [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'b': str})],
             ),
@@ -1008,11 +1008,11 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
                     {'content': 'precomputed_events'},
                 ],
             ),
-            {'gaze': {'b': str}},
+            {'gaze': {'c': str}},
             ResourceDefinitions(
                 [
                     ResourceDefinition(
-                        content='gaze', filename_pattern_schema_overrides={'b': str},
+                        content='gaze', filename_pattern_schema_overrides={'c': str},
                     ),
                     ResourceDefinition(content='precomputed_events'),
                 ],
