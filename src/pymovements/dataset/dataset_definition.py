@@ -156,12 +156,12 @@ class DatasetDefinition:
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe. (default: None)
         .. deprecated:: v0.24.1
-        This field will be removed in v0.29.0.
+        This field will be removed in v0.28.0.
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype. (default: None)
         .. deprecated:: v0.24.1
-        This field will be removed in v0.29.0.
+        This field will be removed in v0.28.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
