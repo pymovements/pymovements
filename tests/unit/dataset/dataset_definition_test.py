@@ -858,7 +858,7 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
                 'resources': [{'content': 'gaze'}],
                 'filename_format': {'gaze': '{subject}.csv'},
             },
-            '0.29.0',
+            '0.28.0',
             id='filename_format',
         ),
         pytest.param(
@@ -866,7 +866,7 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
                 'resources': [{'content': 'gaze', 'filename_pattern': '{subject}.csv'}],
                 'filename_format_schema_overrides': {'gaze': {'subject': str}},
             },
-            '0.29.0',
+            '0.28.0',
             id='filename_format_schema_overrides',
         ),
     ],
@@ -926,6 +926,14 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
     ('definition', 'new_value', 'expected'),
     [
         pytest.param(
+            DatasetDefinition(resources=None),
+            {'gaze': {'filename_pattern': 'abc'}},
+            ResourceDefinitions(
+                [ResourceDefinition(content='gaze', filename_pattern='abc')],
+            ),
+            id='no_resource',
+        ),
+        pytest.param(
             DatasetDefinition(
                 resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
             ),
@@ -975,6 +983,14 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
 @pytest.mark.parametrize(
     ('definition', 'new_value', 'expected'),
     [
+        pytest.param(
+            DatasetDefinition(resources=None),
+            {'gaze': {'b': str}},
+            ResourceDefinitions(
+                [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'b': str})],
+            ),
+            id='no_resource',
+        ),
         pytest.param(
             DatasetDefinition(
                 resources=[{'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}}],

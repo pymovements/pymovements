@@ -37,6 +37,7 @@ from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
 from pymovements.dataset.resources import _HasResourcesIndexer
+from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
@@ -319,12 +320,30 @@ class DatasetDefinition:
         else:
             self.column_map = column_map
 
-        self.resources = self._initialize_resources(
-            resources=resources,
-            filename_format=filename_format,
-            filename_format_schema_overrides=filename_format_schema_overrides,
-        )
+        self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
+
+        if filename_format:
+            warn(
+                DeprecationWarning(
+                    'filename_format is deprecated as an DatasetDefinition '
+                    'initalization parameter since version v0.24.0. '
+                    'Please specify ResourceDefinition.filename_pattern instead. '
+                    'This field will be removed in v0.28.0.',
+                ),
+            )
+            self.filename_format = filename_format
+
+        if filename_format_schema_overrides:
+            warn(
+                DeprecationWarning(
+                    'filename_format_schema_overrides is deprecated as an DatasetDefinition '
+                    'initalization parameter since version v0.24.0. '
+                    'Please specify ResourceDefinition.filename_pattern_schema_overrides instead. '
+                    'This field will be removed in v0.28.0.',
+                ),
+            )
+            self.filename_format_schema_overrides = filename_format_schema_overrides
 
         if has_files is not None:
             warn(
@@ -379,9 +398,20 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format(self, data: dict[str, str]) -> None:
-        for resource in self.resources:
-            if resource.content in data:
-                resource.filename_pattern = data[resource.content]
+        for content_type, content_filename_pattern in data.items():
+            content_resources = self.resources.filter(content_type)
+
+            if not content_resources:
+                # legacy DatasetDefinitions may have defined filename_format without resources.
+                resource = ResourceDefinition(
+                    content=content_type,
+                    filename_pattern=content_filename_pattern,
+                )
+                self.resources.append(resource)
+                continue
+
+            for content_resource in content_resources:
+                content_resource.filename_pattern = content_filename_pattern
 
     @property
     @deprecated(
@@ -419,9 +449,20 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format_schema_overrides(self, data: dict[str, dict[str, type]]) -> None:
-        for resource in self.resources:
-            if resource.content in data:
-                resource.filename_pattern_schema_overrides = data[resource.content]
+        for content_type, content_schema_overrides in data.items():
+            content_resources = self.resources.filter(content_type)
+
+            if not content_resources:
+                # legacy DatasetDefinitions may have defined filename_format without resources.
+                resource = ResourceDefinition(
+                    content=content_type,
+                    filename_pattern_schema_overrides=content_schema_overrides,
+                )
+                self.resources.append(resource)
+                continue
+
+            for content_resource in content_resources:
+                content_resource.filename_pattern_schema_overrides = content_schema_overrides
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
@@ -572,60 +613,20 @@ class DatasetDefinition:
     def _initialize_resources(
             self,
             resources: ResourceDefinitions | ResourcesLike | None,
-            filename_format: dict[str, str] | None,
-            filename_format_schema_overrides: dict[str, dict[str, type]] | None,
     ) -> ResourceDefinitions:
         """Initialize ``ResourceDefinitions`` instance if necessary."""
-        if filename_format:
-            warn(
-                DeprecationWarning(
-                    'filename_format is deprecated as an DatasetDefinition '
-                    'initalization parameter since version v0.24.0. '
-                    'Please specify ResourceDefinition.filename_pattern instead. '
-                    'This field will be removed in v0.29.0.',
-                ),
-            )
-
-        if filename_format_schema_overrides:
-            warn(
-                DeprecationWarning(
-                    'filename_format_schema_overrides is deprecated as an DatasetDefinition '
-                    'initalization parameter since version v0.24.0. '
-                    'Please specify ResourceDefinition.filename_pattern_schema_overrides instead. '
-                    'This field will be removed in v0.29.0.',
-                ),
-            )
-
         if isinstance(resources, ResourceDefinitions):
             return resources
 
         if resources is None:
-            # some legacy definitions may have defined filename format but no resources.
-            # create legacy formatted resource dict to contain filename pattern.
-            if filename_format:
-                resources = {
-                    content_type: [{'filename_pattern': filename_format[content_type]}]
-                    for content_type in filename_format
-                }
-            else:
-                return ResourceDefinitions()
-
-        # this calls deprecated methods and will be removed in the future.
-        if isinstance(resources, dict):
-            if filename_format:
-                for content_type in filename_format:
-                    for resource_dict in resources[content_type]:
-                        resource_dict['filename_pattern'] = filename_format[content_type]
-            if filename_format_schema_overrides:
-                for content_type in filename_format_schema_overrides:
-                    for resource_dict in resources[content_type]:
-                        _schema_overrides = filename_format_schema_overrides[content_type]
-                        resource_dict['filename_pattern_schema_overrides'] = _schema_overrides
-            return ResourceDefinitions.from_dict(resources)
+            return ResourceDefinitions()
 
         if isinstance(resources, Sequence):
-            assert isinstance(resources, Sequence)
             return ResourceDefinitions.from_dicts(resources)
+
+        if isinstance(resources, dict):
+            # this calls a deprecated method and will be removed in the future.
+            return ResourceDefinitions.from_dict(resources)
 
         raise TypeError(
             f'resources is of type {type(resources).__name__} but must be of type'
