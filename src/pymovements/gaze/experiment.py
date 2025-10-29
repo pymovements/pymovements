@@ -25,8 +25,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import polars as pl
 import yaml
-from polars import DataFrame
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
@@ -109,7 +109,7 @@ class Experiment:
             *,
             screen: Screen | None = None,
             eyetracker: EyeTracker | None = None,
-            messages: DataFrame | None = None,
+            messages: pl.DataFrame | None = None,
     ):
         _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
         _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
@@ -138,7 +138,7 @@ class Experiment:
             _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
 
         if messages is not None:
-            if not isinstance(messages, DataFrame):
+            if not isinstance(messages, pl.DataFrame):
                 raise TypeError(
                     "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
                     f"not {type(messages)}.",
