@@ -57,7 +57,6 @@ author = 'The pymovements Project Authors'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'myst_nb',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
@@ -68,13 +67,16 @@ extensions = [
     'sphinx_copybutton',
     'sphinx_design',
     'sphinx_favicon',
+    'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
+    'myst_nb',  # load after `sphinx_mdinclude` to supress extension error ('.md' registration)
 ]
 source_suffix = {
     '.rst': 'restructuredtext',
     '.ipynb': 'myst-nb',
     '.myst': 'myst-nb',
+    '.md': 'markdown',
 }
 
 
@@ -147,8 +149,13 @@ html_theme_options = {
 }
 
 # -- MyST configuration --------------------------------------------------
+# https://myst-nb.readthedocs.io/en/latest/configuration.html
 
 myst_links_external_new_tab = True
+
+nb_execution_timeout = 60
+nb_execution_mode = 'auto'
+nb_execution_show_tb = True
 
 # -- Intersphinx options -------------------------------------------------
 
@@ -165,10 +172,6 @@ intersphinx_mapping = {
 favicons = [
     {'href': 'icon.svg'},
 ]
-
-# -- Options for jupyter notebooks
-
-nbsphinx_execute = 'auto'
 
 
 # -- Options for BibTeX ------------------------------------------------------

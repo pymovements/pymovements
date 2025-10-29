@@ -2,8 +2,7 @@
 Welcome to the pymovements documentation!
 =========================================
 
-.. include:: ../../README.md
-   :parser: myst_parser.sphinx_
+.. mdinclude:: ../../README.md
 
 .. toctree::
    :hidden:
