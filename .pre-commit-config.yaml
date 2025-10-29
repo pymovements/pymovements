@@ -9,21 +9,21 @@ ci:
 
 repos:
 -   repo: https://github.com/asottile/add-trailing-comma
-    rev: v3.2.0
+    rev: v4.0.0
     hooks:
     -   id: add-trailing-comma
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v3.20.0
+    rev: v3.21.0
     hooks:
     -   id: pyupgrade
         args: [--py39-plus]
 -   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.15.0
+    rev: v3.16.0
     hooks:
     -   id: reorder-python-imports
         args: [--application-directories=src, --py39-plus]
 -   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.15.0
+    rev: v3.16.0
     hooks:
     -   id: reorder-python-imports
         files: ^src/
@@ -35,7 +35,7 @@ repos:
     -   id: databooks-meta
         args: [--cell-fields-keep=id]
 -   repo: https://github.com/pappasam/toml-sort
-    rev: v0.24.2
+    rev: v0.24.3
     hooks:
     -   id: toml-sort-fix
 -   repo: https://github.com/dannysepler/rm_unneeded_f_str
@@ -53,7 +53,7 @@ repos:
         args: [--use-current-year]
         types: [python]
 -   repo: https://github.com/jsh9/pydoclint
-    rev: 0.6.11
+    rev: 0.7.6
     hooks:
     - id: pydoclint
       args: ["--config=pyproject.toml"]
@@ -68,7 +68,7 @@ repos:
     -   id: nbqa-pyupgrade
         args: ["--py39-plus"]
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
+    rev: v1.18.2
     hooks:
     -   id: mypy
         additional_dependencies: [pandas-stubs, types-tqdm, types-PyYAML]
@@ -87,6 +87,7 @@ repos:
     -   id: double-quote-string-fixer
     -   id: end-of-file-fixer
     -   id: name-tests-test
+        exclude: .*_fixtures\.py
     -   id: no-commit-to-branch
     -   id: requirements-txt-fixer
     -   id: trailing-whitespace
@@ -122,7 +123,7 @@ repos:
             '--ignore=D103,D107,D203,D213',
           ]
 -   repo: https://github.com/PyCQA/pylint
-    rev: v3.3.8
+    rev: v4.0.2
     hooks:
       - id: pylint
         name: pylint

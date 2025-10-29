@@ -27,6 +27,7 @@ import numpy as np
 from matplotlib import colors
 
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
@@ -38,7 +39,7 @@ def heatmap(
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
-        origin: str = 'lower',
+        origin: str = 'upper',
         figsize: tuple[float, float] = (15, 10),
         cbar_label: str | None = None,
         show_cbar: bool = True,
@@ -76,7 +77,7 @@ def heatmap(
         See matplotlib.pyplot.imshow for more information on available methods
         for interpolation. (default: 'gaussian')
     origin: str
-        Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'lower')
+        Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'upper')
     figsize: tuple[float, float]
         Figure size. (default: (15, 10))
     cbar_label: str | None
@@ -195,6 +196,9 @@ def heatmap(
         extent=extent,
         alpha=alpha,
     )
+
+    # Apply screen-based axis limits and aspect ratio
+    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
 
     # Set the plot title and axis labels
     if title:

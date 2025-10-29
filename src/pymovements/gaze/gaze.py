@@ -18,15 +18,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Gaze implementation."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import inspect
+import math
 import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from typing import Literal
+from typing import overload
 
 import numpy as np
 import polars as pl
@@ -194,7 +198,7 @@ class Gaze:
     >>> gaze
     Experiment(screen=Screen(width_px=1024, height_px=768, width_cm=38, height_cm=30,
      distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None))
+      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
     shape: (3, 2)
     ┌──────┬────────────┐
     │ time ┆ pixel      │
@@ -309,51 +313,150 @@ class Gaze:
         else:
             raise ValueError(f"unsupported method '{function}'")
 
-    def split(self, by: Sequence[str] | None = None) -> list[Gaze]:
+    @overload
+    def split(
+            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
+    ) -> list[Gaze]:
+        ...
+
+    @overload
+    def split(
+            self, by: Sequence[str] | None = None, *, as_dict: Literal[True],
+    ) -> dict[tuple[Any, ...], Gaze]:
+        ...
+
+    def split(
+            self,
+            by: str | Sequence[str] | None = None,
+            *,
+            as_dict: bool = False,
+    ) -> list[Gaze] | dict[tuple[Any, ...], Gaze]:
         """Split a single Gaze object into multiple Gaze objects based on specified column(s).
 
         Parameters
         ----------
-        by: Sequence[str] | None
+        by: str | Sequence[str] | None
             Column name(s) to split the DataFrame by. If a single string is provided,
             it will be used as a single column name. If a sequence is provided, the DataFrame
             will be split by unique combinations of values in all specified columns.
             If None, uses trial_columns. (default=None)
+        as_dict: bool
+            Return a dictionary instead of a list. The dictionary keys are tuples of the distinct
+            group values that identify each group split. (default: False)
 
         Returns
         -------
-        list[Gaze]
-            A list of new Gaze instances, each containing a partition of the
+        list[Gaze] | dict[tuple[Any, ...], Gaze]
+            A collection of new Gaze instances, each containing a partition of the
             original data with all metadata and configurations preserved.
+
+        Notes
+        -----
+            The original gaze data and metadata are not modified; the method returns new
+            Gaze objects.
+
+        Examples
+        --------
+        First let's create a simple samples dataframe:
+
+        >>> import numpy as np
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> samples = pl.from_dict(
+        ...     {'x': range(100), 'y': range(100), 'trial': np.repeat([1, 2, 3, 4, 5], 20)},
+        ... )
+        >>> samples
+        shape: (100, 3)
+        ┌─────┬─────┬───────┐
+        │ x   ┆ y   ┆ trial │
+        │ --- ┆ --- ┆ ---   │
+        │ i64 ┆ i64 ┆ i64   │
+        ╞═════╪═════╪═══════╡
+        │ 0   ┆ 0   ┆ 1     │
+        │ 1   ┆ 1   ┆ 1     │
+        │ 2   ┆ 2   ┆ 1     │
+        │ 3   ┆ 3   ┆ 1     │
+        │ 4   ┆ 4   ┆ 1     │
+        │ …   ┆ …   ┆ …     │
+        │ 95  ┆ 95  ┆ 5     │
+        │ 96  ┆ 96  ┆ 5     │
+        │ 97  ┆ 97  ┆ 5     │
+        │ 98  ┆ 98  ┆ 5     │
+        │ 99  ┆ 99  ┆ 5     │
+        └─────┴─────┴───────┘
+
+        Then let's initialize our `Gaze` object:
+
+        >>> gaze = pm.Gaze(samples=samples, pixel_columns=['x', 'y'], trial_columns='trial')
+        >>> gaze
+        shape: (100, 2)
+        ┌───────┬───────────┐
+        │ trial ┆ pixel     │
+        │ ---   ┆ ---       │
+        │ i64   ┆ list[i64] │
+        ╞═══════╪═══════════╡
+        │ 1     ┆ [0, 0]    │
+        │ 1     ┆ [1, 1]    │
+        │ 1     ┆ [2, 2]    │
+        │ 1     ┆ [3, 3]    │
+        │ 1     ┆ [4, 4]    │
+        │ …     ┆ …         │
+        │ 5     ┆ [95, 95]  │
+        │ 5     ┆ [96, 96]  │
+        │ 5     ┆ [97, 97]  │
+        │ 5     ┆ [98, 98]  │
+        │ 5     ┆ [99, 99]  │
+        └───────┴───────────┘
+
+        Now we can split the gaze by the 5 unique trial column values into 5 separate objects:
+
+        >>> gazes = gaze.split(by='trial')
+        >>> len(gazes)
+        5
         """
         # Use trial_columns if by is None
         if by is None:
+            if self.trial_columns is None:
+                raise TypeError("Either 'by' or 'Gaze.trial_columns' must be specified")
             by = self.trial_columns
-            if by is None:
-                raise TypeError("Either 'by' or 'self.trial_columns' must be specified")
 
         # Convert single string to list for consistent handling
         by = [by] if isinstance(by, str) else by
-        samples_list = self.samples.partition_by(by=by)
 
-        # Check if all columns in 'by' are in events columns
-        events_list = (
-            self.events.split(by)
-            if all(col in self.events.columns for col in by)
-            else [pm.Events()] * len(samples_list)
+        if not self.samples.is_empty():
+            # We use as_dict=True here to make sure to map samples to the correct events.
+            grouped_samples = self.samples.partition_by(by=by, as_dict=True)
+            sample_key_dtypes = [dtype.to_python() for dtype in self.samples[by].dtypes]
+        else:
+            grouped_samples = {}
+            sample_key_dtypes = []
+
+        if self.events:
+            # We use as_dict=True here to make sure to map events to the correct samples.
+            grouped_events = self.events.split(by=by, as_dict=True)
+            events_key_dtypes = [dtype.to_python() for dtype in self.events.frame[by].dtypes]
+        else:
+            grouped_events = {}
+            events_key_dtypes = []
+
+        keys = sorted(
+            set(grouped_samples.keys()) | set(grouped_events.keys()),
+            key=_replace_nones_in_split_keys(sample_key_dtypes, events_key_dtypes),
         )
 
-        return [
-            Gaze(
-                samples=samples,
+        gazes = {
+            key: Gaze(
+                samples=grouped_samples.get(key, pl.DataFrame(schema=self.samples.schema)),
+                events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
-                time_column='time',
-                distance_column='distance',
-                events=events,
             )
-            for samples, events in zip(samples_list, events_list)
-        ]
+            for key in keys
+        }
+
+        if as_dict:
+            return gazes
+        return list(gazes.values())
 
     def transform(
             self,
@@ -1760,6 +1863,14 @@ class Gaze:
         else:
             self.experiment = experiment
 
+    def __eq__(self, other: Gaze) -> bool:
+        """Check equality between this and another :py:cls:`~pymovements.Gaze` object."""
+        samples_equal = self.samples.equals(other.samples, null_equal=True)
+        events_equal = self.events == other.events
+        experiment_equal = self.experiment == other.experiment
+        trial_columns_equal = self.trial_columns == other.trial_columns
+        return samples_equal and events_equal and experiment_equal and trial_columns_equal
+
     def __str__(self) -> str:
         """Return string representation of Gaze."""
         if self.experiment is None:
@@ -1953,3 +2064,44 @@ def _check_trial_columns(trial_columns: list[str] | None, samples: pl.DataFrame)
         if len(set(trial_columns).intersection(samples.columns)) != len(trial_columns):
             missing = set(trial_columns) - set(samples.columns)
             raise KeyError(f'trial_columns missing in samples: {", ".join(missing)}')
+
+
+def _replace_nones_in_split_keys(
+        sample_key_dtypes: list[type], events_key_dtypes: list[type],
+) -> Callable[[tuple[Any, ...]], tuple[Any, ...]]:
+    """Replace None values with comparable surrogates according to specified datatypes."""
+    def _surrogate_none(dtype: type) -> float | str:
+        """Return a comparable surrogate value for a particular datatype."""
+        if dtype in {float, int, bool}:
+            return -math.inf
+        if dtype == str:
+            return ''
+        raise TypeError(
+            f'dtype {dtype.__name__} not supported as "by" column dtype in split(). '
+            f'supported dtypes are str, float, int and bool',
+        )
+
+    def _replace_nones_in_key(key: tuple[Any, ...]) -> tuple[Any, ...]:
+        """Replace None values with comparable surrogates in a particular key."""
+        if None in key:
+            return tuple(
+                element if element is not None else _surrogate_none(dtype)
+                for element, dtype in zip(key, key_dtypes)
+            )
+        return key
+
+    # Create single list of key dtypes.
+    if sample_key_dtypes and events_key_dtypes:
+        if sample_key_dtypes != events_key_dtypes:
+            raise TypeError(
+                '"by" column dtypes do not match between samples and events:'
+                f'{[c.__name__ for c in sample_key_dtypes]}'
+                f' != {[c.__name__ for c in events_key_dtypes]}',
+            )
+        key_dtypes = sample_key_dtypes
+    elif sample_key_dtypes and not events_key_dtypes:
+        key_dtypes = sample_key_dtypes
+    else:
+        key_dtypes = events_key_dtypes
+
+    return _replace_nones_in_key

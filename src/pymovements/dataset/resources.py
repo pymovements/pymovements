@@ -46,6 +46,10 @@ class ResourceDefinition:
         The target filename of the downloadable resource. This may be an archive. (default: None)
     url: str | None
         The URL to the downloadable resource. (default: None)
+    mirrors: list[str] | None
+        An optional list of additional mirror URLs to download the resource. If downloading the
+        resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
+        used in order of appearance. (default: None)
     md5: str | None
         The MD5 checksum of the downloadable resource. (default: None)
     filename_pattern: str | None
@@ -57,18 +61,23 @@ class ResourceDefinition:
     load_function: str | None
         The name of the function used to load the data files. If None, the function is determined
         by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
+    load_kwargs: dict[str, Any] | None
+        A dictionary of additional keyword arguments that are passed to the ``load_function``.
+        (default: None)
     """
 
     content: str
 
     filename: str | None = None
     url: str | None = None
+    mirrors: list[str] | None = None
     md5: str | None = None
 
     filename_pattern: str | None = None
     filename_pattern_schema_overrides: dict[str, type] | None = None
 
     load_function: str | None = None
+    load_kwargs: dict[str, Any] | None = None
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
@@ -116,7 +125,7 @@ class ResourceDefinition:
         """
         data = asdict(self)
 
-        # Delete fields that evaluate to False (False, None, [], {})
+        # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:
             for key, value in list(data.items()):
                 if not isinstance(value, (bool, int, float)) and not value:

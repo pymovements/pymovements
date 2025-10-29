@@ -1,0 +1,52 @@
+name: SBSAT
+long_name: Stony Brook SAT reading fixation dataset
+resources:
+- content: gaze
+  filename: sbsat_csvs.zip
+  url: https://osf.io/download/jgae7/
+  md5: a6ef1fb0ecced683cdb489c3bd3e1a5c
+  filename_pattern: msd{subject_id:d}.csv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+- content: precomputed_events
+  filename: 18sat_fixfinal.csv
+  url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
+  md5: 4cf3212a71e6fc2fbe7041ce7c691927
+  filename_pattern: 18sat_fixfinal.csv
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1024
+    height_px: 768
+    width_cm: 44.5
+    height_cm: 42.4
+    distance_cm: 70
+    origin: center
+custom_read_kwargs:
+  gaze:
+    separator: "\t"
+    columns:
+    - time
+    - book_name
+    - screen_id
+    - x_left
+    - y_left
+    - pupil_left
+    schema_overrides:
+      time: '!polars.datatypes.classes.Int64'
+      book_name: '!polars.datatypes.classes.String'
+      screen_id: '!polars.datatypes.classes.Int64'
+      x_left: '!polars.datatypes.classes.Float32'
+      y_left: '!polars.datatypes.classes.Float32'
+      pupil_left: '!polars.datatypes.classes.Float32'
+  precomputed_events:
+    separator: ','
+trial_columns:
+- book_name
+- screen_id
+time_column: time
+time_unit: ms
+pixel_columns:
+- x_left
+- y_left

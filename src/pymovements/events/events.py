@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
+from typing import Literal
+from typing import overload
 
 import numpy as np
 import polars as pl
@@ -51,7 +53,7 @@ class Events:
         List of onsets. (default: None)
     offsets: list[int | float] | np.ndarray | None
         List of offsets. (default: None)
-    trials: list[int | float | str] | np.ndarray | None
+    trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in passed dataframe.
@@ -106,7 +108,7 @@ class Events:
             name: str | list[str] | None = None,
             onsets: list[int | float] | np.ndarray | None = None,
             offsets: list[int | float] | np.ndarray | None = None,
-            trials: list[int | float | str] | np.ndarray | None = None,
+            trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
@@ -423,42 +425,61 @@ class Events:
         """
         return self.clone()
 
-    def split(self, by: Sequence[str] | None = None) -> list[Events]:
+    @overload
+    def split(
+            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
+    ) -> list[Events]:
+        ...
+
+    @overload
+    def split(
+            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[True],
+    ) -> dict[tuple[Any, ...], Events]:
+        ...
+
+    def split(
+            self,
+            by: str | Sequence[str] | None = None,
+            *,
+            as_dict: bool = False,
+    ) -> list[Events] | dict[tuple[Any, ...], Events]:
         """Split the Events into multiple frames based on specified column(s).
 
         Parameters
         ----------
-        by: Sequence[str] | None
+        by: str | Sequence[str] | None
             Column name(s) to split the Events by. If a single string is provided,
             it will be used as a single column name. If a list is provided, the Events
             will be split by unique combinations of values in all specified columns.
             If None, uses trial_columns. (default: None)
+        as_dict: bool
+            Return a dictionary instead of a list. The dictionary keys are tuples of the distinct
+            group values that identify each group split. (default: False)
 
         Returns
         -------
-        list[Events]
-            A list of new Events instances, each containing a partition of the
-            original data with all metadata and configurations preserved.
+        list[Events] | dict[tuple[Any, ...], Events]
+            A collection of new Events instances, each containing a partition of the original data
+            with all metadata and configurations preserved.
         """
         # Use trial_columns if by is None
         if by is None:
+            if self.trial_columns is None:
+                raise TypeError("Either 'by' or 'Events.trial_columns' must be specified")
             by = self.trial_columns
-            if by is None:
-                raise TypeError("Either 'by' or 'self.trial_columns' must be specified")
 
-        event_pl_df_list = list(self.frame.partition_by(by=by))
+        event_dfs = self.frame.partition_by(by=by, as_dict=as_dict)
 
-        # Ensure column order: trial columns, name, onset, offset.
-        if self.trial_columns is not None:
-            event_pl_df_list = [
-                frame.select([*self.trial_columns, *self._minimal_schema.keys()])
-                for frame in event_pl_df_list
-            ]
+        if as_dict:
+            # keys are tuples of the unique values of the columns specified in `by`.
+            return {
+                key: Events(frame, trial_columns=self.trial_columns)
+                for key, frame in event_dfs.items()
+            }
+
         return [
-            Events(
-                frame,
-                trial_columns=self.trial_columns,
-            ) for frame in event_pl_df_list
+            Events(frame, trial_columns=self.trial_columns)
+            for frame in event_dfs
         ]
 
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
@@ -521,6 +542,12 @@ class Events:
         ]
         aoi_df = pl.concat(aois)
         self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
+
+    def __eq__(self, other: Events) -> bool:
+        """Check equality between this and another :py:cls:`~pymovements.Events` object."""
+        frames_equal = self.frame.equals(other.frame, null_equal=True)
+        trial_columns_equal = self.trial_columns == other.trial_columns
+        return frames_equal and trial_columns_equal
 
     def __str__(self: Any) -> str:
         """Return string representation of event dataframe."""

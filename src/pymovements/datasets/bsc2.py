@@ -32,12 +32,16 @@ from pymovements.dataset.resources import ResourceDefinitions
 class BSCII(DatasetDefinition):
     """BSCII dataset :cite:p:`BSCII`.
 
-    This dataset includes monocular eye tracking data from a single participant in a single
-    session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
-    eye tracker and precomputed events on aoi level are reported.
+    The Beijing Sentence Corpus II (BSCII) is a Traditional Chinese sentence corpus of eye-tracking
+    data, based on the original Beijing Sentence Corpus (BSC) in Simplified Chinese. Data was
+    collected from 60 native Traditional Chinese readers. The corpus enables analyses of word
+    frequency, visual complexity, and predictability on fixation location and duration.
 
-    The participant is instructed to read texts and answer questions. The original purpose was to
-    look into the differences in processing when reading simplified and traditional Chinese.
+    Since the BSCII sentences are nearly identical to those in the BSC, the two corpora together
+    provide a valuable resource for studying cross-script similarities and differences between
+    Simplified and Traditional Chinese.
+
+    Eye-movements were recorded with an Eyelink 1000 system at 1000 Hz.
 
     Check the respective paper for details :cite:p:`BSCII`.
 
@@ -79,11 +83,11 @@ class BSCII(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.SBSAT` definition:
+    :py:class:`~pymovements.datasets.BSCII` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("SBSAT", path='data/SBSAT')
+    >>> dataset = pm.Dataset("BSCII", path='data/BSCII')
 
     Download the dataset resources:
 

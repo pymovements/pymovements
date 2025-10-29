@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -96,9 +97,8 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
         fileinfo_df = fileinfo_df.sort(by='filepath')
         fileinfo_df = fileinfo_df.with_columns(
-            load_function=pl.lit(
-                resource_definition.load_function,
-            ),
+            load_function=pl.lit(resource_definition.load_function),
+            load_kwargs=pl.lit(resource_definition.load_kwargs),
         )
 
         if resource_definition.filename_pattern_schema_overrides:
@@ -289,10 +289,12 @@ def load_gaze_file(
     ValueError
         If extension is not in list of valid extensions.
     """
+    ignored_fileinfo_columns = {'filepath', 'load_function', 'load_kwargs'}
     fileinfo_columns = {
         column: fileinfo_row[column] for column in
-        [column for column in fileinfo_row.keys() if column not in {'filepath', 'load_function'}]
+        [column for column in fileinfo_row.keys() if column not in ignored_fileinfo_columns]
     }
+
     # overrides types in fileinfo_columns that are later passed via add_columns.
     gaze_resource_definitions = definition.resources.filter('gaze')
     if gaze_resource_definitions:
@@ -333,6 +335,10 @@ def load_gaze_file(
                 f'Otherwise, specify load_function in the resource definition.',
             )
 
+    load_function_kwargs = fileinfo_row['load_kwargs']
+    if load_function_kwargs is None:
+        load_function_kwargs = {}
+
     if load_function_name == 'from_csv':
         if preprocessed:
             # Time unit is always milliseconds for preprocessed data if a time column is present.
@@ -354,6 +360,7 @@ def load_gaze_file(
                 add_columns=fileinfo_columns,
                 # column_schema_overrides is used for fileinfo_columns passed as add_columns.
                 column_schema_overrides=column_schema_overrides,
+                **load_function_kwargs,
             )
     elif load_function_name == 'from_ipc':
         gaze = from_ipc(
@@ -372,6 +379,7 @@ def load_gaze_file(
             add_columns=fileinfo_columns,
             # column_schema_overrides is used for fileinfo_columns passed as add_columns.
             column_schema_overrides=column_schema_overrides,
+            **load_function_kwargs,
         )
     else:
         valid_load_functions = ['from_csv', 'from_ipc', 'from_asc']
@@ -598,11 +606,12 @@ def add_fileinfo(
     pl.DataFrame
         Dataframe with added columns from fileinfo dictionary keys.
     """
+    ignored_fileinfo_columns = {'filepath', 'load_function', 'load_kwargs'}
     df = df.select(
         [
             pl.lit(value).alias(column)
             for column, value in fileinfo.items()
-            if column not in {'filepath', 'load_function'} and column not in df.columns
+            if column not in ignored_fileinfo_columns and column not in df.columns
         ] + [pl.all()],
     )
 
@@ -619,7 +628,7 @@ def add_fileinfo(
 
 
 def save_events(
-        events: list[Events],
+        events: Sequence[Events],
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
         events_dirname: str | None = None,
@@ -633,8 +642,8 @@ def save_events(
 
     Parameters
     ----------
-    events: list[Events]
-        The event dataframes to save.
+    events: Sequence[Events]
+        A sequence of :py:class:`pymovements.Events` objects to save.
     fileinfo: pl.DataFrame
         A dataframe holding file information.
     paths: DatasetPaths

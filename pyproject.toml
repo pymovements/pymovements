@@ -12,14 +12,13 @@ name = "pymovements"
 description = "A python package for processing eye movement data"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT License"}
+license = "MIT"
 maintainers = [
   {name = "Daniel Krakowczyk", email = "daniel.krakowczyk@uni-potsdam.de"}
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
@@ -40,7 +39,7 @@ dependencies = [
   "pandas>=2.1.4,<2.4",
   "polars>=1.31.0,<1.32",
   "pyarrow>=11.0.0,<21.1",
-  "pyopenssl>=16.0.0,<25.2",
+  "pyopenssl>=16.0.0,<25.4",
   "pyreadr>=0.5.2,<0.6",
   "pyyaml>=6.0.2,<6.1",
   "scipy>=1.8.0,<1.16",
@@ -51,7 +50,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 docs = [
-  "ipykernel>=6.13.0,<6.31",
+  "ipykernel>=6.13.0,<6.32",
   "ipywidgets>=8.1.7,<8.2",
   "nbconvert>=7.0.0,<7.17",
   "nbsphinx>=0.8.8,<0.10",
@@ -68,7 +67,7 @@ docs = [
   "sphinxcontrib.bibtex>=2.4.1"
 ]
 dev = [
-  "tox>=4.12.0,<4.30",
+  "tox>=4.12.0,<4.31",
   "pybtex<0.25.2",
   "pytest>=7.0.0",
   "pytest-benchmark>=5.1.0",
@@ -80,11 +79,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aeye-lab/pymovements"
-"Source Code" = "https://github.com/aeye-lab/pymovements"
+Homepage = "https://github.com/pymovements/pymovements"
+"Source Code" = "https://github.com/pymovements/pymovements"
 Documentation = "https://pymovements.readthedocs.io/en/stable"
-"Bug Tracker" = "https://github.com/aeye-lab/pymovements/issues"
-Changelog = "https://github.com/aeye-lab/pymovements/releases"
+"Bug Tracker" = "https://github.com/pymovements/pymovements/issues"
+Changelog = "https://github.com/pymovements/pymovements/releases"
 
 [tool.autoflake]
 in-place = true
@@ -149,7 +148,7 @@ disallow_untyped_defs = false
 skip-checking-raises = true
 
 [tool.pytest.ini_options]
-addopts = "-ra -l --tb=long --doctest-modules"
+addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 filterwarnings = [
   "error",
