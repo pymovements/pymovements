@@ -1,3 +1,5 @@
+.. _dataset_sec:
+
 Dataset
 =======
 
