@@ -154,9 +154,13 @@ class DatasetDefinition:
     filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe. (default: None)
+        .. deprecated:: v0.24.1
+        This field will be removed in v0.29.0.
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype. (default: None)
+        .. deprecated:: v0.24.1
+        This field will be removed in v0.29.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -572,6 +576,26 @@ class DatasetDefinition:
             filename_format_schema_overrides: dict[str, dict[str, type]] | None,
     ) -> ResourceDefinitions:
         """Initialize ``ResourceDefinitions`` instance if necessary."""
+        if filename_format:
+            warn(
+                DeprecationWarning(
+                    'filename_format is deprecated as an DatasetDefinition '
+                    'initalization parameter since version v0.24.0. '
+                    'Please specify ResourceDefinition.filename_pattern instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
+        if filename_format_schema_overrides:
+            warn(
+                DeprecationWarning(
+                    'filename_format_schema_overrides is deprecated as an DatasetDefinition '
+                    'initalization parameter since version v0.24.0. '
+                    'Please specify ResourceDefinition.filename_pattern_schema_overrides instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
         if isinstance(resources, ResourceDefinitions):
             return resources
 
