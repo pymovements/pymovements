@@ -1,0 +1,55 @@
+name: DIDEC
+long_name: Dutch Image Description and Eye-tracking Corpus
+resources:
+- content: gaze
+  filename: DIDEC_only_the_eyetracking_data.zip
+  url: https://didec.uvt.nl/corpus/DIDEC_only_the_eyetracking_data.zip
+  md5: d572b0b41828986ca48a2fcf6966728a
+  filename_pattern: Ruud_exp{experiment:d}_list{list:d}_v{version:d}_ppn{participant:d}_{session:d}_Trial{trial:d}
+    Samples.txt
+  filename_pattern_schema_overrides:
+    experiment: '!int'
+    list: '!int'
+    version: '!int'
+    participant: '!int'
+    session: '!int'
+    trial: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1680
+    height_px: 1050
+    width_cm: 47.4
+    height_cm: 29.7
+    distance_cm: 70
+    origin: upper left
+custom_read_kwargs:
+  gaze:
+    separator: "\t"
+    skip_rows: 43
+    has_header: false
+    new_columns:
+    - Time
+    - Type
+    - Trial
+    - L POR X [px]
+    - L POR Y [px]
+    - R POR X [px]
+    - R POR Y [px]
+    - Timing
+    - Pupil Confidence
+    - L Plane
+    - R Plane
+    - L Event Info
+    - R Event Info
+    - Stimulus
+trial_columns:
+- Stimulus
+time_column: Time
+time_unit: ms
+pixel_columns:
+- L POR X [px]
+- L POR Y [px]
+- R POR X [px]
+- R POR Y [px]

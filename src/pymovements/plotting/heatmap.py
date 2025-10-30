@@ -27,6 +27,9 @@ import numpy as np
 from matplotlib import colors
 
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import _set_screen_axes
+from pymovements.plotting._matplotlib import finalize_figure
+from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
 
 
@@ -36,7 +39,7 @@ def heatmap(
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
-        origin: str = 'lower',
+        origin: str = 'upper',
         figsize: tuple[float, float] = (15, 10),
         cbar_label: str | None = None,
         show_cbar: bool = True,
@@ -49,7 +52,10 @@ def heatmap(
         path_to_image_stimulus: str | Path | None = None,
         stimulus_origin: str = 'upper',
         alpha: float = 1.,
-) -> plt.Figure:
+        *,
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
     """Plot a heatmap of gaze data.
 
     The heatmap displays the distribution of gaze positions across the experiment screen,
@@ -71,7 +77,7 @@ def heatmap(
         See matplotlib.pyplot.imshow for more information on available methods
         for interpolation. (default: 'gaussian')
     origin: str
-        Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'lower')
+        Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'upper')
     figsize: tuple[float, float]
         Figure size. (default: (15, 10))
     cbar_label: str | None
@@ -96,6 +102,17 @@ def heatmap(
         Origin of stimulus. (default: 'upper')
     alpha: float
         Alpha value of heatmap. (default: 1.)
+    ax: plt.Axes | None
+        External axes to draw into. If provided, the function will not show or close
+        the figure automatically. (default: None)
+    closefig: bool | None
+        Whether to close the figure. If None, close only when the function created
+        the figure. (default: None)
+
+    Returns
+    -------
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and axes.
 
     Raises
     ------
@@ -103,10 +120,6 @@ def heatmap(
         If the position columns are not in pixels or degrees
     ValueError
         If the experiment property of the Gaze is None
-    Returns
-    -------
-    plt.Figure
-        The heatmap figure.
     """
     # Extract x and y positions from the gaze dataframe
     x = gaze.samples[position_column].list.get(0).to_numpy()
@@ -158,17 +171,21 @@ def heatmap(
     else:
         extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
 
-    # Create the plot
+    # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
+    fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
+
     if add_stimulus:
         assert path_to_image_stimulus
-        fig, ax = _draw_image_stimulus(
+        # draw the background stimulus onto the current axes
+        _draw_image_stimulus(
             path_to_image_stimulus,
             origin=stimulus_origin,
+            show=False,
             figsize=figsize,
             extent=extent,
+            fig=fig,
+            ax=ax,
         )
-    else:
-        fig, ax = plt.subplots(figsize=figsize)
 
     # Plot the heatmap
     heatmap_plot = ax.imshow(
@@ -179,6 +196,9 @@ def heatmap(
         extent=extent,
         alpha=alpha,
     )
+
+    # Apply screen-based axis limits and aspect ratio
+    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
 
     # Set the plot title and axis labels
     if title:
@@ -194,10 +214,14 @@ def heatmap(
         if cbar_label:
             cbar.set_label(cbar_label)
 
-    # Show or save the plot
-    if savepath:
-        plt.savefig(savepath)
-    if show:
-        plt.show()
+    # Finalize (save/show/close) with standardized behavior
+    finalize_figure(
+        fig,
+        show=show,
+        savepath=savepath,
+        closefig=closefig,
+        own_figure=own_figure,
+        func_name='heatmap',
+    )
 
-    return fig
+    return fig, ax

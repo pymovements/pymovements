@@ -1,0 +1,69 @@
+name: PotsdamBingeRemotePVT
+long_name: Potsdam Binge Remote PVT dataset
+resources:
+- content: gaze
+  filename: a.zip
+  url: https://osf.io/download/9vbs8/
+  md5: 87c6c74a9a17cbd093b91f9415e8dd9d
+  filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    trial_id: '!int'
+    block_id: '!int'
+- content: gaze
+  filename: b.zip
+  url: https://osf.io/download/yqukn/
+  md5: 54038547b1a373253b38999a227dde63
+  filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    trial_id: '!int'
+    block_id: '!int'
+- content: gaze
+  filename: e.zip
+  url: https://osf.io/download/yf2xa/
+  md5: a0d0203cbb273f6908c1b52a42750551
+  filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    trial_id: '!int'
+    block_id: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+    left: false
+    right: true
+    model: EyeLink 1000 Plus
+    vendor: EyeLink
+    mount: Remote
+  screen:
+    width_px: 1920
+    height_px: 1080
+    width_cm: 59.76
+    height_cm: 33.615
+    origin: center
+custom_read_kwargs:
+  gaze:
+    schema_overrides:
+      trial_id: '!polars.datatypes.classes.Float32'
+      block_id: '!polars.datatypes.classes.Float32'
+      x_pix_eyelink: '!polars.datatypes.classes.Float32'
+      y_pix_eyelink: '!polars.datatypes.classes.Float32'
+      eyelink_timestamp: '!polars.datatypes.classes.Int64'
+      x_pix_pupilcore_interpolated: '!polars.datatypes.classes.Float32'
+      y_pix_pupilcore_interpolated: '!polars.datatypes.classes.Float32'
+      pupil_size_eyelink: '!polars.datatypes.classes.Float32'
+      target_distance: '!polars.datatypes.classes.Float32'
+      pupil_size_pupilcore_interpolated: '!polars.datatypes.classes.Float32'
+      pupil_confidence_interpolated: '!polars.datatypes.classes.Float32'
+      time_to_prev_bac: '!polars.datatypes.classes.Float32'
+      time_to_next_bac: '!polars.datatypes.classes.Float32'
+      prev_bac: '!polars.datatypes.classes.Float32'
+      next_bac: '!polars.datatypes.classes.Float32'
+    separator: ','
+time_column: eyelink_timestamp
+time_unit: ms
+pixel_columns:
+- x_pix_eyelink
+- y_pix_eyelink
+distance_column: target_distance

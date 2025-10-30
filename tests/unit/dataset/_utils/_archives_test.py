@@ -78,13 +78,11 @@ def test_detect_file_type_no_suffixes():
         'xz_compressed_zip_archive',
     ],
 )
-def fixture_archive(request, tmp_path):
-    rootpath = tmp_path
+def fixture_archive(request, make_text_file):
     compression, extension = request.param
 
-    # write tmp filepath
-    test_filepath = rootpath / 'test.file'
-    test_filepath.write_text('test')
+    test_filepath = make_text_file(filename='test.file', body='test')
+    rootpath = test_filepath.parent
 
     single_child_directory = 'singlechild'
     top_level_directory = 'toplevel'
@@ -195,13 +193,12 @@ def fixture_compressed_file(request, tmp_path):
         'xz_compressed_unsupported_archive',
     ],
 )
-def fixture_unsupported_archive(request, tmp_path):
-    rootpath = tmp_path
+def fixture_unsupported_archive(request, make_text_file):
     compression, extension = request.param
 
-    # write tmp filepath
-    filepath = rootpath / 'test.file'
-    filepath.write_text('test')
+    filepath = make_text_file(filename='test.file', body='test')
+    rootpath = filepath.parent
+
     archive_path = rootpath / f'test.{extension}.{compression}'
     comp_type = _ZIP_COMPRESSION_MAP[f'.{compression}']
     with zipfile.ZipFile(archive_path, 'w', compression=comp_type) as zip_open:

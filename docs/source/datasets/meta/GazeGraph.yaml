@@ -1,0 +1,34 @@
+name: GazeGraph
+long_name: GazeGraph dataset
+resources:
+- content: gaze
+  filename: gaze_graph_data.zip
+  url: https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master
+  md5: 181f4b79477cee6e0267482d989610b0
+  filename_pattern: P{subject_id}_{task}.csv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    task: '!str'
+experiment:
+  eyetracker:
+    sampling_rate: 30
+  screen:
+    width_px: 3440
+    height_px: 1440
+    width_cm: 79.375
+    height_cm: 34.0106
+    distance_cm: 50
+    origin: center
+custom_read_kwargs:
+  gaze:
+    separator: ','
+    has_header: false
+    new_columns:
+    - x
+    - y
+    schema_overrides:
+    - '!polars.datatypes.classes.Float32'
+    - '!polars.datatypes.classes.Float32'
+pixel_columns:
+- x
+- y

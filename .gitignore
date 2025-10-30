@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+data/
 downloads/
 eggs/
 .eggs/
@@ -48,7 +49,7 @@ pip-delete-this-directory.txt
 # Docs
 docs/build
 docs/doctree*
-docs/source/reference/pymovements.*.rst
+docs/source/reference/api
 docs/source/tutorials/data
 .ipynb_checkpoints
 
@@ -56,6 +57,7 @@ docs/source/tutorials/data
 .tox
 .coverage
 .coverage.*
+benchmark-data.json
 coverage.xml
 htmlcov/
 tests/preprocessed/

@@ -13,5 +13,6 @@ Plotting
 
     heatmap
     main_sequence_plot
+    scanpathplot
     traceplot
     tsplot

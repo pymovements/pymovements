@@ -14,9 +14,9 @@ These How-Tos provide detailed guides to implement the most important use cases 
     local-dataset
     preprocessing-raw-data
     saving-loading-preprocessed
-    detecting-events
-    event-properties
-    saving-loading-events
+    event-handling
     plot-main-sequence
+    scanpathplot
     heatmap
+    creating-synthetic-data
     R-tutorial
