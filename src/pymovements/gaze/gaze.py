@@ -1885,7 +1885,13 @@ class Gaze:
         return samples_equal and events_equal and experiment_equal and trial_columns_equal
 
     def __str__(self) -> str:
-        """Return string representation of Gaze."""
+        """Return string representation of Gaze.
+
+        The messages field expresses:
+        - 'messages=None' if no messages are provided.
+        - 'messages=<N> rows' if a messages DataFrame is provided,
+          where N is the number of rows.
+        """
         fields = []
 
         if self.experiment is not None:
