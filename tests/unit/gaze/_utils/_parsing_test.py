@@ -1352,3 +1352,113 @@ def test_check_reccfg_key_handles_unorderable_values_with_warning() -> None:
     # A warning should have been emitted about inconsistent values
     assert len(w) >= 1
     assert any("Found inconsistent values for 'sampling_rate'" in str(rec.message) for rec in w)
+
+
+@pytest.mark.parametrize(
+    ('event_end', 'event_name'),
+    [
+        ('EBLINK R 1000\t2000\t3', 'blink'),
+        ('EFIX\tR\t1000\t2000\t9\t850.7\t717.5\t714.0', 'fixation'),
+        (
+            'ESACC\tR\t1000\t2000\t12\t850.7\t717.5\t850.7\t717.5\t19.00\t590',
+            'saccade',
+        ),
+        # Left eye variants
+        ('EBLINK L 1000\t2000\t3', 'blink'),
+        ('EFIX\tL\t1000\t2000\t9\t850.7\t717.5\t714.0', 'fixation'),
+        (
+            'ESACC\tL\t1000\t2000\t12\t850.7\t717.5\t850.7\t717.5\t19.00\t590',
+            'saccade',
+        ),
+    ],
+)
+def test_unmatched_event_end_uses_current_context_and_warns(
+    make_text_file, event_end, event_name,
+):
+    """Unmatched end events should not crash, should warn, and should preserve pattern columns.
+
+    We set task=B and trial_id=42 via MSG patterns before the unmatched end line.
+    The event row should include these values in the additional columns.
+    """
+    header = (
+        '** DATE: Wed Mar  8 09:25:20 2023\n'
+        '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+        '** VERSION: EYELINK II 1\n'
+        'MSG\t0 RECCFG CR 1000 0 0 R\n'
+        'SAMPLES\tGAZE\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t0\n'
+        'START\t0 \tRIGHT\tSAMPLES\tEVENTS\n'
+        'MSG 1 START_B\n'
+        'MSG 2 START_TRIAL_42\n'
+    )
+    # No matching start event; directly write an end event line
+    body = event_end + '\nEND\t2001 \tSAMPLES\tEVENTS\tRES\t 38.54\t 31.12\n'
+
+    filepath = make_text_file(filename='unmatched.asc', header=header, body=body)
+
+    patterns = [
+        {'pattern': 'START_B', 'column': 'task', 'value': 'B'},
+        r'START_TRIAL_(?P<trial_id>\d+)',
+    ]
+
+    # Expect a warning about missing start marker
+    with pytest.warns(UserWarning) as warn:
+        _, event_df, _, _ = parsing.parse_eyelink(filepath, patterns=patterns)
+
+    assert len(event_df) == 1
+    assert event_df['name'][0] == f'{event_name}_eyelink'
+    # additional columns should be preserved from current context
+    assert event_df['task'][0] == 'B'
+    assert event_df['trial_id'][0] == '42'
+
+    # Check a warning mentioning missing start and onset/offset
+    messages = [str(rec.message) for rec in warn]
+    assert any('Missing start marker before end for event' in m for m in messages)
+    assert any(event_name in m for m in messages)
+
+
+@pytest.mark.parametrize(
+    ('eye', 'onset', 'offset'),
+    [
+        ('R', 100, 200),
+        ('L', 100, 200),
+        ('R', 0, 1),
+        ('L', 250, 275),
+    ],
+)
+def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye, onset, offset):
+    """Unmatched blink end without patterns should warn and record event for both eyes.
+
+    Parametrized over left/right eyes and multiple onset/offset pairs to ensure
+    robust behavior without relying on pattern-derived additional columns.
+    """
+    samples_eye = 'RIGHT' if eye == 'R' else 'LEFT'
+    header = (
+        '** DATE: Wed Mar  8 09:25:20 2023\n'
+        '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+        f'MSG\t0 RECCFG CR 1000 0 0 {"R" if eye == "R" else "L"}\n'
+        f'SAMPLES\tGAZE\t{samples_eye}\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t0\n'
+        f'START\t0 \t{samples_eye}\tSAMPLES\tEVENTS\n'
+    )
+
+    body = (
+        f'EBLINK {eye} {onset}\t{offset}\t3\n'
+        f'END\t{offset + 1} \tSAMPLES\tEVENTS\tRES\t 0\t 0\n'
+    )
+
+    filepath = make_text_file(
+        filename=f'unmatched_no_patterns_{eye}_{onset}_{offset}.asc',
+        header=header, body=body,
+    )
+
+    with pytest.warns(UserWarning) as warn:
+        _, event_df, _, _ = parsing.parse_eyelink(filepath)
+
+    assert len(event_df) == 1
+    assert event_df['name'][0] == 'blink_eyelink'
+    expected_eye = 'right' if eye == 'R' else 'left'
+    assert event_df['eye'][0] == expected_eye
+    assert event_df['onset'][0] == float(onset)
+    assert event_df['offset'][0] == float(offset)
+
+    messages = [str(rec.message) for rec in warn]
+    assert any('Missing start marker before end for event' in m for m in messages)
