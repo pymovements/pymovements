@@ -331,6 +331,12 @@ def parse_eyelink(
     durations in a different way than pymovements, resulting in a difference of 1 sample duration.
     For 1000 Hz recordings, durations calculated by pymovements are 1 ms shorter than the durations
     reported in the asc file.
+
+    Robustness to unmatched end markers: If an event end line (EBLINK/EFIX/ESACC) appears without a
+    corresponding start line (SBLINK/SFIX/SSACC) for the same eye earlier in the file, a warning is
+    emitted and the event is still recorded. In this case, the parser seeds additional columns from
+    the current context (values derived from the provided ``patterns`` at that line), so trial/task
+    information is preserved when available.
     """
     # pylint: disable=too-many-branches, too-many-statements
     if patterns is None:
