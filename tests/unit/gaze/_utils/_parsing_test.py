@@ -363,7 +363,6 @@ EXPECTED_METADATA_BEGAZE = {
 }
 
 
-
 def test_parse_eyelink(make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
