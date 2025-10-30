@@ -110,6 +110,77 @@ ESACC	R	10000011	10000022	12	850.7	717.5	850.7	717.5	19.00	590
 END	10000022 	SAMPLES	EVENTS	RES	  38.54	  31.12
 """
 
+BEGAZE_TEXT = r"""
+## [BeGaze]
+## Converted from:	C:\test.idf
+## Date:	08.03.2023 09:25:20
+## Version:	BeGaze 3.7.40
+## IDF Version:	9
+## Sample Rate:	1000
+## Separator Type:	Msg
+## Trial Count:	1
+## Uses Plane File:	False
+## Number of Samples:	11
+## Reversed:	none
+## [Run]
+## Subject:	P01
+## Description:	Run1
+## [Calibration]
+## Calibration Area:	1680	1050
+## Calibration Point 0:	Position(841;526)
+## Calibration Point 1:	Position(84;52)
+## Calibration Point 2:	Position(1599;52)
+## Calibration Point 3:	Position(84;1000)
+## Calibration Point 4:	Position(1599;1000)
+## Calibration Point 5:	Position(84;526)
+## Calibration Point 6:	Position(841;52)
+## Calibration Point 7:	Position(1599;526)
+## Calibration Point 8:	Position(841;1000)
+## [Geometry]
+## Stimulus Dimension [mm]:	474	297
+## Head Distance [mm]:	700
+## [Hardware Setup]
+## System ID:	IRX0470703-1007
+## Operating System :	6.1
+## IView X Version:	2.8.26
+## [Filter Settings]
+## Heuristics:	False
+## Heuristics Stage:	0
+## Bilateral:	True
+## Gaze Cursor Filter:	True
+## Saccade Length [px]:	80
+## Filter Depth [ms]:	20
+## Format:	LEFT, POR, QUALITY, PLANE, MSG
+##
+Time	Type	Trial	L POR X [px]	L POR Y [px]	L Pupil Diameter [mm]	Timing	Pupil Confidence	R Plane	Info	R Event Info	Stimulus
+10000000123	SMP	1	850.71	717.53	714.00	0	1	1	Fixation	test.bmp
+10000001123	MSG	1	# Message: START_A
+10000002123	SMP	1	850.71	717.53	714.00	0	1	1	Fixation	test.bmp
+10000003234	MSG	1	# Message: STOP_A
+10000004123	SMP	1	850.71	717.53	714.00	0	1	1	Fixation	test.bmp
+10000004234	MSG	1	# Message: METADATA_1 123
+10000005234	MSG	1	# Message: START_B
+10000006123	SMP	1	850.71	717.53	714.00	0	1	1	Fixation	test.bmp
+10000007234	MSG	1	# Message: START_TRIAL_1
+10000008123	SMP	1	850.71	717.53	714.00	0	1	1	Fixation	test.bmp
+10000009234	MSG	1	# Message: STOP_TRIAL_1
+10000010234	MSG	1	# Message: START_TRIAL_2
+10000011123	SMP	1	850.71	717.53	714.00	0	1	1	Saccade	test.bmp
+10000012234	MSG	1	# Message: STOP_TRIAL_2
+10000013234	MSG	1	# Message: START_TRIAL_3
+10000014234	MSG	1	# Message: METADATA_2 abc
+10000014235	MSG	1	# Message: METADATA_1 456
+10000014345	SMP	1	850.71	717.53	714.00	0	1	1	Saccade	test.bmp
+10000015234	MSG	1	# Message: STOP_TRIAL_3
+10000016234	MSG	1	# Message: STOP_B
+10000017234	MSG	1	# Message: METADATA_3
+10000017345	SMP	1	850.71	717.53	714.00	0	1	1	Saccade	test.bmp
+10000019123	SMP	1	850.71	717.53	714.00	0	0	-1	Saccade	test.bmp
+10000020123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
+10000021123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
+"""  # noqa: E501
+
+
 PATTERNS = [
     {
         'pattern': 'START_A',
@@ -160,6 +231,24 @@ EXPECTED_GAZE_DF = pl.from_dict(
     },
 )
 
+BEGAZE_EXPECTED_GAZE_DF = pl.from_dict(
+    {
+        'time': [
+            10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123, 10000011.123, 10000014.345,
+            10000017.345, 10000019.123, 10000020.123, 10000021.123,
+        ],
+        'x_pix': [
+            850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, np.nan, np.nan,
+        ],
+        'y_pix': [
+            717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, np.nan, np.nan,
+        ],
+        'pupil': [714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, np.nan, 0.0, 0.0],
+        'task': [None, 'A', None, 'B', 'B', 'B', 'B', None, None, None, None],
+        'trial_id': [None, None, None, None, '1', '2', '3', None, None, None, None],
+    },
+)
+
 EXPECTED_EVENT_DF = pl.from_dict(
     {
         'name': ['fixation_eyelink', 'blink_eyelink', 'saccade_eyelink'],
@@ -171,7 +260,17 @@ EXPECTED_EVENT_DF = pl.from_dict(
     },
 )
 
-EXPECTED_METADATA = {
+BEGAZE_EXPECTED_EVENT_DF = pl.from_dict(
+    {
+        'name': ['fixation_begaze', 'saccade_begaze', 'blink_begaze'],
+        'onset': [10000000.123, 10000011.123, 10000020.123],
+        'offset': [10000008.123, 10000019.123, 10000021.123],
+        'task': [None, 'B', None],
+        'trial_id': [None, '2', None],
+    },
+)
+
+EXPECTED_METADATA_EYELINK = {
     'weekday': 'Wed',
     'month': 'Mar',
     'day': 8,
@@ -243,6 +342,26 @@ MESSAGES_DF = pl.DataFrame(
     ],
 )
 
+# TODO: Add more metadata
+EXPECTED_METADATA_BEGAZE = {
+    'sampling_rate': 1000.00,
+    'tracked_eye': 'L',
+    'data_loss_ratio_blinks': 0.18181818181818182,
+    'data_loss_ratio': 0.2727272727272727,
+    'total_recording_duration_ms': 11,
+    'datetime': datetime.datetime(2023, 3, 8, 9, 25, 20),
+    'blinks': [{
+        'duration_ms': 2,
+        'num_samples': 2,
+        'start_timestamp': 10000019.123,
+        'stop_timestamp': 10000021.123,
+    }],
+    'metadata_1': '123',
+    'metadata_2': 'abc',
+    'metadata_3': True,
+    'metadata_4': None,
+}
+
 
 def test_parse_eyelink(make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
@@ -256,7 +375,7 @@ def test_parse_eyelink(make_text_file):
 
     assert_frame_equal(gaze_df, EXPECTED_GAZE_DF, check_column_order=False, rtol=0)
     assert_frame_equal(event_df, EXPECTED_EVENT_DF, check_column_order=False, rtol=0)
-    assert metadata == EXPECTED_METADATA
+    assert metadata == EXPECTED_METADATA_EYELINK
     assert messages_df.shape == (18, 2)
     assert messages_df['time'].min() == 2095865
     assert messages_df[0, 1] == 'DISPLAY_COORDS 0 0 1279 1023'
@@ -1352,3 +1471,22 @@ def test_check_reccfg_key_handles_unorderable_values_with_warning() -> None:
     # A warning should have been emitted about inconsistent values
     assert len(w) >= 1
     assert any("Found inconsistent values for 'sampling_rate'" in str(rec.message) for rec in w)
+
+
+def test_parse_begaze(tmp_path):
+    filepath = tmp_path / 'sub.txt'
+    filepath.write_text(BEGAZE_TEXT)
+
+    gaze_df, event_df, metadata = pm.gaze._utils.parsing.parse_begaze(
+        filepath,
+        patterns=PATTERNS,
+        metadata_patterns=METADATA_PATTERNS,
+    )
+
+    print(gaze_df.with_columns(pl.all().cast(pl.String)))
+    print(BEGAZE_EXPECTED_GAZE_DF.with_columns(pl.all().cast(pl.String)))
+    assert_frame_equal(gaze_df, BEGAZE_EXPECTED_GAZE_DF, check_column_order=False, rtol=0)
+    print(event_df.with_columns(pl.all().cast(pl.String)))
+    print(BEGAZE_EXPECTED_EVENT_DF.with_columns(pl.all().cast(pl.String)))
+    assert_frame_equal(event_df, BEGAZE_EXPECTED_EVENT_DF, check_column_order=False, rtol=0)
+    assert metadata == EXPECTED_METADATA_BEGAZE
