@@ -1887,10 +1887,8 @@ class Gaze:
     def __str__(self) -> str:
         """Return string representation of Gaze.
 
-        The messages field expresses:
-        - 'messages=None' if no messages are provided.
-        - 'messages=<N> rows' if a messages DataFrame is provided,
-          where N is the number of rows.
+        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        where ``N`` is the number of rows.
         """
         fields = []
 
@@ -1908,10 +1906,8 @@ class Gaze:
     def __repr__(self) -> str:
         """Return string representation of Gaze.
 
-        The messages field expresses:
-        - 'messages=None' if no messages are provided.
-        - 'messages=<N> rows' if a messages DataFrame is provided,
-          where N is the number of rows.
+        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        where ``N`` is the number of rows.
         """
         return self.__str__()
 
