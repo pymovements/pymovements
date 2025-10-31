@@ -31,7 +31,7 @@ from typing import Any
 import polars as pl
 from deprecated.sphinx import deprecated
 
-from pymovements.gaze._utils.parsing import parse_eyelink as _parse_eyelink
+from pymovements.gaze._utils.parsing_eyelink import parse_eyelink as _parse_eyelink
 
 
 @deprecated(
