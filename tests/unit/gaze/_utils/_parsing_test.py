@@ -234,8 +234,8 @@ EXPECTED_GAZE_DF = pl.from_dict(
 BEGAZE_EXPECTED_GAZE_DF = pl.from_dict(
     {
         'time': [
-            10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123, 10000011.123, 10000014.345,
-            10000017.345, 10000019.123, 10000020.123, 10000021.123,
+            10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123, 10000011.123,
+            10000014.345, 10000017.345, 10000019.123, 10000020.123, 10000021.123,
         ],
         'x_pix': [
             850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, np.nan, np.nan,
@@ -361,7 +361,6 @@ EXPECTED_METADATA_BEGAZE = {
     'metadata_3': True,
     'metadata_4': None,
 }
-
 
 
 def test_parse_eyelink(make_text_file):
@@ -1478,7 +1477,7 @@ def test_parse_begaze(tmp_path):
     filepath = tmp_path / 'sub.txt'
     filepath.write_text(BEGAZE_TEXT)
 
-    gaze_df, event_df, metadata = pm.gaze._utils.parsing.parse_begaze(
+    gaze_df, event_df, metadata = parsing.parse_begaze(
         filepath,
         patterns=PATTERNS,
         metadata_patterns=METADATA_PATTERNS,
