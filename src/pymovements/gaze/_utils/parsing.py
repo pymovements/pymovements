@@ -1134,6 +1134,7 @@ def parse_begaze(
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str = 'ascii',
+        prefer_eye: str = 'L',
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
     """Parse BeGaze raw data export file.
 
@@ -1149,12 +1150,15 @@ def parse_begaze(
         list of patterns to match for additional metadata. (default: None)
     encoding: str
         Text encoding of the file. (default: 'ascii')
+    prefer_eye: str
+        Preferred eye to parse when both eyes are present: 'L' or 'R'. (default: 'L')
 
     Returns
     -------
     tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]
         A tuple containing the parsed gaze sample data, the parsed event data, and the metadata.
     """
+    # pylint: disable=too-many-branches, too-many-statements
     msg_prefix = r'\d+\tMSG\t\d+\t# Message:\s+'
 
     if patterns is None:
@@ -1170,8 +1174,8 @@ def parse_begaze(
         additional_column: None for additional_column in additional_columns
     }
     current_event = '-'
-    current_event_onset = None
-    previous_timestamp = None
+    current_event_onset: float | None = None
+    previous_timestamp: float | None = None
 
     num_valid_samples = 0
     num_blink_samples = 0
@@ -1200,17 +1204,15 @@ def parse_begaze(
     metadata: defaultdict = defaultdict(str)
 
     # Parse simple header metadata from BeGaze '##' lines and the column header row
-    # Example lines:
-    # ## Date:\t08.03.2023 09:25:20
-    # ## Sample Rate:\t1000
-    # The tabular header contains eye-specific columns such as 'L POR X [px]' or 'R POR X [px]'
     header_datetime: datetime.datetime | None = None
     header_sampling_rate: float | None = None
     header_tracked_eye: str | None = None
-    header_num_samples: int | None = None
 
-    # Find the first non-header (non '##') line that looks like the column header
+    # Find the tabular header line (first non-## line containing 'Time' and 'Type')
     header_row_index: int | None = None
+    header_cols: list[str] | None = None
+    header_idx: dict[str, int] = {}
+
     for idx, line in enumerate(lines):
         if line.startswith('##'):
             # extract simple key/value pairs
@@ -1219,9 +1221,8 @@ def parse_begaze(
                 try:
                     _, value = line.split(':', 1)
                     value = value.strip().strip('\n')
-                    # split on tab if present
-                    if '\t' in value:
-                        value = value.split('\t', 1)[1] if value.startswith('\t') else value
+                    if value.startswith('\t'):
+                        value = value[1:]
                     value = value.replace('\t', ' ').strip()
                     header_datetime = datetime.datetime.strptime(value, '%d.%m.%Y %H:%M:%S')
                 except Exception:
@@ -1234,9 +1235,9 @@ def parse_begaze(
                 except Exception:
                     header_sampling_rate = None
             continue
-        # first non '##' line - check if it looks like the tabular header
         if ('Time' in line and '\tType\t' in line) and header_row_index is None:
             header_row_index = idx
+            header_cols = [c.strip() for c in line.rstrip('\n').split('\t')]
             # Determine tracked eye from presence of L/R POR columns
             upper = line.upper()
             if 'L POR X' in upper and 'R POR X' not in upper:
@@ -1244,8 +1245,9 @@ def parse_begaze(
             elif 'R POR X' in upper and 'L POR X' not in upper:
                 header_tracked_eye = 'R'
             elif 'L POR X' in upper and 'R POR X' in upper:
-                # binocular export present - default monocular for now
-                header_tracked_eye = 'L'
+                header_tracked_eye = prefer_eye or 'L'
+            # build index map
+            header_idx = {name: i for i, name in enumerate(header_cols)}
             break
 
     if header_datetime is not None:
@@ -1260,10 +1262,6 @@ def parse_begaze(
     for key in metadata_keys:
         metadata[key] = None
 
-    # I think we should not extend with EyeLink metadata regexes for BeGaze – @cbueth
-
-    # TODO: calibrations, validations
-
     # Blink tracking for metadata
     blinks_meta: list[dict[str, Any]] = []
     blink_active = False
@@ -1271,37 +1269,104 @@ def parse_begaze(
     blink_last_ts: float | None = None
     blink_sample_count = 0
 
-    for line in lines:
-        # Apply message-driven additional columns
-        for pattern_dict in compiled_patterns:
+    def parse_event_for_eye(row: list[str], eye: str) -> str:
+        # Prefer explicit per-eye event columns, else fall back to generic 'Info'
+        if eye == 'L':
+            if 'L Event Info' in header_idx:
+                return row[header_idx['L Event Info']]
+            if 'Info' in header_idx:
+                return row[header_idx['Info']]
+        else:
+            if 'R Event Info' in header_idx:
+                return row[header_idx['R Event Info']]
+            if 'Info' in header_idx:
+                return row[header_idx['Info']]
+        return '-'
 
-            if match := pattern_dict['pattern'].match(line):
-                if 'value' in pattern_dict:
-                    current_column = pattern_dict['column']
-                    current_additional[current_column] = pattern_dict['value']
+    # Determine which columns to use based on prefer_eye and availability
+    selected_eye = prefer_eye.upper() if prefer_eye else 'L'
 
-                else:
-                    current_additional.update(match.groupdict())
+    def has_eye_columns(eye: str) -> bool:
+        return (
+            f'{eye} POR X [px]' in header_idx and
+            f'{eye} POR Y [px]' in header_idx and
+            f'{eye} Pupil Diameter [mm]' in header_idx
+        )
 
-        if match := BEGAZE_SAMPLE.match(line):
-            timestamp_s = match.group('time')
-            x_pix_s = match.group('x_pix')
-            y_pix_s = match.group('y_pix')
-            pupil_s = match.group('pupil')
-            pupil_conf_s = match.group('pupil_confidence')
+    use_header_parsing = header_row_index is not None and header_cols is not None
+    if use_header_parsing:
+        if not has_eye_columns(selected_eye):
+            # fall back to the other eye if available - add user warning?
+            other_eye = 'R' if selected_eye == 'L' else 'L'
+            if has_eye_columns(other_eye):
+                selected_eye = other_eye
+        # If neither has columns, we will fall back to regex parsing below
+        use_header_parsing = has_eye_columns(selected_eye)
+        if use_header_parsing:
+            # override tracked eye with the actually used one
+            metadata['tracked_eye'] = selected_eye
 
-            timestamp = float(timestamp_s) / 1000  # convert to milliseconds
-            x_pix = check_nan(x_pix_s)
-            y_pix = check_nan(y_pix_s)
+    if use_header_parsing:
+        # iterate over data lines following the header row
+        for line in lines[header_row_index + 1:]:
+            # Apply message-driven additional columns first
+            for pattern_dict in compiled_patterns:
+                if match := pattern_dict['pattern'].match(line):
+                    if 'value' in pattern_dict:
+                        current_column = pattern_dict['column']
+                        current_additional[current_column] = pattern_dict['value']
+                    else:
+                        current_additional.update(match.groupdict())
+
+            parts = [p.strip() for p in line.rstrip('\n').split('\t')]
+            if len(parts) < 3:
+                # also try metadata patterns on non-sample lines
+                for pattern_dict in compiled_metadata_patterns.copy():
+                    if match := pattern_dict['pattern'].match(line):
+                        if 'value' in pattern_dict and 'key' in pattern_dict:
+                            metadata[pattern_dict['key']] = pattern_dict['value']
+                        else:
+                            metadata.update(match.groupdict())
+                        compiled_metadata_patterns.remove(pattern_dict)
+                continue
+
+            # skip if not a sample line
+            type_val = parts[header_idx.get('Type', 1)] if header_idx else 'SMP'
+            if type_val != 'SMP':
+                # Apply metadata_patterns to message lines as well
+                if compiled_metadata_patterns:
+                    for pattern_dict in compiled_metadata_patterns.copy():
+                        if match := pattern_dict['pattern'].match(line):
+                            if 'value' in pattern_dict and 'key' in pattern_dict:
+                                metadata[pattern_dict['key']] = pattern_dict['value']
+                            else:
+                                metadata.update(match.groupdict())
+                            compiled_metadata_patterns.remove(pattern_dict)
+                continue
+
+            # Time is in microseconds per manual - convert to milliseconds float
+            timestamp_s = parts[header_idx.get('Time', 0)]
+            timestamp = float(timestamp_s) / 1000.0
+
+            # Extract selected eye columns
+            x_s = parts[header_idx[f'{selected_eye} POR X [px]']]
+            y_s = parts[header_idx[f'{selected_eye} POR Y [px]']]
+            pupil_s = parts[header_idx[f'{selected_eye} Pupil Diameter [mm]']]
+
+            x_pix = check_nan(x_s)
+            y_pix = check_nan(y_s)
             pupil = check_nan(pupil_s)
 
-            event = match.group('event')
+            pupil_conf_s = parts[
+                header_idx['Pupil Confidence']
+            ] if 'Pupil Confidence' in header_idx else None
+
+            event = parse_event_for_eye(parts, selected_eye)
             # Handle blink samples: override with NaNs for positions and 0.0 for pupil
             if event == 'Blink':
                 x_pix = np.nan
                 y_pix = np.nan
                 pupil = 0.0
-            # Handle pupil confidence: if confidence==0 and not a blink, mark pupil invalid
             elif pupil_conf_s == '0':
                 pupil = np.nan
 
@@ -1315,15 +1380,13 @@ def parse_begaze(
             samples['x_pix'].append(x_pix)
             samples['y_pix'].append(y_pix)
             samples['pupil'].append(pupil)
-
             for additional_column in additional_columns:
                 samples[additional_column].append(current_additional[additional_column])
 
-            # count valid/invalid and blink samples for metadata
+            # metadata counters
             if event == 'Blink':
                 num_blink_samples += 1
                 blink_last_ts = timestamp
-                # if blink just started, remember the timestamp of the previous sample
                 if not blink_active:
                     blink_active = True
                     blink_start_prev_ts = previous_timestamp
@@ -1331,13 +1394,11 @@ def parse_begaze(
                 else:
                     blink_sample_count += 1
             else:
-                # non-blink sample: check validity for data loss
                 if not np.isnan(x_pix) and not np.isnan(y_pix) and not np.isnan(pupil):
                     num_valid_samples += 1
 
             # event segmentation
             if event != current_event:
-                # if we are ending a blink event, finalize blink metadata entry
                 if (
                     current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
                     and blink_last_ts is not None
@@ -1354,7 +1415,6 @@ def parse_begaze(
                     blink_sample_count = 0
 
                 if current_event != '-':
-                    # end previous event
                     events['name'].append(current_event.lower() + '_begaze')
                     events['onset'].append(current_event_onset)
                     events['offset'].append(previous_timestamp)
@@ -1367,41 +1427,160 @@ def parse_begaze(
                 current_event_additional[current_event] = {**current_additional}
             previous_timestamp = timestamp
 
-        elif compiled_metadata_patterns:
-            # Apply metadata extraction on message lines
-            for pattern_dict in compiled_metadata_patterns.copy():
-                if match := pattern_dict['pattern'].match(line):
-                    if 'value' in pattern_dict and 'key' in pattern_dict:
-                        metadata[pattern_dict['key']] = pattern_dict['value']
-                    else:
-                        metadata.update(match.groupdict())
-                    # each metadata pattern should only match once
-                    compiled_metadata_patterns.remove(pattern_dict)
+        # add last event (header-parsing branch)
+        if current_event != '-':
+            events['name'].append(current_event.lower() + '_begaze')
+            events['onset'].append(current_event_onset)
+            events['offset'].append(previous_timestamp)
+            for additional_column in additional_columns:
+                events[additional_column].append(
+                    current_event_additional[current_event][additional_column],
+                )
+            if (
+                current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
+                and blink_last_ts is not None
+            ):
+                blinks_meta.append({
+                    'duration_ms': blink_last_ts - blink_start_prev_ts,
+                    'num_samples': blink_sample_count,
+                    'start_timestamp': blink_start_prev_ts,
+                    'stop_timestamp': blink_last_ts,
+                })
+            current_event = '-'
+            current_event_onset = None
+            current_event_additional = {key: {} for key in current_event_additional.keys()}
 
-    # TODO: refactor
-    # add last event
-    if current_event != '-':
-        events['name'].append(current_event.lower() + '_begaze')
-        events['onset'].append(current_event_onset)
-        events['offset'].append(previous_timestamp)
-        for additional_column in additional_columns:
-            events[additional_column].append(
-                current_event_additional[current_event][additional_column],
-            )
-        # finalise blink if the last event is a blink
-        if (
-            current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
-            and blink_last_ts is not None
-        ):
-            blinks_meta.append({
-                'duration_ms': blink_last_ts - blink_start_prev_ts,
-                'num_samples': blink_sample_count,
-                'start_timestamp': blink_start_prev_ts,
-                'stop_timestamp': blink_last_ts,
-            })
-        current_event = '-'
-        current_event_onset = None
-        current_event_additional = {key: {} for key in current_event_additional.keys()}
+    else:
+        # Fallback: use regex-based monocular parsing for simple LEFT files
+        for line in lines:
+            # Apply message-driven additional columns
+            for pattern_dict in compiled_patterns:
+                if match := pattern_dict['pattern'].match(line):
+                    if 'value' in pattern_dict:
+                        current_column = pattern_dict['column']
+                        current_additional[current_column] = pattern_dict['value']
+                    else:
+                        current_additional.update(match.groupdict())
+
+            if match := BEGAZE_SAMPLE.match(line):
+                timestamp_s = match.group('time')
+                x_pix_s = match.group('x_pix')
+                y_pix_s = match.group('y_pix')
+                pupil_s = match.group('pupil')
+                pupil_conf_s = match.group('pupil_confidence')
+
+                timestamp = float(timestamp_s) / 1000  # convert to milliseconds
+                x_pix = check_nan(x_pix_s)
+                y_pix = check_nan(y_pix_s)
+                pupil = check_nan(pupil_s)
+
+                event = match.group('event')
+                # Handle blink samples: override with NaNs for positions and 0.0 for pupil
+                if event == 'Blink':
+                    x_pix = np.nan
+                    y_pix = np.nan
+                    pupil = 0.0
+                # Handle pupil confidence: if confidence==0 and not a blink, mark pupil invalid
+                elif pupil_conf_s == '0':
+                    pupil = np.nan
+
+                # Round pixel positions to one decimal to mirror expected fixtures
+                if not np.isnan(x_pix):
+                    x_pix = float(np.around(x_pix, 1))
+                if not np.isnan(y_pix):
+                    y_pix = float(np.around(y_pix, 1))
+
+                samples['time'].append(timestamp)
+                samples['x_pix'].append(x_pix)
+                samples['y_pix'].append(y_pix)
+                samples['pupil'].append(pupil)
+
+                for additional_column in additional_columns:
+                    samples[additional_column].append(current_additional[additional_column])
+
+                # count valid/invalid and blink samples for metadata
+                if event == 'Blink':
+                    num_blink_samples += 1
+                    blink_last_ts = timestamp
+                    # if blink just started, remember the timestamp of the previous sample
+                    if not blink_active:
+                        blink_active = True
+                        blink_start_prev_ts = previous_timestamp
+                        blink_sample_count = 1
+                    else:
+                        blink_sample_count += 1
+                else:
+                    # non-blink sample: check validity for data loss
+                    if not np.isnan(x_pix) and not np.isnan(y_pix) and not np.isnan(pupil):
+                        num_valid_samples += 1
+
+                # event segmentation
+                if event != current_event:
+                    # if we are ending a blink event, finalize blink metadata entry
+                    if (
+                        current_event == 'Blink' and blink_active
+                            and blink_start_prev_ts is not None
+                            and blink_last_ts is not None
+                    ):
+                        blinks_meta.append({
+                            'duration_ms': blink_last_ts - blink_start_prev_ts,
+                            'num_samples': blink_sample_count,
+                            'start_timestamp': blink_start_prev_ts,
+                            'stop_timestamp': blink_last_ts,
+                        })
+                        blink_active = False
+                        blink_start_prev_ts = None
+                        blink_last_ts = None
+                        blink_sample_count = 0
+
+                    if current_event != '-':
+                        # end previous event
+                        events['name'].append(current_event.lower() + '_begaze')
+                        events['onset'].append(current_event_onset)
+                        events['offset'].append(previous_timestamp)
+                        for additional_column in additional_columns:
+                            events[additional_column].append(
+                                current_event_additional[current_event][additional_column],
+                            )
+                    current_event = event
+                    current_event_onset = timestamp
+                    current_event_additional[current_event] = {**current_additional}
+                previous_timestamp = timestamp
+
+            elif compiled_metadata_patterns:
+                # Apply metadata extraction on message lines
+                for pattern_dict in compiled_metadata_patterns.copy():
+                    if match := pattern_dict['pattern'].match(line):
+                        if 'value' in pattern_dict and 'key' in pattern_dict:
+                            metadata[pattern_dict['key']] = pattern_dict['value']
+                        else:
+                            metadata.update(match.groupdict())
+                        # each metadata pattern should only match once
+                        compiled_metadata_patterns.remove(pattern_dict)
+
+        # add last event
+        if current_event != '-':
+            events['name'].append(current_event.lower() + '_begaze')
+            events['onset'].append(current_event_onset)
+            events['offset'].append(previous_timestamp)
+            for additional_column in additional_columns:
+                events[additional_column].append(
+                    current_event_additional[current_event][additional_column],
+                )
+            # finalise blink if the last event is a blink
+            if (
+                current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
+                and blink_last_ts is not None
+            ):
+                blinks_meta.append({
+                    'duration_ms': blink_last_ts - blink_start_prev_ts,
+                    'num_samples': blink_sample_count,
+                    'start_timestamp': blink_start_prev_ts,
+                    'stop_timestamp': blink_last_ts,
+                })
+            current_event = '-'
+            current_event_onset = None
+            current_event_additional = {key: {} for key in current_event_additional.keys()}
 
     # Finalise metadata for BeGaze
     # total_recording_duration_ms per test equals number of samples for this minimal fixture

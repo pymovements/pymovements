@@ -1490,3 +1490,72 @@ def test_parse_begaze(tmp_path):
     print(BEGAZE_EXPECTED_EVENT_DF.with_columns(pl.all().cast(pl.String)))
     assert_frame_equal(event_df, BEGAZE_EXPECTED_EVENT_DF, check_column_order=False, rtol=0)
     assert metadata == EXPECTED_METADATA_BEGAZE
+
+
+def test_parse_begaze_binocular_prefer_left(tmp_path):
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+        '\tR POR X [px]\tR POR Y [px]\tR Pupil Diameter [mm]\tPupil Confidence\t'
+        'L Event Info\tR Event Info\n'
+        '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n'
+        '10000001100\tSMP\t1\t11\t21\t3.1\t111\t121\t4.1\t1\tSaccade\tFixation\n'
+        '10000002100\tSMP\t1\t12\t22\t3.2\t112\t122\t4.2\t0\tBlink\tFixation\n'
+    )
+    p = tmp_path / 'begaze_binoc_left.txt'
+    p.write_text(text)
+
+    gaze_df, event_df, metadata = parsing.parse_begaze(p, prefer_eye='L')
+
+    # Times in ms
+    assert gaze_df['time'].to_list() == [10000000.1, 10000001.1, 10000002.1]
+    # Left eye selected: blink row should set NaNs and pupil 0.0
+    x_list = gaze_df['x_pix'].to_list()
+    y_list = gaze_df['y_pix'].to_list()
+    p_list = gaze_df['pupil'].to_list()
+    assert x_list[:2] == [10.0, 11.0] and np.isnan(x_list[2])
+    assert y_list[:2] == [20.0, 21.0] and np.isnan(y_list[2])
+    assert p_list == [3.0, 3.1, 0.0]
+    # Events follow L Event Info
+    assert event_df['name'].to_list() == [
+        'fixation_begaze', 'saccade_begaze', 'blink_begaze',
+    ]
+    assert event_df['onset'].to_list() == [10000000.1, 10000001.1, 10000002.1]
+    assert event_df['offset'].to_list() == [10000000.1, 10000001.1, 10000002.1]
+    # tracked_eye should be L
+    assert metadata['tracked_eye'] == 'L'
+
+
+def test_parse_begaze_binocular_prefer_right(tmp_path):
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+        '\tR POR X [px]\tR POR Y [px]\tR Pupil Diameter [mm]\tPupil Confidence\t'
+        'L Event Info\tR Event Info\n'
+        '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n'
+        '10000001100\tSMP\t1\t11\t21\t3.1\t111\t121\t4.1\t1\tSaccade\tFixation\n'
+        '10000002100\tSMP\t1\t12\t22\t3.2\t112\t122\t4.2\t0\tBlink\tFixation\n'
+    )
+    p = tmp_path / 'begaze_binoc_right.txt'
+    p.write_text(text)
+
+    gaze_df, event_df, metadata = parsing.parse_begaze(p, prefer_eye='R')
+
+    # Times in ms
+    assert gaze_df['time'].to_list() == [10000000.1, 10000001.1, 10000002.1]
+    # Right eye selected: pupil_confidence 0 on third row -> pupil NaN (no blink on R)
+    assert gaze_df['x_pix'].to_list() == [110.0, 111.0, 112.0]
+    assert gaze_df['y_pix'].to_list() == [120.0, 121.0, 122.0]
+    assert np.isnan(gaze_df['pupil'].to_list()[-1])
+    # Events follow R Event Info: saccade -> fixation - 3rd row no change
+    assert event_df['name'].to_list() == [
+        'saccade_begaze', 'fixation_begaze',
+    ]
+    assert event_df['onset'].to_list() == [10000000.1, 10000001.1]
+    assert event_df['offset'].to_list() == [10000000.1, 10000002.1]
+    # tracked_eye should be R
+    assert metadata['tracked_eye'] == 'R'
