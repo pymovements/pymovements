@@ -201,7 +201,7 @@ class Gaze:
     >>> gaze
     Experiment(screen=Screen(width_px=1024, height_px=768, width_cm=38, height_cm=30,
      distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
+      right=None, model=None, version=None, vendor=None, mount=None))
     shape: (3, 2)
     ┌──────┬────────────┐
     │ time ┆ pixel      │
@@ -1885,7 +1885,11 @@ class Gaze:
         return samples_equal and events_equal and experiment_equal and trial_columns_equal
 
     def __str__(self) -> str:
-        """Return string representation of Gaze."""
+        """Return string representation of Gaze.
+
+        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        where ``N`` is the number of rows.
+        """
         fields = []
 
         if self.experiment is not None:
@@ -1894,9 +1898,7 @@ class Gaze:
         if self.samples is not None:
             fields.append(self.samples.__str__())
 
-        if self.messages is None:
-            fields.append('messages=None')
-        else:
+        if self.messages is not None:
             fields.append(f'messages={self.messages.height} rows')
 
         return '\n'.join(fields)
@@ -1904,10 +1906,8 @@ class Gaze:
     def __repr__(self) -> str:
         """Return string representation of Gaze.
 
-        The messages field expresses:
-        - 'messages=None' if no messages are provided.
-        - 'messages=<N> rows' if a messages DataFrame is provided,
-          where N is the number of rows.
+        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        where ``N`` is the number of rows.
         """
         return self.__str__()
 
