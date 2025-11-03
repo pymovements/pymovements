@@ -135,7 +135,15 @@ class ResourceDefinition:
 
 
 class ResourceDefinitions(list):
-    """List of :py:class:`~pymovements.ResourceDefinition` instances."""
+    """List of :py:class:`~pymovements.ResourceDefinition` instances.
+
+    Parameters
+    ----------
+    resources: Iterable[ResourceDefinition | dict[str, Any]] | None
+        An iterable of :py:cls:`~.ResourceDefinition` instances or dictionaries containing
+        :py:cls:`~.ResourceDefinition` parameters. In case an element is a dictionary it will be
+        converted using :py:meth:`~.ResourceDefinition.from_dict()`.
+    """
 
     def __init__(
             self, resources: Iterable[ResourceDefinition | dict[str, Any]] | None = None,
