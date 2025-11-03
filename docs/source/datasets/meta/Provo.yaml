@@ -6,10 +6,10 @@ resources:
   url: https://osf.io/download/z3eh6/
   md5: 7aa239e51e5d78528e2430f84a23da3f
   filename_pattern: Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv
-custom_read_kwargs:
-  precomputed_events:
-    schema_overrides:
-      RECORDING_SESSION_LABEL: '!polars.datatypes.classes.String'
-    encoding: macroman
-    null_values:
-    - .
+  load_kwargs:
+    custom_read_kwargs:
+      schema_overrides:
+        RECORDING_SESSION_LABEL: '!polars.datatypes.classes.String'
+      encoding: macroman
+      null_values:
+      - .

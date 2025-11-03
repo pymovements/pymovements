@@ -6,11 +6,11 @@ resources:
   url: https://osf.io/download/2cuys/
   md5: 4daad0fa922785d8c681a883b1197e1e
   filename_pattern: BSCII.EMD.rev.txt
-custom_read_kwargs:
-  precomputed_events:
-    separator: "\t"
-    null_values:
-    - NA
+  load_kwargs:
+    custom_read_kwargs:
+      separator: "\t"
+      null_values:
+      - NA
 trial_columns:
 - book_name
 - screen_id

@@ -5,10 +5,14 @@ resources:
   filename: edd_raw.zip
   url: https://zenodo.org/api/records/13332134/files-archive
   filename_pattern: Subject_{subject_id:d}_{task:s}_raw.csv
+  load_kwargs:
+    custom_read_kwargs: {}
 - content: precomputed_events
   filename: edd_fix.zip
   url: https://zenodo.org/api/records/13332134/files-archive
   filename_pattern: Subject_{subject_id:d}_{task:s}_fixations.csv
+  load_kwargs:
+    custom_read_kwargs: {}
 experiment:
   eyetracker:
     sampling_rate: 250
@@ -17,9 +21,6 @@ experiment:
     height_px: 1050
     distance_cm: 65
     origin: center
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}
 time_column: time
 time_unit: ms
 pixel_columns:

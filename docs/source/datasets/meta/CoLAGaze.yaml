@@ -29,7 +29,3 @@ experiment:
     height_cm: 30.26
     distance_cm: 60
     origin: bottom left
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}
-  precomputed_reading_measures: {}

@@ -14,6 +14,26 @@ resources:
     participant: '!int'
     session: '!int'
     trial: '!int'
+  load_kwargs:
+    custom_read_kwargs:
+      separator: "\t"
+      skip_rows: 43
+      has_header: false
+      new_columns:
+      - Time
+      - Type
+      - Trial
+      - L POR X [px]
+      - L POR Y [px]
+      - R POR X [px]
+      - R POR Y [px]
+      - Timing
+      - Pupil Confidence
+      - L Plane
+      - R Plane
+      - L Event Info
+      - R Event Info
+      - Stimulus
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -24,26 +44,6 @@ experiment:
     height_cm: 29.7
     distance_cm: 70
     origin: upper left
-custom_read_kwargs:
-  gaze:
-    separator: "\t"
-    skip_rows: 43
-    has_header: false
-    new_columns:
-    - Time
-    - Type
-    - Trial
-    - L POR X [px]
-    - L POR Y [px]
-    - R POR X [px]
-    - R POR Y [px]
-    - Timing
-    - Pupil Confidence
-    - L Plane
-    - R Plane
-    - L Event Info
-    - R Event Info
-    - Stimulus
 trial_columns:
 - Stimulus
 time_column: Time
