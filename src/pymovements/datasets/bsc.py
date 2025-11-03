@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -72,9 +71,6 @@ class BSC(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -109,6 +105,9 @@ class BSC(DatasetDefinition):
                     'filename': 'BSC.EMD.zip',
                     'md5': 'c7118bfe48c91264d69c45d347f11416',
                     'filename_pattern': 'BSC.EMD.txt',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'separator': '\t'},
+                    },
                 },
             ],
         ),
@@ -126,10 +125,3 @@ class BSC(DatasetDefinition):
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {'separator': '\t'},
-            },
-    )

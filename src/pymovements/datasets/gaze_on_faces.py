@@ -89,9 +89,6 @@ class GazeOnFaces(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -130,6 +127,14 @@ class GazeOnFaces(DatasetDefinition):
                             'sub_id': int,
                             'trial_id': int,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'separator': ',',
+                                'has_header': False,
+                                'new_columns': ['x', 'y'],
+                                'schema_overrides': [pl.Float32, pl.Float32],
+                            },
+                        },
                     },
             ],
         ),
@@ -158,14 +163,3 @@ class GazeOnFaces(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': ',',
-                'has_header': False,
-                'new_columns': ['x', 'y'],
-                'schema_overrides': [pl.Float32, pl.Float32],
-            },
-        },
-    )

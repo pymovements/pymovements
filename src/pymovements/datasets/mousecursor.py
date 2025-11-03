@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -94,10 +93,6 @@ class MouseCursor(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.datasets.Dataset` object with the
@@ -135,6 +130,20 @@ class MouseCursor(DatasetDefinition):
                         'filename_pattern_schema_overrides': {
                             'experiment_id': int,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'Tracking': pl.Utf8,
+                                    'Trial': pl.Int64,
+                                    'Measurement': pl.Int64,
+                                    'ExactTime': pl.Utf8,
+                                    'Time': pl.Float32,
+                                    'x': pl.Float32,
+                                    'y': pl.Float32,
+                                    'Participant': pl.Int64,
+                                },
+                            },
+                        },
                     },
             ],
         ),
@@ -168,20 +177,3 @@ class MouseCursor(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'Tracking': pl.Utf8,
-                    'Trial': pl.Int64,
-                    'Measurement': pl.Int64,
-                    'ExactTime': pl.Utf8,
-                    'Time': pl.Float32,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'Participant': pl.Int64,
-                },
-            },
-        },
-    )

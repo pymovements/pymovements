@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -85,9 +84,6 @@ class ETDD70(DatasetDefinition):
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
-
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
 
     Examples
     --------
@@ -159,12 +155,4 @@ class ETDD70(DatasetDefinition):
         default_factory=lambda: [
             'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
         ],
-    )
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'gaze': {},
-                'precomputed_events': {},
-            },
     )

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -93,10 +92,6 @@ class JuDo1000(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -135,6 +130,20 @@ class JuDo1000(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trialId': pl.Int64,
+                                'pointId': pl.Int64,
+                                'time': pl.Int64,
+                                'x_left': pl.Float32,
+                                'y_left': pl.Float32,
+                                'x_right': pl.Float32,
+                                'y_right': pl.Float32,
+                            },
+                            'separator': '\t',
+                        },
+                    },
                 },
             ],
         ),
@@ -172,22 +181,5 @@ class JuDo1000(DatasetDefinition):
         default_factory=lambda: {
             'trialId': 'trial_id',
             'pointId': 'point_id',
-        },
-    )
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trialId': pl.Int64,
-                    'pointId': pl.Int64,
-                    'time': pl.Int64,
-                    'x_left': pl.Float32,
-                    'y_left': pl.Float32,
-                    'x_right': pl.Float32,
-                    'y_right': pl.Float32,
-                },
-                'separator': '\t',
-            },
         },
     )

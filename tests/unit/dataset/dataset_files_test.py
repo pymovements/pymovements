@@ -187,40 +187,36 @@ PATTERNS = [
 
 
 @pytest.mark.parametrize(
-    'read_kwargs',
+    'load_function',
+    ['from_asc', None],
+)
+@pytest.mark.parametrize(
+    ('load_kwargs', 'expected_samples'),
     [
         pytest.param(
-            {'patterns': PATTERNS, 'schema': {'trial_id': pl.Int64}},
-            id='read_kwargs_dict',
+            {'patterns': PATTERNS, 'schema': {'trial_id': pl.Int64}}, EXPECTED_DF_PATTERNS,
+            id='dict',
         ),
         pytest.param(
-            None,
-            id='read_kwargs_none',
+            None, EXPECTED_DF_NO_PATTERNS,
+            id='none',
         ),
     ],
 )
-@pytest.mark.parametrize(
-    'load_function',
-    [None, 'from_asc'],
-)
-def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
+def test_load_eyelink_file_load_kwargs(
+        load_function, load_kwargs, expected_samples, make_text_file,
+):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = pm.dataset.dataset_files.load_gaze_file(
         filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': None},
+        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
         definition=DatasetDefinition(
             experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
-            custom_read_kwargs={'gaze': read_kwargs},
         ),
     )
 
-    if read_kwargs is not None:
-        expected_df = EXPECTED_DF_PATTERNS
-    else:
-        expected_df = EXPECTED_DF_NO_PATTERNS
-
-    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
     assert gaze.experiment is not None
 
 

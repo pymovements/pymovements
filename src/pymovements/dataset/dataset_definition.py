@@ -75,14 +75,6 @@ class DatasetDefinition:
         Decide whether to extract the data. (default: None)
         .. deprecated:: v0.22.1
         This field will be removed in v0.27.0.
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function. The
-        behavior of this argument depends on the file extension of the dataset files.
-        If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is`.asc` the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
-        See Notes for more details on how to use this argument.
-        (default: field(default_factory=dict))
     column_map : dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: field(default_factory=dict))
@@ -242,8 +234,6 @@ class DatasetDefinition:
 
     extract: dict[str, bool] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(default_factory=dict)
-
     column_map: dict[str, str] = field(default_factory=dict)
 
     trial_columns: list[str] | None = None
@@ -282,6 +272,13 @@ class DatasetDefinition:
 
         self.experiment = experiment
 
+        self.resources = self._initialize_resources(
+            resources=resources,
+            filename_format=filename_format,
+            filename_format_schema_overrides=filename_format_schema_overrides,
+        )
+        self._has_resources = _HasResourcesIndexer(resources=self.resources)
+
         self.extract = extract
 
         self.trial_columns = trial_columns
@@ -305,22 +302,13 @@ class DatasetDefinition:
             )
             self.mirrors = mirrors
 
-        if custom_read_kwargs is None:
-            self.custom_read_kwargs = {}
-        else:
-            self.custom_read_kwargs = custom_read_kwargs
+        if custom_read_kwargs is not None:
+            self.custom_read_kwargs = custom_read_kwargs  # setter raises deprecation warning
 
         if column_map is None:
             self.column_map = {}
         else:
             self.column_map = column_map
-
-        self.resources = self._initialize_resources(
-            resources=resources,
-            filename_format=filename_format,
-            filename_format_schema_overrides=filename_format_schema_overrides,
-        )
-        self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         if has_files is not None:
             warn(
@@ -418,6 +406,76 @@ class DatasetDefinition:
         for resource in self.resources:
             if resource.content in data:
                 resource.filename_pattern_schema_overrides = data[resource.content]
+
+    @property
+    # @deprecated(
+    #    reason='Please use ResourceDefinition.load_kwargs instead. '
+    #           'This property will be removed in v0.29.0.',
+    #    version='v0.24.1',
+    # )
+    def custom_read_kwargs(self) -> dict[str, dict[str, Any]]:
+        """Keyword arguments that will be passed to the file reading function.
+
+        The behavior of this argument depends on the file extension of the dataset files.
+        If the file extension is `.csv` the keyword arguments will be passed
+        to :py:func:`polars.read_csv`. If the file extension is`.asc` the keyword arguments
+        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        See Notes for more details on how to use this argument.
+        (default: field(default_factory=dict))
+
+        .. deprecated:: v0.24.1
+        Please use Resource.load_kwargs instead.
+        This property will be removed in v0.29.0.
+
+        Returns
+        -------
+        dict[str, dict[str, Any]]
+            dictionary of custom read kwargs for each content type (key is content type)
+        """
+        data: dict[str, dict[str, Any]] = {}
+        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        for content_type in content_types:
+            if content_resources := self.resources.filter(content=content_type):
+                # take first resource with matching content type.
+                # deprecated property supports only one value per content type.
+                resource = content_resources[0]
+
+                if not resource.load_kwargs:
+                    continue  # no load_kwargs specified, continue with next resources
+
+                if resource.content == 'gaze' and resource.load_function == 'from_asc':
+                    read_kwargs = resource.load_kwargs
+                elif resource.content == 'gaze' and resource.load_function == 'from_csv':
+                    read_kwargs = resource.load_kwargs['read_csv_kwargs']
+                elif resource.content == 'gaze' and resource.load_function == 'from_ipc':
+                    read_kwargs = resource.load_kwargs['read_ipc_kwargs']
+                else:
+                    read_kwargs = resource.load_kwargs['custom_read_kwargs']
+
+                if read_kwargs:  # write to dict if not None / not empty
+                    data[content_type] = read_kwargs
+        return data
+
+    @custom_read_kwargs.setter
+    # @deprecated(
+    #    reason='Please use ResourceDefinition.load_kwargs instead. '
+    #           'This property will be removed in v0.29.0.',
+    #    version='v0.24.1',
+    # )
+    def custom_read_kwargs(self, data: dict[str, dict[str, Any]]) -> None:
+        for content_type, content_kwargs in data.items():
+            for resource in self.resources.filter(content=content_type):
+                if not resource.load_kwargs:
+                    resource.load_kwargs = {}
+
+                if resource.content == 'gaze' and resource.load_function == 'from_asc':
+                    resource.load_kwargs = content_kwargs
+                if resource.content == 'gaze' and resource.load_function == 'from_csv':
+                    resource.load_kwargs['read_csv_kwargs'] = content_kwargs
+                elif resource.content == 'gaze' and resource.load_function == 'from_ipc':
+                    resource.load_kwargs['read_ipc_kwargs'] = content_kwargs
+                else:
+                    resource.load_kwargs['custom_read_kwargs'] = content_kwargs
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:

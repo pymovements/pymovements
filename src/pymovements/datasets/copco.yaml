@@ -49,7 +49,6 @@ pixel_columns:
 column_map: {}
 
 custom_read_kwargs:
-  gaze: {}
   precomputed_events:
     separator: "\t"
     null_values:
@@ -59,4 +58,3 @@ custom_read_kwargs:
     truncate_ragged_lines: true
     decimal_comma: true
     quote_char: null
-  precomputed_reading_measures: {}

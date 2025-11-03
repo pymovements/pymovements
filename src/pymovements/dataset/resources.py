@@ -216,7 +216,11 @@ class ResourceDefinitions(list):
         if dictionaries is None:
             return ResourceDefinitions()
 
-        resources = [ResourceDefinition.from_dict(dictionary) for dictionary in dictionaries]
+        resources = [
+            dictionary if isinstance(dictionary, ResourceDefinition)
+            else ResourceDefinition.from_dict(dictionary)
+            for dictionary in dictionaries
+        ]
 
         return ResourceDefinitions(resources)
 

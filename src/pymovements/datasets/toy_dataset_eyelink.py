@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -92,9 +91,6 @@ class ToyDatasetEyeLink(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.Dataset` object with the
@@ -132,6 +128,53 @@ class ToyDatasetEyeLink(DatasetDefinition):
                             'filename_pattern_schema_overrides': {
                                 'subject_id': int,
                                 'session_id': int,
+                            },
+                            'load_kwargs': {
+                                'patterns': [
+                                    {
+                                        'pattern': 'SYNCTIME_READING_SCREEN',
+                                        'column': 'task',
+                                        'value': 'reading',
+                                    },
+                                    {
+                                        'pattern': 'SYNCTIME_JUDO',
+                                        'column': 'task',
+                                        'value': 'judo',
+                                    },
+                                    {
+                                        'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
+                                        'column': 'task',
+                                        'value': None,
+                                    },
+
+                                    r'TRIALID (?P<trial_id>\d+)',
+                                    {
+                                        'pattern': 'TRIAL_RESULT',
+                                        'column': 'trial_id',
+                                        'value': None,
+                                    },
+
+                                    r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
+                                    {
+                                        'pattern': 'READING[.]STOP',
+                                        'column': 'screen_id',
+                                        'value': None,
+                                    },
+
+                                    r'SYNCTIME.P(?P<point_id>\d+)',
+                                    {
+                                        'pattern': r'P\d[.]STOP',
+                                        'column': 'point_id',
+                                        'value': None,
+                                    },
+                                ],
+                                'schema': {
+                                    'trial_id': pl.Int64,
+                                    'screen_id': pl.Int64,
+                                    'point_id': pl.Int64,
+                                    'task': pl.Utf8,
+                                },
+                                'encoding': 'ascii',
                             },
                         },
             ],
@@ -171,55 +214,3 @@ class ToyDatasetEyeLink(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'patterns': [
-                    {
-                        'pattern': 'SYNCTIME_READING_SCREEN',
-                        'column': 'task',
-                        'value': 'reading',
-                    },
-                    {
-                        'pattern': 'SYNCTIME_JUDO',
-                        'column': 'task',
-                        'value': 'judo',
-                    },
-                    {
-                        'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
-                        'column': 'task',
-                        'value': None,
-                    },
-
-                    r'TRIALID (?P<trial_id>\d+)',
-                    {
-                        'pattern': 'TRIAL_RESULT',
-                        'column': 'trial_id',
-                        'value': None,
-                    },
-
-                    r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
-                    {
-                        'pattern': 'READING[.]STOP',
-                        'column': 'screen_id',
-                        'value': None,
-                    },
-
-                    r'SYNCTIME.P(?P<point_id>\d+)',
-                    {
-                        'pattern': r'P\d[.]STOP',
-                        'column': 'point_id',
-                        'value': None,
-                    },
-                ],
-                'schema': {
-                    'trial_id': pl.Int64,
-                    'screen_id': pl.Int64,
-                    'point_id': pl.Int64,
-                    'task': pl.Utf8,
-                },
-                'encoding': 'ascii',
-            },
-        },
-    )

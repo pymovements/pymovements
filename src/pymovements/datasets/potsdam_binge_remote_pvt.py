@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -98,10 +97,6 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -141,6 +136,28 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                             'trial_id': int,
                             'block_id': int,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'trial_id': pl.Float32,
+                                    'block_id': pl.Float32,
+                                    'x_pix_eyelink': pl.Float32,
+                                    'y_pix_eyelink': pl.Float32,
+                                    'eyelink_timestamp': pl.Int64,
+                                    'x_pix_pupilcore_interpolated': pl.Float32,
+                                    'y_pix_pupilcore_interpolated': pl.Float32,
+                                    'pupil_size_eyelink': pl.Float32,
+                                    'target_distance': pl.Float32,
+                                    'pupil_size_pupilcore_interpolated': pl.Float32,
+                                    'pupil_confidence_interpolated': pl.Float32,
+                                    'time_to_prev_bac': pl.Float32,
+                                    'time_to_next_bac': pl.Float32,
+                                    'prev_bac': pl.Float32,
+                                    'next_bac': pl.Float32,
+                                },
+                                'separator': ',',
+                            },
+                        },
                     },
                     {
                         'content': 'gaze',
@@ -153,6 +170,28 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                             'trial_id': int,
                             'block_id': int,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'trial_id': pl.Float32,
+                                    'block_id': pl.Float32,
+                                    'x_pix_eyelink': pl.Float32,
+                                    'y_pix_eyelink': pl.Float32,
+                                    'eyelink_timestamp': pl.Int64,
+                                    'x_pix_pupilcore_interpolated': pl.Float32,
+                                    'y_pix_pupilcore_interpolated': pl.Float32,
+                                    'pupil_size_eyelink': pl.Float32,
+                                    'target_distance': pl.Float32,
+                                    'pupil_size_pupilcore_interpolated': pl.Float32,
+                                    'pupil_confidence_interpolated': pl.Float32,
+                                    'time_to_prev_bac': pl.Float32,
+                                    'time_to_next_bac': pl.Float32,
+                                    'prev_bac': pl.Float32,
+                                    'next_bac': pl.Float32,
+                                },
+                                'separator': ',',
+                            },
+                        },
                     },
                     {
                         'content': 'gaze',
@@ -164,6 +203,28 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                             'subject_id': int,
                             'trial_id': int,
                             'block_id': int,
+                        },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'trial_id': pl.Float32,
+                                    'block_id': pl.Float32,
+                                    'x_pix_eyelink': pl.Float32,
+                                    'y_pix_eyelink': pl.Float32,
+                                    'eyelink_timestamp': pl.Int64,
+                                    'x_pix_pupilcore_interpolated': pl.Float32,
+                                    'y_pix_pupilcore_interpolated': pl.Float32,
+                                    'pupil_size_eyelink': pl.Float32,
+                                    'target_distance': pl.Float32,
+                                    'pupil_size_pupilcore_interpolated': pl.Float32,
+                                    'pupil_confidence_interpolated': pl.Float32,
+                                    'time_to_prev_bac': pl.Float32,
+                                    'time_to_next_bac': pl.Float32,
+                                    'prev_bac': pl.Float32,
+                                    'next_bac': pl.Float32,
+                                },
+                                'separator': ',',
+                            },
                         },
                     },
             ],
@@ -212,29 +273,4 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
 
     column_map: dict[str, str] = field(
         default_factory=lambda: {},
-    )
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trial_id': pl.Float32,
-                    'block_id': pl.Float32,
-                    'x_pix_eyelink': pl.Float32,
-                    'y_pix_eyelink': pl.Float32,
-                    'eyelink_timestamp': pl.Int64,
-                    'x_pix_pupilcore_interpolated': pl.Float32,
-                    'y_pix_pupilcore_interpolated': pl.Float32,
-                    'pupil_size_eyelink': pl.Float32,
-                    'target_distance': pl.Float32,
-                    'pupil_size_pupilcore_interpolated': pl.Float32,
-                    'pupil_confidence_interpolated': pl.Float32,
-                    'time_to_prev_bac': pl.Float32,
-                    'time_to_next_bac': pl.Float32,
-                    'prev_bac': pl.Float32,
-                    'next_bac': pl.Float32,
-                },
-                'separator': ',',
-            },
-        },
     )

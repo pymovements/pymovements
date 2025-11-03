@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -88,9 +87,6 @@ class HBN(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -129,6 +125,17 @@ class HBN(DatasetDefinition):
                             'subject_id': str,
                             'video_id': str,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'separator': ',',
+                                'columns': ['time', 'x_pix', 'y_pix'],
+                                'schema_overrides': {
+                                    'time': pl.Int64,
+                                    'x_pix': pl.Float32,
+                                    'y_pix': pl.Float32,
+                                },
+                            },
+                        },
                     },
             ],
         ),
@@ -157,17 +164,3 @@ class HBN(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': ',',
-                'columns': ['time', 'x_pix', 'y_pix'],
-                'schema_overrides': {
-                    'time': pl.Int64,
-                    'x_pix': pl.Float32,
-                    'y_pix': pl.Float32,
-                },
-            },
-        },
-    )

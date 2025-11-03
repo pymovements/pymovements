@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -88,9 +87,6 @@ class EMTeC(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -126,6 +122,33 @@ class EMTeC(DatasetDefinition):
                     'md5': 'dca99e47ef43f3696acec4fd70967750',
                     'filename_pattern': r'ET_{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'columns': [
+                                'item_id',
+                                'TRIAL_ID',
+                                'Trial_Index_',
+                                'model',
+                                'decoding_strategy',
+                                'time',
+                                'x',
+                                'y',
+                                'pupil_right',
+                            ],
+                            'schema_overrides': {
+                                'item_id': pl.Utf8,
+                                'TRIAL_ID': pl.Int64,
+                                'Trial_Index_': pl.Int64,
+                                'model': pl.Utf8,
+                                'decoding_strategy': pl.Utf8,
+                                'time': pl.Int64,
+                                'x': pl.Float32,
+                                'y': pl.Float32,
+                                'pupil_right': pl.Float32,
+                            },
+                        },
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -133,6 +156,9 @@ class EMTeC(DatasetDefinition):
                     'filename': 'fixations.csv',
                     'md5': '5e05a364a1d8a044d8b36506aa91437e',
                     'filename_pattern': r'fixations.csv',
+                    'load_kwargs': {
+                        'custom_read_csv_kwargs': {'separator': '\t'},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -140,6 +166,9 @@ class EMTeC(DatasetDefinition):
                     'filename': 'reading_measures.csv',
                     'md5': '56880f50af20682558065ac2d26be827',
                     'filename_pattern': r'reading_measures.csv',
+                    'load_kwargs': {
+                        'custom_read_csv_kwargs': {'separator': '\t'},
+                    },
                 },
             ],
         ),
@@ -168,35 +197,3 @@ class EMTeC(DatasetDefinition):
     time_unit: str = 'ms'
 
     pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': '\t',
-                'columns': [
-                    'item_id',
-                    'TRIAL_ID',
-                    'Trial_Index_',
-                    'model',
-                    'decoding_strategy',
-                    'time',
-                    'x',
-                    'y',
-                    'pupil_right',
-                ],
-                'schema_overrides': {
-                    'item_id': pl.Utf8,
-                    'TRIAL_ID': pl.Int64,
-                    'Trial_Index_': pl.Int64,
-                    'model': pl.Utf8,
-                    'decoding_strategy': pl.Utf8,
-                    'time': pl.Int64,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'pupil_right': pl.Float32,
-                },
-            },
-            'precomputed_events': {'separator': '\t'},
-            'precomputed_reading_measures': {'separator': '\t'},
-        },
-    )

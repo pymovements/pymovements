@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -70,9 +69,6 @@ class OneStop(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    custom_read_kwargs: dict[str, Any]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -108,6 +104,9 @@ class OneStop(DatasetDefinition):
                     'filename': 'fixations_Paragraph.csv.zip',
                     'md5': '3d3b6a3794a50e174e025f43735674bd',
                     'filename_pattern': 'fixations_Paragraph.csv',
+                    'load_kwargs': {
+                        'read_csv_kwargs': {'null_values': '.'},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -115,6 +114,9 @@ class OneStop(DatasetDefinition):
                     'filename': 'ia_Paragraph.csv.zip',
                     'md5': '9b9548e49efdc7dbf63d4f3a5dc3af22',
                     'filename_pattern': 'ia_Paragraph.csv',
+                    'load_kwargs': {
+                        'read_csv_kwargs': {'null_values': '.'},
+                    },
                 },
             ],
         ),
@@ -123,10 +125,3 @@ class OneStop(DatasetDefinition):
     filename_format: dict[str, str] | None = None
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
-
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'null_values': '.'},
-            'precomputed_reading_measures': {'null_values': '.'},
-        },
-    )

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -66,9 +65,6 @@ class UCL(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, Any]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -103,6 +99,9 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_events.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.fix',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'separator': '\t', 'null_values': ['NaN']},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -110,6 +109,9 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_measures.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.RT',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'separator': '\t'},
+                    },
                 },
             ],
         ),
@@ -120,13 +122,3 @@ class UCL(DatasetDefinition):
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': ['NaN'],
-            },
-            'precomputed_reading_measures': {'separator': '\t'},
-        },
-    )

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -90,9 +89,6 @@ class DIDEC(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -140,6 +136,30 @@ class DIDEC(DatasetDefinition):
                         'session': int,
                         'trial': int,
                     },
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            # skip begaze tracker data
+                            'skip_rows': 43,
+                            'has_header': False,
+                            'new_columns': [
+                                'Time',
+                                'Type',
+                                'Trial',
+                                'L POR X [px]',
+                                'L POR Y [px]',
+                                'R POR X [px]',
+                                'R POR Y [px]',
+                                'Timing',
+                                'Pupil Confidence',
+                                'L Plane',
+                                'R Plane',
+                                'L Event Info',
+                                'R Event Info',
+                                'Stimulus',
+                            ],
+                        },
+                    },
                 },
             ],
         ),
@@ -179,30 +199,3 @@ class DIDEC(DatasetDefinition):
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': '\t',
-                # skip begaze tracker data
-                'skip_rows': 43,
-                'has_header': False,
-                'new_columns': [
-                    'Time',
-                    'Type',
-                    'Trial',
-                    'L POR X [px]',
-                    'L POR Y [px]',
-                    'R POR X [px]',
-                    'R POR Y [px]',
-                    'Timing',
-                    'Pupil Confidence',
-                    'L Plane',
-                    'R Plane',
-                    'L Event Info',
-                    'R Event Info',
-                    'Stimulus',
-                ],
-            },
-        },
-    )

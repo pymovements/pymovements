@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -93,9 +92,6 @@ class SBSAT(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -131,6 +127,23 @@ class SBSAT(DatasetDefinition):
                             'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
                             'filename_pattern': r'msd{subject_id:d}.csv',
                             'filename_pattern_schema_overrides': {'subject_id': int},
+                            'load_kwargs': {
+                                'read_csv_kwargs': {
+                                    'separator': '\t',
+                                    'columns': [
+                                        'time', 'book_name', 'screen_id',
+                                        'x_left', 'y_left', 'pupil_left',
+                                    ],
+                                    'schema_overrides': {
+                                        'time': pl.Int64,
+                                        'book_name': pl.Utf8,
+                                        'screen_id': pl.Int64,
+                                        'x_left': pl.Float32,
+                                        'y_left': pl.Float32,
+                                        'pupil_left': pl.Float32,
+                                    },
+                                },
+                            },
                         },
                         {
                             'content': 'precomputed_events',
@@ -138,6 +151,9 @@ class SBSAT(DatasetDefinition):
                             'filename': '18sat_fixfinal.csv',
                             'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
                             'filename_pattern': '18sat_fixfinal.csv',
+                            'load_kwargs': {
+                                'custom_read_kwargs': {'separator': ','},
+                            },
                         },
             ],
         ),
@@ -173,22 +189,3 @@ class SBSAT(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x_left', 'y_left'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'gaze': {
-                    'separator': '\t',
-                    'columns': ['time', 'book_name', 'screen_id', 'x_left', 'y_left', 'pupil_left'],
-                    'schema_overrides': {
-                        'time': pl.Int64,
-                        'book_name': pl.Utf8,
-                        'screen_id': pl.Int64,
-                        'x_left': pl.Float32,
-                        'y_left': pl.Float32,
-                        'pupil_left': pl.Float32,
-                    },
-                },
-                'precomputed_events': {'separator': ','},
-            },
-    )

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -71,9 +70,6 @@ class MECOL1W1(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -107,6 +103,9 @@ class MECOL1W1(DatasetDefinition):
                     'filename': 'joint_l1_fixation_version1.3.rda',
                     'md5': '3c969a930a71cd62c67b936426dd079b',
                     'filename_pattern': 'joint_l1_fixation_version1.3.rda',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'r_dataframe_key': 'joint.fix'},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -131,10 +130,3 @@ class MECOL1W1(DatasetDefinition):
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'r_dataframe_key': 'joint.fix'},
-            'precomputed_reading_measures': {},
-        },
-    )

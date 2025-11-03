@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -64,9 +63,6 @@ class CoLAGaze(DatasetDefinition):
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
-
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
 
     Examples
     --------
@@ -139,11 +135,3 @@ class CoLAGaze(DatasetDefinition):
     filename_format: dict[str, str] | None = None
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {},
-            'precomputed_events': {},
-            'precomputed_reading_measures': {},
-        },
-    )

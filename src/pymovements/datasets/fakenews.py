@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -69,9 +68,6 @@ class FakeNewsPerception(DatasetDefinition):
 
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
-
-    custom_read_kwargs: dict[str, Any]
-        If specified, these keyword arguments will be passed to the file reading function.
     """
 
     name: str = 'FakeNewsPerception'
@@ -90,6 +86,9 @@ class FakeNewsPerception(DatasetDefinition):
                     'filename_pattern_schema_overrides': {
                         'subject_id': int, 'session_id': int,
                         'truth_value': str,
+                    },
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'null_values': 'NA', 'quote_char': '"'},
                     },
                 },
             ],
@@ -113,12 +112,3 @@ class FakeNewsPerception(DatasetDefinition):
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'precomputed_events': {
-                'null_values': 'NA',
-                'quote_char': '"',
-            },
-        },
-    )

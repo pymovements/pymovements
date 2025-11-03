@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 import polars as pl
 
@@ -69,9 +68,6 @@ class Provo(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -107,6 +103,13 @@ class Provo(DatasetDefinition):
                     'md5': '7aa239e51e5d78528e2430f84a23da3f',
                     'filename_pattern':
                     'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {
+                            'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
+                            'encoding': 'macroman',
+                            'null_values': ['.'],
+                        },
+                    },
                 },
             ],
         ),
@@ -117,14 +120,3 @@ class Provo(DatasetDefinition):
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-        {
-            'precomputed_events': {
-                'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
-                'encoding': 'macroman',
-                'null_values': ['.'],
-            },
-        },
-    )

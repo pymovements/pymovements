@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -68,9 +67,6 @@ class ChineseReading(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -103,6 +99,9 @@ class ChineseReading(DatasetDefinition):
                     'filename': 'Raw Data.txt',
                     'md5': None,  # type: ignore
                     'filename_pattern': 'Raw Data.txt',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'separator': '\t'},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -110,6 +109,9 @@ class ChineseReading(DatasetDefinition):
                     'filename': 'chinese_reading_measures.zip',
                     'md5': None,  # type: ignore
                     'filename_pattern': r'{measure_type:s} Measures.xlsx',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'sheet_name': 'Sheet 1'},
+                    },
                 },
             ],
         ),
@@ -127,11 +129,3 @@ class ChineseReading(DatasetDefinition):
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {'separator': '\t'},
-                'precomputed_reading_measures': {'sheet_name': 'Sheet 1'},
-            },
-    )

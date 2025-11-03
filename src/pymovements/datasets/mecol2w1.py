@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -71,9 +70,6 @@ class MECOL2W1(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -107,6 +103,9 @@ class MECOL2W1(DatasetDefinition):
                     'filename': 'joint_l2_fixation_trimmed_report_2.0.rda',
                     'md5': '1ff32c5823eb70c22bab725499fbbf87',
                     'filename_pattern': 'joint_l2_fixation_trimmed_report_2.0.rda',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'r_dataframe_key': 'joint.fix.l2'},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -114,6 +113,9 @@ class MECOL2W1(DatasetDefinition):
                     'filename': 'joint_data_l2_trimmed_version2.0.rda',
                     'md5': '3d10225781faf413467104dcc4e071e0',
                     'filename_pattern': 'joint_data_l2_trimmed_version2.0.rda',
+                    'load_kwargs': {
+                        'custom_read_kwargs': {'r_dataframe_key': 'joint.data'},
+                    },
                 },
             ],
         ),
@@ -131,10 +133,3 @@ class MECOL2W1(DatasetDefinition):
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'r_dataframe_key': 'joint.fix.l2'},
-            'precomputed_reading_measures': {'r_dataframe_key': 'joint.data'},
-        },
-    )

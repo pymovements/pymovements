@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -94,9 +93,6 @@ class CopCo(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, Any]
-        If specified, these keyword arguments will be passed to the file reading function.
-
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -140,6 +136,16 @@ class CopCo(DatasetDefinition):
                     'md5': None,  # type:ignore
                     'filename_pattern': r'FIX_report_P{subject_id:d}.txt',
                     'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'custom_read_kwargs': {
+                            'separator': '\t',
+                            'null_values': ['.', 'UNDEFINEDnull'],
+                            'infer_schema_length': 100000,
+                            'truncate_ragged_lines': True,
+                            'decimal_comma': True,
+                            'quote_char': None,
+                        },
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -178,18 +184,3 @@ class CopCo(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x_right', 'y_right'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
-
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'gaze': {},
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': ['.', 'UNDEFINEDnull'],
-                'infer_schema_length': 100000,
-                'truncate_ragged_lines': True,
-                'decimal_comma': True,
-                'quote_char': None,
-            },
-            'precomputed_reading_measures': {},
-        },
-    )
