@@ -445,6 +445,12 @@ def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed
             [ResourceDefinition(content='gaze'), ResourceDefinition(content='events')],
             id='posarg_two_dicts',
         ),
+
+        pytest.param(
+            [[{'content': 'gaze'}, ResourceDefinition(content='events')]],
+            [ResourceDefinition(content='gaze'), ResourceDefinition(content='events')],
+            id='posarg_two_mixed',
+        ),
     ],
 )
 def test_resources_init_expected(init_posargs, expected_resources):
