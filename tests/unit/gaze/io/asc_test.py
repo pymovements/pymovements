@@ -977,18 +977,6 @@ def test_from_asc_example_file_has_expected_events(
             {},
             id='no_start_recording',
         ),
-        pytest.param(
-            '', '\n',
-            UserWarning, 'Experiment already has messages, overwriting them with newly parsed ones',
-            {
-                'experiment': Experiment(
-                    messages=pl.DataFrame(
-                        schema={'time': pl.Float64, 'content': pl.String},
-                    ),
-                ),
-            },
-            id='overwriting_messages',
-        ),
     ],
 )
 def test_from_asc_warns(
@@ -1041,10 +1029,10 @@ def test_from_asc_messages(make_text_file, body, messages, expected_data):
     gaze = from_asc(filepath, messages=messages)
 
     if expected_data is None:
-        assert gaze.experiment.messages is None
+        assert gaze.messages is None
     else:
         assert_frame_equal(
-            gaze.experiment.messages,
+            gaze.messages,
             pl.DataFrame(
                 schema={'time': pl.Float64, 'content': pl.String},
                 data=expected_data,
