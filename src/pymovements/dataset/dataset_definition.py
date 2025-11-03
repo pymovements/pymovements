@@ -600,8 +600,7 @@ class DatasetDefinition:
             return ResourceDefinitions.from_dict(resources)
 
         if isinstance(resources, Sequence):
-            assert isinstance(resources, Sequence)
-            return ResourceDefinitions.from_dicts(resources)
+            return ResourceDefinitions(resources)
 
         raise TypeError(
             f'resources is of type {type(resources).__name__} but must be of type'

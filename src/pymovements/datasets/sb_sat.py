@@ -122,7 +122,7 @@ class SBSAT(DatasetDefinition):
     long_name: str = 'Stony Brook SAT reading fixation dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                         {
                             'content': 'gaze',

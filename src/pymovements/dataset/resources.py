@@ -139,9 +139,13 @@ class ResourceDefinitions(list):
 
     def __init__(self, resources: Iterable[ResourceDefinition] | None = None) -> None:
         if resources is None:
-            super().__init__([])
-        else:
-            super().__init__(resources)
+            resources = []
+        resources: Iterable[ResourceDefinition] = [
+            resource if isinstance(resource, ResourceDefinition)
+            else ResourceDefinition.from_dict(resource)
+            for resource in resources
+        ]
+        super().__init__(resources)
 
     def filter(self, content: str | None = None) -> ResourceDefinitions:
         """Filter ``ResourceDefinitions`` for content type.
