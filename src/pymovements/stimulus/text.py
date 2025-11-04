@@ -59,6 +59,9 @@ class TextStimulus:
     page_column: str | None
         Name of the column which contains the page information of the area of interest.
         (default: None)
+    trial_column: str | None
+        Name fo the column that specifies the unique trial id.
+        (default: None)
     """
 
     def __init__(
