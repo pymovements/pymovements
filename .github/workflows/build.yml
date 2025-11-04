@@ -9,11 +9,9 @@ on:
 
 jobs:
   tests:
-    name: Run tests
     uses: ./.github/workflows/tests.yml
 
   benchmark:
-    name: Run benchmarks
     uses: ./.github/workflows/benchmark.yml
 
   build:
