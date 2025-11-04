@@ -187,58 +187,48 @@ PATTERNS = [
 
 
 @pytest.mark.parametrize(
-    'read_kwargs',
+    'load_function',
+    ['from_asc'],
+)
+@pytest.mark.parametrize(
+    ('load_kwargs', 'expected_samples'),
     [
         pytest.param(
             {'patterns': PATTERNS, 'schema': {'trial_id': pl.Int64}},
-            id='read_kwargs_dict',
+            EXPECTED_DF_PATTERNS,
+            id='patterns',
         ),
         pytest.param(
             None,
-            id='read_kwargs_none',
+            EXPECTED_DF_NO_PATTERNS,
+            id='none',
         ),
     ],
 )
-@pytest.mark.parametrize(
-    'load_function',
-    [None, 'from_asc'],
-)
-def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
+def test_load_eyelink_file(load_function, load_kwargs, expected_samples, make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = pm.dataset.dataset_files.load_gaze_file(
         filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': None},
+        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
         definition=DatasetDefinition(
             experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
-            custom_read_kwargs={'gaze': read_kwargs},
         ),
     )
 
-    if read_kwargs is not None:
-        expected_df = EXPECTED_DF_PATTERNS
-    else:
-        expected_df = EXPECTED_DF_NO_PATTERNS
-
-    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
     assert gaze.experiment is not None
 
 
 @pytest.mark.parametrize(
-    ('filename', 'rename_extension', 'load_function', 'load_kwargs'),
+    ('filename', 'rename_extension', 'load_function', 'load_kwargs', 'preprocessed'),
     [
-        pytest.param(
-            'monocular_example.csv',
-            '.csv',
-            None,
-            None,
-            id='load_csv_default',
-        ),
         pytest.param(
             'monocular_example.csv',
             '.csv',
             'from_csv',
             None,
+            False,
             id='load_csv_from_csv',
         ),
         pytest.param(
@@ -246,20 +236,15 @@ def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
             '.renamed',
             'from_csv',
             None,
+            False,
             id='load_csv_rename_from_csv',
-        ),
-        pytest.param(
-            'monocular_example.tsv',
-            '.tsv',
-            None,
-            {'read_csv_kwargs': {'separator': '\t'}},
-            id='load_tsv_default',
         ),
         pytest.param(
             'monocular_example.tsv',
             '.tsv',
             'from_csv',
             {'read_csv_kwargs': {'separator': '\t'}},
+            False,
             id='load_tsv_from_csv',
         ),
         pytest.param(
@@ -267,6 +252,7 @@ def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
             '.foo',
             'from_csv',
             {'read_csv_kwargs': {'separator': '\t'}},
+            False,
             id='load_tsv_rename_from_csv',
         ),
         pytest.param(
@@ -274,13 +260,15 @@ def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
             '.feather',
             None,
             None,
-            id='load_feather_default',
+            True,
+            id='load_feather_default_preprocessed',
         ),
         pytest.param(
             'monocular_example.feather',
             '.feather',
             'from_ipc',
             None,
+            False,
             id='load_feather_from_ipc',
         ),
         pytest.param(
@@ -288,12 +276,14 @@ def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
             '.csv',
             'from_ipc',
             None,
+            False,
             id='load_feather_rename_from_ipc',
         ),
     ],
 )
 def test_load_gaze_file(
-        filename, rename_extension, load_function, load_kwargs, tmp_path, make_example_file,
+        filename, rename_extension, preprocessed, load_function, load_kwargs,
+        tmp_path, make_example_file,
 ):
     # Copy the file to the temporary path with the new extension
     filepath = make_example_file(filename)
@@ -308,6 +298,7 @@ def test_load_gaze_file(
             experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
             pixel_columns=['x_left_pix', 'y_left_pix'],
         ),
+        preprocessed=preprocessed,
     )
     expected_df = pl.from_dict(
         {

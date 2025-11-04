@@ -320,15 +320,16 @@ def load_gaze_file(
         trial_columns = list(fileinfo_columns) + trial_columns
 
     load_function_name = fileinfo_row['load_function']
+
+    # in case of loading preprocessed files the loading function might change.
+    if preprocessed and filepath.suffix in {'.feather', '.ipc'}:
+        load_function_name = 'from_ipc'
+
     if load_function_name is None:
         raise ValueError(
             f'load_function could not be inferred from "{filepath.name}". '
             f'Please specify ResourceDefinition.load_function.',
         )
-
-    # in case of loading preprocessed files the loading function might change.
-    if preprocessed and filepath.suffix in {'.feather', '.ipc'}:
-        pass
 
     load_function_kwargs = fileinfo_row['load_kwargs']
     if load_function_kwargs is None:
