@@ -187,10 +187,6 @@ PATTERNS = [
 
 
 @pytest.mark.parametrize(
-    'load_function',
-    ['from_asc'],
-)
-@pytest.mark.parametrize(
     ('load_kwargs', 'expected_samples'),
     [
         pytest.param(
@@ -205,12 +201,12 @@ PATTERNS = [
         ),
     ],
 )
-def test_load_eyelink_file(load_function, load_kwargs, expected_samples, make_text_file):
+def test_load_eyelink_file(load_kwargs, expected_samples, make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = pm.dataset.dataset_files.load_gaze_file(
         filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        fileinfo_row={'load_function': 'from_asc', 'load_kwargs': load_kwargs},
         definition=DatasetDefinition(
             experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
         ),
