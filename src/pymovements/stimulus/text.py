@@ -73,6 +73,7 @@ class TextStimulus:
             end_x_column: str | None = None,
             end_y_column: str | None = None,
             page_column: str | None = None,
+            trial_column: str | None = None,
     ) -> None:
 
         self.aois = aois.clone()
@@ -84,6 +85,7 @@ class TextStimulus:
         self.end_x_column = end_x_column
         self.end_y_column = end_y_column
         self.page_column = page_column
+        self.trial_column = trial_column
 
     def split(
             self,
@@ -112,6 +114,7 @@ class TextStimulus:
                 end_x_column=self.end_x_column,
                 end_y_column=self.end_y_column,
                 page_column=self.page_column,
+                trial_column=self.trial_column,
             )
             for df in self.aois.partition_by(by=by, as_dict=False)
         ]
@@ -162,6 +165,7 @@ def from_file(
         end_x_column: str | None = None,
         end_y_column: str | None = None,
         page_column: str | None = None,
+        trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
 ) -> TextStimulus:
     """Load text stimulus from file.
@@ -190,6 +194,9 @@ def from_file(
         (default: None)
     page_column: str | None
         Name of the column which contains the page information of the area of interest.
+        (default: None)
+    trial_column: str | None
+        Name fo the column that specifies the unique trial id.
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)
@@ -228,6 +235,7 @@ def from_file(
         end_x_column=end_x_column,
         end_y_column=end_y_column,
         page_column=page_column,
+        trial_column=trial_column,
     )
 
 
@@ -268,25 +276,50 @@ def _get_aoi(
     ValueError
         If width and end_TYPE_column is None.
     """
+    row_aois = aoi_dataframe.aois
+    # fix that the trial columns and the page columns are
+    #  assumed to be the same for the row (i.e. the events df).
+    #  This is not guaranteed to be the case
+
+    # filter by trial and page if those columns are defined and drop the
+    # columns afterwards as there will be
+    # a duplicate error otherwise later. And those columns are not needed
+    # for the actual aoi lookup and they are
+    # in the event df already
+    if aoi_dataframe.page_column is not None:
+        row_aois = row_aois.filter(
+            row_aois[aoi_dataframe.trial_column] == row[aoi_dataframe.trial_column],
+        )
+        row_aois = row_aois.drop(aoi_dataframe.trial_column)
+    if aoi_dataframe.trial_column is not None:
+        row_aois = row_aois.filter(
+            row_aois[aoi_dataframe.page_column]
+            == row[aoi_dataframe.page_column],
+        )
+        row_aois = row_aois.drop(aoi_dataframe.page_column)
+
     if aoi_dataframe.width_column is not None:
         _checks.check_is_none_is_mutual(
             height_column=aoi_dataframe.width_column,
             width_column=aoi_dataframe.height_column,
         )
-        aoi = aoi_dataframe.aois.filter(
-            (aoi_dataframe.aois[aoi_dataframe.start_x_column] <= row[x_eye]) &
-            (
-                row[x_eye] <
-                aoi_dataframe.aois[aoi_dataframe.start_x_column] +
-                aoi_dataframe.aois[aoi_dataframe.width_column]
-            ) &
-            (aoi_dataframe.aois[aoi_dataframe.start_y_column] <= row[y_eye]) &
-            (
-                row[y_eye] <
-                aoi_dataframe.aois[aoi_dataframe.start_y_column] +
-                aoi_dataframe.aois[aoi_dataframe.height_column]
-            ),
-        )
+        try:
+            aoi = row_aois.filter(
+                (row_aois[aoi_dataframe.start_x_column] <= row[x_eye]) &
+                (
+                    row[x_eye] <
+                    row_aois[aoi_dataframe.start_x_column] +
+                    row_aois[aoi_dataframe.width_column]
+                ) &
+                (row_aois[aoi_dataframe.start_y_column] <= row[y_eye]) &
+                (
+                    row[y_eye] <
+                    row_aois[aoi_dataframe.start_y_column] +
+                    row_aois[aoi_dataframe.height_column]
+                ),
+            )
+        except TypeError:
+            print(aoi_dataframe)
 
         if aoi.is_empty():
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
@@ -297,13 +330,13 @@ def _get_aoi(
             end_x_column=aoi_dataframe.end_x_column,
             end_y_column=aoi_dataframe.end_y_column,
         )
-        aoi = aoi_dataframe.aois.filter(
+        aoi = row_aois.filter(
             # x-coordinate: within bounding box
-            (aoi_dataframe.aois[aoi_dataframe.start_x_column] <= row[x_eye]) &
-            (row[x_eye] < aoi_dataframe.aois[aoi_dataframe.end_x_column]) &
+            (row_aois[aoi_dataframe.start_x_column] <= row[x_eye]) &
+            (row[x_eye] < row_aois[aoi_dataframe.end_x_column]) &
             # y-coordinate: within bounding box
-            (aoi_dataframe.aois[aoi_dataframe.start_y_column] <= row[y_eye]) &
-            (row[y_eye] < aoi_dataframe.aois[aoi_dataframe.end_y_column]),
+            (row_aois[aoi_dataframe.start_y_column] <= row[y_eye]) &
+            (row[y_eye] < row_aois[aoi_dataframe.end_y_column]),
         )
 
         if aoi.is_empty():
