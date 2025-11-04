@@ -22,11 +22,15 @@ import datetime
 
 import numpy as np
 import polars as pl
+import pytest
 from polars.testing import assert_frame_equal
 
 from ._parsing_test import METADATA_PATTERNS
 from ._parsing_test import PATTERNS
+from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.gaze import io
 from pymovements.gaze._utils import parsing_begaze
+from pymovements.gaze.experiment import Experiment
 
 BEGAZE_TEXT = r"""
 ## [BeGaze]
@@ -153,9 +157,8 @@ EXPECTED_METADATA_BEGAZE = {
 }
 
 
-def test_parse_begaze(tmp_path):
-    filepath = tmp_path / 'sub.txt'
-    filepath.write_text(BEGAZE_TEXT)
+def test_parse_begaze(make_text_file):
+    filepath = make_text_file(filename='sub.txt', body=BEGAZE_TEXT, encoding='ascii')
 
     gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
         filepath,
@@ -178,7 +181,7 @@ def test_parse_begaze(tmp_path):
     assert metadata == EXPECTED_METADATA_BEGAZE
 
 
-def test_parse_begaze_binocular_prefer_left(tmp_path):
+def test_parse_begaze_binocular_prefer_left(make_text_file):
     text = (
         '## [BeGaze]\n'
         '## Date:\t08.03.2023 09:25:20\n'
@@ -190,8 +193,7 @@ def test_parse_begaze_binocular_prefer_left(tmp_path):
         '10000001100\tSMP\t1\t11\t21\t3.1\t111\t121\t4.1\t1\tSaccade\tFixation\n'
         '10000002100\tSMP\t1\t12\t22\t3.2\t112\t122\t4.2\t0\tBlink\tFixation\n'
     )
-    p = tmp_path / 'begaze_binoc_left.txt'
-    p.write_text(text)
+    p = make_text_file(filename='begaze_binoc_left.txt', body=text, encoding='ascii')
 
     gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
         p, prefer_eye='L',
@@ -216,7 +218,7 @@ def test_parse_begaze_binocular_prefer_left(tmp_path):
     assert metadata['tracked_eye'] == 'L'
 
 
-def test_parse_begaze_binocular_prefer_right(tmp_path):
+def test_parse_begaze_binocular_prefer_right(make_text_file):
     text = (
         '## [BeGaze]\n'
         '## Date:\t08.03.2023 09:25:20\n'
@@ -228,8 +230,7 @@ def test_parse_begaze_binocular_prefer_right(tmp_path):
         '10000001100\tSMP\t1\t11\t21\t3.1\t111\t121\t4.1\t1\tSaccade\tFixation\n'
         '10000002100\tSMP\t1\t12\t22\t3.2\t112\t122\t4.2\t0\tBlink\tFixation\n'
     )
-    p = tmp_path / 'begaze_binoc_right.txt'
-    p.write_text(text)
+    p = make_text_file(filename='begaze_binoc_right.txt', body=text, encoding='ascii')
 
     gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
         p, prefer_eye='R',
@@ -249,3 +250,210 @@ def test_parse_begaze_binocular_prefer_right(tmp_path):
     assert event_df['offset'].to_list() == [10000000.1, 10000002.1]
     # tracked_eye should be R
     assert metadata['tracked_eye'] == 'R'
+
+
+def test_from_begaze_loader_uses_parse_begaze(make_text_file):
+    # Exercise the public loader that wraps parse_begaze using the same BEGAZE_TEXT fixture.
+
+    filepath = make_text_file(filename='begaze_loader.txt', body=BEGAZE_TEXT, encoding='ascii')
+
+    gaze = io.from_begaze(
+        filepath,
+        patterns=PATTERNS,
+        metadata_patterns=METADATA_PATTERNS,
+    )
+
+    # Samples in Gaze use a combined 'pixel' column instead of separate x/y columns.
+    expected_samples = BEGAZE_EXPECTED_GAZE_DF.with_columns(
+        pl.concat_list([pl.col('x_pix'), pl.col('y_pix')]).alias('pixel'),
+    ).drop(['x_pix', 'y_pix'])
+    # Align None/NaN semantics for pupil for comparison: Gaze may store nulls instead of NaN.
+    expected_samples = expected_samples.with_columns(
+        pl.when(pl.col('pupil').is_nan()).then(None).otherwise(pl.col('pupil')).alias('pupil'),
+    )
+    # Align None/NaN semantics inside the nested list column as well.
+    expected_samples = expected_samples.with_columns(
+        pl.col('pixel').list.eval(
+            pl.when(pl.element().is_nan()).then(None).otherwise(pl.element()),
+        ).alias('pixel'),
+    )
+    assert_frame_equal(
+        gaze.samples.select(expected_samples.columns),
+        expected_samples,
+        check_column_order=False,
+        rtol=0,
+    )
+
+    # Events should be attached and match expected.
+    assert gaze.events is not None
+    # Events returned by the loader may include computed 'duration' - compare on common columns.
+    ev_actual = gaze.events.frame
+    common_cols = [c for c in BEGAZE_EXPECTED_EVENT_DF.columns if c in ev_actual.columns]
+    assert_frame_equal(
+        ev_actual.select(common_cols),
+        BEGAZE_EXPECTED_EVENT_DF.select(common_cols),
+        check_column_order=False,
+        rtol=0,
+    )
+
+    # Experiment should be filled from metadata (sampling_rate) and metadata attached to gaze.
+    assert pytest.approx(gaze.experiment.sampling_rate, rel=0, abs=1e-9) == 1000.0
+    assert gaze._metadata == EXPECTED_METADATA_BEGAZE  # pylint: disable=protected-access
+
+
+def test_from_begaze_loader_prefer_eye_via_definition(make_text_file):
+    # prefer_eye should be read from the DatasetDefinition.custom_read_kwargs path
+    # and respected by from_begaze.
+
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+        '\tR POR X [px]\tR POR Y [px]\tR Pupil Diameter [mm]\tPupil Confidence\t'
+        'L Event Info\tR Event Info\n'
+        '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n'
+        '10000001100\tSMP\t1\t11\t21\t3.1\t111\t121\t4.1\t1\tSaccade\tFixation\n'
+    )
+    p = make_text_file(filename='begaze_loader_pref_eye.txt', body=text, encoding='ascii')
+
+    definition = DatasetDefinition(
+        experiment=Experiment(sampling_rate=None),
+        custom_read_kwargs={'gaze': {'prefer_eye': 'R'}},
+    )
+
+    gaze = io.from_begaze(p, definition=definition)
+
+    # Right eye should be selected per definition.
+    assert gaze._metadata['tracked_eye'] == 'R'  # pylint: disable=protected-access
+    # Gaze samples expose combined pixel column
+    assert gaze.samples['pixel'].to_list() == [[110.0, 120.0], [111.0, 121.0]]
+
+
+def test_parse_begaze_generic_info_only(make_text_file):
+    # When only a generic 'Info' column exists, events should be derived from it.
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+        'Pupil Confidence\tInfo\n'
+        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
+        '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\n'
+        '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\tBlink\n'
+    )
+    p = make_text_file(filename='begaze_info_only.txt', body=text, encoding='ascii')
+
+    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(p, prefer_eye='L')
+
+    # times in ms
+    assert gaze_df['time'].to_list() == [10000000.1, 10000001.1, 10000002.1]
+    assert metadata['tracked_eye'] == 'L'
+    # Events follow the generic Info
+    assert event_df['name'].to_list() == [
+        'fixation_begaze', 'saccade_begaze', 'blink_begaze',
+    ]
+
+
+def test_parse_begaze_regex_fallback_minimal(make_text_file):
+    # No header row: should use the legacy regex path BEGAZE_SAMPLE.
+    text = (
+        '10000000123\tSMP\t1\t10.50\t20.75\t3.00\t0\t1\t1\tFixation\tstim.bmp\n'
+        '10000001123\tMSG\t1\t# Message: START_TRIAL_1\n'
+        '10000002123\tSMP\t1\t10.60\t20.85\t3.10\t0\t1\t1\tSaccade\tstim.bmp\n'
+    )
+    p = make_text_file(filename='begaze_regex_only.txt', body=text, encoding='ascii')
+
+    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
+        p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
+    )
+
+    # basic sanity
+    assert gaze_df.shape[0] == 2
+    assert event_df.shape[0] >= 1
+    assert 'trial_id' in gaze_df.columns  # pattern captured from message
+
+
+def test_parse_begaze_initial_dash_no_event(make_text_file):
+    # The first labelled event occurs only after an initial '-' value.
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+        'Pupil Confidence\tInfo\n'
+        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\t-\n'
+        '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tFixation\n'
+        '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\tFixation\n'
+    )
+    p = make_text_file(filename='begaze_initial_dash.txt', body=text, encoding='ascii')
+
+    _, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+
+    # Only one fixation event starting from the second sample.
+    assert event_df['name'].to_list() == ['fixation_begaze']
+    assert event_df['onset'].to_list() == [10000001.1]
+
+
+def test_parse_begaze_missing_stimulus_column(make_text_file):
+    # Header without a Stimulus column should still parse samples and events.
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+        '\tPupil Confidence\tL Event Info\n'
+        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
+        '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\n'
+    )
+    p = make_text_file(filename='begaze_no_stimulus.txt', body=text, encoding='ascii')
+
+    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(p, prefer_eye='L')
+
+    assert metadata['tracked_eye'] == 'L'
+    assert gaze_df.shape == (2, len(gaze_df.columns))
+    assert event_df['name'].to_list() == ['fixation_begaze', 'saccade_begaze']
+
+
+def test_parse_begaze_non_ascii_stimulus_utf16(make_text_file):
+    # Non-ASCII in Stimulus should parse if encoding is provided.
+    stimulus = 'Größe_치맥.bmp'
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+        '\tPupil Confidence\tL Event Info\tStimulus\n'
+        f'10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\t{stimulus}\n'
+        f'10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\t{stimulus}\n'
+    )
+    p = make_text_file(filename='begaze_utf8_stimulus.txt', body=text, encoding='utf-16')
+
+    gaze_df, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L', encoding='utf-16')
+
+    # Basic assertions - presence of non-ASCII should not cause errors.
+    assert gaze_df.shape[0] == 2
+    assert event_df['name'].to_list() == ['fixation_begaze', 'saccade_begaze']
+
+
+def test_parse_begaze_plane_values_stability(make_text_file):
+    # Plane values -1 and >0 should not affect parsing logic.
+    text = (
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+        '\tPupil Confidence\tR Plane\tL Event Info\n'
+        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\t-1\tFixation\n'
+        '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\t2\tBlink\n'
+        '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\t1\tFixation\n'
+    )
+    p = make_text_file(filename='begaze_plane_values.txt', body=text, encoding='ascii')
+
+    gaze_df, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+
+    # Blink row forces NaN x/y and pupil 0.0
+    assert np.isnan(gaze_df['x_pix'].to_list()[1])
+    assert np.isnan(gaze_df['y_pix'].to_list()[1])
+    assert gaze_df['pupil'].to_list()[1] == 0.0
+    # Events should be fixation -> blink -> fixation
+    assert event_df['name'].to_list() == [
+        'fixation_begaze', 'blink_begaze', 'fixation_begaze',
+    ]

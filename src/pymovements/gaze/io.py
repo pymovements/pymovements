@@ -29,6 +29,7 @@ import polars as pl
 
 import pymovements as pm  # pylint: disable=cyclic-import
 from pymovements.events.frame import Events
+from pymovements.gaze._utils.parsing_begaze import parse_begaze
 from pymovements.gaze._utils.parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
@@ -750,3 +751,133 @@ def _fill_experiment_from_parsing_metadata(
         )
 
     return experiment
+
+
+def from_begaze(
+        file: str | Path,
+        *,
+        patterns: list[dict[str, Any] | str] | None = None,
+        metadata_patterns: list[dict[str, Any] | str] | None = None,
+        schema: dict[str, Any] | None = None,
+        experiment: Experiment | None = None,
+        trial_columns: str | list[str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, Any] | None = None,
+        encoding: str | None = 'ascii',
+        definition: pm.DatasetDefinition | None = None,
+        prefer_eye: str = 'L',
+) -> Gaze:
+    """Initialize a :py:class:`~pymovements.Gaze` from a BeGaze text export.
+
+    Parameters
+    ----------
+    file: str | Path
+        Path of BeGaze text export.
+    patterns: list[dict[str, Any] | str] | None
+        List of patterns to match for additional columns (on BeGaze `MSG` lines).
+    metadata_patterns: list[dict[str, Any] | str] | None
+        List of patterns to match for extracting metadata from custom logged messages.
+    schema: dict[str, Any] | None
+        Dictionary to optionally specify types of columns parsed by patterns.
+    experiment: Experiment | None
+        The experiment definition. (default: None)
+    trial_columns: str | list[str] | None
+        The names of the columns (extracted by patterns) to use as trial columns.
+    add_columns: dict[str, str] | None
+        Dictionary containing columns to add to loaded data frame.
+    column_schema_overrides: dict[str, Any] | None
+        Dictionary containing types for columns.
+    encoding: str | None
+        Text encoding of the file. Defaults to ASCII, which is the common BeGaze export encoding.
+    definition: pm.DatasetDefinition | None
+        A dataset definition. Explicitly passed arguments take precedence over definition.
+    prefer_eye: str
+        Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
+
+    Returns
+    -------
+    Gaze
+        The initialized gaze object read from the BeGaze text file.
+    """
+    # Explicit arguments take precedence over definition.
+    if definition:
+        if experiment is None:
+            experiment = definition.experiment
+
+        if trial_columns is None:
+            trial_columns = definition.trial_columns
+
+        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
+            custom_read_kwargs = definition.custom_read_kwargs['gaze']
+
+            if patterns is None and 'patterns' in custom_read_kwargs:
+                patterns = custom_read_kwargs['patterns']
+
+            if metadata_patterns is None and 'metadata_patterns' in custom_read_kwargs:
+                metadata_patterns = custom_read_kwargs['metadata_patterns']
+
+            if schema is None and 'schema' in custom_read_kwargs:
+                schema = custom_read_kwargs['schema']
+
+            if column_schema_overrides is None and 'column_schema_overrides' in custom_read_kwargs:
+                column_schema_overrides = custom_read_kwargs['column_schema_overrides']
+
+            if encoding is None and 'encoding' in custom_read_kwargs:
+                encoding = custom_read_kwargs['encoding']
+
+            if 'prefer_eye' in custom_read_kwargs and isinstance(
+                    custom_read_kwargs['prefer_eye'], str,
+            ):
+                prefer_eye = custom_read_kwargs['prefer_eye']
+
+    # Read data via BeGaze parser.
+    samples, event_data, metadata = parse_begaze(
+        file,
+        patterns=patterns,
+        schema=schema,
+        metadata_patterns=metadata_patterns,
+        encoding=encoding or 'ascii',
+        prefer_eye=prefer_eye,
+    )
+
+    if add_columns is not None:
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
+
+    if column_schema_overrides is not None:
+        samples = samples.with_columns([
+            pl.col(fileinfo_key).cast(fileinfo_dtype)
+            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+        ])
+
+    # Fill experiment with parsed metadata.
+    # BeGaze exports do not provide the same metadata keys as EyeLink ASC. Use a
+    # minimal, tolerant fill here instead of the strict ASC-specific function.
+    if experiment is None:
+        experiment = Experiment(sampling_rate=metadata['sampling_rate'])
+    # Set tracked eyes based on parsed metadata if available.
+    tracked = (metadata.get('tracked_eye') or '')
+    experiment.eyetracker.left = (
+        'L' in tracked if experiment.eyetracker.left is None else experiment.eyetracker.left
+    )
+    experiment.eyetracker.right = (
+        'R' in tracked if experiment.eyetracker.right is None else experiment.eyetracker.right
+    )
+
+    # Detect pixel columns to pass to Gaze (monocular naming from BeGaze uses 'x_pix', 'y_pix').
+    detected_pixel_columns: list[str] | None = [c for c in samples.columns if '_pix' in c]
+
+    gaze = Gaze(
+        samples=samples,
+        experiment=experiment,
+        events=Events(event_data),
+        trial_columns=trial_columns,
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=detected_pixel_columns,
+    )
+    gaze._metadata = metadata  # pylint: disable=protected-access
+    return gaze

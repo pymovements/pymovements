@@ -335,7 +335,7 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
     msg, = exc.value.args
     assert msg == (
         'Unsupported load_function "from_a_land_down_under". '
-        'Available options are: [\'from_csv\', \'from_ipc\', \'from_asc\']'
+        'Available options are: [\'from_csv\', \'from_ipc\', \'from_asc\', \'from_begaze\']'
     )
 
 
@@ -470,3 +470,148 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
 
     msg, = exc.value.args
     assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
+
+
+def test_load_gaze_file_from_begaze(make_text_file):
+    """Load a BeGaze text export via load_gaze_file using from_begaze.
+
+    Validates that samples are parsed, time is in ms, pixel column exists,
+    and BeGaze events are present.
+    """
+
+    # Inline BeGaze sample and patterns to avoid cross-test imports
+    BEGAZE_TEXT = (
+        '## [BeGaze]\n'
+        '## Converted from:\tC:\\test.idf\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Version:\tBeGaze 3.7.40\n'
+        '## IDF Version:\t9\n'
+        '## Sample Rate:\t1000\n'
+        '## Separator Type:\tMsg\n'
+        '## Trial Count:\t1\n'
+        '## Uses Plane File:\tFalse\n'
+        '## Number of Samples:\t11\n'
+        '## Reversed:\tnone\n'
+        '## [Run]\n'
+        '## Subject:\tP01\n'
+        '## Description:\tRun1\n'
+        '## [Calibration]\n'
+        '## Calibration Area:\t1680\t1050\n'
+        '## Calibration Point 0:\tPosition(841;526)\n'
+        '## Calibration Point 1:\tPosition(84;52)\n'
+        '## Calibration Point 2:\tPosition(1599;52)\n'
+        '## Calibration Point 3:\tPosition(84;1000)\n'
+        '## Calibration Point 4:\tPosition(1599;1000)\n'
+        '## Calibration Point 5:\tPosition(84;526)\n'
+        '## Calibration Point 6:\tPosition(841;52)\n'
+        '## Calibration Point 7:\tPosition(1599;526)\n'
+        '## Calibration Point 8:\tPosition(841;1000)\n'
+        '## [Geometry]\n'
+        '## Stimulus Dimension [mm]:\t474\t297\n'
+        '## Head Distance [mm]:\t700\n'
+        '## [Hardware Setup]\n'
+        '## System ID:\tIRX0470703-1007\n'
+        '## Operating System :\t6.1\n'
+        '## IView X Version:\t2.8.26\n'
+        '## [Filter Settings]\n'
+        '## Heuristics:\tFalse\n'
+        '## Heuristics Stage:\t0\n'
+        '## Bilateral:\tTrue\n'
+        '## Gaze Cursor Filter:\tTrue\n'
+        '## Saccade Length [px]:\t80\n'
+        '## Filter Depth [ms]:\t20\n'
+        '## Format:\tLEFT, POR, QUALITY, PLANE, MSG\n'
+        '##\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tTiming'
+        '\tPupil Confidence\tR Plane\tInfo\tR Event Info\tStimulus\n'
+        '10000000123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000001123\tMSG\t1\t# Message: START_A\n'
+        '10000002123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000003234\tMSG\t1\t# Message: STOP_A\n'
+        '10000004123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000004234\tMSG\t1\t# Message: METADATA_1 123\n'
+        '10000005234\tMSG\t1\t# Message: START_B\n'
+        '10000006123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000007234\tMSG\t1\t# Message: START_TRIAL_1\n'
+        '10000008123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000009234\tMSG\t1\t# Message: STOP_TRIAL_1\n'
+        '10000010234\tMSG\t1\t# Message: START_TRIAL_2\n'
+        '10000011123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tSaccade\ttest.bmp\n'
+        '10000012234\tMSG\t1\t# Message: STOP_TRIAL_2\n'
+        '10000013234\tMSG\t1\t# Message: START_TRIAL_3\n'
+        '10000014234\tMSG\t1\t# Message: METADATA_2 abc\n'
+        '10000014235\tMSG\t1\t# Message: METADATA_1 456\n'
+        '10000014345\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tSaccade\ttest.bmp\n'
+        '10000015234\tMSG\t1\t# Message: STOP_TRIAL_3\n'
+        '10000016234\tMSG\t1\t# Message: STOP_B\n'
+        '10000017234\tMSG\t1\t# Message: METADATA_3\n'
+        '10000017345\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tSaccade\ttest.bmp\n'
+        '10000019123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tSaccade\ttest.bmp\n'
+        '10000020123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tBlink\ttest.bmp\n'
+        '10000021123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tBlink\ttest.bmp\n'
+    )
+
+    PATTERNS = [
+        {'pattern': 'START_A', 'column': 'task', 'value': 'A'},
+        {'pattern': 'START_B', 'column': 'task', 'value': 'B'},
+        {'pattern': ('STOP_A', 'STOP_B'), 'column': 'task', 'value': None},
+        r'START_TRIAL_(?P<trial_id>\d+)',
+        {'pattern': r'STOP_TRIAL', 'column': 'trial_id', 'value': None},
+    ]
+
+    METADATA_PATTERNS = [
+        r'METADATA_1 (?P<metadata_1>\d+)',
+        {'pattern': r'METADATA_2 (?P<metadata_2>\w+)'},
+        {'pattern': r'METADATA_3', 'key': 'metadata_3', 'value': True},
+        {'pattern': r'METADATA_4', 'key': 'metadata_4', 'value': True},
+    ]
+
+    # Expected numeric values for comparison (subset)
+    EXPECTED_TIMES = [
+        10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123,
+        10000011.123, 10000014.345, 10000017.345, 10000019.123, 10000020.123,
+        10000021.123,
+    ]
+    EXPECTED_X = [850.7] * 9 + [None, None]
+    EXPECTED_Y = [717.5] * 9 + [None, None]
+
+    # Create a temporary BeGaze file
+    filepath = make_text_file(filename='sub.txt', body=BEGAZE_TEXT, encoding='ascii')
+
+    # Call loader with explicit from_begaze and corresponding kwargs
+    gaze = pm.dataset.dataset_files.load_gaze_file(
+        filepath=filepath,
+        fileinfo_row={
+            'load_function': 'from_begaze',
+            'load_kwargs': {
+                'patterns': PATTERNS,
+                'metadata_patterns': METADATA_PATTERNS,
+            },
+        },
+        definition=DatasetDefinition(
+            experiment=pm.Experiment(1680, 1050, 474, 52, None, 'center', 1000),
+            pixel_columns=['x_pix', 'y_pix'],
+        ),
+    )
+
+    # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
+    # Build expected samples accordingly (time + pixel)
+    # Build expected samples from inline numeric expectations
+    expected_df = pl.DataFrame({
+        'time': EXPECTED_TIMES,
+        'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
+    })
+    # Compare only rows where pixel values are not NaN (blink rows become NaN and then nested)
+    mask = [all(v is not None and v == v for v in pair) for pair in expected_df['pixel']]
+    expected_df_non_nan = expected_df.filter(pl.Series(mask))
+    gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
+    assert_frame_equal(
+        gaze_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        expected_df_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        check_column_order=False,
+    )
+
+    # Events should include BeGaze-derived names
+    assert set(gaze.events.frame['name'].to_list()) == {
+        'fixation_begaze', 'saccade_begaze', 'blink_begaze',
+    }

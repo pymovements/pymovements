@@ -284,7 +284,12 @@ def parse_begaze(
             # Extract selected eye columns
             x_s = parts[header_idx[f'{selected_eye} POR X [px]']]
             y_s = parts[header_idx[f'{selected_eye} POR Y [px]']]
-            pupil_s = parts[header_idx[f'{selected_eye} Pupil Diameter [mm]']]
+
+            pupil_header_mm = f'{selected_eye} Pupil Diameter [mm]'
+            pupil_col_idx = header_idx[pupil_header_mm]
+            pupil_s = parts[pupil_col_idx] if pupil_col_idx is not None and pupil_col_idx < len(
+                parts,
+            ) else 'nan'
 
             x_pix = check_nan(x_s)
             y_pix = check_nan(y_s)
