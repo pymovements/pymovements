@@ -52,6 +52,7 @@ docs/doctree*
 docs/source/reference/api
 docs/source/tutorials/data
 .ipynb_checkpoints
+docs/jupyter_execute
 
 # Testing
 .tox
