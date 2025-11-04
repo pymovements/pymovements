@@ -107,6 +107,102 @@ copybutton_prompt_is_regexp = True
 copybutton_line_continuation_character = '\\'
 copybutton_here_doc_delimiter = 'EOT'
 
+# -- Options for cross-references ---------------------------------------------------
+
+# Help Napoleon resolve common short type names in docstrings
+napoleon_type_aliases = {
+    # Builtins / stdlib typing shorthands
+    'Sequence': 'collections.abc.Sequence',
+    'Iterable': 'collections.abc.Iterable',
+    'Callable': 'collections.abc.Callable',
+
+    # Datetime
+    'datetime': 'datetime.datetime',
+
+    # Filesystem paths
+    'Path': 'pathlib.Path',
+
+    # NumPy core
+    'ndarray': 'numpy.ndarray',
+    'np.ndarray': 'numpy.ndarray',
+    'DTypeLike': 'numpy.typing.DTypeLike',
+
+    # Pandas
+    'pd.DataFrame': 'pandas.DataFrame',
+
+    # Matplotlib common types
+    'plt.Figure': 'matplotlib.figure.Figure',
+    'plt.Axes': 'matplotlib.axes.Axes',
+    'colors.Colormap': 'matplotlib.colors.Colormap',
+    'colors.Normalize': 'matplotlib.colors.Normalize',
+
+    # Polars (broken intersphinx)
+    'pl.DataFrame': 'polars.DataFrame',
+    'pl.Series': 'polars.Series',
+    'pl.Expr': 'polars.Expr',
+}
+
+nitpicky = True
+# Patterns for ignoring nitpicky cross-ref warnings. The regex matches the TARGET only,
+# not the full warning message. Keep these as narrow as possible.
+# See: https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-nitpick_ignore_regex
+nitpick_ignore_regex = [
+    # pathlib Path types used in type hints/docstrings which are not resolvable in our docs
+    (r'py:class', r'^(?:pathlib\._local\.)?Path$'),
+
+    # Numpy shorthand types that are usually written as np.X but not resolvable
+    (r'py:class', r'^np\..*'),
+
+    # Polars types referenced with either pl.X or fully qualified polars.*
+    # Context: polars intersphinx mapping is broken, https://github.com/pola-rs/polars/issues/7027
+    (r'py:(class|mod)', r'^(?:pl|polars)(?:\..*)?$'),
+
+    # Allow explicit pandas shorthand in RST roles that napoleon cannot rewrite
+    (r'py:class', r'^pd\.DataFrame$'),
+
+    # Matplotlib pyplot short alias references like plt.X
+    (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
+
+    # Our docs might reference a plain "transforms.func" symbol coming from context
+    (r'py:(func|meth|mod)', r'^transforms\..*'),
+
+    # Shorthand alias used in docs for our own package
+    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
+
+    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
+    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+
+    # Modules referenced in text but not importable via intersphinx targets
+    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
+
+    # Custom exception names mentioned in text but not importable as a symbol
+    (r'py:exc', r'^InvalidProperty$'),
+    (r'py:exc', r'^\.\.\s+deprecated:$'),
+
+
+    # Matplotlib color types referenced in plotting API
+    (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType)$'),
+
+    # Project-internal typing aliases used only in docs
+    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasureMethod)$'),
+    # Fully-qualified generic forms that appear in docstrings
+    (
+        r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
+        r'DatasetDefinitionClass|measure\.library\.SampleMeasureMethod)$',
+    ),
+
+    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
+    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
+    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
+    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
+
+    # Internal helper functions referenced in docs text
+    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
+
+    # Residual autosummary cross-refs to attributes/methods on our high-level classes
+    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+]
+
 
 # -- Options for autosummary -------------------------------------------------
 numpydoc_show_class_members = False
@@ -162,6 +258,7 @@ nb_execution_show_tb = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable', None),
     'polars': ('https://docs.pola.rs/api/python/stable', None),
     'feather': ('https://arrow.apache.org/docs/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
