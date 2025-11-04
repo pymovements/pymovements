@@ -79,6 +79,7 @@ source_suffix = {
     '.md': 'markdown',
 }
 
+
 def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
 
