@@ -191,7 +191,7 @@ def test_resource_is_not_equal(resource1, resource2):
             None,
             id='unknown_content',
         ),
-    ]
+    ],
 )
 def test_resource_init_expected_load_function(init_kwargs, expected_load_function):
     resource = ResourceDefinition(**init_kwargs)
