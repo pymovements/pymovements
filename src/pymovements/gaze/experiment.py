@@ -57,10 +57,10 @@ class Experiment:
         (default: None)
     sampling_rate: float | None
         Sampling rate in Hz. (default: None)
-    screen : Screen | None
+    screen: Screen | None
         Scree object for experiment. Mutually exclusive with explicit screen arguments.
         (default: None)
-    eyetracker : EyeTracker | None
+    eyetracker: EyeTracker | None
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
 
     Examples
@@ -307,7 +307,10 @@ class Experiment:
 
     def __str__(self: Experiment) -> str:
         """Return Experiment string."""
-        return f'{type(self).__name__}(screen={self.screen}, eyetracker={self.eyetracker})'
+        return (
+            f"{type(self).__name__}(screen={self.screen}, "
+            f"eyetracker={self.eyetracker})"
+        )
 
     def __bool__(self) -> bool:
         """Return True if the experiment has data defined, else False."""
