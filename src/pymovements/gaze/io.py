@@ -510,11 +510,6 @@ def from_asc(
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_metadata(experiment, metadata)
 
-    # Add parsed messages to experiment
-    if experiment.messages is not None:
-        warnings.warn('Experiment already has messages, overwriting them with newly parsed ones.')
-    experiment.messages = messages_df
-
     # Detect pixel / position column names (monocular or binocular) and pass them to Gaze
     # Note: column detection for ASC files now uses simple substring matching
     # for 'pix' and 'pos' further down in `from_asc`. The older helper-based
@@ -539,6 +534,7 @@ def from_asc(
         samples=samples,
         experiment=experiment,
         events=Events(event_data) if events else None,
+        messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',
         time_unit='ms',
