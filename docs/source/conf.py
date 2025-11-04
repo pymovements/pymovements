@@ -107,7 +107,7 @@ copybutton_prompt_is_regexp = True
 copybutton_line_continuation_character = '\\'
 copybutton_here_doc_delimiter = 'EOT'
 
-# -- General cross-references ---------------------------------------------------
+# -- Options for cross-references ---------------------------------------------------
 
 # Help Napoleon resolve common short type names in docstrings
 napoleon_type_aliases = {
