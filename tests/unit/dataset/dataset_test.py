@@ -461,8 +461,8 @@ def mock_toy(
         },
         'fileinfo': {
             'gaze': fileinfo,
-            'precomputed_events': fileinfo,
-            'precomputed_reading_measures': fileinfo,
+            'precomputed_events': fileinfo.with_columns(load_function=pl.lit(None)),
+            'precomputed_reading_measures': fileinfo.with_columns(load_function=pl.lit(None)),
         },
         'raw_gazes': gazes,
         'preprocessed_gazes': preprocessed_gazes,
