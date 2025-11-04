@@ -60,6 +60,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
@@ -69,8 +70,14 @@ extensions = [
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'nbsphinx',
+    'myst_nb',  # load after `sphinx_mdinclude` to supress extension error ('.md' registration)
 ]
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.ipynb': 'myst-nb',
+    '.myst': 'myst-nb',
+    '.md': 'markdown',
+}
 
 
 def config_inited_handler(app, config):
@@ -90,6 +97,9 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 # exclude_patterns = []
+suppress_warnings = [
+    'myst.header',
+]
 
 
 copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
@@ -138,15 +148,30 @@ html_theme_options = {
     },
 }
 
+# -- MyST configuration --------------------------------------------------
+# https://myst-nb.readthedocs.io/en/latest/configuration.html
+
+myst_links_external_new_tab = True
+
+nb_execution_timeout = 60
+nb_execution_mode = 'auto'
+nb_execution_show_tb = True
+
+# -- Intersphinx options -------------------------------------------------
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
+    'polars': ('https://docs.pola.rs/api/python/stable', None),
+    'feather': ('https://arrow.apache.org/docs/', None),
+    'matplotlib': ('https://matplotlib.org/stable', None),
+}
+
 # -- Options for favicons
 
 favicons = [
     {'href': 'icon.svg'},
 ]
-
-# -- Options for juypter notebooks
-
-nbsphinx_execute = 'auto'
 
 
 # -- Options for BibTeX ------------------------------------------------------

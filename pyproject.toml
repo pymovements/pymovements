@@ -52,8 +52,8 @@ dynamic = ["version"]
 docs = [
   "ipykernel>=6.13.0,<6.32",
   "ipywidgets>=8.1.7,<8.2",
+  "myst-nb>=1.0.0",
   "nbconvert>=7.0.0,<7.17",
-  "nbsphinx>=0.8.8,<0.10",
   "pandoc",
   "pybtex<0.25.2",
   "pydata-sphinx-theme>=0.12",
