@@ -41,7 +41,7 @@ jobs:
     - name: Upload distribution packages
       uses: actions/upload-artifact@v4
       with:
-        name: pymovements-distribution-packages
+        name: pymovements-distribution-packages-${{ github.event.head_commit.id }}
         path: dist/
         if-no-files-found: error
         retention-days: 1

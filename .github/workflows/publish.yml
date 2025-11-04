@@ -19,7 +19,7 @@ jobs:
     - name: Download distribution packages
       uses: actions/download-artifact@v4
       with:
-        name: pymovements-distribution-packages
+        name: pymovements-distribution-packages-${{ github.event.head_commit.id }}
         path: dist/
 
     - name: Upload wheel
@@ -60,7 +60,7 @@ jobs:
     - name: Download distribution packages
       uses: actions/download-artifact@v4
       with:
-        name: pymovements-distribution-packages
+        name: pymovements-distribution-packages-${{ github.event.head_commit.id }}
         path: dist/
 
     - name: Publish distribution to TestPyPI
