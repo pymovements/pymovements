@@ -1,9 +1,10 @@
 name: benchmark
+
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

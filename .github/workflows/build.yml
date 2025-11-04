@@ -1,16 +1,23 @@
 name: build
 
 on:
+  push:
+    branches: [main]
   workflow_call:
 
 jobs:
   tests:
+    name: Run tests
     uses: ./.github/workflows/tests.yml
+
+  benchmark:
+    name: Run benchmarks
+    uses: ./.github/workflows/benchmark.yml
 
   build:
     name: Build distribution packages
 
-    needs: tests
+    needs: [tests, benchmark]
     runs-on: ubuntu-latest
 
     steps:
