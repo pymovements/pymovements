@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import polars as pl
 import yaml
 
 from pymovements._utils import _checks
