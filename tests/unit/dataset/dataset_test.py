@@ -147,9 +147,18 @@ def mock_toy(
             schema={'subject_id': pl.Utf8},
         )
 
+    if raw_fileformat == 'csv':
+        load_function = 'from_csv'
+    elif raw_fileformat == 'asc':
+        load_function = 'from_asc'
+    elif raw_fileformat == 'mat':
+        load_function = None
+    else:
+        load_function = None
+
     fileinfo = fileinfo.with_columns([
         pl.format('{}.' + raw_fileformat, 'subject_id').alias('filepath'),
-        pl.lit(None).alias('load_function'),
+        pl.lit(load_function).alias('load_function'),
         pl.lit(None).alias('load_kwargs'),
     ])
 
@@ -773,6 +782,7 @@ def test_load_no_files_raises_exception(gaze_dataset_configuration):
         dataset.scan()
 
 
+@pytest.mark.filterwarnings('ignore:.*load_function.*:UserWarning')
 @pytest.mark.parametrize(
     'gaze_dataset_configuration',
     ['ToyMat'],

@@ -133,6 +133,42 @@ class ResourceDefinition:
 
         return data
 
+    def __post_init__(self) -> None:
+        """Infer load_function from filename_pattern if not specified."""
+        if self.load_function is None:
+            self.load_function = self._infer_load_function()
+
+    def _infer_load_function(self) -> str | None:
+        """Infer load_function from filename_pattern."""
+        if self.filename_pattern is None:
+            return None
+
+        if self.content != 'gaze':
+            return None  # currently we only provide public load functions for Gaze
+
+        extension = self.filename_pattern.split('.')[-1]
+
+        extension_to_load_function_map = {
+            'asc': 'from_asc',
+            'csv': 'from_csv',
+            'feather': 'from_ipc',
+            'ipc': 'from_ipc',
+            'tsv': 'from_csv',
+            'txt': 'from_csv',
+        }
+
+        load_function = extension_to_load_function_map.get(extension, None)
+
+        if load_function is None:
+            valid_extensions = list(extension_to_load_function_map.keys())
+            warn(
+                f'Unable to infer load_function from file extension "{extension}". '
+                f'Known extensions for content "{self.content}" are: {valid_extensions}. '
+                f'Please specify ResourceDefinition.load_function.',
+            )
+
+        return load_function
+
 
 class ResourceDefinitions(list):
     """List of :py:class:`~pymovements.ResourceDefinition` instances.

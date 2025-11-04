@@ -321,19 +321,10 @@ def load_gaze_file(
 
     load_function_name = fileinfo_row['load_function']
     if load_function_name is None:
-        if filepath.suffix in {'.csv', '.txt', '.tsv'}:
-            load_function_name = 'from_csv'
-        elif filepath.suffix == '.feather':
-            load_function_name = 'from_ipc'
-        elif filepath.suffix == '.asc':
-            load_function_name = 'from_asc'
-        else:
-            valid_extensions = ['csv', 'tsv', 'txt', 'feather', 'asc']
-            raise ValueError(
-                f'Unknown file extension "{filepath.suffix}". '
-                f'Known extensions are: {valid_extensions}\n'
-                f'Otherwise, specify load_function in the resource definition.',
-            )
+        raise ValueError(
+            f'load_function could not be inferred from "{filepath.name}". '
+            f'Please specify ResourceDefinition.load_function.',
+        )
 
     load_function_kwargs = fileinfo_row['load_kwargs']
     if load_function_kwargs is None:

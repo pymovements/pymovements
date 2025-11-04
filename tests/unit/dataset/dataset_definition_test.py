@@ -875,9 +875,9 @@ def test_dataset_definition_init_raises_exception(init_kwargs, exception, except
     [
         pytest.param(
             DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
+                resources=[{'content': 'gaze', 'filename_pattern': 'abc.csv'}],
             ),
-            {'gaze': 'abc'},
+            {'gaze': 'abc.csv'},
             id='single_gaze',
         ),
     ],
@@ -892,23 +892,23 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
     [
         pytest.param(
             DatasetDefinition(
-                resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
+                resources=[{'content': 'gaze', 'filename_pattern': 'abc.csv'}],
             ),
-            {'gaze': 'def'},
-            ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='def')]),
+            {'gaze': 'def.csv'},
+            ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='def.csv')]),
             id='gaze_resource',
         ),
         pytest.param(
             DatasetDefinition(
                 resources=[
-                    {'content': 'gaze', 'filename_pattern': 'abc'},
-                    {'content': 'precomputed_events', 'filename_pattern': 'cba'},
+                    {'content': 'gaze', 'filename_pattern': 'abc.csv'},
+                    {'content': 'precomputed_events', 'filename_pattern': 'cba.csv'},
                 ],
             ),
-            {'gaze': 'def'},
+            {'gaze': 'def.csv'},
             ResourceDefinitions([
-                ResourceDefinition(content='gaze', filename_pattern='def'),
-                ResourceDefinition(content='precomputed_events', filename_pattern='cba'),
+                ResourceDefinition(content='gaze', filename_pattern='def.csv'),
+                ResourceDefinition(content='precomputed_events', filename_pattern='cba.csv'),
             ]),
             id='two_resources',
         ),

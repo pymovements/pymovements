@@ -166,6 +166,39 @@ def test_resource_is_not_equal(resource1, resource2):
 
 
 @pytest.mark.parametrize(
+    ('init_kwargs', 'expected_load_function'),
+    [
+        pytest.param(
+            {'content': 'gaze'},
+            None,
+            id='gaze_no_pattern',
+        ),
+
+        pytest.param(
+            {'content': 'gaze', 'filename_pattern': 'test.csv'},
+            'from_csv',
+            id='gaze_csv_file',
+        ),
+
+        pytest.param(
+            {'content': 'gaze', 'filename_pattern': 'test.ipc'},
+            'from_ipc',
+            id='gaze_ipc_file',
+        ),
+
+        pytest.param(
+            {'content': 'foobar', 'filename_pattern': 'test.csv'},
+            None,
+            id='unknown_content',
+        ),
+    ]
+)
+def test_resource_init_expected_load_function(init_kwargs, expected_load_function):
+    resource = ResourceDefinition(**init_kwargs)
+    assert resource.load_function == expected_load_function
+
+
+@pytest.mark.parametrize(
     ('resource_dict', 'expected_resource'),
     [
         pytest.param(
