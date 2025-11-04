@@ -79,6 +79,35 @@ source_suffix = {
     '.md': 'markdown',
 }
 
+def config_inited_handler(app, config):
+    os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
+
+
+def setup(app):
+    app.add_config_value('REVISION', 'master', 'env')
+    app.add_config_value('generated_path', '_generated', 'env')
+    app.connect('config-inited', config_inited_handler)
+
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This pattern also affects html_static_path and html_extra_path.
+# exclude_patterns = []
+suppress_warnings = [
+    'myst.header',
+]
+
+
+copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
+copybutton_prompt_is_regexp = True
+copybutton_line_continuation_character = '\\'
+copybutton_here_doc_delimiter = 'EOT'
+
+# -- General cross-references ---------------------------------------------------
+
 # Help Napoleon resolve common short type names in docstrings
 napoleon_type_aliases = {
     # Builtins / stdlib typing shorthands
@@ -172,34 +201,6 @@ nitpick_ignore_regex = [
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
 ]
-
-
-def config_inited_handler(app, config):
-    os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
-
-
-def setup(app):
-    app.add_config_value('REVISION', 'master', 'env')
-    app.add_config_value('generated_path', '_generated', 'env')
-    app.connect('config-inited', config_inited_handler)
-
-
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
-
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
-# exclude_patterns = []
-suppress_warnings = [
-    'myst.header',
-]
-
-
-copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
-copybutton_prompt_is_regexp = True
-copybutton_line_continuation_character = '\\'
-copybutton_here_doc_delimiter = 'EOT'
 
 
 # -- Options for autosummary -------------------------------------------------
