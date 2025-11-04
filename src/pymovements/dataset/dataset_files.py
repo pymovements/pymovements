@@ -326,6 +326,10 @@ def load_gaze_file(
             f'Please specify ResourceDefinition.load_function.',
         )
 
+    # in case of loading preprocessed files the loading function might change.
+    if preprocessed and filepath.suffix in {'.feather', '.ipc'}:
+        load_function = 'from_ipc'
+
     load_function_kwargs = fileinfo_row['load_kwargs']
     if load_function_kwargs is None:
         load_function_kwargs = {}
