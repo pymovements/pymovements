@@ -199,6 +199,21 @@ def test_resource_init_expected_load_function(init_kwargs, expected_load_functio
 
 
 @pytest.mark.parametrize(
+    ('init_kwargs', 'message'),
+    [
+        pytest.param(
+            {'content': 'gaze', 'filename_pattern': 'test.foo'},
+            'Unable to infer load_function from file extension "foo"',
+            id='gaze_extension_unknown',
+        ),
+    ],
+)
+def test_resource_init_raises_warning(init_kwargs, message):
+    with pytest.warns(UserWarning, match=message):
+        ResourceDefinition(**init_kwargs)
+
+
+@pytest.mark.parametrize(
     ('resource_dict', 'expected_resource'),
     [
         pytest.param(
