@@ -1,8 +1,6 @@
 name: build
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
   workflow_call:
@@ -15,8 +13,6 @@ jobs:
     uses: ./.github/workflows/benchmark.yml
 
   build:
-    name: Build distribution packages
-
     needs: [tests, benchmark]
     runs-on: ubuntu-latest
 
