@@ -8,6 +8,7 @@ resources:
   filename_pattern: msd{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'
+  load_function: from_csv
 - content: precomputed_events
   filename: 18sat_fixfinal.csv
   url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv

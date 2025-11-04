@@ -7,6 +7,7 @@ resources:
   filename_pattern: '{subject_id:d}.asc'
   filename_pattern_schema_overrides:
     subject_id: '!int'
+  load_function: from_asc
 - content: precomputed_events
   filename: fixations.zip
   url: https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215

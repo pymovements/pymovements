@@ -10,6 +10,7 @@ resources:
     round_id: '!int'
     subject_id: '!int'
     session_id: '!int'
+  load_function: from_csv
 experiment:
   eyetracker:
     sampling_rate: 1000

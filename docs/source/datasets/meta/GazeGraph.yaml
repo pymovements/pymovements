@@ -9,6 +9,7 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
     task: '!str'
+  load_function: from_csv
 experiment:
   eyetracker:
     sampling_rate: 30

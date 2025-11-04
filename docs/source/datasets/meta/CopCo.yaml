@@ -8,6 +8,7 @@ resources:
   filename_pattern: P{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'
+  load_function: from_csv
 - content: precomputed_events
   filename: FixationReports.zip
   url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=

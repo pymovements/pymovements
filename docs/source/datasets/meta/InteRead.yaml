@@ -6,6 +6,7 @@ resources:
   url: https://osf.io/download/6ju3x/
   md5: 06b2cdff1827086fa125a703ee9d4324
   filename_pattern: resampled_gaze.csv
+  load_function: from_csv
 - content: precomputed_events
   filename: resumption_fixation.csv
   url: https://osf.io/download/85ckh/
