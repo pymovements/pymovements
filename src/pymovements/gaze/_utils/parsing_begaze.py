@@ -37,6 +37,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+import warnings
+
 import numpy as np
 import polars as pl
 
@@ -71,6 +73,19 @@ def parse_begaze(
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
     """Parse BeGaze raw data export file.
 
+    Minimal "good enough" support for DIDEC-like exports:
+    - Parses sample rows (`SMP`) using the tabular header when available; falls back to a
+      LEFT-only regex for older/simpler files.
+    - Supports monocular and binocular files by selecting one eye via `prefer_eye`.
+      If the requested eye is unavailable but the other eye is present, the parser
+      will automatically fall back to the other eye and emit a warning; the chosen
+      eye is recorded in metadata under `tracked_eye`.
+    - Converts `Time` from microseconds to milliseconds (float).
+    - Derives BeGaze per-sample event labels (Fixation/Saccade/Blink) into consolidated
+      event rows named `<lowercase>_begaze` with onset/offset in milliseconds.
+    - Applies user-supplied `patterns` and `metadata_patterns` (same semantics as EyeLink)
+      to populate additional columns on samples/events and to extract metadata.
+
     Parameters
     ----------
     filepath: Path | str
@@ -91,8 +106,11 @@ def parse_begaze(
     tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]
         A tuple containing the parsed gaze sample data, the parsed event data, and the metadata.
     """
-    # pylint: disable=too-many-branches, too-many-statements
+    # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'\d+\tMSG\t\d+\t# Message:\s+'
+
+    # consume unused argument to satisfy linters (schema is still unused)
+    _ = schema
 
     if patterns is None:
         patterns = []
@@ -158,14 +176,14 @@ def parse_begaze(
                         value = value[1:]
                     value = value.replace('\t', ' ').strip()
                     header_datetime = datetime.datetime.strptime(value, '%d.%m.%Y %H:%M:%S')
-                except Exception:
+                except (ValueError, TypeError):
                     header_datetime = None
             elif line.startswith('## Sample Rate:'):
                 try:
                     _, value = line.split(':', 1)
                     value = value.strip().strip('\n').replace('\t', ' ').strip()
                     header_sampling_rate = float(value)
-                except Exception:
+                except (ValueError, TypeError):
                     header_sampling_rate = None
             continue
         if ('Time' in line and '\tType\t' in line) and header_row_index is None:
@@ -229,9 +247,14 @@ def parse_begaze(
     use_header_parsing = header_row_index is not None and header_cols is not None
     if use_header_parsing:
         if not has_eye_columns(selected_eye):
-            # fall back to the other eye if available - add user warning?
+            # fall back to the other eye if available and inform the user once
             other_eye = 'R' if selected_eye == 'L' else 'L'
             if has_eye_columns(other_eye):
+                warnings.warn(
+                    f"BeGaze parser: preferred eye '{selected_eye}' not found in columns; "
+                    f"falling back to '{other_eye}'.",
+                    RuntimeWarning,
+                )
                 selected_eye = other_eye
         # If neither has columns, we will fall back to regex parsing below
         use_header_parsing = has_eye_columns(selected_eye)
@@ -241,6 +264,7 @@ def parse_begaze(
 
     if use_header_parsing:
         # iterate over data lines following the header row
+        assert header_row_index is not None and header_cols is not None
         for line in lines[header_row_index + 1:]:
             # Apply message-driven additional columns first
             for pattern_dict in compiled_patterns:
@@ -331,9 +355,8 @@ def parse_begaze(
                     blink_sample_count = 1
                 else:
                     blink_sample_count += 1
-            else:
-                if not np.isnan(x_pix) and not np.isnan(y_pix) and not np.isnan(pupil):
-                    num_valid_samples += 1
+            elif not np.isnan(x_pix) and not np.isnan(y_pix) and not np.isnan(pupil):
+                num_valid_samples += 1
 
             # event segmentation
             if event != current_event:
@@ -386,7 +409,7 @@ def parse_begaze(
                 })
             current_event = '-'
             current_event_onset = None
-            current_event_additional = {key: {} for key in current_event_additional.keys()}
+            current_event_additional = {key: {} for key in current_event_additional}
 
     else:
         # Fallback: use regex-based monocular parsing for simple LEFT files
@@ -447,10 +470,9 @@ def parse_begaze(
                         blink_sample_count = 1
                     else:
                         blink_sample_count += 1
-                else:
+                elif not np.isnan(x_pix) and not np.isnan(y_pix) and not np.isnan(pupil):
                     # non-blink sample: check validity for data loss
-                    if not np.isnan(x_pix) and not np.isnan(y_pix) and not np.isnan(pupil):
-                        num_valid_samples += 1
+                    num_valid_samples += 1
 
                 # event segmentation
                 if event != current_event:
@@ -518,7 +540,7 @@ def parse_begaze(
                 })
             current_event = '-'
             current_event_onset = None
-            current_event_additional = {key: {} for key in current_event_additional.keys()}
+            current_event_additional = {key: {} for key in current_event_additional}
 
     # Finalise metadata for BeGaze
     # total_recording_duration_ms per test equals number of samples for this minimal fixture

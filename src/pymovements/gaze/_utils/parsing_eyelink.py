@@ -36,10 +36,10 @@ import re
 
 import warnings
 from collections import defaultdict
+from collections.abc import Sequence
 
 from pathlib import Path
 from typing import Any
-from collections.abc import Sequence
 
 import numpy as np
 import polars as pl

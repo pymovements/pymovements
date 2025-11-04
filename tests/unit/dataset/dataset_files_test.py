@@ -478,7 +478,6 @@ def test_load_gaze_file_from_begaze(make_text_file):
     Validates that samples are parsed, time is in ms, pixel column exists,
     and BeGaze events are present.
     """
-
     # Inline BeGaze sample and patterns to avoid cross-test imports
     BEGAZE_TEXT = (
         '## [BeGaze]\n'
@@ -551,7 +550,7 @@ def test_load_gaze_file_from_begaze(make_text_file):
         '10000021123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tBlink\ttest.bmp\n'
     )
 
-    PATTERNS = [
+    BEGAZE_PATTERNS = [
         {'pattern': 'START_A', 'column': 'task', 'value': 'A'},
         {'pattern': 'START_B', 'column': 'task', 'value': 'B'},
         {'pattern': ('STOP_A', 'STOP_B'), 'column': 'task', 'value': None},
@@ -559,7 +558,7 @@ def test_load_gaze_file_from_begaze(make_text_file):
         {'pattern': r'STOP_TRIAL', 'column': 'trial_id', 'value': None},
     ]
 
-    METADATA_PATTERNS = [
+    BEGAZE_METADATA_PATTERNS = [
         r'METADATA_1 (?P<metadata_1>\d+)',
         {'pattern': r'METADATA_2 (?P<metadata_2>\w+)'},
         {'pattern': r'METADATA_3', 'key': 'metadata_3', 'value': True},
@@ -584,8 +583,8 @@ def test_load_gaze_file_from_begaze(make_text_file):
         fileinfo_row={
             'load_function': 'from_begaze',
             'load_kwargs': {
-                'patterns': PATTERNS,
-                'metadata_patterns': METADATA_PATTERNS,
+                'patterns': BEGAZE_PATTERNS,
+                'metadata_patterns': BEGAZE_METADATA_PATTERNS,
             },
         },
         definition=DatasetDefinition(
@@ -601,8 +600,8 @@ def test_load_gaze_file_from_begaze(make_text_file):
         'time': EXPECTED_TIMES,
         'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
     })
-    # Compare only rows where pixel values are not NaN (blink rows become NaN and then nested)
-    mask = [all(v is not None and v == v for v in pair) for pair in expected_df['pixel']]
+    # Compare only rows where pixel values are present (blink rows are None in expected)
+    mask = [all(v is not None for v in pair) for pair in expected_df['pixel'].to_list()]
     expected_df_non_nan = expected_df.filter(pl.Series(mask))
     gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
     assert_frame_equal(

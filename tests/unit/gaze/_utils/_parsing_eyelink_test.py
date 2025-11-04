@@ -27,8 +27,6 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from ._parsing_test import METADATA_PATTERNS
-from ._parsing_test import PATTERNS
 from pymovements.gaze._utils import parsing_eyelink
 
 ASC_TEXT = r"""
@@ -112,6 +110,38 @@ ESACC	R	10000011	10000022	12	850.7	717.5	850.7	717.5	19.00	590
 END	10000022 	SAMPLES	EVENTS	RES	  38.54	  31.12
 """
 
+
+PATTERNS = [
+    {
+        'pattern': 'START_A',
+        'column': 'task',
+        'value': 'A',
+    },
+    {
+        'pattern': 'START_B',
+        'column': 'task',
+        'value': 'B',
+    },
+    {
+        'pattern': ('STOP_A', 'STOP_B'),
+        'column': 'task',
+        'value': None,
+    },
+
+    r'START_TRIAL_(?P<trial_id>\d+)',
+    {
+        'pattern': r'STOP_TRIAL',
+        'column': 'trial_id',
+        'value': None,
+    },
+]
+
+METADATA_PATTERNS = [
+    r'METADATA_1 (?P<metadata_1>\d+)',
+    {'pattern': r'METADATA_2 (?P<metadata_2>\w+)'},
+    {'pattern': r'METADATA_3', 'key': 'metadata_3', 'value': True},
+    {'pattern': r'METADATA_4', 'key': 'metadata_4', 'value': True},
+]
 
 EXPECTED_GAZE_DF = pl.from_dict(
     {

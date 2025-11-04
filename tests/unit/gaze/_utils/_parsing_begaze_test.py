@@ -25,8 +25,6 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from ._parsing_test import METADATA_PATTERNS
-from ._parsing_test import PATTERNS
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.gaze import io
 from pymovements.gaze._utils import parsing_begaze
@@ -102,6 +100,40 @@ Time	Type	Trial	L POR X [px]	L POR Y [px]	L Pupil Diameter [mm]	Timing	Pupil Con
 10000021123	SMP	1	850.71	717.53	714.00	0	0	-1	Blink	test.bmp
 """  # noqa: E501
 
+
+PATTERNS = [
+    {
+        'pattern': 'START_A',
+        'column': 'task',
+        'value': 'A',
+    },
+    {
+        'pattern': 'START_B',
+        'column': 'task',
+        'value': 'B',
+    },
+    {
+        'pattern': ('STOP_A', 'STOP_B'),
+        'column': 'task',
+        'value': None,
+    },
+
+    r'START_TRIAL_(?P<trial_id>\d+)',
+    {
+        'pattern': r'STOP_TRIAL',
+        'column': 'trial_id',
+        'value': None,
+    },
+]
+
+METADATA_PATTERNS = [
+    r'METADATA_1 (?P<metadata_1>\d+)',
+    {'pattern': r'METADATA_2 (?P<metadata_2>\w+)'},
+    {'pattern': r'METADATA_3', 'key': 'metadata_3', 'value': True},
+    {'pattern': r'METADATA_4', 'key': 'metadata_4', 'value': True},
+]
+
+
 BEGAZE_EXPECTED_GAZE_DF = pl.from_dict(
     {
         'time': [
@@ -136,7 +168,7 @@ BEGAZE_EXPECTED_EVENT_DF = pl.from_dict(
     },
 )
 
-# TODO: Add more metadata
+# NOTE: Add more metadata
 EXPECTED_METADATA_BEGAZE = {
     'sampling_rate': 1000.00,
     'tracked_eye': 'L',
@@ -298,7 +330,7 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file):
 
     # Experiment should be filled from metadata (sampling_rate) and metadata attached to gaze.
     assert pytest.approx(gaze.experiment.sampling_rate, rel=0, abs=1e-9) == 1000.0
-    assert gaze._metadata == EXPECTED_METADATA_BEGAZE  # pylint: disable=protected-access
+    assert gaze._metadata == EXPECTED_METADATA_BEGAZE
 
 
 def test_from_begaze_loader_prefer_eye_via_definition(make_text_file):
@@ -325,7 +357,7 @@ def test_from_begaze_loader_prefer_eye_via_definition(make_text_file):
     gaze = io.from_begaze(p, definition=definition)
 
     # Right eye should be selected per definition.
-    assert gaze._metadata['tracked_eye'] == 'R'  # pylint: disable=protected-access
+    assert gaze._metadata['tracked_eye'] == 'R'
     # Gaze samples expose combined pixel column
     assert gaze.samples['pixel'].to_list() == [[110.0, 120.0], [111.0, 121.0]]
 
@@ -364,7 +396,7 @@ def test_parse_begaze_regex_fallback_minimal(make_text_file):
     )
     p = make_text_file(filename='begaze_regex_only.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
+    gaze_df, event_df, _ = parsing_begaze.parse_begaze(
         p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
     )
 

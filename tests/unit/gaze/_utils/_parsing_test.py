@@ -21,39 +21,6 @@
 from pymovements.gaze._utils import parsing
 
 
-PATTERNS = [
-    {
-        'pattern': 'START_A',
-        'column': 'task',
-        'value': 'A',
-    },
-    {
-        'pattern': 'START_B',
-        'column': 'task',
-        'value': 'B',
-    },
-    {
-        'pattern': ('STOP_A', 'STOP_B'),
-        'column': 'task',
-        'value': None,
-    },
-
-    r'START_TRIAL_(?P<trial_id>\d+)',
-    {
-        'pattern': r'STOP_TRIAL',
-        'column': 'trial_id',
-        'value': None,
-    },
-]
-
-METADATA_PATTERNS = [
-    r'METADATA_1 (?P<metadata_1>\d+)',
-    {'pattern': r'METADATA_2 (?P<metadata_2>\w+)'},
-    {'pattern': r'METADATA_3', 'key': 'metadata_3', 'value': True},
-    {'pattern': r'METADATA_4', 'key': 'metadata_4', 'value': True},
-]
-
-
 def test_data_loss_zero_expected_samples_via_parsing_module():
     """When num_expected_samples == 0 the function must return (0.0, 0.0)."""
     total, blink = parsing._calculate_data_loss_ratio(0, 10, 5)
