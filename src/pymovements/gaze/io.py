@@ -668,7 +668,7 @@ def _fill_experiment_from_parsing_metadata(
         metadata: dict[str, Any],
 ) -> Experiment:
     """Fill Experiment with metadata gained from parsing."""
-    if experiment is None:
+    if not experiment:
         experiment = Experiment(sampling_rate=metadata['sampling_rate'])
 
     # Compare metadata from experiment definition with metadata from ASC file.
