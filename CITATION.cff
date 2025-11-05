@@ -1,6 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 
+title: "pymovements: A Python Package for Processing Eye Movement Data"
+
 authors:
   - family-names: "Krakowczyk"
     given-names: "Daniel G."
@@ -62,8 +64,6 @@ authors:
   - family-names: "Jäger"
     given-names: "Lena A."
     orcid: "https://orcid.org/0000-0001-9018-9713"
-
-title: "pymovements: A Python Package for Processing Eye Movement Data"
 
 type: software
 license: MIT
