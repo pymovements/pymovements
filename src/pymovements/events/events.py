@@ -538,7 +538,14 @@ class Events:
         self.unnest()
         aois = [
             aoi_dataframe.get_aoi(row=row, x_eye='location_x', y_eye='location_y')
-            for row in tqdm(self.frame.iter_rows(named=True))
+            for row in tqdm(
+                self.frame.iter_rows(named=True),
+                total=len(self.frame),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=len(self.frame) < 5000,
+            )
         ]
         aoi_df = pl.concat(aois)
         self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
