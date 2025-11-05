@@ -1296,7 +1296,14 @@ class Gaze:
 
         aois = [
             aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
-            for row in tqdm(self.samples.iter_rows(named=True))
+            for row in tqdm(
+                self.samples.iter_rows(named=True),
+                total=len(self.samples),
+                desc='Mapping gaze to AOIs',
+                unit='sample',
+                ncols=80,
+                disable=len(self.samples) < 5000,
+            )
         ]
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
