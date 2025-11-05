@@ -27,6 +27,7 @@ import numpy as np
 from matplotlib import colors
 
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
@@ -166,9 +167,9 @@ def heatmap(
     heatmap_value /= gaze.experiment.sampling_rate
 
     if origin == 'upper':
-        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
-    else:
         extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
+    else:
+        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
     fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
@@ -195,6 +196,9 @@ def heatmap(
         extent=extent,
         alpha=alpha,
     )
+
+    # Apply screen-based axis limits and aspect ratio
+    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
 
     # Set the plot title and axis labels
     if title:

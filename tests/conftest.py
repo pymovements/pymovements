@@ -20,5 +20,6 @@
 """Fixtures for datasets."""
 
 pytest_plugins = [
+    'tests.fixtures.deprecation_fixtures',
     'tests.fixtures.file_fixtures',
 ]
