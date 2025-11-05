@@ -176,7 +176,15 @@ def _extract_tar(
 
     # ignore mypy error for now, see issue #1020
     with tarfile.open(source_path, mode) as archive:  # type: ignore[call-overload]
-        for member in tqdm(archive.getmembers()):
+        members = archive.getmembers()
+        for member in tqdm(
+                members,
+                total=len(members),
+                desc='Extracting archive',
+                unit='file',
+                ncols=80,
+                disable=len(members) < 10,
+        ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
                 if (
@@ -218,7 +226,13 @@ def _extract_zip(
     """
     compression_id = _ZIP_COMPRESSION_MAP[compression] if compression else zipfile.ZIP_STORED
     with zipfile.ZipFile(source_path, 'r', compression=compression_id) as archive:
-        for member in tqdm(archive.filelist):
+        for member in tqdm(
+                archive.filelist,
+                total=len(archive.filelist),
+                desc='Extracting archive',
+                unit='file',
+                disable=len(archive.filelist) < 10,
+        ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
                 if (
