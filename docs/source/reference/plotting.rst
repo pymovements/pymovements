@@ -1,3 +1,5 @@
+.. _plotting_sec:
+
 ========
 Plotting
 ========
