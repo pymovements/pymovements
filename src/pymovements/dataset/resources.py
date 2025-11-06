@@ -25,7 +25,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import InitVar
 from typing import Any
 from warnings import warn
 
@@ -35,7 +35,7 @@ from pymovements._utils._html import repr_html
 
 
 @repr_html()
-@dataclass
+@dataclass(frozen=True)
 class ResourceDefinition:
     """ResourceDefinition definition.
 
@@ -79,8 +79,6 @@ class ResourceDefinition:
 
     load_function: str | None = None
     load_kwargs: dict[str, Any] | None = None
-
-    _filename_pattern: str | None = field(default=None, init=False, repr=False)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
@@ -139,19 +137,10 @@ class ResourceDefinition:
     def __post_init__(self) -> None:
         """Infer load_function if not specified."""
         if self.load_function is None:
-            self.load_function = self._infer_load_function()
-
-    @property
-    def filename_pattern(self) -> str | None:
-        return self._filename_pattern
-
-    @filename_pattern.setter
-    def filename_pattern(self, data: str | None) -> None:
-        self._filename_pattern = data
-
-        # Updating the filename_pattern might
-        if self.load_function is None:
-            self.load_function = self._infer_load_function()
+            # this circumvents that the object is frozen.
+            # as we do that during initialization we can guarantee object integrity.
+            # user code must not tamper with any fields as this may lead to inconsistent behavior.
+            object.__setattr__(self, 'load_function', self._infer_load_function())
 
     def _infer_load_function(self) -> str | None:
         """Infer load_function from filename_pattern."""
