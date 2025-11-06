@@ -231,7 +231,7 @@ class ResourceDefinitions(list):
         if dictionaries is None:
             return ResourceDefinitions()
 
-        resources = [ResourceDefinition.from_dict(dictionary) for dictionary in dictionaries]
+        [ResourceDefinition.from_dict(dictionary) for dictionary in dictionaries]
 
     def to_dicts(self, *, exclude_none: bool = True) -> list[dict[str, Any]]:
         """Convert the ``ResourceDefinitions`` instance into a list of dictionaries.
