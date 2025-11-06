@@ -1,13 +1,13 @@
 name: tests
+
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
@@ -31,16 +31,16 @@ jobs:
           - py312
           - py313
         exclude:
-            - os: macos-latest
-              tox_env: py39
-            - os: macos-13
-              tox_env: py310
-            - os: macos-13
-              tox_env: py311
-            - os: macos-13
-              tox_env: py312
-            - os: macos-13
-              tox_env: py313
+          - os: macos-latest
+            tox_env: py39
+          - os: macos-13
+            tox_env: py310
+          - os: macos-13
+            tox_env: py311
+          - os: macos-13
+            tox_env: py312
+          - os: macos-13
+            tox_env: py313
         include:
           - tox_env: py39
             python: "3.9"
@@ -215,7 +215,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.13"
 
       - name: Install tox
         run: python -m pip install tox

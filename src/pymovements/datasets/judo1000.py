@@ -118,7 +118,7 @@ class JuDo1000(DatasetDefinition):
     long_name: str = 'Jumping Dots 1000 Hz dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',

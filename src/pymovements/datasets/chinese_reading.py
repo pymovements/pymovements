@@ -91,7 +91,7 @@ class ChineseReading(DatasetDefinition):
     name: str = 'ChineseReading'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',

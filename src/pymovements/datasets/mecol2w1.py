@@ -95,7 +95,7 @@ class MECOL2W1(DatasetDefinition):
     long_name: str = 'Multilingual Eye-tracking Corpus second language reader first wave'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',

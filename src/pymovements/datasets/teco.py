@@ -98,7 +98,7 @@ class TECO(DatasetDefinition):
     long_name: str = 'Tsukuba Eye-tracking Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_reading_measures',

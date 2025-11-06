@@ -414,6 +414,51 @@ def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed
 
 
 @pytest.mark.parametrize(
+    ('init_posargs', 'expected_resources'),
+    [
+        pytest.param(
+            [],
+            [],
+            id='empty',
+        ),
+
+        pytest.param(
+            [[ResourceDefinition(content='gaze')]],
+            [ResourceDefinition(content='gaze')],
+            id='posarg_one_resource',
+        ),
+
+        pytest.param(
+            [[ResourceDefinition(content='gaze'), ResourceDefinition(content='events')]],
+            [ResourceDefinition(content='gaze'), ResourceDefinition(content='events')],
+            id='posarg_two_resources',
+        ),
+
+        pytest.param(
+            [[{'content': 'gaze'}]],
+            [ResourceDefinition(content='gaze')],
+            id='posarg_one_dict',
+        ),
+
+        pytest.param(
+            [[{'content': 'gaze'}, {'content': 'events'}]],
+            [ResourceDefinition(content='gaze'), ResourceDefinition(content='events')],
+            id='posarg_two_dicts',
+        ),
+
+        pytest.param(
+            [[{'content': 'gaze'}, ResourceDefinition(content='events')]],
+            [ResourceDefinition(content='gaze'), ResourceDefinition(content='events')],
+            id='posarg_two_mixed',
+        ),
+    ],
+)
+def test_resources_init_expected(init_posargs, expected_resources):
+    resources = ResourceDefinitions(*init_posargs)
+    assert resources == expected_resources
+
+
+@pytest.mark.parametrize(
     ('resources', 'expected_dicts'),
     [
         pytest.param(

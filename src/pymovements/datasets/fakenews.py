@@ -75,7 +75,7 @@ class FakeNewsPerception(DatasetDefinition):
     long_name: str = 'Fake News Perception Eye Tracking Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',

@@ -117,7 +117,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
     long_name: str = 'pymovements Toy Dataset EyeLink'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                         {
                             'content': 'gaze',

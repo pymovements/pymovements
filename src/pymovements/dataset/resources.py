@@ -135,13 +135,28 @@ class ResourceDefinition:
 
 
 class ResourceDefinitions(list):
-    """List of :py:class:`~pymovements.ResourceDefinition` instances."""
+    """List of :py:class:`~pymovements.ResourceDefinition` instances.
 
-    def __init__(self, resources: Iterable[ResourceDefinition] | None = None) -> None:
+    Parameters
+    ----------
+    resources: Iterable[ResourceDefinition | dict[str, Any]] | None
+        An iterable of :py:class:`~.ResourceDefinition` instances or dictionaries containing
+        :py:class:`~.ResourceDefinition` parameters. In case an element is a dictionary it will be
+        converted using :py:meth:`~.ResourceDefinition.from_dict()`.
+    """
+
+    def __init__(
+            self, resources: Iterable[ResourceDefinition | dict[str, Any]] | None = None,
+    ) -> None:
         if resources is None:
-            super().__init__([])
-        else:
-            super().__init__(resources)
+            resources = []
+
+        _resources: Iterable[ResourceDefinition] = [
+            resource if isinstance(resource, ResourceDefinition)
+            else ResourceDefinition.from_dict(resource)
+            for resource in resources
+        ]
+        super().__init__(_resources)
 
     def filter(self, content: str | None = None) -> ResourceDefinitions:
         """Filter ``ResourceDefinitions`` for content type.

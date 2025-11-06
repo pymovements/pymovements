@@ -119,7 +119,7 @@ class PoTeC(DatasetDefinition):
     long_name: str = 'Potsdam Textbook Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                     {
                         'content': 'gaze',

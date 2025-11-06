@@ -110,7 +110,7 @@ class ToyDataset(DatasetDefinition):
     long_name: str = 'pymovements Toy Dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                     {
                         'content': 'gaze',

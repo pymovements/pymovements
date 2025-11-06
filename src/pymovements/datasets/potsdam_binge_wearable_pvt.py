@@ -124,7 +124,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
     long_name: str = 'Potsdam Binge Wearable PVT dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                     {
                         'content': 'gaze',

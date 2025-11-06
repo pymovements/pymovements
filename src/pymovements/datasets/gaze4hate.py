@@ -96,7 +96,7 @@ class Gaze4Hate(DatasetDefinition):
     long_name: str = 'Gaze4Hate dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',

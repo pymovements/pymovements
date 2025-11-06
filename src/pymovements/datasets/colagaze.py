@@ -90,7 +90,7 @@ class CoLAGaze(DatasetDefinition):
     long_name: str = 'Corpus of Eye Movements for Linguistic Acceptability'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                     {
                         'content': 'gaze',

@@ -96,7 +96,7 @@ class DAEMONS(DatasetDefinition):
     long_name: str = 'Potsdam data set of eye movement on natural scenes'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',

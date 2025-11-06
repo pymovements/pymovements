@@ -111,7 +111,7 @@ class ETDD70(DatasetDefinition):
     long_name: str = 'Eye-Tracking Dyslexia Dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
