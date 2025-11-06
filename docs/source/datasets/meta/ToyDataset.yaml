@@ -10,20 +10,21 @@ resources:
     text_id: '!int'
     page_id: '!int'
   load_kwargs:
-    columns:
-    - timestamp
-    - x
-    - y
-    - stimuli_x
-    - stimuli_y
-    schema_overrides:
-      timestamp: '!polars.datatypes.classes.Float64'
-      x: '!polars.datatypes.classes.Float64'
-      y: '!polars.datatypes.classes.Float64'
-      stimuli_x: '!polars.datatypes.classes.Float64'
-      stimuli_y: '!polars.datatypes.classes.Float64'
-    separator: "\t"
-    null_values: '-32768.00'
+    read_csv_kwargs:
+      columns:
+      - timestamp
+      - x
+      - y
+      - stimuli_x
+      - stimuli_y
+      schema_overrides:
+        timestamp: '!polars.datatypes.classes.Float64'
+        x: '!polars.datatypes.classes.Float64'
+        y: '!polars.datatypes.classes.Float64'
+        stimuli_x: '!polars.datatypes.classes.Float64'
+        stimuli_y: '!polars.datatypes.classes.Float64'
+      separator: "\t"
+      null_values: '-32768.00'
 experiment:
   eyetracker:
     sampling_rate: 1000

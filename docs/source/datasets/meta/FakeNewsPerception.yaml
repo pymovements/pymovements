@@ -11,8 +11,9 @@ resources:
     session_id: '!int'
     truth_value: '!str'
   load_kwargs:
-    null_values: NA
-    quote_char: '"'
+    custom_read_kwargs:
+      null_values: NA
+      quote_char: '"'
 experiment:
   eyetracker:
     sampling_rate: 600
