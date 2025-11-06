@@ -231,7 +231,7 @@ class ResourceDefinitions(list):
         if dictionaries is None:
             return ResourceDefinitions()
 
-        [ResourceDefinition.from_dict(dictionary) for dictionary in dictionaries]
+        resources = [ResourceDefinition.from_dict(dictionary) for dictionary in dictionaries]
 
         return ResourceDefinitions(resources)
 
