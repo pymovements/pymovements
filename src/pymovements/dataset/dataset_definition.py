@@ -401,6 +401,11 @@ class DatasetDefinition:
                 # circumvent frozen dataclass restriction.
                 # this is not optimal but this function will be removed soon anyway.
                 object.__setattr__(content_resource, 'filename_pattern', content_filename_pattern)
+                # we updated the filename_pattern, check if we can now infer the load_function.
+                if content_resource.load_function is None:
+                    object.__setattr__(
+                        content_resource, 'load_function', content_resource._infer_load_function(),
+                    )
 
     @property
     @deprecated(
