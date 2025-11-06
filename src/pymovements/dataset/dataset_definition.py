@@ -503,7 +503,7 @@ class DatasetDefinition:
     #    reason='Please use ResourceDefinition.load_kwargs instead. '
     #           'This property will be removed in v0.29.0.',
     #    version='v0.24.1',
-    # )
+    #)
     def custom_read_kwargs(self, data: dict[str, dict[str, Any]]) -> None:
         for content_type, content_kwargs in data.items():
             for resource in self.resources.filter(content=content_type):
