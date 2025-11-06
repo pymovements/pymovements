@@ -1,3 +1,5 @@
+.. _events_sec:
+
 Events
 ======
 

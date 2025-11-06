@@ -113,7 +113,10 @@ def test_dataset_definition_is_equal(init_kwargs):
                 'filename_format': {'gaze': 'test.csv'},
             },
             ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            marks=[
+                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
+            ],
             id='single_gaze_resource_filename_format_legacy',
         ),
 
@@ -140,7 +143,10 @@ def test_dataset_definition_is_equal(init_kwargs):
                 'filename_format': {'gaze': 'test.csv'},
             },
             ResourceDefinitions([ResourceDefinition(content='gaze', filename_pattern='test.csv')]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            marks=[
+                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
+            ],
             id='filename_format_without_resources_legacy',
         ),
 
@@ -161,7 +167,10 @@ def test_dataset_definition_is_equal(init_kwargs):
                     filename_pattern_schema_overrides={'subject_id': int},
                 ),
             ]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            marks=[
+                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
+            ],
             id='single_gaze_resource_filename_format_schema_overrides_legacy',
         ),
 
@@ -223,7 +232,10 @@ def test_dataset_definition_is_equal(init_kwargs):
                     filename_pattern='test2.csv',
                 ),
             ]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            marks=[
+                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+                pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
+            ],
             id='two_resources_filename_format_legacy',
         ),
     ],
@@ -834,9 +846,32 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             '0.29.0',
             id='mirrors',
         ),
+        pytest.param(
+            {
+                'resources': {'gaze': [{'filename': 'test.csv'}]},
+            },
+            '0.28.0',
+            id='resources_dict_legacy',
+        ),
+        pytest.param(
+            {
+                'resources': [{'content': 'gaze'}],
+                'filename_format': {'gaze': '{subject}.csv'},
+            },
+            '0.28.0',
+            id='filename_format',
+        ),
+        pytest.param(
+            {
+                'resources': [{'content': 'gaze', 'filename_pattern': '{subject}.csv'}],
+                'filename_format_schema_overrides': {'gaze': {'subject': str}},
+            },
+            '0.28.0',
+            id='filename_format_schema_overrides',
+        ),
     ],
 )
-def test_dataset_definition_attribute_is_deprecated_or_removed(
+def test_dataset_definition_init_parameter_is_deprecated_or_removed(
         attribute_kwarg, scheduled_version, assert_deprecation_is_removed,
 ):
     with pytest.raises(DeprecationWarning) as info:
@@ -891,6 +926,14 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
     ('definition', 'new_value', 'expected'),
     [
         pytest.param(
+            DatasetDefinition(resources=None),
+            {'gaze': 'abc'},
+            ResourceDefinitions(
+                [ResourceDefinition(content='gaze', filename_pattern='abc')],
+            ),
+            id='no_resource',
+        ),
+        pytest.param(
             DatasetDefinition(
                 resources=[{'content': 'gaze', 'filename_pattern': 'abc'}],
             ),
@@ -941,6 +984,14 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
     ('definition', 'new_value', 'expected'),
     [
         pytest.param(
+            DatasetDefinition(resources=None),
+            {'gaze': {'a': str}},
+            ResourceDefinitions(
+                [ResourceDefinition(content='gaze', filename_pattern_schema_overrides={'a': str})],
+            ),
+            id='no_resource',
+        ),
+        pytest.param(
             DatasetDefinition(
                 resources=[{'content': 'gaze', 'filename_pattern_schema_overrides': {'a': int}}],
             ),
@@ -957,11 +1008,11 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
                     {'content': 'precomputed_events'},
                 ],
             ),
-            {'gaze': {'b': str}},
+            {'gaze': {'c': str}},
             ResourceDefinitions(
                 [
                     ResourceDefinition(
-                        content='gaze', filename_pattern_schema_overrides={'b': str},
+                        content='gaze', filename_pattern_schema_overrides={'c': str},
                     ),
                     ResourceDefinition(content='precomputed_events'),
                 ],
