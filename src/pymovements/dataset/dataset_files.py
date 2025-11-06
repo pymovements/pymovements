@@ -122,6 +122,7 @@ def load_event_files(
         paths: DatasetPaths,
         events_dirname: str | None = None,
         extension: str = 'feather',
+        verbose: bool = True,
 ) -> list[Events]:
     """Load all event files according to fileinfo dataframe.
 
@@ -141,6 +142,8 @@ def load_event_files(
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `tsv`, `txt`.
         (default: 'feather')
+    verbose : bool
+        If ``True``, show progress bar. (default: True)
 
     Returns
     -------
@@ -162,6 +165,7 @@ def load_event_files(
             total=len(fileinfo),
             desc='Loading event files',
             unit='file',
+            disable=not verbose,
     ):
         filepath = Path(fileinfo_row['filepath'])
         filepath = paths.raw / filepath

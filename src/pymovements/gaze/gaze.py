@@ -1233,6 +1233,7 @@ class Gaze:
             *,
             eye: str = 'auto',
             gaze_type: str = 'pixel',
+            verbose: bool = True,
     ) -> None:
         """Map gaze data to aois.
 
@@ -1249,6 +1250,8 @@ class Gaze:
         gaze_type: str
             String specificer for whether to use position or pixel coordinates for
             mapping. Default: pixel.
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
         """
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         self.unnest()
@@ -1302,7 +1305,7 @@ class Gaze:
                 desc='Mapping gaze to AOIs',
                 unit='sample',
                 ncols=80,
-                disable=len(self.samples) < 5000,
+                disable=not verbose,
             )
         ]
         aoi_df = polars.concat(aois)

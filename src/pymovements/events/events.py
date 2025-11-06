@@ -527,13 +527,15 @@ class Events:
                 ],
             ).drop(input_col)
 
-    def map_to_aois(self, aoi_dataframe: TextStimulus) -> None:
+    def map_to_aois(self, aoi_dataframe: TextStimulus, verbose: bool = True) -> None:
         """Map events to aois.
 
         Parameters
         ----------
         aoi_dataframe: TextStimulus
             Text dataframe to map fixation to.
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
         """
         self.unnest()
         aois = [
@@ -544,7 +546,7 @@ class Events:
                 desc='Mapping events to AOIs',
                 unit='event',
                 ncols=80,
-                disable=len(self.frame) < 5000,
+                disable=not verbose,
             )
         ]
         aoi_df = pl.concat(aois)

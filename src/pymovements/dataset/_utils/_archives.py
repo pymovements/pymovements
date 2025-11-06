@@ -183,7 +183,7 @@ def _extract_tar(
                 desc='Extracting archive',
                 unit='file',
                 ncols=80,
-                disable=len(members) < 10,
+                disable=not verbose,
         ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
@@ -231,7 +231,7 @@ def _extract_zip(
                 total=len(archive.filelist),
                 desc='Extracting archive',
                 unit='file',
-                disable=len(archive.filelist) < 10,
+                disable=not verbose,
         ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
