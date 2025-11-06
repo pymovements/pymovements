@@ -37,6 +37,7 @@ from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
 from pymovements.dataset.resources import _HasResourcesIndexer
+from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
@@ -65,9 +66,11 @@ class DatasetDefinition:
         (default: {})
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
+
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
+
         (default: ResourceDefinitions())
     experiment: Experiment | None
         The experiment definition. (default: None)
@@ -79,7 +82,7 @@ class DatasetDefinition:
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is`.asc` the keyword arguments
+        to :py:func:`polars.read_csv`. If the file extension is `.asc` the keyword arguments
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
@@ -87,20 +90,18 @@ class DatasetDefinition:
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: field(default_factory=dict))
     trial_columns: list[str] | None
-            The name of the trial columns in the input data frame. If the list is empty or None,
-            the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
-            methods will be applied to each trial separately. (default: None)
+        The name of the trial columns in the input data frame. If the list is empty or None,
+        the input data frame is assumed to contain only one trial. If the list is not empty,
+        the input data frame is assumed to contain multiple trials and the transformation
+        methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
-
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
-
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
@@ -141,9 +142,11 @@ class DatasetDefinition:
         Please use ``ResourceDefinition.mirrors`` instead. This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
+
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
+
         (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
@@ -154,14 +157,18 @@ class DatasetDefinition:
     filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe. (default: None)
+        .. deprecated:: v0.24.1
+        This field will be removed in v0.28.0.
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype. (default: None)
+        .. deprecated:: v0.24.1
+        This field will be removed in v0.28.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is`.asc` the keyword arguments
+        to :py:func:`polars.read_csv`. If the file extension is `.asc` the keyword arguments
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: None)
@@ -169,20 +176,18 @@ class DatasetDefinition:
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
     trial_columns: list[str] | None
-            The name of the trial columns in the input data frame. If the list is empty or None,
-            the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
-            methods will be applied to each trial separately. (default: None)
+        The name of the trial columns in the input data frame. If the list is empty or None,
+        the input data frame is assumed to contain only one trial. If the list is not empty,
+        the input data frame is assumed to contain multiple trials and the transformation
+        methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
-
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
-
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
@@ -220,10 +225,11 @@ class DatasetDefinition:
     ``gaze_custom_read_kwargs={'columns': ['col1', 'col2']}``
 
     3. Specifying column datatypes
-    ``polars.read_csv`` infers data types from a fixed number of rows, which might not be accurate
-    for the entire dataset. To ensure correct data types, you can pass a dictionary to the
+    :py:func:`polars.read_csv` infers data types from a fixed number of rows,
+    which might not be accurate for the entire dataset.
+    To ensure correct data types, you can pass a dictionary to the
     ``schema_overrides`` keyword argument in ``gaze_custom_read_kwargs``.
-    Use data types from the `polars` library.
+    Use data types from the :py:mod:`polars` library.
     For instance:
     ``gaze_custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
@@ -315,12 +321,16 @@ class DatasetDefinition:
         else:
             self.column_map = column_map
 
-        self.resources = self._initialize_resources(
-            resources=resources,
-            filename_format=filename_format,
-            filename_format_schema_overrides=filename_format_schema_overrides,
-        )
+        self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
+
+        if filename_format:
+            # the setter will raise a deprecation warning
+            self.filename_format = filename_format
+
+        if filename_format_schema_overrides:
+            # the setter will raise a deprecation warning
+            self.filename_format_schema_overrides = filename_format_schema_overrides
 
         if has_files is not None:
             warn(
@@ -375,9 +385,20 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format(self, data: dict[str, str]) -> None:
-        for resource in self.resources:
-            if resource.content in data:
-                resource.filename_pattern = data[resource.content]
+        for content_type, content_filename_pattern in data.items():
+            content_resources = self.resources.filter(content_type)
+
+            if not content_resources:
+                # legacy DatasetDefinitions may have defined filename_format without resources.
+                resource = ResourceDefinition(
+                    content=content_type,
+                    filename_pattern=content_filename_pattern,
+                )
+                self.resources.append(resource)
+                continue
+
+            for content_resource in content_resources:
+                content_resource.filename_pattern = content_filename_pattern
 
     @property
     @deprecated(
@@ -415,9 +436,20 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format_schema_overrides(self, data: dict[str, dict[str, type]]) -> None:
-        for resource in self.resources:
-            if resource.content in data:
-                resource.filename_pattern_schema_overrides = data[resource.content]
+        for content_type, content_schema_overrides in data.items():
+            content_resources = self.resources.filter(content_type)
+
+            if not content_resources:
+                # legacy DatasetDefinitions may have defined fields without resources.
+                resource = ResourceDefinition(
+                    content=content_type,
+                    filename_pattern_schema_overrides=content_schema_overrides,
+                )
+                self.resources.append(resource)
+                continue
+
+            for content_resource in content_resources:
+                content_resource.filename_pattern_schema_overrides = content_schema_overrides
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
@@ -568,40 +600,20 @@ class DatasetDefinition:
     def _initialize_resources(
             self,
             resources: ResourceDefinitions | ResourcesLike | None,
-            filename_format: dict[str, str] | None,
-            filename_format_schema_overrides: dict[str, dict[str, type]] | None,
     ) -> ResourceDefinitions:
         """Initialize ``ResourceDefinitions`` instance if necessary."""
         if isinstance(resources, ResourceDefinitions):
             return resources
 
         if resources is None:
-            # some legacy definitions may have defined filename format but no resources.
-            # create legacy formatted resource dict to contain filename pattern.
-            if filename_format:
-                resources = {
-                    content_type: [{'filename_pattern': filename_format[content_type]}]
-                    for content_type in filename_format
-                }
-            else:
-                return ResourceDefinitions()
-
-        # this calls deprecated methods and will be removed in the future.
-        if isinstance(resources, dict):
-            if filename_format:
-                for content_type in filename_format:
-                    for resource_dict in resources[content_type]:
-                        resource_dict['filename_pattern'] = filename_format[content_type]
-            if filename_format_schema_overrides:
-                for content_type in filename_format_schema_overrides:
-                    for resource_dict in resources[content_type]:
-                        _schema_overrides = filename_format_schema_overrides[content_type]
-                        resource_dict['filename_pattern_schema_overrides'] = _schema_overrides
-            return ResourceDefinitions.from_dict(resources)
+            return ResourceDefinitions()
 
         if isinstance(resources, Sequence):
-            assert isinstance(resources, Sequence)
-            return ResourceDefinitions.from_dicts(resources)
+            return ResourceDefinitions(resources)
+
+        if isinstance(resources, dict):
+            # this calls a deprecated method and will be removed in the future.
+            return ResourceDefinitions.from_dict(resources)
 
         raise TypeError(
             f'resources is of type {type(resources).__name__} but must be of type'
