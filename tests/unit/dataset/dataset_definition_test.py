@@ -841,6 +841,11 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             id='has_files',
         ),
         pytest.param(
+            {'mirrors': {'gaze': ['https://mirror.com']}},
+            '0.29.0',
+            id='mirrors',
+        ),
+        pytest.param(
             {
                 'resources': {'gaze': [{'filename': 'test.csv'}]},
             },
@@ -862,11 +867,6 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             },
             '0.28.0',
             id='filename_format_schema_overrides',
-        ),
-        pytest.param(
-            {'mirrors': {'gaze': ['https://mirror.com']}},
-            '0.29.0',
-            id='mirrors',
         ),
         pytest.param(
             {'custom_read_kwargs': {'gaze': {'asd': 'def'}}},
