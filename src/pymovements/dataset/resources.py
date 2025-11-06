@@ -25,6 +25,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import InitVar
 from typing import Any
 from warnings import warn
 
@@ -73,7 +74,7 @@ class ResourceDefinition:
     mirrors: list[str] | None = None
     md5: str | None = None
 
-    filename_pattern: str | None = None
+    filename_pattern: InitVar[str | None] = None
     filename_pattern_schema_overrides: dict[str, type] | None = None
 
     load_function: str | None = None
@@ -133,20 +134,34 @@ class ResourceDefinition:
 
         return data
 
-    def __post_init__(self) -> None:
-        """Infer load_function from filename_pattern if not specified."""
+    def __post_init__(self, filename_pattern: str | None) -> None:
+        """Set filename_pattern to infer load_function if not specified."""
+        self.filename_pattern = filename_pattern
+
+    @property
+    def filename_pattern(self) -> str | None:
+        return self._filename_pattern
+
+    @filename_pattern.setter
+    def filename_pattern(self, data: str | None) -> None:
+        self.__setattr__(super().setattr('_filename_pattern', data)
+
+        # Updating the filename_pattern might
         if self.load_function is None:
             self.load_function = self._infer_load_function()
 
     def _infer_load_function(self) -> str | None:
         """Infer load_function from filename_pattern."""
         if self.filename_pattern is None:
-            return None
+            return None  # no inference possible without filename pattern
 
         if self.content != 'gaze':
-            return None  # currently we only provide public load functions for Gaze
+            return None  # currently we only provide public load functions for gaze samples
 
-        extension = self.filename_pattern.split('.')[-1]
+        try:
+            extension = self.filename_pattern.split('.')[-1]
+        except:
+            breakpoint()
 
         extension_to_load_function_map = {
             'asc': 'from_asc',

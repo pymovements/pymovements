@@ -927,9 +927,9 @@ def test_dataset_definition_get_filename_format_expected(definition, expected):
     [
         pytest.param(
             DatasetDefinition(resources=None),
-            {'gaze': 'abc'},
+            {'gaze': 'abc.csv'},
             ResourceDefinitions(
-                [ResourceDefinition(content='gaze', filename_pattern='abc')],
+                [ResourceDefinition(content='gaze', filename_pattern='abc.csv')],
             ),
             id='no_resource',
         ),
