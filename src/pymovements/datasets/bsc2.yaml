@@ -17,4 +17,3 @@ resources:
 trial_columns:
   - "book_name"
   - "screen_id"
-
