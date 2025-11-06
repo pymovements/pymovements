@@ -32,7 +32,3 @@ pixel_columns:
   - gaze_y_left
   - gaze_x_right
   - gaze_y_right
-
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}

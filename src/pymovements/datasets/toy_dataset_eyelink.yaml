@@ -11,6 +11,37 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
       session_id: !int
+    load_kwargs:
+      patterns:
+        - pattern: 'SYNCTIME_READING_SCREEN'
+          column: "task"
+          value: "reading"
+        - pattern: 'SYNCTIME_JUDO'
+          column: "task"
+          value: "judo"
+        - pattern:
+          - "READING[.]STOP"
+          - "JUDO[.]STOP"
+          column: "task"
+          value: null
+        - 'TRIALID (?P<trial_id>\d+)'
+        - pattern: 'TRIAL_RESULT'
+          column: "trial_id"
+          value: null
+        - 'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
+        - pattern: 'READING[.]STOP'
+          column: "screen_id"
+          value: null
+        - 'SYNCTIME.P(?P<point_id>\d+)'
+        - pattern: 'P\d[.]STOP'
+          column: "point_id"
+          value: null
+      schema:
+        trial_id: !polars.Int64
+        screen_id: !polars.Int64
+        point_id: !polars.Int64
+        task: !polars.Utf8
+      encoding: 'ascii'
 
 experiment:
   screen_width_px: 1280
@@ -39,36 +70,3 @@ pixel_columns:
   - "y_pix"
 
 column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    patterns:
-      - pattern: 'SYNCTIME_READING_SCREEN'
-        column: "task"
-        value: "reading"
-      - pattern: 'SYNCTIME_JUDO'
-        column: "task"
-        value: "judo"
-      - pattern:
-        - "READING[.]STOP"
-        - "JUDO[.]STOP"
-        column: "task"
-        value: null
-      - 'TRIALID (?P<trial_id>\d+)'
-      - pattern: 'TRIAL_RESULT'
-        column: "trial_id"
-        value: null
-      - 'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
-      - pattern: 'READING[.]STOP'
-        column: "screen_id"
-        value: null
-      - 'SYNCTIME.P(?P<point_id>\d+)'
-      - pattern: 'P\d[.]STOP'
-        column: "point_id"
-        value: null
-    schema:
-      trial_id: !polars.Int64
-      screen_id: !polars.Int64
-      point_id: !polars.Int64
-      task: !polars.Utf8
-    encoding: 'ascii'

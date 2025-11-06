@@ -157,7 +157,7 @@ class EMTeC(DatasetDefinition):
                     'md5': '5e05a364a1d8a044d8b36506aa91437e',
                     'filename_pattern': r'fixations.csv',
                     'load_kwargs': {
-                        'custom_read_csv_kwargs': {'separator': '\t'},
+                        'custom_read_kwargs': {'separator': '\t'},
                     },
                 },
                 {
@@ -167,7 +167,7 @@ class EMTeC(DatasetDefinition):
                     'md5': '56880f50af20682558065ac2d26be827',
                     'filename_pattern': r'reading_measures.csv',
                     'load_kwargs': {
-                        'custom_read_csv_kwargs': {'separator': '\t'},
+                        'custom_read_kwargs': {'separator': '\t'},
                     },
                 },
             ],

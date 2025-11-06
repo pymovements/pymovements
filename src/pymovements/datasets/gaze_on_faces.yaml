@@ -11,6 +11,16 @@ resources:
     filename_pattern_schema_overrides:
       sub_id: !int
       trial_id: !int
+    load_kwargs:
+      read_csv_kwargs:
+        separator: ","
+        has_header: false
+        new_columns:
+          - "x"
+          - "y"
+        schema_overrides:
+          - !polars.Float32
+          - !polars.Float32
 
 experiment:
   screen_width_px: 1280
@@ -31,14 +41,3 @@ pixel_columns:
   - "y"
 
 column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    separator: ","
-    has_header: false
-    new_columns:
-      - "x"
-      - "y"
-    schema_overrides:
-      - !polars.Float32
-      - !polars.Float32

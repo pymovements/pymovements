@@ -12,6 +12,25 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+    load_kwargs:
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
   - content: gaze
     url: "https://osf.io/download/yqukn/"
     filename: "b.zip"
@@ -21,6 +40,25 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+    load_kwargs:
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
   - content: gaze
     url: "https://osf.io/download/yf2xa/"
     filename: "e.zip"
@@ -30,6 +68,25 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+    load_kwargs:
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
 
 experiment:
   screen:
@@ -57,23 +114,3 @@ pixel_columns:
   - "y_pix_eyelink"
 
 column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    schema_overrides:
-      trial_id: !polars.Float32
-      block_id: !polars.Float32
-      x_pix_eyelink: !polars.Float32
-      y_pix_eyelink: !polars.Float32
-      eyelink_timestamp: !polars.Int64
-      x_pix_pupilcore_interpolated: !polars.Float32
-      y_pix_pupilcore_interpolated: !polars.Float32
-      pupil_size_eyelink: !polars.Float32
-      target_distance: !polars.Float32
-      pupil_size_pupilcore_interpolated: !polars.Float32
-      pupil_confidence_interpolated: !polars.Float32
-      time_to_prev_bac: !polars.Float32
-      time_to_next_bac: !polars.Float32
-      prev_bac: !polars.Float32
-      next_bac: !polars.Float32
-    separator: ","

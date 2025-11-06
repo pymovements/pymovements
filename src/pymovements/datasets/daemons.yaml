@@ -10,8 +10,7 @@ resources:
     filename_pattern: "SAC_{data_split:s}.csv"
     filename_pattern_schema_overrides:
       data_split: !str
-
-custom_read_kwargs:
-  precomputed_events:
-    null_values:
-      - "NA"
+    load_kwargs:
+      custom_read_kwargs:
+        null_values:
+          - "NA"
