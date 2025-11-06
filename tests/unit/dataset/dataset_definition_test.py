@@ -1230,7 +1230,8 @@ def test_dataset_definition_custom_read_kwargs_expected(init_kwargs, expected_re
             {'precomputed_events': {'key': 'val'}},
             [
                 ResourceDefinition(
-                    content='precomputed_events', load_kwargs={'key': 'val'},
+                    content='precomputed_events',
+                    load_kwargs={'custom_read_kwargs': {'key': 'val'}},
                 ),
             ],
             id='precomputed_events_resource',
@@ -1241,7 +1242,8 @@ def test_dataset_definition_custom_read_kwargs_expected(init_kwargs, expected_re
             {'precomputed_reading_measures': {'key': 'val'}},
             [
                 ResourceDefinition(
-                    content='precomputed_reading_measures', load_kwargs={'key': 'val'},
+                    content='precomputed_reading_measures',
+                    load_kwargs={'custom_read_kwargs': {'key': 'val'}},
                 ),
             ],
             id='precomputed_reading_measures_resource',

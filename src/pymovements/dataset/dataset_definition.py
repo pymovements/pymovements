@@ -487,6 +487,9 @@ class DatasetDefinition:
                 }
 
                 # flatten dictionary in case read_csv_kwargs/read_ipc_kwargs stated explicitly.
+                if 'custom_read_kwargs' in read_kwargs:
+                    read_kwargs = {**read_kwargs, **read_kwargs['custom_read_kwargs']}
+                    del read_kwargs['custom_read_kwargs']
                 if 'read_csv_kwargs' in read_kwargs:
                     read_kwargs = {**read_kwargs, **read_kwargs['read_csv_kwargs']}
                     del read_kwargs['read_csv_kwargs']
@@ -509,10 +512,14 @@ class DatasetDefinition:
             for resource in self.resources.filter(content=content_type):
                 if not resource.load_kwargs:
                     resource.load_kwargs = {}
-                # this will add the custom_read_kwargs to the top-level and pass them as **kwargs.
-                # for gaze.from_csv and gaze.from_ipc this will raise a deprecation warning
-                # during `Dataset.load()`. That functionality is scheduled to be removed in v0.29.0.
-                resource.load_kwargs.update(content_kwargs)
+                if content_type == 'gaze':
+                    # this will add the custom_read_kwargs to the top-level and pass them as
+                    # **kwargs. for gaze.from_csv and gaze.from_ipc this will raise a deprecation
+                    # warning during `Dataset.load()`. That functionality is scheduled to be removed
+                    # in v0.29.0 so that should be okay for now.
+                    resource.load_kwargs.update(content_kwargs)
+                else:
+                    resource.load_kwargs.update({'custom_read_kwargs': content_kwargs})
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
