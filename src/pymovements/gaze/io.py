@@ -254,7 +254,8 @@ def from_csv(
             resource_definitions = definition.resources.filter('gaze')
             if resource_definitions:
                 load_kwargs = resource_definitions[0].load_kwargs
-                read_csv_kwargs = load_kwargs.get('read_csv_kwargs', {})
+                if load_kwargs:
+                    read_csv_kwargs = load_kwargs.get('read_csv_kwargs', {})
 
     # Read data.
     samples = pl.read_csv(file, **read_csv_kwargs)
