@@ -147,6 +147,7 @@ def mock_toy(
             schema={'subject_id': pl.Utf8},
         )
 
+    # setup expected loading function
     if raw_fileformat == 'csv':
         load_function = 'from_csv'
     elif raw_fileformat == 'asc':
