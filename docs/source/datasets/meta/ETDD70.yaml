@@ -5,14 +5,10 @@ resources:
   filename: edd_raw.zip
   url: https://zenodo.org/api/records/13332134/files-archive
   filename_pattern: Subject_{subject_id:d}_{task:s}_raw.csv
-  load_kwargs:
-    custom_read_kwargs: {}
 - content: precomputed_events
   filename: edd_fix.zip
   url: https://zenodo.org/api/records/13332134/files-archive
   filename_pattern: Subject_{subject_id:d}_{task:s}_fixations.csv
-  load_kwargs:
-    custom_read_kwargs: {}
 experiment:
   eyetracker:
     sampling_rate: 250

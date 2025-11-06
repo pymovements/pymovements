@@ -10,37 +10,36 @@ resources:
     subject_id: '!int'
     session_id: '!int'
   load_kwargs:
-    custom_read_kwargs:
-      patterns:
-      - pattern: SYNCTIME_READING_SCREEN
-        column: task
-        value: reading
-      - pattern: SYNCTIME_JUDO
-        column: task
-        value: judo
-      - pattern:
-        - READING[.]STOP
-        - JUDO[.]STOP
-        column: task
-        value: null
-      - TRIALID (?P<trial_id>\d+)
-      - pattern: TRIAL_RESULT
-        column: trial_id
-        value: null
-      - SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)
-      - pattern: READING[.]STOP
-        column: screen_id
-        value: null
-      - SYNCTIME.P(?P<point_id>\d+)
-      - pattern: P\d[.]STOP
-        column: point_id
-        value: null
-      schema:
-        trial_id: '!polars.datatypes.classes.Int64'
-        screen_id: '!polars.datatypes.classes.Int64'
-        point_id: '!polars.datatypes.classes.Int64'
-        task: '!polars.datatypes.classes.String'
-      encoding: ascii
+    patterns:
+    - pattern: SYNCTIME_READING_SCREEN
+      column: task
+      value: reading
+    - pattern: SYNCTIME_JUDO
+      column: task
+      value: judo
+    - pattern:
+      - READING[.]STOP
+      - JUDO[.]STOP
+      column: task
+      value: null
+    - TRIALID (?P<trial_id>\d+)
+    - pattern: TRIAL_RESULT
+      column: trial_id
+      value: null
+    - SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)
+    - pattern: READING[.]STOP
+      column: screen_id
+      value: null
+    - SYNCTIME.P(?P<point_id>\d+)
+    - pattern: P\d[.]STOP
+      column: point_id
+      value: null
+    schema:
+      trial_id: '!polars.datatypes.classes.Int64'
+      screen_id: '!polars.datatypes.classes.Int64'
+      point_id: '!polars.datatypes.classes.Int64'
+      task: '!polars.datatypes.classes.String'
+    encoding: ascii
 experiment:
   eyetracker:
     sampling_rate: 1000.0

@@ -6,15 +6,11 @@ resources:
   url: https://osf.io/download/6ju3x/
   md5: 06b2cdff1827086fa125a703ee9d4324
   filename_pattern: resampled_gaze.csv
-  load_kwargs:
-    custom_read_kwargs: {}
 - content: precomputed_events
   filename: resumption_fixation.csv
   url: https://osf.io/download/85ckh/
   md5: 44edb7c58318ad76af1fa6f1bc1f1ceb
   filename_pattern: resumption_fixation.csv
-  load_kwargs:
-    custom_read_kwargs: {}
 experiment:
   eyetracker:
     sampling_rate: 1200

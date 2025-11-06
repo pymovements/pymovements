@@ -10,15 +10,14 @@ resources:
     subject_id: '!int'
     task: '!str'
   load_kwargs:
-    custom_read_kwargs:
-      separator: ','
-      has_header: false
-      new_columns:
-      - x
-      - y
-      schema_overrides:
-      - '!polars.datatypes.classes.Float32'
-      - '!polars.datatypes.classes.Float32'
+    separator: ','
+    has_header: false
+    new_columns:
+    - x
+    - y
+    schema_overrides:
+    - '!polars.datatypes.classes.Float32'
+    - '!polars.datatypes.classes.Float32'
 experiment:
   eyetracker:
     sampling_rate: 30

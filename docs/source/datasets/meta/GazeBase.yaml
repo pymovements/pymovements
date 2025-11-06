@@ -11,17 +11,16 @@ resources:
     subject_id: '!int'
     session_id: '!int'
   load_kwargs:
-    custom_read_kwargs:
-      null_values: NaN
-      schema_overrides:
-        n: '!polars.datatypes.classes.Int64'
-        x: '!polars.datatypes.classes.Float32'
-        y: '!polars.datatypes.classes.Float32'
-        val: '!polars.datatypes.classes.Int64'
-        dP: '!polars.datatypes.classes.Float32'
-        lab: '!polars.datatypes.classes.Int64'
-        xT: '!polars.datatypes.classes.Float32'
-        yT: '!polars.datatypes.classes.Float32'
+    null_values: NaN
+    schema_overrides:
+      n: '!polars.datatypes.classes.Int64'
+      x: '!polars.datatypes.classes.Float32'
+      y: '!polars.datatypes.classes.Float32'
+      val: '!polars.datatypes.classes.Int64'
+      dP: '!polars.datatypes.classes.Float32'
+      lab: '!polars.datatypes.classes.Int64'
+      xT: '!polars.datatypes.classes.Float32'
+      yT: '!polars.datatypes.classes.Float32'
 experiment:
   eyetracker:
     sampling_rate: 1000

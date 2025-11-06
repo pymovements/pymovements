@@ -10,16 +10,15 @@ resources:
     subject_id: '!int'
     session_id: '!int'
   load_kwargs:
-    custom_read_kwargs:
-      schema_overrides:
-        trialId: '!polars.datatypes.classes.Int64'
-        pointId: '!polars.datatypes.classes.Int64'
-        time: '!polars.datatypes.classes.Int64'
-        x_left: '!polars.datatypes.classes.Float32'
-        y_left: '!polars.datatypes.classes.Float32'
-        x_right: '!polars.datatypes.classes.Float32'
-        y_right: '!polars.datatypes.classes.Float32'
-      separator: "\t"
+    schema_overrides:
+      trialId: '!polars.datatypes.classes.Int64'
+      pointId: '!polars.datatypes.classes.Int64'
+      time: '!polars.datatypes.classes.Int64'
+      x_left: '!polars.datatypes.classes.Float32'
+      y_left: '!polars.datatypes.classes.Float32'
+      x_right: '!polars.datatypes.classes.Float32'
+      y_right: '!polars.datatypes.classes.Float32'
+    separator: "\t"
 experiment:
   eyetracker:
     sampling_rate: 1000

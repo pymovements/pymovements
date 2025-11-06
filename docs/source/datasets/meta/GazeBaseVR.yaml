@@ -11,24 +11,23 @@ resources:
     subject_id: '!int'
     session_id: '!int'
   load_kwargs:
-    custom_read_kwargs:
-      schema_overrides:
-        n: '!polars.datatypes.classes.Float32'
-        x: '!polars.datatypes.classes.Float32'
-        y: '!polars.datatypes.classes.Float32'
-        lx: '!polars.datatypes.classes.Float32'
-        ly: '!polars.datatypes.classes.Float32'
-        rx: '!polars.datatypes.classes.Float32'
-        ry: '!polars.datatypes.classes.Float32'
-        xT: '!polars.datatypes.classes.Float32'
-        yT: '!polars.datatypes.classes.Float32'
-        zT: '!polars.datatypes.classes.Float32'
-        clx: '!polars.datatypes.classes.Float32'
-        cly: '!polars.datatypes.classes.Float32'
-        clz: '!polars.datatypes.classes.Float32'
-        crx: '!polars.datatypes.classes.Float32'
-        cry: '!polars.datatypes.classes.Float32'
-        crz: '!polars.datatypes.classes.Float32'
+    schema_overrides:
+      n: '!polars.datatypes.classes.Float32'
+      x: '!polars.datatypes.classes.Float32'
+      y: '!polars.datatypes.classes.Float32'
+      lx: '!polars.datatypes.classes.Float32'
+      ly: '!polars.datatypes.classes.Float32'
+      rx: '!polars.datatypes.classes.Float32'
+      ry: '!polars.datatypes.classes.Float32'
+      xT: '!polars.datatypes.classes.Float32'
+      yT: '!polars.datatypes.classes.Float32'
+      zT: '!polars.datatypes.classes.Float32'
+      clx: '!polars.datatypes.classes.Float32'
+      cly: '!polars.datatypes.classes.Float32'
+      clz: '!polars.datatypes.classes.Float32'
+      crx: '!polars.datatypes.classes.Float32'
+      cry: '!polars.datatypes.classes.Float32'
+      crz: '!polars.datatypes.classes.Float32'
 experiment:
   eyetracker:
     sampling_rate: 250
