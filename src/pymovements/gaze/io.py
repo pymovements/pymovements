@@ -509,7 +509,7 @@ def from_asc(
         ])
 
     # Fill experiment with parsed metadata.
-    experiment = _fill_experiment_from_parsing_metadata(experiment, metadata)
+    experiment = _fill_experiment_from_parsing_eyelink_metadata(experiment, metadata)
 
     # Add parsed messages to experiment
     if experiment.messages is not None:
@@ -668,7 +668,7 @@ def from_ipc(
     return gaze
 
 
-def _fill_experiment_from_parsing_metadata(
+def _fill_experiment_from_parsing_eyelink_metadata(
         experiment: Experiment | None,
         metadata: dict[str, Any],
 ) -> Experiment:
@@ -749,6 +749,75 @@ def _fill_experiment_from_parsing_metadata(
             'Experiment metadata does not match the metadata in the ASC file:\n'
             + '\n'.join(f'- {issue}' for issue in issues),
         )
+
+    return experiment
+
+
+def _fill_experiment_from_parsing_begaze_metadata(
+        experiment: Experiment | None,
+        metadata: dict[str, Any],
+) -> Experiment:
+    """Fill Experiment with BeGaze metadata.
+
+    Behavior:
+    - Create a new ``Experiment`` if none is provided, using the parsed sampling rate.
+    - If a field on ``experiment`` is None, set it from parsed metadata when available.
+    - If a field is already set and differs from parsed metadata, emit a warning and keep the
+      existing value (do not raise).
+    """
+    # Ensure an Experiment exists
+    if experiment is None:
+        experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
+    elif (
+        experiment.eyetracker.sampling_rate is None
+        and metadata.get('sampling_rate') is not None
+    ):
+        # Only set the sampling rate if not set
+        experiment.eyetracker.sampling_rate = metadata['sampling_rate']
+
+    # Tracked eye flags if present (metadata may provide 'L'/'R')
+    tracked = (metadata.get('tracked_eye') or '')
+    left_parsed = 'L' in tracked
+    right_parsed = 'R' in tracked
+
+    if experiment.eyetracker.left is None:
+        experiment.eyetracker.left = left_parsed
+    elif experiment.eyetracker.left != left_parsed:
+        warnings.warn(
+            f"BeGaze metadata suggests left tracked={left_parsed} but experiment has "
+            f"{experiment.eyetracker.left}; keeping experiment value.",
+        )
+
+    if experiment.eyetracker.right is None:
+        experiment.eyetracker.right = right_parsed
+    elif experiment.eyetracker.right != right_parsed:
+        warnings.warn(
+            f"BeGaze metadata suggests right tracked={right_parsed} but experiment has "
+            f"{experiment.eyetracker.right}; keeping experiment value.",
+        )
+
+    # BeGaze headers typically do not include screen resolution in a standard way; if present as
+    # 'resolution' in metadata, only set when experiment fields are None; warn on mismatch
+    if 'resolution' in metadata:
+        res = metadata['resolution']
+        try:
+            width, height = res
+        except (TypeError, ValueError):
+            width = height = None
+        if experiment.screen.width_px is None and width is not None:
+            experiment.screen.width_px = int(width)
+        elif width is not None and experiment.screen.width_px not in (None, int(width)):
+            warnings.warn(
+                f"BeGaze metadata screen width={width} differs from experiment value "
+                f"{experiment.screen.width_px}; keeping experiment value.",
+            )
+        if experiment.screen.height_px is None and height is not None:
+            experiment.screen.height_px = int(height)
+        elif height is not None and experiment.screen.height_px not in (None, int(height)):
+            warnings.warn(
+                f"BeGaze metadata screen height={height} differs from experiment value "
+                f"{experiment.screen.height_px}; keeping experiment value.",
+            )
 
     return experiment
 
@@ -854,18 +923,7 @@ def from_begaze(
         ])
 
     # Fill experiment with parsed metadata.
-    # BeGaze exports do not provide the same metadata keys as EyeLink ASC. Use a
-    # minimal, tolerant fill here instead of the strict ASC-specific function.
-    if experiment is None:
-        experiment = Experiment(sampling_rate=metadata['sampling_rate'])
-    # Set tracked eyes based on parsed metadata if available.
-    tracked = (metadata.get('tracked_eye') or '')
-    experiment.eyetracker.left = (
-        'L' in tracked if experiment.eyetracker.left is None else experiment.eyetracker.left
-    )
-    experiment.eyetracker.right = (
-        'R' in tracked if experiment.eyetracker.right is None else experiment.eyetracker.right
-    )
+    experiment = _fill_experiment_from_parsing_begaze_metadata(experiment, metadata)
 
     # Detect pixel columns to pass to Gaze (monocular naming from BeGaze uses 'x_pix', 'y_pix').
     detected_pixel_columns: list[str] | None = [c for c in samples.columns if '_pix' in c]
@@ -879,5 +937,4 @@ def from_begaze(
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
     )
-    gaze._metadata = metadata  # pylint: disable=protected-access
     return gaze

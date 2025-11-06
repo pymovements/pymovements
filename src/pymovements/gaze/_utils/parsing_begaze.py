@@ -17,14 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""BeGaze parsing module.
-
-This module exists to provide a dedicated namespace for BeGaze-specific parsing
-logic.
-
-Public API:
-- parse_begaze
-"""
+"""BeGaze parsing module (internal)."""
 from __future__ import annotations
 
 __all__ = [
@@ -45,20 +38,57 @@ import polars as pl
 from pymovements.gaze._utils.parsing import compile_patterns, get_pattern_keys, \
     check_nan, _calculate_data_loss_ratio
 
-# Re-export current implementation to keep API stable during refactor.
-# The actual function is implemented in the shared parsing module for now.
+# Regular expressions for BeGaze header metadata lines with named groups.
+# Note: we compile regexes for performance and to support minor whitespace variations.
+BEGAZE_META_REGEXES: list[re.Pattern[str]] = [
+    re.compile(r'^##\s+Date:\s+(?P<date>.+?)\s*$'),
+    re.compile(r'^##\s+Sample\s+Rate:\s+(?P<sampling_rate>\d+(?:[.]\d+)?)\s*$'),
+]
 
+
+def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
+    """Parse a single BeGaze '##' metadata line using predefined regexes.
+
+    Returns an empty dict when the line does not match any known pattern.
+    Performs light casting for known fields (e.g., float for sampling rate, datetime for date).
+    """
+    for regex in BEGAZE_META_REGEXES:
+        if match := regex.match(line):
+            groupdict = match.groupdict()
+            # Casting and processing for known fields
+            if 'sampling_rate' in groupdict and groupdict['sampling_rate'] is not None:
+                try:
+                    groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
+                except ValueError:
+                    pass
+            if 'date' in groupdict and groupdict['date']:
+                # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
+                try:
+                    groupdict['datetime'] = datetime.datetime.strptime(
+                        groupdict['date'].strip(), '%d.%m.%Y %H:%M:%S',
+                    )
+                except ValueError:
+                    # Keep original string if parsing fails
+                    groupdict['datetime'] = groupdict['date']
+                # We don't need to expose raw 'date' alongside 'datetime'
+                del groupdict['date']
+            return groupdict
+    return {}
+
+
+# Regex for sample rows with tabs. This is used in the fallback branch - for header-driven parsing,
+# we rely on column indices but use more tolerant whitespace processing there as well.
 BEGAZE_SAMPLE = re.compile(
-    r'(?P<time>\d+)\t'
-    r'SMP\t'
-    r'(?P<trial>\d+)\t'
-    r'(?P<x_pix>[-]?\d*[.]\d*)\t'
-    r'(?P<y_pix>[-]?\d*[.]\d*)\t'
-    r'(?P<pupil>\d*[.]\d*)\t'
-    r'(?P<timing>\d+)\t'
-    r'(?P<pupil_confidence>\d+)\t'
-    r'(?P<plane>[-]?\d+)\t'
-    r'(?P<event>\w+|-)\t'
+    r'(?P<time>\d+)\s+'
+    r'SMP\s+'
+    r'(?P<trial>\d+)\s+'
+    r'(?P<x_pix>[-]?\d*[.]\d*)\s+'
+    r'(?P<y_pix>[-]?\d*[.]\d*)\s+'
+    r'(?P<pupil>\d*[.]\d*)\s+'
+    r'(?P<timing>\d+)\s+'
+    r'(?P<pupil_confidence>\d+)\s+'
+    r'(?P<plane>[-]?\d+)\s+'
+    r'(?P<event>\w+|-)\s+'
     r'(?P<stimulus>.+)',
 )
 
@@ -151,6 +181,47 @@ def parse_begaze(
     with open(filepath, encoding=encoding) as begaze_file:
         lines = begaze_file.readlines()
 
+    # Blink tracking for metadata (declared before helper functions for mypy)
+    blinks_meta: list[dict[str, Any]] = []
+    blink_active = False
+    blink_start_prev_ts: float | None = None
+    blink_last_ts: float | None = None
+    blink_sample_count = 0
+
+    # Small helpers to unify event handling across branches
+    def _finalize_current_event() -> None:
+        if current_event != '-':
+            events['name'].append(current_event.lower() + '_begaze')
+            events['onset'].append(current_event_onset)
+            events['offset'].append(previous_timestamp)
+            for additional_column in additional_columns:
+                events[additional_column].append(
+                    current_event_additional[current_event][additional_column],
+                )
+        # reset event-specific additional cache for next event name
+        if current_event in current_event_additional:
+            current_event_additional[current_event] = {}
+
+    def _maybe_finalize_blink_meta() -> None:
+        nonlocal blink_active, blink_start_prev_ts, blink_last_ts, blink_sample_count
+        # Only finalize when the current ongoing event is a Blink and we are transitioning away
+        if (
+            current_event == 'Blink'
+            and blink_active
+            and blink_start_prev_ts is not None
+            and blink_last_ts is not None
+        ):
+            blinks_meta.append({
+                'duration_ms': blink_last_ts - blink_start_prev_ts,
+                'num_samples': blink_sample_count,
+                'start_timestamp': blink_start_prev_ts,
+                'stop_timestamp': blink_last_ts,
+            })
+            blink_active = False
+            blink_start_prev_ts = None
+            blink_last_ts = None
+            blink_sample_count = 0
+
     # will return an empty string if the key does not exist
     metadata: defaultdict = defaultdict(str)
 
@@ -166,31 +237,30 @@ def parse_begaze(
 
     for idx, line in enumerate(lines):
         if line.startswith('##'):
-            # extract simple key/value pairs
-            if line.startswith('## Date:'):
-                # format: ## Date:\tDD.MM.YYYY HH:MM:SS
-                try:
-                    _, value = line.split(':', 1)
-                    value = value.strip().strip('\n')
-                    if value.startswith('\t'):
-                        value = value[1:]
-                    value = value.replace('\t', ' ').strip()
-                    header_datetime = datetime.datetime.strptime(value, '%d.%m.%Y %H:%M:%S')
-                except (ValueError, TypeError):
-                    header_datetime = None
-            elif line.startswith('## Sample Rate:'):
-                try:
-                    _, value = line.split(':', 1)
-                    value = value.strip().strip('\n').replace('\t', ' ').strip()
-                    header_sampling_rate = float(value)
-                except (ValueError, TypeError):
-                    header_sampling_rate = None
+            # Parse meta line via regexes with named groups
+            line_meta = _parse_begaze_meta_line(line.rstrip('\n'))
+            if 'datetime' in line_meta:
+                header_datetime = line_meta['datetime']  # type: ignore[assignment]
+            if 'sampling_rate' in line_meta and isinstance(
+                    line_meta['sampling_rate'], (int, float),
+            ):
+                header_sampling_rate = float(line_meta['sampling_rate'])
+            # Merge any parsed metadata keys
+            for k, v in line_meta.items():
+                if k not in ('datetime',):
+                    metadata[k] = v
             continue
-        if ('Time' in line and '\tType\t' in line) and header_row_index is None:
+        # Tolerant to whitespace: split on any whitespace sequence but prefer tabs if present
+        if ('Time' in line and 'Type' in line) and header_row_index is None:
+            # Normalise tabs to single tab first to keep expected column names
+            normalized = line.rstrip('\n')
+            if '\t' in normalized:
+                header_cols = [c.strip() for c in normalized.split('\t')]
+            else:
+                header_cols = re.split(r'\s+', normalized.strip())
             header_row_index = idx
-            header_cols = [c.strip() for c in line.rstrip('\n').split('\t')]
             # Determine tracked eye from presence of L/R POR columns
-            upper = line.upper()
+            upper = normalized.upper()
             if 'L POR X' in upper and 'R POR X' not in upper:
                 header_tracked_eye = 'L'
             elif 'R POR X' in upper and 'L POR X' not in upper:
@@ -212,13 +282,6 @@ def parse_begaze(
     metadata_keys = get_pattern_keys(compiled_metadata_patterns, 'key')
     for key in metadata_keys:
         metadata[key] = None
-
-    # Blink tracking for metadata
-    blinks_meta: list[dict[str, Any]] = []
-    blink_active = False
-    blink_start_prev_ts: float | None = None
-    blink_last_ts: float | None = None
-    blink_sample_count = 0
 
     def parse_event_for_eye(row: list[str], eye: str) -> str:
         # Prefer explicit per-eye event columns, else fall back to generic 'Info'
@@ -360,29 +423,9 @@ def parse_begaze(
 
             # event segmentation
             if event != current_event:
-                if (
-                    current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
-                    and blink_last_ts is not None
-                ):
-                    blinks_meta.append({
-                        'duration_ms': blink_last_ts - blink_start_prev_ts,
-                        'num_samples': blink_sample_count,
-                        'start_timestamp': blink_start_prev_ts,
-                        'stop_timestamp': blink_last_ts,
-                    })
-                    blink_active = False
-                    blink_start_prev_ts = None
-                    blink_last_ts = None
-                    blink_sample_count = 0
+                _maybe_finalize_blink_meta()
 
-                if current_event != '-':
-                    events['name'].append(current_event.lower() + '_begaze')
-                    events['onset'].append(current_event_onset)
-                    events['offset'].append(previous_timestamp)
-                    for additional_column in additional_columns:
-                        events[additional_column].append(
-                            current_event_additional[current_event][additional_column],
-                        )
+                _finalize_current_event()
                 current_event = event
                 current_event_onset = timestamp
                 current_event_additional[current_event] = {**current_additional}
@@ -390,23 +433,8 @@ def parse_begaze(
 
         # add last event (header-parsing branch)
         if current_event != '-':
-            events['name'].append(current_event.lower() + '_begaze')
-            events['onset'].append(current_event_onset)
-            events['offset'].append(previous_timestamp)
-            for additional_column in additional_columns:
-                events[additional_column].append(
-                    current_event_additional[current_event][additional_column],
-                )
-            if (
-                current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
-                and blink_last_ts is not None
-            ):
-                blinks_meta.append({
-                    'duration_ms': blink_last_ts - blink_start_prev_ts,
-                    'num_samples': blink_sample_count,
-                    'start_timestamp': blink_start_prev_ts,
-                    'stop_timestamp': blink_last_ts,
-                })
+            _finalize_current_event()
+            _maybe_finalize_blink_meta()
             current_event = '-'
             current_event_onset = None
             current_event_additional = {key: {} for key in current_event_additional}
@@ -476,32 +504,8 @@ def parse_begaze(
 
                 # event segmentation
                 if event != current_event:
-                    # if we are ending a blink event, finalize blink metadata entry
-                    if (
-                        current_event == 'Blink' and blink_active
-                            and blink_start_prev_ts is not None
-                            and blink_last_ts is not None
-                    ):
-                        blinks_meta.append({
-                            'duration_ms': blink_last_ts - blink_start_prev_ts,
-                            'num_samples': blink_sample_count,
-                            'start_timestamp': blink_start_prev_ts,
-                            'stop_timestamp': blink_last_ts,
-                        })
-                        blink_active = False
-                        blink_start_prev_ts = None
-                        blink_last_ts = None
-                        blink_sample_count = 0
-
-                    if current_event != '-':
-                        # end previous event
-                        events['name'].append(current_event.lower() + '_begaze')
-                        events['onset'].append(current_event_onset)
-                        events['offset'].append(previous_timestamp)
-                        for additional_column in additional_columns:
-                            events[additional_column].append(
-                                current_event_additional[current_event][additional_column],
-                            )
+                    _maybe_finalize_blink_meta()
+                    _finalize_current_event()
                     current_event = event
                     current_event_onset = timestamp
                     current_event_additional[current_event] = {**current_additional}
@@ -520,24 +524,9 @@ def parse_begaze(
 
         # add last event
         if current_event != '-':
-            events['name'].append(current_event.lower() + '_begaze')
-            events['onset'].append(current_event_onset)
-            events['offset'].append(previous_timestamp)
-            for additional_column in additional_columns:
-                events[additional_column].append(
-                    current_event_additional[current_event][additional_column],
-                )
+            _finalize_current_event()
             # finalise blink if the last event is a blink
-            if (
-                current_event == 'Blink' and blink_active and blink_start_prev_ts is not None
-                and blink_last_ts is not None
-            ):
-                blinks_meta.append({
-                    'duration_ms': blink_last_ts - blink_start_prev_ts,
-                    'num_samples': blink_sample_count,
-                    'start_timestamp': blink_start_prev_ts,
-                    'stop_timestamp': blink_last_ts,
-                })
+            _maybe_finalize_blink_meta()
             current_event = '-'
             current_event_onset = None
             current_event_additional = {key: {} for key in current_event_additional}
@@ -547,18 +536,8 @@ def parse_begaze(
     total_recording_duration_ms = len(samples['time']) if samples['time'] else 0
     metadata['total_recording_duration_ms'] = total_recording_duration_ms
 
-    # Data loss ratios: compute expected samples from sample rate and duration
-    # when available - else use len(time)
-    if metadata.get('sampling_rate'):
-        # BeGaze time already in ms - expected samples = duration_ms * (Hz/1000)
-        expected = int(
-            round(
-                total_recording_duration_ms *
-                (float(metadata['sampling_rate']) / 1000.0),
-            ),
-        )
-    else:
-        expected = len(samples['time'])
+    # Data loss ratios: use the number of parsed samples as expected count
+    expected = len(samples['time'])
 
     total_loss_ratio, blink_loss_ratio = _calculate_data_loss_ratio(
         expected, num_valid_samples, num_blink_samples,
