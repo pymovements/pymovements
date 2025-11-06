@@ -572,3 +572,94 @@ def test_parse_begaze_plane_values_stability(make_text_file):
     assert event_df['name'].to_list() == [
         'fixation_begaze', 'blink_begaze', 'fixation_begaze',
     ]
+
+
+def exp_with_flags(sampling_rate: float, left: bool, right: bool) -> Experiment:
+    e = Experiment(sampling_rate=sampling_rate)
+    e.eyetracker.left = left
+    e.eyetracker.right = right
+    return e
+
+
+@pytest.mark.parametrize(
+    ('header', 'kwargs', 'expected_experiment', 'expect_warning'),
+    [
+        pytest.param(
+            '## Sample Rate:\t1000',
+            {},
+            Experiment(sampling_rate=1000),
+            False,
+            id='sampling_rate_1000',
+        ),
+        pytest.param(
+            '## Sample Rate:\t500.5',
+            {},
+            Experiment(sampling_rate=500.5),
+            False,
+            id='sampling_rate_float_500_5',
+        ),
+        pytest.param(
+            '## Sample Rate:\t1000',
+            {},
+            exp_with_flags(1000, True, False),
+            False,
+            id='tracked_eye_left_from_L_columns',
+        ),
+        pytest.param(
+            '## Sample Rate:\t1000',
+            {'prefer_eye': 'R'},
+            exp_with_flags(1000, True, False),
+            True,
+            id='prefer_eye_R_but_only_L_columns_present_falls_back_with_warning',
+        ),
+        pytest.param(
+            '## Sample Rate:\t1000',
+            {'experiment': Experiment(sampling_rate=250)},
+            Experiment(sampling_rate=250),
+            False,
+            id='keep_existing_sampling_rate_no_warning',
+        ),
+        pytest.param(
+            '## Sample Rate:\t1000',
+            {'experiment': Experiment(sampling_rate=1000)},
+            Experiment(sampling_rate=1000),
+            False,
+            id='no_warning_when_sampling_rate_matches',
+        ),
+        pytest.param(
+            '## Sample Rate:\t1000',
+            {'experiment': exp_with_flags(1000, False, True)},
+            exp_with_flags(1000, False, True),
+            True,
+            id='warn_on_overwrite_tracked_eye_keep_experiment_flags',
+        ),
+    ],
+)
+def test_from_begaze_loads_expected_experiment(
+        header, kwargs, expected_experiment, expect_warning, make_text_file,
+):
+    # Build a minimal BeGaze file containing only the provided header part and
+    # a minimal L-eye data row.
+    text = (
+        '## [BeGaze]\n'
+        f'{header}\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+        'Pupil Confidence\tL Event Info\n'
+        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
+    )
+    p = make_text_file(filename='begaze_experiment.txt', body=text, encoding='ascii')
+
+    if expect_warning:
+        with pytest.warns((UserWarning, RuntimeWarning)):
+            gaze = io.from_begaze(p, **kwargs)
+    else:
+        gaze = io.from_begaze(p, **kwargs)
+
+    # Assert Experiment fields were filled as expected.
+    assert gaze.experiment is not None
+    assert gaze.experiment.sampling_rate == expected_experiment.sampling_rate
+    # Optionally assert tracked eye flags when provided in expected_experiment
+    if expected_experiment.eyetracker.left is not None:
+        assert gaze.experiment.eyetracker.left == expected_experiment.eyetracker.left
+    if expected_experiment.eyetracker.right is not None:
+        assert gaze.experiment.eyetracker.right == expected_experiment.eyetracker.right
