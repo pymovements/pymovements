@@ -333,7 +333,7 @@ def test_from_asc_example_file_has_expected_samples(
                 'patterns': 'eyelink',
                 'definition': DatasetDefinition(
                     experiment=None,
-                    custom_read_kwargs={'gaze': {'encoding': 'latin1'}},
+                    resources=[{'content': 'gaze', 'load_kwargs': {'encoding': 'latin1'}}],
                 ),
             },
             (297, 3),
@@ -351,7 +351,7 @@ def test_from_asc_example_file_has_expected_samples(
                 'patterns': 'eyelink',
                 'definition': DatasetDefinition(
                     experiment=None,
-                    custom_read_kwargs={'gaze': {'encoding': 'ascii'}},
+                    resources=[{'content': 'gaze', 'load_kwargs': {'encoding': 'ascii'}}],
                 ),
                 'encoding': 'latin1',
             },
