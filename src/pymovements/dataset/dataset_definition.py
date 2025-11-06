@@ -609,7 +609,7 @@ class DatasetDefinition:
             return ResourceDefinitions()
 
         if isinstance(resources, Sequence):
-            return ResourceDefinitions.from_dicts(resources)
+            return ResourceDefinitions(resources)
 
         if isinstance(resources, dict):
             # this calls a deprecated method and will be removed in the future.

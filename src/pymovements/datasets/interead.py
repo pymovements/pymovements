@@ -121,7 +121,7 @@ class InteRead(DatasetDefinition):
     long_name: str = 'Interrupted Reading dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
