@@ -233,6 +233,8 @@ class ResourceDefinitions(list):
 
         [ResourceDefinition.from_dict(dictionary) for dictionary in dictionaries]
 
+        return ResourceDefinitions(resources)
+
     def to_dicts(self, *, exclude_none: bool = True) -> list[dict[str, Any]]:
         """Convert the ``ResourceDefinitions`` instance into a list of dictionaries.
 
