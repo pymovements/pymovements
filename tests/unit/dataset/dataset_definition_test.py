@@ -1030,6 +1030,7 @@ def test_dataset_definition_set_filename_format_schema_expected(definition, new_
     assert definition.resources == expected
 
 
+@pytest.mark.filterwarnings('ignore:.*custom_read_kwargs.*:DeprecationWarning')
 @pytest.mark.parametrize(
     ('init_kwargs', 'expected_read_kwargs'),
     [
