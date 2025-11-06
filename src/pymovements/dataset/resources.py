@@ -34,7 +34,7 @@ from pymovements._utils._html import repr_html
 
 
 @repr_html()
-@dataclass
+@dataclass(frozen=True)
 class ResourceDefinition:
     """ResourceDefinition definition.
 

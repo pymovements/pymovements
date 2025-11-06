@@ -398,7 +398,9 @@ class DatasetDefinition:
                 continue
 
             for content_resource in content_resources:
-                content_resource.filename_pattern = content_filename_pattern
+                # circumvent frozen dataclass restriction.
+                # this is not optimal but this function will be removed soon anyway.
+                object.__setattr__(content_resource, 'filename_pattern', content_filename_pattern)
 
     @property
     @deprecated(
@@ -449,7 +451,11 @@ class DatasetDefinition:
                 continue
 
             for content_resource in content_resources:
-                content_resource.filename_pattern_schema_overrides = content_schema_overrides
+                # circumvent frozen dataclass restriction.
+                # this is not optimal but this function will be removed soon anyway.
+                object.__setattr__(
+                    content_resource, 'filename_pattern_schema_overrides', content_schema_overrides,
+                )
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
