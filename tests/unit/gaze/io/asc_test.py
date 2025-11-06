@@ -138,7 +138,7 @@ def test_from_asc_has_expected_samples(
                     trial_columns=None,
                     resources=ResourceDefinitions([{
                         'content': 'gaze',
-                        'load_kwargs': {'column_schema_overrides': {'pupil': pl.Float32}}
+                        'load_kwargs': {'column_schema_overrides': {'pupil': pl.Float32}},
                     }]),
                 ),
             },
@@ -175,7 +175,7 @@ def test_from_asc_has_expected_samples(
                     trial_columns=None,
                     resources=ResourceDefinitions([{
                         'content': 'gaze',
-                        'load_kwargs': {'column_schema_overrides': {'pupil': pl.Float32}}
+                        'load_kwargs': {'column_schema_overrides': {'pupil': pl.Float32}},
                     }]),
                 ),
                 'column_schema_overrides': {'pupil': pl.Decimal},
@@ -781,7 +781,7 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
                             'metadata_patterns': [
                                 {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
                             ],
-                        }
+                        },
                     }]),
                 ),
             },
@@ -802,7 +802,7 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
                             'metadata_patterns': [
                                 {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<foobar>-?\d+)'},
                             ],
-                        }
+                        },
                     }]),
                 ),
                 'metadata_patterns': [
