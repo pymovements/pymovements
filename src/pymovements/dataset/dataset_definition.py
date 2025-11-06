@@ -278,11 +278,7 @@ class DatasetDefinition:
 
         self.experiment = experiment
 
-        self.resources = self._initialize_resources(
-            resources=resources,
-            filename_format=filename_format,
-            filename_format_schema_overrides=filename_format_schema_overrides,
-        )
+        self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         self.extract = extract
@@ -479,14 +475,24 @@ class DatasetDefinition:
                 if not resource.load_kwargs:
                     continue  # no load_kwargs specified, continue with next resources
 
-                if resource.content == 'gaze' and resource.load_function == 'from_asc':
-                    read_kwargs = resource.load_kwargs
-                elif resource.content == 'gaze' and resource.load_function == 'from_csv':
-                    read_kwargs = resource.load_kwargs['read_csv_kwargs']
-                elif resource.content == 'gaze' and resource.load_function == 'from_ipc':
-                    read_kwargs = resource.load_kwargs['read_ipc_kwargs']
-                else:
-                    read_kwargs = resource.load_kwargs['custom_read_kwargs']
+                exclude_kwargs = {
+                    'time_column', 'time_unit', 'pixel_columns', 'position_columns',
+                    'velocity_columns', 'acceleration_columns', 'distance_column',
+                    'column_map',
+                }
+
+                read_kwargs = {
+                    key: value for key, value in resource.load_kwargs.items()
+                    if key not in exclude_kwargs
+                }
+
+                # flatten dictionary in case read_csv_kwargs/read_ipc_kwargs stated explicitly.
+                if 'read_csv_kwargs' in read_kwargs:
+                    read_kwargs = {**read_kwargs, **read_kwargs['read_csv_kwargs']}
+                    del read_kwargs['read_csv_kwargs']
+                if 'read_ipc_kwargs' in read_kwargs:
+                    read_kwargs = {**read_kwargs, **read_kwargs['read_ipc_kwargs']}
+                    del read_kwargs['read_ipc_kwargs']
 
                 if read_kwargs:  # write to dict if not None / not empty
                     data[content_type] = read_kwargs
@@ -503,15 +509,10 @@ class DatasetDefinition:
             for resource in self.resources.filter(content=content_type):
                 if not resource.load_kwargs:
                     resource.load_kwargs = {}
-
-                if resource.content == 'gaze' and resource.load_function == 'from_asc':
-                    resource.load_kwargs = content_kwargs
-                if resource.content == 'gaze' and resource.load_function == 'from_csv':
-                    resource.load_kwargs['read_csv_kwargs'] = content_kwargs
-                elif resource.content == 'gaze' and resource.load_function == 'from_ipc':
-                    resource.load_kwargs['read_ipc_kwargs'] = content_kwargs
-                else:
-                    resource.load_kwargs['custom_read_kwargs'] = content_kwargs
+                # this will add the custom_read_kwargs to the top-level and pass them as **kwargs.
+                # for gaze.from_csv and gaze.from_ipc this will raise a deprecation warning
+                # during `Dataset.load()`. That functionality is scheduled to be removed in v0.29.0.
+                resource.load_kwargs.update(content_kwargs)
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:

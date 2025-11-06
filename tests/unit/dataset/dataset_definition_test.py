@@ -1176,7 +1176,7 @@ def test_dataset_definition_custom_read_kwargs_expected(init_kwargs, expected_re
             [
                 ResourceDefinition(
                     content='gaze', filename_pattern='test.csv', load_function='from_csv',
-                    load_kwargs={'read_csv_kwargs': {'foo': 'bar'}},
+                    load_kwargs={'foo': 'bar'},
                 ),
             ],
             id='gaze_csv_resource',
@@ -1192,7 +1192,7 @@ def test_dataset_definition_custom_read_kwargs_expected(init_kwargs, expected_re
             [
                 ResourceDefinition(
                     content='gaze', filename_pattern='test.ipc', load_function='from_ipc',
-                    load_kwargs={'read_ipc_kwargs': {'too': 'far'}},
+                    load_kwargs={'too': 'far'},
                 ),
             ],
             id='gaze_ipc_resource',
@@ -1215,11 +1215,11 @@ def test_dataset_definition_custom_read_kwargs_expected(init_kwargs, expected_re
             [
                 ResourceDefinition(
                     content='gaze', filename_pattern='test.csv', load_function='from_csv',
-                    load_kwargs={'read_csv_kwargs': {'two': 'daa'}},
+                    load_kwargs={'two': 'daa'},
                 ),
                 ResourceDefinition(
                     content='gaze', filename_pattern='test.ipc', load_function='from_ipc',
-                    load_kwargs={'read_ipc_kwargs': {'two': 'daa'}},
+                    load_kwargs={'two': 'daa'},
                 ),
             ],
             id='two_gaze_resources',
