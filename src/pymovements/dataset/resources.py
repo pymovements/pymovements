@@ -25,7 +25,6 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
-from dataclasses import InitVar
 from typing import Any
 from warnings import warn
 
