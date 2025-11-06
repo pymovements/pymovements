@@ -630,6 +630,7 @@ def from_ipc(
         read_ipc_kwargs = {**read_ipc_kwargs, **kwargs}
 
     # Read data.
+    print(file)
     samples = pl.read_ipc(file, **read_ipc_kwargs)
 
     if column_map is not None:
