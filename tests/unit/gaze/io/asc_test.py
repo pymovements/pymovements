@@ -25,6 +25,7 @@ from polars.testing import assert_frame_equal
 from pymovements import DatasetDefinition
 from pymovements import Experiment
 from pymovements import EyeTracker
+from pymovements import ResourceDefinitions
 from pymovements import Screen
 from pymovements.datasets import ToyDatasetEyeLink
 from pymovements.gaze import from_asc
@@ -135,7 +136,10 @@ def test_from_asc_has_expected_samples(
             {
                 'definition': ToyDatasetEyeLink(
                     trial_columns=None,
-                    custom_read_kwargs={'gaze': {'column_schema_overrides': {'pupil': pl.Float32}}},
+                    resources=ResourceDefinitions([{
+                        'content': 'gaze',
+                        'load_kwargs': {'column_schema_overrides': {'pupil': pl.Float32}}
+                    }]),
                 ),
             },
             pl.DataFrame(
@@ -169,7 +173,10 @@ def test_from_asc_has_expected_samples(
             {
                 'definition': ToyDatasetEyeLink(
                     trial_columns=None,
-                    custom_read_kwargs={'gaze': {'column_schema_overrides': {'pupil': pl.Float32}}},
+                    resources=ResourceDefinitions([{
+                        'content': 'gaze',
+                        'load_kwargs': {'column_schema_overrides': {'pupil': pl.Float32}}
+                    }]),
                 ),
                 'column_schema_overrides': {'pupil': pl.Decimal},
             },
@@ -768,13 +775,14 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
             {
                 'definition': ToyDatasetEyeLink(
                     trial_columns=None,
-                    custom_read_kwargs={
-                        'gaze': {
+                    resources=ResourceDefinitions([{
+                        'content': 'gaze',
+                        'load_kwargs': {
                             'metadata_patterns': [
                                 {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
                             ],
-                        },
-                    },
+                        }
+                    }]),
                 ),
             },
             {
@@ -788,13 +796,14 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
             {
                 'definition': ToyDatasetEyeLink(
                     trial_columns=None,
-                    custom_read_kwargs={
-                        'gaze': {
+                    resources=ResourceDefinitions([{
+                        'content': 'gaze',
+                        'load_kwargs': {
                             'metadata_patterns': [
                                 {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<foobar>-?\d+)'},
                             ],
-                        },
-                    },
+                        }
+                    }]),
                 ),
                 'metadata_patterns': [
                     {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},

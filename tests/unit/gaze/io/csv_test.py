@@ -23,6 +23,7 @@ import pytest
 
 from pymovements import DatasetDefinition
 from pymovements import datasets
+from pymovements import ResourceDefinitions
 from pymovements.gaze import from_csv
 
 
@@ -257,20 +258,23 @@ from pymovements.gaze import from_csv
             'judo1000_example.csv',
             {
                 'definition': datasets.JuDo1000(
-                    custom_read_kwargs={
-                        'gaze': {
-                            'schema_overrides': {
-                                'trialId': pl.String,
-                                'pointId': pl.String,
-                                'time': pl.Int64,
-                                'x_left': pl.Float32,
-                                'y_left': pl.Float32,
-                                'x_right': pl.Float32,
-                                'y_right': pl.Float32,
+                    resources=ResourceDefinitions([{
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'trialId': pl.String,
+                                    'pointId': pl.String,
+                                    'time': pl.Int64,
+                                    'x_left': pl.Float32,
+                                    'y_left': pl.Float32,
+                                    'x_right': pl.Float32,
+                                    'y_right': pl.Float32,
+                                },
+                                'separator': '\t',
                             },
-                            'separator': '\t',
                         },
-                    },
+                    }]),
                 ),
             },
             (10, 4),
@@ -285,20 +289,23 @@ from pymovements.gaze import from_csv
             'judo1000_example.csv',
             {
                 'definition': datasets.JuDo1000(
-                    custom_read_kwargs={
-                        'gaze': {
-                            'schema_overrides': {
-                                'trialId': pl.String,
-                                'pointId': pl.String,
-                                'time': pl.Int64,
-                                'x_left': pl.Float32,
-                                'y_left': pl.Float32,
-                                'x_right': pl.Float32,
-                                'y_right': pl.Float32,
+                    resources=ResourceDefinitions([{
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'trialId': pl.String,
+                                    'pointId': pl.String,
+                                    'time': pl.Int64,
+                                    'x_left': pl.Float32,
+                                    'y_left': pl.Float32,
+                                    'x_right': pl.Float32,
+                                    'y_right': pl.Float32,
+                                },
+                                'separator': '\t',
                             },
-                            'separator': '\t',
                         },
-                    },
+                    }]),
                 ),
                 'column_schema_overrides': {
                     'trial_id': pl.Int64,
