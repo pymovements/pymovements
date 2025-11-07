@@ -29,7 +29,6 @@ import pytest
 from pymovements.stimulus.text import TextStimulus
 
 
-
 @pytest.mark.parametrize(
     ('row', 'expected'),
     [
@@ -61,8 +60,6 @@ def test_get_aoi_filters_by_trial_only(
     aoi = stimulus_only_trial.get_aoi(row=row, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1
     assert aoi.select('label').item() == expected
-
-
 
 
 @pytest.mark.parametrize(

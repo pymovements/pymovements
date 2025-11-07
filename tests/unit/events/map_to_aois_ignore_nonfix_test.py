@@ -33,8 +33,6 @@ from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
 
 
-
-
 @pytest.mark.parametrize(
     'names_locations_expected',
     [
@@ -82,8 +80,6 @@ def test_map_to_aois_ignores_non_fixations(
     labels = events.frame.get_column('label').to_list()
     expected_labels = [exp for _, _, exp in names_locations_expected]
     assert labels == expected_labels
-
-
 
 
 @pytest.mark.parametrize(

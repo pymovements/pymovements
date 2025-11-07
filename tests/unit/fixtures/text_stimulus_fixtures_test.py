@@ -26,11 +26,11 @@ from pymovements.stimulus.text import TextStimulus
 
 
 @pytest.mark.parametrize(
-    "fixture_name",
+    'fixture_name',
     [
-        pytest.param("stimulus_both_columns", id="both"),
-        pytest.param("stimulus_only_trial", id="trial"),
-        pytest.param("stimulus_only_page", id="page"),
+        pytest.param('stimulus_both_columns', id='both'),
+        pytest.param('stimulus_only_trial', id='trial'),
+        pytest.param('stimulus_only_page', id='page'),
     ],
 )
 def test_fixtures_provide_textstimulus(request: pytest.FixtureRequest, fixture_name: str) -> None:
@@ -44,21 +44,21 @@ def test_fixtures_provide_textstimulus(request: pytest.FixtureRequest, fixture_n
 
 
 @pytest.mark.parametrize(
-    ("fixture_name", "row", "expect_none"),
+    ('fixture_name', 'row', 'expect_none'),
     [
-        ("stimulus_both_columns", {"x": 5, "y": 5, "trial": 1, "page": "X"}, False),
-        ("stimulus_both_columns", {"x": 5, "y": 5, "trial": 1, "page": "Z"}, True),
-        ("stimulus_only_trial", {"x": 5, "y": 5, "trial": 1}, False),
-        ("stimulus_only_trial", {"x": 5, "y": 5, "trial": 3}, True),
-        ("stimulus_only_page", {"x": 5, "y": 5, "page": "X"}, False),
-        ("stimulus_only_page", {"x": 5, "y": 5, "page": "Z"}, True),
+        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 1, 'page': 'X'}, False),
+        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 1, 'page': 'Z'}, True),
+        ('stimulus_only_trial', {'x': 5, 'y': 5, 'trial': 1}, False),
+        ('stimulus_only_trial', {'x': 5, 'y': 5, 'trial': 3}, True),
+        ('stimulus_only_page', {'x': 5, 'y': 5, 'page': 'X'}, False),
+        ('stimulus_only_page', {'x': 5, 'y': 5, 'page': 'Z'}, True),
     ],
 )
 def test_fixtures_basic_get_aoi(
     request: pytest.FixtureRequest, fixture_name: str, row: dict, expect_none: bool,
 ) -> None:
     stim: TextStimulus = request.getfixturevalue(fixture_name)
-    aoi = stim.get_aoi(row=row, x_eye="x", y_eye="y")
+    aoi = stim.get_aoi(row=row, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1
     label = aoi.select(stim.aoi_column).item()
     if expect_none:
