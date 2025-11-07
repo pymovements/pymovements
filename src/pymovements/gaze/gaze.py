@@ -1220,25 +1220,42 @@ class Gaze:
             *,
             eye: str = 'auto',
             gaze_type: str = 'pixel',
+            preserve_structure: bool = True,
     ) -> None:
-        """Map gaze data to aois.
+        """Map gaze samples to AOIs.
 
-        We map each gaze point to an aoi, considering the boundary still part of the
-        area of interest.
+        This maps each gaze point to an AOI label based on the configured stimulus rectangles.
+        The mapping uses half-open intervals [start, end) for spatial bounds.
 
         Parameters
         ----------
         aoi_dataframe: pm.stimulus.TextStimulus
             Area of interest dataframe.
         eye: str
-            String specificer for inferring eye components. Supported values are: auto, mono, left
-            right, cyclops. Default: auto.
+            String specificer for inferring eye components. Supported values are: ``auto``,
+            ``mono``, ``left``, ``right``, ``cyclops``. Default: ``auto``.
         gaze_type: str
-            String specificer for whether to use position or pixel coordinates for
-            mapping. Default: pixel.
+            Whether to use ``position`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
+        preserve_structure: bool
+            Controls schema side effects.
+            - If True (default), we keep the historical behaviour and attempt ``unnest()`` so that
+              downstream logic can rely on flat component columns (e.g. ``pixel_xr``/``pixel_yr``).
+              Only common, specific exceptions from unnesting are tolerated - all others propagate.
+            - If False, no unnesting is attempted. Coordinates are extracted per-row from list
+              columns and passed to the AOI lookup without altering the samples' schema.
         """
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
-        self.unnest()
+        # Schema handling: preserve_structure controls whether we alter the samples schema
+        # (by unnesting) or keep list columns intact and extract per-row. By default, we
+        # preserve legacy behaviour (preserve_structure=True) and attempt to unnest.
+        if preserve_structure:
+            try:
+                self.unnest()
+            except (Warning, ValueError, AttributeError):  # tolerate common cases
+                # - Warning: nothing to unnest when no list columns exist
+                # - ValueError/AttributeError: shape or configuration related issues
+                # In all these cases: continue without failing and use fallback logic.
+                pass
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
@@ -1249,42 +1266,89 @@ class Gaze:
             if c in self.samples.columns
         ]
 
-        if gaze_type == 'pixel':
-            if eye == 'left':
-                x_eye = [col for col in pixel_columns if col.endswith('xl')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yl')][0]
-            elif eye == 'right':
-                x_eye = [col for col in pixel_columns if col.endswith('xr')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yr')][0]
-            elif eye == 'auto':
-                x_eye = [col for col in pixel_columns if col.endswith('xr')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yr')][0]
-            else:
-                x_eye = [col for col in pixel_columns if col.endswith('xr')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yr')][0]
-        elif gaze_type == 'position':
-            if eye == 'left':
-                x_eye = [col for col in position_columns if col.endswith('xl')][0]
-                y_eye = [col for col in position_columns if col.endswith('yl')][0]
-            elif eye == 'right':
-                x_eye = [col for col in position_columns if col.endswith('xr')][0]
-                y_eye = [col for col in position_columns if col.endswith('yr')][0]
-            elif eye == 'auto':
-                x_eye = [col for col in position_columns if col.endswith('xr')][0]
-                y_eye = [col for col in position_columns if col.endswith('yr')][0]
-            else:
-                x_eye = [col for col in position_columns if col.endswith('xr')][0]
-                y_eye = [col for col in position_columns if col.endswith('yr')][0]
-        else:
-            raise ValueError(
-                'neither position nor pixel column in samples dataframe, '
-                'at least one needed for mapping',
-            )
+        def _select_components_from_flat_columns() -> tuple[str, str] | None:
+            if gaze_type == 'pixel' and pixel_columns:
+                if eye == 'left':
+                    xs = [col for col in pixel_columns if col.endswith('xl')]
+                    ys = [col for col in pixel_columns if col.endswith('yl')]
+                elif eye == 'right' or eye == 'auto' or eye not in {
+                    'left', 'right', 'auto', 'cyclops',
+                }:
+                    xs = [col for col in pixel_columns if col.endswith('xr')]
+                    ys = [col for col in pixel_columns if col.endswith('yr')]
+                else:  # cyclops currently behaves like right eye for backward-compat
+                    xs = [col for col in pixel_columns if col.endswith('xr')]
+                    ys = [col for col in pixel_columns if col.endswith('yr')]
+                if xs and ys:
+                    return xs[0], ys[0]
+            if gaze_type == 'position' and position_columns:
+                if eye == 'left':
+                    xs = [col for col in position_columns if col.endswith('xl')]
+                    ys = [col for col in position_columns if col.endswith('yl')]
+                elif eye == 'right' or eye == 'auto' or eye not in {
+                    'left', 'right', 'auto', 'cyclops',
+                }:
+                    xs = [col for col in position_columns if col.endswith('xr')]
+                    ys = [col for col in position_columns if col.endswith('yr')]
+                else:  # cyclops currently behaves like right eye for backward-compat
+                    xs = [col for col in position_columns if col.endswith('xr')]
+                    ys = [col for col in position_columns if col.endswith('yr')]
+                if xs and ys:
+                    return xs[0], ys[0]
+            return None
 
-        aois = [
-            aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
-            for row in tqdm(self.samples.iter_rows(named=True))
-        ]
+        flat = _select_components_from_flat_columns()
+        if flat is not None:
+            x_eye, y_eye = flat
+            aois = [
+                aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
+                for row in tqdm(self.samples.iter_rows(named=True))
+            ]
+        else:
+            # Fallback: extract coordinates from list columns per-row without unnesting
+            source_col = 'pixel' if (
+                gaze_type == 'pixel' and 'pixel' in self.samples.columns
+            ) else None
+            if (
+                source_col is None and gaze_type == 'position' and
+                'position' in self.samples.columns
+            ):
+                source_col = 'position'
+            if source_col is None:
+                raise ValueError(
+                    'neither position nor pixel column in samples dataframe, '
+                    'at least one needed for mapping',
+                )
+
+            def _xy_from_list(
+                values: list[float] | tuple[float, ...],
+            ) -> tuple[float | None, float | None]:
+                n = len(values) if isinstance(values, (list, tuple)) else 0
+                if n == 2:
+                    return values[0], values[1]
+                if n >= 4:
+                    if eye == 'left':
+                        return values[0], values[1]
+                    # right, auto, cyclops, else -> right indices
+                    return values[2], values[3]
+                return None, None
+
+            aois = []
+            for row in tqdm(self.samples.iter_rows(named=True)):
+                vals = row.get(source_col)
+                if not isinstance(vals, (list, tuple)) or len(vals) < 2:
+                    # create empty AOI row (all None)
+                    aois.append(pl.from_dict({col: None for col in aoi_dataframe.aois.columns}))
+                    continue
+                x, y = _xy_from_list(vals)
+                if x is None or y is None:
+                    aois.append(pl.from_dict({col: None for col in aoi_dataframe.aois.columns}))
+                    continue
+                tmp_row = dict(row)
+                tmp_row['__x'] = x
+                tmp_row['__y'] = y
+                aois.append(aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y'))
+
         aoi_df = pl.concat(aois)
         self.samples = pl.concat([self.samples, aoi_df], how='horizontal')
 

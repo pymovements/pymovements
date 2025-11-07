@@ -533,7 +533,7 @@ class Events:
                 ],
             ).drop(input_col)
 
-    def map_to_aois(self, aoi_dataframe: TextStimulus) -> None:
+    def map_to_aois(self, aoi_dataframe: TextStimulus, *, preserve_structure: bool = True) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
         This function computes AOI membership only for rows whose ``name`` starts with
@@ -541,19 +541,25 @@ class Events:
         are left unchanged and receive ``None`` values for all AOI columns. The original order
         and number of rows are preserved.
 
-        Notes
-        -----
-        - This method currently unnests the ``location`` column into ``location_x`` and
-          ``location_y``. Non-fixation rows or rows without valid coordinates are handled
-          gracefully by assigning ``None`` AOI values.
-        - AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
-          are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
-          duplicate columns during concatenation.
+        Schema handling:
+        - If ``preserve_structure=True`` (default), we mirror legacy behavior when a list
+          ``location`` column exists: derive ``location_x``/``location_y`` and drop ``location``.
+          This keeps downstream expectations about flat component columns.
+        - If ``preserve_structure=False``, no unnesting/derivation occurs and the original
+          ``location`` list column is preserved. Coordinates are extracted per-row without
+          altering the frame.
+
+        AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
+        are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
+        duplicate columns during concatenation.
 
         Parameters
         ----------
         aoi_dataframe: TextStimulus
             Text stimulus defining AOI rectangles.
+        preserve_structure: bool
+            Control whether to derive component columns and drop the list column as described
+            above. Default: True.
 
         Raises
         ------
@@ -562,10 +568,6 @@ class Events:
         ValueError
             If the events frame is empty.
         """
-        # Unnest location list into x/y columns if present
-        self.unnest()
-
-        # Match legacy behaviour:
         # Validate AOI configuration early
         if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
             raise ValueError(
@@ -574,6 +576,17 @@ class Events:
         # Raise when no rows to concat
         if self.frame.height == 0:
             raise ValueError('cannot concat empty list')
+
+        # Backward-compatibility: derive component coordinates if only a list column exists.
+        if preserve_structure and 'location' in self.frame.columns and (
+            'location_x' not in self.frame.columns or 'location_y' not in self.frame.columns
+        ):
+            self.frame = self.frame.with_columns(
+                [
+                    pl.col('location').list.get(0).alias('location_x'),
+                    pl.col('location').list.get(1).alias('location_y'),
+                ],
+            ).drop('location')
 
         # AOI output columns mirror the stimulus columns, but skip columns that already exist
         # in the Events frame (e.g., trial/page) to avoid duplicate-column errors on concat.
@@ -591,16 +604,25 @@ class Events:
                 out_rows.append(_empty_aoi_row())
                 continue
 
-            # Require valid coordinates - otherwise, treat as no match
+            # Extract coordinates - support either pre-existing component columns or list column
             x = row.get('location_x')
             y = row.get('location_y')
+            if x is None or y is None:
+                loc = row.get('location')
+                if isinstance(loc, (list, tuple)) and len(loc) >= 2:
+                    x, y = loc[0], loc[1]
+
             if x is None or y is None:
                 out_rows.append(_empty_aoi_row())
                 continue
 
-            # Ensure expected key columns exist in the row to avoid KeyError in get_aoi
+            # Create a shallow copy with temporary keys for AOI lookup
+            tmp_row = dict(row)
+            tmp_row['__x'] = x
+            tmp_row['__y'] = y
+
             try:
-                aoi_row = aoi_dataframe.get_aoi(row=row, x_eye='location_x', y_eye='location_y')
+                aoi_row = aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y')
             except (KeyError, TypeError):  # tolerate common lookup/type errors per row
                 aoi_row = _empty_aoi_row()
             else:
@@ -615,6 +637,15 @@ class Events:
 
         aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
         self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
+
+        # Backward-compatibility: some pipelines expect that a prior unnest removed the
+        # original 'location' list column and kept only component columns. We avoid unnesting,
+        # but if component columns already exist, we drop the original list column to preserve
+        # legacy schema without altering coordinates.
+        if preserve_structure and 'location' in self.frame.columns and (
+            'location_x' in self.frame.columns or 'location_y' in self.frame.columns
+        ):
+            self.frame = self.frame.drop('location')
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:cls:`~pymovements.Events` object."""

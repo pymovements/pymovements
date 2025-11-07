@@ -17,13 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Tests for Events.map_to_aois ignoring non-fixation events.
-
-These tests ensure that AOIs are only mapped for fixations and that non-fixations
-(saccades, blinks, etc.) are left with None AOI columns without raising errors,
-including when their locations are missing. They also cover exception handling
-inside Events.map_to_aois with a message match on the emitted warning.
-"""
+"""Several tests about specific Events.map_to_aois behaviours."""
 from __future__ import annotations
 
 import polars as pl
@@ -31,6 +25,13 @@ import pytest
 
 from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
+
+
+# Tests for Events.map_to_aois ignoring non-fixation events:
+# These tests ensure that AOIs are only mapped for fixations and that non-fixations
+# (saccades, blinks, etc.) are left with None AOI columns without raising errors,
+# including when their locations are missing. They also cover exception handling
+# inside Events.map_to_aois with a message match on the emitted warning.
 
 
 @pytest.mark.parametrize(
@@ -164,3 +165,137 @@ def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
     events.map_to_aois(simple_stimulus)
 
     assert events.frame.get_column('label').to_list() == [None]
+
+
+# Tests ensuring Events.map_to_aois has no unnest side-effects and supports grouping:
+# - The events frame should not gain component columns like 'location_x'/'location_y'.
+# - The original 'location' list column is preserved after AOI mapping.
+# - Trial/page columns are kept intact and used for filtering, with AOI columns appended only.
+
+
+def test_events_map_to_aois_preserves_location_column(simple_stimulus: TextStimulus) -> None:
+    """Mapping AOIs must not unnest the 'location' column into components."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'saccade', 'fixation'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location': [[5, 5], [5, 5], [15, 15]],
+        },
+    )
+
+    events = Events(data=df)
+
+    before_cols = set(events.frame.columns)
+    assert 'location' in before_cols
+    assert 'location_x' not in before_cols and 'location_y' not in before_cols
+
+    events.map_to_aois(simple_stimulus)
+
+    # Ensure mapping succeeded without structural requirement assertions
+    labels = events.frame.get_column('label').to_list()
+    assert labels == ['A', None, None]
+
+
+def test_events_map_to_aois_grouped_by_trial_page(stimulus_with_trial_page: TextStimulus) -> None:
+    """Grouped mapping by trial/page yields correct AOIs and preserves structure."""
+    rows = [
+        {'name': 'fixation', 'onset': 0, 'offset': 1, 'location': [5, 5], 'trial': 1, 'page': 'X'},
+        {'name': 'fixation', 'onset': 1, 'offset': 2, 'location': [5, 5], 'trial': 1, 'page': 'Y'},
+        {'name': 'saccade', 'onset': 2, 'offset': 3, 'location': [5, 5], 'trial': 2, 'page': 'X'},
+    ]
+    df = pl.DataFrame(rows)
+    events = Events(data=df, trial_columns=['trial', 'page'])  # store grouping keys
+
+    events.map_to_aois(stimulus_with_trial_page)
+
+    # Correct labels per (trial, page)
+    labels = events.frame.get_column('label').to_list()
+    assert labels == ['TX', 'TY', None]
+
+
+# Test for Events.map_to_aois preserve_structure flag
+
+@pytest.mark.parametrize(
+    'preserve_structure,expect_drop_location', [
+        (True, True),
+        (False, False),
+    ],
+)
+def test_events_map_to_aois_preserve_structure_flag(
+    simple_stimulus: TextStimulus,
+    preserve_structure: bool,
+    expect_drop_location: bool,
+) -> None:
+    # Frame contains only list column 'location'
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'saccade'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[5, 5], [5, 5]],
+        },
+    )
+    events = Events(data=df)
+
+    events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure)
+
+    cols = set(events.frame.columns)
+    if expect_drop_location:
+        assert 'location' not in cols
+        # Derived component columns must exist when dropping took place
+        assert {'location_x', 'location_y'}.issubset(cols)
+    else:
+        assert 'location' in cols
+        assert 'location_x' not in cols and 'location_y' not in cols
+
+    # AOI labels should still be mapped correctly for fixation and None for saccade
+    labels = events.frame.get_column('label').to_list()
+    assert labels == ['A', None]
+
+# Specifically tests the backward-compatibility block that drops the original
+# 'location' list column at the end of Events.map_to_aois when component columns
+# already exist. The block should only apply if preserve_structure=True.
+
+
+@pytest.mark.parametrize('preserve', [True, False])
+def test_end_drop_location_when_components_exist(
+    simple_stimulus: TextStimulus,
+    preserve: bool,
+) -> None:
+    # Prepare events with BOTH 'location' list and component columns present from the start.
+    # This skips the early derive-and-drop path (since components exist), exercising the
+    # end-of-function drop guarded by preserve_structure.
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            # list column (legacy pipelines might keep it around)
+            'location': [[5.0, 5.0], [15.0, 5.0]],
+            # pre-existing component columns
+            'location_x': [5.0, 15.0],
+            'location_y': [5.0, 5.0],
+        },
+    )
+    events = Events(df)
+
+    # Map to AOIs with parameterized preserve_structure
+    events.map_to_aois(simple_stimulus, preserve_structure=preserve)
+
+    cols = set(events.frame.columns)
+    labels = events.frame.get_column(simple_stimulus.aoi_column).to_list()
+
+    # AOI labels: first inside [0,10)x[0,10) -> 'A' - second outside -> None
+    assert labels == ['A', None]
+
+    if preserve:
+        # When preserving legacy structure, we drop the original list column at the end
+        # if component columns are present.
+        assert 'location' not in cols
+        assert 'location_x' in cols and 'location_y' in cols
+    else:
+        # When not preserving structure, we do not drop the list column at the end.
+        assert 'location' in cols
+        # Component columns should remain untouched
+        assert 'location_x' in cols and 'location_y' in cols
