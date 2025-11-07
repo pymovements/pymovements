@@ -129,30 +129,37 @@ class TextStimulus:
             x_eye: str,
             y_eye: str,
     ) -> pl.DataFrame:
-        """Given eye movement and aoi dataframe, return aoi.
+        """Return the AOI that contains the given gaze row.
 
-        If `width` is used, calculation: start_x_column <= x_eye < start_x_column + width.
-        If `end_x_column` is used, calculation: start_x_column <= x_eye < end_x_column.
-        Analog for y coordinate and height.
+        Spatial bounds:
+        - If ``width``/``height`` are provided: ``start <= coord < start + size``.
+        - If ``end_x_column``/``end_y_column`` are provided: ``start <= coord < end``.
+        In both cases, the end boundary is exclusive (half-open interval [start, end)).
+
+        Trial/page filtering:
+        - If ``trial_column`` and/or ``page_column`` are configured, AOIs are first filtered to
+          the current row's values of these columns before the spatial lookup. These columns are
+          dropped from the temporary AOI selection to avoid duplicate columns during concatenation.
 
         Parameters
         ----------
         row: pl.DataFrame.row
-            Eye movement row.
+            Eye movement row with fields for the eye coordinates and any trial/page identifiers.
         x_eye: str
-            Name of x eye coordinate.
+            Name of the x eye coordinate field in ``row``.
         y_eye: str
-            Name of y eye coordinate.
+            Name of the y eye coordinate field in ``row``.
 
         Returns
         -------
         pl.DataFrame
-            Looked at area of interest.
+            A one-row DataFrame representing the matched AOI. If no AOI matches, the result is a
+            single row with ``None`` values in the AOI columns.
 
         Raises
         ------
         ValueError
-            If width and end_TYPE_column is None.
+            If neither width/height nor end_x/end_y columns are defined to specify AOI bounds.
         """
         return _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
 
@@ -280,24 +287,17 @@ def _get_aoi(
         If width and end_TYPE_column is None.
     """
     row_aois = aoi_dataframe.aois
-    # fix that the trial columns and the page columns are
-    #  assumed to be the same for the row (i.e. the events df).
-    #  This is not guaranteed to be the case
-
-    # filter by trial and page if those columns are defined and drop the
-    # columns afterwards as there will be
-    # a duplicate error otherwise later. And those columns are not needed
-    # for the actual aoi lookup and they are
-    # in the event df already
-    if aoi_dataframe.page_column is not None:
+    # Filter AOIs to the same trial/page as the current row (if those columns are defined).
+    # After filtering, drop these key columns from the temporary AOI selection to avoid
+    # duplicate columns later when concatenating AOI properties back to event/gaze frames.
+    if aoi_dataframe.trial_column is not None:
         row_aois = row_aois.filter(
             row_aois[aoi_dataframe.trial_column] == row[aoi_dataframe.trial_column],
         )
         row_aois = row_aois.drop(aoi_dataframe.trial_column)
-    if aoi_dataframe.trial_column is not None:
+    if aoi_dataframe.page_column is not None:
         row_aois = row_aois.filter(
-            row_aois[aoi_dataframe.page_column]
-            == row[aoi_dataframe.page_column],
+            row_aois[aoi_dataframe.page_column] == row[aoi_dataframe.page_column],
         )
         row_aois = row_aois.drop(aoi_dataframe.page_column)
 
