@@ -24,36 +24,10 @@ regression cases around exclusive end boundaries and no-match behavior.
 """
 from __future__ import annotations
 
-import polars as pl
 import pytest
 
 from pymovements.stimulus.text import TextStimulus
 
-
-@pytest.fixture(name='stimulus_both_columns')
-def _stimulus_both_columns() -> TextStimulus:
-    # Two AOIs: same spatial box but on different (trial, page) pairs
-    df = pl.DataFrame(
-        {
-            'label': ['A1', 'A2', 'B1'],
-            'sx': [0, 0, 10],
-            'sy': [0, 0, 0],
-            'ex': [10, 10, 20],
-            'ey': [10, 10, 10],
-            'trial': [1, 2, 1],
-            'page': ['X', 'X', 'Y'],
-        },
-    )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-        page_column='page',
-    )
 
 
 @pytest.mark.parametrize(
@@ -65,37 +39,12 @@ def _stimulus_both_columns() -> TextStimulus:
         pytest.param({'x': 15, 'y': 5, 'trial': 1, 'page': 'Y'}, 'B1', id='match-other-aoi'),
     ],
 )
-# pylint: disable=redefined-outer-name
 def test_get_aoi_filters_by_trial_and_page(
         stimulus_both_columns: TextStimulus, row: dict, expected: str | None,
 ) -> None:
     aoi = stimulus_both_columns.get_aoi(row=row, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1  # always one row (possibly filled with Nones)
     assert aoi.select('label').item() == expected
-
-
-@pytest.fixture(name='stimulus_only_trial')
-def _stimulus_only_trial() -> TextStimulus:
-    df = pl.DataFrame(
-        {
-            'label': ['T1', 'T2'],
-            'sx': [0, 0],
-            'sy': [0, 0],
-            'ex': [10, 10],
-            'ey': [10, 10],
-            'trial': [1, 2],
-        },
-    )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-        page_column=None,
-    )
 
 
 @pytest.mark.parametrize(
@@ -114,28 +63,6 @@ def test_get_aoi_filters_by_trial_only(
     assert aoi.select('label').item() == expected
 
 
-@pytest.fixture(name='stimulus_only_page')
-def _stimulus_only_page() -> TextStimulus:
-    df = pl.DataFrame(
-        {
-            'label': ['PX', 'PY'],
-            'sx': [0, 0],
-            'sy': [0, 0],
-            'ex': [10, 10],
-            'ey': [10, 10],
-            'page': ['X', 'Y'],
-        },
-    )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column=None,
-        page_column='page',
-    )
 
 
 @pytest.mark.parametrize(

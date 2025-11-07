@@ -33,26 +33,6 @@ from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
 
 
-@pytest.fixture(name='simple_stimulus')
-def _simple_stimulus() -> TextStimulus:
-    """Single AOI box [0,10) x [0,10) labeled 'A'."""
-    df = pl.DataFrame(
-        {
-            'label': ['A'],
-            'sx': [0],
-            'sy': [0],
-            'ex': [10],
-            'ey': [10],
-        },
-    )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-    )
 
 
 @pytest.mark.parametrize(
@@ -104,30 +84,6 @@ def test_map_to_aois_ignores_non_fixations(
     assert labels == expected_labels
 
 
-@pytest.fixture(name='stimulus_with_trial_page')
-def _stimulus_with_trial_page() -> TextStimulus:
-    """Two AOIs on different (trial, page), same spatial box."""
-    df = pl.DataFrame(
-        {
-            'label': ['TX', 'TY'],
-            'sx': [0, 0],
-            'sy': [0, 0],
-            'ex': [10, 10],
-            'ey': [10, 10],
-            'trial': [1, 1],
-            'page': ['X', 'Y'],
-        },
-    )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-        page_column='page',
-    )
 
 
 @pytest.mark.parametrize(
