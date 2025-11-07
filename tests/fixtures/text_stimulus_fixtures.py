@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Shared TextStimulus test fixtures"""
+"""Shared TextStimulus test fixtures."""
 from __future__ import annotations
 
 import polars as pl
@@ -27,7 +27,7 @@ from pymovements.stimulus.text import TextStimulus
 
 
 @pytest.fixture(name='stimulus_both_columns')
-def _stimulus_both_columns() -> TextStimulus:
+def _stimulus_both_columns() -> TextStimulus:  # noqa: D403
     """AOIs with both trial and page columns for filtering tests.
 
     Two AOIs with identical spatial boxes but different (trial, page) keys,
@@ -57,7 +57,7 @@ def _stimulus_both_columns() -> TextStimulus:
 
 
 @pytest.fixture(name='stimulus_only_trial')
-def _stimulus_only_trial() -> TextStimulus:
+def _stimulus_only_trial() -> TextStimulus:  # noqa: D403
     """AOIs that are split by trial only (no page column)."""
     df = pl.DataFrame(
         {
@@ -82,7 +82,7 @@ def _stimulus_only_trial() -> TextStimulus:
 
 
 @pytest.fixture(name='stimulus_only_page')
-def _stimulus_only_page() -> TextStimulus:
+def _stimulus_only_page() -> TextStimulus:  # noqa: D403
     """AOIs that are split by page only (no trial column)."""
     df = pl.DataFrame(
         {
