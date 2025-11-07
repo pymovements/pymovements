@@ -291,15 +291,17 @@ def _get_aoi(
     # After filtering, drop these key columns from the temporary AOI selection to avoid
     # duplicate columns later when concatenating AOI properties back to event/gaze frames.
     if aoi_dataframe.trial_column is not None:
-        row_aois = row_aois.filter(
-            row_aois[aoi_dataframe.trial_column] == row[aoi_dataframe.trial_column],
-        )
-        row_aois = row_aois.drop(aoi_dataframe.trial_column)
+        trial_val = row.get(aoi_dataframe.trial_column)
+        if trial_val is not None:
+            row_aois = row_aois.filter(
+                row_aois[aoi_dataframe.trial_column] == trial_val,
+            )
     if aoi_dataframe.page_column is not None:
-        row_aois = row_aois.filter(
-            row_aois[aoi_dataframe.page_column] == row[aoi_dataframe.page_column],
-        )
-        row_aois = row_aois.drop(aoi_dataframe.page_column)
+        page_val = row.get(aoi_dataframe.page_column)
+        if page_val is not None:
+            row_aois = row_aois.filter(
+                row_aois[aoi_dataframe.page_column] == page_val,
+            )
 
     if aoi_dataframe.width_column is not None:
         _checks.check_is_none_is_mutual(

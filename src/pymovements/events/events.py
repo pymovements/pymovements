@@ -178,9 +178,15 @@ class Events:
 
         self.frame = pl.DataFrame(data=data_dict, schema_overrides=self._minimal_schema)
 
-        # Ensure column order: trial columns, name, onset, offset.
+        # Ensure column order: trial columns, then minimal schema, keeping all other columns.
         if self.trial_columns is not None:
-            self.frame = self.frame.select([*self.trial_columns, *self._minimal_schema.keys()])
+            keep_first = [*self.trial_columns, *self._minimal_schema.keys()]
+            self.frame = self.frame.select(
+                [  # Just assure order: columns of keep_first first, followed by all others
+                    *keep_first,
+                    pl.all().exclude(keep_first),
+                ],
+            )
 
         # Convert to int if possible.
         all_decimals = self.frame.select(
@@ -528,19 +534,86 @@ class Events:
             ).drop(input_col)
 
     def map_to_aois(self, aoi_dataframe: TextStimulus) -> None:
-        """Map events to aois.
+        """Map events to AOIs, ignoring non-fixations.
+
+        This function computes AOI membership only for rows whose ``name`` starts with
+        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Rows that are not fixations
+        are left unchanged and receive ``None`` values for all AOI columns. The original order
+        and number of rows are preserved.
+
+        Notes
+        -----
+        - This method currently unnests the ``location`` column into ``location_x`` and
+          ``location_y``. Non-fixation rows or rows without valid coordinates are handled
+          gracefully by assigning ``None`` AOI values.
+        - AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
+          are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
+          duplicate columns during concatenation.
 
         Parameters
         ----------
         aoi_dataframe: TextStimulus
-            Text dataframe to map fixation to.
+            Text stimulus defining AOI rectangles.
+
+        Raises
+        ------
+        ValueError
+            If ``aoi_dataframe`` does not have either ``width_column`` or ``end_x_column`` defined.
+        ValueError
+            If the events frame is empty.
         """
+        # Unnest location list into x/y columns if present
         self.unnest()
-        aois = [
-            aoi_dataframe.get_aoi(row=row, x_eye='location_x', y_eye='location_y')
-            for row in tqdm(self.frame.iter_rows(named=True))
-        ]
-        aoi_df = pl.concat(aois)
+
+        # Match legacy behaviour:
+        # Validate AOI configuration early
+        if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
+            raise ValueError(
+                'either TextStimulus.width or TextStimulus.end_x_column must be defined',
+            )
+        # Raise when no rows to concat
+        if self.frame.height == 0:
+            raise ValueError('cannot concat empty list')
+
+        # AOI output columns mirror the stimulus columns, but skip columns that already exist
+        # in the Events frame (e.g., trial/page) to avoid duplicate-column errors on concat.
+        existing_cols = set(self.frame.columns)
+        aoi_columns: list[str] = [c for c in aoi_dataframe.aois.columns if c not in existing_cols]
+
+        def _empty_aoi_row() -> pl.DataFrame:
+            return pl.from_dict({col: None for col in aoi_columns})
+
+        out_rows: list[pl.DataFrame] = []
+        for row in tqdm(self.frame.iter_rows(named=True)):
+            name_val = row.get('name')
+            is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
+            if not is_fix:
+                out_rows.append(_empty_aoi_row())
+                continue
+
+            # Require valid coordinates - otherwise, treat as no match
+            x = row.get('location_x')
+            y = row.get('location_y')
+            if x is None or y is None:
+                out_rows.append(_empty_aoi_row())
+                continue
+
+            # Ensure expected key columns exist in the row to avoid KeyError in get_aoi
+            try:
+                aoi_row = aoi_dataframe.get_aoi(row=row, x_eye='location_x', y_eye='location_y')
+            except (KeyError, TypeError):  # tolerate common lookup/type errors per row
+                aoi_row = _empty_aoi_row()
+            else:
+                # Project to the selected AOI columns and fill any missing ones with None
+                if aoi_columns:
+                    present = [c for c in aoi_columns if c in aoi_row.columns]
+                    missing = [c for c in aoi_columns if c not in aoi_row.columns]
+                    aoi_row = aoi_row.select(
+                        [pl.col(c) for c in present] + [pl.lit(None).alias(c) for c in missing],
+                    )
+            out_rows.append(aoi_row)
+
+        aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
         self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
 
     def __eq__(self, other: Events) -> bool:
