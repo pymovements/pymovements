@@ -26,6 +26,27 @@ import pytest
 from pymovements.stimulus.text import TextStimulus
 
 
+def _make_text_stimulus(
+    df: pl.DataFrame, *, trial_col: str | None = None,
+    page_col: str | None = None,
+) -> TextStimulus:
+    """Help to construct a TextStimulus from a minimal AOI dataframe.
+
+    All fixtures use common column names: 'label', 'sx', 'sy', 'ex', 'ey' and optional
+    'trial' / 'page'.
+    """
+    return TextStimulus(
+        aois=df,
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        end_x_column='ex',
+        end_y_column='ey',
+        trial_column=trial_col,
+        page_column=page_col,
+    )
+
+
 @pytest.fixture(name='stimulus_both_columns')
 def _stimulus_both_columns() -> TextStimulus:  # noqa: D403
     """AOIs with both trial and page columns for filtering tests.
@@ -44,16 +65,7 @@ def _stimulus_both_columns() -> TextStimulus:  # noqa: D403
             'page': ['X', 'X', 'Y'],
         },
     )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-        page_column='page',
-    )
+    return _make_text_stimulus(df, trial_col='trial', page_col='page')
 
 
 @pytest.fixture(name='stimulus_only_trial')
@@ -69,16 +81,7 @@ def _stimulus_only_trial() -> TextStimulus:  # noqa: D403
             'trial': [1, 2],
         },
     )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-        page_column=None,
-    )
+    return _make_text_stimulus(df, trial_col='trial')
 
 
 @pytest.fixture(name='stimulus_only_page')
@@ -94,16 +97,7 @@ def _stimulus_only_page() -> TextStimulus:  # noqa: D403
             'page': ['X', 'Y'],
         },
     )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column=None,
-        page_column='page',
-    )
+    return _make_text_stimulus(df, page_col='page')
 
 
 @pytest.fixture(name='simple_stimulus')
@@ -118,14 +112,7 @@ def _simple_stimulus() -> TextStimulus:
             'ey': [10],
         },
     )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-    )
+    return _make_text_stimulus(df)
 
 
 @pytest.fixture(name='stimulus_with_trial_page')
@@ -142,13 +129,19 @@ def _stimulus_with_trial_page() -> TextStimulus:
             'page': ['X', 'Y'],
         },
     )
-    return TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        end_x_column='ex',
-        end_y_column='ey',
-        trial_column='trial',
-        page_column='page',
+    return _make_text_stimulus(df, trial_col='trial', page_col='page')
+
+
+@pytest.fixture(name='stimulus_overlap')
+def _stimulus_overlap() -> TextStimulus:
+    # Two overlapping AOIs covering the same box; order is deterministic.
+    df = pl.DataFrame(
+        {
+            'label': ['L1', 'L2'],
+            'sx': [0, 0],
+            'sy': [0, 0],
+            'ex': [10, 10],
+            'ey': [10, 10],
+        },
     )
+    return _make_text_stimulus(df)

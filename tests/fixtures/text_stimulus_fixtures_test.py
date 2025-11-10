@@ -31,6 +31,9 @@ from pymovements.stimulus.text import TextStimulus
         pytest.param('stimulus_both_columns', id='both'),
         pytest.param('stimulus_only_trial', id='trial'),
         pytest.param('stimulus_only_page', id='page'),
+        pytest.param('simple_stimulus', id='simple'),
+        pytest.param('stimulus_with_trial_page', id='trial_page'),
+        pytest.param('stimulus_overlap', id='overlap'),
     ],
 )
 def test_fixtures_provide_textstimulus(request: pytest.FixtureRequest, fixture_name: str) -> None:
@@ -65,3 +68,66 @@ def test_fixtures_basic_get_aoi(
         assert label is None
     else:
         assert label is not None
+
+
+@pytest.mark.parametrize(
+    ('x', 'y', 'expected_label'),
+    [
+        pytest.param(5, 5, 'A', id='inside'),
+        pytest.param(10, 5, None, id='right-boundary-exclusive'),
+        pytest.param(-1, 0, None, id='outside-left'),
+    ],
+)
+def test_simple_stimulus_get_aoi(
+    simple_stimulus: TextStimulus,
+    x: int, y: int, expected_label: str | None,
+) -> None:
+    aoi = simple_stimulus.get_aoi(row={'x': x, 'y': y}, x_eye='x', y_eye='y')
+    assert aoi.shape[0] == 1
+    assert aoi.select(simple_stimulus.aoi_column).item() == expected_label
+
+
+@pytest.mark.parametrize(
+    ('trial', 'page', 'expected_label'),
+    [
+        pytest.param(1, 'X', 'TX', id='trial1-pageX'),
+        pytest.param(1, 'Y', 'TY', id='trial1-pageY'),
+        pytest.param(2, 'X', None, id='trial-miss'),
+        pytest.param(1, 'Z', None, id='page-miss'),
+    ],
+)
+def test_stimulus_with_trial_page_selection(
+    stimulus_with_trial_page: TextStimulus, trial: int, page: str, expected_label: str | None,
+) -> None:
+    aoi = stimulus_with_trial_page.get_aoi(
+        row={
+            'x': 5,
+            'y': 5,
+            'trial': trial,
+            'page': page,
+        },
+        x_eye='x',
+        y_eye='y',
+    )
+    assert aoi.shape[0] == 1
+    assert aoi.select(stimulus_with_trial_page.aoi_column).item() == expected_label
+
+
+@pytest.mark.parametrize(
+    ('row', 'expected_label', 'expect_warning'),
+    [
+        pytest.param({'x': 5, 'y': 5}, 'L1', True, id='overlap-warns-first-selected'),
+        pytest.param({'x': 15, 'y': 5}, None, False, id='outside-no-warn'),
+    ],
+)
+def test_stimulus_overlap_behaviour(
+    stimulus_overlap: TextStimulus,
+        row: dict[str, int], expected_label: str | None, expect_warning: bool,
+) -> None:
+    if expect_warning:
+        with pytest.warns(UserWarning, match='Multiple AOIs matched this point;'):
+            aoi = stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
+    else:
+        aoi = stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
+    assert aoi.shape[0] == 1
+    assert aoi.select(stimulus_overlap.aoi_column).item() == expected_label

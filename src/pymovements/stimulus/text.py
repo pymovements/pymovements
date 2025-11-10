@@ -20,6 +20,7 @@
 """Module for the TextDataFrame."""
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -140,6 +141,10 @@ class TextStimulus:
         - If ``trial_column`` and/or ``page_column`` are configured, AOIs are first filtered to
           the current row's values of these columns before the spatial lookup. These columns are
           dropped from the temporary AOI selection to avoid duplicate columns during concatenation.
+
+        Overlapping AOIs:
+        - If multiple AOIs overlap and match the same point, the first AOI in the stimulus
+          dataframe order is selected deterministically and a ``UserWarning`` is emitted.
 
         Parameters
         ----------
@@ -328,6 +333,14 @@ def _get_aoi(
 
         if aoi.is_empty():
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
+            return aoi
+        # If multiple AOIs overlap, select the first deterministically and warn
+        if aoi.height > 1:
+            warnings.warn(
+                'Multiple AOIs matched this point; selecting the first match by AOI order.',
+                UserWarning,
+            )
+            aoi = aoi.slice(0, 1)
         return aoi
 
     if aoi_dataframe.end_x_column is not None:
@@ -346,6 +359,15 @@ def _get_aoi(
 
         if aoi.is_empty():
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
+            return aoi
+
+        # If multiple AOIs overlap, select the first deterministically and warn
+        if aoi.height > 1:
+            warnings.warn(
+                'Multiple AOIs matched this point; selecting the first match by AOI order.',
+                UserWarning,
+            )
+            aoi = aoi.slice(0, 1)
 
         return aoi
     raise ValueError(
