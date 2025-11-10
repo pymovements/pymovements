@@ -119,7 +119,7 @@ class DIDEC(DatasetDefinition):
     long_name: str = 'Dutch Image Description and Eye-tracking Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
