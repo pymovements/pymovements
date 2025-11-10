@@ -20,6 +20,8 @@
 """Test AOI functionality."""
 from __future__ import annotations
 
+from typing import Any
+
 import polars as pl
 import pytest
 
@@ -81,7 +83,7 @@ def test_get_aoi_overlap_warns_and_picks_first_width_height(
     row = {'x': x, 'y': y}
     if expect_warning:
         with pytest.warns(
-                UserWarning, match='Multiple AOIs matched this point; selecting the first',
+                UserWarning, match=r'Multiple AOIs matched this point\. Selecting the first',
         ):
             out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
     else:
@@ -126,3 +128,69 @@ def test_get_aoi_raises_value_error_when_no_size_columns(row: dict[str, int]) ->
             match='either TextStimulus.width or TextStimulus.end_x_column must be defined',
     ):
         _ = stim.get_aoi(row=row, x_eye='x', y_eye='y')
+
+
+@pytest.mark.parametrize(
+    ('mode', 'x', 'y'),
+    [
+        pytest.param('width_height', None, 0, id='width_height-x-none'),
+        pytest.param('width_height', 0, None, id='width_height-y-none'),
+        pytest.param('width_height', 'bad', 0, id='width_height-x-str'),
+        pytest.param('width_height', 0, 'bad', id='width_height-y-str'),
+        pytest.param('width_height', float('nan'), 0, id='width_height-x-nan'),
+        pytest.param('width_height', 0, float('nan'), id='width_height-y-nan'),
+        pytest.param('end', None, 0, id='end-x-none'),
+        pytest.param('end', 0, None, id='end-y-none'),
+        pytest.param('end', 'bad', 0, id='end-x-str'),
+        pytest.param('end', 0, 'bad', id='end-y-str'),
+        pytest.param('end', float('nan'), 0, id='end-x-nan'),
+        pytest.param('end', 0, float('nan'), id='end-y-nan'),
+    ],
+)
+def test_get_aoi_invalid_coordinates_warns_and_returns_none(mode: str, x: Any, y: Any) -> None:
+    """Invalid/non-numeric coords should emit a warning and return a single None row.
+
+    This covers both AOI specification modes: width/height and end_x/end_y.
+    """
+    if mode == 'width_height':
+        df = pl.DataFrame(
+            {
+                'label': ['A'],
+                'sx': [0],
+                'sy': [0],
+                'width': [10],
+                'height': [10],
+            },
+        )
+        stim = TextStimulus(
+            aois=df,
+            aoi_column='label',
+            start_x_column='sx',
+            start_y_column='sy',
+            width_column='width',
+            height_column='height',
+        )
+    else:
+        df = pl.DataFrame(
+            {
+                'label': ['A'],
+                'sx': [0],
+                'sy': [0],
+                'ex': [10],
+                'ey': [10],
+            },
+        )
+        stim = TextStimulus(
+            aois=df,
+            aoi_column='label',
+            start_x_column='sx',
+            start_y_column='sy',
+            end_x_column='ex',
+            end_y_column='ey',
+        )
+
+    with pytest.warns(UserWarning, match='Invalid eye coordinates'):
+        out = stim.get_aoi(row={'x': x, 'y': y}, x_eye='x', y_eye='y')
+
+    assert out.height == 1
+    assert out.select(stim.aoi_column).item() is None
