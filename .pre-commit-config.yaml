@@ -29,6 +29,12 @@ repos:
         files: ^src/
         exclude: __init__.py
         args: [ --application-directories=src, --add-import, 'from __future__ import annotations' ]
+  - repo: https://github.com/citation-file-format/cffconvert
+    rev: 054bda51dbe278b3e86f27c890e3f3ac877d616c
+    hooks:
+      - id: validate-cff
+        alias: cffconvert
+        name: Validating CITATION.cff using 'cffconvert'`
   - repo: https://github.com/datarootsio/databooks
     rev: 1.3.10
     hooks:
@@ -159,10 +165,3 @@ repos:
         verbose: true
         additional_dependencies:
           - pyyaml
-
-  - repo: https://github.com/citation-file-format/cffconvert
-    rev: 054bda51dbe278b3e86f27c890e3f3ac877d616c
-    hooks:
-      - id: validate-cff
-        alias: cffconvert
-        name: Validating CITATION.cff using 'cffconvert'`
