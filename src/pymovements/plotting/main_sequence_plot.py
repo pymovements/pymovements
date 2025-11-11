@@ -37,6 +37,8 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
+        fit: bool | str = True,
+        measure: bool | str = True,
         marker_size: float = 25,
         color: str = 'purple',
         fit_color: str = 'red',
@@ -58,6 +60,14 @@ def main_sequence_plot(
     ----------
     events: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude".
+    fit: bool | str
+        Controls whether to draw a fit line. If True, a linear fit is drawn.
+        In the future, string values may specify fit methods (e.g., "linear", "exponential").
+    measure: bool | str
+        Controls whether and which goodness-of-fit measure is annotated.
+        - True or "r2": display the coefficient of determination (R²)
+        - "s": display the standard error of the regression (S)
+        - False: do not display any measure text
     marker_size: float
         Size of the marker symbol. (default: 25)
     color: str
@@ -168,35 +178,39 @@ def main_sequence_plot(
             **kwargs,
         )
 
-    # code introduced by commit a306b44
-    a, b = np.polyfit(amplitudes, peak_velocities, 1)
+    # --- Linear fit (only if requested) ---
+    if fit:
+        a, b = np.polyfit(amplitudes, peak_velocities, 1)
 
-    # line plotting estimation
-    min_ampl = min(amplitudes)
-    max_ampl = max(amplitudes)
-    line_x = [min_ampl, max_ampl]
-    line_y = [a * min_ampl + b, a * max_ampl + b]
+        min_ampl, max_ampl = min(amplitudes), max(amplitudes)
+        line_x = [min_ampl, max_ampl]
+        line_y = [a * min_ampl + b, a * max_ampl + b]
 
-    # residual calculation
-    y_pred = np.array(amplitudes) * a + b
-    y_true = peak_velocities
+        line_axes = plt.gca() if own else ax
+        line_axes.plot(line_x, line_y, c=fit_color)
 
-    R2 = r2_score(y_true, y_pred)
-    R2 = np.round(R2, 3)
+        # Compute fit measure if requested
+        if measure:
+            y_pred = np.array(amplitudes) * a + b
+            residuals = np.array(peak_velocities) - y_pred
 
-    # draw into correct axes (plt.* if own, ax.* otherwise)
-    line_axes = plt.gca() if own else ax
+            if measure is True or measure == 'r2':
+                val = np.round(r2_score(peak_velocities, y_pred), 3)
+                label = f"R² = {val}"
 
-    # R² label
-    line_axes.text(
-        0.05,
-        0.8,
-        f'R2 value: {R2}',
-        bbox={'facecolor': None, 'ec': (0, 0, 0), 'fc': (1.0, 1.0, 1.0), 'pad': 4},
-        transform=line_axes.transAxes,
-    )
+            elif measure == 's':
+                s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
+                val = np.round(s, 3)
+                label = f"S = {val}"
 
-    line_axes.plot(line_x, line_y, c=fit_color)
+            else:
+                raise ValueError("measure must be one of: True, False, 'r2', 's'")
+
+            line_axes.text(
+                0.05, 0.8, label,
+                bbox={'facecolor': None, 'ec': (0, 0, 0), 'fc': (1.0, 1.0, 1.0), 'pad': 4},
+                transform=line_axes.transAxes,
+            )
 
     if title:
         ax.set_title(title)
