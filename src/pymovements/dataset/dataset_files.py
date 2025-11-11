@@ -533,7 +533,7 @@ def load_precomputed_event_files(
                     definition.custom_read_kwargs['precomputed_events'],
                 )
         precomputed_events.append(
-            load_precomputed_reading_measure_file(data_path, load_function_kwargs),
+            load_precomputed_event_file(data_path, load_function_kwargs),
         )
     return precomputed_events
 
