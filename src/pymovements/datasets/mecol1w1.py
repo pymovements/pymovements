@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
@@ -109,28 +110,27 @@ class MECOL1W1(DatasetDefinition):
                     'filename_pattern': 'joint_l1_fixation_version1.3.rda',
                     'load_kwargs': {'r_dataframe_key': 'joint.fix'},
                 },
-            },
-            {
-                'content': 'precomputed_reading_measures',
-                'url': 'https://osf.io/download/n5pvh/',
-                'filename': 'sentence_data_version1.3.csv',
-                'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
-                'filename_pattern': 'sentence_data_version1.3.csv',
-            },
-        ],
-    ),
+                {
+                    'content': 'precomputed_reading_measures',
+                    'url': 'https://osf.io/download/n5pvh/',
+                    'filename': 'sentence_data_version1.3.csv',
+                    'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
+                    'filename_pattern': 'sentence_data_version1.3.csv',
+                },
+            ],
+        ),
     )
 
-        filename_format: dict[str, str] | None = None
+    filename_format: dict[str, str] | None = None
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-        trial_columns: list[str] = field(
+    trial_columns: list[str] = field(
 
-    def default_factory(): return [
-        'uniform_id',
-        'itemid',
-    ],
+        def default_factory(): return [
+            'uniform_id',
+            'itemid',
+        ],
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})

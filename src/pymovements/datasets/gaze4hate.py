@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
