@@ -70,6 +70,10 @@ class MECOL1W1(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
+        If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
+
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the

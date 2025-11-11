@@ -140,3 +140,5 @@ class Gaze4Hate(DatasetDefinition):
             'sno',
         ],
     )
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

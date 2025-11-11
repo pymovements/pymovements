@@ -203,3 +203,5 @@ class PoTeC(DatasetDefinition):
             'x', 'y',
         ],
     )
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

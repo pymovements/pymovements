@@ -193,3 +193,5 @@ class EMTeC(DatasetDefinition):
     time_unit: str = 'ms'
 
     pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

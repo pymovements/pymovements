@@ -110,3 +110,5 @@ class FakeNewsPerception(DatasetDefinition):
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

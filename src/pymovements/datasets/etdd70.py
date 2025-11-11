@@ -156,3 +156,5 @@ class ETDD70(DatasetDefinition):
             'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
         ],
     )
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

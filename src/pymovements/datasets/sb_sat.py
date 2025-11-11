@@ -92,6 +92,10 @@ class SBSAT(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
+        If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
+
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
@@ -187,3 +191,5 @@ class SBSAT(DatasetDefinition):
     pixel_columns: list[str] = field(default_factory=lambda: ['x_left', 'y_left'])
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
