@@ -540,7 +540,7 @@ def load_precomputed_event_files(
 
 def load_precomputed_event_file(
         data_path: str | Path,
-        custom_read_kwargs: dict[str, Any] | None=None,
+        custom_read_kwargs: dict[str, Any] | None = None,
 ) -> PrecomputedEventDataFrame:
     """Load precomputed events from a single file.
 
@@ -568,27 +568,27 @@ def load_precomputed_event_file(
     ValueError
         If the file format is unsupported based on its extension.
     """
-    data_path=Path(data_path)
+    data_path = Path(data_path)
     if custom_read_kwargs is None:
-        custom_read_kwargs={}
+        custom_read_kwargs = {}
 
-    csv_extensions={'.csv', '.tsv', '.txt'}
-    r_extensions={'.rda'}
-    json_extensions={'.jsonl', '.ndjson'}
-    valid_extensions=csv_extensions | r_extensions | json_extensions
+    csv_extensions = {'.csv', '.tsv', '.txt'}
+    r_extensions = {'.rda'}
+    json_extensions = {'.jsonl', '.ndjson'}
+    valid_extensions = csv_extensions | r_extensions | json_extensions
     if data_path.suffix in csv_extensions:
-        precomputed_event_df=pl.read_csv(data_path, **custom_read_kwargs)
+        precomputed_event_df = pl.read_csv(data_path, **custom_read_kwargs)
     elif data_path.suffix in r_extensions:
         if 'r_dataframe_key' in custom_read_kwargs:
-            precomputed_r=pyreadr.read_r(data_path)
+            precomputed_r = pyreadr.read_r(data_path)
             # convert to polars DataFrame because read_r has no .clone().
-            precomputed_event_df=pl.DataFrame(
+            precomputed_event_df = pl.DataFrame(
                 precomputed_r[custom_read_kwargs['r_dataframe_key']],
             )
         else:
             raise ValueError('please specify r_dataframe_key in custom_read_kwargs')
     elif data_path.suffix in json_extensions:
-        precomputed_event_df=pl.read_ndjson(data_path, **custom_read_kwargs)
+        precomputed_event_df = pl.read_ndjson(data_path, **custom_read_kwargs)
     else:
         raise ValueError(
             f'unsupported file format "{data_path.suffix}". '
@@ -619,8 +619,8 @@ def add_fileinfo(
     pl.DataFrame
         Dataframe with added columns from fileinfo dictionary keys.
     """
-    ignored_fileinfo_columns={'filepath', 'load_function', 'load_kwargs'}
-    df=df.select(
+    ignored_fileinfo_columns = {'filepath', 'load_function', 'load_kwargs'}
+    df = df.select(
         [
             pl.lit(value).alias(column)
             for column, value in fileinfo.items()
@@ -629,10 +629,10 @@ def add_fileinfo(
     )
 
     # Cast columns from fileinfo according to specification.
-    resource_definitions=definition.resources.filter('gaze')
+    resource_definitions = definition.resources.filter('gaze')
     # overrides types in fileinfo_columns.
-    _schema_overrides=resource_definitions[0].filename_pattern_schema_overrides
-    df=df.with_columns([
+    _schema_overrides = resource_definitions[0].filename_pattern_schema_overrides
+    df = df.with_columns([
         pl.col(fileinfo_key).cast(fileinfo_dtype)
         for fileinfo_key, fileinfo_dtype in _schema_overrides.items()
     ])
@@ -644,9 +644,9 @@ def save_events(
         events: Sequence[Events],
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
-        events_dirname: str | None=None,
-        verbose: int=1,
-        extension: str='feather',
+        events_dirname: str | None = None,
+        verbose: int = 1,
+        extension: str = 'feather',
 ) -> None:
     """Save events to files.
 
@@ -677,19 +677,19 @@ def save_events(
     ValueError
         If extension is not in list of valid extensions.
     """
-    disable_progressbar=not verbose
+    disable_progressbar = not verbose
 
     for file_id, events_in in enumerate(tqdm(events, disable=disable_progressbar)):
-        raw_filepath=paths.raw / Path(fileinfo[file_id, 'filepath'])
-        events_filepath=paths.raw_to_event_filepath(
+        raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
+        events_filepath = paths.raw_to_event_filepath(
             raw_filepath, events_dirname=events_dirname,
             extension=extension,
         )
 
-        events_out=events_in.frame.clone()
+        events_out = events_in.frame.clone()
         for column in events_out.columns:
             if column in fileinfo.columns:
-                events_out=events_out.drop(column)
+                events_out = events_out.drop(column)
 
         if verbose >= 2:
             print('Save file to', events_filepath)
@@ -700,7 +700,7 @@ def save_events(
         elif extension == 'csv':
             events_out.write_csv(events_filepath)
         else:
-            valid_extensions=['csv', 'feather']
+            valid_extensions = ['csv', 'feather']
             raise ValueError(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
@@ -711,9 +711,9 @@ def save_preprocessed(
         gazes: list[Gaze],
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
-        preprocessed_dirname: str | None=None,
-        verbose: int=1,
-        extension: str='feather',
+        preprocessed_dirname: str | None = None,
+        verbose: int = 1,
+        extension: str = 'feather',
 ) -> None:
     """Save preprocessed gaze files.
 
@@ -744,13 +744,13 @@ def save_preprocessed(
     ValueError
         If extension is not in list of valid extensions.
     """
-    disable_progressbar=not verbose
+    disable_progressbar = not verbose
 
     for file_id, gaze in enumerate(tqdm(gazes, disable=disable_progressbar)):
-        gaze=gaze.clone()
+        gaze = gaze.clone()
 
-        raw_filepath=paths.raw / Path(fileinfo[file_id, 'filepath'])
-        preprocessed_filepath=paths.get_preprocessed_filepath(
+        raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
+        preprocessed_filepath = paths.get_preprocessed_filepath(
             raw_filepath, preprocessed_dirname=preprocessed_dirname,
             extension=extension,
         )
@@ -760,7 +760,7 @@ def save_preprocessed(
 
         for column in gaze.columns:
             if column in fileinfo.columns:
-                gaze.samples=gaze.samples.drop(column)
+                gaze.samples = gaze.samples.drop(column)
 
         if verbose >= 2:
             print('Save file to', preprocessed_filepath)
@@ -771,7 +771,7 @@ def save_preprocessed(
         elif extension == 'csv':
             gaze.samples.write_csv(preprocessed_filepath)
         else:
-            valid_extensions=['csv', 'feather']
+            valid_extensions = ['csv', 'feather']
             raise ValueError(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
@@ -782,7 +782,7 @@ def take_subset(
         fileinfo: pl.DataFrame,
         subset: dict[
             str, bool | float | int | str | list[bool | float | int | str],
-        ] | None=None,
+        ] | None = None,
 ) -> pl.DataFrame:
     """Take a subset of the fileinfo dataframe.
 
@@ -827,14 +827,14 @@ def take_subset(
             )
 
         if isinstance(subset_value, (bool, float, int, str)):
-            column_values=[subset_value]
+            column_values = [subset_value]
         elif isinstance(subset_value, (list, tuple, range)):
-            column_values=subset_value
+            column_values = subset_value
         else:
             raise TypeError(
                 f'subset values must be of type bool, float, int, str, range, or list, '
                 f'but value of pair {subset_key}: {subset_value} is of type {type(subset_value)}',
             )
 
-        fileinfo['gaze']=fileinfo['gaze'].filter(pl.col(subset_key).is_in(column_values))
+        fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(subset_key).is_in(column_values))
     return fileinfo
