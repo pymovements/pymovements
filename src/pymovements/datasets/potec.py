@@ -154,10 +154,8 @@ class PoTeC(DatasetDefinition):
                             'text_id': str,
                         },
                         'load_kwargs': {
-                            'custom_read_kwargs': {
-                                'separator': '\t',
-                                'null_values': '.',
-                            },
+                            'separator': '\t',
+                            'null_values': '.',
                         },
                     },
                     {
@@ -171,11 +169,9 @@ class PoTeC(DatasetDefinition):
                             'text_id': str,
                         },
                         'load_kwargs': {
-                            'custom_read_kwargs': {
-                                'separator': '\t',
-                                'null_values': '.',
-                                'infer_schema_length': 10000,
-                            },
+                            'separator': '\t',
+                            'null_values': '.',
+                            'infer_schema_length': 10000,
                         },
                     },
             ],

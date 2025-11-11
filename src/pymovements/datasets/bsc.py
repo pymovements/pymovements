@@ -105,9 +105,7 @@ class BSC(DatasetDefinition):
                     'filename': 'BSC.EMD.zip',
                     'md5': 'c7118bfe48c91264d69c45d347f11416',
                     'filename_pattern': 'BSC.EMD.txt',
-                    'load_kwargs': {
-                        'custom_read_kwargs': {'separator': '\t'},
-                    },
+                    'load_kwargs': {'separator': '\t'},
                 },
             ],
         ),

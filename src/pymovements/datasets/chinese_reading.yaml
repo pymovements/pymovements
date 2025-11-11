@@ -7,16 +7,14 @@ resources:
     md5: null
     filename_pattern: 'Raw Data.txt'
     load_kwargs:
-      custom_read_kwargs:
-        separator: "\t"
+      separator: "\t"
   - content: precomputed_reading_measures
     url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip='
     filename: chinese_reading_measures.zip
     md5: null
     filename_pattern: '{measure_type:s} Measures.xlsx'
     load_kwargs:
-      custom_read_kwargs:
-        sheet_name: 'Sheet 1'
+      sheet_name: 'Sheet 1'
 
 trial_columns:
   - Subject

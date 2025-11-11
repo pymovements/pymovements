@@ -110,9 +110,7 @@ class BSCII(DatasetDefinition):
                     'filename': 'BSCII.EMD.rev.zip',
                     'md5': '4daad0fa922785d8c681a883b1197e1e',
                     'filename_pattern': 'BSCII.EMD.rev.txt',
-                    'load_kwargs': {
-                        'custom_read_kwargs': {'separator': '\t', 'null_values': ['NA']},
-                    },
+                    'load_kwargs': {'separator': '\t', 'null_values': ['NA']},
                 },
             ],
         ),

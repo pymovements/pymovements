@@ -104,9 +104,7 @@ class Gaze4Hate(DatasetDefinition):
                     'filename': 'gaze4hate_sentence_reading_fix_report.csv',
                     'md5': 'c8cc645d1fad659f9442d61795da5481',
                     'filename_pattern': 'gaze4hate_sentence_reading_fix_report.csv',
-                    'load_kwargs': {
-                        'custom_read_kwargs': {'separator': '\t', 'null_values': '.'},
-                    },
+                    'load_kwargs': {'separator': '\t', 'null_values': '.'},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -114,9 +112,7 @@ class Gaze4Hate(DatasetDefinition):
                     'filename': 'gaze4hate_sentence_reading_IA_report.csv',
                     'md5': 'e09e791e7d31d6ac3c69cd862d139c57',
                     'filename_pattern': 'gaze4hate_sentence_reading_IA_report.csv',
-                    'load_kwargs': {
-                        'custom_read_kwargs': {'separator': '\t'},
-                    },
+                    'load_kwargs': {'separator': '\t'},
                 },
             ],
         ),

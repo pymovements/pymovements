@@ -11,6 +11,5 @@ resources:
     filename_pattern_schema_overrides:
       data_split: !str
     load_kwargs:
-      custom_read_kwargs:
-        null_values:
-          - "NA"
+      null_values:
+        - "NA"

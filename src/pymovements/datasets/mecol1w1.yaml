@@ -9,8 +9,7 @@ resources:
     md5: "3c969a930a71cd62c67b936426dd079b"
     filename_pattern: "joint_l1_fixation_version1.3.rda"
     load_kwargs:
-      custom_read_kwargs:
-        r_dataframe_key: 'joint.fix'
+      r_dataframe_key: 'joint.fix'
   - content: precomputed_reading_measures
     url: "https://osf.io/download/n5pvh/"
     filename: "sentence_data_version1.3.csv"

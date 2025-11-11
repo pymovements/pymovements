@@ -151,9 +151,7 @@ class SBSAT(DatasetDefinition):
                             'filename': '18sat_fixfinal.csv',
                             'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
                             'filename_pattern': '18sat_fixfinal.csv',
-                            'load_kwargs': {
-                                'custom_read_kwargs': {'separator': ','},
-                            },
+                            'load_kwargs': {'separator': ','},
                         },
             ],
         ),

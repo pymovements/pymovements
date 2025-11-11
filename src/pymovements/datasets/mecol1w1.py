@@ -103,8 +103,7 @@ class MECOL1W1(DatasetDefinition):
                     'filename': 'joint_l1_fixation_version1.3.rda',
                     'md5': '3c969a930a71cd62c67b936426dd079b',
                     'filename_pattern': 'joint_l1_fixation_version1.3.rda',
-                    'load_kwargs': {
-                        'custom_read_kwargs': {'r_dataframe_key': 'joint.fix'},
+                    'load_kwargs': {'r_dataframe_key': 'joint.fix'},
                     },
                 },
                 {

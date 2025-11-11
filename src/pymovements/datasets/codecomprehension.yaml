@@ -11,7 +11,6 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !polars.Utf8
     load_kwargs:
-      custom_read_kwargs:
-        separator: "\t"
-        null_values: "."
-        quote_char: '"'
+      separator: "\t"
+      null_values: "."
+      quote_char: '"'
