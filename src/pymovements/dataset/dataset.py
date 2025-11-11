@@ -409,7 +409,6 @@ class Dataset:
         """
         self._check_fileinfo()
         events = dataset_files.load_event_files(
-            definition=self.definition,
             fileinfo=self.fileinfo['gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
@@ -809,18 +808,8 @@ class Dataset:
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze, fileinfo_row in tqdm(
-                zip(self.gaze, self.fileinfo['gaze'].to_dicts()),
-                disable=disable_progressbar,
-        ):
+        for gaze in tqdm(self.gaze, disable=disable_progressbar):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
-            # workaround until events are fully part of the Gaze
-            gaze.events.frame = dataset_files.add_fileinfo(
-                definition=self.definition,
-                df=gaze.events.frame,
-                fileinfo=fileinfo_row,
-            )
-
         return self
 
     def drop_event_properties(
