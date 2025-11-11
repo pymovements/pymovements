@@ -176,6 +176,44 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
     [
         pytest.param(
             pl.from_dict(
+                {'onset': [0], 'offset': [10]},
+                schema={'onset': pl.Int64, 'offset': pl.Int64},
+            ),
+            pm.Gaze(
+                pl.from_dict(
+                    {
+                        'time': np.arange(10),
+                        'x_vel': np.ones(10),
+                        'y_vel': np.zeros(10),
+                    },
+                    schema={
+                        'time': pl.Int64,
+                        'x_vel': pl.Float64,
+                        'y_vel': pl.Float64,
+                    },
+                ),
+                velocity_columns=['x_vel', 'y_vel'],
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': [None],
+                    'onset': [0],
+                    'offset': [10],
+                    'peak_velocity': [1],
+                },
+                schema={
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='peak_velocity_single_event_complete_window_no_trials',
+        ),
+        pytest.param(
+            pl.from_dict(
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
