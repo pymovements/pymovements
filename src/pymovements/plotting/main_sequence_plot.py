@@ -110,7 +110,7 @@ def main_sequence_plot(
 
     event_col_name = 'name'
 
-    if not events:
+    if events is None or events.frame.is_empty():
         raise ValueError(
             'Events object is empty. '
             'Please make sure you ran a saccade detection algorithm. '
