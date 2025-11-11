@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 name = "pymovements"
 description = "A python package for processing eye movement data"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 maintainers = [
   {name = "Daniel Krakowczyk", email = "daniel.krakowczyk@uni-potsdam.de"}
@@ -23,7 +23,6 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
