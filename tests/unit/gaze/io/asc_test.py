@@ -96,7 +96,7 @@ def test_from_asc_has_expected_samples(
 
         pytest.param(
             'eyelink_monocular_example.asc',
-            {'definition': ToyDatasetEyeLink()},
+            {'definition': ToyDatasetEyeLink(), **ToyDatasetEyeLink().resources[0].load_kwargs},
             pl.DataFrame(
                 data={
                     'time': [
