@@ -104,28 +104,29 @@ class MECOL1W1(DatasetDefinition):
                     'md5': '3c969a930a71cd62c67b936426dd079b',
                     'filename_pattern': 'joint_l1_fixation_version1.3.rda',
                     'load_kwargs': {'r_dataframe_key': 'joint.fix'},
-                    },
                 },
-                {
-                    'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/n5pvh/',
-                    'filename': 'sentence_data_version1.3.csv',
-                    'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
-                    'filename_pattern': 'sentence_data_version1.3.csv',
-                },
-            ],
-        ),
+            },
+            {
+                'content': 'precomputed_reading_measures',
+                'url': 'https://osf.io/download/n5pvh/',
+                'filename': 'sentence_data_version1.3.csv',
+                'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
+                'filename_pattern': 'sentence_data_version1.3.csv',
+            },
+        ],
+    ),
     )
 
-    filename_format: dict[str, str] | None = None
+        filename_format: dict[str, str] | None = None
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'uniform_id',
-            'itemid',
-        ],
+        trial_columns: list[str] = field(
+
+    def default_factory(): return [
+        'uniform_id',
+        'itemid',
+    ],
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
