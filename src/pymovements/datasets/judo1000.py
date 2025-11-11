@@ -187,3 +187,5 @@ class JuDo1000(DatasetDefinition):
             'pointId': 'point_id',
         },
     )
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

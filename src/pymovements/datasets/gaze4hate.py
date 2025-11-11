@@ -71,6 +71,10 @@ class Gaze4Hate(DatasetDefinition):
             the input data frame is assumed to contain multiple trials and the transformation
             methods will be applied to each trial separately.
 
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
+        If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
+
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the

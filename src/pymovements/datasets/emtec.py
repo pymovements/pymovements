@@ -88,6 +88,10 @@ class EMTeC(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
+        If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
+
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
