@@ -175,3 +175,37 @@ def test_main_sequence_plot_sets_title():
     events = pm.Events(df)
     _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
     assert ax.get_title() == 'Main Sequence'
+
+
+def test_main_sequence_plot_measure_r2_explicit():
+    events = _make_events()
+    fig, ax = pm.plotting.main_sequence_plot(events=events, measure='r2', fit=True, show=False)
+
+    texts = [t.get_text() for t in ax.texts]
+    assert any('R²' in text or 'R2' in text for text in texts)
+    plt.close(fig)
+
+
+def test_main_sequence_plot_measure_false_no_annotation():
+    events = _make_events()
+    fig, ax = pm.plotting.main_sequence_plot(events=events, measure=False, fit=True, show=False)
+
+    texts = [t.get_text() for t in ax.texts]
+    # No fit measure label should appear
+    assert not any('R' in text or 'S' in text for text in texts)
+    plt.close(fig)
+
+
+def test_main_sequence_plot_measure_s_shows_standard_error():
+    events = _make_events()
+    fig, ax = pm.plotting.main_sequence_plot(events=events, measure='s', fit=True, show=False)
+
+    texts = [t.get_text() for t in ax.texts]
+    assert any('S =' in text for text in texts)
+    plt.close(fig)
+
+
+# def test_main_sequence_plot_measure_invalid_raises():
+#     events = _make_events()
+#     with pytest.raises(ValueError):
+#         pm.plotting.main_sequence_plot(events=events, measure="banana", fit=True, show=False)
