@@ -172,6 +172,8 @@ class DatasetDefinition:
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: None)
+        .. deprecated:: v0.24.2
+        This field will be removed in v0.29.0.
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)

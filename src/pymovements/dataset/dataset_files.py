@@ -20,11 +20,11 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
-import warnings
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import polars as pl
 import pyreadr
@@ -78,7 +78,7 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
         elif content_type == 'precomputed_reading_measures':
             resource_dirpath = paths.precomputed_reading_measures
         else:
-            warnings.warn(
+            warn(
                 f'content type {content_type} is not supported. '
                 'supported contents are: gaze, precomputed_events, precomputed_reading_measures. '
                 'skipping this resource definition during scan.',
@@ -311,7 +311,7 @@ def load_gaze_file(
         # Make sure fileinfo row is not duplicated as a trial_column:
         if set(trial_columns).intersection(list(fileinfo_columns)):
             dupes = set(trial_columns).intersection(list(fileinfo_columns))
-            warnings.warn(
+            warn(
                 f'removed duplicated fileinfo columns from trial_columns: {", ".join(dupes)}',
             )
             trial_columns = list(set(trial_columns).difference(list(fileinfo_columns)))
@@ -421,6 +421,14 @@ def load_precomputed_reading_measures(
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
             custom_read_kwargs = definition.custom_read_kwargs.get(
                 'precomputed_reading_measures', {},
             )
@@ -529,6 +537,14 @@ def load_precomputed_event_files(
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
             custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
             load_function_kwargs.update(custom_read_kwargs)
 
