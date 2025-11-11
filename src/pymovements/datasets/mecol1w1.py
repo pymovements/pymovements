@@ -126,11 +126,12 @@ class MECOL1W1(DatasetDefinition):
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     trial_columns: list[str] = field(
-
-        def default_factory(): return [
+        default_factory=lambda: [
             'uniform_id',
             'itemid',
         ],
     )
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
+
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
