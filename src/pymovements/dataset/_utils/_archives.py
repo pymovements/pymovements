@@ -170,7 +170,7 @@ def _extract_tar(
     resume: bool
         Resume if archive was already previous extracted.
     verbose: int
-        Print messages for resuming each dataset resource.
+        Prints messages for resuming each dataset resource and shows a progress bar.
     """
     mode = f'r:{compression[1:]}' if compression else 'r'
 
@@ -222,7 +222,7 @@ def _extract_zip(
     resume: bool
         Resume if archive was already previous extracted.
     verbose: int
-        Print messages for resuming each dataset resource.
+        Prints messages for resuming each dataset resource and shows a progress bar.
     """
     compression_id = _ZIP_COMPRESSION_MAP[compression] if compression else zipfile.ZIP_STORED
     with zipfile.ZipFile(source_path, 'r', compression=compression_id) as archive:
