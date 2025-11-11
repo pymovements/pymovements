@@ -25,7 +25,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Literal
-from typing import Union
 from warnings import warn
 
 import matplotlib.colors
