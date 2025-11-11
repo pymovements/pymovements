@@ -421,10 +421,11 @@ def load_precomputed_reading_measures(
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
-            if 'precomputed_reading_measures' in definition.custom_read_kwargs:
-                load_function_kwargs.update(
-                    definition.custom_read_kwargs['precomputed_reading_measures'],
-                )
+            custom_read_kwargs = definition.custom_read_kwargs.get(
+                'precomputed_reading_measures', {},
+            )
+            load_function_kwargs.update(custom_read_kwargs)
+
         precomputed_reading_measures.append(
             load_precomputed_reading_measure_file(data_path, load_function_kwargs),
         )
@@ -528,10 +529,9 @@ def load_precomputed_event_files(
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
-            if 'precomputed_events' in definition.custom_read_kwargs:
-                load_function_kwargs.update(
-                    definition.custom_read_kwargs['precomputed_events'],
-                )
+            custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
+            load_function_kwargs.update(custom_read_kwargs)
+
         precomputed_events.append(
             load_precomputed_event_file(data_path, load_function_kwargs),
         )
