@@ -123,7 +123,7 @@ class GazeBase(DatasetDefinition):
     long_name: str = 'GazeBase dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
