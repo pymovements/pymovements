@@ -166,9 +166,6 @@ class EventGazeProcessor:
         else:
             trial_identifiers = identifiers
 
-        if len(trial_identifiers) == 0:
-            raise ValueError('list of identifiers must not be empty')
-
         property_expressions: list[Callable[..., pl.Expr]] = [
             EVENT_PROPERTIES[property_name] for property_name, _ in self.event_properties
         ]
