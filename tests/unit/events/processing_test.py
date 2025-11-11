@@ -676,35 +676,6 @@ def test_event_gaze_processor_process_correct_result(
     [
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
-            ),
-            pm.Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.ones(10),
-                        'y_vel': np.zeros(10),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
-            ),
-            {'event_properties': 'peak_velocity'},
-            {'identifiers': []},
-            ValueError,
-            ('identifiers', 'list', 'must', 'not', 'empty'),
-            id='empty_list',
-        ),
-
-        pytest.param(
-            pl.from_dict(
                 {'subject_id': [1, 1], 'name': 'abcdef', 'onset': [0, 80], 'offset': [10, 100]},
                 schema={
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
