@@ -177,7 +177,7 @@ def main_sequence_plot(
     line_x = [min_ampl, max_ampl]
     line_y = [a * min_ampl + b, a * max_ampl + b]
 
-    # residual calcualtion
+    # residual calculation
     y_pred = np.array(amplitudes) * a + b
     y_true = peak_velocities
 
