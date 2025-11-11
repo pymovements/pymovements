@@ -15,15 +15,14 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
   load_kwargs:
-    custom_read_kwargs:
-      separator: "\t"
-      null_values:
-      - .
-      - UNDEFINEDnull
-      infer_schema_length: 100000
-      truncate_ragged_lines: true
-      decimal_comma: true
-      quote_char: null
+    separator: "\t"
+    null_values:
+    - .
+    - UNDEFINEDnull
+    infer_schema_length: 100000
+    truncate_ragged_lines: true
+    decimal_comma: true
+    quote_char: null
 - content: precomputed_reading_measures
   filename: ReadingMeasures.zip
   url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=
