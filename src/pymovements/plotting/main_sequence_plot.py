@@ -39,7 +39,7 @@ def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
         marker_size: float = 25,
         color: str = 'purple',
-        color_line: str = 'red',
+        fit_color: str = 'red',
         alpha: float = 0.5,
         marker: str = 'o',
         figsize: tuple[int, int] = (15, 5),
@@ -62,7 +62,7 @@ def main_sequence_plot(
         Size of the marker symbol. (default: 25)
     color: str
         Color of the marker symbol. (default: 'purple')
-    color_line: str
+    fit_color: str
         Color of the linear fit line (default: 'red')
     alpha: float
         Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
@@ -196,7 +196,7 @@ def main_sequence_plot(
         transform=line_axes.transAxes,
     )
 
-    line_axes.plot(line_x, line_y, c=color_line)
+    line_axes.plot(line_x, line_y, c=fit_color)
 
     if title:
         ax.set_title(title)
