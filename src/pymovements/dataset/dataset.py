@@ -304,6 +304,7 @@ class Dataset:
         """
         self._check_fileinfo()
         self.precomputed_events = dataset_files.load_precomputed_event_files(
+            self.definition,
             self.fileinfo['precomputed_events'],
             self.paths,
         )
@@ -329,6 +330,7 @@ class Dataset:
         """
         self._check_fileinfo()
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
+            self.definition,
             self.fileinfo['precomputed_reading_measures'],
             self.paths,
         )

@@ -250,12 +250,9 @@ def from_csv(
         if column_map is None:
             column_map = definition.column_map
 
-        if not read_csv_kwargs:
-            resource_definitions = definition.resources.filter('gaze')
-            if resource_definitions:
-                load_kwargs = resource_definitions[0].load_kwargs
-                if load_kwargs:
-                    read_csv_kwargs = load_kwargs.get('read_csv_kwargs', {})
+        if not read_csv_kwargs and 'gaze' in definition.custom_read_kwargs:
+            if definition.custom_read_kwargs['gaze']:
+                read_csv_kwargs = definition.custom_read_kwargs['gaze']
 
     # Read data.
     samples = pl.read_csv(file, **read_csv_kwargs)
@@ -469,13 +466,9 @@ def from_asc(
         if trial_columns is None:
             trial_columns = definition.trial_columns
 
-        resource_definitions = definition.resources.filter('gaze')
-        if resource_definitions:
-            custom_read_kwargs = resource_definitions[0].load_kwargs
-        else:
-            custom_read_kwargs = None
+        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
+            custom_read_kwargs = definition.custom_read_kwargs['gaze']
 
-        if custom_read_kwargs:
             if _patterns is None and 'patterns' in custom_read_kwargs:
                 _patterns = custom_read_kwargs['patterns']
 

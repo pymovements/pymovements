@@ -392,6 +392,7 @@ def load_gaze_file(
 
 
 def load_precomputed_reading_measures(
+        definition: DatasetDefinition,
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
 ) -> list[ReadingMeasures]:
@@ -399,6 +400,8 @@ def load_precomputed_reading_measures(
 
     Parameters
     ----------
+    definition:  DatasetDefinition
+        Dataset definition to load precomputed events.
     fileinfo: pl.DataFrame
         Information about the files.
     paths: DatasetPaths
@@ -417,10 +420,13 @@ def load_precomputed_reading_measures(
         load_function_kwargs = fileinfo_row['load_kwargs']
         if load_function_kwargs is None:
             load_function_kwargs = {}
-        custom_read_kwargs = load_function_kwargs.get('custom_read_kwargs', None)
-
+        if definition.custom_read_kwargs is not None:
+            if 'precomputed_reading_measures' in definition.custom_read_kwargs:
+                load_function_kwargs.update(
+                    definition.custom_read_kwargs['precomputed_reading_measures'],
+                )
         precomputed_reading_measures.append(
-            load_precomputed_reading_measure_file(data_path, custom_read_kwargs),
+            load_precomputed_reading_measure_file(data_path, load_function_kwargs),
         )
     return precomputed_reading_measures
 
@@ -487,6 +493,7 @@ def load_precomputed_reading_measure_file(
 
 
 def load_precomputed_event_files(
+        definition: DatasetDefinition,
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
 ) -> list[PrecomputedEventDataFrame]:
@@ -498,6 +505,9 @@ def load_precomputed_event_files(
 
     Parameters
     ----------
+    definition:  DatasetDefinition
+        Dataset definition to load precomputed events.
+
     fileinfo: pl.DataFrame
         Information about the files, including a 'filepath' column with relative paths.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
@@ -517,11 +527,13 @@ def load_precomputed_event_files(
         load_function_kwargs = fileinfo_row['load_kwargs']
         if load_function_kwargs is None:
             load_function_kwargs = {}
-        custom_read_kwargs = load_function_kwargs.get('custom_read_kwargs', None)
-
+        if definition.custom_read_kwargs is not None:
+            if 'precomputed_events' in definition.custom_read_kwargs:
+                load_function_kwargs.update(
+                    definition.custom_read_kwargs['precomputed_events'],
+                )
         precomputed_events.append(
-            load_precomputed_event_file(data_path, custom_read_kwargs),
-        )
+            load_precomputed_reading_measure_file(data_path, load_function_kwargs),
     return precomputed_events
 
 
