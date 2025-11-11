@@ -68,12 +68,7 @@ def create_preprocessed_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
     for gaze, fileinfo_row in zip(gazes, fileinfo.to_dicts()):
         filepath = fileinfo_row['filepath']
         filepath = filepath.replace('csv', 'feather')
-
-        for key in fileinfo_row.keys():
-            if key in gaze.columns:
-                gaze = gaze.samples.drop(key)
-
-        gaze.write_ipc(rootpath / filepath)
+        gaze.samples.write_ipc(rootpath / filepath)
 
 
 def create_event_files_from_fileinfo(gazes, fileinfo, rootpath):
@@ -160,7 +155,6 @@ def mock_toy(
         if eyes == 'both':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_left_pix': np.zeros(1000),
                     'y_left_pix': np.zeros(1000),
@@ -170,7 +164,6 @@ def mock_toy(
                     'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_left_pix': pl.Float64,
                     'y_left_pix': pl.Float64,
@@ -185,7 +178,6 @@ def mock_toy(
         elif eyes == 'both+avg':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_left_pix': np.zeros(1000),
                     'y_left_pix': np.zeros(1000),
@@ -197,7 +189,6 @@ def mock_toy(
                     'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_left_pix': pl.Float64,
                     'y_left_pix': pl.Float64,
@@ -216,7 +207,6 @@ def mock_toy(
         elif eyes == 'left':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_left_pix': np.zeros(1000),
                     'y_left_pix': np.zeros(1000),
@@ -224,7 +214,6 @@ def mock_toy(
                     'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_left_pix': pl.Float64,
                     'y_left_pix': pl.Float64,
@@ -236,7 +225,6 @@ def mock_toy(
         elif eyes == 'right':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_right_pix': np.zeros(1000),
                     'y_right_pix': np.zeros(1000),
@@ -244,7 +232,6 @@ def mock_toy(
                     'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_right_pix': pl.Float64,
                     'y_right_pix': pl.Float64,
@@ -256,7 +243,6 @@ def mock_toy(
         elif eyes == 'none':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_pix': np.zeros(1000),
                     'y_pix': np.zeros(1000),
@@ -264,7 +250,6 @@ def mock_toy(
                     'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_pix': pl.Float64,
                     'y_pix': pl.Float64,
@@ -306,11 +291,9 @@ def mock_toy(
         ]
 
         gaze_data = {
-            'subject_id': fileinfo_row['subject_id'],
             'time': np.arange(1000),
         }
         gaze_schema = {
-            'subject_id': pl.Int64,
             'time': pl.Int64,
         }
 
@@ -337,14 +320,12 @@ def mock_toy(
     for fileinfo_row in fileinfo.to_dicts():
         events = pl.from_dict(
             {
-                'subject_id': fileinfo_row['subject_id'],
                 'name': ['saccade', 'fixation'] * 5,
                 'onset': np.arange(0, 100, 10),
                 'offset': np.arange(5, 105, 10),
                 'duration': np.array([5] * 10),
             },
             schema={
-                'subject_id': pl.Int64,
                 'name': pl.Utf8,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
@@ -399,7 +380,6 @@ def mock_toy(
     for fileinfo_row in fileinfo.to_dicts():
         precomputed_events = pl.from_dict(
             {
-                'subject_id': fileinfo_row['subject_id'],
                 'CURRENT_FIXATION_DURATION': np.arange(1000),
                 'CURRENT_FIX_X': np.zeros(1000),
                 'CURRENT_FIX_Y': np.zeros(1000),
@@ -407,7 +387,6 @@ def mock_toy(
                 'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
             },
             schema={
-                'subject_id': pl.Int64,
                 'CURRENT_FIXATION_DURATION': pl.Float64,
                 'CURRENT_FIX_X': pl.Float64,
                 'CURRENT_FIX_Y': pl.Float64,
@@ -427,12 +406,10 @@ def mock_toy(
     for fileinfo_row in fileinfo.to_dicts():
         precomputed_rm_df = pl.from_dict(
             {
-                'subject_id': fileinfo_row['subject_id'],
                 'number_fix': np.arange(1000),
                 'mean_fix_dur': np.zeros(1000),
             },
             schema={
-                'subject_id': pl.Int64,
                 'number_fix': pl.Float64,
                 'mean_fix_dur': pl.Float64,
             },
@@ -460,7 +437,7 @@ def mock_toy(
         'events_list': events_list,
         'precomputed_rm_dfs': precomputed_rm_dfs,
         'eyes': eyes,
-        'trial_columns': ['subject_id'],
+        'trial_columns': None
     }
 
 
@@ -580,24 +557,6 @@ def test_load_correct_trial_columns(gaze_dataset_configuration):
     expected_trial_columns = gaze_dataset_configuration['trial_columns']
     for result_gaze in dataset.gaze:
         assert result_gaze.trial_columns == expected_trial_columns
-
-
-@pytest.mark.parametrize(
-    'gaze_dataset_configuration',
-    ['ToyMono'],
-    indirect=['gaze_dataset_configuration'],
-)
-def test_load_fileinfo_column_in_trial_columns_warns(gaze_dataset_configuration):
-    # add fileinfo column as trial column
-    gaze_dataset_configuration['init_kwargs']['definition'].trial_columns = ['subject_id']
-
-    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-
-    with pytest.warns(UserWarning) as record:
-        dataset.load()
-
-    expected_msg = 'removed duplicated fileinfo columns from trial_columns: subject_id'
-    assert record[0].message.args[0] == expected_msg
 
 
 def test_load_correct_events_list(gaze_dataset_configuration):
@@ -932,7 +891,6 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
     dataset.detect_events(**detect_event_kwargs)
 
     expected_schema = {
-        'subject_id': pl.Int64,
         'name': pl.Utf8,
         'onset': pl.Int64,
         'offset': pl.Int64,
@@ -979,7 +937,6 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
         dataset.detect_events(**detect_event_kwargs)
 
         expected_schema = {
-            'subject_id': pl.Int64,
             'name': pl.Utf8,
             'onset': pl.Int64,
             'offset': pl.Int64,
@@ -1009,7 +966,6 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'eye': 'auto',
             },
             {
-                'subject_id': pl.Int64,
                 'name': pl.Utf8,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
@@ -1029,7 +985,6 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'minimum_duration': 1,
             },
             {
-                'subject_id': pl.Int64,
                 'name': pl.Utf8,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
@@ -1121,8 +1076,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             },
             (
                 "Column 'position' not found. Available columns are: "
-                "['time', 'trial_id_1', 'trial_id_2', 'subject_id', "
-                "'pixel', 'custom_position', 'velocity']"
+                "['time', 'trial_id_1', 'trial_id_2', 'pixel', 'custom_position', 'velocity']"
             ),
             id='no_position',
         ),
@@ -1134,8 +1088,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             },
             (
                 "Column 'velocity' not found. Available columns are: "
-                "['time', 'trial_id_1', 'trial_id_2', 'subject_id', "
-                "'pixel', 'position', 'custom_velocity']"
+                "['time', 'trial_id_1', 'trial_id_2', 'pixel', 'position', 'custom_velocity']"
             ),
             id='no_velocity',
         ),
@@ -1750,7 +1703,6 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'peak_velocity'},
             {
-                'subject_id': pl.Int64,
                 'name': pl.Utf8,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
@@ -1762,7 +1714,6 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'location'},
             {
-                'subject_id': pl.Int64,
                 'name': pl.Utf8,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
