@@ -23,18 +23,16 @@ from __future__ import annotations
 from warnings import warn
 
 import matplotlib.pyplot as plt
+import numpy as np
 import polars as pl
 from matplotlib.collections import Collection
+from sklearn.metrics import r2_score
 
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
-
-from sklearn.metrics import r2_score
-import numpy as np
-
 
 
 def main_sequence_plot(
@@ -45,8 +43,8 @@ def main_sequence_plot(
         alpha: float = 0.5,
         marker: str = 'o',
         figsize: tuple[int, int] = (15, 5),
-        title: str = None,
-        savepath: str = None,
+        title: str | None = None,
+        savepath: str | None = None,
         show: bool = True,
         *,
         event_df: Events | EventDataFrame | None = None,
@@ -171,20 +169,20 @@ def main_sequence_plot(
         )
 
     # code introduced by commit a306b44
-    a, b = np.polyfit(amplitudes,peak_velocities,1)
-    
+    a, b = np.polyfit(amplitudes, peak_velocities, 1)
+
     # line plotting estimation
     min_ampl = min(amplitudes)
     max_ampl = max(amplitudes)
-    line_x = [min_ampl,max_ampl]
-    line_y = [a*min_ampl+b,a*max_ampl+b]
-    
+    line_x = [min_ampl, max_ampl]
+    line_y = [a * min_ampl + b, a * max_ampl + b]
+
     # residual calcualtion
-    y_pred = np.array(amplitudes)*a + b
+    y_pred = np.array(amplitudes) * a + b
     y_true = peak_velocities
-    
-    R2 = r2_score(y_true,y_pred)
-    R2 = np.round(R2,3)
+
+    R2 = r2_score(y_true, y_pred)
+    R2 = np.round(R2, 3)
 
     # draw into correct axes (plt.* if own, ax.* otherwise)
     line_axes = plt.gca() if own else ax
@@ -194,11 +192,11 @@ def main_sequence_plot(
         0.05,
         0.8,
         f'R2 value: {R2}',
-        bbox=dict(facecolor=None, ec=(0, 0, 0), fc=(1., 1., 1.), pad=4),
+        bbox={'facecolor': None, 'ec': (0, 0, 0), 'fc': (1.0, 1.0, 1.0), 'pad': 4},
         transform=line_axes.transAxes,
     )
 
-    line_axes.plot(line_x,line_y, c = color_line)
+    line_axes.plot(line_x, line_y, c=color_line)
 
     if title:
         ax.set_title(title)
