@@ -534,6 +534,7 @@ def load_precomputed_event_files(
                 )
         precomputed_events.append(
             load_precomputed_reading_measure_file(data_path, load_function_kwargs),
+        )
     return precomputed_events
 
 
