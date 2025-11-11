@@ -302,23 +302,6 @@ def load_gaze_file(
     else:
         column_schema_overrides = None
 
-    # check if we have any trial columns specified.
-    if not definition.trial_columns:
-        trial_columns = list(fileinfo_columns)
-    else:  # check for duplicates and merge.
-        trial_columns = definition.trial_columns
-
-        # Make sure fileinfo row is not duplicated as a trial_column:
-        if set(trial_columns).intersection(list(fileinfo_columns)):
-            dupes = set(trial_columns).intersection(list(fileinfo_columns))
-            warnings.warn(
-                f'removed duplicated fileinfo columns from trial_columns: {", ".join(dupes)}',
-            )
-            trial_columns = list(set(trial_columns).difference(list(fileinfo_columns)))
-
-        # expand trial columns with added fileinfo columns
-        trial_columns = list(fileinfo_columns) + trial_columns
-
     load_function_name = fileinfo_row['load_function']
     if load_function_name is None:
         if filepath.suffix in {'.csv', '.txt', '.tsv'}:
@@ -339,6 +322,23 @@ def load_gaze_file(
     if load_function_kwargs is None:
         load_function_kwargs = {}
 
+    # check if we have any trial columns specified.
+    if definition.trial_columns is not None:
+        trial_columns = definition.trial_columns
+    else:  # check for duplicates and merge.
+        trial_columns = list(fileinfo_columns)
+
+        # Make sure fileinfo row is not duplicated as a trial_column:
+        if set(trial_columns).intersection(list(fileinfo_columns)):
+            dupes = set(trial_columns).intersection(list(fileinfo_columns))
+            warnings.warn(
+                f'removed duplicated fileinfo columns from trial_columns: {", ".join(dupes)}',
+            )
+            trial_columns = list(set(trial_columns).difference(list(fileinfo_columns)))
+
+        # expand trial columns with added fileinfo columns
+        trial_columns = list(fileinfo_columns) + trial_columns
+
     if load_function_name == 'from_csv':
         if preprocessed:
             # Time unit is always milliseconds for preprocessed data if a time column is present.
@@ -353,9 +353,30 @@ def load_gaze_file(
                 column_schema_overrides=column_schema_overrides,
             )
         else:
+            if definition.trial_columns is not None:
+                load_function_kwargs['trial_columns'] = definition.trial_columns
+            if definition.time_column is not None:
+                load_function_kwargs['time_column'] = definition.time_column
+            if definition.time_unit is not None:
+                load_function_kwargs['time_unit'] = definition.time_unit
+            if definition.pixel_columns is not None:
+                load_function_kwargs['pixel_columns'] = definition.pixel_columns
+            if definition.position_columns is not None:
+                load_function_kwargs['position_columns'] = definition.position_columns
+            if definition.velocity_columns is not None:
+                load_function_kwargs['velocity_columns'] = definition.velocity_columns
+            if definition.acceleration_columns is not None:
+                load_function_kwargs['acceleration_columns'] = definition.acceleration_columns
+            if definition.distance_column is not None:
+                load_function_kwargs['distance_column'] = definition.distance_column
+            if definition.custom_read_kwargs is not None:
+                if 'gaze' in definition.custom_read_kwargs:
+                    load_function_kwargs['read_csv_kwargs'] = definition.custom_read_kwargs['gaze']
+            if definition.column_map is not None:
+                load_function_kwargs['column_map'] = definition.column_map
+
             gaze = from_csv(
                 filepath,
-                definition=definition,
                 trial_columns=trial_columns,  # this includes all fileinfo_columns.
                 add_columns=fileinfo_columns,
                 # column_schema_overrides is used for fileinfo_columns passed as add_columns.
@@ -374,7 +395,6 @@ def load_gaze_file(
     elif load_function_name == 'from_asc':
         gaze = from_asc(
             filepath,
-            definition=definition,
             trial_columns=trial_columns,  # this includes all fileinfo_columns.
             add_columns=fileinfo_columns,
             # column_schema_overrides is used for fileinfo_columns passed as add_columns.
