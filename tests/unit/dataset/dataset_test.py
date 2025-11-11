@@ -151,7 +151,7 @@ def mock_toy(
     fileinfo = fileinfo.sort(by='filepath')
 
     gazes = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in fileinfo.to_dicts():
         if eyes == 'both':
             gaze = pl.from_dict(
                 {
@@ -283,7 +283,7 @@ def mock_toy(
     ]
 
     preprocessed_gazes = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in fileinfo.to_dicts():
         position_columns = [pixel_column.replace('pix', 'pos') for pixel_column in pixel_columns]
         velocity_columns = [pixel_column.replace('pix', 'vel') for pixel_column in pixel_columns]
         acceleration_columns = [
@@ -317,7 +317,7 @@ def mock_toy(
     )
 
     events_list = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in fileinfo.to_dicts():
         events = pl.from_dict(
             {
                 'name': ['saccade', 'fixation'] * 5,
@@ -377,7 +377,7 @@ def mock_toy(
     )
 
     precomputed_dfs = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in fileinfo.to_dicts():
         precomputed_events = pl.from_dict(
             {
                 'CURRENT_FIXATION_DURATION': np.arange(1000),
@@ -403,7 +403,7 @@ def mock_toy(
     )
 
     precomputed_rm_dfs = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in fileinfo.to_dicts():
         precomputed_rm_df = pl.from_dict(
             {
                 'number_fix': np.arange(1000),
@@ -437,7 +437,7 @@ def mock_toy(
         'events_list': events_list,
         'precomputed_rm_dfs': precomputed_rm_dfs,
         'eyes': eyes,
-        'trial_columns': None
+        'trial_columns': None,
     }
 
 
