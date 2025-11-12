@@ -20,6 +20,7 @@
 """Provides the main sequence plotting function."""
 from __future__ import annotations
 
+from typing import Literal
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -37,8 +38,8 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
-        fit: bool | str = True,
-        measure: bool | str = True,
+        fit: bool = True,
+        measure: bool | Literal['r2', 's'] = True,
         marker_size: float = 25,
         color: str = 'purple',
         fit_color: str = 'red',
@@ -60,14 +61,13 @@ def main_sequence_plot(
     ----------
     events: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude".
-    fit: bool | str
-        Controls whether to draw a fit line. If True, a linear fit is drawn.
-        In the future, string values may specify fit methods (e.g., "linear", "exponential").
-    measure: bool | str
-        Controls whether and which goodness-of-fit measure is annotated.
-        - True or "r2": display the coefficient of determination (R²)
-        - "s": display the standard error of the regression (S)
-        - False: do not display any measure text
+    fit: bool
+        Draw a linear fit line if True. If False, no line is drawn.
+    measure: bool | Literal['r2', 's']
+        Annotate a goodness-of-fit statistic:
+        - True or 'r2': coefficient of determination (R²)
+        - 's': standard error of the regression (S)
+        - False: no annotation
     marker_size: float
         Size of the marker symbol. (default: 25)
     color: str
