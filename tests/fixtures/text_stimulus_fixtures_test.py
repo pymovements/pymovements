@@ -114,20 +114,21 @@ def test_stimulus_with_trial_page_selection(
 
 
 @pytest.mark.parametrize(
-    ('row', 'expected_label', 'expect_warning'),
+    ('row', 'expected_label', 'expect_len'),
     [
-        pytest.param({'x': 5, 'y': 5}, 'L1', True, id='overlap-warns-first-selected'),
-        pytest.param({'x': 15, 'y': 5}, None, False, id='outside-no-warn'),
+        pytest.param({'x': 5, 'y': 5}, 'L1', 2, id='overlap-warns-first-selected'),
+        pytest.param({'x': 15, 'y': 5}, None, 1, id='outside-no-warn'),
     ],
 )
 def test_stimulus_overlap_behaviour(
     stimulus_overlap: TextStimulus,
-        row: dict[str, int], expected_label: str | None, expect_warning: bool,
+        row: dict[str, int], expected_label: str | None, expect_len: int,
 ) -> None:
-    if expect_warning:
+    if expect_len > 1:
         with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
             aoi = stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
     else:
         aoi = stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
-    assert aoi.shape[0] == 1
-    assert aoi.select(stimulus_overlap.aoi_column).item() == expected_label
+    labels = aoi.get_column('label').to_list()
+    assert len(labels) == expect_len
+    assert labels[0] == expected_label
