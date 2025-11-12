@@ -20,6 +20,7 @@
 """Test AOI functionality."""
 from __future__ import annotations
 
+from math import nan
 from typing import Any
 
 import polars as pl
@@ -137,14 +138,14 @@ def test_get_aoi_raises_value_error_when_no_size_columns(row: dict[str, int]) ->
         pytest.param('width_height', 0, None, id='width_height-y-none'),
         pytest.param('width_height', 'bad', 0, id='width_height-x-str'),
         pytest.param('width_height', 0, 'bad', id='width_height-y-str'),
-        pytest.param('width_height', float('nan'), 0, id='width_height-x-nan'),
-        pytest.param('width_height', 0, float('nan'), id='width_height-y-nan'),
+        pytest.param('width_height', nan, 0, id='width_height-x-nan'),
+        pytest.param('width_height', 0, nan, id='width_height-y-nan'),
         pytest.param('end', None, 0, id='end-x-none'),
         pytest.param('end', 0, None, id='end-y-none'),
         pytest.param('end', 'bad', 0, id='end-x-str'),
         pytest.param('end', 0, 'bad', id='end-y-str'),
-        pytest.param('end', float('nan'), 0, id='end-x-nan'),
-        pytest.param('end', 0, float('nan'), id='end-y-nan'),
+        pytest.param('end', nan, 0, id='end-x-nan'),
+        pytest.param('end', 0, nan, id='end-y-nan'),
     ],
 )
 def test_get_aoi_invalid_coordinates_warns_and_returns_none(mode: str, x: Any, y: Any) -> None:
