@@ -73,8 +73,9 @@ class BSC(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -112,6 +113,7 @@ class BSC(DatasetDefinition):
                     'filename': 'BSC.EMD.zip',
                     'md5': 'c7118bfe48c91264d69c45d347f11416',
                     'filename_pattern': 'BSC.EMD.txt',
+                    'load_kwargs': {'separator': '\t'},
                 },
             ],
         ),
@@ -130,9 +132,4 @@ class BSC(DatasetDefinition):
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {'separator': '\t'},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

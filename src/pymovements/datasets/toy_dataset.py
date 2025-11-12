@@ -86,8 +86,9 @@ class ToyDataset(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -129,6 +130,20 @@ class ToyDataset(DatasetDefinition):
                             'text_id': int,
                             'page_id': int,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'columns': ['timestamp', 'x', 'y', 'stimuli_x', 'stimuli_y'],
+                                'schema_overrides': {
+                                    'timestamp': pl.Float64,
+                                    'x': pl.Float64,
+                                    'y': pl.Float64,
+                                    'stimuli_x': pl.Float64,
+                                    'stimuli_y': pl.Float64,
+                                },
+                                'separator': '\t',
+                                'null_values': '-32768.00',
+                            },
+                        },
                     },
             ],
         ),
@@ -158,19 +173,4 @@ class ToyDataset(DatasetDefinition):
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'columns': ['timestamp', 'x', 'y', 'stimuli_x', 'stimuli_y'],
-                'schema_overrides': {
-                    'timestamp': pl.Float64,
-                    'x': pl.Float64,
-                    'y': pl.Float64,
-                    'stimuli_x': pl.Float64,
-                    'stimuli_y': pl.Float64,
-                },
-                'separator': '\t',
-                'null_values': '-32768.00',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

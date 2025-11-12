@@ -72,8 +72,9 @@ class MECOL1W1(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -110,6 +111,7 @@ class MECOL1W1(DatasetDefinition):
                     'filename': 'joint_l1_fixation_version1.3.rda',
                     'md5': '3c969a930a71cd62c67b936426dd079b',
                     'filename_pattern': 'joint_l1_fixation_version1.3.rda',
+                    'load_kwargs': {'r_dataframe_key': 'joint.fix'},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -135,9 +137,4 @@ class MECOL1W1(DatasetDefinition):
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'r_dataframe_key': 'joint.fix'},
-            'precomputed_reading_measures': {},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

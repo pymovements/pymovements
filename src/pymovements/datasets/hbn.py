@@ -89,8 +89,9 @@ class HBN(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -132,6 +133,17 @@ class HBN(DatasetDefinition):
                             'subject_id': str,
                             'video_id': str,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'separator': ',',
+                                'columns': ['time', 'x_pix', 'y_pix'],
+                                'schema_overrides': {
+                                    'time': pl.Int64,
+                                    'x_pix': pl.Float32,
+                                    'y_pix': pl.Float32,
+                                },
+                            },
+                        },
                     },
             ],
         ),
@@ -161,16 +173,4 @@ class HBN(DatasetDefinition):
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': ',',
-                'columns': ['time', 'x_pix', 'y_pix'],
-                'schema_overrides': {
-                    'time': pl.Int64,
-                    'x_pix': pl.Float32,
-                    'y_pix': pl.Float32,
-                },
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

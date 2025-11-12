@@ -95,8 +95,9 @@ class PoTeC(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -138,6 +139,17 @@ class PoTeC(DatasetDefinition):
                             'subject_id': int,
                             'text_id': str,
                         },
+                        'load_kwargs': {
+                            'read_csv_kwargs': {
+                                'schema_overrides': {
+                                    'time': pl.Int64,
+                                    'x': pl.Float32,
+                                    'y': pl.Float32,
+                                    'pupil_diameter': pl.Float32,
+                                },
+                                'separator': '\t',
+                            },
+                        },
                     },
                     {
                         'content': 'precomputed_events',
@@ -149,6 +161,10 @@ class PoTeC(DatasetDefinition):
                             'subject_id': int,
                             'text_id': str,
                         },
+                        'load_kwargs': {
+                            'separator': '\t',
+                            'null_values': '.',
+                        },
                     },
                     {
                         'content': 'precomputed_reading_measures',
@@ -159,6 +175,11 @@ class PoTeC(DatasetDefinition):
                         'filename_pattern_schema_overrides': {
                             'subject_id': int,
                             'text_id': str,
+                        },
+                        'load_kwargs': {
+                            'separator': '\t',
+                            'null_values': '.',
+                            'infer_schema_length': 10000,
                         },
                     },
             ],
@@ -191,25 +212,4 @@ class PoTeC(DatasetDefinition):
         ],
     )
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'time': pl.Int64,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'pupil_diameter': pl.Float32,
-                },
-                'separator': '\t',
-            },
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': '.',
-            },
-            'precomputed_reading_measures': {
-                'separator': '\t',
-                'null_values': '.',
-                'infer_schema_length': 10000,
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
