@@ -180,7 +180,15 @@ class Events:
 
         # Ensure column order: trial columns, name, onset, offset.
         if self.trial_columns is not None:
-            self.frame = self.frame.select([*self.trial_columns, *self._minimal_schema.keys()])
+            minimal_cols = set(self._minimal_schema.keys())
+            trial_cols_set = set(self.trial_columns)
+            other_cols = [
+                col for col in self.frame.columns
+                if col not in trial_cols_set and col not in minimal_cols
+            ]
+            self.frame = self.frame.select(
+                [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
+            )
 
         # Convert to int if possible.
         all_decimals = self.frame.select(

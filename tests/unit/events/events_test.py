@@ -538,6 +538,44 @@ def test_clones_trial_columns():
     assert events.trial_columns == events_copy.trial_columns
 
 
+def test_clone_preserves_event_properties():
+    """Test that clone() preserves event properties added via add_event_properties().
+
+    Regression test for issue #1349
+    """
+    # Create events with trial data
+    events = Events(
+        name=['fixation', 'saccade', 'fixation'],
+        onsets=[100, 200, 300],
+        offsets=[150, 250, 350],
+        trials=[1, 1, 2],
+    )
+
+    # Verify trial_columns is set (this triggers the column reordering logic)
+    assert events.trial_columns is not None
+
+    # Add event properties as additional columns
+    event_properties = pl.DataFrame({
+        'name': ['fixation', 'saccade'],
+        'custom_property': [1.5, 2.5],
+    })
+    events.add_event_properties(event_properties, join_on='name')
+
+    # Verify properties are present before clone
+    assert 'custom_property' in events.columns
+    original_columns = events.columns
+    original_len = len(events.frame)
+
+    # Clone the events
+    cloned = events.clone()
+
+    # Verify all columns are preserved in the clone
+    assert cloned.columns == original_columns, \
+        f"Cloned columns {cloned.columns} do not match original {original_columns}"
+    assert len(cloned.frame) == original_len
+    assert_frame_equal(cloned.frame, events.frame)
+
+
 @pytest.mark.parametrize(
     ('events', 'kwargs', 'expected_df'),
     [
