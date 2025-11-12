@@ -134,20 +134,24 @@ class TextStimulus:
         """Return the AOI that contains the given gaze row.
 
         Spatial bounds:
+
         - If ``width``/``height`` are provided: ``start <= coord < start + size``.
         - If ``end_x_column``/``end_y_column`` are provided: ``start <= coord < end``.
-        In both cases, the end boundary is exclusive (half-open interval [start, end)).
+          In both cases, the end boundary is exclusive (half-open interval [start, end)).
 
         Trial/page filtering:
+
         - If ``trial_column`` and/or ``page_column`` are configured, AOIs are first filtered to
-        the current row's values of these columns before the spatial lookup. These columns are
-        dropped from the temporary AOI selection to avoid duplicate columns during concatenation.
+          the current row's values of these columns before the spatial lookup. These columns are
+          dropped from the temporary AOI selection to avoid duplicate columns during concatenation.
 
         Overlapping AOIs:
+
         - If multiple AOIs overlap and match the same point, the first AOI in the stimulus
-        dataframe order is selected deterministically and a ``UserWarning`` is emitted.
+          dataframe order is selected deterministically and a ``UserWarning`` is emitted.
 
         Invalid coordinates:
+
         - If the provided eye coordinates are missing or non-numeric (e.g. ``None`` or strings),
           a ``UserWarning`` is emitted and the lookup is treated as a non-match, returning a
           single row of ``None`` values.

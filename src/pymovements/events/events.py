@@ -542,6 +542,7 @@ class Events:
         and number of rows are preserved.
 
         Schema handling:
+
         - If ``preserve_structure=True`` (default), we mirror legacy behavior when a list
           ``location`` column exists: derive ``location_x``/``location_y`` and drop ``location``.
           This keeps downstream expectations about flat component columns.

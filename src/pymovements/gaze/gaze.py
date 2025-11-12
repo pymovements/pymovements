@@ -1251,6 +1251,7 @@ class Gaze:
             Whether to use ``position`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
         preserve_structure: bool
             Controls schema side effects.
+
             - If True (default), we keep the historical behaviour and attempt ``unnest()`` so that
               downstream logic can rely on flat component columns (e.g. ``pixel_xr``/``pixel_yr``).
               Only common, specific exceptions from unnesting are tolerated - all others propagate.
