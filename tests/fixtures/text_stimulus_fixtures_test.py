@@ -125,7 +125,7 @@ def test_stimulus_overlap_behaviour(
         row: dict[str, int], expected_label: str | None, expect_warning: bool,
 ) -> None:
     if expect_warning:
-        with pytest.warns(UserWarning, match='Multiple AOIs matched this point;'):
+        with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
             aoi = stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
     else:
         aoi = stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
