@@ -147,8 +147,7 @@ class TextStimulus:
 
         Overlapping AOIs:
 
-        - If multiple AOIs overlap and match the same point, the first AOI in the stimulus
-          dataframe order is selected deterministically and a ``UserWarning`` is emitted.
+        - If multiple AOIs overlap and match the same point, a ``UserWarning`` is emitted.
 
         Invalid coordinates:
 
@@ -377,13 +376,12 @@ def _get_aoi(
         if aoi.is_empty():
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
             return aoi
-        # If multiple AOIs overlap, select the first deterministically and warn
+        # If multiple AOIs overlap, warn
         if aoi.height > 1:
             warnings.warn(
-                'Multiple AOIs matched this point. Selecting the first match by AOI order.',
+                'Multiple AOIs matched this point.',
                 UserWarning,
             )
-            aoi = aoi.slice(0, 1)
         return aoi
 
     if aoi_dataframe.end_x_column is not None:
@@ -410,13 +408,12 @@ def _get_aoi(
             aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
             return aoi
 
-        # If multiple AOIs overlap, select the first deterministically and warn
+        # If multiple AOIs overlap, warn
         if aoi.height > 1:
             warnings.warn(
-                'Multiple AOIs matched this point. Selecting the first match by AOI order.',
+                'Multiple AOIs matched this point.',
                 UserWarning,
             )
-            aoi = aoi.slice(0, 1)
 
         return aoi
     raise ValueError(

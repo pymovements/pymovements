@@ -30,14 +30,14 @@ from pymovements.stimulus.text import TextStimulus
 
 
 @pytest.mark.parametrize(
-    ('x', 'y', 'expected'),
+    ('x', 'y', 'expected', 'expected_len'),
     [
-        pytest.param(5, 5, 'L1', id='inside_overlap_picks_first'),
-        pytest.param(15, 5, None, id='outside_none'),
+        pytest.param(5, 5, 'L1', 2, id='inside_overlap_picks_first'),
+        pytest.param(15, 5, None, 1, id='outside_none'),
     ],
 )
-def test_get_aoi_overlap_warns_and_picks_first(
-    stimulus_overlap: TextStimulus, x: int, y: int, expected: str | None,
+def test_get_aoi_overlap_warns(
+    stimulus_overlap: TextStimulus, x: int, y: int, expected: str | None, expected_len: int,
 ) -> None:
     row = {'__x': x, '__y': y}
     if expected is not None:
@@ -47,19 +47,19 @@ def test_get_aoi_overlap_warns_and_picks_first(
         out = stimulus_overlap.get_aoi(row=row, x_eye='__x', y_eye='__y')
 
     labels = out.get_column('label').to_list()
-    assert len(labels) == 1
+    assert len(labels) == expected_len
     assert labels[0] == expected
 
 
 @pytest.mark.parametrize(
-    ('x', 'y', 'expected', 'expect_warning'),
+    ('x', 'y', 'expected', 'expect_len'),
     [
-        pytest.param(5, 5, 'W1', True, id='inside_overlap_warns_and_picks_first'),
-        pytest.param(15, 5, None, False, id='outside_no_warning'),
+        pytest.param(5, 5, 'W1', 2, id='inside_overlap_warns_and_picks_first'),
+        pytest.param(15, 5, None, 1, id='outside_no_warning'),
     ],
 )
-def test_get_aoi_overlap_warns_and_picks_first_width_height(
-    x: int, y: int, expected: str | None, expect_warning: bool,
+def test_get_aoi_overlap_warns_width_height(
+    x: int, y: int, expected: str | None, expect_len: int,
 ) -> None:
     """Overlap handling for width/height-configured stimulus."""
     df = pl.DataFrame(
@@ -82,18 +82,18 @@ def test_get_aoi_overlap_warns_and_picks_first_width_height(
     )
 
     row = {'x': x, 'y': y}
-    if expect_warning:
+    if expect_len > 1:
         with pytest.warns(
-                UserWarning, match=r'Multiple AOIs matched this point\. Selecting the first',
+                UserWarning, match=r'Multiple AOIs matched this point\.',
         ):
             out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
     else:
         out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
 
     # Always exactly one output row
-    assert out.height == 1
-    label = out.select('label').item()
-    assert label == expected
+    labels = out.get_column('label').to_list()
+    assert len(labels) == expect_len
+    assert labels[0] == expected
 
 
 @pytest.mark.parametrize(
