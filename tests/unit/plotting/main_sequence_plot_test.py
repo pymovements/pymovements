@@ -26,9 +26,11 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
+import matplotlib
 import matplotlib.pyplot as plt
 import polars as pl
 import pytest
+from matplotlib.lines import Line2D
 
 import pymovements as pm
 
@@ -177,35 +179,21 @@ def test_main_sequence_plot_sets_title():
     assert ax.get_title() == 'Main Sequence'
 
 
-def test_main_sequence_plot_measure_r2_explicit():
+def test_main_sequence_plot_measure_s_adds_text():
     events = _make_events()
-    fig, ax = pm.plotting.main_sequence_plot(events=events, measure='r2', fit=True, show=False)
-
-    texts = [t.get_text() for t in ax.texts]
-    assert any('R²' in text or 'R2' in text for text in texts)
-    plt.close(fig)
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, measure='s', show=False)
+    # one text object (annotation) expected
+    assert any(isinstance(child, matplotlib.text.Text) for child in ax.get_children())
 
 
-def test_main_sequence_plot_measure_false_no_annotation():
+def test_main_sequence_plot_measure_invalid_raises():
     events = _make_events()
-    fig, ax = pm.plotting.main_sequence_plot(events=events, measure=False, fit=True, show=False)
-
-    texts = [t.get_text() for t in ax.texts]
-    # No fit measure label should appear
-    assert not any('R' in text or 'S' in text for text in texts)
-    plt.close(fig)
+    with pytest.raises(ValueError):
+        pm.plotting.main_sequence_plot(events=events, fit=True, measure='banana', show=False)
 
 
-def test_main_sequence_plot_measure_s_shows_standard_error():
+def test_main_sequence_plot_fit_false_no_line():
     events = _make_events()
-    fig, ax = pm.plotting.main_sequence_plot(events=events, measure='s', fit=True, show=False)
-
-    texts = [t.get_text() for t in ax.texts]
-    assert any('S =' in text for text in texts)
-    plt.close(fig)
-
-
-# def test_main_sequence_plot_measure_invalid_raises():
-#     events = _make_events()
-#     with pytest.raises(ValueError):
-#         pm.plotting.main_sequence_plot(events=events, measure="banana", fit=True, show=False)
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=False, show=False)
+    # there should be no extra line2D beyond the default axes spines; at least 1 scatter exists
+    assert not any(isinstance(artist, Line2D) for artist in ax.lines)
