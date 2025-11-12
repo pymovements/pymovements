@@ -1,5 +1,4 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
 
 title: "pymovements: A Python Package for Processing Eye Movement Data"
 
