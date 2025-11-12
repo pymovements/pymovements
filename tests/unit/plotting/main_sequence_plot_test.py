@@ -197,3 +197,18 @@ def test_main_sequence_plot_fit_false_no_line():
     _, ax = pm.plotting.main_sequence_plot(events=events, fit=False, show=False)
     # there should be no extra line2D beyond the default axes spines; at least 1 scatter exists
     assert not any(isinstance(artist, Line2D) for artist in ax.lines)
+
+
+def test_main_sequence_plot_measure_false_skips_annotation():
+    # When measure=False, no text annotation should be drawn.
+    events = _make_events()
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, measure=False, show=False)
+    assert not ax.texts  # no R² or S labels
+
+
+def test_main_sequence_plot_default_r2_adds_text():
+    # Default (measure=True) should produce an R² annotation.
+    events = _make_events()
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, show=False)
+    labels = [t.get_text() for t in ax.texts]
+    assert any('R²' in lbl or 'R2' in lbl for lbl in labels)
