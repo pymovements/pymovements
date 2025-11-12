@@ -1234,6 +1234,7 @@ class Gaze:
             eye: str = 'auto',
             gaze_type: str = 'pixel',
             preserve_structure: bool = True,
+            verbose: bool = True,
     ) -> None:
         """Map gaze samples to AOIs.
 
@@ -1257,6 +1258,9 @@ class Gaze:
               Only common, specific exceptions from unnesting are tolerated - all others propagate.
             - If False, no unnesting is attempted. Coordinates are extracted per-row from list
               columns and passed to the AOI lookup without altering the samples' schema.
+
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
         """
         # pylint: disable=too-many-statements
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
@@ -1521,7 +1525,14 @@ class Gaze:
                 return xl, yl
 
             aois = []
-            for row in tqdm(self.samples.iter_rows(named=True)):
+            for row in tqdm(
+                self.samples.iter_rows(named=True),
+                total=len(self.samples),
+                desc='Mapping gaze to AOIs',
+                unit='sample',
+                ncols=80,
+                disable=not verbose,
+            ):
                 vals = row.get(source_col)
                 if not isinstance(vals, (list, tuple)):
                     # create empty AOI row (all None)

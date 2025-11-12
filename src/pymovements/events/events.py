@@ -533,7 +533,9 @@ class Events:
                 ],
             ).drop(input_col)
 
-    def map_to_aois(self, aoi_dataframe: TextStimulus, *, preserve_structure: bool = True) -> None:
+    def map_to_aois(
+            self, aoi_dataframe: TextStimulus, *, preserve_structure: bool = True, verbose: bool = True,
+    ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
         This function computes AOI membership only for rows whose ``name`` starts with
@@ -561,6 +563,8 @@ class Events:
         preserve_structure: bool
             Control whether to derive component columns and drop the list column as described
             above. Default: True.
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
 
         Raises
         ------
@@ -598,7 +602,14 @@ class Events:
             return pl.from_dict({col: None for col in aoi_columns})
 
         out_rows: list[pl.DataFrame] = []
-        for row in tqdm(self.frame.iter_rows(named=True)):
+        for row in tqdm(
+                self.frame.iter_rows(named=True),
+                total=len(self.frame),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=not verbose,
+            ):
             name_val = row.get('name')
             is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
             if not is_fix:

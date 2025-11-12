@@ -477,7 +477,13 @@ class Dataset:
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze in tqdm(self.gaze, disable=disable_progressbar):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc=f'Applying {function}',
+                unit='file',
+                disable=disable_progressbar,
+        ):
             gaze.apply(function, **kwargs)
 
         return self
@@ -811,6 +817,9 @@ class Dataset:
         disable_progressbar = not verbose
         for gaze, fileinfo_row in tqdm(
                 zip(self.gaze, self.fileinfo['gaze'].to_dicts()),
+                total=len(self.gaze),
+                desc='Detecting events',
+                unit='file',
                 disable=disable_progressbar,
         ):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
@@ -881,7 +890,13 @@ class Dataset:
         Dataset
             Returns self, useful for method cascading.
         """
-        for gaze in tqdm(self.gaze, disable=not verbose):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Computing event properties',
+                unit='file',
+                disable=not verbose,
+        ):
             gaze.compute_event_properties(event_properties, name=name)
         return self
 
