@@ -17,16 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides access to reading measure classes.
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree:
-   :template: class.rst
-
-    ReadingMeasures
-"""
+"""Provides access to reading measure classes."""
 from pymovements.reading_measures.frame import ReadingMeasures
 
 

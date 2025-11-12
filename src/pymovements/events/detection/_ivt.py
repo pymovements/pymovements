@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import numpy as np
 
+from pymovements._utils import _checks
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection._library import register_event_detection
-from pymovements.events.frame import EventDataFrame
+from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import consecutive
 from pymovements.gaze.transforms_numpy import norm
-from pymovements.utils import checks
 
 
 @register_event_detection
@@ -38,7 +38,7 @@ def ivt(
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
         name: str = 'fixation',
-) -> EventDataFrame:
+) -> Events:
     """Identification of fixations based on velocity-threshold (I-VT).
 
     The algorithm classifies each point as a fixation if the velocity is below
@@ -68,11 +68,11 @@ def ivt(
         Indicator, whether we want to split events on missing/corrupt value (np.nan)
         (default: False)
     name: str
-        Name for detected events in EventDataFrame. (default: 'fixation')
+        Name for detected events in Events. (default: 'fixation')
 
     Returns
     -------
-    EventDataFrame
+    Events
         A dataframe with detected fixations as rows.
 
     Raises
@@ -85,7 +85,7 @@ def ivt(
     """
     velocities = np.array(velocities)
 
-    checks.check_shapes(velocities=velocities)
+    _checks.check_shapes(velocities=velocities)
 
     if velocity_threshold is None:
         raise ValueError('velocity threshold must not be None')
@@ -95,7 +95,7 @@ def ivt(
     if timesteps is None:
         timesteps = np.arange(len(velocities), dtype=np.int64)
     timesteps = np.array(timesteps)
-    checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     # Get all indices with norm-velocities below threshold.
     velocity_norm = norm(velocities, axis=1)
@@ -130,5 +130,5 @@ def ivt(
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
 
     # Create event dataframe from onsets and offsets.
-    event_df = EventDataFrame(name=name, onsets=onsets, offsets=offsets)
-    return event_df
+    events = Events(name=name, onsets=onsets, offsets=offsets)
+    return events

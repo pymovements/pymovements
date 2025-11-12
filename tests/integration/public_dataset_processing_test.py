@@ -39,7 +39,7 @@ def test_public_dataset_processing(dataset_name, tmp_path):
     dataset.load()
 
     # Do some basic transformations.
-    if dataset.definition.has_files['gaze']:
+    if dataset.definition.resources.has_content('gaze'):
         if 'pixel' in dataset.gaze[0].columns:
             dataset.pix2deg()
         dataset.pos2vel()

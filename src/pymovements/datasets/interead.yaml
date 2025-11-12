@@ -1,29 +1,18 @@
 name: "InteRead"
 
-has_files:
-  gaze: true
-  precomputed_events: true
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://osf.io/download/"
-  precomputed_events:
-    - "https://osf.io/download/"
+long_name: "Interrupted Reading dataset"
 
 resources:
-  gaze:
-    - resource: "6ju3x/"
-      filename: "resampled_gaze.csv.zip"
-      md5: "06b2cdff1827086fa125a703ee9d4324"
-  precomputed_events:
-    - resource: "85ckh/"
-      filename: "resumption_fixation.csv"
-      md5: "44edb7c58318ad76af1fa6f1bc1f1ceb"
-
-extract:
-  gaze: true
-  precomputed_events: false
+  - content: gaze
+    url: "https://osf.io/download/6ju3x/"
+    filename: "resampled_gaze.csv.zip"
+    md5: "06b2cdff1827086fa125a703ee9d4324"
+    filename_pattern: 'resampled_gaze.csv'
+  - content: precomputed_events
+    url: "https://osf.io/download/85ckh/"
+    filename: "resumption_fixation.csv"
+    md5: "44edb7c58318ad76af1fa6f1bc1f1ceb"
+    filename_pattern: 'resumption_fixation.csv'
 
 experiment:
   screen_width_px: 1920
@@ -33,14 +22,6 @@ experiment:
   distance_cm: 57
   origin: "center"
   sampling_rate: 1200
-
-filename_format:
-  gaze: 'resampled_gaze.csv'
-  precomputed_events: 'resumption_fixation.csv'
-
-filename_format_schema_overrides:
-  gaze: {}
-  precomputed_events: {}
 
 trial_columns:
   - "participant_id"

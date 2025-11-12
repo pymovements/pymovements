@@ -1,0 +1,38 @@
+name: ETDD70
+
+long_name: 'Eye-Tracking Dyslexia Dataset'
+
+resources:
+  - content: gaze
+    url: https://zenodo.org/api/records/13332134/files-archive
+    filename: edd_raw.zip
+    md5: null
+    filename_pattern: 'Subject_{subject_id:d}_{task:s}_raw.csv'
+  - content: precomputed_events
+    url: https://zenodo.org/api/records/13332134/files-archive
+    filename: edd_fix.zip
+    md5: null
+    filename_pattern: 'Subject_{subject_id:d}_{task:s}_fixations.csv'
+
+experiment:
+  screen_width_px: 1680
+  screen_height_px: 1050
+  screen_width_cm: null
+  screen_height_cm: null
+  distance_cm: 65  # in the paper it is written (60-70cm)
+  origin: 'center'
+  sampling_rate: 250
+
+time_column: 'time'
+
+time_unit: 'ms'
+
+pixel_columns:
+  - gaze_x_left
+  - gaze_y_left
+  - gaze_x_right
+  - gaze_y_right
+
+custom_read_kwargs:
+  gaze: {}
+  precomputed_events: {}

@@ -1,37 +1,18 @@
 name: "UCL"
 
-has_files:
-  gaze: false
-  precomputed_events: true
-  precomputed_reading_measures: true
-
-mirrors:
-  precomputed_events:
-    - "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/"
-  precomputed_reading_measures:
-    - "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/"
+long_name: "University College London corpus"
 
 resources:
-  precomputed_events:
-    - resource: "13428_2012_313_MOESM1_ESM.zip"
-      filename: "UCL_events.zip"
-      md5: "77e3c0cacccb0a074a55d23aa8531ca5"
-  precomputed_reading_measures:
-    - resource: "13428_2012_313_MOESM1_ESM.zip"
-      filename: "UCL_measures.zip"
-      md5: "77e3c0cacccb0a074a55d23aa8531ca5"
-
-extract:
-  precomputed_events: true
-  precomputed_reading_measures: true
-
-filename_format:
-  precomputed_events: "eyetracking.fix"
-  precomputed_reading_measures: "eyetracking.RT"
-
-filename_format_schema_overrides:
-  precomputed_events: {}
-  precomputed_reading_measures: {}
+  - content: precomputed_events
+    url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
+    filename: "UCL_events.zip"
+    md5: "77e3c0cacccb0a074a55d23aa8531ca5"
+    filename_pattern: "eyetracking.fix"
+  - content: precomputed_reading_measures
+    url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
+    filename: "UCL_measures.zip"
+    md5: "77e3c0cacccb0a074a55d23aa8531ca5"
+    filename_pattern: "eyetracking.RT"
 
 custom_read_kwargs:
   precomputed_events:

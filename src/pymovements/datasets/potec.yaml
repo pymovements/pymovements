@@ -1,22 +1,32 @@
 name: "PoTeC"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://osf.io/download/"
+long_name: "Potsdam Textbook Corpus"
 
 resources:
-  gaze:
-    - resource: "tgd9q/"
-      filename: "PoTeC.zip"
-      md5: "cffd45039757c3777e2fd130e5d8a2ad"
-
-extract:
-  gaze: true
+  - content: gaze
+    url: "https://osf.io/download/tgd9q/"
+    filename: "PoTeC.zip"
+    md5: "cffd45039757c3777e2fd130e5d8a2ad"
+    filename_pattern: 'reader{subject_id:d}_{text_id}_raw_data.tsv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      text_id: !str
+  - content: precomputed_events
+    url: "https://osf.io/download/d8pyg/"
+    filename: "fixation.zip"
+    md5: "ecd9a998d07158922bb9b8cdd52f5688"
+    filename_pattern: 'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      text_id: !str
+  - content: precomputed_reading_measures
+    url: "https://osf.io/download/3ywhz/"
+    filename: "reading_measures.zip"
+    md5: "efafec5ce074d8f492cc2409b6c4d9eb"
+    filename_pattern: 'reader{subject_id:d}_{text_id}_merged.tsv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      text_id: !str
 
 experiment:
   screen_width_px: 1680
@@ -26,14 +36,6 @@ experiment:
   distance_cm: 65
   origin: "upper left"
   sampling_rate: 1000
-
-filename_format:
-  gaze: 'reader{subject_id:d}_{text_id}_raw_data.tsv'
-
-filename_format_schema_overrides:
-  gaze:
-    subject_id: !int
-    text_id: !str
 
 time_column: "time"
 
@@ -51,3 +53,10 @@ custom_read_kwargs:
       y: !polars.Float32
       pupil_diameter: !polars.Float32
     separator: "\t"
+  precomputed_events:
+    separator: "\t"
+    null_values: '.'
+  precomputed_reading_measures:
+    separator: "\t"
+    null_values: '.'
+    infer_schema_length: 10000

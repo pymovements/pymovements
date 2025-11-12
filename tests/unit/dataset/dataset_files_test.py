@@ -21,6 +21,7 @@
 # flake8: noqa: E101, W191, E501
 # pylint: disable=duplicate-code
 import polars as pl
+import pyreadr
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -198,18 +199,20 @@ PATTERNS = [
         ),
     ],
 )
-def test_load_eyelink_file(tmp_path, read_kwargs):
-    filepath = tmp_path / 'sub.asc'
-    filepath.write_text(ASC_TEXT)
+@pytest.mark.parametrize(
+    'load_function',
+    [None, 'from_asc'],
+)
+def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = pm.dataset.dataset_files.load_gaze_file(
         filepath,
-        fileinfo_row={},
+        fileinfo_row={'load_function': load_function, 'load_kwargs': None},
         definition=DatasetDefinition(
             experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
-            filename_format_schema_overrides={'gaze': {}, 'precomputed_events': {}},
+            custom_read_kwargs={'gaze': read_kwargs},
         ),
-        custom_read_kwargs=read_kwargs,
     )
 
     if read_kwargs is not None:
@@ -217,12 +220,127 @@ def test_load_eyelink_file(tmp_path, read_kwargs):
     else:
         expected_df = EXPECTED_DF_NO_PATTERNS
 
-    assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
     assert gaze.experiment is not None
 
 
-def test_load_precomputed_rm_file():
-    filepath = 'tests/files/copco_rm_dummy.csv'
+@pytest.mark.parametrize(
+    ('filename', 'rename_extension', 'load_function', 'load_kwargs'),
+    [
+        pytest.param(
+            'monocular_example.csv',
+            '.csv',
+            None,
+            None,
+            id='load_csv_default',
+        ),
+        pytest.param(
+            'monocular_example.csv',
+            '.csv',
+            'from_csv',
+            None,
+            id='load_csv_from_csv',
+        ),
+        pytest.param(
+            'monocular_example.csv',
+            '.renamed',
+            'from_csv',
+            None,
+            id='load_csv_rename_from_csv',
+        ),
+        pytest.param(
+            'monocular_example.tsv',
+            '.tsv',
+            None,
+            {'read_csv_kwargs': {'separator': '\t'}},
+            id='load_tsv_default',
+        ),
+        pytest.param(
+            'monocular_example.tsv',
+            '.tsv',
+            'from_csv',
+            {'read_csv_kwargs': {'separator': '\t'}},
+            id='load_tsv_from_csv',
+        ),
+        pytest.param(
+            'monocular_example.tsv',
+            '.foo',
+            'from_csv',
+            {'read_csv_kwargs': {'separator': '\t'}},
+            id='load_tsv_rename_from_csv',
+        ),
+        pytest.param(
+            'monocular_example.feather',
+            '.feather',
+            None,
+            None,
+            id='load_feather_default',
+        ),
+        pytest.param(
+            'monocular_example.feather',
+            '.feather',
+            'from_ipc',
+            None,
+            id='load_feather_from_ipc',
+        ),
+        pytest.param(
+            'monocular_example.feather',
+            '.csv',
+            'from_ipc',
+            None,
+            id='load_feather_rename_from_ipc',
+        ),
+    ],
+)
+def test_load_gaze_file(
+        filename, rename_extension, load_function, load_kwargs, tmp_path, make_example_file,
+):
+    # Copy the file to the temporary path with the new extension
+    filepath = make_example_file(filename)
+    renamed_filename = filepath.stem + rename_extension
+    renamed_filepath = tmp_path / renamed_filename
+    renamed_filepath.write_bytes(filepath.read_bytes())
+
+    gaze = pm.dataset.dataset_files.load_gaze_file(
+        renamed_filepath,
+        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        definition=DatasetDefinition(
+            experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
+            pixel_columns=['x_left_pix', 'y_left_pix'],
+        ),
+    )
+    expected_df = pl.from_dict(
+        {
+            'time': list(range(10)),
+            'pixel': [[0, 0]] * 10,
+        },
+    )
+
+    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
+
+
+def test_load_gaze_file_unsupported_load_function(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+
+    with pytest.raises(ValueError) as exc:
+        pm.dataset.dataset_files.load_gaze_file(
+            filepath,
+            fileinfo_row={'load_function': 'from_a_land_down_under', 'load_kwargs': None},
+            definition=DatasetDefinition(
+                experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
+                pixel_columns=['x_left_pix', 'y_left_pix'],
+            ),
+        )
+
+    msg, = exc.value.args
+    assert msg == (
+        'Unsupported load_function "from_a_land_down_under". '
+        'Available options are: [\'from_csv\', \'from_ipc\', \'from_asc\']'
+    )
+
+
+def test_load_precomputed_rm_file(make_example_file):
+    filepath = make_example_file('copco_rm_dummy.csv')
 
     reading_measure = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
         filepath,
@@ -233,8 +351,8 @@ def test_load_precomputed_rm_file():
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
 
 
-def test_load_precomputed_rm_file_no_kwargs():
-    filepath = 'tests/files/copco_rm_dummy.csv'
+def test_load_precomputed_rm_file_no_kwargs(make_example_file):
+    filepath = make_example_file('copco_rm_dummy.csv')
 
     reading_measure = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
         filepath,
@@ -244,18 +362,32 @@ def test_load_precomputed_rm_file_no_kwargs():
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
 
 
-def test_load_precomputed_rm_file_unsupported_file_format():
-    filepath = 'tests/files/copco_rm_dummy.feather'
+def test_load_precomputed_rm_file_xlsx(make_example_file):
+    filepath = make_example_file('Sentences.xlsx')
+
+    reading_measure = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
+        filepath,
+        custom_read_kwargs={'sheet_name': 'Sheet 1'},
+    )
+
+    expected_df = pl.from_dict({'test': ['foo', 'bar'], 'id': [0, 1]})
+
+    assert_frame_equal(reading_measure.frame, expected_df, check_column_order=True)
+
+
+def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
+    filepath = make_example_file('binocular_example.feather')
 
     with pytest.raises(ValueError) as exc:
         pm.dataset.dataset_files.load_precomputed_reading_measure_file(filepath)
 
     msg, = exc.value.args
-    assert msg == 'unsupported file format ".feather". Supported formats are: .csv, .tsv, .txt'
+    assert msg == 'unsupported file format ".feather". Supported formats are: '\
+        '.csv, .rda, .tsv, .txt, .xlsx'
 
 
-def test_load_precomputed_file():
-    filepath = 'tests/files/18sat_fixfinal.csv'
+def test_load_precomputed_file_csv(make_example_file):
+    filepath = make_example_file('18sat_fixfinal.csv')
 
     gaze = pm.dataset.dataset_files.load_precomputed_event_file(
         filepath,
@@ -266,11 +398,75 @@ def test_load_precomputed_file():
     assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
 
 
-def test_load_precomputed_file_unsupported_file_format():
-    filepath = 'tests/files/18sat_fixfinal.feather'
+def test_load_precomputed_file_json(make_example_file):
+    filepath = make_example_file('test.jsonl')
+
+    gaze = pm.dataset.dataset_files.load_precomputed_event_file(filepath)
+    expected_df = pl.read_ndjson(filepath)
+
+    assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
+
+
+def test_load_precomputed_file_unsupported_file_format(make_example_file):
+    filepath = make_example_file('binocular_example.feather')
 
     with pytest.raises(ValueError) as exc:
         pm.dataset.dataset_files.load_precomputed_event_file(filepath)
 
     msg, = exc.value.args
-    assert msg == 'unsupported file format ".feather". Supported formats are: .csv, .tsv, .txt'
+    assert msg == 'unsupported file format ".feather". '\
+        'Supported formats are: .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
+
+
+def test_load_precomputed_file_rda(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+
+    gaze = pm.dataset.dataset_files.load_precomputed_event_file(
+        filepath,
+        custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    expected_df = pyreadr.read_r(filepath)
+
+    assert_frame_equal(
+        gaze.frame,
+        pl.DataFrame(expected_df['joint.fix']),
+        check_column_order=False,
+    )
+
+
+def test_load_precomputed_file_rda_raise_value_error(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+
+    with pytest.raises(ValueError) as exc:
+        pm.dataset.dataset_files.load_precomputed_event_file(filepath)
+
+    msg, = exc.value.args
+    assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
+
+
+def test_load_precomputed_rm_file_rda(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+
+    gaze = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
+        filepath,
+        custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    expected_df = pyreadr.read_r(filepath)
+
+    assert_frame_equal(
+        gaze.frame,
+        pl.DataFrame(expected_df['joint.fix']),
+        check_column_order=False,
+    )
+
+
+def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+
+    with pytest.raises(ValueError) as exc:
+        pm.dataset.dataset_files.load_precomputed_reading_measure_file(filepath)
+
+    msg, = exc.value.args
+    assert msg == 'please specify r_dataframe_key in custom_read_kwargs'

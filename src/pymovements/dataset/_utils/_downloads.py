@@ -28,78 +28,8 @@ from typing import Any
 from tqdm.auto import tqdm
 
 from pymovements._version import get_versions
-from pymovements.dataset._utils._archives import extract_archive
 
 USER_AGENT: str = f"pymovements/{get_versions()['version']}"
-
-
-def download_and_extract_archive(
-        url: str,
-        download_dirpath: Path,
-        download_filename: str,
-        extract_dirpath: Path | None = None,
-        md5: str | None = None,
-        *,
-        recursive: bool = True,
-        remove_finished: bool = False,
-        remove_top_level: bool = True,
-        resume: bool = True,
-        verbose: int = 1,
-) -> None:
-    """Download and extract archive file.
-
-    Parameters
-    ----------
-    url: str
-        URL of archive file to be downloaded.
-    download_dirpath: Path
-        Path to directory where file will be saved to.
-    download_filename: str
-        Target filename of saved file.
-    extract_dirpath: Path | None
-        Path to directory where archive files will be extracted to. (default: None)
-    md5: str | None
-        MD5 checksum of downloaded file. If None, do not check. (default: None)
-    recursive: bool
-        Recursively extract archives which are included in extracted archive. (default: True)
-    remove_finished: bool
-        Remove downloaded file after successful extraction or decompression. (default: False)
-    remove_top_level: bool
-        If ``True``, remove the top-level directory if it has only one child. (default: True)
-    resume: bool
-        Resume previous extraction by skipping existing files.
-        Checks for correct size of existing files but not integrity. (default: True)
-    verbose: int
-        Verbosity levels: (1) Show download progress bar and print info messages on downloading
-        and extracting archive files without printing messages for recursive archive extraction.
-        (2) Print additional messages for each recursive archive extract. (default: 1)
-
-    Raises
-    ------
-    RuntimeError
-        If the downloaded file has no suffix or suffix is not supported, or in case of a
-        specified MD5 checksum which doesn't match the checksum of the downloaded file.
-    """
-    archive_path = download_file(
-        url=url,
-        dirpath=download_dirpath,
-        filename=download_filename,
-        md5=md5,
-        verbose=bool(verbose),
-    )
-
-    if extract_dirpath is None:
-        extract_dirpath = download_dirpath
-
-    extract_archive(
-        source_path=archive_path,
-        destination_path=extract_dirpath,
-        recursive=recursive,
-        remove_finished=remove_finished,
-        remove_top_level=remove_top_level,
-        resume=resume,
-        verbose=verbose,
-    )
 
 
 def download_file(
@@ -202,6 +132,9 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
     """
     initial_url = url
     headers = {'Method': 'HEAD', 'User-Agent': USER_AGENT}
+    opener = urllib.request.build_opener()
+    opener.addheaders = [('User-Agent', USER_AGENT)]
+    urllib.request.install_opener(opener)
 
     for _ in range(max_hops + 1):
         with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as response:
@@ -215,9 +148,7 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
     )
 
 
-# have to ignore pylint since tqdm 2.45.0 broke incosistent-mro
-# https://github.com/tqdm/tqdm/blob/0bb91857eca0d4aea08f66cf1c8949abe0cd6b7a/tqdm/auto.py#L27
-class _DownloadProgressBar(tqdm):  # pylint: disable=inconsistent-mro
+class _DownloadProgressBar(tqdm):
     """Progress bar for downloads.
 
     Provides `update_to(n)` which uses `tqdm.update(delta_n)`.

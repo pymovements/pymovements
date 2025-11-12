@@ -43,25 +43,30 @@ from pymovements.synthetic import step_function
             id='length_10_start_value_1_step_5_to_0',
         ),
         pytest.param(
+            {'length': 10, 'steps': [5], 'values': [0], 'start_value': 1, 'dtype': np.int64},
+            {'value': np.concatenate([np.ones(5, dtype=np.int64), np.zeros(5, dtype=np.int64)])},
+            id='length_10_start_value_1_step_5_to_0_int64',
+        ),
+        pytest.param(
             {'length': 100, 'steps': [10, 50, 90], 'values': [1, 0, 20], 'start_value': 0},
             {'value': np.concatenate([np.zeros(10), np.ones(40), np.zeros(40), np.ones(10) * 20])},
             id='length_100_3_steps',
         ),
         pytest.param(
             {'length': 10, 'steps': [5], 'values': [(1, 2)], 'start_value': 10},
-            {'value': np.concatenate([np.tile(10, (5, 2)), np.tile((1, 2), (5, 1))])},
+            {'value': np.concatenate([np.tile(10.0, (5, 2)), np.tile((1, 2), (5, 1))])},
             id='length_10_2_channel_single_step_with_single_start_value',
         ),
         pytest.param(
             {'length': 10, 'steps': [5], 'values': [(1, 2)], 'start_value': (11, 12)},
-            {'value': np.concatenate([np.tile((11, 12), (5, 1)), np.tile((1, 2), (5, 1))])},
+            {'value': np.concatenate([np.tile((11.0, 12), (5, 1)), np.tile((1, 2), (5, 1))])},
             id='length_10_2_channel_single_step_with_2_channel_start_value',
         ),
         pytest.param(
             {'length': 10, 'steps': [5], 'values': [(1, 2, 3, 4)], 'start_value': (11, 12, 13, 14)},
             {
                 'value': np.concatenate([
-                    np.tile((11, 12, 13, 14), (5, 1)),
+                    np.tile((11.0, 12, 13, 14), (5, 1)),
                     np.tile((1, 2, 3, 4), (5, 1)),
                 ]),
             },
@@ -116,6 +121,7 @@ def test_step_function(params, expected):
 
     arr = step_function(**params)
     assert np.array_equal(arr, expected['value']), f"arr = {arr}, expected = {expected['value']}"
+    assert arr.dtype == expected['value'].dtype
 
 
 @pytest.mark.parametrize(

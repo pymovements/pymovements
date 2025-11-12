@@ -17,25 +17,26 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module to create a GazeDataFrame from a numpy array."""
+"""Module to create a Gaze from a numpy array."""
 from __future__ import annotations
 
+import warnings
 from typing import Literal
 
 import numpy as np
 import pandas as pd
 import polars as pl
 
-from pymovements.events.frame import EventDataFrame
+from pymovements._utils import _checks
+from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.gaze_dataframe import GazeDataFrame
-from pymovements.utils import checks
+from pymovements.gaze.gaze import Gaze
 
 
 def from_numpy(
-        data: np.ndarray | None = None,
+        samples: np.ndarray | None = None,
         experiment: Experiment | None = None,
-        events: EventDataFrame | None = None,
+        events: Events | None = None,
         *,
         trial: np.ndarray | None = None,
         time: np.ndarray | None = None,
@@ -54,8 +55,9 @@ def from_numpy(
         velocity_columns: list[str] | None = None,
         acceleration_columns: list[str] | None = None,
         distance_column: str | None = None,
-) -> GazeDataFrame:
-    """Get a :py:class:`~pymovements.gaze.GazeDataFrame` from a numpy array.
+        data: np.ndarray | None = None,
+) -> Gaze:
+    """Get a :py:class:`~pymovements.Gaze` from a numpy array.
 
     There are two mutually exclusive ways of conversion.
 
@@ -64,16 +66,16 @@ def from_numpy(
     `position_columns`.
 
     **Column specific arrays**: For each type of signal, you can pass the numpy array explicitly,
-    e.g. `position` or `velocity`. You must not pass `data` or any column list specifiers using this
-    method.
+    e.g. `position` or `velocity`. You must not pass `samples` or any column list specifiers using
+    this method.
 
     Parameters
     ----------
-    data: np.ndarray | None
-        Two-dimensional data represented as a numpy ndarray. (default: None)
+    samples: np.ndarray | None
+        Two-dimensional samples data represented as a numpy ndarray. (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
-    events: EventDataFrame | None
+    events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     trial: np.ndarray | None
         Array of trial identifiers for each timestep. (default: None)
@@ -92,37 +94,42 @@ def from_numpy(
     schema: list[str] | None
         A list of column names. (default: None)
     orient: Literal['col', 'row']
-        Whether to interpret the two-dimensional data as columns or as rows. (default: 'col')
+        Whether to interpret the two-dimensional samples data as columns or as rows.
+        (default: 'col')
     trial_columns: str | list[str] | None
-        The name of the trial columns in the input data frame. If the list is empty or None,
-        the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        The name of the trial columns in the samples data frame. If the list is empty or None,
+        the samples data frame is assumed to contain only one trial. If the list is not empty,
+        the samples data frame is assumed to contain multiple trials and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
-        The name of the timestamp column in the input data frame. (default: None)
+        The name of the timestamp column in the samples data frame. (default: None)
     time_unit: str | None
-        The unit of the timestamps in the timestamp column in the input data frame. Supported
+        The unit of the timestamps in the timestamp column in the samples data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. (default: None)
+        The name of the pixel position columns in the samples data frame. (default: None)
     position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. (default: None)
+        The name of the dva position columns in the samples data frame. (default: None)
     velocity_columns: list[str] | None
-        The name of the dva velocity columns in the input data frame. (default: None)
+        The name of the dva velocity columns in the samples data frame. (default: None)
     acceleration_columns: list[str] | None
-        The name of the dva acceleration columns in the input data frame. (default: None)
+        The name of the dva acceleration columns in the samples data frame. (default: None)
     distance_column: str | None
         The name of the column containing eye-to-screen distance in millimiters for each sample
-        in the input data frame. If specified, the column will be used for pixel to dva
+        in the samples data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
+    data: np.ndarray | None
+        Two-dimensional samples data represented as a numpy ndarray. (default: None)
+        .. deprecated:: v0.23.0
+        Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Returns
     -------
-    GazeDataFrame
-        Returns gaze data frame read from numpy array.
+    Gaze
+        Returns Gaze object with data read from numpy array.
 
     Examples
     --------
@@ -138,16 +145,16 @@ def from_numpy(
     Specifying the underlying schema:
     >>> schema = ['t', 'x', 'y']
 
-    Pass the array as ``data`` to ``pm.gaze.from_numpy()``, by specifying schema and components.
+    Pass the array as ``samples`` to ``pm.gaze.from_numpy()``, by specifying schema and components.
     >>> gaze = pm.gaze.from_numpy(
-    ...     arr,
+    ...     samples=arr,
     ...     schema=schema,
     ...     time_column='t',
     ...     time_unit='ms',
     ...     position_columns=['x', 'y'],
     ...     orient='col',
     ... )
-    >>> gaze.frame
+    >>> gaze.samples
     shape: (100, 2)
     ┌──────┬────────────┐
     │ time ┆ position   │
@@ -172,14 +179,14 @@ def from_numpy(
     (100, 3)
 
     >>> gaze = pm.gaze.from_numpy(
-    ...     arr.T,
+    ...     samples=arr.T,
     ...     schema=schema,
     ...     time_column='t',
     ...     time_unit='ms',
     ...     position_columns=['x', 'y'],
     ...     orient='row',
     ... )
-    >>> gaze.frame
+    >>> gaze.samples
     shape: (100, 2)
     ┌──────┬────────────┐
     │ time ┆ position   │
@@ -199,14 +206,15 @@ def from_numpy(
     │ 0    ┆ [0.0, 0.0] │
     └──────┴────────────┘
 
-    Pass the data explicitly via the specific keyword arguments, without having to specify a schema.
+    Pass the samples explicitly via the specific keyword arguments, without having to specify a
+    schema.
     >>> gaze = pm.gaze.from_numpy(
     ...     time=arr[0],
     ...     time_unit='ms',
     ...     position=arr[[1, 2]],
     ...     orient='col',
     ... )
-    >>> gaze.frame
+    >>> gaze.samples
     shape: (100, 2)
     ┌──────┬────────────┐
     │ time ┆ position   │
@@ -226,18 +234,28 @@ def from_numpy(
     │ 0    ┆ [0.0, 0.0] │
     └──────┴────────────┘
     """
-    # Either data or {time, pixel, position, velocity, acceleration} must be None.
-    checks.check_is_mutual_exclusive(data=data, time=time)
-    checks.check_is_mutual_exclusive(data=data, pixel=pixel)
-    checks.check_is_mutual_exclusive(data=data, position=position)
-    checks.check_is_mutual_exclusive(data=data, velocity=velocity)
-    checks.check_is_mutual_exclusive(data=data, acceleration=acceleration)
-    checks.check_is_mutual_exclusive(data=data, distance=distance)
-
     if data is not None:
-        df = pl.from_numpy(data=data, schema=schema, orient=orient)
-        return GazeDataFrame(
-            data=df,
+        warnings.warn(
+            DeprecationWarning(
+                "from_numpy() argument 'data' is deprecated since version v0.23.0. "
+                "Please use argument 'samples' instead. "
+                'This argument will be removed in v0.28.0.',
+            ),
+        )
+        _checks.check_is_mutual_exclusive(samples=samples, data=data)
+        samples = data
+
+    # Either samples or {time, pixel, position, velocity, acceleration} must be None.
+    _checks.check_is_mutual_exclusive(samples=samples, time=time)
+    _checks.check_is_mutual_exclusive(samples=samples, pixel=pixel)
+    _checks.check_is_mutual_exclusive(samples=samples, position=position)
+    _checks.check_is_mutual_exclusive(samples=samples, velocity=velocity)
+    _checks.check_is_mutual_exclusive(samples=samples, acceleration=acceleration)
+    _checks.check_is_mutual_exclusive(samples=samples, distance=distance)
+
+    if samples is not None:
+        return Gaze(
+            samples=pl.from_numpy(data=samples, schema=schema, orient=orient),
             experiment=experiment,
             events=events,
             trial_columns=trial_columns,
@@ -251,54 +269,66 @@ def from_numpy(
         )
 
     # Initialize with an empty DataFrame, as every column specifier could be None.
-    dfs: list[pl.DataFrame] = [pl.DataFrame()]
+    sample_components: list[pl.DataFrame] = [pl.DataFrame()]
 
     trial_columns = None
     if trial is not None:
-        df = pl.from_numpy(data=trial, schema=['trial'], orient=orient)
-        dfs.append(df)
+        sample_component = pl.from_numpy(data=trial, schema=['trial'], orient=orient)
+        sample_components.append(sample_component)
         trial_columns = 'trial'
 
     time_column = None
     if time is not None:
-        df = pl.from_numpy(data=time, schema=['time'], orient=orient)
-        dfs.append(df)
+        sample_component = pl.from_numpy(data=time, schema=['time'], orient=orient)
+        sample_components.append(sample_component)
         time_column = 'time'
 
     pixel_columns = None
     if pixel is not None:
-        df = pl.from_numpy(data=pixel, orient=orient).select(pl.all().name.prefix('pixel_'))
-        dfs.append(df)
-        pixel_columns = df.columns
+        sample_component = pl.from_numpy(
+            data=pixel, orient=orient,
+        ).select(
+            pl.all().name.prefix('pixel_'),
+        )
+        sample_components.append(sample_component)
+        pixel_columns = sample_component.columns
 
     position_columns = None
     if position is not None:
-        df = pl.from_numpy(data=position, orient=orient).select(pl.all().name.prefix('position_'))
-        dfs.append(df)
-        position_columns = df.columns
+        sample_component = pl.from_numpy(
+            data=position, orient=orient,
+        ).select(
+            pl.all().name.prefix('position_'),
+        )
+        sample_components.append(sample_component)
+        position_columns = sample_component.columns
 
     velocity_columns = None
     if velocity is not None:
-        df = pl.from_numpy(data=velocity, orient=orient).select(pl.all().name.prefix('velocity_'))
-        dfs.append(df)
-        velocity_columns = df.columns
+        sample_component = pl.from_numpy(
+            data=velocity, orient=orient,
+        ).select(
+            pl.all().name.prefix('velocity_'),
+        )
+        sample_components.append(sample_component)
+        velocity_columns = sample_component.columns
 
     acceleration_columns = None
     if acceleration is not None:
-        df = pl.from_numpy(data=acceleration, orient=orient)
-        df = df.select(pl.all().name.prefix('acceleration_'))
-        dfs.append(df)
-        acceleration_columns = df.columns
+        sample_component = pl.from_numpy(data=acceleration, orient=orient)
+        sample_component = sample_component.select(pl.all().name.prefix('acceleration_'))
+        sample_components.append(sample_component)
+        acceleration_columns = sample_component.columns
 
     distance_column = None
     if distance is not None:
-        df = pl.from_numpy(data=distance, schema=['distance'], orient=orient)
-        dfs.append(df)
+        sample_component = pl.from_numpy(data=distance, schema=['distance'], orient=orient)
+        sample_components.append(sample_component)
         distance_column = 'distance'
 
-    df = pl.concat(dfs, how='horizontal')
-    return GazeDataFrame(
-        data=df,
+    samples = pl.concat(sample_components, how='horizontal')
+    return Gaze(
+        samples=samples,
         experiment=experiment,
         events=events,
         time_column=time_column,
@@ -313,9 +343,9 @@ def from_numpy(
 
 
 def from_pandas(
-        data: pd.DataFrame,
+        samples: pd.DataFrame,
         experiment: Experiment | None = None,
-        events: EventDataFrame | None = None,
+        events: Events | None = None,
         *,
         trial_columns: str | list[str] | None = None,
         time_column: str | None = None,
@@ -325,16 +355,17 @@ def from_pandas(
         velocity_columns: list[str] | None = None,
         acceleration_columns: list[str] | None = None,
         distance_column: str | None = None,
-) -> GazeDataFrame:
-    """Get a :py:class:`~pymovements.gaze.GazeDataFrame` from a pandas DataFrame.
+        data: pd.DataFrame | None = None,
+) -> Gaze:
+    """Get a :py:class:`~pymovements.Gaze` from a pandas DataFrame.
 
     Parameters
     ----------
-    data: pd.DataFrame
-        Data represented as a pandas DataFrame.
+    samples: pd.DataFrame
+        Gaze samples represented as a pandas DataFrame.
     experiment : Experiment | None
         The experiment definition. (default: None)
-    events: EventDataFrame | None
+    events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
@@ -361,15 +392,29 @@ def from_pandas(
         in the input data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
+    data: pd.DataFrame | None
+        Gaze samples represented as a pandas DataFrame.
+        .. deprecated:: v0.23.0
+        Please use ``samples`` instead. This field will be removed in v0.28.0. (default: None)
 
     Returns
     -------
-    GazeDataFrame
-        Returns gaze data frame read from pandas data frame.
+    Gaze
+        Returns initialized gaze object with data read from pandas data frame.
     """
-    df = pl.from_pandas(data=data)
-    return GazeDataFrame(
-        data=df,
+    if data is not None:
+        warnings.warn(
+            DeprecationWarning(
+                "from_pandas() argument 'data' is deprecated since version v0.23.0. "
+                "Please use argument 'samples' instead. "
+                'This argument will be removed in v0.28.0.',
+            ),
+        )
+        _checks.check_is_mutual_exclusive(samples=samples, data=data)
+        samples = data
+
+    return Gaze(
+        samples=pl.from_pandas(data=samples),
         experiment=experiment,
         events=events,
         trial_columns=trial_columns,

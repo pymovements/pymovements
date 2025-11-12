@@ -1,22 +1,16 @@
 name: "GazeOnFaces"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://uncloud.univ-nantes.fr/index.php/s/"
+long_name: 'GazeOnFaces dataset'
 
 resources:
-  gaze:
-    - resource: "8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip"
-      filename: "gaze_csv.zip"
-      md5: "fe219f07c9253cd9aaee6bd50233c034"
-
-extract:
-  gaze: true
+  - content: gaze
+    url: "https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip"
+    filename: "gaze_csv.zip"
+    md5: "fe219f07c9253cd9aaee6bd50233c034"
+    filename_pattern: 'gaze_sub{sub_id:d}_trial{trial_id:d}.csv'
+    filename_pattern_schema_overrides:
+      sub_id: !int
+      trial_id: !int
 
 experiment:
   screen_width_px: 1280
@@ -26,14 +20,6 @@ experiment:
   distance_cm: 57
   origin: "center"
   sampling_rate: 60
-
-filename_format:
-  gaze: 'gaze_sub{sub_id:d}_trial{trial_id:d}.csv'
-
-filename_format_schema_overrides:
-  gaze:
-    sub_id: !int
-    trial_id: !int
 
 # TODO
 time_column: null

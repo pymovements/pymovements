@@ -25,6 +25,7 @@ from dataclasses import field
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 
 
 @dataclass
@@ -49,28 +50,21 @@ class DAEMONS(DatasetDefinition):
     name: str
         The name of the dataset.
 
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
+    long_name: str
+        The entire name of the dataset.
 
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-
-    resources: dict[str, list[dict[str, str]]]
+    resources: ResourceDefinitions
         A list of dataset gaze_resources. Each list entry must be a dictionary with the following
         keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-
-    filename_format: dict[str, str]
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
@@ -83,11 +77,11 @@ class DAEMONS(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.SBSAT` definition:
+    :py:class:`~pymovements.datasets.DAEMONS` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("SBSAT", path='data/SBSAT')
+    >>> dataset = pm.Dataset("DAEMONS", path='data/DAEMONS')
 
     Download the dataset resources:
 
@@ -99,54 +93,30 @@ class DAEMONS(DatasetDefinition):
     """
 
     # pylint: disable=similarities
-    # The PublicDatasetDefinition child classes potentially share code chunks for definitions.
+    # The DatasetDefinition child classes potentially share code chunks for definitions.
 
     name: str = 'DAEMONS'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': False,
-            'precomputed_events': True,
-            'precomputed_reading_measures': False,
-        },
-    )
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': ['https://osf.io/download/'],
-            },
-    )
-    resources: dict[str, list[dict[str, str]]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': [
-                    {
-                        'resource': 'ztgna/',
-                        'filename': 'eye_movement.zip',
-                        'md5': '2779b4c140a0b1e3c9976488994f08f3',
-                    },
-                ],
-            },
-    )
-    extract: dict[str, bool] = field(
-        default_factory=lambda: {
-            'precomputed_events': True,
-        },
+    long_name: str = 'Potsdam data set of eye movement on natural scenes'
+
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
+                {
+                    'content': 'precomputed_events',
+                    'url': 'https://osf.io/download/ztgna/',
+                    'filename': 'eye_movement.zip',
+                    'md5': '2779b4c140a0b1e3c9976488994f08f3',
+                    'filename_pattern': r'SAC_{data_split:s}.csv',
+                    'filename_pattern_schema_overrides': {'data_split': str},
+                },
+            ],
+        ),
     )
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': r'SAC_{data_split:s}.csv',
-            },
-    )
+    filename_format: dict[str, str] | None = None
 
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {'data_split': str},
-            },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

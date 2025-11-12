@@ -43,3 +43,62 @@ def test_eyetracker_without_sampling_rate():
         None, False, True, 'EyeLink 1000 Plus',
         '1.5.3', 'Arm Mount / Monocular / Remote',
     )
+
+
+@pytest.mark.parametrize(
+    ('eyetracker', 'expected_dict', 'exclude_none'),
+    [
+        pytest.param(
+            EyeTracker(),
+            {},
+            True,
+            id='default',
+        ),
+        pytest.param(
+            EyeTracker(right=True, model='test'),
+            {'right': True, 'model': 'test'},
+            True,
+            id='right_model',
+        ),
+        pytest.param(
+            EyeTracker(),
+            {
+                'sampling_rate': None,
+                'left': None,
+                'right': None,
+                'model': None,
+                'version': None,
+                'vendor': None,
+                'mount': None,
+            },
+            False,
+            id='all_none',
+        ),
+    ],
+)
+def test_eyetracker_to_dict_exclude_none(eyetracker, expected_dict, exclude_none):
+    assert eyetracker.to_dict(exclude_none=exclude_none) == expected_dict
+
+
+@pytest.mark.parametrize(
+    ('eyetracker', 'expected_bool'),
+    [
+        pytest.param(
+            EyeTracker(),
+            False,
+            id='default',
+        ),
+        pytest.param(
+            EyeTracker(mount='test'),
+            True,
+            id='mount',
+        ),
+        pytest.param(
+            EyeTracker(sampling_rate=2.0),
+            True,
+            id='sampling_rate_2',
+        ),
+    ],
+)
+def test_eyetracker_bool_all_none(eyetracker, expected_bool):
+    assert bool(eyetracker) == expected_bool

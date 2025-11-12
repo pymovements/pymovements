@@ -1,0 +1,19 @@
+name: OneStop
+
+long_name: 'OneStop: A 360-Participant English Eye Tracking Dataset with Different Reading Regimes'
+
+resources:
+  - content: precomputed_events
+    url: https://osf.io/download/dq935/
+    filename: fixations_Paragraph.csv.zip
+    md5: 3d3b6a3794a50e174e025f43735674bd
+    filename_pattern: fixations_Paragraph.csv
+  - content: precomputed_reading_measures
+    url: https://osf.io/download/4ajc8/
+    filename: ia_Paragraph.csv.zip
+    md5: 9b9548e49efdc7dbf63d4f3a5dc3af22
+    filename_pattern: ia_Paragraph.csv
+
+custom_read_kwargs:
+  precomputed_events: {'null_values': '.'}
+  precomputed_reading_measures: {'null_values': '.'}

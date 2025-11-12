@@ -22,11 +22,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib.pyplot
+import PIL.Image
+
+from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
 from pymovements._utils._strings import curly_to_regex
-from pymovements.utils.plotting import draw_image_stimulus
 
 
+@repr_html()
 class ImageStimulus:
     """A DataFrame for image stimulus.
 
@@ -49,7 +53,7 @@ class ImageStimulus:
         origin: str
             Origin of the stimulus to be shown.
         """
-        draw_image_stimulus(self.images[stimulus_id], origin=origin, show=True)
+        _draw_image_stimulus(self.images[stimulus_id], origin=origin, show=True)
 
 
 def from_file(image_path: str | Path) -> ImageStimulus:
@@ -95,3 +99,46 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
         image_stimuli.append(filename)
 
     return ImageStimulus(image_stimuli)
+
+
+def _draw_image_stimulus(
+        image_stimulus: str | Path,
+        origin: str = 'upper',
+        show: bool = False,
+        figsize: tuple[float, float] = (15, 10),
+        extent: list[float] | None = None,
+        fig: matplotlib.pyplot.figure | None = None,
+        ax: matplotlib.pyplot.Axes | None = None,
+) -> tuple[matplotlib.pyplot.figure, matplotlib.pyplot.Axes]:
+    """Draw stimulus.
+
+    Parameters
+    ----------
+    image_stimulus: str | Path
+        Path to image stimulus.
+    origin: str
+        Origin how to draw the image.
+    show: bool
+        Boolean whether to show the image. (default: False)
+    figsize: tuple[float, float]
+        Size of the figure. (default: (15, 10))
+    extent: list[float] | None
+        Extent of image. (default: None)
+    fig: matplotlib.pyplot.figure | None
+        Matplotlib canvas. (default: None)
+    ax: matplotlib.pyplot.Axes | None
+        Matplotlib axes. (default: None)
+
+    Returns
+    -------
+    fig: matplotlib.pyplot.figure
+    ax: matplotlib.pyplot.Axes
+    """
+    img = PIL.Image.open(image_stimulus)
+    if not fig:
+        fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
+    assert ax
+    ax.imshow(img, origin=origin, extent=extent)
+    if show:
+        matplotlib.pyplot.show()
+    return fig, ax

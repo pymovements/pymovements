@@ -32,12 +32,12 @@ from pymovements.dataset.dataset_definition import DatasetDefinition
 
 
 class DatasetLibrary:
-    """Provides access by name to :py:class:`~pymovements.dataset.DatasetDefinition`.
+    """Provides access by name to :py:class:`~pymovements.DatasetDefinition`.
 
     Attributes
     ----------
     definitions: dict[str, DatasetDefinition]
-        Dictionary of :py:class:`~pymovements.dataset.DatasetDefinition`,
+        Dictionary of :py:class:`~pymovements.DatasetDefinition`,
         either as classes or instances.
     """
 
@@ -45,12 +45,12 @@ class DatasetLibrary:
 
     @classmethod
     def add(cls, definition: type[DatasetDefinition] | Path | str) -> None:
-        """Add :py:class:`~pymovements.dataset.DatasetDefinition` to library.
+        """Add :py:class:`~pymovements.DatasetDefinition` to library.
 
         Parameters
         ----------
         definition: type[DatasetDefinition] | Path | str
-            The :py:class:`~pymovements.dataset.DatasetDefinition` to add to the library.
+            The :py:class:`~pymovements.DatasetDefinition` to add to the library.
 
         Notes
         -----
@@ -69,7 +69,7 @@ class DatasetLibrary:
 
     @classmethod
     def get(cls, name: str) -> DatasetDefinition:
-        """Get :py:class:`~pymovements.dataset.DatasetDefinition` py name.
+        """Get :py:class:`~pymovements.DatasetDefinition` py name.
 
         Parameters
         ----------
@@ -79,7 +79,7 @@ class DatasetLibrary:
         Returns
         -------
         DatasetDefinition
-            The :py:class:`~pymovements.dataset.DatasetDefinition`.
+            The :py:class:`~pymovements.DatasetDefinition`.
 
         Raises
         ------
@@ -95,13 +95,13 @@ class DatasetLibrary:
 
     @classmethod
     def names(cls) -> list[str]:
-        """Return available datasets in :py:class:`~pymovements.dataset.DatasetLibrary`.
+        """Return available datasets in :py:class:`~pymovements.DatasetLibrary`.
 
         Returns
         -------
         list[str]
             List of dataset names that are available in
-            :py:class:`~pymovements.dataset.DatasetLibrary`.
+            :py:class:`~pymovements.DatasetLibrary`.
         """
         return sorted(list(cls.definitions.keys()))
 
@@ -115,12 +115,12 @@ def register_dataset(cls: DatasetDefinitionClass) -> DatasetDefinitionClass:
     Parameters
     ----------
     cls: DatasetDefinitionClass
-        The :py:class:`~pymovements.dataset.DatasetDefinition` to register.
+        The :py:class:`~pymovements.DatasetDefinition` to register.
 
     Returns
     -------
     DatasetDefinitionClass
-        The :py:class:`~pymovements.dataset.DatasetDefinition` to register.
+        The :py:class:`~pymovements.DatasetDefinition` to register.
     """
     DatasetLibrary.add(cls)
     return cls
@@ -131,14 +131,14 @@ def _add_shipped_datasets() -> None:
     dataset_definition_files = resources.files(datasets)
 
     datasets_list_yaml = dataset_definition_files / 'datasets.yaml'
-    # https://github.com/aeye-lab/pymovements/pull/952#issuecomment-2690742187
+    # https://github.com/pymovements/pymovements/pull/952#issuecomment-2690742187
     assert isinstance(datasets_list_yaml, Path)
     with open(datasets_list_yaml, encoding='utf-8') as f:
         datasets_list = yaml.safe_load(f)
 
     for definition_basename in datasets_list:
         yaml_file_name = dataset_definition_files / f'{definition_basename}.yaml'
-        # https://github.com/aeye-lab/pymovements/pull/952#issuecomment-2690742187
+        # https://github.com/pymovements/pymovements/pull/952#issuecomment-2690742187
         assert isinstance(yaml_file_name, Path)
         DatasetLibrary.add(yaml_file_name)
 

@@ -17,23 +17,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: disable=cyclic-import
 """Provides utility functions.
 
-.. rubric:: Modules
-
-.. autosummary::
-   :toctree:
-   :template: module.rst
-
-    archives
-    checks
-    downloads
-    parsing
-    paths
+.. deprecated:: v0.22.0
+   This module will be removed in v0.27.0.
 """
 from pymovements.utils import aois
 from pymovements.utils import archives
-from pymovements.utils import checks
 from pymovements.utils import downloads
 from pymovements.utils import parsing
 from pymovements.utils import paths
@@ -43,7 +34,6 @@ from pymovements.utils import plotting
 __all__ = [
     'aois',
     'archives',
-    'checks',
     'downloads',
     'parsing',
     'plotting',

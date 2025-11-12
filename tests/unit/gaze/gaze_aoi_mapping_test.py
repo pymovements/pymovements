@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test all GazeDataFrame functionality."""
+"""Test all Gaze functionality."""
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -27,16 +27,46 @@ import pymovements as pm
 EXPECTED_DF = {
     'char_left_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -62,16 +92,46 @@ EXPECTED_DF = {
     ),
     'char_right_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -97,16 +157,46 @@ EXPECTED_DF = {
     ),
     'word_left_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -132,16 +222,46 @@ EXPECTED_DF = {
     ),
     'word_right_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -167,16 +287,46 @@ EXPECTED_DF = {
     ),
     'char_left_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -202,16 +352,46 @@ EXPECTED_DF = {
     ),
     'char_right_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -238,16 +418,46 @@ EXPECTED_DF = {
 
     'word_left_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -273,16 +483,46 @@ EXPECTED_DF = {
     ),
     'word_right_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -308,16 +548,46 @@ EXPECTED_DF = {
     ),
     'char_auto_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -343,16 +613,46 @@ EXPECTED_DF = {
     ),
     'char_auto_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -379,16 +679,46 @@ EXPECTED_DF = {
 
     'word_auto_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -414,16 +744,46 @@ EXPECTED_DF = {
     ),
     'word_auto_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -449,16 +809,46 @@ EXPECTED_DF = {
     ),
     'char_else_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -484,16 +874,46 @@ EXPECTED_DF = {
     ),
     'char_else_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -519,16 +939,46 @@ EXPECTED_DF = {
     ),
     'word_else_pixel': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -554,16 +1004,46 @@ EXPECTED_DF = {
     ),
     'word_else_position': pl.DataFrame(
         [
-            (1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
-            (1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None, None, None, None, None, None, None, None, None, None),  # noqa: E501
+            (
+                1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005275, 649.8, 533.2, 639.7, 528.9, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005276, 647.7, 534.0, 640.6, 529.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005277, 646.2, 533.0, 642.1, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005278, 646.5, 533.7, 642.9, 531.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005279, 647.2, 534.6, 642.6, 531.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005280, 647.3, 534.0, 642.3, 530.6, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005281, 647.7, 536.3, 642.2, 529.4, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005282, 647.5, 537.0, 641.4, 531.3, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
+            (
+                1, 1, 8005283, 648.3, 534.9, 640.9, 529.0, None, None,
+                None, None, None, None, None, None, None, None, None,
+            ),
         ],
         schema={
             'trialId': pl.Int64,
@@ -590,6 +1070,7 @@ EXPECTED_DF = {
 }
 
 
+@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('eye'),
     [
@@ -599,6 +1080,7 @@ EXPECTED_DF = {
         'else',
     ],
 )
+@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('aoi_column'),
     [
@@ -606,6 +1088,7 @@ EXPECTED_DF = {
         'char',
     ],
 )
+@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('gaze_type'),
     [
@@ -613,9 +1096,12 @@ EXPECTED_DF = {
         'position',
     ],
 )
-def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
+def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_example_file):
+    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    gaze_filepath = make_example_file('judo1000_example.csv')
+
     aoi_df = pm.stimulus.text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        aoi_filepath,
         aoi_column=aoi_column,
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -624,22 +1110,25 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         page_column='page',
     )
     if gaze_type == 'pixel':
-        gaze_df = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+        gaze = pm.gaze.io.from_csv(
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     elif gaze_type == 'position':
-        gaze_df = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+        gaze = pm.gaze.io.from_csv(
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
+    else:
+        assert False, 'unknown gaze_type'
 
-    gaze_df.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze_df.frame, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
+    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
 
 
+@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('eye'),
     [
@@ -649,6 +1138,7 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         'else',
     ],
 )
+@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('aoi_column'),
     [
@@ -656,6 +1146,7 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         'char',
     ],
 )
+@pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('gaze_type'),
     [
@@ -663,9 +1154,12 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type):
         'position',
     ],
 )
-def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type):
+def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_file):
+    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    gaze_filepath = make_example_file('judo1000_example.csv')
+
     aoi_df = pm.stimulus.text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        aoi_filepath,
         aoi_column=aoi_column,
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -674,25 +1168,30 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type):
         page_column='page',
     )
     if gaze_type == 'pixel':
-        gaze_df = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+        gaze = pm.gaze.io.from_csv(
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     elif gaze_type == 'position':
-        gaze_df = pm.gaze.io.from_csv(
-            'tests/files/judo1000_example.csv',
-            **{'separator': '\t'},
+        gaze = pm.gaze.io.from_csv(
+            gaze_filepath,
+            read_csv_kwargs={'separator': '\t'},
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
+    else:
+        assert False, 'unknown gaze_type'
 
-    gaze_df.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze_df.frame, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
+    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
 
 
-def test_map_to_aois_raises_value_error():
+def test_map_to_aois_raises_value_error(make_example_file):
+    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    gaze_filepath = make_example_file('judo1000_example.csv')
+
     aoi_df = pm.stimulus.text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        aoi_filepath,
         aoi_column='char',
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -700,13 +1199,13 @@ def test_map_to_aois_raises_value_error():
         height_column='height',
         page_column='page',
     )
-    gaze_df = pm.gaze.io.from_csv(
-        'tests/files/judo1000_example.csv',
-        **{'separator': '\t'},
+    gaze = pm.gaze.io.from_csv(
+        gaze_filepath,
+        read_csv_kwargs={'separator': '\t'},
         position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
     )
 
     with pytest.raises(ValueError) as excinfo:
-        gaze_df.map_to_aois(aoi_df, eye='right', gaze_type='')
+        gaze.map_to_aois(aoi_df, eye='right', gaze_type='')
     msg, = excinfo.value.args
-    assert msg == 'neither position nor pixel in gaze dataframe, one needed for mapping'
+    assert msg.startswith('neither position nor pixel column in samples dataframe')

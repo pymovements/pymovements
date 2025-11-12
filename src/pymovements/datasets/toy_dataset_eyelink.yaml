@@ -1,22 +1,16 @@
 name: "ToyDatasetEyeLink"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/"
+long_name: "pymovements Toy Dataset EyeLink"
 
 resources:
-  gaze:
-    - resource: "a970d090588542dad745297866e794ab9dad8795/"
-      filename: "pymovements-toy-dataset-eyelink.zip"
-      md5: "b1d426751403752c8a154fc48d1670ce"
-
-extract:
-  gaze: true
+  - content: gaze
+    url: "https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip"
+    filename: "pymovements-toy-dataset-eyelink.zip"
+    md5: "966c0b6aefe61f32942366ed719454d3"
+    filename_pattern: 'subject_{subject_id:d}_session_{session_id:d}.asc'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      session_id: !int
 
 experiment:
   screen_width_px: 1280
@@ -31,14 +25,6 @@ experiment:
     right: false
     model: "EyeLink Portable Duo"
     vendor: "EyeLink"
-
-filename_format:
-  gaze: 'subject_{subject_id:d}_session_{session_id:d}.asc'
-
-filename_format_schema_overrides:
-  gaze:
-    subject_id: !int
-    session_id: !int
 
 trial_columns:
   - task

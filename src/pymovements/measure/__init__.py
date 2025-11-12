@@ -17,32 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides eye movement measures.
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree:
-   :template: class.rst
-
-    SampleMeasureLibrary
-
-.. rubric:: Measures
-
-.. autosummary::
-   :toctree:
-   :recursive:
-
-    null_ratio
-
-.. rubric:: Decorators
-
-.. autosummary::
-   :toctree:
-   :recursive:
-
-    register_sample_measure
-"""
+"""Provides eye movement measures."""
 from pymovements.measure.library import register_sample_measure
 from pymovements.measure.library import SampleMeasureLibrary
 from pymovements.measure.measures import null_ratio

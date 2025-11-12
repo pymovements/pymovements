@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
-from pathlib import Path
-
 import polars
 import pytest
 from polars.testing import assert_frame_equal
@@ -175,23 +173,24 @@ EXPECTED_DF = polars.DataFrame(
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs', 'expected'),
+    ('filename', 'custom_read_kwargs', 'expected'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'toy_text_1_1_aoi.csv',
             None,
             EXPECTED_DF,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'toy_text_1_1_aoi.csv',
             {'separator': ','},
             EXPECTED_DF,
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus(aoi_file, custom_read_kwargs, expected):
+def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file):
+    aoi_file = make_example_file(filename)
     aois = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -229,21 +228,22 @@ def test_text_stimulus_unsupported_format():
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'toy_text_1_1_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'toy_text_1_1_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus_splitting(aoi_file, custom_read_kwargs):
+def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file):
+    aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -260,21 +260,22 @@ def test_text_stimulus_splitting(aoi_file, custom_read_kwargs):
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'toy_text_1_1_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'toy_text_1_1_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus_splitting_unique_within(aoi_file, custom_read_kwargs):
+def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, make_example_file):
+    aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -291,21 +292,22 @@ def test_text_stimulus_splitting_unique_within(aoi_file, custom_read_kwargs):
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'toy_text_1_1_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'toy_text_1_1_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus_splitting_different_between(aoi_file, custom_read_kwargs):
+def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs, make_example_file):
+    aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -327,9 +329,10 @@ def test_text_stimulus_splitting_different_between(aoi_file, custom_read_kwargs)
 
 
 @pytest.fixture(name='text_stimulus')
-def fixture_text_stimulus():
+def fixture_text_stimulus(make_example_file):
+    filepath = make_example_file('toy_text_1_1_aoi.csv')
     yield text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        filepath,
         aoi_column='word',
         start_x_column='top_left_x',
         start_y_column='top_left_y',

@@ -25,6 +25,7 @@ from dataclasses import field
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
@@ -45,14 +46,10 @@ class DIDEC(DatasetDefinition):
     name: str
         The name of the dataset.
 
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
+    long_name: str
+        The entire name of the dataset.
 
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-
-    resources: dict[str, list[dict[str, str]]]
+    resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
@@ -61,14 +58,11 @@ class DIDEC(DatasetDefinition):
     experiment: Experiment
         The experiment definition.
 
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-
-    filename_format: dict[str, str]
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
@@ -118,34 +112,37 @@ class DIDEC(DatasetDefinition):
     """
 
     # pylint: disable=similarities
-    # The PublicDatasetDefinition child classes potentially share code chunks for definitions.
+    # The DatasetDefinition child classes potentially share code chunks for definitions.
 
     name: str = 'DIDEC'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': False,
-            'precomputed_reading_measures': False,
-        },
-    )
+    long_name: str = 'Dutch Image Description and Eye-tracking Corpus'
 
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda: {
-            'gaze': ['https://didec.uvt.nl/corpus/'],
-        },
-    )
-
-    resources: dict[str, list[dict[str, str]]] = field(
-        default_factory=lambda: {
-            'gaze': [
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
                 {
-                    'resource': 'DIDEC_only_the_eyetracking_data.zip',
+                    'content': 'gaze',
+                    'url': 'https://didec.uvt.nl/corpus/DIDEC_only_the_eyetracking_data.zip',
                     'filename': 'DIDEC_only_the_eyetracking_data.zip',
                     'md5': 'd572b0b41828986ca48a2fcf6966728a',
+                    'filename_pattern': (
+                        r'Ruud_exp{experiment:d}_'
+                        r'list{list:d}_v{version:d}_'
+                        r'ppn{participant:d}_{session:d}_'
+                        r'Trial{trial:d} Samples.txt'
+                    ),
+                    'filename_pattern_schema_overrides': {
+                        'experiment': int,
+                        'list': int,
+                        'version': int,
+                        'participant': int,
+                        'session': int,
+                        'trial': int,
+                    },
                 },
             ],
-        },
+        ),
     )
 
     experiment: Experiment = field(
@@ -160,32 +157,9 @@ class DIDEC(DatasetDefinition):
         ),
     )
 
-    extract: dict[str, bool] = field(default_factory=lambda: {'gaze': True})
+    filename_format: dict[str, str] | None = None
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda: {
-            'gaze':
-                (
-                    r'Ruud_exp{experiment:d}_'
-                    r'list{list:d}_v{version:d}_'
-                    r'ppn{participant:d}_{session:d}_'
-                    r'Trial{trial:d} Samples.txt'
-                ),
-        },
-    )
-
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'experiment': int,
-                'list': int,
-                'version': int,
-                'participant': int,
-                'session': int,
-                'trial': int,
-            },
-        },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     trial_columns: list[str] = field(
         default_factory=lambda: ['Stimulus'],

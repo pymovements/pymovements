@@ -32,19 +32,28 @@ from pymovements import DatasetLibrary
     [
         pytest.param(pm.datasets.BSC, 'BSC', id='BSC'),
         pytest.param(pm.datasets.BSCII, 'BSCII', id='BSCII'),
+        pytest.param(pm.datasets.ChineseReading, 'ChineseReading', id='ChineseReading'),
         pytest.param(pm.datasets.CodeComprehension, 'CodeComprehension', id='CodeComprehension'),
+        pytest.param(pm.datasets.CoLAGaze, 'CoLAGaze', id='CoLAGaze'),
         pytest.param(pm.datasets.CopCo, 'CopCo', id='CopCo'),
         pytest.param(pm.datasets.DAEMONS, 'DAEMONS', id='DAEMONS'),
         pytest.param(pm.datasets.DIDEC, 'DIDEC', id='DIDEC'),
         pytest.param(pm.datasets.EMTeC, 'EMTeC', id='EMTeC'),
+        pytest.param(pm.datasets.ETDD70, 'ETDD70', id='ETDD70'),
         pytest.param(pm.datasets.FakeNewsPerception, 'FakeNewsPerception', id='FakeNewsPerception'),
+        pytest.param(pm.datasets.Gaze4Hate, 'Gaze4Hate', id='Gaze4Hate'),
         pytest.param(pm.datasets.GazeBase, 'GazeBase', id='GazeBase'),
         pytest.param(pm.datasets.GazeBaseVR, 'GazeBaseVR', id='GazeBaseVR'),
         pytest.param(pm.datasets.GazeOnFaces, 'GazeOnFaces', id='GazeOnFaces'),
         pytest.param(pm.datasets.HBN, 'HBN', id='HBN'),
         pytest.param(pm.datasets.InteRead, 'InteRead', id='InteRead'),
+        pytest.param(pm.datasets.IITB_HGC, 'IITB_HGC', id='IITB_HGC'),
         pytest.param(pm.datasets.JuDo1000, 'JuDo1000', id='JuDo1000'),
+        pytest.param(pm.datasets.MECOL1W1, 'MECOL1W1', id='MECOL1W1'),
+        pytest.param(pm.datasets.MECOL2W1, 'MECOL2W1', id='MECOL2W1'),
+        pytest.param(pm.datasets.MECOL2W2, 'MECOL2W2', id='MECOL2W2'),
         pytest.param(pm.datasets.MouseCursor, 'MouseCursor', id='MouseCursor'),
+        pytest.param(pm.datasets.OneStop, 'OneStop', id='OneStop'),
         pytest.param(pm.datasets.PoTeC, 'PoTeC', id='PoTeC'),
         pytest.param(
             pm.datasets.PotsdamBingeRemotePVT,
@@ -58,6 +67,7 @@ from pymovements import DatasetLibrary
         ),
         pytest.param(pm.datasets.Provo, 'Provo', id='Provo'),
         pytest.param(pm.datasets.SBSAT, 'SBSAT', id='SBSAT'),
+        pytest.param(pm.datasets.TECO, 'TECO', id='TECO'),
         pytest.param(pm.datasets.ToyDataset, 'ToyDataset', id='ToyDataset'),
         pytest.param(pm.datasets.ToyDatasetEyeLink, 'ToyDatasetEyeLink', id='ToyDatasetEyeLink'),
         pytest.param(pm.datasets.UCL, 'UCL', id='UCL'),
@@ -65,9 +75,7 @@ from pymovements import DatasetLibrary
 )
 def test_public_dataset_registered(definition, dataset_name):
     assert dataset_name in DatasetLibrary.names()
-    definition_from_library = DatasetLibrary.get(dataset_name).__dict__
-    python_definition = definition().__dict__
-    assert definition_from_library == python_definition
-    definition_from_lib_exp = definition_from_library.pop('experiment')
-    python_definition_exp = python_definition.pop('experiment')
-    assert python_definition_exp == definition_from_lib_exp
+    definition_from_library = DatasetLibrary.get(dataset_name)
+
+    # simple equal between objects does not work as classes have different names.
+    assert definition().to_dict() == definition_from_library.to_dict()

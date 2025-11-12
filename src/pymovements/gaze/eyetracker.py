@@ -20,11 +20,15 @@
 """Holds the EyeTracker class."""
 from __future__ import annotations
 
+from dataclasses import asdict
 from dataclasses import dataclass
+from typing import Any
 
-from pymovements.utils import checks
+from pymovements._utils import _checks
+from pymovements._utils._html import repr_html
 
 
+@repr_html()
 @dataclass
 class EyeTracker:
     """EyeTracker class for holding eyetracker properties.
@@ -74,4 +78,33 @@ class EyeTracker:
     def __post_init__(self) -> None:
         """Check that the sampling rate is a positive number."""
         if self.sampling_rate is not None:
-            checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
+            _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
+
+    def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
+        """Convert the EyeTracker instance into a dictionary.
+
+        Parameters
+        ----------
+        exclude_none: bool
+            Exclude attributes that are either ``None`` or that are objects that evaluate to
+            ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
+            ``int``, and ``float`` are not excluded.
+
+        Returns
+        -------
+        dict[str, Any]
+            EyeTracker as dictionary.
+        """
+        _dict = asdict(self)
+
+        # Delete fields that evaluate to False (False, None, [], {})
+        if exclude_none:
+            for key, value in list(_dict.items()):
+                if not isinstance(value, (bool, int, float)) and not value:
+                    del _dict[key]
+
+        return _dict
+
+    def __bool__(self) -> bool:
+        """Return True if the eyetracker has data defined, else False."""
+        return not all(not value for value in self.__dict__.values())

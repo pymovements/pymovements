@@ -22,7 +22,10 @@ from __future__ import annotations
 
 import polars as pl
 
+from pymovements._utils._html import repr_html
 
+
+@repr_html()
 class ReadingMeasures:
     """A DataFrame for reading measures.
 

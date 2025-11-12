@@ -1,13 +1,10 @@
-{{ fullname | escape | underline}}
+{{ objname | escape | underline}}
 
 .. currentmodule:: {{ module }}
 
-.. autoclass:: {{ fullname }}
+.. autoclass:: {{ objname }}
 
    {% block methods %}
-   .. automethod:: __init__
-      :noindex:
-
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 

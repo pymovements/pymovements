@@ -27,6 +27,7 @@ from typing import Any
 import polars as pl
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.eyetracker import EyeTracker
 
@@ -35,7 +36,7 @@ from pymovements.gaze.eyetracker import EyeTracker
 class ToyDatasetEyeLink(DatasetDefinition):
     """Example toy dataset with EyeLink data.
 
-    This dataset includes monocular eye tracking data from a single participants in a single
+    This dataset includes monocular eye tracking data from a single participant in a single
     session. Eye movements are recorded at a sampling frequency of 1000 Hz using an EyeLink Portable
     Duo video-based eye tracker and are provided as pixel coordinates.
 
@@ -46,31 +47,24 @@ class ToyDatasetEyeLink(DatasetDefinition):
     name: str
         The name of the dataset.
 
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
+    long_name: str
+        The entire name of the dataset.
 
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-
-    resources: dict[str, list[dict[str, str]]]
+    resources: ResourceDefinitions
         A list of dataset gaze_resources. Each list entry must be a dictionary with the following
         keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-
     experiment: Experiment
         The experiment definition.
 
-    filename_format: dict[str, str]
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
@@ -124,36 +118,25 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     name: str = 'ToyDatasetEyeLink'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': False,
-            'precomputed_reading_measures': False,
-        },
-    )
+    long_name: str = 'pymovements Toy Dataset EyeLink'
 
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda: {
-            'gaze': [
-                'http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/',
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
+                        {
+                            'content': 'gaze',
+                            'url': 'https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
+                            'filename': 'pymovements-toy-dataset-eyelink.zip',
+                            'md5': '966c0b6aefe61f32942366ed719454d3',
+                            'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',  # noqa: E501 # pylint: disable=line-too-long
+                            'filename_pattern_schema_overrides': {
+                                'subject_id': int,
+                                'session_id': int,
+                            },
+                        },
             ],
-        },
+        ),
     )
-
-    resources: dict[str, list[dict[str, str]]] = field(
-        default_factory=lambda: {
-            'gaze':
-                [
-                    {
-                        'resource': 'a970d090588542dad745297866e794ab9dad8795/',
-                        'filename': 'pymovements-toy-dataset-eyelink.zip',
-                        'md5': 'b1d426751403752c8a154fc48d1670ce',
-                    },
-                ],
-        },
-    )
-
-    extract: dict[str, bool] = field(default_factory=lambda: {'gaze': True})
 
     experiment: Experiment = field(
         default_factory=lambda: Experiment(
@@ -173,20 +156,9 @@ class ToyDatasetEyeLink(DatasetDefinition):
         ),
     )
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda: {
-            'gaze': r'subject_{subject_id:d}_session_{session_id:d}.asc',
-        },
-    )
+    filename_format: dict[str, str] | None = None
 
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'subject_id': int,
-                'session_id': int,
-            },
-        },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     trial_columns: list[str] | None = field(
         default_factory=lambda: ['task', 'trial_id'],

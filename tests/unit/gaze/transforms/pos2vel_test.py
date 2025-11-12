@@ -136,9 +136,9 @@ def test_pos2vel_init_raises_error(kwargs, exception, msg_substrings):
                 'degree': 1, 'padding': None, 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
-            pl.exceptions.ComputeError,
-            ('',),
-            id='no_padding_input_shorter_than_window_length_raises_panicexception',
+            ValueError,
+            ('If mode is \'interp\', window_length must be less than or equal to the size of x',),
+            id='no_padding_input_shorter_than_window_length_raises_valueerror',
         ),
     ],
 )

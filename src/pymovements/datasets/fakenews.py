@@ -25,6 +25,7 @@ from dataclasses import field
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
@@ -44,59 +45,55 @@ class FakeNewsPerception(DatasetDefinition):
     ----------
     name: str
         The name of the dataset.
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-    resources: dict[str, list[dict[str, str]]]
+
+    long_name: str
+        The entire name of the dataset.
+
+    resources: ResourceDefinitions
         A list of dataset gaze_resources. Each list entry must be a dictionary with the following
         keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
+
     experiment: Experiment
         The experiment definition.
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-    filename_format: dict[str, str]
+
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
+
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
+
     custom_read_kwargs: dict[str, Any]
         If specified, these keyword arguments will be passed to the file reading function.
     """
 
     name: str = 'FakeNewsPerception'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': False,
-            'precomputed_events': True,
-            'precomputed_reading_measures': False,
-        },
-    )
+    long_name: str = 'Fake News Perception Eye Tracking Corpus'
 
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda: {
-            'precomputed_events': ['https://dataverse.harvard.edu/'],
-        },
-    )
-
-    resources: dict[str, list[dict[str, str]]] = field(
-        default_factory=lambda: {
-            'precomputed_events': [
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
                 {
-                    'resource': 'api/access/datafile/4200164',
+                    'content': 'precomputed_events',
+                    'url': 'https://dataverse.harvard.edu/api/access/datafile/4200164',
                     'filename': 'D3-Eye-movements-data.zip',
                     'md5': 'ab009f28cd703f433e9b6c02b0bb38d2',
+                    'filename_pattern': r'P{subject_id:d}_S{session_id:d}_{truth_value:s}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int, 'session_id': int,
+                        'truth_value': str,
+                    },
                 },
             ],
-        },
+        ),
     )
 
     experiment: Experiment = field(
@@ -111,19 +108,9 @@ class FakeNewsPerception(DatasetDefinition):
         ),
     )
 
-    extract: dict[str, bool] = field(default_factory=lambda: {'precomputed_events': True})
+    filename_format: dict[str, str] | None = None
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda: {
-            'precomputed_events': r'P{subject_id:d}_S{session_id:d}_{truth_value:s}.csv',
-        },
-    )
-
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'subject_id': int, 'session_id': int, 'truth_value': str},
-        },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 

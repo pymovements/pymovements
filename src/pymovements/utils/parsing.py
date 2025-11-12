@@ -75,7 +75,7 @@ def parse_eyelink(
     Warning
         If no metadata is found in the file.
     """
-    gaze, metadata = _parse_eyelink(
+    gaze, _, metadata, _ = _parse_eyelink(
         filepath=filepath,
         patterns=patterns,
         schema=schema,

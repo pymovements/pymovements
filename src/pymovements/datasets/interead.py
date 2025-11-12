@@ -25,6 +25,7 @@ from dataclasses import field
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
@@ -45,31 +46,24 @@ class InteRead(DatasetDefinition):
     name: str
         The name of the dataset.
 
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
+    long_name: str
+        The entire name of the dataset.
 
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-
-    resources: dict[str, list[dict[str, str]]]
+    resources: ResourceDefinitions
         A list of dataset gaze_resources. Each list entry must be a dictionary with the following
         keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-
     experiment: Experiment
         The experiment definition.
 
-    filename_format: dict[str, str]
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
@@ -120,47 +114,31 @@ class InteRead(DatasetDefinition):
     """
 
     # pylint: disable=similarities
-    # The PublicDatasetDefinition child classes potentially share code chunks for definitions.
+    # The DatasetDefinition child classes potentially share code chunks for definitions.
 
     name: str = 'InteRead'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': True,
-            'precomputed_reading_measures': False,
-        },
-    )
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda: {
-            'gaze': ['https://osf.io/download/'],
-            'precomputed_events': ['https://osf.io/download/'],
-        },
-    )
+    long_name: str = 'Interrupted Reading dataset'
 
-    resources: dict[str, list[dict[str, str]]] = field(
-        default_factory=lambda: {
-            'gaze': [
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
                 {
-                    'resource': '6ju3x/',
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/6ju3x/',
                     'filename': 'resampled_gaze.csv.zip',
                     'md5': '06b2cdff1827086fa125a703ee9d4324',
+                    'filename_pattern': r'resampled_gaze.csv',
                 },
-            ],
-            'precomputed_events': [
                 {
-                    'resource': '85ckh/',
+                    'content': 'precomputed_events',
+                    'url': 'https://osf.io/download/85ckh/',
                     'filename': 'resumption_fixation.csv',
                     'md5': '44edb7c58318ad76af1fa6f1bc1f1ceb',
+                    'filename_pattern': r'resumption_fixation.csv',
                 },
             ],
-        },
-    )
-    extract: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': False,
-        },
+        ),
     )
 
     experiment: Experiment = field(
@@ -175,19 +153,9 @@ class InteRead(DatasetDefinition):
         ),
     )
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda: {
-            'gaze': r'resampled_gaze.csv',
-            'precomputed_events': r'resumption_fixation.csv',
-        },
-    )
+    filename_format: dict[str, str] | None = None
 
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda: {
-            'gaze': {},
-            'precomputed_events': {},
-        },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     trial_columns: list[str] = field(
         default_factory=lambda: [

@@ -35,12 +35,6 @@ import pymovements as pm
             id='no_screen_resolution_raises_type_error',
         ),
         pytest.param(
-            {'screen_resolution': (100, 100), 'pixel_column': 'pixel', 'n_components': 2},
-            TypeError,
-            ('origin', 'missing'),
-            id='no_origin_raises_type_error',
-        ),
-        pytest.param(
             {
                 'screen_resolution': (100, 100), 'origin': 'lower left', 'pixel_column': 'pixel',
                 'n_components': 2,
@@ -107,7 +101,15 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
             },
             pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
             pl.Series('pixel', [[-49.5, 0]], pl.List(pl.Float64)),
-            id='origin_lowerleft',
+            id='origin_upperleft',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100), 'pixel_column': 'pixel', 'n_components': 2,
+            },
+            pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
+            pl.Series('pixel', [[-49.5, 0]], pl.List(pl.Float64)),
+            id='origin_default',
         ),
     ],
 )

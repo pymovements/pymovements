@@ -1,19 +1,16 @@
 name: "GazeGraph"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/"
+long_name: 'GazeGraph dataset'
 
 resources:
-  gaze:
-    - resource: "master"
-      filename: "gaze_graph_data.zip"
-      md5: "181f4b79477cee6e0267482d989610b0"
+  - content: gaze
+    url: "https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master"
+    filename: "gaze_graph_data.zip"
+    md5: "181f4b79477cee6e0267482d989610b0"
+    filename_pattern: 'P{subject_id}_{task}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      task: !str
 
 experiment:
   screen_width_px: 3440
@@ -23,17 +20,6 @@ experiment:
   distance_cm: 50
   origin: "center"
   sampling_rate: 30
-
-extract:
-  gaze: true
-
-filename_format:
-  gaze: 'P{subject_id}_{task}.csv'
-
-filename_format_schema_overrides:
-  gaze:
-    subject_id: !int
-    task: !str
 
 # TODO
 time_column: null

@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import numpy as np
 
+from pymovements._utils import _checks
 from pymovements.events._utils._filters import events_split_nans
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection._library import register_event_detection
-from pymovements.events.frame import EventDataFrame
-from pymovements.utils import checks
+from pymovements.events.events import Events
 
 
 def dispersion(positions: list[list[float]] | np.ndarray) -> float:
@@ -56,7 +56,7 @@ def idt(
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
         name: str = 'fixation',
-) -> EventDataFrame:
+) -> Events:
     """Fixation identification based on dispersion threshold (I-DT).
 
     The algorithm identifies fixations by grouping consecutive points
@@ -88,11 +88,11 @@ def idt(
         Indicator, whether we want to split events on missing/corrupt value (np.nan).
         (default: False)
     name: str
-        Name for detected events in EventDataFrame. (default: 'fixation')
+        Name for detected events in Events. (default: 'fixation')
 
     Returns
     -------
-    EventDataFrame
+    Events
         A dataframe with detected fixations as rows.
 
     Raises
@@ -106,7 +106,7 @@ def idt(
     """
     positions = np.array(positions)
 
-    checks.check_shapes(positions=positions)
+    _checks.check_shapes(positions=positions)
 
     if timesteps is None:
         timesteps = np.arange(len(positions), dtype=np.int64)
@@ -118,7 +118,7 @@ def idt(
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
 
-    checks.check_is_length_matching(positions=positions, timesteps=timesteps)
+    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
@@ -210,5 +210,5 @@ def idt(
     onsets_arr = np.array(onsets).flatten()
     offsets_arr = np.array(offsets).flatten()
 
-    event_df = EventDataFrame(name=name, onsets=onsets_arr, offsets=offsets_arr)
-    return event_df
+    events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
+    return events

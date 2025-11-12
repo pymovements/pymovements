@@ -1,22 +1,17 @@
 name: "GazeBaseVR"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://figshare.com/ndownloader/files/"
+long_name: 'GazeBaseVR dataset'
 
 resources:
-  gaze:
-    - resource: "38844024"
-      filename: "gazebasevr.zip"
-      md5: "048c04b00fd64347375cc8d37b451a22"
-
-extract:
-  gaze: true
+  - content: gaze
+    url: "https://figshare.com/ndownloader/files/38844024"
+    filename: "gazebasevr.zip"
+    md5: "048c04b00fd64347375cc8d37b451a22"
+    filename_pattern: 'S_{round_id:1d}{subject_id:d}_S{session_id:d}_{task_name}.csv'
+    filename_pattern_schema_overrides:
+      round_id: !int
+      subject_id: !int
+      session_id: !int
 
 experiment:
   screen_width_px: 1680
@@ -26,15 +21,6 @@ experiment:
   distance_cm: 55
   origin: "center"
   sampling_rate: 250
-
-filename_format:
-  gaze: 'S_{round_id:1d}{subject_id:d}_S{session_id:d}_{task_name}.csv'
-
-filename_format_schema_overrides:
-  gaze:
-    round_id: !int
-    subject_id: !int
-    session_id: !int
 
 time_column: "n"
 
@@ -51,6 +37,7 @@ position_columns:
 column_map:
   xT: "x_target_pos"
   yT: "y_target_pos"
+  zT: "z_target_pos"
 
 custom_read_kwargs:
   gaze:

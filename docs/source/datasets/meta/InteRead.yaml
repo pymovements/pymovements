@@ -1,0 +1,34 @@
+name: InteRead
+long_name: Interrupted Reading dataset
+resources:
+- content: gaze
+  filename: resampled_gaze.csv.zip
+  url: https://osf.io/download/6ju3x/
+  md5: 06b2cdff1827086fa125a703ee9d4324
+  filename_pattern: resampled_gaze.csv
+- content: precomputed_events
+  filename: resumption_fixation.csv
+  url: https://osf.io/download/85ckh/
+  md5: 44edb7c58318ad76af1fa6f1bc1f1ceb
+  filename_pattern: resumption_fixation.csv
+experiment:
+  eyetracker:
+    sampling_rate: 1200
+  screen:
+    width_px: 1920
+    height_px: 1080
+    width_cm: 52.8
+    height_cm: 29.7
+    distance_cm: 57
+    origin: center
+custom_read_kwargs:
+  gaze: {}
+  precomputed_events: {}
+trial_columns:
+- participant_id
+- page_id
+- interruption_state
+time_unit: ms
+pixel_columns:
+- x
+- y

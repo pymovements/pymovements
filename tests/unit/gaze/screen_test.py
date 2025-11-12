@@ -103,3 +103,66 @@ def test_pix2deg_without_attributes(missing_attribute, exception, exception_msg)
 def test_screen_init_without_attributes():
     screen = pm.Screen()
     assert isinstance(screen, pm.Screen)
+
+
+@pytest.mark.parametrize(
+    ('screen', 'expected_dict', 'exclude_none'),
+    [
+        pytest.param(
+            pm.Screen(),
+            {},
+            True,
+            id='default',
+        ),
+        pytest.param(
+            pm.Screen(height_px=150, origin='test'),
+            {'height_px': 150, 'origin': 'test'},
+            True,
+            id='height_px_origin',
+        ),
+        pytest.param(
+            pm.Screen(),
+            {
+                'width_px': None,
+                'height_px': None,
+                'width_cm': None,
+                'height_cm': None,
+                'distance_cm': None,
+                'origin': None,
+            },
+            False,
+            id='all_none',
+        ),
+    ],
+)
+def test_screen_to_dict_exclude_none(screen, expected_dict, exclude_none):
+    assert screen.to_dict(exclude_none=exclude_none) == expected_dict
+
+
+@pytest.mark.parametrize(
+    ('screen', 'expected_bool'),
+    [
+        pytest.param(
+            pm.Screen(),
+            False,
+            id='default',
+        ),
+        pytest.param(
+            pm.Screen(origin=None),
+            False,
+            id='origin_none',
+        ),
+        pytest.param(
+            pm.Screen(height_cm=10.0),
+            True,
+            id='height_cm_10',
+        ),
+        pytest.param(
+            pm.Screen(width_px=300),
+            True,
+            id='width_px_300',
+        ),
+    ],
+)
+def test_screen_bool_all_none(screen, expected_bool):
+    assert bool(screen) == expected_bool

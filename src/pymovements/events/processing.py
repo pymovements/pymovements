@@ -27,13 +27,13 @@ from typing import Any
 import polars as pl
 
 import pymovements as pm  # pylint: disable=cyclic-import
-from pymovements.events.frame import EventDataFrame
+from pymovements.events.events import Events
 from pymovements.events.properties import EVENT_PROPERTIES
 from pymovements.exceptions import InvalidProperty
 
 
 class EventProcessor:
-    """Processes event and gaze dataframes.
+    """Processes events.
 
     Parameters
     ----------
@@ -42,24 +42,26 @@ class EventProcessor:
     """
 
     def __init__(self, event_properties: str | list[str]):
+        _check_event_properties(event_properties)
+
         if isinstance(event_properties, str):
             event_properties = [event_properties]
 
+        valid_properties = ['duration']  # all other properties need gaze samples.
         for property_name in event_properties:
-            if property_name not in EVENT_PROPERTIES:
-                valid_properties = list(EVENT_PROPERTIES.keys())
+            if property_name not in valid_properties:
                 raise InvalidProperty(
                     property_name=property_name, valid_properties=valid_properties,
                 )
 
         self.event_properties = event_properties
 
-    def process(self, events: EventDataFrame) -> pl.DataFrame:
+    def process(self, events: Events) -> pl.DataFrame:
         """Process event dataframe.
 
         Parameters
         ----------
-        events: EventDataFrame
+        events: Events
             Event data to process event properties from.
 
         Returns
@@ -88,7 +90,7 @@ class EventProcessor:
 
 
 class EventGazeProcessor:
-    """Processes event and gaze dataframes.
+    """Processes events and gaze samples.
 
     Parameters
     ----------
@@ -101,32 +103,32 @@ class EventGazeProcessor:
             event_properties: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
     ):
-        if isinstance(event_properties, (str, tuple)):
-            event_properties = [event_properties]
+        _check_event_properties(event_properties)
 
-        event_properties_with_kwargs = []
-        for event_property in event_properties:
-            if isinstance(event_property, str):
-                property_name = event_property
-                property_kwargs = {}
-            else:
-                property_name = event_property[0]
-                property_kwargs = event_property[1]
+        event_properties_with_kwargs: list[tuple[str, dict[str, Any]]]
+        if isinstance(event_properties, str):
+            event_properties_with_kwargs = [(event_properties, {})]
+        elif isinstance(event_properties, tuple):
+            event_properties_with_kwargs = [event_properties]
+        else:  # we already validated above, it must be a list of strings and tuples
+            event_properties_with_kwargs = [
+                (event_property, {}) if isinstance(event_property, str) else event_property
+                for event_property in event_properties
+            ]
 
+        for property_name, _ in event_properties_with_kwargs:
             if property_name not in EVENT_PROPERTIES:
                 valid_properties = list(EVENT_PROPERTIES.keys())
                 raise InvalidProperty(
                     property_name=property_name, valid_properties=valid_properties,
                 )
 
-            event_properties_with_kwargs.append((property_name, property_kwargs))
-
         self.event_properties: list[tuple[str, dict[str, Any]]] = event_properties_with_kwargs
 
     def process(
             self,
-            events: EventDataFrame,
-            gaze: pm.GazeDataFrame,
+            events: Events,
+            gaze: pm.Gaze,
             identifiers: str | list[str],
             name: str | None = None,
     ) -> pl.DataFrame:
@@ -134,9 +136,9 @@ class EventGazeProcessor:
 
         Parameters
         ----------
-        events: EventDataFrame
+        events: Events
             Event data to process event properties from.
-        gaze: pm.GazeDataFrame
+        gaze: pm.Gaze
             Gaze data to process event properties from.
         identifiers: str | list[str]
             Column names to join on events and gaze dataframes.
@@ -190,7 +192,7 @@ class EventGazeProcessor:
         property_values = defaultdict(list)
         for event in events_frame.iter_rows(named=True):
             # Find gaze samples that belong to the current event.
-            filtered_gaze = gaze.frame.filter(
+            filtered_gaze = gaze.samples.filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
                 *[pl.col(identifier) == event[identifier] for identifier in trial_identifiers],
             )
@@ -212,3 +214,50 @@ class EventGazeProcessor:
             *[pl.Series(name, values) for name, values in property_values.items()],
         )
         return result
+
+
+def _check_event_properties(
+        event_properties: str | tuple[str, dict[str, Any]] | list[str]
+        | list[str | tuple[str, dict[str, Any]]],
+) -> None:
+    """Validate event properties."""
+    if isinstance(event_properties, str):
+        pass
+    elif isinstance(event_properties, tuple):
+        if len(event_properties) != 2:
+            raise ValueError('Tuple must have a length of 2.')
+        if not isinstance(event_properties[0], str):
+            raise TypeError(
+                f'First item of tuple must be a string, '
+                f"but received {type(event_properties[0])}.",
+            )
+        if not isinstance(event_properties[1], dict):
+            raise TypeError(
+                'Second item of tuple must be a dictionary, '
+                f"but received {type(event_properties[1])}.",
+            )
+    elif isinstance(event_properties, list):
+        for event_property in event_properties:
+            if not isinstance(event_property, (str, tuple)):
+                raise TypeError(
+                    'Each item in the list must be either a string or a tuple, '
+                    f"but received {type(event_property)}.",
+                )
+            if isinstance(event_property, tuple):
+                if len(event_property) != 2:
+                    raise ValueError('Tuple must have a length of 2.')
+                if not isinstance(event_property[0], str):
+                    raise TypeError(
+                        'First item of tuple must be a string, '
+                        f'but received {type(event_property[0])}.',
+                    )
+                if not isinstance(event_property[1], dict):
+                    raise TypeError(
+                        'Second item of tuple must be a dictionary, '
+                        f'but received {type(event_property[1])}.',
+                    )
+    else:
+        raise TypeError(
+            'event_properties must be of type str, tuple, or list, '
+            f"but received {type(event_properties)}.",
+        )

@@ -1,22 +1,16 @@
 name: "HBN"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://files.osf.io/v1/resources/qknuv/providers/osfstorage/"
+long_name: 'Healthy Brain Network dataset'
 
 resources:
-  gaze:
-    - resource: "651190031e76a453918a9971"
-      filename: "data.zip"
-      md5: "2c523e911022ffc0eab700e34e9f7f30"
-
-extract:
-  gaze: true
+  - content: gaze
+    url: "https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971"
+    filename: "data.zip"
+    md5: "2c523e911022ffc0eab700e34e9f7f30"
+    filename_pattern: '{subject_id:12}_{video_id}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !str
+      video_id: !str
 
 experiment:
   screen_width_px: 800
@@ -26,14 +20,6 @@ experiment:
   distance_cm: 63.5
   origin: "center"
   sampling_rate: 120
-
-filename_format:
-  gaze: '{subject_id:12}_{video_id}.csv'
-
-filename_format_schema_overrides:
-  gaze:
-    subject_id: !str
-    video_id: !str
 
 time_column: "time"
 

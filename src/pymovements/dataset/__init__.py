@@ -17,32 +17,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides access to dataset classes.
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree:
-   :template: class.rst
-
-    Dataset
-    DatasetDefinition
-    DatasetLibrary
-    DatasetPaths
-
-.. rubric:: Decorators
-
-.. autosummary::
-   :toctree:
-   :recursive:
-
-    register_dataset
-"""
+"""Provides access to dataset classes."""
 from pymovements.dataset.dataset import Dataset
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_library import register_dataset
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.resources import ResourceDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 
 
 __all__ = [
@@ -51,4 +33,6 @@ __all__ = [
     'DatasetLibrary',
     'DatasetPaths',
     'register_dataset',
+    'ResourceDefinition',
+    'ResourceDefinitions',
 ]

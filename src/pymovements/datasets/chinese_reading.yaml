@@ -1,0 +1,23 @@
+name: ChineseReading
+
+resources:
+  - content: precomputed_events
+    url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a'
+    filename: Raw Data.txt
+    md5: null
+    filename_pattern: 'Raw Data.txt'
+  - content: precomputed_reading_measures
+    url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip='
+    filename: chinese_reading_measures.zip
+    md5: null
+    filename_pattern: '{measure_type:s} Measures.xlsx'
+
+trial_columns:
+  - Subject
+  - Sentence_ID
+
+custom_read_kwargs:
+  precomputed_events:
+    separator: "\t"
+  precomputed_reading_measures:
+    sheet_name: 'Sheet 1'

@@ -1,0 +1,15 @@
+name: CodeComprehension
+long_name: Code Comprehension dataset
+resources:
+- content: precomputed_events
+  filename: data.zip
+  url: https://zenodo.org/records/11123101/files/Predicting%20Code%20Comprehension%20Package.zip?download=1
+  md5: 3a3c6fb96550bc2c2ddcf5d458fb12a2
+  filename_pattern: fix_report_P{subject_id:s}.txt
+  filename_pattern_schema_overrides:
+    subject_id: '!polars.datatypes.classes.String'
+custom_read_kwargs:
+  precomputed_events:
+    separator: "\t"
+    null_values: .
+    quote_char: '"'

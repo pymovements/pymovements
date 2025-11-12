@@ -1,0 +1,77 @@
+name: benchmark
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: benchmark-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  pytest-benchmark:
+    name: pytest-benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pymovements repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore cached environment
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          key:
+            benchmark-ubuntu-latest-py313-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/benchmark.yml') }}
+          path: |
+            ~/.cache
+            ~/.tox
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: python -m pip install tox
+
+      - name: Setup benchmark environment
+        run: tox -vv --notest -e benchmark
+
+      - name: Cache environment
+        uses: actions/cache/save@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          key:
+            ${{ steps.cache-restore.outputs.cache-primary-key }}
+          path: |
+            ~/.cache
+            ~/.tox
+
+      - name: Run benchmark
+        run: tox --skip-pkg-install -e benchmark
+
+      - name: Download previous benchmark data
+        uses: actions/cache@v4
+        with:
+          path: ./cache
+          key: benchmark-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: benchmark-main
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: pytest-benchmark
+          tool: 'pytest'
+          output-file-path: benchmark-data.json
+          external-data-json-path: ./cache/benchmark-data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          summary-always: true
+          alert-comment-cc-users: '@dkrako,@SiQube'

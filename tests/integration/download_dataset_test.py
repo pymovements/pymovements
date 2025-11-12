@@ -34,6 +34,5 @@ def test_download_dataset(dataset_name, tmp_path):
 
     # Check that all resources are downloaded.
     download_dir = dataset.paths.downloads
-    for resource_list in dataset.definition.resources.values():
-        for resource in resource_list:
-            assert download_dir / resource['filename'] in download_dir.iterdir()
+    for resource in dataset.definition.resources:
+        assert download_dir / resource.filename in download_dir.iterdir()

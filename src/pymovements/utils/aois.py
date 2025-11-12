@@ -28,7 +28,7 @@ from __future__ import annotations
 import polars as pl
 from deprecated.sphinx import deprecated
 
-from pymovements.stimulus import TextStimulus
+import pymovements as pm
 
 
 @deprecated(
@@ -37,7 +37,7 @@ from pymovements.stimulus import TextStimulus
     version='v0.21.1',
 )
 def get_aoi(
-        aoi_dataframe: TextStimulus,
+        aoi_dataframe: pm.stimulus.TextStimulus,
         row: pl.DataFrame.row,
         x_eye: str,
         y_eye: str,
@@ -54,7 +54,7 @@ def get_aoi(
 
     Parameters
     ----------
-    aoi_dataframe: TextStimulus
+    aoi_dataframe: pm.stimulus.TextStimulus
         Text dataframe to containing area of interests.
     row: pl.DataFrame.row
         Eye movement row.

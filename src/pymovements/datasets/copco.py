@@ -25,6 +25,7 @@ from dataclasses import field
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
@@ -48,14 +49,10 @@ class CopCo(DatasetDefinition):
     name: str
         The name of the dataset.
 
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
+    long_name: str
+        The entire name of the dataset.
 
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-
-    resources: dict[str, list[dict[str, str | None]]]
+    resources: ResourceDefinitions
         A list of dataset gaze_resources. Each list entry must be a dictionary with the following
         keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
@@ -65,14 +62,11 @@ class CopCo(DatasetDefinition):
     experiment: Experiment
         The experiment definition.
 
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-
-    filename_format: dict[str, str]
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
@@ -122,50 +116,41 @@ class CopCo(DatasetDefinition):
     """
 
     # pylint: disable=similarities
-    # The PublicDatasetDefinition child classes potentially share code chunks for definitions.
+    # The DatasetDefinition child classes potentially share code chunks for definitions.
 
     name: str = 'CopCo'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': True,
-            'precomputed_reading_measures': True,
-        },
-    )
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda: {
-            'gaze': ['https://osf.io/download/'],
-            'precomputed_events': ['https://files.de-1.osf.io/'],
-            'precomputed_reading_measures': ['https://files.de-1.osf.io/'],
-        },
-    )
-    resources: dict[str, list[dict[str, str | None]]] = field(
-        default_factory=lambda: {
-            'gaze': [
+    long_name: str = 'Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading'
+
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
                 {
-                    'resource': 'bg9r4/',
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/bg9r4/',
                     'filename': 'csvs.zip',
                     'md5': '9dc3276714397b7fccac1e179a14c52b',  # type:ignore
+                    'filename_pattern': r'P{subject_id:d}.csv',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
                 },
-            ],
-            'precomputed_events': [
                 {
-                    'resource':
-                    'v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=',
+                    'content': 'precomputed_events',
+                    'url': 'https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=',  # noqa: E501 # pylint: disable=line-too-long
                     'filename': 'FixationReports.zip',
                     'md5': None,  # type:ignore
+                    'filename_pattern': r'FIX_report_P{subject_id:d}.txt',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
                 },
-            ],
-            'precomputed_reading_measures': [
                 {
-                    'resource':
-                    'v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=',
+                    'content': 'precomputed_reading_measures',
+                    'url': 'https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=',  # noqa: E501 # pylint: disable=line-too-long
                     'filename': 'ReadingMeasures.zip',
                     'md5': None,  # type:ignore
+                    'filename_pattern': r'P{subject_id:d}.csv',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
                 },
             ],
-        },
+        ),
     )
 
     experiment: Experiment = field(
@@ -180,29 +165,9 @@ class CopCo(DatasetDefinition):
         ),
     )
 
-    extract: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': True,
-            'precomputed_reading_measures': True,
-        },
-    )
+    filename_format: dict[str, str] | None = None
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda: {
-            'gaze': r'P{subject_id:d}.csv',
-            'precomputed_events': r'FIX_report_P{subject_id:d}.txt',
-            'precomputed_reading_measures': r'P{subject_id:d}.csv',
-        },
-    )
-
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda: {
-            'gaze': {'subject_id': int},
-            'precomputed_events': {'subject_id': int},
-            'precomputed_reading_measures': {'subject_id': int},
-        },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     trial_columns: list[str] = field(default_factory=lambda: ['paragraph_id', 'speech_id'])
 

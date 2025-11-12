@@ -22,7 +22,8 @@ import numpy as np
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements import Events
+from pymovements.events import idt
 from pymovements.synthetic import step_function
 
 
@@ -115,7 +116,7 @@ from pymovements.synthetic import step_function
 def test_idt_raises_error(kwargs, expected_error):
     """Test if idt raises expected error."""
     with pytest.raises(expected_error):
-        pm.events.idt(**kwargs)
+        idt(**kwargs)
 
 
 @pytest.mark.parametrize(
@@ -127,7 +128,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
-            pm.events.EventDataFrame(),
+            Events(),
             id='constant_velocity_no_fixation',
         ),
         pytest.param(
@@ -136,7 +137,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[0],
                 offsets=[99],
@@ -150,7 +151,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'minimum_duration': 2,
                 'name': 'custom_fixation',
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='custom_fixation',
                 onsets=[0],
                 offsets=[99],
@@ -168,7 +169,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[0, 50],
                 offsets=[49, 99],
@@ -187,7 +188,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[0, 20],
                 offsets=[9, 89],
@@ -207,7 +208,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'minimum_duration': 2,
                 'include_nan': True,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[0],
                 offsets=[89],
@@ -221,7 +222,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
@@ -235,7 +236,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
@@ -249,7 +250,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
@@ -263,7 +264,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
-            pm.events.EventDataFrame(
+            Events(
                 name='fixation',
                 onsets=[1000],
                 offsets=[1099],
@@ -275,7 +276,7 @@ def test_idt_raises_error(kwargs, expected_error):
 )
 def test_idt_detects_fixations(kwargs, expected):
     """Test if idt detects fixations."""
-    events = pm.events.idt(**kwargs)
+    events = idt(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
 
@@ -328,7 +329,7 @@ def test_idt_detects_fixations(kwargs, expected):
 )
 def test_idt_timesteps_exceptions(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.events.idt(**kwargs)
+        idt(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:

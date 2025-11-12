@@ -24,11 +24,11 @@ from collections.abc import Sized
 
 import numpy as np
 
+from pymovements._utils import _checks
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection._library import register_event_detection
-from pymovements.events.frame import EventDataFrame
+from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import consecutive
-from pymovements.utils import checks
 
 
 @register_event_detection
@@ -41,7 +41,7 @@ def microsaccades(
         minimum_threshold: float = 1e-10,
         include_nan: bool = False,
         name: str = 'saccade',
-) -> EventDataFrame:
+) -> Events:
     """Detect micro-saccades from velocity gaze sequence.
 
     This algorithm has a noise-adaptive velocity threshold parameter, which can also be set
@@ -77,11 +77,11 @@ def microsaccades(
         Indicator, whether we want to split events on missing/corrupt value (np.nan)
         (default: False)
     name: str
-        Name for detected events in EventDataFrame. (default: 'saccade')
+        Name for detected events in Events. (default: 'saccade')
 
     Returns
     -------
-    EventDataFrame
+    Events
         A dataframe with detected saccades as rows.
 
     Raises
@@ -95,7 +95,7 @@ def microsaccades(
     if timesteps is None:
         timesteps = np.arange(len(velocities), dtype=np.int64)
     timesteps = np.array(timesteps)
-    checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
+    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if isinstance(threshold, str):
         threshold = compute_threshold(velocities, method=threshold)
@@ -143,8 +143,8 @@ def microsaccades(
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
 
     # Create event dataframe from onsets and offsets.
-    event_df = EventDataFrame(name=name, onsets=onsets, offsets=offsets)
-    return event_df
+    events = Events(name=name, onsets=onsets, offsets=offsets)
+    return events
 
 
 def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarray:

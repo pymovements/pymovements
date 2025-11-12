@@ -25,13 +25,13 @@ from unittest import mock
 import pytest
 import yaml
 
-import pymovements as pm
 from pymovements import DatasetDefinition
 from pymovements import DatasetLibrary
 from pymovements import register_dataset
+from pymovements.dataset import dataset_library
 
 
-def test_add_single_defintion():
+def test_add_single_definition():
     class CustomDatasetDefinition(DatasetDefinition):
         name: str = 'CustomDatasetDefinition'
 
@@ -41,7 +41,7 @@ def test_add_single_defintion():
     assert definition == CustomDatasetDefinition()
 
 
-def test_add_two_defintions():
+def test_add_two_definitions():
     class CustomDatasetDefinition1(DatasetDefinition):
         name: str = 'CustomDatasetDefinition1'
 
@@ -96,6 +96,15 @@ def test_list_names_is_list_of_str():
         assert isinstance(name, str)
 
 
+def test_returned_definition_is_copy():
+    name = DatasetLibrary.names()[0]
+
+    internal_definition = DatasetLibrary.definitions[name]
+    output_definition = DatasetLibrary.get(name)
+
+    assert internal_definition is not output_definition
+
+
 def test_dataset_library_contains_all_public_datasets_files():
     library = DatasetLibrary.names()
     for filename in glob.glob('src/pymovements/datasets/*.yaml'):
@@ -110,5 +119,5 @@ def test_dataset_library_contains_all_public_datasets_files():
 
 def test__add_shipped_datasets():
     with mock.patch('pymovements.dataset.dataset_library._add_shipped_datasets') as mock_add:
-        pm.dataset.dataset_library._add_shipped_datasets()
+        dataset_library._add_shipped_datasets()
         mock_add.assert_called_once()

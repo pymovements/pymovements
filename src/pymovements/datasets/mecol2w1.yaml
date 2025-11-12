@@ -1,0 +1,25 @@
+name: "MECOL2W1"
+
+long_name: 'Multilingual Eye-tracking Corpus second language reader first wave'
+
+resources:
+  - content: precomputed_events
+    url: "https://osf.io/download/8rygu/"
+    filename: "joint_l2_fixation_trimmed_report_2.0.rda"
+    md5: "1ff32c5823eb70c22bab725499fbbf87"
+    filename_pattern: "joint_l2_fixation_trimmed_report_2.0.rda"
+  - content: precomputed_reading_measures
+    url: "https://osf.io/download/re7uy/"
+    filename: "joint_data_l2_trimmed_version2.0.rda"
+    md5: "3d10225781faf413467104dcc4e071e0"
+    filename_pattern: "joint_data_l2_trimmed_version2.0.rda"
+
+trial_columns:
+  - "uniform_id"
+  - "itemid"
+
+column_map: {}
+
+custom_read_kwargs:
+  precomputed_events: {'r_dataframe_key': 'joint.fix.l2'}
+  precomputed_reading_measures: {'r_dataframe_key': 'joint.data'}

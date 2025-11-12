@@ -26,9 +26,11 @@ from typing import Any
 
 import polars as pl
 
-from pymovements.utils import checks
+from pymovements._utils import _checks
+from pymovements._utils._html import repr_html
 
 
+@repr_html(['aois'])
 class TextStimulus:
     """A DataFrame for the text stimulus that the gaze data was recorded on.
 
@@ -267,7 +269,7 @@ def _get_aoi(
         If width and end_TYPE_column is None.
     """
     if aoi_dataframe.width_column is not None:
-        checks.check_is_none_is_mutual(
+        _checks.check_is_none_is_mutual(
             height_column=aoi_dataframe.width_column,
             width_column=aoi_dataframe.height_column,
         )
@@ -291,7 +293,7 @@ def _get_aoi(
         return aoi
 
     if aoi_dataframe.end_x_column is not None:
-        checks.check_is_none_is_mutual(
+        _checks.check_is_none_is_mutual(
             end_x_column=aoi_dataframe.end_x_column,
             end_y_column=aoi_dataframe.end_y_column,
         )

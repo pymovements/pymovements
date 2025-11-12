@@ -53,7 +53,7 @@ def extract_archive(
     If the file is compressed but not an archive the call is dispatched to :func:`_decompress`.
 
     .. deprecated:: v0.21.1
-       Please use :py:meth:`~pymovements.Dataset.extract()` instead.
+       Please use :py:meth:`pymovements.Dataset.extract()` instead.
        This module will be removed in v0.26.0.
 
     Parameters

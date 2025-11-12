@@ -1,28 +1,35 @@
 name: "PotsdamBingeRemotePVT"
 
-has_files:
-  gaze: true
-  precomputed_events: false
-  precomputed_reading_measures: false
-
-mirrors:
-  gaze:
-    - "https://osf.io/download/"
+long_name: 'Potsdam Binge Remote PVT dataset'
 
 resources:
-  gaze:
-    - resource: "9vbs8/"
-      filename: "a.zip"
-      md5: "87c6c74a9a17cbd093b91f9415e8dd9d"
-    - resource: "yqukn/"
-      filename: "b.zip"
-      md5: "54038547b1a373253b38999a227dde63"
-    - resource: "yf2xa/"
-      filename: "e.zip"
-      md5: "a0d0203cbb273f6908c1b52a42750551"
-
-extract:
-  gaze: true
+  - content: gaze
+    url: "https://osf.io/download/9vbs8/"
+    filename: "a.zip"
+    md5: "87c6c74a9a17cbd093b91f9415e8dd9d"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+  - content: gaze
+    url: "https://osf.io/download/yqukn/"
+    filename: "b.zip"
+    md5: "54038547b1a373253b38999a227dde63"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+  - content: gaze
+    url: "https://osf.io/download/yf2xa/"
+    filename: "e.zip"
+    md5: "a0d0203cbb273f6908c1b52a42750551"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
 
 experiment:
   screen:
@@ -38,19 +45,6 @@ experiment:
     model: "EyeLink 1000 Plus"
     vendor: "EyeLink"
     mount: "Remote"
-
-filename_format:
-  gaze: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
-
-filename_format_schema_overrides:
-  gaze:
-    subject_id: !int
-    trial_id: !int
-    block_id: !int
-
-trial_columns:
-  - "trial_id"
-  - "subject_id"
 
 time_column: "eyelink_timestamp"
 

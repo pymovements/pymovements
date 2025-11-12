@@ -1,31 +1,29 @@
 name: "CopCo"
 
-has_files:
-  gaze: true
-  precomputed_events: true
-  precomputed_reading_measures: true
-
-mirrors:
-  gaze:
-    - "https://osf.io/download/"
-  precomputed_events:
-    - "https://files.de-1.osf.io/"
-  precomputed_reading_measures:
-    - "https://files.de-1.osf.io/"
+long_name: 'Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading'
 
 resources:
-  gaze:
-    - resource: "bg9r4/"
-      filename: "csvs.zip"
-      md5: "9dc3276714397b7fccac1e179a14c52b"
-  precomputed_events:
-    - resource: "v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip="
-      filename: "FixationReports.zip"
-      md5: null
-  precomputed_reading_measures:
-    - resource: "v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip="
-      filename: "ReadingMeasures.zip"
-      md5: null
+  - content: gaze
+    url: "https://osf.io/download/bg9r4/"
+    filename: "csvs.zip"
+    md5: "9dc3276714397b7fccac1e179a14c52b"
+    filename_pattern: 'P{subject_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+  - content: precomputed_events
+    url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip="
+    filename: "FixationReports.zip"
+    md5: null
+    filename_pattern: 'FIX_report_P{subject_id:d}.txt'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+  - content: precomputed_reading_measures
+    url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip="
+    filename: "ReadingMeasures.zip"
+    md5: null
+    filename_pattern: 'P{subject_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
 
 experiment:
   screen_width_px: 1920
@@ -35,24 +33,6 @@ experiment:
   distance_cm: 85
   origin: "center"
   sampling_rate: 1000
-
-extract:
-  gaze: true
-  precomputed_events: true
-  precomputed_reading_measures: true
-
-filename_format:
-  gaze: 'P{subject_id:d}.csv'
-  precomputed_events: 'FIX_report_P{subject_id:d}.txt'
-  precomputed_reading_measures: 'P{subject_id:d}.csv'
-
-filename_format_schema_overrides:
-  gaze:
-    subject_id: !int
-  precomputed_events:
-    subject_id: !int
-  precomputed_reading_measures:
-    subject_id: !int
 
 trial_columns:
   - "paragraph_id"

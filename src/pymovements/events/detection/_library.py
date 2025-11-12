@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from pymovements.events.frame import EventDataFrame
+from pymovements.events.events import Events
 
 
 class EventDetectionLibrary:
@@ -30,25 +30,25 @@ class EventDetectionLibrary:
 
     Attributes
     ----------
-    methods: dict[str, Callable[..., EventDataFrame]]
+    methods: dict[str, Callable[..., Events]]
         Dictionary of event detection methods.
     """
 
-    methods: dict[str, Callable[..., EventDataFrame]] = {}
+    methods: dict[str, Callable[..., Events]] = {}
 
     @classmethod
-    def add(cls, method: Callable[..., EventDataFrame]) -> None:
+    def add(cls, method: Callable[..., Events]) -> None:
         """Add an event detection method to the library.
 
         Parameter
         ---------
-        method: Callable[..., EventDataFrame]
+        method: Callable[..., Events]
             The event detection method to add to the library.
         """
         cls.methods[method.__name__] = method
 
     @classmethod
-    def get(cls, name: str) -> Callable[..., EventDataFrame]:
+    def get(cls, name: str) -> Callable[..., Events]:
         """Get event detection method py name.
 
         Parameter
@@ -76,18 +76,18 @@ class EventDetectionLibrary:
 
 
 def register_event_detection(
-        method: Callable[..., EventDataFrame],
-) -> Callable[..., EventDataFrame]:
+        method: Callable[..., Events],
+) -> Callable[..., Events]:
     """Register an event detection method.
 
     Parameters
     ----------
-    method: Callable[..., EventDataFrame]
+    method: Callable[..., Events]
         The event detection method to register.
 
     Returns
     -------
-    Callable[..., EventDataFrame]
+    Callable[..., Events]
         The event detection method.
 
     """

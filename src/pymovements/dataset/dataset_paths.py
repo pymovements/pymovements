@@ -22,7 +22,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pymovements._utils._html import repr_html
 
+
+@repr_html()
 class DatasetPaths:
     """Defines the paths of a dataset.
 

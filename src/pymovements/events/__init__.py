@@ -17,56 +17,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality.
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree:
-   :recursive:
-   :template: class.rst
-
-    EventDataFrame
-
-.. rubric:: Processing
-
-.. autosummary::
-   :toctree:
-   :recursive:
-
-    EventProcessor
-    EventGazeProcessor
-
-.. rubric:: Detection Methods
-
-.. autosummary::
-   :toctree:
-   :recursive:
-
-    idt
-    ivt
-    microsaccades
-    fill
-
-.. rubric:: Event Properties
-
-.. autosummary::
-    :toctree:
-    :recursive:
-
-    amplitude
-    duration
-    dispersion
-    disposition
-    peak_velocity
-    location
-"""
+"""Provides event related functionality."""
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
 from pymovements.events.detection import ivt
 from pymovements.events.detection import microsaccades
 from pymovements.events.detection._library import EventDetectionLibrary
 from pymovements.events.detection._library import register_event_detection
+from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.events.processing import EventGazeProcessor
@@ -90,6 +48,7 @@ __all__ = [
     'microsaccades',
 
     'PrecomputedEventDataFrame',
+    'Events',
     'EventDataFrame',
 
     'EventGazeProcessor',

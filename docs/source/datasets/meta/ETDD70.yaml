@@ -1,0 +1,29 @@
+name: ETDD70
+long_name: Eye-Tracking Dyslexia Dataset
+resources:
+- content: gaze
+  filename: edd_raw.zip
+  url: https://zenodo.org/api/records/13332134/files-archive
+  filename_pattern: Subject_{subject_id:d}_{task:s}_raw.csv
+- content: precomputed_events
+  filename: edd_fix.zip
+  url: https://zenodo.org/api/records/13332134/files-archive
+  filename_pattern: Subject_{subject_id:d}_{task:s}_fixations.csv
+experiment:
+  eyetracker:
+    sampling_rate: 250
+  screen:
+    width_px: 1680
+    height_px: 1050
+    distance_cm: 65
+    origin: center
+custom_read_kwargs:
+  gaze: {}
+  precomputed_events: {}
+time_column: time
+time_unit: ms
+pixel_columns:
+- gaze_x_left
+- gaze_y_left
+- gaze_x_right
+- gaze_y_right

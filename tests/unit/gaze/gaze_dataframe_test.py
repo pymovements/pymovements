@@ -17,207 +17,152 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test all GazeDataFrame functionality."""
-import polars as pl
+"""Tests deprecated GazeDataFrame alias for Gaze."""
 import pytest
-from polars.testing import assert_frame_equal
 
-import pymovements as pm
-
-
-@pytest.mark.parametrize(
-    'init_arg',
-    [
-        pytest.param(
-            None,
-            id='None',
-        ),
-        pytest.param(
-            pl.DataFrame(),
-            id='no_eye_velocity_columns',
-        ),
-    ],
-)
-def test_gaze_dataframe_init(init_arg):
-    gaze_df = pm.GazeDataFrame(init_arg)
-    assert isinstance(gaze_df.frame, pl.DataFrame)
+from pymovements import Gaze
+from pymovements import GazeDataFrame
 
 
-@pytest.mark.parametrize(
-    ('init_df', 'velocity_columns'),
-    [
-        pytest.param(
-            pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
-            ['x_vel', 'y_vel'],
-            id='no_eye_velocity_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'abc': pl.Int64, 'x_vel': pl.Float64, 'y_vel': pl.Float64}),
-            ['x_vel', 'y_vel'],
-            id='no_eye_velocity_columns_with_other_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'x_right_vel': pl.Float64, 'y_right_vel': pl.Float64}),
-            ['x_right_vel', 'y_right_vel'],
-            id='right_eye_velocity_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'x_left_vel': pl.Float64, 'y_left_vel': pl.Float64}),
-            ['x_left_vel', 'y_left_vel'],
-            id='left_eye_velocity_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                schema={
-                    'x_left_vel': pl.Float64, 'y_left_vel': pl.Float64,
-                    'x_right_vel': pl.Float64, 'y_right_vel': pl.Float64,
-                },
-            ),
-            ['x_left_vel', 'y_left_vel', 'x_right_vel', 'y_right_vel'],
-            id='both_eyes_velocity_columns',
-        ),
-    ],
-)
-def test_gaze_dataframe_velocity_columns(init_df, velocity_columns):
-    gaze_df = pm.GazeDataFrame(init_df, velocity_columns=velocity_columns)
-
-    assert 'velocity' in gaze_df.columns
+@pytest.fixture(name='gaze_subclass')
+def fixture_gaze_subclass():
+    class GazeSubclass(Gaze):
+        ...
+    yield GazeSubclass
 
 
-@pytest.mark.parametrize(
-    ('init_df', 'pixel_columns'),
-    [
-        pytest.param(
-            pl.DataFrame(schema={'x_pix': pl.Float64, 'y_pix': pl.Float64}),
-            ['x_pix', 'y_pix'],
-            id='no_eye_pix_pos_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'abc': pl.Int64, 'x_pix': pl.Float64, 'y_pix': pl.Float64}),
-            ['x_pix', 'y_pix'],
-            id='no_eye_pix_pos_columns_with_other_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'x_right_pix': pl.Float64, 'y_right_pix': pl.Float64}),
-            ['x_right_pix', 'y_right_pix'],
-            id='right_eye_pix_pos_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'x_left_pix': pl.Float64, 'y_left_pix': pl.Float64}),
-            ['x_left_pix', 'y_left_pix'],
-            id='left_eye_pix_pos_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                schema={
-                    'x_left_pix': pl.Float64, 'y_left_pix': pl.Float64,
-                    'x_right_pix': pl.Float64, 'y_right_pix': pl.Float64,
-                },
-            ),
-            ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
-            id='both_eyes_pix_pos_columns',
-        ),
-    ],
-)
-def test_gaze_dataframe_pixel_position_columns(init_df, pixel_columns):
-    gaze_df = pm.GazeDataFrame(init_df, pixel_columns=pixel_columns)
-
-    assert 'pixel' in gaze_df.columns
+@pytest.fixture(name='gaze_df_subclass')
+def fixture_gaze_df_subclass():
+    class GazeDataFrameSubclass(GazeDataFrame):
+        ...
+    yield GazeDataFrameSubclass
 
 
-@pytest.mark.parametrize(
-    ('init_df', 'position_columns'),
-    [
-        pytest.param(
-            pl.DataFrame(schema={'x_pos': pl.Float64, 'y_pos': pl.Float64}),
-            ['x_pos', 'y_pos'],
-            id='no_eye_pos_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'abc': pl.Int64, 'x_pos': pl.Float64, 'y_pos': pl.Float64}),
-            ['x_pos', 'y_pos'],
-            id='no_eye_pos_columns_with_other_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'x_right_pos': pl.Float64, 'y_right_pos': pl.Float64}),
-            ['x_right_pos', 'y_right_pos'],
-            id='right_eye_pos_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'x_left_pos': pl.Float64, 'y_left_pos': pl.Float64}),
-            ['x_left_pos', 'y_left_pos'],
-            id='left_eye_pos_columns',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                schema={
-                    'x_left_pos': pl.Float64, 'y_left_pos': pl.Float64,
-                    'x_right_pos': pl.Float64, 'y_right_pos': pl.Float64,
-                },
-            ),
-            ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
-            id='both_eyes_pos_columns',
-        ),
-    ],
-)
-def test_gaze_dataframe_position_columns(init_df, position_columns):
-    gaze_df = pm.GazeDataFrame(init_df, position_columns=position_columns)
+@pytest.fixture(name='gaze_df_subsubclass')
+def fixture_gaze_df_subsubclass(gaze_df_subclass):
+    class GazeDataFrameSubSubclass(gaze_df_subclass):
+        ...
 
-    assert 'position' in gaze_df.columns
+    yield GazeDataFrameSubSubclass
 
 
-def test_gaze_dataframe_copy_with_experiment():
-    gaze = pm.GazeDataFrame(
-        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
-        position_columns=['x', 'y'],
+def test_gaze_issubclass_gaze_df():
+    assert issubclass(Gaze, GazeDataFrame)
+
+
+def test_gaze_df_issubclass_gaze_df():
+    assert issubclass(GazeDataFrame, GazeDataFrame)
+
+
+def test_gaze_subclass_issubclass_gaze_df(gaze_subclass):
+    assert issubclass(gaze_subclass, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subclass_issubclass_gaze(gaze_df_subclass):
+    assert issubclass(gaze_df_subclass, Gaze)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subclass_issubclass_gazedf(gaze_df_subclass):
+    assert issubclass(gaze_df_subclass, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subsubclass_issubclass_gaze(gaze_df_subsubclass):
+    assert issubclass(gaze_df_subsubclass, Gaze)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subsubclass_issubclass_gaze_df(gaze_df_subsubclass):
+    assert issubclass(gaze_df_subsubclass, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_isinstance_gaze_df():
+    gaze_df = GazeDataFrame()
+    assert isinstance(gaze_df, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subclass_isinstance_gaze_df(gaze_df_subclass):
+    gaze_df = gaze_df_subclass()
+    assert isinstance(gaze_df, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subsubclass_isinstance_gaze_df(gaze_df_subsubclass):
+    gaze_df = gaze_df_subsubclass()
+    assert isinstance(gaze_df, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subsubclass_isinstance_gaze(gaze_df_subsubclass):
+    gaze_df = gaze_df_subsubclass()
+    assert isinstance(gaze_df, Gaze)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_isinstance_gaze():
+    gaze_df = GazeDataFrame()
+    assert isinstance(gaze_df, Gaze)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_df_subclass_isinstance_gaze(gaze_df_subclass):
+    gaze_df = gaze_df_subclass()
+    assert isinstance(gaze_df, Gaze)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_isinstance_gaze_df():
+    gaze = Gaze()
+    assert isinstance(gaze, GazeDataFrame)
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_gaze_subclass_isinstance_gaze_df(gaze_subclass):
+    gaze = gaze_subclass()
+    assert isinstance(gaze, GazeDataFrame)
+
+
+def test_is_gaze_df_deprecated():
+    with pytest.raises(DeprecationWarning):
+        GazeDataFrame()
+
+
+def test_is_gaze_df_subclass_deprecated():
+    # pylint: disable=unused-variable
+    with pytest.raises(DeprecationWarning):
+        class AnotherGazeDataFrameSubclass(GazeDataFrame):
+            ...
+
+
+def test_is_gaze_df_dubplicate_subclass_deprecated():
+    # pylint: disable=unused-variable
+    with pytest.raises(DeprecationWarning):
+        class AnotherGazeDataFrameSubclass(GazeDataFrame):
+            ...
+
+
+def test_is_gaze_df_subsubclass_deprecated():
+    # pylint: disable=unused-variable
+    with pytest.raises(DeprecationWarning):
+        class YetAnotherGazeDataFrameSubclass(GazeDataFrame):
+            ...
+
+        with pytest.raises(DeprecationWarning):
+            class AnotherGazeDataFrameSubSubclass(YetAnotherGazeDataFrameSubclass):
+                ...
+
+
+def test_is_gaze_df_removed(assert_deprecation_is_removed):
+    with pytest.raises(DeprecationWarning) as info:
+        GazeDataFrame()
+
+    assert_deprecation_is_removed(
+        function_name='GazeDataFrame',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+
     )
-
-    gaze_copy = gaze.clone()
-
-    # We want to have separate dataframes but with the exact same data.
-    assert gaze.frame is not gaze_copy.frame
-    assert_frame_equal(gaze.frame, gaze_copy.frame)
-
-    # We want to have separate experiment instances but the same values.
-    assert gaze.experiment is not gaze_copy.experiment
-    assert gaze.experiment == gaze_copy.experiment
-
-
-def test_gaze_dataframe_copy_no_experiment():
-    gaze = pm.GazeDataFrame(
-        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-        experiment=None,
-        position_columns=['x', 'y'],
-    )
-
-    gaze_copy = gaze.clone()
-
-    # We want to have separate dataframes but with the exact same data.
-    assert gaze.frame is not gaze_copy.frame
-    assert_frame_equal(gaze.frame, gaze_copy.frame)
-
-    # We want to have separate experiment instances but the same values.
-    assert gaze.experiment is gaze_copy.experiment
-
-
-def test_gaze_dataframe_split():
-    gaze = pm.GazeDataFrame(
-        pl.DataFrame(
-            {
-                'x': [0, 1, 2, 3],
-                'y': [1, 1, 0, 0],
-                'trial_id': [0, 1, 1, 2],
-            },
-            schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8},
-        ),
-        experiment=None,
-        position_columns=['x', 'y'],
-    )
-
-    split_gaze = gaze.split('trial_id')
-    assert all(gaze_df.frame.n_unique('trial_id') == 1 for gaze_df in split_gaze)
-    assert len(split_gaze) == 3
-    assert_frame_equal(gaze.frame.filter(pl.col('trial_id') == 0), split_gaze[0].frame)
-    assert_frame_equal(gaze.frame.filter(pl.col('trial_id') == 1), split_gaze[1].frame)
-    assert_frame_equal(gaze.frame.filter(pl.col('trial_id') == 2), split_gaze[2].frame)

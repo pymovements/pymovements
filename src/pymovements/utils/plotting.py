@@ -17,82 +17,31 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Functions for plotting."""
+"""Functions for plotting.
+
+.. deprecated:: v0.22.0
+   This module will be removed in v0.27.0.
+"""
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal
-from typing import Union
 
+import matplotlib.colors
 import matplotlib.pyplot
 import numpy as np
-import PIL.Image
-from matplotlib.collections import LineCollection
-from typing_extensions import TypeAlias
+from deprecated.sphinx import deprecated
 
-LinearSegmentedColormapType: TypeAlias = dict[
-    Literal['red', 'green', 'blue', 'alpha'],
-    Sequence[tuple[float, ...]],
-]
-
-
-DEFAULT_SEGMENTDATA: LinearSegmentedColormapType = {
-    'red': [
-        (0.0, 0.0, 0.0),
-        (0.5, 1.0, 1.0),
-        (1.0, 1.0, 1.0),
-    ],
-    'green': [
-        (0.0, 0.0, 0.0),
-        (0.5, 1.0, 1.0),
-        (1.0, 0.0, 0.0),
-    ],
-    'blue': [
-        (0.0, 0.0, 0.0),
-        (0.5, 0.0, 0.0),
-        (1.0, 0.0, 0.0),
-    ],
-}
+from pymovements.plotting._matplotlib import _draw_line_data
+from pymovements.plotting._matplotlib import _setup_axes_and_colormap
+from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+from pymovements.plotting._matplotlib import MatplotlibSetupType
+from pymovements.stimulus.image import _draw_image_stimulus
 
 
-DEFAULT_SEGMENTDATA_TWOSLOPE: LinearSegmentedColormapType = {
-    'red': [
-        (0.0, 0.0, 0.0),
-        (0.5, 0.0, 0.0),
-        (0.75, 1.0, 1.0),
-        (1.0, 1.0, 1.0),
-    ],
-    'green': [
-        (0.0, 0.0, 0.0),
-        (0.25, 1.0, 1.0),
-        (0.5, 0.0, 0.0),
-        (0.75, 1.0, 1.0),
-        (1.0, 0.0, 0.0),
-    ],
-    'blue': [
-        (0.0, 1.0, 1.0),
-        (0.25, 1.0, 1.0),
-        (0.5, 0.0, 0.0),
-        (1.0, 0.0, 0.0),
-    ],
-}
-
-CmapNormType: TypeAlias = Union[
-    matplotlib.colors.TwoSlopeNorm,
-    matplotlib.colors.Normalize,
-    matplotlib.colors.NoNorm,
-]
-MatplotlibSetupType: TypeAlias = tuple[
-    matplotlib.pyplot.figure,
-    matplotlib.pyplot.Axes,
-    matplotlib.colors.Colormap,
-    CmapNormType,
-    np.ndarray,
-    bool,
-]
-
-
+@deprecated(
+    reason='This function will be removed in v0.27.0.',
+    version='v0.22.0',
+)
 def setup_matplotlib(
         x_signal: np.ndarray,
         y_signal: np.ndarray,
@@ -109,6 +58,9 @@ def setup_matplotlib(
         pad_factor: float | None = 0.05,
 ) -> MatplotlibSetupType:
     """Configure cmap.
+
+    .. deprecated:: v0.22.0
+       This function will be removed in v0.27.0.
 
     Parameters
     ----------
@@ -144,78 +96,28 @@ def setup_matplotlib(
     MatplotlibSetupType
         Configures fig, ax, cmap, cmap_norm, cmap_segmentdata, cval, and show_cbar.
     """
-    n = len(x_signal)
-
-    fig = matplotlib.pyplot.figure(figsize=figsize)
-    ax = fig.gca()
-
-    if add_stimulus:
-        img = PIL.Image.open(path_to_image_stimulus)
-        ax.imshow(img, origin=stimulus_origin, extent=None)
-    else:
-        if padding is None:
-            x_pad = (np.nanmax(x_signal) - np.nanmin(x_signal)) * pad_factor
-            y_pad = (np.nanmax(y_signal) - np.nanmin(y_signal)) * pad_factor
-        else:
-            x_pad = padding
-            y_pad = padding
-
-        ax.set_xlim(np.nanmin(x_signal) - x_pad, np.nanmax(x_signal) + x_pad)
-        ax.set_ylim(np.nanmin(y_signal) - y_pad, np.nanmax(y_signal) + y_pad)
-        ax.invert_yaxis()
-
-    if cval is None:
-        cval = np.zeros(n)
-        show_cbar = False
-
-    cval_max = np.nanmax(np.abs(cval))
-    cval_min = np.nanmin(cval).astype(float)
-
-    if cmap_norm is None:
-        if cval_max and cval_min < 0:
-            cmap_norm = 'twoslope'
-        elif cval_max:
-            cmap_norm = 'normalize'
-        else:
-            cmap_norm = 'nonorm'
-
-    if cmap is None:
-        if cmap_segmentdata is None:
-            if cmap_norm == 'twoslope':
-                cmap_segmentdata = DEFAULT_SEGMENTDATA_TWOSLOPE
-            else:
-                cmap_segmentdata = DEFAULT_SEGMENTDATA
-
-        cmap = matplotlib.colors.LinearSegmentedColormap(
-            'line_cmap', segmentdata=cmap_segmentdata, N=512,
-        )
-
-    if cmap_norm == 'twoslope':
-        cmap_norm = matplotlib.colors.TwoSlopeNorm(
-            vcenter=0, vmin=-cval_max, vmax=cval_max,
-        )
-    elif cmap_norm == 'normalize':
-        cmap_norm = matplotlib.colors.Normalize(
-            vmin=cval_min, vmax=cval_max,
-        )
-    elif cmap_norm == 'nonorm':
-        cmap_norm = matplotlib.colors.NoNorm()
-
-    elif isinstance(cmap_norm, str):
-        # pylint: disable=protected-access
-
-        # to handle after https://github.com/pydata/xarray/pull/8030 is merged
-        if (
-            scale_class := matplotlib.scale._scale_mapping.get(cmap_norm, None)  # type: ignore
-        ) is None:
-            raise ValueError(f'cmap_norm string {cmap_norm} is not supported')
-
-        norm_class = matplotlib.colors.make_norm_from_scale(scale_class)
-        cmap_norm = norm_class(matplotlib.colors.Normalize)()
-
-    return fig, ax, cmap, cmap_norm, cval, show_cbar
+    return _setup_axes_and_colormap(
+        x_signal=x_signal,
+        y_signal=y_signal,
+        figsize=figsize,
+        cmap=cmap,
+        cmap_norm=cmap_norm,
+        cmap_segmentdata=cmap_segmentdata,
+        cval=cval,
+        show_cbar=show_cbar,
+        add_stimulus=add_stimulus,
+        path_to_image_stimulus=path_to_image_stimulus,
+        stimulus_origin=stimulus_origin,
+        padding=padding,
+        pad_factor=pad_factor,
+    )
 
 
+@deprecated(
+    reason='Please use ImageStimulus.show() instead. '
+           'This function will be removed in v0.27.0.',
+    version='v0.22.0',
+)
 def draw_image_stimulus(
         image_stimulus: str | Path,
         origin: str = 'upper',
@@ -226,6 +128,10 @@ def draw_image_stimulus(
         ax: matplotlib.pyplot.Axes | None = None,
 ) -> tuple[matplotlib.pyplot.figure, matplotlib.pyplot.Axes]:
     """Draw stimulus.
+
+    .. deprecated:: v0.22.0
+       Please use :py:meth:`~pymovements.ImageStimulus.show()` instead.
+       This function will be removed in v0.27.0.
 
     Parameters
     ----------
@@ -249,16 +155,21 @@ def draw_image_stimulus(
     fig: matplotlib.pyplot.figure
     ax: matplotlib.pyplot.Axes
     """
-    img = PIL.Image.open(image_stimulus)
-    if not fig:
-        fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
-    assert ax
-    ax.imshow(img, origin=origin, extent=extent)
-    if show:
-        matplotlib.pyplot.show()
-    return fig, ax
+    return _draw_image_stimulus(
+        image_stimulus=image_stimulus,
+        origin=origin,
+        show=show,
+        figsize=figsize,
+        extent=extent,
+        fig=fig,
+        ax=ax,
+    )
 
 
+@deprecated(
+    reason='This function will be removed in v0.27.0.',
+    version='v0.22.0',
+)
 def draw_line_data(
         x_signal: np.ndarray,
         y_signal: np.ndarray,
@@ -268,6 +179,9 @@ def draw_line_data(
         cval: np.ndarray | None = None,
 ) -> matplotlib.pyplot.Axes:
     """Draw line data.
+
+    .. deprecated:: v0.22.0
+       This function will be removed in v0.27.0.
 
     Parameters
     ----------
@@ -288,18 +202,12 @@ def draw_line_data(
     -------
     matplotlib.pyplot.Axes
         Axes with added line data.
-
     """
-    # Create a set of line segments so that we can color them individually
-    # This creates the points as a N x 1 x 2 array so that we can stack points
-    # together easily to get the segments. The segments array for line collection
-    # needs to be (numlines) x (points per line) x 2 (for x and y)
-    points = np.array([x_signal, y_signal]).T.reshape((-1, 1, 2))
-    segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    # Create a continuous norm to map from data points to colors
-    line_collection = LineCollection(segments, cmap=cmap, norm=cmap_norm)
-    # Set the values used for colormapping
-    line_collection.set_array(cval)
-    line_collection.set_linewidth(2)
-    line = ax.add_collection(line_collection)
-    return line
+    return _draw_line_data(
+        x_signal=x_signal,
+        y_signal=y_signal,
+        ax=ax,
+        cmap=cmap,
+        cmap_norm=cmap_norm,
+        cval=cval,
+    )

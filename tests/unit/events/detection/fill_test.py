@@ -24,7 +24,8 @@ import numpy as np
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements import Events
+from pymovements.events import fill
 
 
 @pytest.mark.parametrize(
@@ -32,18 +33,18 @@ import pymovements as pm
     [
         pytest.param(
             {
-                'events': pm.EventDataFrame(name='fixation', onsets=[0], offsets=[100]),
+                'events': Events(name='fixation', onsets=[0], offsets=[100]),
                 'timesteps': np.arange(0, 100),
             },
-            pm.EventDataFrame(),
+            Events(),
             id='fixation_from_start_to_end_no_fill',
         ),
         pytest.param(
             {
-                'events': pm.EventDataFrame(name='fixation', onsets=[10], offsets=[100]),
+                'events': Events(name='fixation', onsets=[10], offsets=[100]),
                 'timesteps': np.arange(0, 100),
             },
-            pm.EventDataFrame(
+            Events(
                 name='unclassified',
                 onsets=[0],
                 offsets=[9],
@@ -52,10 +53,10 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'events': pm.EventDataFrame(name='fixation', onsets=[0], offsets=[90]),
+                'events': Events(name='fixation', onsets=[0], offsets=[90]),
                 'timesteps': np.arange(0, 100),
             },
-            pm.EventDataFrame(
+            Events(
                 name='unclassified',
                 onsets=[90],
                 offsets=[99],
@@ -64,10 +65,10 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'events': pm.EventDataFrame(name='fixation', onsets=[0, 50], offsets=[40, 100]),
+                'events': Events(name='fixation', onsets=[0, 50], offsets=[40, 100]),
                 'timesteps': np.arange(0, 100),
             },
-            pm.EventDataFrame(
+            Events(
                 name='unclassified',
                 onsets=[40],
                 offsets=[49],
@@ -76,12 +77,12 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'events': pm.EventDataFrame(
+                'events': Events(
                     name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
                 ),
                 'timesteps': np.arange(0, 100),
             },
-            pm.EventDataFrame(
+            Events(
                 name='unclassified',
                 onsets=[40],
                 offsets=[49],
@@ -91,6 +92,6 @@ import pymovements as pm
     ],
 )
 def test_fill_fills_events(kwargs, expected):
-    events = pm.events.fill(**kwargs)
+    events = fill(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)

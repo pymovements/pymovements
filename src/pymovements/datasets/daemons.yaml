@@ -1,29 +1,15 @@
 name: "DAEMONS"
 
-has_files:
-  gaze: false
-  precomputed_events: true
-  precomputed_reading_measures: false
-
-mirrors:
-  precomputed_events:
-    - "https://osf.io/download/"
+long_name: 'Potsdam data set of eye movement on natural scenes'
 
 resources:
-  precomputed_events:
-    - resource: "ztgna/"
-      filename: "eye_movement.zip"
-      md5: "2779b4c140a0b1e3c9976488994f08f3"
-
-extract:
-  precomputed_events: true
-
-filename_format:
-  precomputed_events: "SAC_{data_split:s}.csv"
-
-filename_format_schema_overrides:
-  precomputed_events:
-    data_split: !str
+  - content: precomputed_events
+    url: "https://osf.io/download/ztgna/"
+    filename: "eye_movement.zip"
+    md5: "2779b4c140a0b1e3c9976488994f08f3"
+    filename_pattern: "SAC_{data_split:s}.csv"
+    filename_pattern_schema_overrides:
+      data_split: !str
 
 custom_read_kwargs:
   precomputed_events:

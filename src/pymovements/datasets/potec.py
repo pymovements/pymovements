@@ -27,6 +27,7 @@ from typing import Any
 import polars as pl
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
@@ -57,31 +58,24 @@ class PoTeC(DatasetDefinition):
     name: str
         The name of the dataset.
 
-    has_files: dict[str, bool]
-        Indicate whether the dataset contains 'gaze', 'precomputed_events', and
-        'precomputed_reading_measures'.
+    long_name: str
+        The entire name of the dataset.
 
-    mirrors: dict[str, list[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-
-    resources: dict[str, list[dict[str, str]]]
+    resources: ResourceDefinitions
         A list of dataset gaze_resources. Each list entry must be a dictionary with the following
         keys:
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
-    extract: dict[str, bool]
-        Decide whether to extract the data.
-
     experiment: Experiment
         The experiment definition.
 
-    filename_format: dict[str, str]
+    filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
-    filename_format_schema_overrides: dict[str, dict[str, type]]
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
@@ -122,37 +116,51 @@ class PoTeC(DatasetDefinition):
     """
 
     # pylint: disable=similarities
-    # The PublicDatasetDefinition child classes potentially share code chunks for definitions.
+    # The DatasetDefinition child classes potentially share code chunks for definitions.
 
     name: str = 'PoTeC'
 
-    has_files: dict[str, bool] = field(
-        default_factory=lambda: {
-            'gaze': True,
-            'precomputed_events': False,
-            'precomputed_reading_measures': False,
-        },
-    )
+    long_name: str = 'Potsdam Textbook Corpus'
 
-    mirrors: dict[str, list[str]] = field(
-        default_factory=lambda: {
-            'gaze': ['https://osf.io/download/'],
-        },
-    )
-
-    resources: dict[str, list[dict[str, str]]] = field(
-        default_factory=lambda: {
-            'gaze': [
-                {
-                    'resource': 'tgd9q/',
-                    'filename': 'PoTeC.zip',
-                    'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
-                },
+    resources: ResourceDefinitions = field(
+        default_factory=lambda: ResourceDefinitions(
+            [
+                    {
+                        'content': 'gaze',
+                        'url': 'https://osf.io/download/tgd9q/',
+                        'filename': 'PoTeC.zip',
+                        'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
+                        'filename_pattern': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
+                        'filename_pattern_schema_overrides': {
+                            'subject_id': int,
+                            'text_id': str,
+                        },
+                    },
+                    {
+                        'content': 'precomputed_events',
+                        'url': 'https://osf.io/download/d8pyg/',
+                        'filename': 'fixation.zip',
+                        'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
+                        'filename_pattern': r'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename_pattern_schema_overrides': {
+                            'subject_id': int,
+                            'text_id': str,
+                        },
+                    },
+                    {
+                        'content': 'precomputed_reading_measures',
+                        'url': 'https://osf.io/download/3ywhz/',
+                        'filename': 'reading_measures.zip',
+                        'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
+                        'filename_pattern': r'reader{subject_id:d}_{text_id}_merged.tsv',
+                        'filename_pattern_schema_overrides': {
+                            'subject_id': int,
+                            'text_id': str,
+                        },
+                    },
             ],
-        },
+        ),
     )
-
-    extract: dict[str, bool] = field(default_factory=lambda: {'gaze': True})
 
     experiment: Experiment = field(
         default_factory=lambda: Experiment(
@@ -166,20 +174,9 @@ class PoTeC(DatasetDefinition):
         ),
     )
 
-    filename_format: dict[str, str] = field(
-        default_factory=lambda: {
-            'gaze': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
-        },
-    )
+    filename_format: dict[str, str] | None = None
 
-    filename_format_schema_overrides: dict[str, dict[str, type]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'subject_id': int,
-                'text_id': str,
-            },
-        },
-    )
+    filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
     time_column: str = 'time'
 
@@ -201,6 +198,15 @@ class PoTeC(DatasetDefinition):
                     'pupil_diameter': pl.Float32,
                 },
                 'separator': '\t',
+            },
+            'precomputed_events': {
+                'separator': '\t',
+                'null_values': '.',
+            },
+            'precomputed_reading_measures': {
+                'separator': '\t',
+                'null_values': '.',
+                'infer_schema_length': 10000,
             },
         },
     )

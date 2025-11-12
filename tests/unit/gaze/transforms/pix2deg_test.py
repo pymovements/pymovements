@@ -64,16 +64,6 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'screen_size': (100, 100), 'distance': 100,
-                'pixel_column': 'pixel', 'position_column': 'position',
-                'n_components': 2,
-            },
-            TypeError,
-            ('origin', 'missing'),
-            id='no_origin_raises_type_error',
-        ),
-        pytest.param(
-            {
                 'screen_resolution': None,
                 'screen_size': (100, 100),
                 'distance': 100,
@@ -343,7 +333,7 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
             },
             pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
             pl.Series('position', [[-26.3354, 0]], pl.List(pl.Float64)),
-            id='center_pixel_origin_lowerleft_returns_0',
+            id='center_pixel_origin_upperleft_returns_0',
         ),
         pytest.param(
             {
@@ -371,7 +361,20 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
             },
             pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
             pl.Series('position', [[-44.7120, 45]], pl.List(pl.Float64)),
-            id='isosceles_triangle_origin_lowerleft_returns_45',
+            id='isosceles_triangle_origin_upperleft_returns_45',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100),
+                'screen_size': (100, 100),
+                'distance': 50,
+                'pixel_column': 'pixel',
+                'position_column': 'position',
+                'n_components': 2,
+            },
+            pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
+            pl.Series('position', [[-44.7120, 45]], pl.List(pl.Float64)),
+            id='isosceles_triangle_origin_default_returns_45',
         ),
         pytest.param(
             {
@@ -385,7 +388,20 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
             },
             pl.Series('pixel', [[0, -0.5]], pl.List(pl.Float64)),
             pl.Series('position', [[-44.7120, -45]], pl.List(pl.Float64)),
-            id='isosceles_triangle_left_origin_lowerleft_returns_neg45',
+            id='isosceles_triangle_left_origin_upperleft_returns_neg45',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100),
+                'screen_size': (100, 100),
+                'distance': 50,
+                'pixel_column': 'pixel',
+                'position_column': 'position',
+                'n_components': 2,
+            },
+            pl.Series('pixel', [[0, -0.5]], pl.List(pl.Float64)),
+            pl.Series('position', [[-44.7120, -45]], pl.List(pl.Float64)),
+            id='isosceles_triangle_left_origin_default_returns_neg45',
         ),
         pytest.param(
             {
@@ -413,7 +429,20 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
             },
             pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
             pl.Series('position', [[-26.3354, 26.5650]], pl.List(pl.Float64)),
-            id='ankathet_half_origin_lowerleft_returns_26.565',
+            id='ankathet_half_origin_upperleft_returns_26.565',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100),
+                'screen_size': (100, 100),
+                'distance': 100,
+                'pixel_column': 'pixel',
+                'position_column': 'position',
+                'n_components': 2,
+            },
+            pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
+            pl.Series('position', [[-26.3354, 26.5650]], pl.List(pl.Float64)),
+            id='ankathet_half_origin_default_returns_26.565',
         ),
         pytest.param(
             {
@@ -441,7 +470,7 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
             },
             pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
             pl.Series('position', [[-59.75, 60]], pl.List(pl.Float64)),
-            id='ankathet_sqrt3_origin_lowerleft_returns_60',
+            id='ankathet_sqrt3_origin_upperleft_returns_60',
         ),
         pytest.param(
             {
@@ -469,7 +498,7 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
             },
             pl.Series('pixel', [[-0.5, 100 - 0.5]], pl.List(pl.Float64)),
             pl.Series('position', [[-30, 30]], pl.List(pl.Float64)),
-            id='opposite_sqrt3_origin_lowerleft_returns_30',
+            id='opposite_sqrt3_origin_upperleft_returns_30',
         ),
         pytest.param(
             {
@@ -580,7 +609,7 @@ def test_pix2deg_returns(kwargs, series, expected_df, distance_as_column):
                 'distance': [100., 100., 100.],
             },
             pl.Series('position', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
-            id='origin_lower_left_constant_distance_and_pixel_'
+            id='origin_upper_left_constant_distance_and_pixel_'
                'returns_constant_position',
         ),
         pytest.param(
@@ -597,7 +626,7 @@ def test_pix2deg_returns(kwargs, series, expected_df, distance_as_column):
                 'distance': [1000., 100., 10.],
             },
             pl.Series('position', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
-            id='origin_lower_left_constant_centered_pixel_changing_distance_'
+            id='origin_upper_left_constant_centered_pixel_changing_distance_'
                'returns_constant_position',
         ),
         pytest.param(

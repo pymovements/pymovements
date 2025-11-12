@@ -23,22 +23,22 @@ from __future__ import annotations
 import numpy as np
 
 from pymovements.events.detection._library import register_event_detection
-from pymovements.events.frame import EventDataFrame
+from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import consecutive
 
 
 @register_event_detection
 def fill(
-        events: EventDataFrame,
+        events: Events,
         timesteps: list[int] | np.ndarray,
         minimum_duration: int = 1,
         name: str = 'unclassified',
-) -> EventDataFrame:
+) -> Events:
     """Classify all previously unclassified timesteps as events.
 
     Parameters
     ----------
-    events: EventDataFrame
+    events: Events
         The already detected events.
     timesteps: list[int] | np.ndarray
         shape (N, )
@@ -47,11 +47,11 @@ def fill(
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
         (default: 1)
     name: str
-        Name for detected events in EventDataFrame. (default: 'unclassified')
+        Name for detected events in Events. (default: 'unclassified')
 
     Returns
     -------
-    EventDataFrame
+    Events
         A dataframe with detected fixations as rows.
     """
     timesteps = np.array(timesteps)
@@ -88,7 +88,7 @@ def fill(
     candidates = consecutive(arr=candidate_indices)
 
     if len(candidates) == 1 and np.array_equal(candidates[0], np.array([], dtype=np.int64)):
-        return EventDataFrame()
+        return Events()
 
     # Filter all candidates by minimum duration.
     candidates = [
@@ -102,5 +102,5 @@ def fill(
     offsets = timesteps[[candidate_indices[-1] for candidate_indices in candidates]].flatten()
 
     # Create event dataframe from onsets and offsets.
-    event_df = EventDataFrame(name=name, onsets=onsets, offsets=offsets)
-    return event_df
+    events = Events(name=name, onsets=onsets, offsets=offsets)
+    return events

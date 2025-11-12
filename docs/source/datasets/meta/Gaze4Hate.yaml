@@ -1,0 +1,32 @@
+name: Gaze4Hate
+long_name: Gaze4Hate dataset
+resources:
+- content: precomputed_events
+  filename: gaze4hate_sentence_reading_fix_report.csv
+  url: https://osf.io/download/dbshf/
+  md5: c8cc645d1fad659f9442d61795da5481
+  filename_pattern: gaze4hate_sentence_reading_fix_report.csv
+- content: precomputed_reading_measures
+  filename: gaze4hate_sentence_reading_IA_report.csv
+  url: https://osf.io/download/fgdjw/
+  md5: e09e791e7d31d6ac3c69cd862d139c57
+  filename_pattern: gaze4hate_sentence_reading_IA_report.csv
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 2560
+    height_px: 1440
+    width_cm: 59.8
+    height_cm: 33.6
+    distance_cm: 78.0
+    origin: center
+custom_read_kwargs:
+  precomputed_events:
+    separator: "\t"
+    null_values: .
+  precomputed_reading_measures:
+    separator: "\t"
+trial_columns:
+- pno
+- sno

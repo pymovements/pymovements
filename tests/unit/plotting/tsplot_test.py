@@ -28,10 +28,29 @@ from matplotlib import figure
 import pymovements as pm
 
 
-@pytest.fixture(name='gaze')
-def gaze_fixture():
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
+@pytest.fixture(
+    name='gaze',
+    params=[
+        '200',
+        '0',
+        '1',
+    ],
+    scope='function',
+)
+def gaze_fixture(request):
+    # pylint: disable=duplicate-code
+    if request.param == '200':
+        x = np.arange(-100, 100)
+        y = np.arange(-100, 100)
+    elif request.param == '1':
+        x = np.array([1])
+        y = np.array([2])
+    elif request.param == '0':
+        x = np.empty((1,))
+        y = np.empty((1,))
+    else:
+        raise ValueError(f'{request.param} not supported as gaze fixture param')
+
     arr = np.column_stack((x, y)).transpose()
 
     experiment = pm.Experiment(
@@ -45,7 +64,7 @@ def gaze_fixture():
     )
 
     gaze = pm.gaze.from_numpy(
-        data=arr,
+        samples=arr,
         schema=['x_pix', 'y_pix'],
         experiment=experiment,
         pixel_columns=['x_pix', 'y_pix'],
@@ -91,7 +110,7 @@ def test_tsplot_show(gaze, kwargs, monkeypatch):
     monkeypatch.setattr(plt, 'show', mock)
     gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
     pm.plotting.tsplot(gaze=gaze, **kwargs)
-    plt.close()
+
     mock.assert_called_once()
 
 
@@ -100,7 +119,7 @@ def test_tsplot_noshow(gaze, monkeypatch):
     monkeypatch.setattr(plt, 'show', mock)
     gaze.unnest('pixel', ['x_pix', 'y_pix'])
     pm.plotting.tsplot(gaze=gaze, show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -109,5 +128,10 @@ def test_tsplot_save(gaze, monkeypatch, tmp_path):
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
     gaze.unnest('pixel', ['x_pix', 'y_pix'])
     pm.plotting.tsplot(gaze=gaze, show=False, savepath=str(tmp_path / 'test.svg'))
-    plt.close()
+
     mock.assert_called_once()
+
+
+def test_tsplot_sets_title(gaze):
+    _, ax = pm.plotting.tsplot(gaze, title='My Title', show=False)
+    assert ax.get_title() == 'My Title'

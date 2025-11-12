@@ -1,0 +1,52 @@
+name: CopCo
+long_name: Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading
+resources:
+- content: gaze
+  filename: csvs.zip
+  url: https://osf.io/download/bg9r4/
+  md5: 9dc3276714397b7fccac1e179a14c52b
+  filename_pattern: P{subject_id:d}.csv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+- content: precomputed_events
+  filename: FixationReports.zip
+  url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=
+  filename_pattern: FIX_report_P{subject_id:d}.txt
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+- content: precomputed_reading_measures
+  filename: ReadingMeasures.zip
+  url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=
+  filename_pattern: P{subject_id:d}.csv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1920
+    height_px: 1080
+    width_cm: 59.0
+    height_cm: 33.5
+    distance_cm: 85
+    origin: center
+custom_read_kwargs:
+  gaze: {}
+  precomputed_events:
+    separator: "\t"
+    null_values:
+    - .
+    - UNDEFINEDnull
+    infer_schema_length: 100000
+    truncate_ragged_lines: true
+    decimal_comma: true
+    quote_char: null
+  precomputed_reading_measures: {}
+trial_columns:
+- paragraph_id
+- speech_id
+time_column: time
+time_unit: ms
+pixel_columns:
+- x_right
+- y_right

@@ -17,68 +17,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides gaze related functionality.
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree:
-   :template: class.rst
-
-    Experiment
-    EyeTracker
-    Screen
-    GazeDataFrame
-
-.. rubric:: Transformations
-
-.. autosummary::
-   :toctree:
-
-   transforms.center_origin
-   transforms.downsample
-   transforms.norm
-   transforms.pix2deg
-   transforms.deg2pix
-   transforms.pos2acc
-   transforms.pos2vel
-   transforms.savitzky_golay
-
-.. rubric:: Input / Output
-
-.. autosummary::
-    :toctree:
-
-    from_asc
-    from_csv
-    from_ipc
-
-.. rubric:: Integration
-
-.. autosummary::
-    :toctree:
-
-    from_numpy
-    from_pandas
-
-.. rubric:: Numpy Transformations
-
-.. autosummary::
-   :toctree:
-
-   transforms_numpy.pix2deg
-   transforms_numpy.pos2acc
-   transforms_numpy.pos2vel
-   transforms_numpy.norm
-   transforms_numpy.split
-   transforms_numpy.downsample
-   transforms_numpy.consecutive
-
-"""
+"""Provides gaze related functionality."""
 from pymovements.gaze import transforms
 from pymovements.gaze import transforms_numpy
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.eyetracker import EyeTracker
+from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.gaze_dataframe import GazeDataFrame
 from pymovements.gaze.integration import from_numpy
 from pymovements.gaze.integration import from_pandas
@@ -93,6 +37,7 @@ __all__ = [
     'EyeTracker',
     'from_numpy',
     'from_pandas',
+    'Gaze',
     'GazeDataFrame',
     'Screen',
     'transforms_numpy',

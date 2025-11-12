@@ -20,6 +20,10 @@
 """Yaml utilities."""
 from __future__ import annotations
 
+import builtins
+import importlib
+from typing import Any
+
 import yaml
 
 
@@ -92,3 +96,32 @@ def type_constructor(
         ) from exc
     except ValueError as exc:
         raise ValueError(f'Unknown {node=}') from exc
+
+
+def substitute_types(data: Any) -> Any:
+    """Substitute types in data with !-prefixed strings."""
+    if isinstance(data, dict):
+        return {k: substitute_types(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [substitute_types(v) for v in data]
+    if isinstance(data, type):
+        if data.__module__ == 'builtins':
+            return f'!{data.__name__}'
+        return f'!{data.__module__}.{data.__name__}'
+    return data
+
+
+def reverse_substitute_types(data: Any) -> Any:
+    """Substitute !-prefixed strings with python types."""
+    if isinstance(data, dict):
+        return {k: reverse_substitute_types(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [reverse_substitute_types(v) for v in data]
+    if isinstance(data, str) and data.startswith('!'):
+        type_name = data[1:]
+        if '.' in type_name:
+            module_name, class_name = type_name.rsplit('.', 1)
+            module = importlib.import_module(module_name)
+            return getattr(module, class_name)
+        return getattr(builtins, type_name)
+    return data
