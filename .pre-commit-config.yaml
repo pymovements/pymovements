@@ -16,12 +16,12 @@ repos:
     rev: v3.21.1
     hooks:
       - id: pyupgrade
-        args: [ --py39-plus ]
+        args: [ --py310-plus ]
   - repo: https://github.com/asottile/reorder-python-imports
     rev: v3.16.0
     hooks:
       - id: reorder-python-imports
-        args: [ --application-directories=src, --py39-plus ]
+        args: [ --application-directories=src, --py310-plus ]
   - repo: https://github.com/asottile/reorder-python-imports
     rev: v3.16.0
     hooks:
