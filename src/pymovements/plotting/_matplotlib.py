@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Literal
+from typing import TypeAlias
 from warnings import warn
 
 import matplotlib.colors
@@ -33,7 +34,6 @@ import numpy as np
 import PIL.Image
 from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
-from typing_extensions import TypeAlias
 
 from pymovements.gaze.experiment import Screen
 
