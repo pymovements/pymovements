@@ -1422,7 +1422,7 @@ class Gaze:
                 warnings.warn(warn_msg, UserWarning)
             aois: list[polars.DataFrame] = []
             if mode == 'direct':
-                x_eye, y_eye = payload  # pylint: disable=unbalanced-tuple-unpacking
+                x_eye, y_eye = payload
                 aois = [
                     aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
                     for row in tqdm(self.samples.iter_rows(named=True))

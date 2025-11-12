@@ -534,7 +534,11 @@ class Events:
             ).drop(input_col)
 
     def map_to_aois(
-            self, aoi_dataframe: TextStimulus, *, preserve_structure: bool = True, verbose: bool = True,
+            self,
+            aoi_dataframe: TextStimulus,
+            *,
+            preserve_structure: bool = True,
+            verbose: bool = True,
     ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
@@ -609,7 +613,7 @@ class Events:
                 unit='event',
                 ncols=80,
                 disable=not verbose,
-            ):
+        ):
             name_val = row.get('name')
             is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
             if not is_fix:
