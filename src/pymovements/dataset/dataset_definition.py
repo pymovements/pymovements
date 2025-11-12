@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
 from warnings import warn
@@ -231,8 +232,9 @@ class DatasetDefinition:
     """
 
     # pylint: disable=too-many-instance-attributes
-
     name: str = '.'
+
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
     long_name: str | None = None
 
@@ -260,6 +262,7 @@ class DatasetDefinition:
     def __init__(
             self,
             name: str = '.',
+            *,
             long_name: str | None = None,
             has_files: dict[str, bool] | None = None,
             mirrors: dict[str, Sequence[str]] | None = None,
