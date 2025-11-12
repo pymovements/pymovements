@@ -95,7 +95,7 @@ class UCL(DatasetDefinition):
     long_name: str = 'University College London corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',

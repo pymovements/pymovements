@@ -33,7 +33,7 @@ Skip this step if you already have an environment containing `pymovements`.
 ```r
 reticulate::install_miniconda()
 pymovements_packages <- c(
-  "python==3.9",
+  "python==3.10",
   "pymovements"
 )
 reticulate::conda_create("pymovements_env", packages = pymovements_packages, pip = TRUE)
@@ -44,7 +44,7 @@ reticulate::conda_create("pymovements_env", packages = pymovements_packages, pip
 If you work with Conda:
 
 ```bash
-conda create -n pymovements_env python=3.9 # supported: 3.9–3.13
+conda create -n pymovements_env python=3.10 # supported: 3.10–3.13
 conda activate pymovements_env
 conda install -c conda-forge pymovements
 ```

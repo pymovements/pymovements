@@ -26,7 +26,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
-from typing import Union
 from warnings import warn
 
 import yaml
@@ -42,10 +41,7 @@ from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
-ResourcesLike = Union[
-    Sequence[dict[str, Any]],
-    dict[str, Sequence[dict[str, Any]]],
-]
+ResourcesLike = Sequence[dict[str, Any]] | dict[str, Sequence[dict[str, Any]]]
 
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
@@ -609,7 +605,7 @@ class DatasetDefinition:
             return ResourceDefinitions()
 
         if isinstance(resources, Sequence):
-            return ResourceDefinitions.from_dicts(resources)
+            return ResourceDefinitions(resources)
 
         if isinstance(resources, dict):
             # this calls a deprecated method and will be removed in the future.
