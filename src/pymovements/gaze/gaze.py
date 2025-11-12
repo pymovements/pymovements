@@ -1415,7 +1415,7 @@ class Gaze:
             mode, payload, warn_msg = flat
             if warn_msg:
                 warnings.warn(warn_msg, UserWarning)
-            aois: list[pl.DataFrame] = []
+            aois: list[polars.DataFrame] = []
             if mode == 'direct':
                 x_eye, y_eye = payload  # pylint: disable=unbalanced-tuple-unpacking
                 aois = [

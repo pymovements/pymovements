@@ -42,17 +42,17 @@ from pymovements.stimulus.text import TextStimulus
         ),
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'left', 'pixel', ['A', None], True, 'Left eye requested .* using mono',
+            'left', 'pixel', ['A', None], True, 'Left eye requested .* Using mono',
             id='flat-mono-fallback-left',
         ),
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'right', 'pixel', ['A', None], True, 'Right eye requested .* using mono',
+            'right', 'pixel', ['A', None], True, 'Right eye requested .* Using mono',
             id='flat-mono-fallback-right',
         ),
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'cyclops', 'pixel', ['A', None], True, 'Cyclops requested .* using mono',
+            'cyclops', 'pixel', ['A', None], True, 'Cyclops requested .* Using mono',
             id='flat-mono-fallback-cyclops',
         ),
         pytest.param(
@@ -75,7 +75,7 @@ from pymovements.stimulus.text import TextStimulus
                 'pixel_xl': [5.0, 15.0], 'pixel_yl': [5.0, 5.0],
                 'pixel_xr': [6.0, 16.0], 'pixel_yr': [6.0, 6.0],
             },
-            'cyclops', 'pixel', ['A', None], True, 'Cyclops requested .* averaging left/right',
+            'cyclops', 'pixel', ['A', None], True, 'Cyclops requested .* Averaging left/right',
             id='flat-cyclops-average-lr',
         ),
     ],
@@ -146,8 +146,8 @@ def test_eye_selection_flat_components(
 )
 @pytest.mark.parametrize('source_col, gaze_type', [('position', 'position'), ('pixel', 'pixel')])
 @pytest.mark.parametrize('preserve_structure', [True, False])
-@pytest.mark.filterwarnings('ignore:.*requested .* using .*:UserWarning')
-@pytest.mark.filterwarnings('ignore:Cyclops requested .* averaging left/right.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*requested .* Using .*:UserWarning')
+@pytest.mark.filterwarnings('ignore:Cyclops requested .* Averaging left/right.*:UserWarning')
 def test_eye_selection_list_columns(
     simple_stimulus: TextStimulus,
     values: list[list[float | None]],
@@ -204,31 +204,31 @@ def test_auto_no_pair_fallbacks_to_list(
         pytest.param(
             {'pixel_xa': [5.0], 'pixel_ya': [5.0]},
             'mono',
-            'Mono eye requested.*using cyclops',
+            'Mono eye requested.*Using cyclops',
             id='mono-fallback-to-cyclops-flat',
         ),
         pytest.param(
             {'pixel_xa': [5.0], 'pixel_ya': [5.0]},
             'left',
-            'Left eye requested.*using cyclops',
+            'Left eye requested.*Using cyclops',
             id='left-fallback-to-cyclops-flat',
         ),
         pytest.param(
             {'pixel_xa': [5.0], 'pixel_ya': [5.0]},
             'right',
-            'Right eye requested.*using cyclops',
+            'Right eye requested.*Using cyclops',
             id='right-fallback-to-cyclops-flat',
         ),
         pytest.param(
             {'pixel_xl': [5.0], 'pixel_yl': [5.0]},
             'right',
-            'Right eye requested .* using left eye',
+            'Right eye requested .* Using left eye',
             id='right-fallback-to-left-flat',
         ),
         pytest.param(
             {'pixel_xr': [5.0], 'pixel_yr': [5.0]},
             'left',
-            'Left eye requested .* using right eye',
+            'Left eye requested .* Using right eye',
             id='left-fallback-to-right-flat',
         ),
     ],
@@ -351,7 +351,7 @@ def test_auto_direct_via_cyclops(
             },
             'mono',
             'position',
-            'Mono eye requested .* using left eye',
+            'Mono eye requested .* Using left eye',
             id='mono-fallback-left',
         ),
         pytest.param(
@@ -361,12 +361,12 @@ def test_auto_direct_via_cyclops(
             },
             'right',
             'position',
-            'Right eye requested .* using cyclops',
+            'Right eye requested .* Using cyclops',
             id='right-fallback-cyclops-position',
         ),
         pytest.param(
             {'pixel_x': [5.0], 'pixel_y': [5.0]}, 'cyclops', 'pixel',
-            'Cyclops requested .* using mono', id='cyclops-fallback-mono',
+            'Cyclops requested .* Using mono', id='cyclops-fallback-mono',
         ),
         pytest.param(
             {
@@ -375,7 +375,7 @@ def test_auto_direct_via_cyclops(
             },
             'cyclops',
             'position',
-            'Cyclops requested .* using left eye',
+            'Cyclops requested .* Using left eye',
             id='cyclops-fallback-left',
         ),
     ],
@@ -408,7 +408,7 @@ def test_average_lr_partial_data(simple_stimulus: TextStimulus) -> None:
         'pixel_yr': [5.0, 5.0],
     })
     gaze = pm.Gaze(samples=df)
-    with pytest.warns(UserWarning, match='Cyclops requested .* averaging left/right'):
+    with pytest.warns(UserWarning, match='Cyclops requested .* Averaging left/right'):
         gaze.map_to_aois(simple_stimulus, eye='cyclops', gaze_type='pixel', preserve_structure=True)
     assert gaze.samples.get_column('label').to_list() == ['A', None]
 
@@ -498,7 +498,7 @@ def test_cyclops_fallback_to_right_warning(simple_stimulus: TextStimulus) -> Non
     # Only the right components present -> cyclops should warn and use the right eye
     df = pl.DataFrame({'pixel_xr': [5.0, 15.0], 'pixel_yr': [5.0, 5.0]})
     gaze = pm.Gaze(samples=df)
-    with pytest.warns(UserWarning, match='Cyclops requested .* using right eye.'):
+    with pytest.warns(UserWarning, match='Cyclops requested .* Using right eye.'):
         gaze.map_to_aois(simple_stimulus, eye='cyclops', gaze_type='pixel', preserve_structure=True)
     assert gaze.samples.get_column('label').to_list() == ['A', None]
 
