@@ -72,7 +72,7 @@ repos:
       - id: nbqa-isort
         args: [ "--float-to-top" ]
       - id: nbqa-pyupgrade
-        args: [ "--py39-plus" ]
+        args: [ "--py310-plus" ]
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
     hooks:
