@@ -13,11 +13,9 @@ These How-Tos provide detailed guides to implement the most important use cases 
     public-datasets
     local-dataset
     adding-public-dataset
+    plotting
     preprocessing-raw-data
     saving-loading-preprocessed
     event-handling
-    plot-main-sequence
-    scanpathplot
-    heatmap
     creating-synthetic-data
     R-tutorial
