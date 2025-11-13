@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -90,6 +91,8 @@ class CodeComprehension(DatasetDefinition):
     # The DatasetDefinition child classes potentially share code chunks for definitions.
 
     name: str = 'CodeComprehension'
+
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
     long_name: str = 'Code Comprehension dataset'
 
