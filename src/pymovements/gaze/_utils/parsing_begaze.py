@@ -301,10 +301,10 @@ def parse_begaze(
     selected_eye = prefer_eye.upper() if prefer_eye else 'L'
 
     def has_eye_columns(eye: str) -> bool:
+        # Only require X/Y columns - pupil diameter may be absent in some exports (e.g. DIDEC)
         return (
             f'{eye} POR X [px]' in header_idx and
-            f'{eye} POR Y [px]' in header_idx and
-            f'{eye} Pupil Diameter [mm]' in header_idx
+            f'{eye} POR Y [px]' in header_idx
         )
 
     use_header_parsing = header_row_index is not None and header_cols is not None
@@ -328,6 +328,13 @@ def parse_begaze(
     if use_header_parsing:
         # iterate over data lines following the header row
         assert header_row_index is not None and header_cols is not None
+        # Prepare optional sample columns present in header
+        # (e.g. Stimulus required by some datasets)
+        optional_sample_cols: list[str] = []
+        for opt_col in ['Stimulus', 'Trial']:
+            if opt_col in header_idx and opt_col not in samples:
+                samples[opt_col] = []
+                optional_sample_cols.append(opt_col)
         for line in lines[header_row_index + 1:]:
             # Apply message-driven additional columns first
             for pattern_dict in compiled_patterns:
@@ -373,10 +380,12 @@ def parse_begaze(
             y_s = parts[header_idx[f'{selected_eye} POR Y [px]']]
 
             pupil_header_mm = f'{selected_eye} Pupil Diameter [mm]'
-            pupil_col_idx = header_idx[pupil_header_mm]
-            pupil_s = parts[pupil_col_idx] if pupil_col_idx is not None and pupil_col_idx < len(
-                parts,
-            ) else 'nan'
+            if pupil_header_mm in header_idx:
+                pupil_col_idx = header_idx[pupil_header_mm]
+                pupil_s = parts[pupil_col_idx] if pupil_col_idx < len(parts) else 'nan'
+            else:
+                # Some exports (e.g. DIDEC) do not include per-eye pupil diameter columns
+                pupil_s = 'nan'
 
             x_pix = check_nan(x_s)
             y_pix = check_nan(y_s)
@@ -407,6 +416,12 @@ def parse_begaze(
             samples['pupil'].append(pupil)
             for additional_column in additional_columns:
                 samples[additional_column].append(current_additional[additional_column])
+            # Append optional sample columns present in header (e.g. Stimulus, Trial)
+            for opt_col in optional_sample_cols:
+                try:
+                    samples[opt_col].append(parts[header_idx[opt_col]])
+                except Exception:
+                    samples[opt_col].append(None)
 
             # metadata counters
             if event == 'Blink':

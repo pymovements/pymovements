@@ -638,13 +638,14 @@ class Gaze:
             if self.trial_columns is None:
                 self.samples = self.samples.with_columns(transform_method(**kwargs))
             else:
-                self.samples = polars.concat(
-                    [
-                        df.with_columns(transform_method(**kwargs))
-                        for group, df in
-                        self.samples.group_by(self.trial_columns, maintain_order=True)
-                    ],
-                )
+                grouped_frames = [
+                    df.with_columns(transform_method(**kwargs))
+                    for _, df in self.samples.group_by(self.trial_columns, maintain_order=True)
+                ]
+                if not grouped_frames:
+                    # No groups to transform (e.g., empty samples) - keep samples unchanged
+                    return
+                self.samples = polars.concat(grouped_frames)
 
     def clip(
             self,

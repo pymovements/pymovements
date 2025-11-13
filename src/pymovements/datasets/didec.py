@@ -140,6 +140,11 @@ class DIDEC(DatasetDefinition):
                         'session': int,
                         'trial': int,
                     },
+                    'load_function': 'from_begaze',
+                    'load_kwargs': {
+                        'encoding': 'ascii',
+                        'prefer_eye': 'L',
+                    },
                 },
             ],
         ),
@@ -153,7 +158,7 @@ class DIDEC(DatasetDefinition):
             screen_height_cm=29.7,
             distance_cm=70,
             origin='upper left',
-            sampling_rate=1000,
+            sampling_rate=250,
         ),
     )
 
