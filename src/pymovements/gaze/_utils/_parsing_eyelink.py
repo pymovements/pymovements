@@ -44,7 +44,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from pymovements.gaze._utils.parsing import compile_patterns, get_pattern_keys, \
+from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
     check_nan, _calculate_data_loss_ratio
 
 

@@ -21,6 +21,7 @@
 import datetime
 from collections.abc import Callable
 from typing import Any
+from math import nan
 
 import numpy as np
 import polars as pl
@@ -29,7 +30,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.gaze import io
-from pymovements.gaze._utils import parsing_begaze
+from pymovements.gaze._utils import _parsing_begaze
 from pymovements.gaze.experiment import Experiment
 
 BEGAZE_TEXT = r"""
@@ -200,7 +201,7 @@ EXPECTED_METADATA_BEGAZE = {
 def test_parse_begaze(make_text_file, body, expected_gaze, expected_event):
     filepath = make_text_file(filename='sub.txt', body=body, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
         filepath,
         patterns=PATTERNS,
         metadata_patterns=METADATA_PATTERNS,
@@ -240,8 +241,8 @@ def _begaze_binocular_text():
     [
         (
             'L',
-            [10.0, 11.0, float('nan')],
-            [20.0, 21.0, float('nan')],
+            [10.0, 11.0, nan],
+            [20.0, 21.0, nan],
             [3.0, 3.1, 0.0],
             ['fixation_begaze', 'saccade_begaze', 'blink_begaze'],
             [10000000.1, 10000001.1, 10000002.1],
@@ -252,7 +253,7 @@ def _begaze_binocular_text():
             'R',
             [110.0, 111.0, 112.0],
             [120.0, 121.0, 122.0],
-            [4.0, 4.1, float('nan')],
+            [4.0, 4.1, nan],
             ['saccade_begaze', 'fixation_begaze'],
             [10000000.1, 10000001.1],
             [10000000.1, 10000002.1],
@@ -278,7 +279,7 @@ def test_parse_begaze_binocular_parametrized(
         encoding='ascii',
     )
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
         p, prefer_eye=prefer_eye,
     )
 
@@ -451,7 +452,7 @@ def test_parse_begaze_generic_info_only(
     # When only a generic 'Info' column exists, events should be derived from it.
     p = make_text_file(filename='begaze_info_only.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(p, prefer_eye=prefer_eye)
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye=prefer_eye)
 
     # times in ms
     assert gaze_df['time'].to_list() == expected_time
@@ -478,7 +479,7 @@ def test_parse_begaze_regex_fallback_minimal(make_text_file, text):
     # No header row: should use the legacy regex path BEGAZE_SAMPLE.
     p = make_text_file(filename='begaze_regex_only.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, _ = parsing_begaze.parse_begaze(
+    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(
         p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
     )
 
@@ -506,7 +507,7 @@ def test_parse_begaze_initial_dash_no_event(make_text_file, text):
     # The first labelled event occurs only after an initial '-' value.
     p = make_text_file(filename='begaze_initial_dash.txt', body=text, encoding='ascii')
 
-    _, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    _, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # Only one fixation event starting from the second sample.
     assert event_df['name'].to_list() == ['fixation_begaze']
@@ -526,7 +527,7 @@ def test_parse_begaze_missing_stimulus_column(make_text_file):
     )
     p = make_text_file(filename='begaze_no_stimulus.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     assert metadata['tracked_eye'] == 'L'
     assert gaze_df.shape == (2, len(gaze_df.columns))
@@ -547,7 +548,7 @@ def test_parse_begaze_non_ascii_stimulus_utf16(make_text_file):
     )
     p = make_text_file(filename='begaze_utf8_stimulus.txt', body=text, encoding='utf-16')
 
-    gaze_df, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L', encoding='utf-16')
+    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L', encoding='utf-16')
 
     # Basic assertions - presence of non-ASCII should not cause errors.
     assert gaze_df.shape[0] == 2
@@ -565,7 +566,7 @@ def test_parse_begaze_plane_values_stability(make_text_file):
     )
     p = make_text_file(filename='begaze_plane_values.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # Blink row forces NaN x/y and pupil 0.0
     assert np.isnan(gaze_df['x_pix'].to_list()[1])
@@ -718,7 +719,7 @@ def test_parse_begaze_optional_columns_harmonized(
 
     p = make_text_file(filename='begaze_optional_cols.txt', body=text, encoding='ascii')
 
-    gaze_df, _, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, _, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # trial header should arrive at trial_id column
     assert 'trial_id' in gaze_df.columns
@@ -763,7 +764,7 @@ def test_parse_begaze_trial_header_ignored_when_patterns_provide_trial_id(
     )
     p = make_text_file(filename='begaze_trial_patterns.txt', body=body, encoding='ascii')
 
-    gaze_df, _, _ = parsing_begaze.parse_begaze(
+    gaze_df, _, _ = _parsing_begaze.parse_begaze(
         p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
     )
 
@@ -792,7 +793,7 @@ def test_meta_parsing_bad_date_and_sampling_kept(
         '10000000100\tSMP\t1\t10\t20\t1\tFixation\n'
     )
     p = make_text_file(filename='begaze_bad_meta.txt', body=text, encoding='ascii')
-    _, _, meta = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    _, _, meta = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # datetime should be preserved as original string when parsing fails
     assert isinstance(meta.get('datetime'), expected_datetime_type)
@@ -814,7 +815,7 @@ def test_header_spaces_split_else_branch_and_no_info_returns_dash(make_text_file
     )
     p = make_text_file(filename='begaze_spaces_header.txt', body=header + samples, encoding='ascii')
 
-    gaze_df, event_df, meta = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, event_df, meta = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # With spaced header and insufficient columns, parser falls back to regex path which
     # does not match this sample -> zero samples parsed. Tracked-eye can still be inferred.
@@ -838,7 +839,7 @@ def test_missing_pupil_mm_sets_nan(make_text_file, include_pupil_mm):
         ('\t3.0' if include_pupil_mm else '') + '\t1\tFixation\n'
     p = make_text_file(filename='begaze_pupil_missing.txt', body=header + sample, encoding='ascii')
 
-    gaze_df, _, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, _, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     if include_pupil_mm:
         assert gaze_df['pupil'].to_list() == [3.0]
@@ -857,7 +858,7 @@ def test_task_fallback_to_last_field_when_missing(make_text_file):
     sample = '10000000100\tSMP\t1\t10\t20\t1\tFixation\n'
     p = make_text_file(filename='begaze_task_fallback.txt', body=header + sample, encoding='ascii')
 
-    gaze_df, _, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, _, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     assert 'task' in gaze_df.columns
     assert gaze_df['task'].to_list() == ['Fixation']
@@ -879,7 +880,7 @@ def test_metadata_patterns_on_short_lines_and_removal(make_text_file, repeat_met
         encoding='ascii',
     )
 
-    _, _, meta = parsing_begaze.parse_begaze(
+    _, _, meta = _parsing_begaze.parse_begaze(
         p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
     )
     assert meta.get('metadata_3') is True
@@ -913,7 +914,7 @@ def test_regex_fallback_patterns_and_blink_tracking(
     body = '\n'.join(lines) + '\n'
     p = make_text_file(filename='begaze_regex_blinks.txt', body=body, encoding='ascii')
 
-    gaze_df, _, meta = parsing_begaze.parse_begaze(
+    gaze_df, _, meta = _parsing_begaze.parse_begaze(
         p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
     )
 
@@ -944,7 +945,7 @@ def test_optional_trial_missing_value_falls_back_to_none(make_text_file):
         encoding='ascii',
     )
 
-    gaze_df, _, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, _, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # 'trial_id' exists but value is None due to fallback else-branch
     assert 'trial_id' in gaze_df.columns
@@ -972,7 +973,7 @@ def test_header_msg_metadata_key_value_branch(make_text_file, repeat):
         encoding='ascii',
     )
 
-    _, _, meta = parsing_begaze.parse_begaze(
+    _, _, meta = _parsing_begaze.parse_begaze(
         p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
     )
     assert meta.get('metadata_4') is True
@@ -1000,7 +1001,7 @@ def test_header_short_line_metadata_patterns_copy_and_remove(make_text_file):
         encoding='ascii',
     )
 
-    _, _, meta = parsing_begaze.parse_begaze(
+    _, _, meta = _parsing_begaze.parse_begaze(
         p, metadata_patterns=meta_patterns, prefer_eye='L',
     )
 

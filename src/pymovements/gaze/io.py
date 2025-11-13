@@ -29,8 +29,8 @@ import polars as pl
 
 import pymovements as pm  # pylint: disable=cyclic-import
 from pymovements.events.frame import Events
-from pymovements.gaze._utils.parsing_begaze import parse_begaze
-from pymovements.gaze._utils.parsing_eyelink import parse_eyelink
+from pymovements.gaze._utils._parsing_begaze import parse_begaze
+from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 

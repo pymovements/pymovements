@@ -35,7 +35,7 @@ import warnings
 import numpy as np
 import polars as pl
 
-from pymovements.gaze._utils.parsing import compile_patterns, get_pattern_keys, \
+from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
     check_nan, _calculate_data_loss_ratio
 
 # Regular expressions for BeGaze header metadata lines with named groups.
@@ -56,10 +56,13 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
         if match := regex.match(line):
             groupdict = match.groupdict()
             # Casting and processing for known fields
-            if 'sampling_rate' in groupdict and groupdict['sampling_rate'] is not None:
+            if groupdict.get('sampling_rate') is not None:
                 # Regex only matches numeric forms (optionally with dot), so float cast is safe.
-                groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
-            if 'date' in groupdict and groupdict['date']:
+                try:
+                    groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
+                except ValueError:
+                    pass
+            if groupdict.get('date') is not None:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:
                     groupdict['datetime'] = datetime.datetime.strptime(
@@ -489,9 +492,6 @@ def parse_begaze(
         if current_event != '-':
             _finalize_current_event()
             _maybe_finalize_blink_meta()
-            current_event = '-'
-            current_event_onset = None
-            current_event_additional = {key: {} for key in current_event_additional}
 
     else:
         # Fallback: use regex-based monocular parsing for simple LEFT files
@@ -581,9 +581,6 @@ def parse_begaze(
             _finalize_current_event()
             # finalise blink if the last event is a blink
             _maybe_finalize_blink_meta()
-            current_event = '-'
-            current_event_onset = None
-            current_event_additional = {key: {} for key in current_event_additional}
 
     # Finalise metadata for BeGaze
     # total_recording_duration_ms per test equals number of samples for this minimal fixture
