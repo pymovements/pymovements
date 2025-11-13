@@ -20,8 +20,8 @@
 """Tests pymovements asc to csv processing - BeGaze."""
 import datetime
 from collections.abc import Callable
-from typing import Any
 from math import nan
+from typing import Any
 
 import numpy as np
 import polars as pl
