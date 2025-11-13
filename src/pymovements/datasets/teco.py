@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -98,6 +99,8 @@ class TECO(DatasetDefinition):
     # pylint: disable=similarities
 
     name: str = 'TECO'
+
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
     long_name: str = 'Tsukuba Eye-tracking Corpus'
 

@@ -121,6 +121,7 @@ def load_event_files(
         paths: DatasetPaths,
         events_dirname: str | None = None,
         extension: str = 'feather',
+        verbose: bool = True,
 ) -> list[Events]:
     """Load all event files according to fileinfo dataframe.
 
@@ -138,6 +139,8 @@ def load_event_files(
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `tsv`, `txt`.
         (default: 'feather')
+    verbose : bool
+        If ``True``, show progress bar. (default: True)
 
     Returns
     -------
@@ -154,7 +157,13 @@ def load_event_files(
     list_of_events: list[Events] = []
 
     # read and preprocess input files
-    for fileinfo_row in tqdm(fileinfo.to_dicts()):
+    for fileinfo_row in tqdm(
+            fileinfo.to_dicts(),
+            total=len(fileinfo),
+            desc='Loading event files',
+            unit='file',
+            disable=not verbose,
+    ):
         filepath = Path(fileinfo_row['filepath'])
         filepath = paths.raw / filepath
 
@@ -226,7 +235,12 @@ def load_gaze_files(
     gazes: list[Gaze] = []
 
     # Read gaze files from fileinfo attribute.
-    for fileinfo_row in tqdm(fileinfo.to_dicts()):
+    for fileinfo_row in tqdm(
+            fileinfo.to_dicts(),
+            total=len(fileinfo),
+            desc='Loading gaze files',
+            unit='file',
+    ):
         filepath = Path(fileinfo_row['filepath'])
         filepath = paths.raw / filepath
 
@@ -569,7 +583,15 @@ def save_events(
     """
     disable_progressbar = not verbose
 
-    for file_id, events_in in enumerate(tqdm(events, disable=disable_progressbar)):
+    for file_id, events_in in enumerate(
+        tqdm(
+            events,
+            total=len(events),
+            desc='Saving event files',
+            unit='file',
+            disable=disable_progressbar,
+        ),
+    ):
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         events_filepath = paths.raw_to_event_filepath(
             raw_filepath, events_dirname=events_dirname,
@@ -636,7 +658,15 @@ def save_preprocessed(
     """
     disable_progressbar = not verbose
 
-    for file_id, gaze in enumerate(tqdm(gazes, disable=disable_progressbar)):
+    for file_id, gaze in enumerate(
+        tqdm(
+            gazes,
+            total=len(gazes),
+            desc='Saving preprocessed files',
+            unit='file',
+            disable=disable_progressbar,
+        ),
+    ):
         gaze = gaze.clone()
 
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
