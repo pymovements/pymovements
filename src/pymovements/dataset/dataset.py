@@ -409,6 +409,7 @@ class Dataset:
         """
         self._check_fileinfo()
         events = dataset_files.load_event_files(
+            definition=self.definition,
             fileinfo=self.fileinfo['gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
@@ -822,6 +823,13 @@ class Dataset:
                 disable=disable_progressbar,
         ):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
+            # workaround until events are fully part of the Gaze
+            gaze.events.frame = dataset_files.add_fileinfo(
+                definition=self.definition,
+                df=gaze.events.frame,
+                fileinfo=fileinfo_row,
+            )
+
         return self
 
     def drop_event_properties(
