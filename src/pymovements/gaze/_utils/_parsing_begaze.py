@@ -435,9 +435,6 @@ def parse_begaze(
         if current_event != '-':
             _finalize_current_event()
             _maybe_finalize_blink_meta()
-            current_event = '-'
-            current_event_onset = None
-            current_event_additional = {key: {} for key in current_event_additional}
 
     else:
         # Fallback: use regex-based monocular parsing for simple LEFT files
@@ -527,9 +524,6 @@ def parse_begaze(
             _finalize_current_event()
             # finalise blink if the last event is a blink
             _maybe_finalize_blink_meta()
-            current_event = '-'
-            current_event_onset = None
-            current_event_additional = {key: {} for key in current_event_additional}
 
     # Finalise metadata for BeGaze
     # total_recording_duration_ms per test equals number of samples for this minimal fixture
