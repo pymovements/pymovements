@@ -1,8 +1,8 @@
 [build-system]
 requires = [
-  "setuptools>=61.0.0,<81",
-  "setuptools-git-versioning<3",
-  "versioneer[toml]>=0.29,<1.0",
+  "setuptools>=61.0.0",
+  "setuptools-git-versioning",
+  "versioneer[toml]>=0.29",
   "wheel"
 ]
 build-backend = "setuptools.build_meta"
@@ -31,33 +31,33 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
-  "deprecated>=1.2.18,<1.4",
-  "matplotlib>=3.8.0,<3.11",
-  "fastexcel>=0.13.0,<1.0",
-  "numpy>=1.22.4,<2.3",
-  "pandas>=2.1.4,<2.4",
-  "polars>=1.31.0,<1.32",
-  "pyarrow>=11.0.0,<21.1",
-  "pyopenssl>=22.0.0,<25.4",
-  "pyreadr>=0.5.2,<0.6",
-  "pyyaml>=6.0.2,<6.1",
-  "scipy>=1.8.0,<1.16",
-  "tqdm>=4.63.0,<4.68",
-  "typing_extensions>=4.0.0,<4.16"
+  "deprecated>=1.2.18",
+  "matplotlib>=3.8.0",
+  "fastexcel>=0.13.0",
+  "numpy>=1.22.4",
+  "pandas>=2.1.4",
+  "polars>=1.31.0",
+  "pyarrow>=11.0.0",
+  "pyopenssl>=22.0.0",
+  "pyreadr>=0.5.2",
+  "pyyaml>=6.0.2",
+  "scipy>=1.8.0",
+  "tqdm>=4.63.0",
+  "typing_extensions>=4.0.0"
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 docs = [
-  "ipykernel>=6.13.0,<6.32",
-  "ipywidgets>=8.1.7,<8.2",
+  "ipykernel>=6.13.0",
+  "ipywidgets>=8.1.7",
   "myst-nb>=1.0.0",
-  "nbconvert>=7.0.0,<7.17",
+  "nbconvert>=7.0.0",
   "pandoc>=2.0.1",
-  "pybtex>=0.25.0,<0.25.2",
+  "pybtex>=0.25.0",
   "pydata-sphinx-theme>=0.12",
-  "setuptools>=61.0.0,<81",
-  "sphinx>=7.0,<8.3",
+  "setuptools>=61.0.0",
+  "sphinx>=7.0",
   "sphinx-copybutton>=0.5.0",
   "sphinx-favicon>=1.0.1",
   "sphinx_design>=0.3.0",
@@ -66,15 +66,15 @@ docs = [
   "sphinxcontrib.bibtex>=2.4.2"
 ]
 dev = [
-  "tox>=4.12.0,<4.31",
-  "pybtex>=0.25.0,<0.25.2",
+  "tox>=4.12.0",
+  "pybtex>=0.25.0",
   "pytest>=7.0.0",
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=4.0.0",
-  "setuptools>=61.0.0,<81",
-  "types-tqdm>=4.64.0,<5",
-  "pre-commit>=3.0.0,<4.4.0",
-  "pylint>=3.0.0,<3.4"
+  "setuptools>=61.0.0",
+  "types-tqdm>=4.64.0",
+  "pre-commit>=3.0.0",
+  "pylint>=3.0.0"
 ]
 
 [project.urls]
