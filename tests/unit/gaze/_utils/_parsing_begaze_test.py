@@ -155,6 +155,7 @@ BEGAZE_EXPECTED_GAZE_DF = pl.from_dict(
         ],
         'task': [None, 'A', None, 'B', 'B', 'B', 'B', None, None, None, None],
         'trial_id': [None, None, None, None, '1', '2', '3', None, None, None, None],
+        'Stimulus': ['test.bmp'] * 11,
     },
 )
 

@@ -57,10 +57,8 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
             groupdict = match.groupdict()
             # Casting and processing for known fields
             if 'sampling_rate' in groupdict and groupdict['sampling_rate'] is not None:
-                try:
-                    groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
-                except ValueError:
-                    pass
+                # Regex only matches numeric forms (optionally with dot), so float cast is safe.
+                groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
             if 'date' in groupdict and groupdict['date']:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:
@@ -330,11 +328,39 @@ def parse_begaze(
         assert header_row_index is not None and header_cols is not None
         # Prepare optional sample columns present in header
         # (e.g. Stimulus required by some datasets)
-        optional_sample_cols: list[str] = []
-        for opt_col in ['Stimulus', 'Trial']:
-            if opt_col in header_idx and opt_col not in samples:
-                samples[opt_col] = []
-                optional_sample_cols.append(opt_col)
+
+        # Harmonise 'Trial' vs 'trial_id':
+        # - If patterns already define 'trial_id', do NOT create a separate 'Trial' column.
+        # - If no 'trial_id' exists, map header 'Trial' values into 'trial_id'.
+        # Build a case-insensitive view over header names for optional column harmonisation.
+        header_cols_lc = [c.lower() for c in header_cols]
+        optional_col_map: dict[str, str] = {}
+
+        # Stimulus: keep name 'Stimulus'. Map only if not already present in samples.
+        if 'stimulus' in header_cols_lc and 'Stimulus' not in samples:
+            src_name = header_cols[header_cols_lc.index('stimulus')]
+            samples['Stimulus'] = []
+            optional_col_map[src_name] = 'Stimulus'
+
+        # Trial: map any header that contains the substring 'trial' (case-insensitive) to 'trial_id',
+        # unless patterns have already created 'trial_id'.
+        trial_src_name = None
+        for i, name_lc in enumerate(header_cols_lc):
+            if 'trial' in name_lc:
+                trial_src_name = header_cols[i]
+                break
+        if trial_src_name is not None and 'trial_id' not in samples:
+            samples['trial_id'] = []
+            optional_col_map[trial_src_name] = 'trial_id'
+        # else: ignore header trial column to avoid duplicates
+
+        # Task: map header 'Task' (case-insensitive) to 'task' only if not already present
+        # from patterns.
+        if 'task' in header_cols_lc and 'task' not in samples:
+            src_name = header_cols[header_cols_lc.index('task')]
+            samples['task'] = []
+            optional_col_map[src_name] = 'task'
+
         for line in lines[header_row_index + 1:]:
             # Apply message-driven additional columns first
             for pattern_dict in compiled_patterns:
@@ -346,16 +372,6 @@ def parse_begaze(
                         current_additional.update(match.groupdict())
 
             parts = [p.strip() for p in line.rstrip('\n').split('\t')]
-            if len(parts) < 3:
-                # also try metadata patterns on non-sample lines
-                for pattern_dict in compiled_metadata_patterns.copy():
-                    if match := pattern_dict['pattern'].match(line):
-                        if 'value' in pattern_dict and 'key' in pattern_dict:
-                            metadata[pattern_dict['key']] = pattern_dict['value']
-                        else:
-                            metadata.update(match.groupdict())
-                        compiled_metadata_patterns.remove(pattern_dict)
-                continue
 
             # skip if not a sample line
             type_val = parts[header_idx.get('Type', 1)] if header_idx else 'SMP'
@@ -417,11 +433,22 @@ def parse_begaze(
             for additional_column in additional_columns:
                 samples[additional_column].append(current_additional[additional_column])
             # Append optional sample columns present in header (e.g. Stimulus, Trial)
-            for opt_col in optional_sample_cols:
+            # Use mapping so we never create duplicate 'Trial' vs 'trial_id'
+            for src_col, dst_col in optional_col_map.items():
                 try:
-                    samples[opt_col].append(parts[header_idx[opt_col]])
-                except Exception:
-                    samples[opt_col].append(None)
+                    val = parts[header_idx[src_col]]
+                except (IndexError, KeyError):
+                    # Some exports may have fewer trailing columns on certain lines.
+                    # As a conservative fallback for Stimulus/Task-like trailing columns,
+                    # try the last field when appropriate - otherwise keep None.
+                    lower_src = src_col.lower()
+                    if lower_src.endswith('stimulus') or lower_src == 'stimulus':
+                        val = parts[-1] if len(parts) >= 1 else None
+                    elif lower_src == 'task':
+                        val = parts[-1] if len(parts) >= 1 else None
+                    else:
+                        val = None
+                samples[dst_col].append(val)
 
             # metadata counters
             if event == 'Blink':

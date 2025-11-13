@@ -479,6 +479,7 @@ class Gaze:
         **kwargs: Any
             Additional keyword arguments to be passed to the transformation method.
         """
+        # pylint: disable=too-many-branches
         if isinstance(transform_method, str):
             transform_method = transforms.TransformLibrary.get(transform_method)
 
