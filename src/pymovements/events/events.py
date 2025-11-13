@@ -649,6 +649,10 @@ class Events:
                     aoi_row = aoi_row.select(
                         [pl.col(c) for c in present] + [pl.lit(None).alias(c) for c in missing],
                     )
+                else:
+                    # No AOI columns are to be appended (all already exist in the Events frame).
+                    # Keep row count but contribute zero columns to avoid duplicate-column errors.
+                    aoi_row = aoi_row.select([])
             out_rows.append(aoi_row)
 
         aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})

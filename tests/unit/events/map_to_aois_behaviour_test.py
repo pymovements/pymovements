@@ -299,3 +299,40 @@ def test_end_drop_location_when_components_exist(
         assert 'location' in cols
         # Component columns should remain untouched
         assert 'location_x' in cols and 'location_y' in cols
+
+
+@pytest.mark.parametrize('preserve_structure', [True, False])
+def test_events_map_to_aois_no_new_columns_when_all_aoi_columns_present(
+    simple_stimulus_w_h: TextStimulus,
+    preserve_structure: bool,
+) -> None:
+    # Events already contains ALL AOI columns from the stimulus.
+    # One row is a fixation positioned inside the AOI.
+    events_df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'location_x': [5.0],
+            'location_y': [5.0],
+            'label': ['pre'],
+            # Pre-existing AOI columns (same names as in stimulus)
+            'aoi': ['A'],
+            'x': [-1.0],
+            'y': [-1.0],
+            'width': [0.0],
+            'height': [0.0],
+        },
+    )
+
+    ev = Events(data=events_df)
+
+    # Keep a copy of original columns to verify no new columns are appended.
+    original_cols = ev.frame.columns.copy()
+
+    ev.map_to_aois(simple_stimulus_w_h, preserve_structure=preserve_structure, verbose=False)
+
+    # The set and order of columns should remain unchanged (no new AOI columns appended),
+    # exercising the `if aoi_columns:` no-branch.
+    assert ev.frame.columns == original_cols
+
+    # Also ensure that pre-existing AOI columns remain untouched (no overwrite during concat).
+    assert ev.frame.select('label').item() == 'pre'

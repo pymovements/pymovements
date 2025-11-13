@@ -115,6 +115,26 @@ def _simple_stimulus() -> TextStimulus:
     return _make_text_stimulus(df)
 
 
+@pytest.fixture(name='simple_stimulus_w_h')
+def _simple_stimulus_w_h() -> TextStimulus:
+    """Minimal AOI table: one rectangle from (0,0) with size 100x100. Using width and height."""
+    aois = pl.DataFrame({
+        'aoi': ['A'],
+        'x': [0.0],
+        'y': [0.0],
+        'width': [100.0],
+        'height': [100.0],
+    })
+    return TextStimulus(
+        aois=aois,
+        aoi_column='aoi',
+        start_x_column='x',
+        start_y_column='y',
+        width_column='width',
+        height_column='height',
+    )
+
+
 @pytest.fixture(name='stimulus_with_trial_page')
 def _stimulus_with_trial_page() -> TextStimulus:
     """Two AOIs on different (trial, page), same spatial box with labels 'TX' and 'TY'."""
@@ -145,3 +165,28 @@ def _stimulus_overlap() -> TextStimulus:
         },
     )
     return _make_text_stimulus(df)
+
+
+@pytest.fixture(name='stimulus_with_trials')
+def _stimulus_with_trials() -> TextStimulus:
+    # Two AOIs with different trial ids - rectangles do not overlap.
+    # THis time using width and height, not end-x/y
+    df = pl.DataFrame(
+        {
+            'label': ['A', 'B', 'C', 'D'],
+            'sx': [0.0, 20.0, -20., -20.],
+            'sy': [0.0, 20.0, -20., -20.],
+            'w': [10.0, 10.0, 2., 4.],
+            'h': [10.0, 10.0, 2., 4.],
+            'trial': [1, 2, 1, 1],
+        },
+    )
+    return TextStimulus(
+        aois=df,
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        width_column='w',
+        height_column='h',
+        trial_column='trial',
+    )

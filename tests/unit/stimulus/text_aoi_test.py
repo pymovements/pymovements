@@ -195,3 +195,19 @@ def test_get_aoi_invalid_coordinates_warns_and_returns_none(mode: str, x: Any, y
 
     assert out.height == 1
     assert out.select(stim.aoi_column).item() is None
+
+
+@pytest.mark.parametrize('row_has_trial_key,trial_value', [(False, None), (True, None)])
+def test_get_aoi_skips_trial_filter_when_row_trial_missing_or_none(
+    stimulus_with_trials: TextStimulus, row_has_trial_key: bool, trial_value: float,
+) -> None:
+    # Row targets coordinates inside AOI 'A'. We either omit the 'trial' key or set it to None.
+    row = {'__x': 5.0, '__y': 5.0}
+    if row_has_trial_key:
+        row['trial'] = trial_value
+
+    aoi = stimulus_with_trials.get_aoi(row=row, x_eye='__x', y_eye='__y')
+
+    # Without an effective trial value, AOIs are not pre-filtered - the spatial match
+    # should still return the single matching AOI 'A'.
+    assert aoi.select('label').item() == 'A'

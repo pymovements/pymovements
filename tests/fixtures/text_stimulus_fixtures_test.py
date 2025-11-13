@@ -20,6 +20,9 @@
 """Basic self-test for shared TextStimulus fixtures."""
 from __future__ import annotations
 
+from collections.abc import Sized
+
+import polars
 import pytest
 
 from pymovements.stimulus.text import TextStimulus
@@ -47,27 +50,43 @@ def test_fixtures_provide_textstimulus(request: pytest.FixtureRequest, fixture_n
 
 
 @pytest.mark.parametrize(
-    ('fixture_name', 'row', 'expect_none'),
+    ('fixture_name', 'row', 'expect', 'expect_multiple'),
     [
-        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 1, 'page': 'X'}, False),
-        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 1, 'page': 'Z'}, True),
-        ('stimulus_only_trial', {'x': 5, 'y': 5, 'trial': 1}, False),
-        ('stimulus_only_trial', {'x': 5, 'y': 5, 'trial': 3}, True),
-        ('stimulus_only_page', {'x': 5, 'y': 5, 'page': 'X'}, False),
-        ('stimulus_only_page', {'x': 5, 'y': 5, 'page': 'Z'}, True),
+        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 1, 'page': 'X'}, 'A1', False),
+        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 2, 'page': 'X'}, 'A2', False),
+        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 2, 'page': 'Y'}, None, False),
+        ('stimulus_both_columns', {'x': 15, 'y': 5, 'trial': 1, 'page': 'Y'}, 'B1', False),
+        ('stimulus_both_columns', {'x': 15, 'y': 5, 'trial': 2, 'page': 'Y'}, None, False),
+        ('stimulus_both_columns', {'x': 5, 'y': 5, 'trial': 1, 'page': 'Z'}, None, False),
+        ('stimulus_only_trial', {'x': 5, 'y': 5, 'trial': 1}, 'T1', False),
+        ('stimulus_only_trial', {'x': 5, 'y': 5, 'trial': 3}, None, False),
+        ('stimulus_only_page', {'x': 5, 'y': 5, 'page': 'X'}, 'PX', False),
+        ('stimulus_only_page', {'x': 5, 'y': 5, 'page': 'Z'}, None, False),
+        ('stimulus_with_trials', {'x': 5, 'y': 5, 'trial': 1}, 'A', False),
+        ('stimulus_with_trials', {'x': 5, 'y': 5, 'trial': 2}, None, False),
+        ('stimulus_with_trials', {'x': 25, 'y': 25, 'trial': 1}, None, False),
+        ('stimulus_with_trials', {'x': 25, 'y': 25, 'trial': 2}, 'B', False),
+        ('stimulus_with_trials', {'x': 25, 'y': 25, 'trial': 2}, 'B', False),
+        ('stimulus_with_trials', {'x': -19, 'y': -19, 'trial': 1}, ['C', 'D'], True),
+        ('stimulus_with_trials', {'x': -17, 'y': -17, 'trial': 1}, 'D', False),
     ],
 )
 def test_fixtures_basic_get_aoi(
-    request: pytest.FixtureRequest, fixture_name: str, row: dict, expect_none: bool,
+        request: pytest.FixtureRequest, fixture_name: str, row: dict,
+        expect: Sized, expect_multiple: bool,
 ) -> None:
     stim: TextStimulus = request.getfixturevalue(fixture_name)
-    aoi = stim.get_aoi(row=row, x_eye='x', y_eye='y')
-    assert aoi.shape[0] == 1
-    label = aoi.select(stim.aoi_column).item()
-    if expect_none:
-        assert label is None
+    if expect_multiple:
+        with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
+            aoi = stim.get_aoi(row=row, x_eye='x', y_eye='y')
+        assert aoi.shape[0] == len(expect)
+        labels = polars.Series(aoi.select(stim.aoi_column)).to_list()
+        assert labels == expect
     else:
-        assert label is not None
+        aoi = stim.get_aoi(row=row, x_eye='x', y_eye='y')
+        assert aoi.shape[0] == 1
+        label = aoi.select(stim.aoi_column).item()
+        assert label == expect
 
 
 @pytest.mark.parametrize(
