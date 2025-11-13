@@ -147,6 +147,8 @@ def parse_begaze(
     if metadata_patterns is None:
         metadata_patterns = []
     compiled_metadata_patterns = compile_patterns(metadata_patterns, msg_prefix)
+    # Additionally compile a no-prefix variant for short non-tab metadata lines in header parsing
+    compiled_metadata_patterns_noprefix = compile_patterns(metadata_patterns, '')
 
     additional_columns = get_pattern_keys(compiled_patterns, 'column')
     current_additional = {
@@ -342,8 +344,8 @@ def parse_begaze(
             samples['Stimulus'] = []
             optional_col_map[src_name] = 'Stimulus'
 
-        # Trial: map any header that contains the substring 'trial' (case-insensitive) to 'trial_id',
-        # unless patterns have already created 'trial_id'.
+        # Trial: map any header that contains the substring 'trial' (case-insensitive)
+        # to 'trial_id', unless patterns have already created 'trial_id'.
         trial_src_name = None
         for i, name_lc in enumerate(header_cols_lc):
             if 'trial' in name_lc:
@@ -372,6 +374,16 @@ def parse_begaze(
                         current_additional.update(match.groupdict())
 
             parts = [p.strip() for p in line.rstrip('\n').split('\t')]
+            if len(parts) < 3:
+                # also try metadata patterns (no MSG prefix) on short non-tabular lines
+                for pattern_dict in compiled_metadata_patterns_noprefix.copy():
+                    if match := pattern_dict['pattern'].match(line):
+                        if 'value' in pattern_dict and 'key' in pattern_dict:
+                            metadata[pattern_dict['key']] = pattern_dict['value']
+                        else:
+                            metadata.update(match.groupdict())
+                        compiled_metadata_patterns_noprefix.remove(pattern_dict)
+                continue
 
             # skip if not a sample line
             type_val = parts[header_idx.get('Type', 1)] if header_idx else 'SMP'
@@ -436,7 +448,7 @@ def parse_begaze(
             # Use mapping so we never create duplicate 'Trial' vs 'trial_id'
             for src_col, dst_col in optional_col_map.items():
                 try:
-                    val = parts[header_idx[src_col]]
+                    val: str | None = parts[header_idx[src_col]]
                 except (IndexError, KeyError):
                     # Some exports may have fewer trailing columns on certain lines.
                     # As a conservative fallback for Stimulus/Task-like trailing columns,
