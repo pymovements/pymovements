@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Tests pymovements asc to csv processing - BeGaze."""
 import datetime
+from math import nan
 
 import numpy as np
 import polars as pl
@@ -237,8 +238,8 @@ def _begaze_binocular_text():
     [
         (
             'L',
-            [10.0, 11.0, float('nan')],
-            [20.0, 21.0, float('nan')],
+            [10.0, 11.0, nan],
+            [20.0, 21.0, nan],
             [3.0, 3.1, 0.0],
             ['fixation_begaze', 'saccade_begaze', 'blink_begaze'],
             [10000000.1, 10000001.1, 10000002.1],
@@ -249,7 +250,7 @@ def _begaze_binocular_text():
             'R',
             [110.0, 111.0, 112.0],
             [120.0, 121.0, 122.0],
-            [4.0, 4.1, float('nan')],
+            [4.0, 4.1, nan],
             ['saccade_begaze', 'fixation_begaze'],
             [10000000.1, 10000001.1],
             [10000000.1, 10000002.1],
