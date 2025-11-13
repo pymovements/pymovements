@@ -27,7 +27,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.gaze import io
-from pymovements.gaze._utils import parsing_begaze
+from pymovements.gaze._utils import _parsing_begaze
 from pymovements.gaze.experiment import Experiment
 
 BEGAZE_TEXT = r"""
@@ -197,7 +197,7 @@ EXPECTED_METADATA_BEGAZE = {
 def test_parse_begaze(make_text_file, body, expected_gaze, expected_event):
     filepath = make_text_file(filename='sub.txt', body=body, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
         filepath,
         patterns=PATTERNS,
         metadata_patterns=METADATA_PATTERNS,
@@ -275,7 +275,7 @@ def test_parse_begaze_binocular_parametrized(
         encoding='ascii',
     )
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
         p, prefer_eye=prefer_eye,
     )
 
@@ -448,7 +448,7 @@ def test_parse_begaze_generic_info_only(
     # When only a generic 'Info' column exists, events should be derived from it.
     p = make_text_file(filename='begaze_info_only.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(p, prefer_eye=prefer_eye)
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye=prefer_eye)
 
     # times in ms
     assert gaze_df['time'].to_list() == expected_time
@@ -475,7 +475,7 @@ def test_parse_begaze_regex_fallback_minimal(make_text_file, text):
     # No header row: should use the legacy regex path BEGAZE_SAMPLE.
     p = make_text_file(filename='begaze_regex_only.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, _ = parsing_begaze.parse_begaze(
+    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(
         p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
     )
 
@@ -503,7 +503,7 @@ def test_parse_begaze_initial_dash_no_event(make_text_file, text):
     # The first labelled event occurs only after an initial '-' value.
     p = make_text_file(filename='begaze_initial_dash.txt', body=text, encoding='ascii')
 
-    _, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    _, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # Only one fixation event starting from the second sample.
     assert event_df['name'].to_list() == ['fixation_begaze']
@@ -523,7 +523,7 @@ def test_parse_begaze_missing_stimulus_column(make_text_file):
     )
     p = make_text_file(filename='begaze_no_stimulus.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, metadata = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     assert metadata['tracked_eye'] == 'L'
     assert gaze_df.shape == (2, len(gaze_df.columns))
@@ -544,7 +544,7 @@ def test_parse_begaze_non_ascii_stimulus_utf16(make_text_file):
     )
     p = make_text_file(filename='begaze_utf8_stimulus.txt', body=text, encoding='utf-16')
 
-    gaze_df, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L', encoding='utf-16')
+    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L', encoding='utf-16')
 
     # Basic assertions - presence of non-ASCII should not cause errors.
     assert gaze_df.shape[0] == 2
@@ -562,7 +562,7 @@ def test_parse_begaze_plane_values_stability(make_text_file):
     )
     p = make_text_file(filename='begaze_plane_values.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, _ = parsing_begaze.parse_begaze(p, prefer_eye='L')
+    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
     # Blink row forces NaN x/y and pupil 0.0
     assert np.isnan(gaze_df['x_pix'].to_list()[1])

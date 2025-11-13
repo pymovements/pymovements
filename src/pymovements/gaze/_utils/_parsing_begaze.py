@@ -35,7 +35,7 @@ import warnings
 import numpy as np
 import polars as pl
 
-from pymovements.gaze._utils.parsing import compile_patterns, get_pattern_keys, \
+from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
     check_nan, _calculate_data_loss_ratio
 
 # Regular expressions for BeGaze header metadata lines with named groups.
@@ -56,12 +56,12 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
         if match := regex.match(line):
             groupdict = match.groupdict()
             # Casting and processing for known fields
-            if 'sampling_rate' in groupdict and groupdict['sampling_rate'] is not None:
+            if groupdict.get('sampling_rate') is not None:
                 try:
                     groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
                 except ValueError:
                     pass
-            if 'date' in groupdict and groupdict['date']:
+            if groupdict.get('date') is not None:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:
                     groupdict['datetime'] = datetime.datetime.strptime(
