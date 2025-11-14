@@ -31,9 +31,11 @@ https://github.com/pymovements/pymovements/issues/new/choose) or write us at
 
 ## Code of Conduct
 
-Everyone participating in the pymovements project, and in particular in our issue tracker and pull
-requests, is expected to treat other people with respect and more generally to follow the guidelines
-articulated in the [Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
+Everyone participating in the pymovements project, including in issues, pull requests,
+discussions, and any other community spaces, is expected to treat others with respect
+and to contribute to an open, welcoming, and inclusive environment.
+
+Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) for full details.
 
 ## Reporting Bugs
 
@@ -207,10 +209,10 @@ If you add a new feature, please also include appropriate tests to verify its in
 functionality. We try to keep our code coverage close to 100%.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.9 environment use:
+only test event-related functionality using the Python 3.10 environment use:
 
 ```bash
-tox -e py39 -- tests/unit/events
+tox -e py310 -- tests/unit/events
 ```
 
 ### Documentation

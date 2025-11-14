@@ -29,8 +29,64 @@ from matplotlib import figure
 
 from pymovements import Events
 from pymovements import Experiment
+from pymovements import Gaze
 from pymovements.gaze import from_numpy
 from pymovements.plotting import scanpathplot
+
+
+@pytest.fixture(name='make_events', scope='function')
+def make_events_fixture():
+    def _make_events_fixture(name: str) -> Events:
+        if name == '0_events':
+            events = pl.DataFrame(
+                schema={
+                    'trial': pl.Int64,
+                    'name': pl.String,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'duration': pl.Int64,
+                    'location': pl.List(pl.Int64),
+                },
+            )
+        elif name == '1_fixation':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1],
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'duration': [1],
+                    'location': [(1, 2)],
+                },
+            )
+        elif name == '2_fixations':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1, 1],
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 2],
+                    'offset': [1, 3],
+                    'duration': [1, 1],
+                    'location': [(1, 2), (2, 3)],
+                },
+            )
+        elif name == '3_events':
+            events = pl.DataFrame(
+                data={
+                    'trial': [1, 1, 1],
+                    'name': ['fixation', 'saccade', 'foo'],
+                    'onset': [0, 2, 5],
+                    'offset': [1, 3, 9],
+                    'duration': [1, 1, 4],
+                    'location': [(1, 2), (2, 3), (5, 5)],
+                },
+            )
+        else:
+            raise ValueError(f'{name} not supported as events fixture name')
+
+        return Events(events)
+
+    return _make_events_fixture
 
 
 @pytest.fixture(
@@ -43,84 +99,56 @@ from pymovements.plotting import scanpathplot
     ],
     scope='function',
 )
-def event_fixture(request):
-    if request.param == '0_events':
-        events = pl.DataFrame(
-            schema={
-                'trial': pl.Int64,
-                'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
-                'location': pl.List(pl.Int64),
-            },
+def event_fixture(request, make_events):
+    yield make_events(request.param)
+
+
+@pytest.fixture(name='make_gaze', scope='function')
+def make_gaze_fixture(make_events):
+    def _make_gaze_fixture(name: str) -> Gaze:
+        events = make_events(name)
+
+        experiment = Experiment(
+            screen_width_px=1280,
+            screen_height_px=1024,
+            screen_width_cm=38,
+            screen_height_cm=30,
+            distance_cm=68,
+            origin='upper left',
+            sampling_rate=1000.0,
         )
-    elif request.param == '1_fixation':
-        events = pl.DataFrame(
-            data={
-                'trial': [1],
-                'name': ['fixation'],
-                'onset': [0],
-                'offset': [1],
-                'duration': [1],
-                'location': [(1, 2)],
-            },
+        x = np.arange(-100, 100)
+        y = np.arange(-100, 100)
+        arr = np.column_stack((x, y)).transpose()
+        gaze = from_numpy(
+            samples=arr,
+            schema=['x_pix', 'y_pix'],
+            experiment=experiment,
+            pixel_columns=['x_pix', 'y_pix'],
         )
-    elif request.param == '2_fixations':
-        events = pl.DataFrame(
-            data={
-                'trial': [1, 1],
-                'name': ['fixation', 'fixation'],
-                'onset': [0, 2],
-                'offset': [1, 3],
-                'duration': [1, 1],
-                'location': [(1, 2), (2, 3)],
-            },
-        )
-    elif request.param == '3_events':
-        events = pl.DataFrame(
-            data={
-                'trial': [1, 1, 1],
-                'name': ['fixation', 'saccade', 'foo'],
-                'onset': [0, 2, 5],
-                'offset': [1, 3, 9],
-                'duration': [1, 1, 4],
-                'location': [(1, 2), (2, 3), (5, 5)],
-            },
-        )
-    else:
-        raise ValueError(f'{request.param} not supported as dataset mock')
 
-    yield Events(events)
+        gaze.events = events
+
+        gaze.pix2deg()
+        gaze.pos2vel()
+
+        return gaze
+
+    return _make_gaze_fixture
 
 
-@pytest.fixture(name='gaze', scope='function')
-def gaze_fixture(events):
-    experiment = Experiment(
-        screen_width_px=1280,
-        screen_height_px=1024,
-        screen_width_cm=38,
-        screen_height_cm=30,
-        distance_cm=68,
-        origin='upper left',
-        sampling_rate=1000.0,
-    )
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    arr = np.column_stack((x, y)).transpose()
-    gaze = from_numpy(
-        samples=arr,
-        schema=['x_pix', 'y_pix'],
-        experiment=experiment,
-        pixel_columns=['x_pix', 'y_pix'],
-    )
-
-    gaze.events = events
-
-    gaze.pix2deg()
-    gaze.pos2vel()
-
-    yield gaze.clone()
+@pytest.fixture(
+    name='gaze',
+    params=[
+        '0_events',
+        '1_fixation',
+        '2_fixations',
+        '3_events',
+    ],
+    scope='function',
+)
+def gaze_fixture(request, make_gaze):
+    yield make_gaze(request.param)
 
 
 @pytest.mark.parametrize(
@@ -211,6 +239,30 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
     mock.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ('make_gaze_param', 'event_name', 'expected_n_circles'),
+    [
+        pytest.param('0_events', 'fixation', 0, id='fixation'),
+        pytest.param('0_events', 'saccade', 0, id='fixation'),
+        pytest.param('1_fixation', 'fixation', 1, id='fixation'),
+        pytest.param('1_fixation', 'saccade', 0, id='fixation'),
+        pytest.param('2_fixations', 'fixation', 2, id='fixation'),
+        pytest.param('3_events', 'fixation', 1, id='fixation'),
+        pytest.param('3_events', 'saccade', 1, id='saccade'),
+        pytest.param('3_events', 'foo', 1, id='foo'),
+    ],
+)
+def test_scanpathplot_filter_events_plots_expected_circles(
+        make_gaze_param, event_name, expected_n_circles, make_gaze,
+):
+    gaze = make_gaze(make_gaze_param)
+    _, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
+    plt.close()
+
+    assert all(isinstance(patch, plt.Circle) for patch in ax.patches)
+    assert len(ax.patches) == expected_n_circles
+
+
 def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
@@ -255,7 +307,6 @@ def test_scanpathplot_gaze_events_all_none_exception():
 
 
 def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
-    gaze = gaze.clone()
     gaze.samples = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(events=None, gaze=gaze, add_traceplot=True)
@@ -263,7 +314,6 @@ def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
 
 
 def test_scanpathplot_gaze_events_none_exception(gaze):
-    gaze = gaze.clone()
     gaze.events = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(gaze=gaze)
@@ -285,7 +335,6 @@ def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
 
 def test_scanpathplot_no_experiment(gaze):
     # test if gaze is not None and gaze.experiment is not None:
-    gaze = gaze.clone()
     gaze.experiment = None
     # Should not raise any exception
     scanpathplot(gaze=gaze, show=False)
