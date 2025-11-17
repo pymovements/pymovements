@@ -461,34 +461,6 @@ def test_parse_begaze_generic_info_only(
 @pytest.mark.parametrize(
     'text', [
         (
-            '10000000123\tSMP\t1\t10.50\t20.75\t3.00\t0\t1\t1\tFixation\tstim.bmp\n'
-            '10000001123\tMSG\t1\t# Message: START_TRIAL_1\n'
-            '10000002123\tSMP\t1\t10.60\t20.85\t3.10\t0\t1\t1\tSaccade\tstim.bmp\n'
-        ),
-        (
-            '10000000123 SMP 1 10.50 20.75 3.00 0 1 1 Fixation stim.bmp\n'
-            '10000001123 MSG 1 # Message: START_TRIAL_1\n'
-            '10000002123 SMP 1 10.60 20.85 3.10 0 1 1 Saccade stim.bmp\n'
-        ),
-    ], ids=['tabs', 'spaces'],
-)
-def test_parse_begaze_regex_fallback_minimal(make_text_file, text):
-    # No header row: should use the legacy regex path BEGAZE_SAMPLE.
-    p = make_text_file(filename='begaze_regex_only.txt', body=text, encoding='ascii')
-
-    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(
-        p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
-    )
-
-    # basic sanity
-    assert gaze_df.shape[0] == 2
-    assert event_df.shape[0] >= 1
-    assert 'trial_id' in gaze_df.columns  # pattern captured from message
-
-
-@pytest.mark.parametrize(
-    'text', [
-        (
             '## [BeGaze]\n'
             '## Date:\t08.03.2023 09:25:20\n'
             '## Sample Rate:\t1000\n'
@@ -511,68 +483,236 @@ def test_parse_begaze_initial_dash_no_event(make_text_file, text):
     assert event_df['onset'].to_list() == [10000001.1]
 
 
-def test_parse_begaze_missing_stimulus_column(make_text_file):
-    # Header without a Stimulus column should still parse samples and events.
+@pytest.mark.parametrize(
+    (
+        'text, encoding, prefer_eye, expect_tracked_eye, expected_event_names, '
+        'expect_nan_row_idx, expect_pupil_zero_row_idx, expected_rows'
+    ),
+    [
+        (
+            # Header without a Stimulus column should still parse samples and events.
+            '## [BeGaze]\n'
+            '## Date:\t08.03.2023 09:25:20\n'
+            '## Sample Rate:\t1000\n'
+            'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+            '\tPupil Confidence\tL Event Info\n'
+            '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
+            '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\n',
+            'ascii', 'L', 'L', ['fixation_begaze', 'saccade_begaze'], None, None, 2,
+        ),
+        (
+            # Non-ASCII in Stimulus should parse if encoding is provided.
+            '## [BeGaze]\n'
+            '## Date:\t08.03.2023 09:25:20\n'
+            '## Sample Rate:\t1000\n'
+            'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+            '\tPupil Confidence\tL Event Info\tStimulus\n'
+            '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\tGröße_치맥.bmp\n'
+            '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\tGröße_치맥.bmp\n',
+            'utf-16', 'L', 'L', ['fixation_begaze', 'saccade_begaze'], None, None, 2,
+        ),
+        (
+            # Plane values -1 and >0 should not affect parsing logic - Blink row
+            # forces NaNs and 0.0.
+            'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
+            '\tPupil Confidence\tR Plane\tL Event Info\n'
+            '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\t-1\tFixation\n'
+            '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\t2\tBlink\n'
+            '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\t1\tFixation\n',
+            'ascii', 'L', None, ['fixation_begaze', 'blink_begaze', 'fixation_begaze'], 1, 1, 3,
+        ),
+    ],
+    ids=['no_stimulus', 'non_ascii_stimulus', 'plane_values'],
+)
+def test_parse_begaze_misc_samples(
+    make_text_file,
+    text,
+    encoding,
+    prefer_eye,
+    expect_tracked_eye,
+    expected_event_names,
+    expect_nan_row_idx,
+    expect_pupil_zero_row_idx,
+    expected_rows,
+):
+    p = make_text_file(filename='begaze_misc.txt', body=text, encoding=encoding)
+
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
+        p, prefer_eye=prefer_eye, encoding=encoding,
+    )
+
+    if expect_tracked_eye is not None:
+        assert metadata['tracked_eye'] == expect_tracked_eye
+    assert gaze_df.shape[0] == expected_rows
+    assert event_df['name'].to_list() == expected_event_names
+    if expect_nan_row_idx is not None:
+        assert np.isnan(gaze_df['x_pix'].to_list()[expect_nan_row_idx])
+        assert np.isnan(gaze_df['y_pix'].to_list()[expect_nan_row_idx])
+    if expect_pupil_zero_row_idx is not None:
+        assert gaze_df['pupil'].to_list()[expect_pupil_zero_row_idx] == 0.0
+
+
+@pytest.mark.parametrize(
+    'text, prefer_eye, expected_tracked_eye, expected_rows, expected_events_rows, extra_assert',
+    [
+        pytest.param(
+            # Space-separated header: tracked_eye detected but no samples parsed
+            '## [BeGaze]\n'
+            '## Date: 08.03.2023 09:25:20\n'
+            '## Sample Rate: 1000\n'
+            'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
+            'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
+            '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
+            'L', 'L', 0, 0, None,
+            id='space_header_no_samples_L',
+        ),
+        pytest.param(
+            '## [BeGaze]\n'
+            '## Date: 08.03.2023 09:25:20\n'
+            '## Sample Rate: 1000\n'
+            'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
+            'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
+            '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
+            'R', 'R', 0, 0, None,
+            id='space_header_no_samples_R',
+        ),
+        pytest.param(
+            # No eye columns in header -> no samples/events, but sampling_rate captured
+            '## [BeGaze]\n'
+            '## Date:\t08.03.2023 09:25:20\n'
+            '## Sample Rate:\t1000\n'
+            'Time\tType\tTrial\tPupil Confidence\tInfo\n'
+            '10000000100\tSMP\t1\t1\tFixation\n',
+            'L', None, 0, 0, lambda meta: meta['sampling_rate'] == 1000.0,
+            id='no_eye_columns_no_samples',
+        ),
+    ],
+)
+def test_parse_begaze_unparseable_or_missing_eye_headers(
+        make_text_file, text, prefer_eye, expected_tracked_eye, expected_rows, expected_events_rows,
+        extra_assert,
+):
+    p = make_text_file(filename='begaze_header_cases.txt', body=text, encoding='ascii')
+    gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye=prefer_eye)
+    if expected_tracked_eye is not None:
+        assert metadata['tracked_eye'] == expected_tracked_eye
+    assert gaze_df.shape[0] == expected_rows
+    assert event_df.shape[0] == expected_events_rows
+    if extra_assert is not None:
+        assert extra_assert(metadata)
+
+
+def test_parse_begaze_no_eye_columns_disables_header_parsing(make_text_file):
+    # Header present but miss eye columns entirely. Should not parse samples.
     text = (
         '## [BeGaze]\n'
         '## Date:\t08.03.2023 09:25:20\n'
         '## Sample Rate:\t1000\n'
-        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
-        '\tPupil Confidence\tL Event Info\n'
-        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
-        '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\n'
+        'Time\tType\tTrial\tPupil Confidence\tInfo\n'
+        '10000000100\tSMP\t1\t1\tFixation\n'
+        '10000001100\tSMP\t1\t1\tSaccade\n'
     )
-    p = make_text_file(filename='begaze_no_stimulus.txt', body=text, encoding='ascii')
+    p = make_text_file(filename='begaze_no_eye_cols.txt', body=text, encoding='ascii')
 
     gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
-    assert metadata['tracked_eye'] == 'L'
-    assert gaze_df.shape == (2, len(gaze_df.columns))
-    assert event_df['name'].to_list() == ['fixation_begaze', 'saccade_begaze']
+    assert gaze_df.shape[0] == 0
+    assert event_df.shape[0] == 0
+    # header-derived metadata still present
+    assert metadata['sampling_rate'] == 1000.0
 
 
-def test_parse_begaze_non_ascii_stimulus_utf16(make_text_file):
-    # Non-ASCII in Stimulus should parse if encoding is provided.
-    stimulus = 'Größe_치맥.bmp'
+@pytest.mark.parametrize(
+    'row, eye, header_idx, expected',
+    [
+        (
+            ['t', 'SMP', '1', 'Fixation', 'Saccade'], 'L', {
+                'L Event Info': 3, 'R Event Info': 4,
+            }, 'Fixation',
+        ),
+        (
+            ['t', 'SMP', '1', 'Fixation', 'Saccade'], 'R', {
+                'L Event Info': 3, 'R Event Info': 4,
+            }, 'Saccade',
+        ),
+        (['t', 'SMP', '1', 'Blink'], 'L', {'Info': 3}, 'Blink'),
+        (['t', 'SMP', '1', 'Blink'], 'R', {'Info': 3}, 'Blink'),
+        (['t', 'SMP', '1', 'Fixation', 'Saccade'], 'L', {}, '-'),
+    ],
+)
+def test_parse_event_for_eye_helpers_param(row, eye, header_idx, expected):
+    assert _parsing_begaze.parse_event_for_eye(row, eye, header_idx) == expected
+
+
+def test_metadata_parsing_exceptions_on_header_lines(make_text_file):
+    # Ensure ValueError branches in meta parsing are exercised.
+    # Non-numeric sampling rate and malformed date should not crash.
     text = (
         '## [BeGaze]\n'
-        '## Date:\t08.03.2023 09:25:20\n'
-        '## Sample Rate:\t1000\n'
-        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
-        '\tPupil Confidence\tL Event Info\tStimulus\n'
-        f'10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\t{stimulus}\n'
-        f'10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\t{stimulus}\n'
+        '## Date:\t2023/03/08 09:25:20\n'  # malformed for strptime
+        '## Sample Rate:\tabc\n'  # non-numeric
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+        'Pupil Confidence\tL Event Info\n'
+        '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n'
     )
-    p = make_text_file(filename='begaze_utf8_stimulus.txt', body=text, encoding='utf-16')
+    p = make_text_file(filename='begaze_bad_meta.txt', body=text, encoding='ascii')
 
-    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L', encoding='utf-16')
+    _, _, meta = _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
-    # Basic assertions - presence of non-ASCII should not cause errors.
-    assert gaze_df.shape[0] == 2
-    assert event_df['name'].to_list() == ['fixation_begaze', 'saccade_begaze']
+    # sampling_rate kept as the original string in metadata due to a failed float cast
+    assert meta['sampling_rate'] == 'abc'
+    # datetime kept as the original string due to failed strptime
+    assert meta['datetime'] == '2023/03/08 09:25:20'
 
 
-def test_parse_begaze_plane_values_stability(make_text_file):
-    # Plane values -1 and >0 should not affect parsing logic.
-    text = (
-        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
-        '\tPupil Confidence\tR Plane\tL Event Info\n'
-        '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\t-1\tFixation\n'
-        '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\t2\tBlink\n'
-        '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\t1\tFixation\n'
+@pytest.mark.parametrize(
+    'text, metadata_patterns, expected_keys',
+    [
+        (
+            # compiled_metadata_patterns branch matches (len(parts) < 3), sets keys
+            # and removes patterns
+            '## [BeGaze]\n'
+            'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+            'Pupil Confidence\tL Event Info\n'
+            'META_ONE: foo\n'
+            'META_BOOL\n'
+            '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n',
+            [
+                {'pattern': r'^META_ONE: (?P<meta_one>\w+)$'},
+                {'pattern': r'^META_BOOL$', 'key': 'meta_bool', 'value': True},
+            ],
+            {'meta_one': 'foo', 'meta_bool': True},
+        ),
+        (
+            # raw string metadata_patterns branch matches (len(parts) < 3)
+            '## [BeGaze]\n'
+            'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+            'Pupil Confidence\tL Event Info\n'
+            'RAW_ONE: bar\n'
+            '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n',
+            [r'^RAW_ONE: (?P<raw_one>\w+)$'],
+            {'raw_one': 'bar'},
+        ),
+        (
+            # Ensure false branch for compiled_metadata_patterns on MSG lines
+            '## [BeGaze]\n'
+            'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\t'
+            'Pupil Confidence\tL Event Info\n'
+            '10000000100\tMSG\t1\t# Message: START_X\n'
+            '10000001100\tSMP\t1\t11\t21\t3.1\t1\tFixation\n',
+            None,
+            {},
+        ),
+    ],
+    ids=['compiled_patterns_len_lt3', 'raw_string_patterns_len_lt3', 'msg_no_meta_patterns'],
+)
+def test_metadata_parsing_various(make_text_file, text, metadata_patterns, expected_keys):
+    p = make_text_file(filename='begaze_meta_various.txt', body=text, encoding='ascii')
+    _, _, meta = _parsing_begaze.parse_begaze(
+        p, prefer_eye='L', metadata_patterns=metadata_patterns,
     )
-    p = make_text_file(filename='begaze_plane_values.txt', body=text, encoding='ascii')
-
-    gaze_df, event_df, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
-
-    # Blink row forces NaN x/y and pupil 0.0
-    assert np.isnan(gaze_df['x_pix'].to_list()[1])
-    assert np.isnan(gaze_df['y_pix'].to_list()[1])
-    assert gaze_df['pupil'].to_list()[1] == 0.0
-    # Events should be fixation -> blink -> fixation
-    assert event_df['name'].to_list() == [
-        'fixation_begaze', 'blink_begaze', 'fixation_begaze',
-    ]
+    for k, v in expected_keys.items():
+        assert meta.get(k) == v
 
 
 def exp_with_flags(sampling_rate: float, left: bool, right: bool) -> Experiment:
