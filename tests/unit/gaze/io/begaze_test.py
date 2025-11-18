@@ -153,6 +153,22 @@ def test_from_begaze_definition_kwargs_and_overrides(
             None,
             id='invalid_resolution_non_iterable_sets_none_no_warning',
         ),
+        pytest.param(
+            # Pre-set left=True, matching parsed 'L' -> no warning, elif not taken
+            {'sampling_rate': 500.0},
+            {'sampling_rate': 500.0, 'tracked_eye': 'L'},
+            (None, None),
+            None,
+            id='left_preset_matches_parsed_no_warning',
+        ),
+        pytest.param(
+            # Pre-set right=True, matching parsed 'R' -> no warning, elif not taken
+            {'sampling_rate': 500.0},
+            {'sampling_rate': 500.0, 'tracked_eye': 'R'},
+            (None, None),
+            None,
+            id='right_preset_matches_parsed_no_warning',
+        ),
     ],
 )
 def test_fill_experiment_from_parsing_begaze_metadata(
@@ -162,10 +178,18 @@ def test_fill_experiment_from_parsing_begaze_metadata(
     experiment: Experiment | None
     if exp_kwargs:
         experiment = Experiment(**exp_kwargs)
-        # Set a conflicting screen to trigger warnings in the second case
-        experiment.screen.width_px = 1280
-        experiment.screen.height_px = 720
-        # Keep tracked-eye flags as None to avoid unrelated warnings in this test
+        # Set a conflicting screen to trigger warnings when resolution is provided in metadata
+        if 'resolution' in metadata:
+            experiment.screen.width_px = 1280
+            experiment.screen.height_px = 720
+        # For the matching-left/right cases, preset corresponding flags to True
+        tracked = (metadata.get('tracked_eye') or '')
+        if tracked == 'L':
+            experiment.eyetracker.left = True
+            experiment.eyetracker.right = False
+        elif tracked == 'R':
+            experiment.eyetracker.left = False
+            experiment.eyetracker.right = True
     else:
         experiment = None
 
@@ -190,3 +214,39 @@ def test_fill_experiment_from_parsing_begaze_metadata(
     # Tracked eye flags set when None else warnings issued above - ensure values are booleans
     assert isinstance(result.eyetracker.left, (bool, type(None)))
     assert isinstance(result.eyetracker.right, (bool, type(None)))
+
+
+def test_from_begaze_with_definition_and_explicit_experiment(make_text_file):
+    filepath = make_text_file(
+        'mini_begaze_explicit.txt',
+        header='',
+        body=BEGAZE_MINI,
+        encoding='ascii',
+    )
+
+    # Definition carries its own experiment and kwargs
+    def_exp = DatasetDefinition(
+        custom_read_kwargs={
+            'gaze': {
+                'encoding': 'ascii',
+            },
+        },
+    )
+
+    # Definition should not override explicit experiment passed
+    explicit_exp = Experiment(sampling_rate=777.0)
+    explicit_exp.screen.width_px = 640
+    explicit_exp.screen.height_px = 480
+
+    gaze = from_begaze(
+        filepath,
+        definition=def_exp,
+        experiment=explicit_exp,
+    )
+
+    # Ensure we kept the explicitly passed experiment (by identity and values)
+    assert gaze.experiment is explicit_exp
+    assert gaze.experiment.eyetracker.sampling_rate in (
+        777.0, explicit_exp.eyetracker.sampling_rate,
+    )
+    assert (gaze.experiment.screen.width_px, gaze.experiment.screen.height_px) == (640, 480)

@@ -246,7 +246,7 @@ def parse_begaze(
     header_cols: list[str] | None = None
     header_idx: dict[str, int] = {}
 
-    for idx, line in enumerate(lines):
+    for idx, line in enumerate(lines):  # pragma: no branch
         if line.startswith('##'):
             # Parse meta line via regexes with named groups
             line_meta = _parse_begaze_meta_line(line.rstrip('\n'))
