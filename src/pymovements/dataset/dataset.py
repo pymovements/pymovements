@@ -814,7 +814,7 @@ class Dataset:
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze, fileinfo_row in tqdm(
+        for gaze in tqdm(
                 self.gaze,
                 total=len(self.gaze),
                 desc='Detecting events',
