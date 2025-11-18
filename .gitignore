@@ -64,3 +64,4 @@ htmlcov/
 tests/preprocessed/
 toy_dataset/
 .DS_Store
+tests/events
