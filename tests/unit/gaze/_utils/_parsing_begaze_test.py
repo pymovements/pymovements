@@ -638,6 +638,7 @@ def test_parse_begaze_no_eye_columns_disables_header_parsing(make_text_file):
         (['t', 'SMP', '1', 'Blink'], 'L', {'Info': 3}, 'Blink'),
         (['t', 'SMP', '1', 'Blink'], 'R', {'Info': 3}, 'Blink'),
         (['t', 'SMP', '1', 'Fixation', 'Saccade'], 'L', {}, '-'),
+        (['t', 'SMP', '1', 'Fixation', 'Saccade'], 'R', {}, '-'),
     ],
 )
 def test_parse_event_for_eye_helpers_param(row, eye, header_idx, expected):
