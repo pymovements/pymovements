@@ -144,3 +144,18 @@ def test_prepare_figure_external_ax_figsize_none_no_warning():
     assert ret_ax is ax
     assert ret_fig is fig
     assert own is False
+
+
+def test_setup_axes_and_colormap_handles_inf_values():
+    # Arrange: create signals with inf
+    x_signal = np.array([np.inf, np.nan])
+    y_signal = np.array([np.nan, np.inf])
+
+    fig, ax, _, _, _, _ = _setup_axes_and_colormap(
+        x_signal=x_signal,
+        y_signal=y_signal,
+        figsize=(10, 5),
+    )
+
+    assert fig is not None
+    assert ax is not None
