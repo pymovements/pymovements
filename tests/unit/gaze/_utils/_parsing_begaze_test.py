@@ -921,8 +921,6 @@ def test_meta_parsing_bad_date_and_sampling_kept(
         assert not isinstance(meta.get('sampling_rate'), (int, float))
 
 
-
-
 @pytest.mark.parametrize('include_pupil_mm', [False, True], ids=['no_pupil_mm', 'with_pupil_mm'])
 def test_missing_pupil_mm_sets_nan(make_text_file, include_pupil_mm):
     # Cover pupil_s fallback to 'nan' when per-eye pupil column missing
