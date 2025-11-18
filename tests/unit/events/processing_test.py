@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test event processing classes."""
+from math import sqrt
+
 import numpy as np
 import polars as pl
 import pytest
@@ -179,36 +181,63 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
     ('events', 'gaze', 'init_kwargs', 'process_kwargs', 'expected_dataframe'),
     [
         pytest.param(
+            pl.from_dict({'name': ['fixation'], 'onset': [0], 'offset': [4]}),
+            Gaze(
+                pl.from_dict({
+                    'time': [0, 1, 2, 3, 4],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+                }),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': None},
             pl.from_dict(
-                {'onset': [0], 'offset': [10]},
-                schema={'onset': pl.Int64, 'offset': pl.Int64},
+                {'name': ['fixation'], 'onset': [0], 'offset': [4], 'peak_velocity': [0.0]},
+            ),
+            id='one_fixation_default_columns_peak_velocity',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7]},
             ),
             Gaze(
-                pl.from_dict(
-                    {'time': np.arange(10), 'x_vel': np.ones(10), 'y_vel': np.zeros(10)},
-                    schema={'time': pl.Int64, 'x_vel': pl.Float64, 'y_vel': pl.Float64},
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+                pl.from_dict({
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                }),
             ),
             {'event_properties': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
                 {
-                    'name': [None],
-                    'onset': [0],
-                    'offset': [10],
-                    'peak_velocity': [1],
-                },
-                schema={
-                    'name': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'peak_velocity': pl.Float64,
+                    'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7],
+                    'peak_velocity': [0.0, sqrt(2)],
                 },
             ),
-            id='peak_velocity_single_event_complete_window_no_trials',
+            id='two_events_default_columns_peak_velocity',
         ),
 
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade', 'blink'], 'onset': [0, 3, 7], 'offset': [2, 6, 7]},
+            ),
+            Gaze(
+                pl.from_dict({
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 1]],
+                }),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade', 'blink'],
+                    'onset': [0, 3, 7], 'offset': [2, 6, 7],
+                    'peak_velocity': [0.0, 1, sqrt(2)],
+                },
+            ),
+            id='three_events_default_columns_peak_velocity',
+        ),
 
         pytest.param(
             pl.from_dict(

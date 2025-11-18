@@ -191,12 +191,12 @@ class EventGazeProcessor:
         property_values = defaultdict(list)
         for event in events_frame.iter_rows(named=True):
             # Find gaze samples that belong to the current event.
-            filtered_gaze = gaze.samples.filter(
+            event_samples = gaze.samples.filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
                 *[pl.col(identifier) == event[identifier] for identifier in trial_identifiers],
             )
             # Compute event property values.
-            values = filtered_gaze.select(
+            values = event_samples.select(
                 [
                     this_property_expression(**this_property_kwargs)
                     .alias(this_property_name)
