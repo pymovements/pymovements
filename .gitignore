@@ -55,13 +55,13 @@ docs/source/tutorials/data
 docs/jupyter_execute
 
 # Testing
-.tox
 .coverage
 .coverage.*
+.DS_Store
+.tox
 benchmark-data.json
 coverage.xml
 htmlcov/
+tests/events
 tests/preprocessed/
 toy_dataset/
-.DS_Store
-tests/events
