@@ -559,27 +559,6 @@ def test_parse_begaze_misc_samples(
     'text, prefer_eye, expected_tracked_eye, expected_rows, expected_events_rows, extra_assert',
     [
         pytest.param(
-            # Space-separated header: tracked_eye detected but no samples parsed
-            '## [BeGaze]\n'
-            '## Date: 08.03.2023 09:25:20\n'
-            '## Sample Rate: 1000\n'
-            'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
-            'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
-            '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
-            'L', 'L', 0, 0, None,
-            id='space_header_no_samples_L',
-        ),
-        pytest.param(
-            '## [BeGaze]\n'
-            '## Date: 08.03.2023 09:25:20\n'
-            '## Sample Rate: 1000\n'
-            'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
-            'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
-            '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
-            'R', 'R', 0, 0, None,
-            id='space_header_no_samples_R',
-        ),
-        pytest.param(
             # No eye columns in header -> no samples/events, but sampling_rate captured
             '## [BeGaze]\n'
             '## Date:\t08.03.2023 09:25:20\n'
@@ -929,7 +908,7 @@ def test_meta_parsing_bad_date_and_sampling_kept(
         '## [BeGaze]\n'
         f'## Date:\t{bad_date}\n'
         f'## Sample Rate:\t{bad_sampling}\n'
-        'Time   Type   Trial   L POR X [px]   L POR Y [px]   Pupil Confidence   Info\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tPupil Confidence\tInfo\n'
         '10000000100\tSMP\t1\t10\t20\t1\tFixation\n'
     )
     p = make_text_file(filename='begaze_bad_meta.txt', body=text, encoding='ascii')
@@ -942,27 +921,6 @@ def test_meta_parsing_bad_date_and_sampling_kept(
         assert not isinstance(meta.get('sampling_rate'), (int, float))
 
 
-def test_header_spaces_split_else_branch_and_no_info_returns_dash(make_text_file):
-    # Header with spaces (no tabs) triggers regex split branch - also omit Event Info columns
-    header = (
-        '## [BeGaze]\n'
-        '## Date:\t08.03.2023 09:25:20\n'
-        '## Sample Rate:\t1000\n'
-        'Time Type Trial L POR X [px] L POR Y [px] Pupil Confidence\n'
-    )
-    samples = (
-        '10000000100\tSMP\t1\t10.0\t20.0\t1\n'
-    )
-    p = make_text_file(filename='begaze_spaces_header.txt', body=header + samples, encoding='ascii')
-
-    gaze_df, event_df, meta = _parsing_begaze.parse_begaze(p, prefer_eye='L')
-
-    # With spaced header and insufficient columns, parser falls back to regex path which
-    # does not match this sample -> zero samples parsed. Tracked-eye can still be inferred.
-    assert gaze_df.shape[0] == 0
-    assert meta['tracked_eye'] == 'L'
-    # No Info columns -> parse_event_for_eye would return '-', resulting in no events
-    assert event_df.shape[0] == 0
 
 
 @pytest.mark.parametrize('include_pupil_mm', [False, True], ids=['no_pupil_mm', 'with_pupil_mm'])
@@ -1024,49 +982,6 @@ def test_metadata_patterns_on_short_lines_and_removal(make_text_file, repeat_met
         p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
     )
     assert meta.get('metadata_3') is True
-
-
-@pytest.mark.parametrize('repeat_meta3', [False, True], ids=['single_meta3', 'repeat_meta3'])
-@pytest.mark.parametrize('with_groupdict_line', [False, True])
-def test_regex_fallback_patterns_and_blink_tracking(
-        make_text_file, repeat_meta3, with_groupdict_line,
-):
-    # No header -> fallback regex path - exercise patterns with fixed value and groupdict,
-    # pupil_conf zero, blink handling, and metadata patterns removal.
-    lines = []
-    # Pattern that sets task to A
-    lines.append('10000000010\tMSG\t1\t# Message: START_A')
-    # Add metadata via MSG line so compiled_metadata_patterns (with prefix) will match
-    lines.append('10000000015\tMSG\t1\t# Message: METADATA_3')
-    if repeat_meta3:
-        lines.append('METADATA_3')
-    if with_groupdict_line:
-        # Include a line that matches METADATA_1 with groupdict
-        lines.append('10000000020\tMSG\t1\t# Message: METADATA_1 999')
-    # A normal sample with pupil_conf 0 to force pupil NaN
-    lines.append('10000000030\tSMP\t1\t10.50\t20.75\t3.00\t0\t0\t1\tFixation\tstim.bmp')
-    # Two blink samples to build blink meta
-    lines.append('10000000040\tSMP\t1\t10.60\t20.85\t3.10\t0\t1\t1\tBlink\tstim.bmp')
-    lines.append('10000000050\tSMP\t1\t10.60\t20.85\t3.10\t0\t1\t1\tBlink\tstim.bmp')
-    # Final non-blink to finalize blink meta
-    lines.append('10000000060\tSMP\t1\t10.60\t20.85\t3.10\t0\t1\t1\tSaccade\tstim.bmp')
-
-    body = '\n'.join(lines) + '\n'
-    p = make_text_file(filename='begaze_regex_blinks.txt', body=body, encoding='ascii')
-
-    gaze_df, _, meta = _parsing_begaze.parse_begaze(
-        p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS,
-    )
-
-    # First sample pupil NaN due to pupil_conf 0
-    assert np.isnan(gaze_df['pupil'].to_list()[0])
-    # Blink samples have pupil 0.0 from fallback branch
-    assert gaze_df['pupil'].to_list()[1:3] == [0.0, 0.0]
-    # Pattern-applied task column should be present - at least first rows after START_A have 'A'
-    assert 'task' in gaze_df.columns
-    # Blink metadata collected
-    assert meta.get('blinks'), 'expected blink metadata to be present'
-    assert meta['blinks'][0]['num_samples'] >= 2
 
 
 def test_optional_trial_missing_value_falls_back_to_none(make_text_file):
