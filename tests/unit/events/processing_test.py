@@ -193,7 +193,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
             pl.from_dict(
                 {'name': ['fixation'], 'onset': [0], 'offset': [4], 'peak_velocity': [0.0]},
             ),
-            id='one_fixation_default_columns_peak_velocity',
+            id='no_identifier_one_fixation_default_columns_peak_velocity',
         ),
 
         pytest.param(
@@ -214,7 +214,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': [0.0, sqrt(2)],
                 },
             ),
-            id='two_events_default_columns_peak_velocity',
+            id='no_identifier_two_events_default_columns_peak_velocity',
         ),
 
         pytest.param(
@@ -236,7 +236,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': [0.0, 1, sqrt(2)],
                 },
             ),
-            id='three_events_default_columns_peak_velocity',
+            id='no_identifier_three_events_default_columns_peak_velocity',
         ),
 
         pytest.param(
@@ -279,50 +279,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='peak_velocity_single_event_complete_window',
-        ),
-
-        pytest.param(
-            pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
-            ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.ones(10),
-                        'y_vel': np.zeros(10),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
-            ),
-            {'event_properties': 'peak_velocity'},
-            {'identifiers': 'subject_id'},
-            pl.from_dict(
-                {
-                    'subject_id': [1],
-                    'name': [None],
-                    'onset': [0],
-                    'offset': [10],
-                    'peak_velocity': [1],
-                },
-                schema={
-                    'subject_id': pl.Int64,
-                    'name': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'peak_velocity': pl.Float64,
-                },
-            ),
-            id='peak_velocity_custom_columns_single_event_complete_window',
+            id='one_identifier_single_event_complete_window_peak_velocity',
         ),
 
         pytest.param(
@@ -365,7 +322,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='peak_velocity_single_event_half_window',
+            id='one_identifier_single_event_half_window_peak_velocity',
         ),
 
         pytest.param(
@@ -408,7 +365,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'dispersion': pl.Float64,
                 },
             ),
-            id='dispersion_single_event_complete_window',
+            id='one_identifier_single_event_complete_window_dispersion',
         ),
 
         pytest.param(
@@ -451,7 +408,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='peak_velocity_single_event_complete_window',
+            id='one_identifier_single_event_complete_window_peak_velocity',
         ),
 
         pytest.param(
@@ -496,7 +453,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='two_events_different_names_different_peak_velocity',
+            id='one_identifier_two_events_peak_velocity',
         ),
 
         pytest.param(
@@ -541,7 +498,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='two_events_peak_velocity_name_filter',
+            id='one_identifier_two_events_peak_velocity_name_filter',
         ),
 
         pytest.param(
@@ -586,7 +543,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_different_names_different_location',
+            id='one_identifier_two_events_location',
         ),
 
         pytest.param(
@@ -635,7 +592,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_location_method_mean',
+            id='one_identifier_two_events_location_method_mean',
         ),
 
         pytest.param(
@@ -684,7 +641,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_location_method_median',
+            id='one_identifier_two_events_location_method_median',
         ),
 
         pytest.param(
@@ -733,7 +690,101 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_location_position_column_pixel',
+            id='one_identifier_two_events_location_position_column_pixel',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'task': ['A', 'B'], 'trial': [0, 0],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'offset': [3, 8],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            Gaze(
+                pl.from_dict(
+                    {
+                        'task': ['A'] * 10 + ['B'] * 10,
+                        'trial': [0] * 20,
+                        'time': list(range(10)) * 2,
+                        'velocity': [
+                            *[[1, 1]] * 3 + [[0, 0]] * 7,  # task A, trial 0
+                            *[[0, 0]] * 7 + [[1, 0]] * 2 + [[0, 0]],  # task B, trial 0
+                        ],
+                    },
+                    schema={
+                        'task': pl.Utf8, 'trial': pl.Int64,
+                        'time': pl.Int64, 'velocity': pl.List(pl.Float64),
+                    },
+                ),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': ['task', 'trial']},
+            pl.from_dict(
+                {
+                    'task': ['A', 'B'], 'trial': [0, 0],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'offset': [3, 8],
+                    'peak_velocity': [sqrt(2), 1],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='two_identifiers_two_events_peak_velocity',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'task': ['A', 'A', 'B', 'B'], 'trial': [0, 1, 0, 1],
+                    'name': ['fixation', 'saccade', 'fixation', 'saccade'],
+                    'onset': [0, 2, 5, 4], 'offset': [8, 6, 7, 9],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            Gaze(
+                pl.from_dict(
+                    {
+                        'task': ['A'] * 20 + ['B'] * 20,
+                        'trial': [0] * 10 + [1] * 10 + [0] * 10 + [1] * 10,
+                        'time': list(range(10)) * 4,
+                        'velocity': [
+                            *[[1, 1]] * 8 + [[0, 0]] * 2,  # task A, trial 0
+                            *[[1, 1]] * 2 + [[1, 0]] * 4 + [[0, 0]] * 4,  # task A, trial 1
+                            *[[0, 0]] * 5 + [[1, 1]] * 2 + [[0, 0]] * 3,  # task B, trial 0
+                            *[[1, 1]] * 4 + [[0, 0]] * 6,  # task B, trial 1
+                        ],
+                    },
+                    schema={
+                        'task': pl.Utf8, 'trial': pl.Int64,
+                        'time': pl.Int64, 'velocity': pl.List(pl.Float64),
+                    },
+                ),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': ['task', 'trial']},
+            pl.from_dict(
+                {
+                    'task': ['A', 'A', 'B', 'B'], 'trial': [0, 1, 0, 1],
+                    'name': ['fixation', 'saccade', 'fixation', 'saccade'],
+                    'onset': [0, 2, 5, 4], 'offset': [8, 6, 7, 9],
+                    'peak_velocity': [sqrt(2), 1, sqrt(2), 0],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='two_identifiers_four_events_peak_velocity',
         ),
     ],
 )
