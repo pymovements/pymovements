@@ -121,6 +121,7 @@ class Gaze:
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
     n_components: int | None
+        The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
         The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
         None by default, to be populated by I/O helpers (e.g. from_asc).
