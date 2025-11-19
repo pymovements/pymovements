@@ -845,12 +845,9 @@ def test_parsing_returns_expected_metadata(
     metadata_patterns = kwargs.get('metadata_patterns')
     if metadata_patterns is None and 'definition' in kwargs and kwargs['definition'] is not None:
         definition = kwargs['definition']
-        try:
-            metadata_patterns = definition.custom_read_kwargs.get(
-                'gaze', {},
-            ).get('metadata_patterns')
-        except Exception:  # pragma: no cover - robust access in tests
-            metadata_patterns = None
+        metadata_patterns = definition.custom_read_kwargs.get(
+            'gaze', {},
+        ).get('metadata_patterns')
 
     _, _, md, _ = parsing.parse_eyelink(
         filepath,
