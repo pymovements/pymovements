@@ -42,7 +42,7 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan, _calculate_data_loss_ratio
+    check_nan
 
 # Regular expressions for BeGaze header metadata lines with named groups.
 # Note: we compile regexes for performance and to support minor whitespace variations.
@@ -103,6 +103,7 @@ def parse_event_for_eye(row: list[str], eye: str, header_idx: dict[str, int]) ->
 
 def parse_begaze(
         filepath: Path | str,
+        *,
         patterns: list[dict[str, Any] | str] | None = None,
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
@@ -126,13 +127,20 @@ def parse_begaze(
     Parameters
     ----------
     filepath: Path | str
-        file name of file to convert.
+        Path of file to convert.
     patterns: list[dict[str, Any] | str] | None
         List of patterns to match for additional columns. (default: None)
     schema: dict[str, Any] | None
         Dictionary to optionally specify types of columns parsed by patterns. (default: None)
     metadata_patterns: list[dict[str, Any] | str] | None
-        list of patterns to match for additional metadata. (default: None)
+        List of patterns to match for additional metadata. (default: None)
+        Overwrite semantics: if multiple lines match the same metadata key, the last
+        match wins and overwrites any previous value for that key.
+        When metadata patterns are applied to non-sample lines (outside the tabular `SMP` rows),
+        the parser emits a one-time ``RuntimeWarning`` stating that recurring matches will overwrite
+        previous values.
+        Additionally, whenever a specific key is overwritten with a different value,
+        a per-key ``RuntimeWarning`` is emitted indicating the old and new values.
     encoding: str
         Text encoding of the file. (default: 'ascii')
     prefer_eye: str
@@ -237,8 +245,6 @@ def parse_begaze(
     metadata: defaultdict = defaultdict(str)
 
     # Parse simple header metadata from BeGaze '##' lines and the column header row
-    header_datetime: datetime.datetime | None = None
-    header_sampling_rate: float | None = None
     header_tracked_eye: str | None = None
 
     # Find the tabular header line (first non-## line containing 'Time' and 'Type')
@@ -250,16 +256,9 @@ def parse_begaze(
         if line.startswith('##'):
             # Parse meta line via regexes with named groups
             line_meta = _parse_begaze_meta_line(line.rstrip('\n'))
-            if 'datetime' in line_meta:
-                header_datetime = line_meta['datetime']  # type: ignore[assignment]
-            if 'sampling_rate' in line_meta and isinstance(
-                    line_meta['sampling_rate'], (int, float),
-            ):
-                header_sampling_rate = float(line_meta['sampling_rate'])
             # Merge any parsed metadata keys
             for k, v in line_meta.items():
-                if k not in ('datetime',):
-                    metadata[k] = v
+                metadata[k] = v
             continue
         # Tolerant to whitespace: split on any whitespace sequence but prefer tabs if present
         if ('Time' in line and 'Type' in line) and header_row_index is None:
@@ -284,11 +283,6 @@ def parse_begaze(
             # build index map
             header_idx = {name: i for i, name in enumerate(header_cols)} if header_cols else {}
             break
-
-    if header_datetime is not None:
-        metadata['datetime'] = header_datetime
-    if header_sampling_rate is not None:
-        metadata['sampling_rate'] = header_sampling_rate
     if header_tracked_eye is not None:
         metadata['tracked_eye'] = header_tracked_eye
 
@@ -324,7 +318,22 @@ def parse_begaze(
         parse_samples = has_eye_columns('L') or has_eye_columns('R')
 
     # iterate over data lines following the header row
-    assert header_row_index is not None
+    if header_row_index is None:
+        raise ValueError(
+            "BeGaze parser: could not find a tabular header row containing 'Time' and 'Type'.",
+        )
+    # helper for setting metadata with overwrite warnings
+    warned_non_sample_metadata = False
+
+    def _set_metadata_key(key: str, value: Any) -> None:
+        if key in metadata and metadata[key] not in ('', None) and metadata[key] != value:
+            warnings.warn(
+                f"BeGaze parser: metadata key '{key}' is being overwritten "
+                f"(old={metadata[key]!r}, new={value!r}).",
+                RuntimeWarning,
+            )
+        metadata[key] = value
+
     for line in lines[header_row_index + 1:]:
         # Apply message-driven additional columns first
         for pattern_dict in compiled_patterns:
@@ -338,12 +347,20 @@ def parse_begaze(
         parts = [p.strip() for p in line.rstrip('\n').split('\t')]
         if len(parts) < 3:
             # also try metadata patterns on non-sample lines (use unprefixed compiled patterns)
+            if compiled_metadata_patterns and not warned_non_sample_metadata:
+                warnings.warn(
+                    'BeGaze parser: non-sample lines matched by metadata_patterns. '
+                    'Recurring matches will overwrite previous values.',
+                    RuntimeWarning,
+                )
+                warned_non_sample_metadata = True
             for pattern_dict in compiled_metadata_patterns.copy():
                 if match := pattern_dict['pattern'].match(line):
                     if 'value' in pattern_dict and 'key' in pattern_dict:
-                        metadata[pattern_dict['key']] = pattern_dict['value']
+                        _set_metadata_key(pattern_dict['key'], pattern_dict['value'])
                     else:
-                        metadata.update(match.groupdict())
+                        for k, v in match.groupdict().items():
+                            _set_metadata_key(k, v)
                     compiled_metadata_patterns.remove(pattern_dict)
             continue
 
@@ -355,9 +372,10 @@ def parse_begaze(
                 for pattern_dict in compiled_metadata_patterns_prefixed.copy():
                     if match := pattern_dict['pattern'].match(line):
                         if 'value' in pattern_dict and 'key' in pattern_dict:
-                            metadata[pattern_dict['key']] = pattern_dict['value']
+                            _set_metadata_key(pattern_dict['key'], pattern_dict['value'])
                         else:
-                            metadata.update(match.groupdict())
+                            for k, v in match.groupdict().items():
+                                _set_metadata_key(k, v)
                         compiled_metadata_patterns_prefixed.remove(pattern_dict)
             continue
 
@@ -438,19 +456,6 @@ def parse_begaze(
         _maybe_finalize_blink_meta()
 
     # Finalise metadata for BeGaze
-    # total_recording_duration_ms per test equals number of samples for this minimal fixture
-    total_recording_duration_ms = len(samples['time']) if samples['time'] else 0
-    metadata['total_recording_duration_ms'] = total_recording_duration_ms
-
-    # Data loss ratios: use the number of parsed samples as expected count
-    expected = len(samples['time'])
-
-    total_loss_ratio, blink_loss_ratio = _calculate_data_loss_ratio(
-        expected, num_valid_samples, num_blink_samples,
-    )
-    metadata['data_loss_ratio'] = total_loss_ratio
-    metadata['data_loss_ratio_blinks'] = blink_loss_ratio
-
     # Blinks list: match test expected structure
     if blinks_meta:
         metadata['blinks'] = blinks_meta
