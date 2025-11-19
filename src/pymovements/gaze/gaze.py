@@ -235,6 +235,9 @@ class Gaze:
 
     validations: polars.DataFrame | None
 
+    # Private leftover metadata from parsing (without calibrations/validations)
+    _metadata: dict[str, Any] | None
+
     def __init__(
             self,
             samples: polars.DataFrame | None = None,
@@ -309,6 +312,9 @@ class Gaze:
 
         self.calibrations = None
         self.validations = None
+
+        # Keep remaining parsed metadata privately if an I/O helper provides it.
+        self._metadata = None
 
     def apply(
             self,

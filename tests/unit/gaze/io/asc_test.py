@@ -1085,3 +1085,22 @@ def test_from_asc_messages(make_text_file, body, messages, expected_data):
                 data=expected_data,
             ),
         )
+
+
+def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    gaze = from_asc(filepath)
+
+    # Public frames exist
+    assert isinstance(gaze.calibrations, pl.DataFrame)
+    assert isinstance(gaze.validations, pl.DataFrame)
+
+    # Private _metadata exists and does NOT contain cal/val anymore
+    assert isinstance(gaze._metadata, dict)
+    assert 'calibrations' not in gaze._metadata
+    assert 'validations' not in gaze._metadata
+
+    # Data loss ratios should be present for consumers until we migrate to explicit preprocessing
+    # utilities.
+    assert 'data_loss_ratio' in gaze._metadata
+    assert 'data_loss_ratio_blinks' in gaze._metadata

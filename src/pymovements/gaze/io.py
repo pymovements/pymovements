@@ -311,18 +311,15 @@ def from_csv(
     return gaze
 
 
-def _metadata_to_cal_val_frames(metadata: dict[str, Any]) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Convert EyeLink calibration/validation metadata lists to DataFrames.
+def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
+    """Convert and consume EyeLink calibration metadata to a DataFrame.
 
-    Returns two DataFrames with the following schemas:
-    - calibrations: [time(f64), num_points(i64), eye(utf8), tracking_mode(utf8)]
-    - validations: [time(f64), num_points(i64), eye(utf8), accuracy_avg(f64), accuracy_max(f64)]
-    If the corresponding metadata is missing or empty, returns empty DataFrames with the schema.
+    Pops the 'calibrations' key from the metadata dict and returns a DataFrame with schema:
+    time(f64), num_points(i64), eye(utf8), tracking_mode(utf8).
     """
-    # Calibrations
-    cal_items = metadata.get('calibrations') or []
+    cal_items = metadata.pop('calibrations', []) or []
     if cal_items:
-        cal_df = pl.from_dicts([
+        return pl.from_dicts([
             {
                 'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
                 else None,
@@ -341,20 +338,25 @@ def _metadata_to_cal_val_frames(metadata: dict[str, Any]) -> tuple[pl.DataFrame,
             pl.col('eye').cast(pl.Utf8),
             pl.col('tracking_mode').cast(pl.Utf8),
         ])
-    else:
-        cal_df = pl.DataFrame(
-            schema={
-                'time': pl.Float64,
-                'num_points': pl.Int64,
-                'eye': pl.Utf8,
-                'tracking_mode': pl.Utf8,
-            },
-        )
+    return pl.DataFrame(
+        schema={
+            'time': pl.Float64,
+            'num_points': pl.Int64,
+            'eye': pl.Utf8,
+            'tracking_mode': pl.Utf8,
+        },
+    )
 
-    # Validations
-    val_items = metadata.get('validations') or []
+
+def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
+    """Convert and consume EyeLink validation metadata to a DataFrame.
+
+    Pops the 'validations' key from the metadata dict and returns a DataFrame with schema:
+    time(f64), num_points(i64), eye(utf8), accuracy_avg(f64), accuracy_max(f64).
+    """
+    val_items = metadata.pop('validations', []) or []
     if val_items:
-        val_df = pl.from_dicts([
+        return pl.from_dicts([
             {
                 'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
                 else None,
@@ -377,18 +379,15 @@ def _metadata_to_cal_val_frames(metadata: dict[str, Any]) -> tuple[pl.DataFrame,
             pl.col('accuracy_avg').cast(pl.Float64),
             pl.col('accuracy_max').cast(pl.Float64),
         ])
-    else:
-        val_df = pl.DataFrame(
-            schema={
-                'time': pl.Float64,
-                'num_points': pl.Int64,
-                'eye': pl.Utf8,
-                'accuracy_avg': pl.Float64,
-                'accuracy_max': pl.Float64,
-            },
-        )
-
-    return cal_df, val_df
+    return pl.DataFrame(
+        schema={
+            'time': pl.Float64,
+            'num_points': pl.Int64,
+            'eye': pl.Utf8,
+            'accuracy_avg': pl.Float64,
+            'accuracy_max': pl.Float64,
+        },
+    )
 
 
 def from_asc(
@@ -620,9 +619,11 @@ def from_asc(
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
     )
-    cal_df, val_df = _metadata_to_cal_val_frames(metadata)
-    gaze.calibrations = cal_df
-    gaze.validations = val_df
+    # Build cal/val frames and consume them from metadata dict
+    gaze.calibrations = metadata_to_cal_frame(metadata)
+    gaze.validations = metadata_to_val_frame(metadata)
+    # Keep remaining metadata privately on Gaze
+    gaze._metadata = dict(metadata)  # pylint: disable=protected-access
     return gaze
 
 
