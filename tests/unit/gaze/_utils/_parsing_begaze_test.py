@@ -176,9 +176,6 @@ BEGAZE_EXPECTED_EVENT_DF = pl.from_dict(
 EXPECTED_METADATA_BEGAZE = {
     'sampling_rate': 1000.00,
     'tracked_eye': 'L',
-    'data_loss_ratio_blinks': 0.18181818181818182,
-    'data_loss_ratio': 0.2727272727272727,
-    'total_recording_duration_ms': 11,
     'datetime': datetime.datetime(2023, 3, 8, 9, 25, 20),
     'blinks': [{
         'duration_ms': 2,
@@ -650,7 +647,7 @@ def test_metadata_parsing_exceptions_on_header_lines(make_text_file):
 
 def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_file):
     # Header with spaces instead of tabs: header_cols becomes None and parsing samples is disabled.
-    # The function asserts later that header_cols is not None, so we expect an AssertionError.
+    # The function raises a ValueError if no valid tabular header is found.
     text = (
         '## [BeGaze]\n'
         '## Date: 08.03.2023 09:25:20\n'
@@ -661,12 +658,14 @@ def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_fil
     )
     p = make_text_file(filename='begaze_space_header.txt', body=text, encoding='ascii')
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(
+            ValueError, match="could not find a tabular header row containing 'Time' and 'Type'",
+    ):
         _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
 
 @pytest.mark.parametrize(
-    'text, metadata_patterns, expected_keys',
+    'text, metadata_patterns, expected_keys, expect_warning',
     [
         (
             # compiled_metadata_patterns branch matches (len(parts) < 3), sets keys
@@ -682,6 +681,7 @@ def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_fil
                 {'pattern': r'^META_BOOL$', 'key': 'meta_bool', 'value': True},
             ],
             {'meta_one': 'foo', 'meta_bool': True},
+            True,
         ),
         (
             # raw string metadata_patterns branch matches (len(parts) < 3)
@@ -692,6 +692,7 @@ def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_fil
             '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n',
             [r'^RAW_ONE: (?P<raw_one>\w+)$'],
             {'raw_one': 'bar'},
+            True,
         ),
         (
             # Ensure false branch for compiled_metadata_patterns on MSG lines
@@ -702,17 +703,94 @@ def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_fil
             '10000001100\tSMP\t1\t11\t21\t3.1\t1\tFixation\n',
             None,
             {},
+            False,
         ),
     ],
     ids=['compiled_patterns_len_lt3', 'raw_string_patterns_len_lt3', 'msg_no_meta_patterns'],
 )
-def test_metadata_parsing_various(make_text_file, text, metadata_patterns, expected_keys):
+def test_metadata_parsing_various(
+        make_text_file, text, metadata_patterns, expected_keys, expect_warning,
+):
     p = make_text_file(filename='begaze_meta_various.txt', body=text, encoding='ascii')
-    _, _, meta = _parsing_begaze.parse_begaze(
-        p, prefer_eye='L', metadata_patterns=metadata_patterns,
-    )
+    if expect_warning:
+        with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
+            _, _, meta = _parsing_begaze.parse_begaze(
+                p, prefer_eye='L', metadata_patterns=metadata_patterns,
+            )
+    else:
+        _, _, meta = _parsing_begaze.parse_begaze(
+            p, prefer_eye='L', metadata_patterns=metadata_patterns,
+        )
     for k, v in expected_keys.items():
         assert meta.get(k) == v
+
+
+def test_parse_begaze_raises_when_no_tabular_header(make_text_file):
+    body = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        'This is not a header line and will not be parsed as table\n'
+        'I am also not a header, sorry\n'
+    )
+    p = make_text_file(filename='begaze_no_header.txt', body=body, encoding='ascii')
+
+    with pytest.raises(
+            ValueError, match="could not find a tabular header row containing 'Time' and 'Type'",
+    ):
+        _parsing_begaze.parse_begaze(p)
+
+
+def test_metadata_patterns_non_sample_full_coverage(make_text_file):
+    text = (
+        '## [BeGaze]\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tPupil Confidence\t'
+        'L Event Info\n'
+        'nachricht: alpha\n'  # non-sample line -> groupdict pattern
+        'SET_TRUE\n'          # non-sample line -> key/value pattern (no second warning)
+        '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n'
+    )
+    patterns = [
+        {'pattern': r'^nachricht: (?P<meta_from_group>\w+)$'},
+        {'pattern': r'^SET_TRUE$', 'key': 'flag_true', 'value': True},
+        {'pattern': r'^I_WONT_MATCH: (?P<never>\d+)$'},  # will not match any non-sample line
+    ]
+    p = make_text_file(filename='begaze_meta_non_sample.txt', body=text, encoding='ascii')
+
+    with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
+        _, _, meta = _parsing_begaze.parse_begaze(p, metadata_patterns=patterns)
+
+    # groupdict branch
+    assert meta['meta_from_group'] == 'alpha'
+    # key/value branch
+    assert meta['flag_true'] is True
+    # the non-matching pattern remains unused - absence of the key confirms the if match false path
+    assert meta.get('never', None) in {None, ''}
+
+
+def test_metadata_overwrite_warning_on_non_sample_lines(make_text_file):
+    # Trigger both the one-time non-sample warning and the overwrite warning in _set_metadata_key
+    text = (
+        '## [BeGaze]\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tPupil Confidence\t'
+        'L Event Info\n'
+        'SET_KV_A\n'   # non-sample line -> sets dup_key = 'A'
+        'SET_KV_B\n'   # non-sample line -> sets dup_key = 'B' (overwrites)
+        '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n'
+    )
+    metadata_patterns = [
+        {'pattern': r'^SET_KV_A$', 'key': 'dup_key', 'value': 'A'},
+        {'pattern': r'^SET_KV_B$', 'key': 'dup_key', 'value': 'B'},
+    ]
+    p = make_text_file(filename='begaze_meta_overwrite_non_sample.txt', body=text, encoding='ascii')
+
+    with pytest.warns(RuntimeWarning) as w:
+        _, _, meta = _parsing_begaze.parse_begaze(p, metadata_patterns=metadata_patterns)
+
+    messages = [str(warn.message) for warn in w]
+    assert any('non-sample lines matched by metadata_patterns' in m for m in messages)
+    assert any("metadata key 'dup_key' is being overwritten" in m for m in messages)
+    assert meta['dup_key'] == 'B'
 
 
 def exp_with_flags(sampling_rate: float, left: bool, right: bool) -> Experiment:
@@ -994,9 +1072,10 @@ def test_metadata_patterns_on_short_lines_and_removal(make_text_file, repeat_met
         encoding='ascii',
     )
 
-    _, _, meta = _parsing_begaze.parse_begaze(
-        p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
-    )
+    with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
+        _, _, meta = _parsing_begaze.parse_begaze(
+            p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
+        )
     assert meta.get('metadata_3') is True
 
 
@@ -1072,9 +1151,10 @@ def test_header_short_line_metadata_patterns_copy_and_remove(make_text_file):
         encoding='ascii',
     )
 
-    _, _, meta = _parsing_begaze.parse_begaze(
-        p, metadata_patterns=meta_patterns, prefer_eye='L',
-    )
+    with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
+        _, _, meta = _parsing_begaze.parse_begaze(
+            p, metadata_patterns=meta_patterns, prefer_eye='L',
+        )
 
     # Both metadata entries should be set and patterns removed after match
     assert meta.get('meta_one') is True
