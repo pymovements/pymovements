@@ -1,9 +1,9 @@
 version: 2
 
 build:
-  os: python:3.14-slim
+  os: ubuntu-lts-latest
   tools:
-    python: "3.14"
+    python: "latest"
 
 sphinx:
   configuration: docs/source/conf.py
