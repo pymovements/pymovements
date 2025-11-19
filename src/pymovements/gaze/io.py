@@ -903,6 +903,7 @@ def from_begaze(
         metadata_patterns=metadata_patterns,
         encoding=encoding or 'ascii',
         prefer_eye=prefer_eye,
+        harmonise_trial_header=False,
     )
 
     if add_columns is not None:
@@ -923,9 +924,13 @@ def from_begaze(
 
     # Ensure required trial columns exist (e.g. 'Stimulus' for DIDEC) even if missing in file
     if trial_columns:
-        missing = [c for c in trial_columns if c not in samples.columns]
+        # Normalise to a list of column names to avoid iterating over characters
+        trial_cols_list = (
+            [trial_columns] if isinstance(trial_columns, str) else list(trial_columns)
+        )
+        missing = [c for c in trial_cols_list if c not in samples.columns]
         if missing:
-            samples = samples.with_columns([pl.lit(None).alias(c) for c in missing])
+            samples = samples.with_columns([pl.lit(None).alias(c) for c in set(missing)])
 
     # Detect pixel columns to pass to Gaze (monocular naming from BeGaze uses 'x_pix', 'y_pix').
     detected_pixel_columns: list[str] | None = [c for c in samples.columns if '_pix' in c]

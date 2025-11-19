@@ -109,6 +109,8 @@ def parse_begaze(
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str = 'ascii',
         prefer_eye: str = 'L',
+        *,
+        harmonise_trial_header: bool = True,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
     """Parse BeGaze raw data export file.
 
@@ -138,6 +140,8 @@ def parse_begaze(
         Text encoding of the file. (default: 'ascii')
     prefer_eye: str
         Preferred eye to parse when both eyes are present: 'L' or 'R'. (default: 'L')
+    harmonise_trial_header: bool
+        Whether to harmonise trial headers across multiple trials. (default: True)
 
     Returns
     -------
@@ -329,9 +333,6 @@ def parse_begaze(
     # Prepare optional sample columns present in header
     # (e.g. Stimulus required by some datasets)
 
-    # Harmonise 'Trial' vs 'trial_id':
-    # - If patterns already define 'trial_id', do NOT create a separate 'Trial' column.
-    # - If no 'trial_id' exists, map header 'Trial' values into 'trial_id'.
     # Build a case-insensitive view over header names for optional column harmonisation.
     header_cols_lc = [c.lower() for c in header_cols]
     optional_col_map: dict[str, str] = {}
@@ -342,17 +343,17 @@ def parse_begaze(
         samples['Stimulus'] = []
         optional_col_map[src_name] = 'Stimulus'
 
-    # Trial: map any header that contains the substring 'trial' (case-insensitive)
-    # to 'trial_id', unless patterns have already created 'trial_id'.
-    trial_src_name = None
-    for i, name_lc in enumerate(header_cols_lc):
-        if 'trial' in name_lc:
-            trial_src_name = header_cols[i]
-            break
-    if trial_src_name is not None and 'trial_id' not in samples:
-        samples['trial_id'] = []
-        optional_col_map[trial_src_name] = 'trial_id'
-    # else: ignore header trial column to avoid duplicates
+    # Optionally harmonise a header 'Trial' column into internal 'trial_id'.
+    # If patterns already define 'trial_id', do NOT create a separate 'Trial' column.
+    if harmonise_trial_header:
+        trial_src_name = None
+        for i, name_lc in enumerate(header_cols_lc):  # pragma: no cover
+            if 'trial' in name_lc:
+                trial_src_name = header_cols[i]
+                break
+        if trial_src_name is not None and 'trial_id' not in samples:
+            samples['trial_id'] = []
+            optional_col_map[trial_src_name] = 'trial_id'
 
     # Task: map header 'Task' (case-insensitive) to 'task' only if not already present
     # from patterns.

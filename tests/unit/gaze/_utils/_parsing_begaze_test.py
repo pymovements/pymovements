@@ -648,6 +648,23 @@ def test_metadata_parsing_exceptions_on_header_lines(make_text_file):
     assert meta['datetime'] == '2023/03/08 09:25:20'
 
 
+def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_file):
+    # Header with spaces instead of tabs: header_cols becomes None and parsing samples is disabled.
+    # The function asserts later that header_cols is not None, so we expect an AssertionError.
+    text = (
+        '## [BeGaze]\n'
+        '## Date: 08.03.2023 09:25:20\n'
+        '## Sample Rate: 1000\n'
+        # Space-separated header still containing 'Time' and 'Type'
+        'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] Info\n'
+        '10000000100 SMP 1 10 20 3.0 Fixation\n'
+    )
+    p = make_text_file(filename='begaze_space_header.txt', body=text, encoding='ascii')
+
+    with pytest.raises(AssertionError):
+        _parsing_begaze.parse_begaze(p, prefer_eye='L')
+
+
 @pytest.mark.parametrize(
     'text, metadata_patterns, expected_keys',
     [
