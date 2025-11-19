@@ -22,6 +22,7 @@ from unittest.mock import Mock
 
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 import pytest
 from matplotlib import figure
 
@@ -135,3 +136,33 @@ def test_tsplot_save(gaze, monkeypatch, tmp_path):
 def test_tsplot_sets_title(gaze):
     _, ax = pm.plotting.tsplot(gaze, title='My Title', show=False)
     assert ax.get_title() == 'My Title'
+
+
+@pytest.mark.parametrize(
+    'bad_x, bad_y', [
+        (np.inf, 0.0),
+        (np.nan, 0.0),
+        (np.inf, np.nan),
+        (np.nan, np.inf),
+    ],
+)
+def test_tsplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
+    # create a polars series with the length of samples["position"]
+    replacement_position = pl.Series(
+        'position',
+        [
+            [bad_x, bad_y],
+        ] + gaze.samples['position'].to_list()[1:],
+    )
+    # get index of 'position' column
+    pos_index = gaze.samples.get_column_index('position')
+    # replace the 'position' column in gaze.samples with the new series
+    gaze.samples = gaze.samples.with_columns(
+        replacement_position,
+        at_index=pos_index,
+    )
+
+    fig, ax = pm.plotting.tsplot(gaze=gaze, show=False)
+
+    assert fig is not None
+    assert ax is not None
