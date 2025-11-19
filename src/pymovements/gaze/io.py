@@ -311,6 +311,86 @@ def from_csv(
     return gaze
 
 
+def _metadata_to_cal_val_frames(metadata: dict[str, Any]) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Convert EyeLink calibration/validation metadata lists to DataFrames.
+
+    Returns two DataFrames with the following schemas:
+    - calibrations: [time(f64), num_points(i64), eye(utf8), tracking_mode(utf8)]
+    - validations: [time(f64), num_points(i64), eye(utf8), accuracy_avg(f64), accuracy_max(f64)]
+    If the corresponding metadata is missing or empty, returns empty DataFrames with the schema.
+    """
+    # Calibrations
+    cal_items = metadata.get('calibrations') or []
+    if cal_items:
+        cal_df = pl.from_dicts([
+            {
+                'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
+                else None,
+                'num_points': int(item.get('num_points')) if item.get('num_points')
+                not in (None, '') else None,
+                'eye': (
+                    'left' if (item.get('tracked_eye') or '').upper() == 'LEFT' else
+                    'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
+                ),
+                'tracking_mode': item.get('type') if item.get('type') not in (None, '') else None,
+            }
+            for item in cal_items
+        ]).with_columns([
+            pl.col('time').cast(pl.Float64),
+            pl.col('num_points').cast(pl.Int64),
+            pl.col('eye').cast(pl.Utf8),
+            pl.col('tracking_mode').cast(pl.Utf8),
+        ])
+    else:
+        cal_df = pl.DataFrame(
+            schema={
+                'time': pl.Float64,
+                'num_points': pl.Int64,
+                'eye': pl.Utf8,
+                'tracking_mode': pl.Utf8,
+            },
+        )
+
+    # Validations
+    val_items = metadata.get('validations') or []
+    if val_items:
+        val_df = pl.from_dicts([
+            {
+                'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
+                else None,
+                'num_points': int(item.get('num_points')) if item.get('num_points')
+                not in (None, '') else None,
+                'eye': (
+                    'left' if (item.get('tracked_eye') or '').upper() == 'LEFT' else
+                    'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
+                ),
+                'accuracy_avg': float(item.get('validation_score_avg')) if
+                item.get('validation_score_avg') not in (None, '') else None,
+                'accuracy_max': float(item.get('validation_score_max')) if
+                item.get('validation_score_max') not in (None, '') else None,
+            }
+            for item in val_items
+        ]).with_columns([
+            pl.col('time').cast(pl.Float64),
+            pl.col('num_points').cast(pl.Int64),
+            pl.col('eye').cast(pl.Utf8),
+            pl.col('accuracy_avg').cast(pl.Float64),
+            pl.col('accuracy_max').cast(pl.Float64),
+        ])
+    else:
+        val_df = pl.DataFrame(
+            schema={
+                'time': pl.Float64,
+                'num_points': pl.Int64,
+                'eye': pl.Utf8,
+                'accuracy_avg': pl.Float64,
+                'accuracy_max': pl.Float64,
+            },
+        )
+
+    return cal_df, val_df
+
+
 def from_asc(
         file: str | Path,
         *,
@@ -540,7 +620,9 @@ def from_asc(
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
     )
-    gaze._metadata = metadata  # pylint: disable=protected-access
+    cal_df, val_df = _metadata_to_cal_val_frames(metadata)
+    gaze.calibrations = cal_df
+    gaze.validations = val_df
     return gaze
 
 
