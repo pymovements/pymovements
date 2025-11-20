@@ -51,6 +51,7 @@ def heatmap(
         add_stimulus: bool = False,
         path_to_image_stimulus: str | Path | None = None,
         stimulus_origin: str = 'upper',
+        alpha: float = 1.,
         *,
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
@@ -99,6 +100,8 @@ def heatmap(
         Path to image stimulus. (default: None)
     stimulus_origin: str
         Origin of stimulus. (default: 'upper')
+    alpha: float
+        Alpha value of heatmap. (default: 1.)
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close
         the figure automatically. (default: None)
@@ -191,11 +194,12 @@ def heatmap(
         origin=origin,
         interpolation=interpolation,
         extent=extent,
+
     )
 
     #  make values == 0 fully transparent (background)
     im = ax.get_images()[-1]
-    im.set_alpha(np.where(im.get_array().data > 0, 1.0, 0.0))
+    im.set_alpha(np.where(im.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
     _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
