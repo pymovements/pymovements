@@ -527,18 +527,27 @@ class Events:
                 ],
             ).drop(input_col)
 
-    def map_to_aois(self, aoi_dataframe: TextStimulus) -> None:
+    def map_to_aois(self, aoi_dataframe: TextStimulus, verbose: bool = True) -> None:
         """Map events to aois.
 
         Parameters
         ----------
         aoi_dataframe: TextStimulus
             Text dataframe to map fixation to.
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
         """
         self.unnest()
         aois = [
             aoi_dataframe.get_aoi(row=row, x_eye='location_x', y_eye='location_y')
-            for row in tqdm(self.frame.iter_rows(named=True))
+            for row in tqdm(
+                self.frame.iter_rows(named=True),
+                total=len(self.frame),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=not verbose,
+            )
         ]
         aoi_df = pl.concat(aois)
         self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
