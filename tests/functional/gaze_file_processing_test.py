@@ -20,7 +20,7 @@
 """Test basic preprocessing on various gaze files."""
 import pytest
 
-from pymovements import datasets
+from pymovements import DatasetLibrary
 from pymovements import Experiment
 from pymovements import EyeTracker
 from pymovements import gaze as gaze_module
@@ -74,7 +74,9 @@ def fixture_gaze_init_kwargs(request, make_example_file):
         },
         'eyelink_monocular': {
             'file': make_example_file('eyelink_monocular_example.asc'),
-            'definition': datasets.ToyDatasetEyeLink(),
+            'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+            'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+            **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
         },
         'eyelink_monocular_2khz': {
             'file': make_example_file('eyelink_monocular_2khz_example.asc'),
@@ -98,39 +100,86 @@ def fixture_gaze_init_kwargs(request, make_example_file):
         },
         'didec': {
             'file': make_example_file('didec_example.txt'),
-            'definition': datasets.DIDEC(),
+            'experiment': DatasetLibrary.get('DIDEC').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('DIDEC').custom_read_kwargs['gaze'],
+            'trial_columns': DatasetLibrary.get('DIDEC').trial_columns,
+            'time_column': DatasetLibrary.get('DIDEC').time_column,
+            'time_unit': DatasetLibrary.get('DIDEC').time_unit,
+            'pixel_columns': DatasetLibrary.get('DIDEC').pixel_columns,
         },
         'emtec': {
             'file': make_example_file('emtec_example.csv'),
-            'definition': datasets.EMTeC(),
+            'experiment': DatasetLibrary.get('EMTeC').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('EMTeC').custom_read_kwargs['gaze'],
+            'trial_columns': DatasetLibrary.get('EMTeC').trial_columns,
+            'time_column': DatasetLibrary.get('EMTeC').time_column,
+            'time_unit': DatasetLibrary.get('EMTeC').time_unit,
+            'pixel_columns': DatasetLibrary.get('EMTeC').pixel_columns,
         },
         'hbn': {
             'file': make_example_file('hbn_example.csv'),
-            'definition': datasets.HBN(),
+            'experiment': DatasetLibrary.get('HBN').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('HBN').custom_read_kwargs['gaze'],
+            'trial_columns': DatasetLibrary.get('HBN').trial_columns,
+            'time_column': DatasetLibrary.get('HBN').time_column,
+            'time_unit': DatasetLibrary.get('HBN').time_unit,
+            'pixel_columns': DatasetLibrary.get('HBN').pixel_columns,
         },
         'sbsat': {
             'file': make_example_file('sbsat_example.csv'),
-            'definition': datasets.SBSAT(),
+            'experiment': DatasetLibrary.get('SBSAT').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('SBSAT').custom_read_kwargs['gaze'],
+            'trial_columns': DatasetLibrary.get('SBSAT').trial_columns,
+            'time_column': DatasetLibrary.get('SBSAT').time_column,
+            'time_unit': DatasetLibrary.get('SBSAT').time_unit,
+            'pixel_columns': DatasetLibrary.get('SBSAT').pixel_columns,
         },
         'gaze_on_faces': {
             'file': make_example_file('gaze_on_faces_example.csv'),
-            'definition': datasets.GazeOnFaces(),
+            'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('GazeOnFaces').custom_read_kwargs['gaze'],
+            'trial_columns': DatasetLibrary.get('GazeOnFaces').trial_columns,
+            'time_column': DatasetLibrary.get('GazeOnFaces').time_column,
+            'time_unit': DatasetLibrary.get('GazeOnFaces').time_unit,
+            'pixel_columns': DatasetLibrary.get('GazeOnFaces').pixel_columns,
         },
         'gazebase': {
             'file': make_example_file('gazebase_example.csv'),
-            'definition': datasets.GazeBase(),
+            'experiment': DatasetLibrary.get('GazeBase').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('GazeBase').custom_read_kwargs['gaze'],
+            'column_map': DatasetLibrary.get('GazeBase').column_map,
+            'time_column': DatasetLibrary.get('GazeBase').time_column,
+            'time_unit': DatasetLibrary.get('GazeBase').time_unit,
+            'position_columns': DatasetLibrary.get('GazeBase').position_columns,
         },
         'gazebase_vr': {
             'file': make_example_file('gazebase_vr_example.csv'),
-            'definition': datasets.GazeBaseVR(),
+            'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('GazeBaseVR').custom_read_kwargs['gaze'],
+            'column_map': DatasetLibrary.get('GazeBaseVR').column_map,
+            'time_column': DatasetLibrary.get('GazeBaseVR').time_column,
+            'time_unit': DatasetLibrary.get('GazeBaseVR').time_unit,
+            'position_columns': DatasetLibrary.get('GazeBaseVR').position_columns,
         },
         'judo1000': {
             'file': make_example_file('judo1000_example.csv'),
-            'definition': datasets.JuDo1000(),
+            'experiment': DatasetLibrary.get('JuDo1000').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('JuDo1000').custom_read_kwargs['gaze'],
+            'column_map': DatasetLibrary.get('JuDo1000').column_map,
+            'trial_columns': DatasetLibrary.get('JuDo1000').trial_columns,
+            'time_column': DatasetLibrary.get('JuDo1000').time_column,
+            'time_unit': DatasetLibrary.get('JuDo1000').time_unit,
+            'pixel_columns': DatasetLibrary.get('JuDo1000').pixel_columns,
         },
         'potec': {
             'file': make_example_file('potec_example.tsv'),
-            'definition': datasets.PoTeC(),
+            'experiment': DatasetLibrary.get('PoTeC').experiment,
+            'read_csv_kwargs': DatasetLibrary.get('PoTeC').custom_read_kwargs['gaze'],
+            'column_map': DatasetLibrary.get('PoTeC').column_map,
+            'trial_columns': DatasetLibrary.get('PoTeC').trial_columns,
+            'time_column': DatasetLibrary.get('PoTeC').time_column,
+            'time_unit': DatasetLibrary.get('PoTeC').time_unit,
+            'pixel_columns': DatasetLibrary.get('PoTeC').pixel_columns,
         },
 
     }
