@@ -324,8 +324,33 @@ def load_gaze_file(
                 auto_column_detect=True,
             )
         else:
+            if definition.trial_columns is not None:
+                load_function_kwargs['trial_columns'] = definition.trial_columns
+            if definition.time_column is not None:
+                load_function_kwargs['time_column'] = definition.time_column
+            if definition.time_unit is not None:
+                load_function_kwargs['time_unit'] = definition.time_unit
+            if definition.pixel_columns is not None:
+                load_function_kwargs['pixel_columns'] = definition.pixel_columns
+            if definition.position_columns is not None:
+                load_function_kwargs['position_columns'] = definition.position_columns
+            if definition.velocity_columns is not None:
+                load_function_kwargs['velocity_columns'] = definition.velocity_columns
+            if definition.acceleration_columns is not None:
+                load_function_kwargs['acceleration_columns'] = definition.acceleration_columns
+            if definition.distance_column is not None:
+                load_function_kwargs['distance_column'] = definition.distance_column
+            if definition.column_map is not None:
+                load_function_kwargs['column_map'] = definition.column_map
+            if definition.custom_read_kwargs is not None:
+                read_csv_kwargs = definition.custom_read_kwargs.get('gaze', {})
+                load_function_kwargs['read_csv_kwargs'] = {
+                    **read_csv_kwargs, **load_function_kwargs.get('read_csv_kwargs', {}),
+                }
+
             gaze = from_csv(
                 filepath,
+                experiment=definition.experiment,
                 **load_function_kwargs,
             )
     elif load_function_name == 'from_ipc':
@@ -334,8 +359,16 @@ def load_gaze_file(
             experiment=definition.experiment,
         )
     elif load_function_name == 'from_asc':
+        if definition.trial_columns is not None:
+            load_function_kwargs['trial_columns'] = definition.trial_columns
+        if definition.custom_read_kwargs is not None:
+            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', None)
+            if custom_read_kwargs is not None:
+                load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
+
         gaze = from_asc(
             filepath,
+            experiment=definition.experiment,
             **load_function_kwargs,
         )
     else:
