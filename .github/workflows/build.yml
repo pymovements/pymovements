@@ -3,6 +3,8 @@ name: build
 on:
   push:
     branches: [main]
+  schedule:
+     - cron: "30 3 * * *"
   workflow_call:
 
 jobs:
@@ -41,3 +43,4 @@ jobs:
         path: dist/
         if-no-files-found: error
         retention-days: 1
+        overwrite: true
