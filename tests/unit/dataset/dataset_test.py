@@ -785,6 +785,24 @@ def test_load_mat_file_exception(gaze_dataset_configuration):
         dataset.load()
 
 
+def test_dataset_from_gazes():
+    df = pl.DataFrame()
+
+    gazes = []
+    for _ in range(10):
+        gaze = pm.GazeDataFrame(df)
+        gazes.append(gaze)
+
+    meta = pl.from_dict({'subject_id': range(1, 11)})
+
+    dataset = pm.Dataset.from_gazes(gazes, meta)
+
+    assert_frame_equal(dataset.meta, meta)
+
+    for i in range(10):
+        assert_frame_equal(dataset.gaze[i].frame, df)
+
+
 def test_pix2deg(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load()
