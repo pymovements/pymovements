@@ -129,7 +129,7 @@ class EventGazeProcessor:
             self,
             events: Events,
             gaze: pm.Gaze,
-            identifiers: str | list[str],
+            identifiers: str | list[str] | None = None,
             name: str | None = None,
     ) -> pl.DataFrame:
         """Process event and gaze dataframe.
@@ -140,8 +140,8 @@ class EventGazeProcessor:
             Event data to process event properties from.
         gaze: pm.Gaze
             Gaze data to process event properties from.
-        identifiers: str | list[str]
-            Column names to join on events and gaze dataframes.
+        identifiers: str | list[str] | None
+            Column names to join on events and gaze dataframes. (default: None)
         name: str | None
             Process only events that match the name. (default: None)
 
@@ -161,13 +161,12 @@ class EventGazeProcessor:
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         """
-        if isinstance(identifiers, str):
+        if identifiers is None:
+            trial_identifiers = []
+        elif isinstance(identifiers, str):
             trial_identifiers = [identifiers]
         else:
             trial_identifiers = identifiers
-
-        if len(trial_identifiers) == 0:
-            raise ValueError('list of identifiers must not be empty')
 
         property_expressions: list[Callable[..., pl.Expr]] = [
             EVENT_PROPERTIES[property_name] for property_name, _ in self.event_properties
@@ -192,12 +191,12 @@ class EventGazeProcessor:
         property_values = defaultdict(list)
         for event in events_frame.iter_rows(named=True):
             # Find gaze samples that belong to the current event.
-            filtered_gaze = gaze.samples.filter(
+            event_samples = gaze.samples.filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
                 *[pl.col(identifier) == event[identifier] for identifier in trial_identifiers],
             )
             # Compute event property values.
-            values = filtered_gaze.select(
+            values = event_samples.select(
                 [
                     this_property_expression(**this_property_kwargs)
                     .alias(this_property_name)

@@ -1233,6 +1233,7 @@ class Gaze:
             *,
             eye: str = 'auto',
             gaze_type: str = 'pixel',
+            verbose: bool = True,
     ) -> None:
         """Map gaze data to aois.
 
@@ -1249,6 +1250,8 @@ class Gaze:
         gaze_type: str
             String specificer for whether to use position or pixel coordinates for
             mapping. Default: pixel.
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
         """
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         self.unnest()
@@ -1296,7 +1299,14 @@ class Gaze:
 
         aois = [
             aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
-            for row in tqdm(self.samples.iter_rows(named=True))
+            for row in tqdm(
+                self.samples.iter_rows(named=True),
+                total=len(self.samples),
+                desc='Mapping gaze to AOIs',
+                unit='sample',
+                ncols=80,
+                disable=not verbose,
+            )
         ]
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal')

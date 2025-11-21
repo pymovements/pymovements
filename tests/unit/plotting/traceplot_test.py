@@ -23,6 +23,7 @@ from unittest.mock import Mock
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 import pytest
 from matplotlib import figure
 
@@ -269,3 +270,33 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
     # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
     assert ax.get_aspect() != 'equal'
+
+
+@pytest.mark.parametrize(
+    'bad_x, bad_y', [
+        (np.inf, 0.0),
+        (np.nan, 0.0),
+        (np.inf, np.nan),
+        (np.nan, np.inf),
+    ],
+)
+def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
+    # create a polars series with the length of samples["position"]
+    replacement_position = pl.Series(
+        'position',
+        [
+            [bad_x, bad_y],
+        ] + gaze.samples['position'].to_list()[1:],
+    )
+    # get index of 'position' column
+    pos_index = gaze.samples.get_column_index('position')
+    # replace the 'position' column in gaze.samples with the new series
+    gaze.samples = gaze.samples.with_columns(
+        replacement_position,
+        at_index=pos_index,
+    )
+
+    fig, ax = pm.plotting.traceplot(gaze=gaze, show=False)
+
+    assert fig is not None
+    assert ax is not None

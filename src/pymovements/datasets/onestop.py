@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -96,11 +97,13 @@ class OneStop(DatasetDefinition):
 
     name: str = 'OneStop'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'OneStop: A 360-Participant English Eye Tracking Dataset with Different '\
         'Reading Regimes'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',
