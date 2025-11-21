@@ -280,6 +280,48 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             ),
             id='data_one_event_trial_column_enforce_start',
         ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'trial_id': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_preserves_custom_property',
+        ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'trial_id': [1, 1, 2],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_enforce_start_and_preserve_custom',
+        ),
     ],
 )
 def test_init_expected_df(args, kwargs, expected_df):
@@ -543,36 +585,12 @@ def test_clone_preserves_event_properties():
 
     Regression test for issue #1349
     """
-    # Create events with trial data
     events = Events(
-        name=['fixation', 'saccade', 'fixation'],
-        onsets=[100, 200, 300],
-        offsets=[150, 250, 350],
-        trials=[1, 1, 2],
+        data=pl.from_dict(
+            {'name': ['saccade'], 'onsets': [0], 'offsets': [1]},
+        ),
     )
-
-    # Verify trial_columns is set (this triggers the column reordering logic)
-    assert events.trial_columns is not None
-
-    # Add event properties as additional columns
-    event_properties = pl.DataFrame({
-        'name': ['fixation', 'saccade'],
-        'custom_property': [1.5, 2.5],
-    })
-    events.add_event_properties(event_properties, join_on='name')
-
-    # Verify properties are present before clone
-    assert 'custom_property' in events.columns
-    original_columns = events.columns
-    original_len = len(events.frame)
-
-    # Clone the events
     cloned = events.clone()
-
-    # Verify all columns are preserved in the clone
-    assert cloned.columns == original_columns, \
-        f"Cloned columns {cloned.columns} do not match original {original_columns}"
-    assert len(cloned.frame) == original_len
     assert_frame_equal(cloned.frame, events.frame)
 
 
