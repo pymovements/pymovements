@@ -21,9 +21,9 @@
 from __future__ import annotations
 
 import math
-import warnings
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import polars as pl
 
@@ -235,7 +235,7 @@ def from_csv(
         read_csv_kwargs = {}
 
     if kwargs:
-        warnings.warn(
+        warn(
             DeprecationWarning(
                 "from_csv() argument '**kwargs' is deprecated since version v0.24.0. "
                 'This argument will be removed in v0.29.0.',
@@ -250,9 +250,16 @@ def from_csv(
         if column_map is None:
             column_map = definition.column_map
 
-        if not read_csv_kwargs and 'gaze' in definition.custom_read_kwargs:
-            if definition.custom_read_kwargs['gaze']:
-                read_csv_kwargs = definition.custom_read_kwargs['gaze']
+        if not read_csv_kwargs and definition.custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
+            read_csv_kwargs = definition.custom_read_kwargs.get('gaze', {})
 
     # Read data.
     samples = pl.read_csv(file, **read_csv_kwargs)
@@ -466,8 +473,16 @@ def from_asc(
         if trial_columns is None:
             trial_columns = definition.trial_columns
 
-        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
-            custom_read_kwargs = definition.custom_read_kwargs['gaze']
+        if definition.custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
+            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
 
             if _patterns is None and 'patterns' in custom_read_kwargs:
                 _patterns = custom_read_kwargs['patterns']
@@ -619,7 +634,7 @@ def from_ipc(
         read_ipc_kwargs = {}
 
     if kwargs:
-        warnings.warn(
+        warn(
             DeprecationWarning(
                 "from_ipc() argument '**kwargs' is deprecated since version v0.24.0. "
                 'This argument will be removed in v0.29.0.',
@@ -683,7 +698,7 @@ def _fill_experiment_from_parsing_metadata(
             experiment.screen.width_px = math.ceil(width)
             experiment.screen.height_px = math.ceil(height)
         except TypeError:
-            warnings.warn('No screen resolution found.')
+            warn('No screen resolution found.')
     elif experiment_resolution != metadata['resolution']:
         issues.append(f"Screen resolution: {experiment_resolution} != {metadata['resolution']}")
 
@@ -710,7 +725,7 @@ def _fill_experiment_from_parsing_metadata(
         try:
             experiment.eyetracker.mount = metadata['mount_configuration']['mount_type']
         except KeyError:
-            warnings.warn('No mount configuration found.')
+            warn('No mount configuration found.')
     elif experiment.eyetracker.mount != metadata['mount_configuration']['mount_type']:
         issues.append(
             f'Mount configuration: {experiment.eyetracker.mount} != '

@@ -72,8 +72,9 @@ class MECOL2W1(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -110,6 +111,7 @@ class MECOL2W1(DatasetDefinition):
                     'filename': 'joint_l2_fixation_trimmed_report_2.0.rda',
                     'md5': '1ff32c5823eb70c22bab725499fbbf87',
                     'filename_pattern': 'joint_l2_fixation_trimmed_report_2.0.rda',
+                    'load_kwargs': {'r_dataframe_key': 'joint.fix.l2'},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -117,6 +119,7 @@ class MECOL2W1(DatasetDefinition):
                     'filename': 'joint_data_l2_trimmed_version2.0.rda',
                     'md5': '3d10225781faf413467104dcc4e071e0',
                     'filename_pattern': 'joint_data_l2_trimmed_version2.0.rda',
+                    'load_kwargs': {'r_dataframe_key': 'joint.data'},
                 },
             ],
         ),
@@ -135,9 +138,4 @@ class MECOL2W1(DatasetDefinition):
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'r_dataframe_key': 'joint.fix.l2'},
-            'precomputed_reading_measures': {'r_dataframe_key': 'joint.data'},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

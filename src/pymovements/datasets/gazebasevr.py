@@ -95,9 +95,9 @@ class GazeBaseVR(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -144,6 +144,28 @@ class GazeBaseVR(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'n': pl.Float32,
+                                'x': pl.Float32,
+                                'y': pl.Float32,
+                                'lx': pl.Float32,
+                                'ly': pl.Float32,
+                                'rx': pl.Float32,
+                                'ry': pl.Float32,
+                                'xT': pl.Float32,
+                                'yT': pl.Float32,
+                                'zT': pl.Float32,
+                                'clx': pl.Float32,
+                                'cly': pl.Float32,
+                                'clz': pl.Float32,
+                                'crx': pl.Float32,
+                                'cry': pl.Float32,
+                                'crz': pl.Float32,
+                            },
+                        },
+                    },
                 },
             ],
         ),
@@ -179,27 +201,4 @@ class GazeBaseVR(DatasetDefinition):
         },
     )
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'n': pl.Float32,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'lx': pl.Float32,
-                    'ly': pl.Float32,
-                    'rx': pl.Float32,
-                    'ry': pl.Float32,
-                    'xT': pl.Float32,
-                    'yT': pl.Float32,
-                    'zT': pl.Float32,
-                    'clx': pl.Float32,
-                    'cly': pl.Float32,
-                    'clz': pl.Float32,
-                    'crx': pl.Float32,
-                    'cry': pl.Float32,
-                    'crz': pl.Float32,
-                },
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
