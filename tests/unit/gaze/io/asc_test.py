@@ -192,7 +192,7 @@ def test_from_asc_has_expected_samples(
                 },
                 schema={
                     'time': pl.Int64,
-                    'pupil': pl.Decimal,
+                    'pupil': pl.Decimal(38, 10),
                     'pixel': pl.List(pl.Float64),
                 },
             ),

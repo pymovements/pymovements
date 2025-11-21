@@ -364,3 +364,21 @@ def test_from_asc_parameter_is_deprecated(
         scheduled_version='0.29.0',
 
     )
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_decimal_overrides_bare_decimal_defaults_precision(tmp_path):
+    # Minimal CSV with a scalar numeric column that we can override
+    p = tmp_path / 'mini.csv'
+    p.write_text('time,pupil\n0,1.23\n1,4.56\n')
+
+    gaze = from_csv(
+        file=str(p),
+        time_column='time',
+        time_unit='ms',
+        # Ensure override is exercised
+        column_schema_overrides={'pupil': pl.Decimal},
+    )
+
+    # Bare pl.Decimal is normalised to a concrete precision/scale
+    assert gaze.samples.schema['pupil'] == pl.Decimal(38, 10)
