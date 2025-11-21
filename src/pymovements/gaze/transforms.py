@@ -810,13 +810,29 @@ def resample(
     # Sort columns by datetime
     samples = samples.sort('datetime')
 
-    # Replace pre-existing null values with NaN as they should not be interpolated.
-    # NaN requires a floating dtype - declare Float64 to satisfy Polars' UDF typing.
+    # Helper: determine numeric columns among the target columns
+    def _is_numeric_dtype(dtype: pl.DataType) -> bool:
+        base_dtype = dtype.inner if isinstance(dtype, pl.List) else dtype
+        return (
+            base_dtype in {
+                pl.Int8, pl.Int16, pl.Int32, pl.Int64,
+                pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64,
+                pl.Float32, pl.Float64,
+            }
+            or isinstance(base_dtype, pl.Decimal)
+        )
+
+    numeric_columns: list[str] | None = None
     if columns is not None:
+        numeric_columns = [c for c in columns if _is_numeric_dtype(samples.schema[c])]
+
+    # Replace pre-existing null values with NaN only for numeric columns, as they should not be
+    # interpolated. Ensure we cast to Float64 so the UDF output dtype matches the declaration.
+    if numeric_columns:
         samples = _apply_on_columns(
             samples,
-            columns=columns,
-            transformation=lambda series: series.fill_null(np.nan),
+            columns=numeric_columns,
+            transformation=lambda series: series.cast(pl.Float64).fill_null(np.nan),
             n_components=n_components,
             return_dtype=pl.Float64,
         )
@@ -850,8 +866,8 @@ def resample(
 
             samples = _apply_on_columns(
                 frame=samples,
-                columns=columns,
-                transformation=lambda series: series.interpolate(
+                columns=numeric_columns,
+                transformation=lambda series: series.cast(pl.Float64).interpolate(
                     method=interpolate_method,
                 ),
                 n_components=n_components,
