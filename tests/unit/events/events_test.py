@@ -280,6 +280,48 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             ),
             id='data_one_event_trial_column_enforce_start',
         ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'trial_id': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_preserves_custom_property',
+        ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'trial_id': [1, 1, 2],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_enforce_start_and_preserve_custom',
+        ),
     ],
 )
 def test_init_expected_df(args, kwargs, expected_df):
@@ -536,6 +578,20 @@ def test_clones_trial_columns():
     events_copy = events.clone()
 
     assert events.trial_columns == events_copy.trial_columns
+
+
+def test_clone_preserves_event_properties():
+    """Test that clone() preserves event properties added via add_event_properties().
+
+    Regression test for issue #1349
+    """
+    events = Events(
+        data=pl.from_dict(
+            {'name': ['saccade'], 'onsets': [0], 'offsets': [1]},
+        ),
+    )
+    cloned = events.clone()
+    assert_frame_equal(cloned.frame, events.frame)
 
 
 @pytest.mark.parametrize(
