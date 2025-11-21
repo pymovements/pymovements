@@ -488,6 +488,9 @@ class Dataset:
 
         return self
 
+    def apply_pipeline(self, pipeline: Callable) -> None:
+        pass
+
     def clip(
             self,
             lower_bound: int | float | None,
