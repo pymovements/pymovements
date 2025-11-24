@@ -540,8 +540,31 @@ def test_columns_same_as_frame():
     assert events.columns == events.frame.columns
 
 
-def test_clone():
-    events = Events(name='saccade', onsets=[0], offsets=[123])
+@pytest.mark.parametrize(
+    'events',
+    [
+        pytest.param(
+            Events(name='saccade', onsets=[0], offsets=[123]),
+            id='simple_events_no_trials',
+        ),
+        pytest.param(
+            Events(
+                data=pl.from_dict(
+                    {
+                        'trial_id': [1],
+                        'name': ['saccade'],
+                        'onset': [0],
+                        'offset': [123],
+                        'custom_property': [42],
+                    },
+                ),
+                trial_columns='trial_id',
+            ),
+            id='events_with_trial_columns_and_custom_property',
+        ),
+    ],
+)
+def test_clone(events):
     events_copy = events.clone()
 
     # We want to have separate dataframes but with the exact same data.
