@@ -598,19 +598,14 @@ def save_events(
             extension=extension,
         )
 
-        events_out = events_in.frame.clone()
-        for column in events_out.columns:
-            if column in fileinfo.columns:
-                events_out = events_out.drop(column)
-
         if verbose >= 2:
             print('Save file to', events_filepath)
 
         events_filepath.parent.mkdir(parents=True, exist_ok=True)
         if extension == 'feather':
-            events_out.write_ipc(events_filepath)
+            events.write_ipc(events_filepath)
         elif extension == 'csv':
-            events_out.write_csv(events_filepath)
+            events.write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -677,10 +672,6 @@ def save_preprocessed(
 
         if extension == 'csv':
             gaze.unnest()
-
-        for column in gaze.columns:
-            if column in fileinfo.columns:
-                gaze.samples = gaze.samples.drop(column)
 
         if verbose >= 2:
             print('Save file to', preprocessed_filepath)
