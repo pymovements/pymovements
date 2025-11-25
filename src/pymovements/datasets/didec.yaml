@@ -15,6 +15,10 @@ resources:
       participant: !int
       session: !int
       trial: !int
+    load_function: from_begaze
+    load_kwargs:
+      encoding: ascii
+      prefer_eye: L
 
 experiment:
   screen_width_px: 1680
@@ -23,7 +27,7 @@ experiment:
   screen_height_cm: 29.7
   distance_cm: 70
   origin: "upper left"
-  sampling_rate: 1000
+  sampling_rate: 250
 
 trial_columns:
   - "Stimulus"

@@ -561,6 +561,37 @@ def test_pix2deg_returns(kwargs, series, expected_df, distance_as_column):
 
 
 @pytest.mark.parametrize(
+    'n_bad_components',
+    [
+        pytest.param(0, id='zero_components_defaults_to_two'),
+        pytest.param(None, id='none_components_defaults_to_two'),
+        pytest.param('x', id='non_int_components_defaults_to_two'),
+    ],
+)
+def test_pix2deg_defensive_guard_n_components_defaults(n_bad_components):
+    # baseline with n_components=2
+    kwargs = {
+        'screen_resolution': (100, 100),
+        'screen_size': (100, 100),
+        'distance': 100,
+        'origin': 'center',
+        'pixel_column': 'pixel',
+        'position_column': 'position',
+        'n_components': 2,
+    }
+
+    # simple pixel series
+    series = pl.Series('pixel', [[10.0, 0.0]], pl.List(pl.Float64))
+    df = series.to_frame()
+
+    expected_df = df.select(pm.gaze.transforms.pix2deg(**kwargs))
+
+    kwargs['n_components'] = n_bad_components  # type: ignore[assignment]
+    result_df = df.select(pm.gaze.transforms.pix2deg(**kwargs))
+    assert_frame_equal(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
     ('kwargs', 'data', 'expected_df'),
     [
         pytest.param(
