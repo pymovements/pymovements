@@ -197,9 +197,8 @@ def heatmap(
 
     )
 
-    #  make values == 0 fully transparent (background)
-    im = ax.get_images()[-1]
-    im.set_alpha(np.where(im.get_array().data > 0, alpha, 0.0))
+    #  make heatmap values == 0 fully transparent
+    heatmap_plot.set_alpha(np.where(im.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
     _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
