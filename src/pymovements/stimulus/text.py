@@ -62,7 +62,7 @@ class TextStimulus:
         Name of the column which contains the page information of the area of interest.
         (default: None)
     trial_column: str | None
-        Name fo the column that specifies the unique trial id.
+        Name for the column that specifies the unique trial id.
         (default: None)
     """
 
@@ -133,28 +133,6 @@ class TextStimulus:
     ) -> pl.DataFrame:
         """Return the AOI that contains the given gaze row.
 
-        Spatial bounds:
-
-        - If ``width``/``height`` are provided: ``start <= coord < start + size``.
-        - If ``end_x_column``/``end_y_column`` are provided: ``start <= coord < end``.
-          In both cases, the end boundary is exclusive (half-open interval [start, end)).
-
-        Trial/page filtering:
-
-        - If ``trial_column`` and/or ``page_column`` are configured, AOIs are first filtered to
-          the current row's values of these columns before the spatial lookup. These columns are
-          dropped from the temporary AOI selection to avoid duplicate columns during concatenation.
-
-        Overlapping AOIs:
-
-        - If multiple AOIs overlap and match the same point, a ``UserWarning`` is emitted.
-
-        Invalid coordinates:
-
-        - If the provided eye coordinates are missing or non-numeric (e.g. ``None`` or strings),
-          a ``UserWarning`` is emitted and the lookup is treated as a non-match, returning a
-          single row of ``None`` values.
-
         Parameters
         ----------
         row: pl.DataFrame.row
@@ -174,6 +152,20 @@ class TextStimulus:
         ------
         ValueError
             If neither width/height nor end_x/end_y columns are defined to specify AOI bounds.
+
+        Notes
+        -----
+        This function checks spatial bounds using the interval `start <= coord < start + size` if
+        `width`/`height` are provided, or `start <= coord < end` if `end_x_column`/`end_y_column`
+        are provided.
+        In both cases, the end boundary is exclusive (half-open interval `[start, end)`).
+        When `trial_column` and/or `page_column` are configured,
+        AOIs are first filtered to match the current row's values for these columns,
+        which are then dropped to avoid duplicate columns during concatenation.
+        If multiple AOIs overlap and match the same point, a `UserWarning` is emitted.
+        For invalid or missing coordinates (e.g. `None` or strings), a `UserWarning` is emitted,
+        and the lookup returns a single row of `None` values.
+
         """
         return _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
 
@@ -201,7 +193,8 @@ def _extract_valid_xy_or_none(
     y_val = row.get(y_eye)
     if not (_is_number(x_val) and _is_number(y_val)):
         warnings.warn(
-            'Invalid eye coordinates for AOI lookup. Returning no match.',
+            f'Invalid eye coordinates (x={x_val}, y={y_val}) for AOI lookup. '
+            'Returning no match.',
             UserWarning,
         )
         return None
@@ -379,7 +372,8 @@ def _get_aoi(
         # If multiple AOIs overlap, warn
         if aoi.height > 1:
             warnings.warn(
-                'Multiple AOIs matched this point.',
+                'Multiple AOIs matched this point '
+                f'(x={x_val}, y={y_val}).',
                 UserWarning,
             )
         return aoi
@@ -411,7 +405,8 @@ def _get_aoi(
         # If multiple AOIs overlap, warn
         if aoi.height > 1:
             warnings.warn(
-                'Multiple AOIs matched this point.',
+                'Multiple AOIs matched this point '
+                f'(x={x_val}, y={y_val}).',
                 UserWarning,
             )
 

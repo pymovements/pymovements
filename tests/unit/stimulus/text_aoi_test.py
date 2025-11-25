@@ -84,7 +84,7 @@ def test_get_aoi_overlap_warns_width_height(
     row = {'x': x, 'y': y}
     if expect_len > 1:
         with pytest.warns(
-                UserWarning, match=r'Multiple AOIs matched this point\.',
+                UserWarning, match=r'Multiple AOIs matched this point \(x=',
         ):
             out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
     else:

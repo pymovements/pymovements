@@ -1251,13 +1251,13 @@ class Gaze:
         gaze_type: str
             Whether to use ``position`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
         preserve_structure: bool
-            Controls schema side effects.
+            Controls how list component columns are handled before mapping.
 
-            - If True (default), we keep the historical behaviour and attempt ``unnest()`` so that
-              downstream logic can rely on flat component columns (e.g. ``pixel_xr``/``pixel_yr``).
-              Only common, specific exceptions from unnesting are tolerated - all others propagate.
-            - If False, no unnesting is attempted. Coordinates are extracted per-row from list
-              columns and passed to the AOI lookup without altering the samples' schema.
+            - If True (default), ``unnest()`` is attempted so that downstream logic can rely on
+              flat component columns (e.g. ``pixel_xr``/``pixel_yr``). A few common exceptions
+              from unnesting are tolerated and mapping continues without failing.
+            - If False, no unnesting is attempted. Coordinates are extracted per-row from any
+              list columns and passed to the AOI lookup without altering the samples' schema.
 
         verbose : bool
             If ``True``, show progress bar. (default: True)
@@ -1265,8 +1265,8 @@ class Gaze:
         # pylint: disable=too-many-statements
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
         # Schema handling: preserve_structure controls whether we alter the samples schema
-        # (by unnesting) or keep list columns intact and extract per-row. By default, we
-        # preserve legacy behaviour (preserve_structure=True) and attempt to unnest.
+        # (by unnesting) or keep list columns intact and extract per-row. By default,
+        # preserve_structure=True attempts to unnest.
         if preserve_structure:
             try:
                 self.unnest()
