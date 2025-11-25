@@ -289,8 +289,8 @@ def from_csv(
 
     if column_schema_overrides is not None:
         samples = samples.with_columns([
-            pl.col(fileinfo_key).cast(fileinfo_dtype)
-            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Create gaze object.
@@ -503,8 +503,8 @@ def from_asc(
 
     if column_schema_overrides is not None:
         samples = samples.with_columns([
-            pl.col(fileinfo_key).cast(fileinfo_dtype)
-            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Fill experiment with parsed metadata.
@@ -650,8 +650,8 @@ def from_ipc(
 
     if column_schema_overrides is not None:
         samples = samples.with_columns([
-            pl.col(fileinfo_key).cast(fileinfo_dtype)
-            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Create gaze object.
