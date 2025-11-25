@@ -583,7 +583,7 @@ def save_events(
     """
     disable_progressbar = not verbose
 
-    for file_id, events_in in enumerate(
+    for file_id, events_instance in enumerate(
         tqdm(
             events,
             total=len(events),
@@ -603,9 +603,9 @@ def save_events(
 
         events_filepath.parent.mkdir(parents=True, exist_ok=True)
         if extension == 'feather':
-            events.write_ipc(events_filepath)
+            events_instance.frame.write_ipc(events_filepath)
         elif extension == 'csv':
-            events.write_csv(events_filepath)
+            events_instance.frame.write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
