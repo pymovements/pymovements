@@ -130,7 +130,7 @@ def fixture_make_csv_file(tmp_path: Path) -> Callable:
     ) -> Path:
         r"""Make a csv file with optional header.
 
-        This is the actual function that is called when using the ``make_csv_file`` fixture.
+        This is the actual function called when using the ``make_csv_file`` fixture.
 
         Parameters
         ----------
