@@ -1470,3 +1470,67 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
 
     messages = [str(rec.message) for rec in warn]
     assert any('Missing start marker before end for event' in m for m in messages)
+
+
+@pytest.mark.parametrize(
+    ('reccfg_line', 'has_event_filters'),
+    [
+        # normal RECCFG without event filter fields
+        ('MSG\t0 RECCFG CR 1000 2 1 R\n', False),
+        # extended RECCFG with file_event_filter and link_event_filter present
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 R\n', True),
+    ],
+)
+@pytest.mark.filterwarnings('ignore:No metadata found.')
+@pytest.mark.filterwarnings('ignore:No samples configuration found.')
+def test_reccfg_with_optional_event_filters_parses(
+    make_text_file, reccfg_line, has_event_filters,
+):
+    """RECCFG lines with and without optional event filters should parse without error.
+
+    Regression test for RECCFG lines of the form:
+    MSG xxxxxx RECCFG CR 1000 2 1 2 1 R
+    """
+    asc_text = reccfg_line
+
+    filepath = make_text_file(filename='sub_reccfg.asc', body=asc_text)
+
+    # Should parse without any warning about missing recording configuration
+    _, _, metadata, _ = parsing.parse_eyelink(filepath)
+
+    # Ensure we captured a recording_config in metadata
+    rec_cfg_list = metadata.get('recording_config', [])
+    assert isinstance(rec_cfg_list, list) and len(rec_cfg_list) == 1
+
+    rec_cfg = rec_cfg_list[0]
+    # Common fields
+    assert rec_cfg['tracking_mode'] == 'CR'
+    assert rec_cfg['sampling_rate'] == '1000'
+    assert rec_cfg['file_sample_filter'] in {'0', '1', '2'}
+    assert rec_cfg['link_sample_filter'] in {'0', '1', '2'}
+    assert rec_cfg['tracked_eye'] in {'L', 'R', 'LR'}
+
+    # Optional fields
+    if has_event_filters:
+        assert rec_cfg.get('file_event_filter') in {'0', '1', '2'}
+        assert rec_cfg.get('link_event_filter') in {'0', '1', '2'}
+    else:
+        assert rec_cfg.get('file_event_filter') is None
+        assert rec_cfg.get('link_event_filter') is None
+
+
+@pytest.mark.filterwarnings('ignore:No metadata found.')
+@pytest.mark.filterwarnings('ignore:No samples configuration found.')
+def test_gaze_coords_without_reccfg_warns_and_skips(make_text_file):
+    """GAZE_COORDS before any RECCFG should warn and not crash."""
+    asc_text = 'MSG\t12345 GAZE_COORDS 0 0 1919 1079\n'
+
+    filepath = make_text_file(filename='sub_gaze_only.asc', body=asc_text)
+
+    with pytest.warns(
+        UserWarning,
+        match='GAZE_COORDS encountered before any RECCFG|No recording configuration found',
+    ):
+        _, _, metadata, _ = parsing.parse_eyelink(filepath)
+
+    assert metadata.get('recording_config', []) == []
