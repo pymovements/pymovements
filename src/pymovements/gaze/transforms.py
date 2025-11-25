@@ -711,15 +711,11 @@ def savitzky_golay(
         cval=constant_value,
     )
 
-    # Wrap function to ignore unexpected keyword arguments possibly passed by Polars
-    def _wrapped_savgol(x: np.ndarray, **_: Any) -> np.ndarray:
-        return func(x)  # pragma: no cover
-
     return pl.concat_list(
         [
             pl.col(input_column)
             .list.get(component)
-            .map_batches(_wrapped_savgol, return_dtype=pl.Float64)
+            .map_batches(func, return_dtype=pl.Float64)
             .list.explode()
             for component in range(n_components)
         ],
