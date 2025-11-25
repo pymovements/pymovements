@@ -20,11 +20,14 @@
 """Provides the main sequence plotting function."""
 from __future__ import annotations
 
+from typing import Literal
 from warnings import warn
 
 import matplotlib.pyplot as plt
+import numpy as np
 import polars as pl
 from matplotlib.collections import Collection
+from sklearn.metrics import r2_score
 
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements.events.events import Events
@@ -35,8 +38,11 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
+        fit: bool = True,
+        measure: bool | Literal['r2', 's'] = True,
         marker_size: float = 25,
         color: str = 'purple',
+        fit_color: str = 'red',
         alpha: float = 0.5,
         marker: str = 'o',
         figsize: tuple[int, int] = (15, 5),
@@ -55,10 +61,19 @@ def main_sequence_plot(
     ----------
     events: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude".
+    fit: bool
+        Draw a linear fit line if True. If False, no line is drawn.
+    measure: bool | Literal['r2', 's']
+        Annotate a goodness-of-fit statistic:
+        - True or 'r2': coefficient of determination (R²)
+        - 's': standard error of the regression (S)
+        - False: no annotation
     marker_size: float
         Size of the marker symbol. (default: 25)
     color: str
         Color of the marker symbol. (default: 'purple')
+    fit_color: str
+        Color of the linear fit line (default: 'red')
     alpha: float
         Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
     marker: str
@@ -105,7 +120,7 @@ def main_sequence_plot(
 
     event_col_name = 'name'
 
-    if not events:
+    if events is None or events.frame.is_empty():
         raise ValueError(
             'Events object is empty. '
             'Please make sure you ran a saccade detection algorithm. '
@@ -162,6 +177,40 @@ def main_sequence_plot(
             marker=marker,
             **kwargs,
         )
+
+    # --- Linear fit (only if requested) ---
+    if fit:
+        a, b = np.polyfit(amplitudes, peak_velocities, 1)
+
+        min_ampl, max_ampl = min(amplitudes), max(amplitudes)
+        line_x = [min_ampl, max_ampl]
+        line_y = [a * min_ampl + b, a * max_ampl + b]
+
+        line_axes = plt.gca() if own else ax
+        line_axes.plot(line_x, line_y, c=fit_color)
+
+        # Compute fit measure if requested
+        if measure:
+            y_pred = np.array(amplitudes) * a + b
+            residuals = np.array(peak_velocities) - y_pred
+
+            if measure is True or measure == 'r2':
+                val = np.round(r2_score(peak_velocities, y_pred), 3)
+                label = f"R² = {val}"
+
+            elif measure == 's':
+                s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
+                val = np.round(s, 3)
+                label = f"S = {val}"
+
+            else:
+                raise ValueError("measure must be one of: True, False, 'r2', 's'")
+
+            line_axes.text(
+                0.05, 0.8, label,
+                bbox={'facecolor': None, 'ec': (0, 0, 0), 'fc': (1.0, 1.0, 1.0), 'pad': 4},
+                transform=line_axes.transAxes,
+            )
 
     if title:
         ax.set_title(title)

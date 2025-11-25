@@ -41,6 +41,7 @@ dependencies = [
   "pyopenssl>=22.0.0",
   "pyreadr>=0.5.2",
   "pyyaml>=6.0.2",
+  "scikit-learn>=1.2",
   "scipy>=1.8.0",
   "tqdm>=4.63.0",
   "typing_extensions>=4.0.0"
