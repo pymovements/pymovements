@@ -72,8 +72,9 @@ class Gaze4Hate(DatasetDefinition):
             the input data frame is assumed to contain multiple trials and the transformation
             methods will be applied to each trial separately.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -111,6 +112,7 @@ class Gaze4Hate(DatasetDefinition):
                     'filename': 'gaze4hate_sentence_reading_fix_report.csv',
                     'md5': 'c8cc645d1fad659f9442d61795da5481',
                     'filename_pattern': 'gaze4hate_sentence_reading_fix_report.csv',
+                    'load_kwargs': {'separator': '\t', 'null_values': '.'},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -118,6 +120,7 @@ class Gaze4Hate(DatasetDefinition):
                     'filename': 'gaze4hate_sentence_reading_IA_report.csv',
                     'md5': 'e09e791e7d31d6ac3c69cd862d139c57',
                     'filename_pattern': 'gaze4hate_sentence_reading_IA_report.csv',
+                    'load_kwargs': {'separator': '\t'},
                 },
             ],
         ),
@@ -146,15 +149,4 @@ class Gaze4Hate(DatasetDefinition):
         ],
     )
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-        {
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': '.',
-            },
-            'precomputed_reading_measures': {
-                'separator': '\t',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

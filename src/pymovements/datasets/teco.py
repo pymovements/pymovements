@@ -75,8 +75,9 @@ class TECO(DatasetDefinition):
     column_map: dict[str, str]
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -113,6 +114,10 @@ class TECO(DatasetDefinition):
                     'filename': 'wordmeasure_v1.csv',
                     'md5': '61502321a757c0ffee01c0047b29a22b',
                     'filename_pattern': 'wordmeasure_v1.csv',
+                    'load_kwargs': {
+                        'encoding': 'utf8-lossy',
+                        'null_values': ['NA'],
+                    },
                 },
             ],
         ),
@@ -132,11 +137,4 @@ class TECO(DatasetDefinition):
 
     column_map: dict[str, str] = field(default_factory=lambda: {})
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_reading_measures': {
-                'encoding': 'utf8-lossy',
-                'null_values': ['NA'],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

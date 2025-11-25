@@ -8,8 +8,7 @@ resources:
   filename_pattern: fix_report_P{subject_id:s}.txt
   filename_pattern_schema_overrides:
     subject_id: '!polars.datatypes.classes.String'
-custom_read_kwargs:
-  precomputed_events:
+  load_kwargs:
     separator: "\t"
     null_values: .
     quote_char: '"'

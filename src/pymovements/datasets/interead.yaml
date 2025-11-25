@@ -37,7 +37,3 @@ pixel_columns:
   - "y"
 
 column_map: {}
-
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}

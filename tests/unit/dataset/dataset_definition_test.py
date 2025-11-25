@@ -85,6 +85,12 @@ def test_dataset_definition_is_equal(init_kwargs):
         ),
 
         pytest.param(
+            {'resources': [ResourceDefinition(content='gaze')]},
+            ResourceDefinitions([ResourceDefinition(content='gaze')]),
+            id='resource_definitions_list',
+        ),
+
+        pytest.param(
             {'resources': [{'content': 'gaze'}]},
             ResourceDefinitions([ResourceDefinition(content='gaze')]),
             id='single_gaze_resource',
@@ -258,7 +264,6 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'long_name': 'Example',
                 'acceleration_columns': None,
                 'column_map': {},
-                'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
@@ -292,7 +297,6 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'long_name': 'Example',
                 'acceleration_columns': None,
                 'column_map': {},
-                'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -341,7 +345,6 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'long_name': None,
                 'acceleration_columns': None,
                 'column_map': {},
-                'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -383,7 +386,6 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 '_foobar': 'test',
                 'acceleration_columns': None,
                 'column_map': {},
-                'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -738,7 +740,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'resources': [],
                 'experiment': None,
                 'extract': None,
-                'custom_read_kwargs': {},
                 'column_map': {},
                 'trial_columns': None,
                 'time_column': None,
@@ -762,7 +763,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'resources': [],
                 'experiment': None,
                 'extract': None,
-                'custom_read_kwargs': {},
                 'column_map': {},
                 'trial_columns': None,
                 'time_column': None,
@@ -804,7 +804,6 @@ def test_dataset_definition_has_resources_not_equal():
                     },
                 },
                 'extract': None,
-                'custom_read_kwargs': {},
                 'column_map': {},
                 'trial_columns': None,
                 'time_column': None,
@@ -824,7 +823,7 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
 
 
 @pytest.mark.parametrize(
-    ('attribute_kwarg', 'scheduled_version'),
+    ('init_kwargs', 'scheduled_version'),
     [
         pytest.param(
             {'extract': True},
@@ -869,16 +868,21 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             '0.28.0',
             id='filename_format_schema_overrides',
         ),
+        pytest.param(
+            {'custom_read_kwargs': {'gaze': {'asd': 'def'}}},
+            '0.29.0',
+            id='custom_read_kwargs',
+        ),
     ],
 )
-def test_dataset_definition_init_parameter_is_deprecated_or_removed(
-        attribute_kwarg, scheduled_version, assert_deprecation_is_removed,
+def test_dataset_definition_init_kwarg_is_deprecated_or_removed(
+        init_kwargs, scheduled_version, assert_deprecation_is_removed,
 ):
     with pytest.raises(DeprecationWarning) as info:
-        DatasetDefinition(**attribute_kwarg)
+        DatasetDefinition(**init_kwargs)
 
     assert_deprecation_is_removed(
-        function_name=f'keyword argument {list(attribute_kwarg.keys())[0]}',
+        function_name=f'DatasetDefinition init keyword argument {list(init_kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version=scheduled_version,
 
@@ -1024,6 +1028,236 @@ def test_dataset_definition_filename_get_format_schema_expected(definition, expe
 def test_dataset_definition_set_filename_format_schema_expected(definition, new_value, expected):
     definition.filename_format_schema_overrides = new_value
     assert definition.resources == expected
+
+
+@pytest.mark.filterwarnings('ignore:.*custom_read_kwargs.*:DeprecationWarning')
+@pytest.mark.parametrize(
+    ('init_kwargs', 'expected_read_kwargs'),
+    [
+        pytest.param(
+            {'resources': None},
+            {},
+            id='none',
+        ),
+
+        pytest.param(
+            {'resources': {}},
+            {},
+            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            id='empty_dict',
+        ),
+
+        pytest.param(
+            {'resources': []},
+            {},
+            id='empty_list',
+        ),
+
+        pytest.param(
+            {'resources': ResourceDefinitions()},
+            {},
+            id='empty_resources',
+        ),
+
+        pytest.param(
+            {'resources': [ResourceDefinition(content='gaze')]},
+            {},
+            id='gaze_resource_without_read_kwargs',
+        ),
+
+        pytest.param(
+            {
+                'resources': [
+                    ResourceDefinition(
+                        content='gaze',
+                        load_function='from_csv',
+                        load_kwargs={'read_csv_kwargs': {'foo': 'bar'}},
+                    ),
+                ],
+            },
+            {'gaze': {'foo': 'bar'}},
+            id='gaze_csv_resource_with_read_kwargs',
+        ),
+
+        pytest.param(
+            {
+                'resources': [
+                    ResourceDefinition(
+                        content='gaze',
+                        load_function='from_ipc',
+                        load_kwargs={'read_ipc_kwargs': {'abc': 'def'}},
+                    ),
+                ],
+            },
+            {'gaze': {'abc': 'def'}},
+            id='gaze_ipc_resource_with_read_kwargs',
+        ),
+
+        pytest.param(
+            {
+                'resources': [
+                    ResourceDefinition(
+                        content='gaze',
+                        load_function='from_custom',
+                        load_kwargs={'asd': 'fgh'},
+                    ),
+                ],
+            },
+            {'gaze': {'asd': 'fgh'}},
+            id='gaze_custom_resource_with_read_kwargs',
+        ),
+
+        pytest.param(
+            {'resources': [ResourceDefinition(content='precomputed_events')]},
+            {},
+            id='precomputed_events_resource_without_read_kwargs',
+        ),
+
+        pytest.param(
+            {
+                'resources': [
+                    ResourceDefinition(
+                        content='precomputed_events',
+                        load_kwargs={'test': 'more'},
+                    ),
+                ],
+            },
+            {'precomputed_events': {'test': 'more'}},
+            id='precomputed_events_resource_with_read_kwargs',
+        ),
+
+        pytest.param(
+            {'resources': [ResourceDefinition(content='precomputed_events')]},
+            {},
+            id='precomputed_reading_measures_resource_without_read_kwargs',
+        ),
+
+        pytest.param(
+            {
+                'resources': [
+                    ResourceDefinition(
+                        content='precomputed_reading_measures',
+                        load_kwargs={'read': 'more'},
+                    ),
+                ],
+            },
+            {'precomputed_reading_measures': {'read': 'more'}},
+            id='precomputed_reading_measures_resource_with_read_kwargs',
+        ),
+    ],
+)
+def test_dataset_definition_custom_read_kwargs_expected(init_kwargs, expected_read_kwargs):
+    definition = DatasetDefinition(**init_kwargs)
+
+    assert definition.custom_read_kwargs == expected_read_kwargs
+
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+@pytest.mark.parametrize(
+    ('definition', 'new_value', 'expected_resources'),
+    [
+        pytest.param(
+            DatasetDefinition(resources=[{'content': 'gaze'}]),
+            {'gaze': {'foo': 'bar'}},
+            [
+                ResourceDefinition(
+                    content='gaze', load_kwargs={'foo': 'bar'},
+                ),
+            ],
+            id='gaze_resource',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[{
+                    'content': 'gaze', 'filename_pattern': 'test.csv', 'load_function': 'from_csv',
+                }],
+            ),
+            {'gaze': {'foo': 'bar'}},
+            [
+                ResourceDefinition(
+                    content='gaze', filename_pattern='test.csv', load_function='from_csv',
+                    load_kwargs={'foo': 'bar'},
+                ),
+            ],
+            id='gaze_csv_resource',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[{
+                    'content': 'gaze', 'filename_pattern': 'test.ipc', 'load_function': 'from_ipc',
+                }],
+            ),
+            {'gaze': {'too': 'far'}},
+            [
+                ResourceDefinition(
+                    content='gaze', filename_pattern='test.ipc', load_function='from_ipc',
+                    load_kwargs={'too': 'far'},
+                ),
+            ],
+            id='gaze_ipc_resource',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze', 'filename_pattern': 'test.csv',
+                        'load_function': 'from_csv',
+                    },
+                    {
+                        'content': 'gaze', 'filename_pattern': 'test.ipc',
+                        'load_function': 'from_ipc',
+                    },
+                ],
+            ),
+            {'gaze': {'two': 'daa'}},
+            [
+                ResourceDefinition(
+                    content='gaze', filename_pattern='test.csv', load_function='from_csv',
+                    load_kwargs={'two': 'daa'},
+                ),
+                ResourceDefinition(
+                    content='gaze', filename_pattern='test.ipc', load_function='from_ipc',
+                    load_kwargs={'two': 'daa'},
+                ),
+            ],
+            id='two_gaze_resources',
+        ),
+
+        pytest.param(
+            DatasetDefinition(resources=[{'content': 'precomputed_events'}]),
+            {'precomputed_events': {'key': 'val'}},
+            [
+                ResourceDefinition(
+                    content='precomputed_events',
+                    load_kwargs={'custom_read_kwargs': {'key': 'val'}},
+                ),
+            ],
+            id='precomputed_events_resource',
+        ),
+
+        pytest.param(
+            DatasetDefinition(resources=[{'content': 'precomputed_reading_measures'}]),
+            {'precomputed_reading_measures': {'key': 'val'}},
+            [
+                ResourceDefinition(
+                    content='precomputed_reading_measures',
+                    load_kwargs={'custom_read_kwargs': {'key': 'val'}},
+                ),
+            ],
+            id='precomputed_reading_measures_resource',
+        ),
+
+    ],
+)
+def test_dataset_definition_set_custom_read_kwargs_expected(
+        definition, new_value, expected_resources,
+):
+    definition.custom_read_kwargs = new_value
+    assert definition.custom_read_kwargs == new_value
+    assert definition.resources == expected_resources
 
 
 @pytest.mark.parametrize(

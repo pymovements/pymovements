@@ -8,7 +8,6 @@ resources:
   filename_pattern: SAC_{data_split:s}.csv
   filename_pattern_schema_overrides:
     data_split: '!str'
-custom_read_kwargs:
-  precomputed_events:
+  load_kwargs:
     null_values:
     - NA
