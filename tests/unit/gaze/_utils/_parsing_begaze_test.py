@@ -300,8 +300,10 @@ def test_parse_begaze_binocular_parametrized(
     assert metadata['tracked_eye'] == expected_tracked_eye
 
 
-@pytest.mark.parametrize('with_trial_columns',
-                         [False, True], ids=['no_trial_columns', 'with_trial_columns'])
+@pytest.mark.parametrize(
+    'with_trial_columns',
+    [False, True], ids=['no_trial_columns', 'with_trial_columns'],
+)
 def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns):
     # Exercise the public loader that wraps parse_begaze using the same BEGAZE_TEXT fixture.
 
