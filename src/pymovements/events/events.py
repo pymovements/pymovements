@@ -602,8 +602,16 @@ class Events:
         existing_cols = set(self.frame.columns)
         aoi_columns: list[str] = [c for c in aoi_dataframe.aois.columns if c not in existing_cols]
 
+        # Build a stable dtype schema for the AOI columns to avoid concat SchemaError when
+        # mixing empty rows (all None) with real AOI rows (strings/floats, etc.).
+        aoi_schema: dict[str, pl.PolarsDataType] = (
+            {col: aoi_dataframe.aois.schema[col] for col in aoi_columns}
+            if aoi_columns else {}
+        )
+
         def _empty_aoi_row() -> pl.DataFrame:
-            return pl.from_dict({col: None for col in aoi_columns})
+            # Create one row of all-None cast to expected AOI dtypes
+            return pl.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
 
         out_rows: list[pl.DataFrame] = []
         for row in tqdm(
@@ -649,6 +657,8 @@ class Events:
                     aoi_row = aoi_row.select(
                         [pl.col(c) for c in present] + [pl.lit(None).alias(c) for c in missing],
                     )
+                    # Cast to the stable AOI schema to ensure consistent dtypes across rows
+                    aoi_row = aoi_row.cast(aoi_schema)
                 else:
                     # No AOI columns are to be appended (all already exist in the Events frame).
                     # Keep row count but contribute zero columns to avoid duplicate-column errors.

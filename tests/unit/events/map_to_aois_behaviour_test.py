@@ -336,3 +336,64 @@ def test_events_map_to_aois_no_new_columns_when_all_aoi_columns_present(
 
     # Also ensure that pre-existing AOI columns remain untouched (no overwrite during concat).
     assert ev.frame.select('label').item() == 'pre'
+
+
+@pytest.mark.parametrize('preserve_structure', [True, False])
+def test_previous_saccades_untouched_after_map_to_aois(
+    simple_stimulus: TextStimulus,
+    preserve_structure: bool,
+) -> None:
+    """Events with preceding saccades remain unchanged by map_to_aois.
+
+    - AOIs are only mapped for fixation rows.
+    - Saccade rows keep their original fields (name/onset/offset and location or its components),
+      and receive only None values in the appended AOI columns.
+    """
+    # Build a frame where a saccade precedes a fixation (and another saccade follows).
+    base = pl.DataFrame(
+        {
+            'name': ['saccade', 'fixation', 'saccade'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location': [[5.0, 5.0], [5.0, 5.0], [15.0, 5.0]],
+        },
+    )
+
+    original = base.clone()
+
+    events = Events(data=base)
+    events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure)
+
+    # only middle fixation is inside AOI 'A'
+    labels = events.frame.get_column('label').to_list()
+    assert labels == [None, 'A', None]
+
+    # Verify saccade rows are unchanged (except for expected structural handling)
+    if preserve_structure:
+        # location list is dropped and components are derived
+        assert 'location' not in events.frame.columns
+        assert {'location_x', 'location_y'}.issubset(set(events.frame.columns))
+        # Check each saccade's fields
+        for idx in (0, 2):
+            row_after = events.frame.row(idx, named=True)
+            row_before = original.row(idx, named=True)
+            assert row_after['name'] == row_before['name'] == 'saccade'
+            assert row_after['onset'] == row_before['onset']
+            assert row_after['offset'] == row_before['offset']
+            # Components equal original list components
+            assert row_after['location_x'] == row_before['location'][0]
+            assert row_after['location_y'] == row_before['location'][1]
+            # AOI label None for saccades
+            assert row_after['label'] is None
+    else:
+        # location list is preserved and there are no derived components
+        assert 'location' in events.frame.columns
+        assert 'location_x' not in events.frame.columns and 'location_y' not in events.frame.columns
+        for idx in (0, 2):
+            row_after = events.frame.row(idx, named=True)
+            row_before = original.row(idx, named=True)
+            assert row_after['name'] == row_before['name'] == 'saccade'
+            assert row_after['onset'] == row_before['onset']
+            assert row_after['offset'] == row_before['offset']
+            assert row_after['location'] == row_before['location']
+            assert row_after['label'] is None
