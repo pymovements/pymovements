@@ -235,9 +235,19 @@ def _setup_axes_and_colormap(
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-        if n > 0:  # autoset axes limits if there is at least one data point
-            x_min, x_max = np.nanmin(x_signal), np.nanmax(x_signal)
-            y_min, y_max = np.nanmin(y_signal), np.nanmax(y_signal)
+
+        # Convert to NumPy arrays first
+        x_arr = np.asarray(x_signal)
+        y_arr = np.asarray(y_signal)
+
+        valid_x = x_arr[np.isfinite(x_arr)]
+        valid_y = y_arr[np.isfinite(y_arr)]
+
+        if valid_x.size > 0 and valid_y.size > 0:
+
+            # autoset axes limits if there is at least one data point
+            x_min, x_max = np.nanmin(valid_x), np.nanmax(valid_x)
+            y_min, y_max = np.nanmin(valid_y), np.nanmax(valid_y)
 
             if padding is None:  # dynamic padding relative to data range
                 x_pad = (x_max - x_min) * pad_factor
