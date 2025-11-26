@@ -122,6 +122,13 @@ class Gaze:
         methods will be applied to each trial separately.
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
+    calibrations: polars.DataFrame | None
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        None by default, to be populated by I/O helpers (e.g. from_asc).
+    validations: polars.DataFrame | None
+        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        accuracy_max.
+        None by default, to be populated by I/O helpers (e.g. from_asc).
 
     Notes
     -----
@@ -129,7 +136,7 @@ class Gaze:
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
-    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    single column with the corresponding name, e.g. using `pixel_columns` will merge the
     respective columns into the column `pixel`.
 
     The supported number of component columns with the expected order are:
@@ -224,6 +231,13 @@ class Gaze:
 
     n_components: int | None
 
+    calibrations: polars.DataFrame | None
+
+    validations: polars.DataFrame | None
+
+    # Private leftover metadata from parsing (without calibrations/validations)
+    _metadata: dict[str, Any] | None
+
     def __init__(
             self,
             samples: polars.DataFrame | None = None,
@@ -296,8 +310,11 @@ class Gaze:
         _check_messages(messages)
         self.messages = messages
 
-        # Remove this attribute once #893 is fixed
-        self._metadata: dict[str, Any] | None = None
+        self.calibrations = None
+        self.validations = None
+
+        # Keep remaining parsed metadata privately if an I/O helper provides it.
+        self._metadata = None
 
     def apply(
             self,

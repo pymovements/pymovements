@@ -21,7 +21,9 @@
 import filecmp
 from pathlib import Path
 
+import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 
 def test_testfiles_dirpath_has_files(testfiles_dirpath):
@@ -100,3 +102,55 @@ def test_make_text_file_rejects_absolute_paths(make_text_file):
 def test_make_text_file_rejects_tilde_home(make_text_file):
     with pytest.raises(ValueError, match=r"~\' \(home\) is not allowed|relative path"):
         make_text_file('~/.secret.txt', header='h', body='b')
+
+
+@pytest.mark.parametrize(
+    ('filename', 'data', 'header', 'kwargs', 'read_kwargs'),
+    [
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), None, None, None,
+            id='no_header_single_column_no_kwargs',
+        ),
+
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3], 'b': ['A', 'B', 'C']}), None, None, None,
+            id='no_header_two_columns_no_kwargs',
+        ),
+
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), '# test header', None, {'skip_lines': 1},
+            id='single_line_header_single_column_no_kwargs',
+        ),
+
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), None,
+            {'separator': '\t'}, {'separator': '\t'},
+            id='no_header_single_column_tab_separated',
+        ),
+    ],
+)
+def test_make_csv_file(filename, data, header, kwargs, read_kwargs, make_csv_file):
+    if kwargs is not None:
+        filepath = make_csv_file(filename, data, header=header, **kwargs)
+    else:
+        filepath = make_csv_file(filename, data, header=header)
+
+    if header is not None:
+        with open(filepath, encoding='utf-8') as opened_file:
+            header_lines = len(header.split('\n'))
+            written_header = ''.join([next(opened_file) for _ in range(header_lines)])
+    else:
+        written_header = None
+
+    # read dataframe contents csv file
+    if read_kwargs is not None:
+        written_data = pl.read_csv(filepath, **read_kwargs)
+    else:
+        written_data = pl.read_csv(filepath)
+
+    assert filepath.name == filename
+    if header is None:
+        assert written_header is None
+    else:
+        assert written_header == header + '\n'
+    assert_frame_equal(written_data, data)
