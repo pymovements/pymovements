@@ -345,9 +345,6 @@ def load_gaze_file(
         gaze = from_begaze(
             filepath,
             definition=definition,
-            trial_columns=trial_columns,
-            add_columns=fileinfo_columns,
-            column_schema_overrides=column_schema_overrides,
             **load_function_kwargs,
         )
     else:

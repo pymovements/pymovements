@@ -20,9 +20,6 @@
 """EyeLink parsing module.
 
 This module provides a dedicated namespace for EyeLink-specific parsing logic.
-
-Public API:
-- parse_eyelink
 """
 from __future__ import annotations
 
@@ -364,6 +361,12 @@ def parse_eyelink(
     durations in a different way than pymovements, resulting in a difference of 1 sample duration.
     For 1000 Hz recordings, durations calculated by pymovements are 1 ms shorter than the durations
     reported in the asc file.
+
+    Robustness to unmatched end markers: If an event end line (EBLINK/EFIX/ESACC) appears without a
+    corresponding start line (SBLINK/SFIX/SSACC) for the same eye earlier in the file, a warning is
+    emitted and the event is still recorded. In this case, the parser seeds additional columns from
+    the current context (values derived from the provided ``patterns`` at that line), so trial/task
+    information is preserved when available.
     """
     # pylint: disable=too-many-branches, too-many-statements
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
@@ -380,8 +383,17 @@ def parse_eyelink(
     current_additional = {
         additional_column: None for additional_column in additional_columns
     }
-    current_event_additional: dict[str, dict[str, Any]] = {
-        'fixation': {}, 'saccade': {}, 'blink': {},
+    # Track additional metadata and start state per event type and eye
+    # Structure: current_event_additional[event_name][eye] -> dict of additional columns
+    current_event_additional: dict[str, dict[str, dict[str, Any]]] = {
+        'fixation': {'left': {}, 'right': {}},
+        'saccade': {'left': {}, 'right': {}},
+        'blink': {'left': {}, 'right': {}},
+    }
+    current_event_started: dict[str, dict[str, bool]] = {
+        'fixation': {'left': False, 'right': False},
+        'saccade': {'left': False, 'right': False},
+        'blink': {'left': False, 'right': False},
     }
 
     samples: dict[str, list[Any]] = {
@@ -508,9 +520,9 @@ def parse_eyelink(
 
         elif start_event := parse_eyelink_event_start(line):
             event_name, eye = start_event
-            # store additional metadata for this event type + eye
-            # key by event name only (e.g., 'fixation')
-            current_event_additional[event_name] = {**current_additional}
+            # store additional metadata for this event type and eye
+            current_event_additional[event_name][eye] = {**current_additional}
+            current_event_started[event_name][eye] = True
 
             if event_name == 'blink':
                 blinking = True
@@ -522,11 +534,21 @@ def parse_eyelink(
             events['onset'].append(event_onset)
             events['offset'].append(event_offset)
 
+            # If an event end is found but there is no recorded start for this eye, seed from
+            # current context and warn the user that the file may be corrupt or incomplete.
+            if not current_event_started[event_name][eye]:
+                warnings.warn(
+                    "Missing start marker before end for event '" + event_name +
+                    f"' (onset={event_onset}, offset={event_offset}). "
+                    'Using current context to fill additional columns.',
+                )
+                current_event_additional[event_name][eye] = {**current_additional}
+
             for additional_column in additional_columns:
                 events[additional_column].append(
-                    current_event_additional[event_name][additional_column],
+                    current_event_additional[event_name][eye][additional_column],
                 )
-            current_event_additional[event_name] = {}
+            current_event_additional[event_name][eye] = {}
 
             if event_name == 'blink':
                 # collect blink intervals and compute counts later once sampling rate is known
