@@ -38,6 +38,7 @@ from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.io import from_asc
+from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.reading_measures import ReadingMeasures
@@ -340,8 +341,14 @@ def load_gaze_file(
             definition=definition,
             **load_function_kwargs,
         )
+    elif load_function_name == 'from_begaze':
+        gaze = from_begaze(
+            filepath,
+            definition=definition,
+            **load_function_kwargs,
+        )
     else:
-        valid_load_functions = ['from_csv', 'from_ipc', 'from_asc']
+        valid_load_functions = ['from_csv', 'from_ipc', 'from_asc', 'from_begaze']
         raise ValueError(
             f'Unsupported load_function "{load_function_name}". '
             f'Available options are: {valid_load_functions}',
