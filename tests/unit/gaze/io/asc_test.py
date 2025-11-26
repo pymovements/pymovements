@@ -835,7 +835,7 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
         ),
     ],
 )
-def test_parsing_has_expected_metadata(
+def test_from_asc_example_file_has_expected_metadata(
         filename, kwargs, expected_metadata, make_example_file,
 ):
     filepath = make_example_file(filename)
