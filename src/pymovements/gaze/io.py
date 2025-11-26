@@ -746,6 +746,216 @@ def from_ipc(
     return gaze
 
 
+def from_psychopy_csv(
+        file: str | Path,
+        experiment: Experiment | None = None,
+        *,
+        time_column: str | None = None,
+        time_unit: str | None = None,
+        pixel_columns: list[str] | None = None,
+        velocity_columns: list[str] | None = None,
+        distance_column: str | None = None,
+        auto_column_detect: bool = False,
+        column_map: dict[str, str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, type] | None = None,
+        definition: pm.DatasetDefinition | None = None,
+        **read_csv_kwargs: Any,
+) -> Gaze:
+    """Initialize a :py:class:`~pymovements.Gaze`.
+
+    Parameters
+    ----------
+    file: str | Path
+        Path of gaze file.
+    experiment : Experiment | None
+        The experiment definition. (default: None)
+    time_column: str | None
+        The name of the timestamp column in the input data frame. (default: None)
+    time_unit: str | None
+        The unit of the timestamps in the timestamp column in the input data frame. Supported
+        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
+        'step' the experiment definition must be specified. All timestamps will be converted to
+        milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
+    pixel_columns: list[str] | None
+        The name of the eye position on the calibration plane columns in the input data frame.
+        The value is specified in Display Coordinate Type Units. These columns will be
+        nested into the column ``pixel_columns``. If the list is empty or None,
+        the nested ``pixel_columns`` column will not be created. (default: None)
+    velocity_columns: list[str] | None = None
+        The name of the velocity columns in the input data frame. These columns will be nested
+        into the column ``velocity``. If the list is empty or None, the nested ``velocity``
+        column will not be created. (default: None)
+    distance_column: str | None
+        The name of the eye-to-screen distance column in the input data frame. If specified,
+        the column will be used for pixel to dva transformations. If not specified, the
+        constant eye-to-screen distance will be taken from the experiment definition.
+        (default: None)
+    auto_column_detect: bool
+        Flag indicating if the column names should be inferred automatically. (default: False)
+    column_map: dict[str, str] | None
+        The keys are the columns to read, the values are the names to which they should be renamed.
+        (default: None)
+    add_columns: dict[str, str] | None
+        Dictionary containing columns to add to loaded data frame.
+        (default: None)
+    column_schema_overrides:  dict[str, type] | None
+        Dictionary containing types for columns.
+        (default: None)
+    definition: pm.DatasetDefinition | None
+        A dataset definition. Explicitly passed arguments take precedence over definition.
+        (default: None)
+    **read_csv_kwargs: Any
+        Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
+        These can include custom separators, a subset of columns, or specific data types
+        for columns.
+
+    Returns
+    -------
+    Gaze
+        The initialized gaze object read from the csv file.
+
+    Notes
+    -----
+    About using the arguments ``pixel_columns``
+
+    By passing a list of columns as any of these arguments, these columns will be merged into a
+    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    respective columns into the column `pixel`.
+
+    The supported number of component columns with the expected order are:
+
+    - **zero columns**: No nested component column will be created.
+    - **two columns**: monocular data; expected order: x-component, y-component
+    - **four columns**: binocular data; expected order: x-component left eye, y-component left eye,
+    x-component right eye, y-component right eye
+
+    Examples
+    --------
+    First let's assume a CSV file stored `tests/files/psychopy_example.csv`
+    with the following content:
+    shape: (10, 5)
+    ┌──────┬────────────┬────────────┬─────────────┬─────────────┬─────────────┬
+    │ time ┆ left_gaze_x┆ left_gaze_y│ right_gaze_x┆ right_gaze_y┆ right_gaze_y┆
+    │ ---  ┆ ---        ┆ ---        │ ---         ┆ ---         ┆ ---         ┆
+    │ i64  ┆ i64        ┆ i64        │ i64         ┆ i64         ┆ i64         ┆
+    ╞══════╪════════════╪════════════╪═════════════╪═════════════╪═════════════╪
+    │ 0    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 1    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 2    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 3    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 4    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 5    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 6    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 7    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 8    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    │ 9    ┆ 0          ┆ 0          │ 0           ┆ 0           ┆ 0           ┆
+    └──────┴────────────┴────────────┴─────────────┴─────────────┴─────────────┘
+
+    We can now load the data into a ``Gaze`` by specyfing the experimental setting
+    and the names of the pixel position columns. We can specify a custom separator for the csv
+    file by passing it as a keyword argument to :py:func:`polars.read_csv`:
+
+    >>> from pymovements.gaze.io import from_psychopy_csv
+    >>> gaze = from_psychopy_csv(
+    ...     file='tests/files/psychopy_example.csv',
+    ...     time_column = 'device_time',
+    ...     time_unit='ms',
+    ...     pixel_columns = ['left_gaze_x','left_gaze_y',
+    ...                      'right_gaze_x','right_gaze_y'],
+    ...     separator = ',',
+    ... )
+    >>> gaze.samples
+    shape: (10, 2)
+    ┌──────┬────────────────────────┐
+    │ time ┆ display_coordinate     │
+    │ ---  ┆ ---                    │
+    │ i64  ┆ list[i64]              │
+    ╞══════╪════════════════════════╡
+    │ 0    ┆ [0, 0, 0, 0]           │
+    │ 1    ┆ [0, 0, 0, 0]           │
+    │ 2    ┆ [0, 0, 0, 0]           │
+    │ 3    ┆ [0, 0, 0, 0]           │
+    │ 4    ┆ [0, 0, 0, 0]           │
+    │ 5    ┆ [0, 0, 0, 0]           │
+    │ 6    ┆ [0, 0, 0, 0]           │
+    │ 7    ┆ [0, 0, 0, 0]           │
+    │ 8    ┆ [0, 0, 0, 0]           │
+    │ 9    ┆ [0, 0, 0, 0]           │
+    └──────┴────────────────────────┘
+
+    >>> from pymovements.gaze.io import from_psychopy_csv
+    >>> import polars as pl
+    >>> gaze = from_psychopy_csv(
+    ...     file='tests/files/psychopy_exampl.csv',
+    ...     time_column = 'device_time',
+    ...     time_unit='ms',
+    ...     pixel_columns = ['x_left_pix','y_left_pix'],
+    ...     schema_overrides = {'time': pl.Float64, 'x_left_pix': pl.Int64, 'y_left_pix': pl.Int64},
+    ... )
+    >>> gaze.samples
+    """
+    # explicit arguments take precedence over definition.
+    if definition:
+        if column_map is None:
+            column_map = definition.column_map
+
+        if not read_csv_kwargs and 'gaze' in definition.custom_read_kwargs:
+            if definition.custom_read_kwargs['gaze']:
+                read_csv_kwargs = definition.custom_read_kwargs['gaze']
+
+    # Read data.
+    samples = pl.read_csv(file, **read_csv_kwargs)
+    if column_map is not None:
+        samples = samples.rename({
+            key: column_map[key] for key in
+            [
+                key for key in column_map.keys()
+                if key in samples.columns
+            ]
+        })
+
+    if add_columns is not None:
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
+
+    # Cast numerical columns to Float64 if they were incorrectly inferred to be Utf8.
+    # This can happen if the column only has missing values in the top 100 rows.
+    numerical_columns = (
+        (pixel_columns or [])
+        + (velocity_columns or [])
+        + ([distance_column] if distance_column else [])
+    )
+    for column in numerical_columns:
+        if samples[column].dtype == pl.Utf8:
+            samples = samples.with_columns([
+                pl.col(column).cast(pl.Float64),
+            ])
+
+    if column_schema_overrides is not None:
+        samples = samples.with_columns([
+            pl.col(fileinfo_key).cast(fileinfo_dtype)
+            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+        ])
+
+    # Create gaze object.
+    gaze = Gaze(
+        samples=samples,
+        experiment=experiment,
+        definition=definition,
+        time_column=time_column,
+        time_unit=time_unit,
+        pixel_columns=pixel_columns,
+        velocity_columns=velocity_columns,
+        distance_column=distance_column,
+        auto_column_detect=auto_column_detect,
+    )
+    return gaze
+
+
 def _fill_experiment_from_parsing_metadata(
         experiment: Experiment | None,
         metadata: dict[str, Any],

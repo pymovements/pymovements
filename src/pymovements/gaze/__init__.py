@@ -29,6 +29,7 @@ from pymovements.gaze.integration import from_pandas
 from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
+from pymovements.gaze.io import from_psychopy_csv
 from pymovements.gaze.screen import Screen
 
 
@@ -43,6 +44,7 @@ __all__ = [
     'transforms_numpy',
     'transforms',
     'from_asc',
+    'from_psychopy_csv',
     'from_csv',
     'from_ipc',
 ]
