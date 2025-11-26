@@ -28,7 +28,6 @@ from pymovements import EyeTracker
 from pymovements import Screen
 from pymovements.datasets import ToyDatasetEyeLink
 from pymovements.gaze import from_asc
-from pymovements.gaze._utils import parsing
 
 
 @pytest.mark.parametrize(
@@ -836,28 +835,15 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
         ),
     ],
 )
-def test_parsing_returns_expected_metadata(
+def test_parsing_has_expected_metadata(
         filename, kwargs, expected_metadata, make_example_file,
 ):
     filepath = make_example_file(filename)
-
-    # Prefer metadata_patterns passed explicitly - otherwise try to get them from the definition
-    metadata_patterns = kwargs.get('metadata_patterns')
-    if metadata_patterns is None and 'definition' in kwargs and kwargs['definition'] is not None:
-        definition = kwargs['definition']
-        metadata_patterns = definition.custom_read_kwargs.get(
-            'gaze', {},
-        ).get('metadata_patterns')
-
-    _, _, md, _ = parsing.parse_eyelink(
-        filepath,
-        metadata_patterns=metadata_patterns,
-        encoding=kwargs.get('encoding'),
-    )
+    gaze = from_asc(filepath, **kwargs)
 
     for key, value in expected_metadata.items():
-        assert key in md
-        assert md[key] == value
+        assert key in gaze._metadata
+        assert gaze._metadata[key] == value
 
 
 @pytest.mark.parametrize(
@@ -865,11 +851,11 @@ def test_parsing_returns_expected_metadata(
         pytest.param('eyelink_monocular_example.asc', id='mono'),
     ],
 )
-def test_from_asc_sets_public_cal_val_interfaces(filename, make_example_file):
+def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath)
 
-    # Calibrations DataFrame present with expected schema
+    # Calibrations DataFrame present with the expected schema
     assert isinstance(gaze.calibrations, pl.DataFrame)
     assert gaze.calibrations.schema == {
         'time': pl.Float64,
@@ -878,7 +864,20 @@ def test_from_asc_sets_public_cal_val_interfaces(filename, make_example_file):
         'tracking_mode': pl.Utf8,
     }
 
-    # Validations DataFrame present with expected schema
+    # Example file should contain at least one calibration
+    assert gaze.calibrations.height >= 1
+
+
+@pytest.mark.parametrize(
+    'filename', [
+        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ],
+)
+def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
+    filepath = make_example_file(filename)
+    gaze = from_asc(filepath)
+
+    # Validations DataFrame present with the expected schema
     assert isinstance(gaze.validations, pl.DataFrame)
     assert gaze.validations.schema == {
         'time': pl.Float64,
@@ -888,8 +887,7 @@ def test_from_asc_sets_public_cal_val_interfaces(filename, make_example_file):
         'accuracy_max': pl.Float64,
     }
 
-    # Example file should contain at least one calibration and one validation
-    assert gaze.calibrations.height >= 1
+    # Example file should contain at least one validation
     assert gaze.validations.height >= 1
 
 
