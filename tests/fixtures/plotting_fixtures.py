@@ -17,17 +17,29 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Pytest configuration for plotting tests."""
-from __future__ import annotations
-
+"""Provide fixtures for non-interactive plotting tests."""
 from collections.abc import Generator
 
+import matplotlib
 import matplotlib.pyplot as plt
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def close_figures_after_test() -> Generator[None]:
+@pytest.fixture(name='set_non_interactive_plotting_backend', scope='session', autouse=True)
+def fixture_set_non_interactive_plotting_backend():
+    """Set the non-interactive plotting backend for Matplotlib."""
+    matplotlib.use('Agg')  # Non-interactive plotting
+
+
+@pytest.fixture(name='close_figures_after_test', autouse=True)
+def fixture_close_figures_after_test() -> Generator[None]:
     """Automatically close all Matplotlib figures after each test."""
     yield
     plt.close('all')
+
+
+@pytest.fixture(scope='session', autouse=True)
+def verify_no_figures_remain():
+    """Verify no figures remain open after all tests."""
+    yield
+    assert len(plt.get_fignums()) == 0, 'Some figures were not closed!'
