@@ -127,6 +127,8 @@ RECORDING_CONFIG_REGEX = re.compile(
     r'(?P<sampling_rate>\d+)\s+'
     r'(?P<file_sample_filter>0|1|2)\s+'
     r'(?P<link_sample_filter>0|1|2)\s+'
+    r'((?P<file_event_filter>0|1|2)\s+)?'
+    r'((?P<link_event_filter>0|1|2)\s+)?'
     r'(?P<tracked_eye>LR|[LR])\s*',
 )
 
@@ -532,12 +534,19 @@ def parse_eyelink(
                 blinking = False
 
         elif match := RECORDING_CONFIG_REGEX.match(line):
-            recording_config.append(match.groupdict())
+            # Drop optional groups that weren't present for legacy behaviour
+            rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
+            recording_config.append(rec_cfg)
 
         elif match := GAZE_COORDS_REGEX.match(line):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())
-            # GAZE_COORDS is always logged after RECCFG -> add it to the last recording_config
-            recording_config[-1]['resolution'] = (right - left + 1, bottom - top + 1)
+            # GAZE_COORDS is typically logged after RECCFG - if not, warn and skip assignment.
+            if not recording_config:
+                warnings.warn(
+                    'GAZE_COORDS encountered before any RECCFG. Skipping resolution assignment.',
+                )
+            else:
+                recording_config[-1]['resolution'] = (right - left + 1, bottom - top + 1)
 
         elif match := START_RECORDING_REGEX.match(line):
             start_recording_timestamp = match.groupdict()['timestamp']
