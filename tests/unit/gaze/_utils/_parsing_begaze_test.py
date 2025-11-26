@@ -300,16 +300,22 @@ def test_parse_begaze_binocular_parametrized(
     assert metadata['tracked_eye'] == expected_tracked_eye
 
 
-def test_from_begaze_loader_uses_parse_begaze(make_text_file):
+@pytest.mark.parametrize('with_trial_columns',
+                         [False, True], ids=['no_trial_columns', 'with_trial_columns'])
+def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns):
     # Exercise the public loader that wraps parse_begaze using the same BEGAZE_TEXT fixture.
 
     filepath = make_text_file(filename='begaze_loader.txt', body=BEGAZE_TEXT, encoding='ascii')
 
-    gaze = io.from_begaze(
-        filepath,
-        patterns=PATTERNS,
-        metadata_patterns=METADATA_PATTERNS,
-    )
+    kwargs = {
+        'patterns': PATTERNS,
+        'metadata_patterns': METADATA_PATTERNS,
+    }
+    # Add a test case where trial_columns is not None
+    if with_trial_columns:
+        kwargs['trial_columns'] = 'trial_id'
+
+    gaze = io.from_begaze(filepath, **kwargs)
 
     # Samples in Gaze use a combined 'pixel' column instead of separate x/y columns.
     expected_samples = BEGAZE_EXPECTED_GAZE_DF.with_columns(
@@ -348,6 +354,10 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file):
     assert pytest.approx(gaze.experiment.sampling_rate, rel=0, abs=1e-9) == 1000.0
     assert gaze.experiment.eyetracker.left is True
     assert gaze.experiment.eyetracker.right is False
+
+    # When trial_columns is provided, it should be set on the Gaze object
+    if with_trial_columns:
+        assert gaze.trial_columns == ['trial_id']
 
 
 @pytest.mark.parametrize('prefer_eye', ['R', 'L'])
