@@ -133,6 +133,14 @@ class TextStimulus:
     ) -> pl.DataFrame:
         """Return the AOI that contains the given gaze row.
 
+        This function checks spatial bounds using the interval `start <= coord < start + size` if
+        `width`/`height` are provided, or `start <= coord < end` if `end_x_column`/`end_y_column`
+        are provided.
+        In both cases, the end boundary is exclusive (half-open interval `[start, end)`).
+        When `trial_column` and/or `page_column` are configured,
+        AOIs are first filtered to match the current row's values for these columns,
+        which are then dropped to avoid duplicate columns during concatenation.
+
         Parameters
         ----------
         row: pl.DataFrame.row
@@ -155,13 +163,6 @@ class TextStimulus:
 
         Notes
         -----
-        This function checks spatial bounds using the interval `start <= coord < start + size` if
-        `width`/`height` are provided, or `start <= coord < end` if `end_x_column`/`end_y_column`
-        are provided.
-        In both cases, the end boundary is exclusive (half-open interval `[start, end)`).
-        When `trial_column` and/or `page_column` are configured,
-        AOIs are first filtered to match the current row's values for these columns,
-        which are then dropped to avoid duplicate columns during concatenation.
         If multiple AOIs overlap and match the same point, a `UserWarning` is emitted.
         For invalid or missing coordinates (e.g. `None` or strings), a `UserWarning` is emitted,
         and the lookup returns a single row of `None` values.
