@@ -952,7 +952,7 @@ def from_begaze(
         if experiment is None:
             experiment = definition.experiment
 
-        if trial_columns is None:
+        if trial_columns is None:  #pragma: no cover
             trial_columns = definition.trial_columns
 
         if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
