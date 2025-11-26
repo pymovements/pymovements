@@ -20,8 +20,6 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
-import sys
-
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
@@ -32,12 +30,6 @@ from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
-
-# This is really a dirty workaround to use the Agg backend if runnning pytest.
-# This is needed as Windows workers on GitHub fail randomly with other backends.
-# Unfortunately the Agg module cannot show plots in jupyter notebooks.
-if 'pytest' in sys.modules:  # pragma: no cover
-    matplotlib.use('Agg')
 
 
 def traceplot(

@@ -243,12 +243,11 @@ def gaze_fixture():
 
 
 def test_heatmap_sets_screen_axes_correctly(gaze):
-    fig, ax = pm.plotting.heatmap(gaze, show=False)
+    _, ax = pm.plotting.heatmap(gaze, show=False)
     screen = gaze.experiment.screen
     assert ax.get_xlim() == (0, screen.width_px)
     assert ax.get_ylim() == (screen.height_px, 0)
     assert ax.get_aspect() == 1.0
-    plt.close(fig)
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
