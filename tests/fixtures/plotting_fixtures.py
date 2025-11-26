@@ -24,8 +24,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pytest
 
-# Plotting backend
-matplotlib.use('Agg')  # Non-interactive plotting
+
+@pytest.fixture(name='set_non_interactive_plotting_backend', scope='session', autouse=True)
+def fixture_set_non_interactive_plotting_backend():
+    """Set the non-interactive plotting backend for Matplotlib."""
+    matplotlib.use('Agg')  # Non-interactive plotting
 
 
 @pytest.fixture(name='close_figures_after_test', autouse=True)
