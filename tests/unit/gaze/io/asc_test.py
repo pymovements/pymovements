@@ -847,6 +847,51 @@ def test_from_asc_example_file_has_expected_metadata(
 
 
 @pytest.mark.parametrize(
+    'filename', [
+        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ],
+)
+def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
+    filepath = make_example_file(filename)
+    gaze = from_asc(filepath)
+
+    # Calibrations DataFrame present with the expected schema
+    assert isinstance(gaze.calibrations, pl.DataFrame)
+    assert gaze.calibrations.schema == {
+        'time': pl.Float64,
+        'num_points': pl.Int64,
+        'eye': pl.Utf8,
+        'tracking_mode': pl.Utf8,
+    }
+
+    # Example file should contain at least one calibration
+    assert gaze.calibrations.height >= 1
+
+
+@pytest.mark.parametrize(
+    'filename', [
+        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ],
+)
+def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
+    filepath = make_example_file(filename)
+    gaze = from_asc(filepath)
+
+    # Validations DataFrame present with the expected schema
+    assert isinstance(gaze.validations, pl.DataFrame)
+    assert gaze.validations.schema == {
+        'time': pl.Float64,
+        'num_points': pl.Int64,
+        'eye': pl.Utf8,
+        'accuracy_avg': pl.Float64,
+        'accuracy_max': pl.Float64,
+    }
+
+    # Example file should contain at least one validation
+    assert gaze.validations.height >= 1
+
+
+@pytest.mark.parametrize(
     ('filename', 'kwargs', 'expected_event_frame'),
     [
         pytest.param(
@@ -1038,3 +1083,22 @@ def test_from_asc_messages(make_text_file, body, messages, expected_data):
                 data=expected_data,
             ),
         )
+
+
+def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    gaze = from_asc(filepath)
+
+    # Public frames exist
+    assert isinstance(gaze.calibrations, pl.DataFrame)
+    assert isinstance(gaze.validations, pl.DataFrame)
+
+    # Private _metadata exists and does NOT contain cal/val anymore
+    assert isinstance(gaze._metadata, dict)
+    assert 'calibrations' not in gaze._metadata
+    assert 'validations' not in gaze._metadata
+
+    # Data loss ratios should be present for consumers until we migrate to explicit preprocessing
+    # utilities.
+    assert 'data_loss_ratio' in gaze._metadata
+    assert 'data_loss_ratio_blinks' in gaze._metadata
