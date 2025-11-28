@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import warnings
 
+import polars as pl
 import pytest
 
-from pymovements.gaze.experiment import Experiment
+from pymovements import Experiment
+from pymovements.gaze import from_begaze
 from pymovements.gaze.io import _fill_experiment_from_parsing_begaze_metadata
 
 
@@ -45,6 +47,68 @@ BEGAZE_MINI = (
     # One more SMP row (after messages) so additional columns are propagated
     '10000003123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
 )
+
+
+@pytest.mark.parametrize(
+    (
+        'add_columns',
+        'column_schema_overrides',
+        'expect_added_cols',
+        'expect_overrides',
+    ),
+    [
+        pytest.param(
+            {'dataset': 'toy', 'trial': 'SHOULD_NOT_OVERWRITE'},
+            {'trial': pl.Int64},
+            {'dataset': 'toy'},
+            {'trial': pl.Int64},
+            id='add_missing_and_cast_existing_trial_to_int',
+        ),
+    ],
+)
+def test_from_begaze_has_correct_samples(
+    add_columns,
+    column_schema_overrides,
+    expect_added_cols,
+    expect_overrides,
+    make_text_file,
+):
+    # Use DatasetDefinition to supply custom_read_kwargs['gaze'] values
+    patterns = [
+        {
+            'pattern': r'START_TRIAL_(?P<trial>\d+)',
+            'column': 'trial',
+        },
+    ]
+    metadata_patterns = [
+        {
+            'pattern': r'METADATA_1 (?P<meta1>\d+)',
+            'key': 'meta1',
+        },
+    ]
+
+    filepath = make_text_file('mini_begaze.txt', header='', body=BEGAZE_MINI, encoding='ascii')
+
+    # Pass encoding=None to exercise the branch that reads it from the definition
+    gaze = from_begaze(
+        filepath,
+        patterns=patterns,
+        metadata_patterns=metadata_patterns,
+        # schema is currently unused in parse_begaze!
+        schema={'trial': int},
+        column_schema_overrides=column_schema_overrides,
+        encoding='ascii',
+        add_columns=add_columns,
+    )
+
+    assert 'trial' in gaze.samples.columns
+    for key, dtype in expect_overrides.items():
+        assert gaze.samples.schema[key] == dtype
+
+    # Ensure add_columns only added missing ones (dataset), not overwriting existing columns
+    for key, value in expect_added_cols.items():
+        assert key in gaze.samples.columns
+        assert set(gaze.samples[key].to_list()) == {value}
 
 
 @pytest.mark.parametrize(
