@@ -55,6 +55,20 @@ from pymovements.gaze import from_csv
         ),
 
         pytest.param(
+            'monocular_example.csv',
+            {
+                'time_column': 'time',
+                'time_unit': 'ms',
+                'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                'add_columns': {'test': 1},
+                'column_schema_overrides': {'test': pl.Float64},
+            },
+            (10, 3),
+            {'time': pl.Int64, 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
+            id='csv_mono_shape_add_columns',
+        ),
+
+        pytest.param(
             'binocular_example.csv',
             {
                 'time_column': 'time',
@@ -187,6 +201,39 @@ from pymovements.gaze import from_csv
                 'time': pl.Int64, 'pixel': pl.List(pl.Float32),
             },
             id='judo1000_example',
+        ),
+
+        pytest.param(
+            'potec_example.tsv',
+            {
+                'experiment': DatasetLibrary.get('PoTeC').experiment,
+                'time_column': DatasetLibrary.get('PoTeC').time_column,
+                'time_unit': DatasetLibrary.get('PoTeC').time_unit,
+                'pixel_columns': DatasetLibrary.get('PoTeC').pixel_columns,
+                'read_csv_kwargs': DatasetLibrary.get('PoTeC').custom_read_kwargs['gaze'],
+            },
+            (10, 3),
+            {
+                'time': pl.Int64, 'pupil_diameter': pl.Float32, 'pixel': pl.List(pl.Float32),
+            },
+            id='potec_example',
+        ),
+
+        pytest.param(
+            'potec_example.tsv',
+            {
+                'experiment': DatasetLibrary.get('PoTeC').experiment,
+                'time_column': DatasetLibrary.get('PoTeC').time_column,
+                'time_unit': DatasetLibrary.get('PoTeC').time_unit,
+                'pixel_columns': DatasetLibrary.get('PoTeC').pixel_columns,
+                'separator': '\t',
+            },
+            (10, 3),
+            {
+                'time': pl.Int64, 'pupil_diameter': pl.Float64, 'pixel': pl.List(pl.Float64),
+            },
+            marks=pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning'),
+            id='potec_example_depracted_kwargs',
         ),
 
         pytest.param(

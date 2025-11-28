@@ -234,7 +234,7 @@ def from_csv(
         warnings.warn(
             DeprecationWarning(
                 "from_csv() argument '**kwargs' is deprecated since version v0.24.0. "
-                'This argument will be removed in v0.29.0.',
+                'This argument will be removed in v0.29.0.'
                 "Please use argument 'read_csv_kwargs' instead. ",
             ),
         )
