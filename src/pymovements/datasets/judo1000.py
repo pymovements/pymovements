@@ -91,7 +91,7 @@ class JuDo1000(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -171,7 +171,7 @@ class JuDo1000(DatasetDefinition):
         ],
     )
 
-    column_map: dict[str, str] = field(
+    column_map: dict[str, str] | None = field(
         default_factory=lambda: {
             'trialId': 'trial_id',
             'pointId': 'point_id',

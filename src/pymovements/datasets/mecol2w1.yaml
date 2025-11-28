@@ -18,8 +18,6 @@ trial_columns:
   - "uniform_id"
   - "itemid"
 
-column_map: {}
-
 custom_read_kwargs:
   precomputed_events: {'r_dataframe_key': 'joint.fix.l2'}
   precomputed_reading_measures: {'r_dataframe_key': 'joint.data'}

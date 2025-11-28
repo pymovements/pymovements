@@ -90,7 +90,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -173,7 +173,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

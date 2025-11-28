@@ -29,8 +29,6 @@ pixel_columns:
   - "x_pix"
   - "y_pix"
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     separator: ","

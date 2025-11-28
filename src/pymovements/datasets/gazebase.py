@@ -91,7 +91,7 @@ class GazeBase(DatasetDefinition):
         nested into the column ``position``. If the list is empty or None, the nested
         ``position`` column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -169,7 +169,7 @@ class GazeBase(DatasetDefinition):
 
     position_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
 
-    column_map: dict[str, str] = field(
+    column_map: dict[str, str] | None = field(
         default_factory=lambda: {
             'val': 'validity',
             'xT': 'x_target_pos',

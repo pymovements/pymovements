@@ -56,8 +56,6 @@ pixel_columns:
   - "x_pix_pupilcore_interpolated"
   - "y_pix_pupilcore_interpolated"
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     schema_overrides:
