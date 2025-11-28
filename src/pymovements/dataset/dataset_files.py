@@ -373,9 +373,15 @@ def load_gaze_file(
             **load_function_kwargs,
         )
     elif load_function_name == 'from_begaze':
+        if definition.trial_columns is not None:
+            load_function_kwargs['trial_columns'] = definition.trial_columns
+        if definition.custom_read_kwargs is not None:
+            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
+            load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
+
         gaze = from_begaze(
             filepath,
-            definition=definition,
+            experiment=definition.experiment,
             **load_function_kwargs,
         )
     else:

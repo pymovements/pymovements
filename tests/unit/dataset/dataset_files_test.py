@@ -778,7 +778,44 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
     assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
 
 
-def test_load_gaze_file_from_begaze(make_text_file):
+@pytest.mark.parametrize(
+    ('load_kwargs', 'definition'),
+    [
+        pytest.param(
+            {'trial_columns': 'trial_id'},
+            DatasetDefinition(),
+            id='trial_columns_via_load_kwargs',
+        ),
+
+        pytest.param(
+            {},
+            DatasetDefinition(trial_columns=['trial_id']),
+            id='trial_columns_via_definition',
+        ),
+
+        pytest.param(
+            {'trial_columns': 'wrong'},
+            DatasetDefinition(trial_columns=['trial_id']),
+            id='trial_columns_definition_overrides_load_kwargs',
+        ),
+
+        pytest.param(
+            {},
+            DatasetDefinition(custom_read_kwargs={'gaze': {'trial_columns': ['trial_id']}}),
+            id='trial_columns_via_custom_read_kwargs',
+        ),
+
+        pytest.param(
+            {},
+            DatasetDefinition(
+                trial_columns=['wrong'],
+                custom_read_kwargs={'gaze': {'trial_columns': ['trial_id']}},
+            ),
+            id='trial_columns_via_custom_read_kwargs_overrides_definition',
+        ),
+    ],
+)
+def test_load_gaze_file_from_begaze(load_kwargs, definition, make_text_file):
     """Load a BeGaze text export via load_gaze_file using from_begaze.
 
     Validates that samples are parsed, time is in ms, pixel column exists,
@@ -884,19 +921,17 @@ def test_load_gaze_file_from_begaze(make_text_file):
     filepath = make_text_file(filename='sub.txt', body=BEGAZE_TEXT, encoding='ascii')
 
     # Call loader with explicit from_begaze and corresponding kwargs
-    gaze = pm.dataset.dataset_files.load_gaze_file(
+    gaze = load_gaze_file(
         filepath=filepath,
         fileinfo_row={
             'load_function': 'from_begaze',
             'load_kwargs': {
                 'patterns': BEGAZE_PATTERNS,
                 'metadata_patterns': BEGAZE_METADATA_PATTERNS,
+                **load_kwargs,
             },
         },
-        definition=DatasetDefinition(
-            experiment=pm.Experiment(1680, 1050, 474, 52, None, 'center', 1000),
-            pixel_columns=['x_pix', 'y_pix'],
-        ),
+        definition=definition,
     )
 
     # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
@@ -920,3 +955,4 @@ def test_load_gaze_file_from_begaze(make_text_file):
     assert set(gaze.events.frame['name'].to_list()) == {
         'fixation_begaze', 'saccade_begaze', 'blink_begaze',
     }
+    assert gaze.trial_columns == ['trial_id']

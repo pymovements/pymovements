@@ -22,13 +22,10 @@ from __future__ import annotations
 
 import warnings
 
-import polars as pl
 import pytest
 
-from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.io import _fill_experiment_from_parsing_begaze_metadata
-from pymovements.gaze.io import from_begaze
 
 
 # Minimal BeGaze-like content (tabs) with MSG lines that our parser understands.
@@ -48,77 +45,6 @@ BEGAZE_MINI = (
     # One more SMP row (after messages) so additional columns are propagated
     '10000003123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
 )
-
-
-@pytest.mark.parametrize(
-    (
-        'add_columns',
-        'column_schema_overrides',
-        'expect_added_cols',
-        'expect_overrides',
-    ),
-    [
-        pytest.param(
-            {'dataset': 'toy', 'trial': 'SHOULD_NOT_OVERWRITE'},
-            {'trial': pl.Int64},
-            {'dataset': 'toy'},
-            {'trial': pl.Int64},
-            id='add_missing_and_cast_existing_trial_to_int',
-        ),
-    ],
-)
-def test_from_begaze_definition_kwargs_and_overrides(
-    add_columns,
-    column_schema_overrides,
-    expect_added_cols,
-    expect_overrides,
-    make_text_file,
-):
-    # Use DatasetDefinition to supply custom_read_kwargs['gaze'] values
-    patterns = [
-        {
-            'pattern': r'START_TRIAL_(?P<trial>\d+)',
-            'column': 'trial',
-        },
-    ]
-    metadata_patterns = [
-        {
-            'pattern': r'METADATA_1 (?P<meta1>\d+)',
-            'key': 'meta1',
-        },
-    ]
-
-    definition = DatasetDefinition(
-        custom_read_kwargs={
-            'gaze': {
-                'patterns': patterns,
-                'metadata_patterns': metadata_patterns,
-                # schema is currently unused in parse_begaze!
-                'schema': {'trial': int},
-                'column_schema_overrides': column_schema_overrides,
-                'encoding': 'ascii',
-            },
-        },
-    )
-
-    filepath = make_text_file('mini_begaze.txt', header='', body=BEGAZE_MINI, encoding='ascii')
-
-    # Pass encoding=None to exercise the branch that reads it from the definition
-    gaze = from_begaze(
-        filepath,
-        definition=definition,
-        add_columns=add_columns,
-        encoding=None,
-    )
-
-    assert 'trial' in gaze.samples.columns
-    for key, dtype in expect_overrides.items():
-        assert gaze.samples.schema[key] == dtype
-
-    # Ensure add_columns only added missing ones (dataset), not overwriting existing columns
-    for key, value in expect_added_cols.items():
-        assert key in gaze.samples.columns
-        assert set(gaze.samples[key].to_list()) == {value}
 
 
 @pytest.mark.parametrize(
@@ -214,39 +140,3 @@ def test_fill_experiment_from_parsing_begaze_metadata(
     # Tracked eye flags set when None else warnings issued above - ensure values are booleans
     assert isinstance(result.eyetracker.left, (bool, type(None)))
     assert isinstance(result.eyetracker.right, (bool, type(None)))
-
-
-def test_from_begaze_with_definition_and_explicit_experiment(make_text_file):
-    filepath = make_text_file(
-        'mini_begaze_explicit.txt',
-        header='',
-        body=BEGAZE_MINI,
-        encoding='ascii',
-    )
-
-    # Definition carries its own experiment and kwargs
-    def_exp = DatasetDefinition(
-        custom_read_kwargs={
-            'gaze': {
-                'encoding': 'ascii',
-            },
-        },
-    )
-
-    # Definition should not override explicit experiment passed
-    explicit_exp = Experiment(sampling_rate=777.0)
-    explicit_exp.screen.width_px = 640
-    explicit_exp.screen.height_px = 480
-
-    gaze = from_begaze(
-        filepath,
-        definition=def_exp,
-        experiment=explicit_exp,
-    )
-
-    # Ensure we kept the explicitly passed experiment (by identity and values)
-    assert gaze.experiment is explicit_exp
-    assert gaze.experiment.eyetracker.sampling_rate in (
-        777.0, explicit_exp.eyetracker.sampling_rate,
-    )
-    assert (gaze.experiment.screen.width_px, gaze.experiment.screen.height_px) == (640, 480)
