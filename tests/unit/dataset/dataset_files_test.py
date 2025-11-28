@@ -156,7 +156,7 @@ MSG	2154569 TRACKER_TIME 1 2222195.987
 MSG	2154570 0 READING_SCREEN_1.STOP
 """
 
-EXPECTED_DF_NO_PATTERNS = pl.from_dict(
+EXPECTED_EYELINK_SAMPLES_NO_PATTERNS = pl.from_dict(
     {
         'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
         'pixel': [
@@ -167,7 +167,7 @@ EXPECTED_DF_NO_PATTERNS = pl.from_dict(
     },
 )
 
-EXPECTED_DF_PATTERNS = pl.from_dict(
+EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
     {
         'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
         'pixel': [
@@ -180,7 +180,7 @@ EXPECTED_DF_PATTERNS = pl.from_dict(
     },
 )
 
-PATTERNS = [
+EYELINK_PATTERNS = [
     {
         'pattern': 'SYNCTIME_READING',
         'column': 'task',
@@ -191,15 +191,42 @@ PATTERNS = [
 
 
 @pytest.mark.parametrize(
-    'read_kwargs',
+    ('load_kwargs', 'definition', 'expected_samples'),
     [
         pytest.param(
-            {'patterns': PATTERNS, 'schema': {'trial_id': pl.Int64}},
-            id='read_kwargs_dict',
+            None,
+            DatasetDefinition(),
+            EXPECTED_EYELINK_SAMPLES_NO_PATTERNS,
+            id='no_load_kwargs_empty_definition',
         ),
+
+        pytest.param(
+            {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+            DatasetDefinition(),
+            EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            id='patterns_via_load_kwargs',
+        ),
+
         pytest.param(
             None,
-            id='read_kwargs_none',
+            DatasetDefinition(
+                custom_read_kwargs={
+                    'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+                },
+            ),
+            EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            id='patterns_via_definition',
+        ),
+
+        pytest.param(
+            {'patterns': 'eyelink'},
+            DatasetDefinition(
+                custom_read_kwargs={
+                    'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+                },
+            ),
+            EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            id='patterns_definition_overrides_load_kwargs',
         ),
     ],
 )
@@ -207,25 +234,71 @@ PATTERNS = [
     'load_function',
     [None, 'from_asc'],
 )
-def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
+def test_load_eyelink_file_has_expected_samples(
+        load_kwargs, load_function, definition, expected_samples, make_text_file,
+):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = load_gaze_file(
         filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': None},
-        definition=DatasetDefinition(
-            experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
-            custom_read_kwargs={'gaze': read_kwargs},
-        ),
+        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        definition=definition,
     )
 
-    if read_kwargs is not None:
-        expected_df = EXPECTED_DF_PATTERNS
-    else:
-        expected_df = EXPECTED_DF_NO_PATTERNS
-
-    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
     assert gaze.experiment is not None
+
+
+@pytest.mark.parametrize(
+    ('load_kwargs', 'definition', 'expected_trial_columns'),
+    [
+        pytest.param(
+            {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+            DatasetDefinition(),
+            None,
+            id='no_trial_columns',
+        ),
+
+        pytest.param(
+            {
+                'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64},
+                'trial_columns': 'trial_id',
+            },
+            DatasetDefinition(),
+            ['trial_id'],
+            id='trial_columns_via_load_kwargs',
+        ),
+
+        pytest.param(
+            {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+            DatasetDefinition(trial_columns=['trial_id']),
+            ['trial_id'],
+            id='trial_columns_via_definition',
+        ),
+
+        pytest.param(
+            {
+                'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64},
+                'trial_columns': 'wrong_trial_id',
+            },
+            DatasetDefinition(trial_columns=['trial_id']),
+            ['trial_id'],
+            id='trial_columns_definition_overrides_load_kwargs',
+        ),
+    ],
+)
+def test_load_eyelink_file_has_expected_trial_columns(
+        load_kwargs, definition, expected_trial_columns, make_text_file,
+):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
+
+    gaze = load_gaze_file(
+        filepath,
+        fileinfo_row={'load_function': 'from_asc', 'load_kwargs': load_kwargs},
+        definition=definition,
+    )
+
+    assert gaze.trial_columns == expected_trial_columns
 
 
 @pytest.mark.parametrize(
@@ -325,7 +398,7 @@ def test_load_example_gaze_file(
 
 @pytest.mark.parametrize(
     (
-            'make_csv_file_kwargs', 'load_function', 'load_kwargs', 'definition', 'expected_gaze',
+        'make_csv_file_kwargs', 'load_function', 'load_kwargs', 'definition', 'expected_gaze',
     ),
     [
         pytest.param(
