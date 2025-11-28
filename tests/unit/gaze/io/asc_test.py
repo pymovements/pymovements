@@ -189,6 +189,35 @@ def test_from_asc_example_file_has_expected_samples(
 
         pytest.param(
             'eyelink_monocular_example.asc',
+            {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
+            (16, 4),
+            {
+                'time': pl.Int64,
+                'pupil': pl.Float64,
+                'pixel': pl.List(pl.Float64),
+                'test': pl.String,
+            },
+            id='eyelink_asc_mono_pattern_eyelink_add_columns',
+        ),
+
+        pytest.param(
+            'eyelink_monocular_example.asc',
+            {
+                'patterns': 'eyelink',
+                'add_columns': {'test': 1}, 'column_schema_overrides': {'test': pl.Float64},
+            },
+            (16, 4),
+            {
+                'time': pl.Int64,
+                'pupil': pl.Float64,
+                'pixel': pl.List(pl.Float64),
+                'test': pl.Float64,
+            },
+            id='eyelink_asc_mono_pattern_eyelink_add_columns_with_schema',
+        ),
+
+        pytest.param(
+            'eyelink_monocular_example.asc',
             {
                 'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
                 'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
