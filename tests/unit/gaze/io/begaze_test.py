@@ -1,3 +1,4 @@
+
 # Copyright (c) 2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -126,6 +127,24 @@ def test_from_begaze_has_correct_samples(
             (1920, 1080),
             None,
             id='create_and_fill_from_metadata',
+        ),
+        pytest.param(
+            # Experiment without sampling rate provided: should be created and filled
+            {'sampling_rate': None},
+            {'sampling_rate': 500, 'resolution': None, 'tracked_eye': 'LR'},
+            (1280, 720),
+            None,
+            marks=pytest.mark.xfail(reason='#TODO'),
+            id='fill_sampling_rate',
+        ),
+        pytest.param(
+            # This test case is in conflict with the one abov and should be deleted after resolving
+            # the underlying issue.
+            {'sampling_rate': None},
+            {'sampling_rate': None, 'resolution': None, 'tracked_eye': 'LR'},
+            (1280, 720),
+            None,
+            id='fill_sampling_rate',
         ),
         pytest.param(
             # Pre-set and conflicting resolution: warnings expected for width and height
