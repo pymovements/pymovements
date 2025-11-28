@@ -364,7 +364,7 @@ def load_gaze_file(
             load_function_kwargs['trial_columns'] = definition.trial_columns
         if definition.custom_read_kwargs:
             custom_read_kwargs = definition.custom_read_kwargs.get('gaze', None)
-            if custom_read_kwargs is not None:
+            if custom_read_kwargs:
                 load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
 
         gaze = from_asc(
