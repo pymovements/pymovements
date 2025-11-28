@@ -343,7 +343,7 @@ def load_gaze_file(
                 load_function_kwargs['distance_column'] = definition.distance_column
             if definition.column_map:
                 load_function_kwargs['column_map'] = definition.column_map
-            if definition.custom_read_kwargs is not None:
+            if definition.custom_read_kwargs:
                 read_csv_kwargs = definition.custom_read_kwargs.get('gaze', {})
                 load_function_kwargs['read_csv_kwargs'] = {
                     **load_function_kwargs.get('read_csv_kwargs', {}), **read_csv_kwargs,
@@ -362,7 +362,7 @@ def load_gaze_file(
     elif load_function_name == 'from_asc':
         if definition.trial_columns is not None:
             load_function_kwargs['trial_columns'] = definition.trial_columns
-        if definition.custom_read_kwargs is not None:
+        if definition.custom_read_kwargs:
             custom_read_kwargs = definition.custom_read_kwargs.get('gaze', None)
             if custom_read_kwargs is not None:
                 load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
@@ -375,7 +375,7 @@ def load_gaze_file(
     elif load_function_name == 'from_begaze':
         if definition.trial_columns is not None:
             load_function_kwargs['trial_columns'] = definition.trial_columns
-        if definition.custom_read_kwargs is not None:
+        if definition.custom_read_kwargs:
             custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
             load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
 
