@@ -867,7 +867,6 @@ def from_begaze(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = 'ascii',
-        definition: pm.DatasetDefinition | None = None,
         prefer_eye: str = 'L',
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze` from a BeGaze text export.
@@ -892,8 +891,6 @@ def from_begaze(
         Dictionary containing types for columns.
     encoding: str | None
         Text encoding of the file. Defaults to ASCII, which is the common BeGaze export encoding.
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
 
@@ -902,37 +899,6 @@ def from_begaze(
     Gaze
         The initialized gaze object read from the BeGaze text file.
     """
-    # Explicit arguments take precedence over definition.
-    if definition:
-        if experiment is None:
-            experiment = definition.experiment
-
-        if trial_columns is None:  # pragma: no cover
-            trial_columns = definition.trial_columns
-
-        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
-            custom_read_kwargs = definition.custom_read_kwargs['gaze']
-
-            if patterns is None and 'patterns' in custom_read_kwargs:
-                patterns = custom_read_kwargs['patterns']
-
-            if metadata_patterns is None and 'metadata_patterns' in custom_read_kwargs:
-                metadata_patterns = custom_read_kwargs['metadata_patterns']
-
-            if schema is None and 'schema' in custom_read_kwargs:
-                schema = custom_read_kwargs['schema']
-
-            if column_schema_overrides is None and 'column_schema_overrides' in custom_read_kwargs:
-                column_schema_overrides = custom_read_kwargs['column_schema_overrides']
-
-            if encoding is None and 'encoding' in custom_read_kwargs:
-                encoding = custom_read_kwargs['encoding']
-
-            if 'prefer_eye' in custom_read_kwargs and isinstance(
-                    custom_read_kwargs['prefer_eye'], str,
-            ):
-                prefer_eye = custom_read_kwargs['prefer_eye']
-
     # Read data via BeGaze parser.
     samples, event_data, metadata = parse_begaze(
         file,
