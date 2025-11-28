@@ -32,8 +32,6 @@ pixel_columns:
   - "x"
   - "y"
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     schema_overrides:
