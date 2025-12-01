@@ -180,12 +180,13 @@ class Events:
 
         # Ensure column order: trial columns, then minimal schema, keeping all other columns.
         if self.trial_columns is not None:
-            keep_first = [*self.trial_columns, *self._minimal_schema.keys()]
+            # Keep any additional columns beyond trial and minimal schema columns
+            other_cols = [
+                col for col in self.frame.columns
+                if col not in self.trial_columns and col not in self._minimal_schema
+            ]
             self.frame = self.frame.select(
-                [  # Just assure order: columns of keep_first first, followed by all others
-                    *keep_first,
-                    pl.all().exclude(keep_first),
-                ],
+                [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
             )
 
         # Convert to int if possible.
