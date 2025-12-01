@@ -415,7 +415,7 @@ def test_gaze_is_copy():
                     trial_columns='trial_id',
                 ),
             ),
-            id='events_with_trial_columns_and_custom_property',
+            id='events_with_trial_columns_and_custom_property',  # regression test for #1349
         ),
     ],
 )

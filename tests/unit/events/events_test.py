@@ -560,7 +560,7 @@ def test_columns_same_as_frame():
                 ),
                 trial_columns='trial_id',
             ),
-            id='events_with_trial_columns_and_custom_property',
+            id='events_with_trial_columns_and_custom_property',  # regression test for #1349
         ),
     ],
 )
@@ -601,20 +601,6 @@ def test_clones_trial_columns():
     events_copy = events.clone()
 
     assert events.trial_columns == events_copy.trial_columns
-
-
-def test_clone_preserves_event_properties():
-    """Test that clone() preserves event properties added via add_event_properties().
-
-    Regression test for issue #1349
-    """
-    events = Events(
-        data=pl.from_dict(
-            {'name': ['saccade'], 'onsets': [0], 'offsets': [1]},
-        ),
-    )
-    cloned = events.clone()
-    assert_frame_equal(cloned.frame, events.frame)
 
 
 @pytest.mark.parametrize(
