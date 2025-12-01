@@ -38,13 +38,13 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
-        fit: bool = True,
-        measure: bool | Literal['r2', 's'] = True,
-        marker_size: float = 25,
-        color: str = 'purple',
-        fit_color: str = 'red',
         alpha: float = 0.5,
         marker: str = 'o',
+        marker_size: float = 25,
+        marker_color: str = 'purple',
+        fit: bool = True,
+        fit_measure: bool | Literal['r2', 's'] = True,
+        fit_color: str = 'red',
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
@@ -61,23 +61,23 @@ def main_sequence_plot(
     ----------
     events: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude".
-    fit: bool
-        Draw a linear fit line if True. If False, no line is drawn.
-    measure: bool | Literal['r2', 's']
-        Annotate a goodness-of-fit statistic:
-        - True or 'r2': coefficient of determination (R²)
-        - 's': standard error of the regression (S)
-        - False: no annotation
-    marker_size: float
-        Size of the marker symbol. (default: 25)
-    color: str
-        Color of the marker symbol. (default: 'purple')
-    fit_color: str
-        Color of the linear fit line (default: 'red')
     alpha: float
         Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
     marker: str
         Marker symbol. Possible values defined by matplotlib.markers. (default: 'o')
+    marker_size: float
+        Size of the marker symbol. (default: 25)
+    marker_color: str
+        Color of the marker symbol. (default: 'purple')
+    fit: bool
+        Draw a linear fit line if True. If False, no line is drawn.
+    fit_measure: bool | Literal['r2', 's']
+        Annotate a goodness-of-fit statistic:
+        - True or 'r2': coefficient of determination (R²)
+        - 's': standard error of the regression (S)
+        - False: no annotation
+    fit_color: str
+        Color of the linear fit line (default: 'red')
     figsize: tuple[int, int]
         Figure size. (default: (15, 5))
     title: str | None
@@ -161,7 +161,7 @@ def main_sequence_plot(
         plt.scatter(
             amplitudes,
             peak_velocities,
-            color=color,
+            color=marker_color,
             alpha=alpha,
             s=marker_size,
             marker=marker,
@@ -171,7 +171,7 @@ def main_sequence_plot(
         ax.scatter(
             amplitudes,
             peak_velocities,
-            color=color,
+            color=marker_color,
             alpha=alpha,
             s=marker_size,
             marker=marker,
@@ -190,15 +190,15 @@ def main_sequence_plot(
         line_axes.plot(line_x, line_y, c=fit_color)
 
         # Compute fit measure if requested
-        if measure:
+        if fit_measure:
             y_pred = np.array(amplitudes) * a + b
             residuals = np.array(peak_velocities) - y_pred
 
-            if measure is True or measure == 'r2':
+            if fit_measure is True or fit_measure == 'r2':
                 val = np.round(r2_score(peak_velocities, y_pred), 3)
                 label = f"R² = {val}"
 
-            elif measure == 's':
+            elif fit_measure == 's':
                 s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
                 val = np.round(s, 3)
                 label = f"S = {val}"
