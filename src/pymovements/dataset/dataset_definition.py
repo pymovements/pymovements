@@ -85,7 +85,7 @@ class DatasetDefinition:
         (default: field(default_factory=dict))
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
-        (default: field(default_factory=dict))
+        (default: None)
     trial_columns: list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
