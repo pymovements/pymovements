@@ -55,20 +55,17 @@ def axes_fixture(request):
 )
 def test_setup_matplotlib(kwargs):
     setup_matplotlib(**kwargs)
-    plt.close()
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_draw_image_stimulus(axes, make_example_file):
     filepath = make_example_file('pexels-zoorg-1000498.jpg')
     draw_image_stimulus(image_stimulus=filepath, ax=axes)
-    plt.close()
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_draw_line_data(axes):
     draw_line_data(x_signal=np.array([0.0, 0.0]), y_signal=np.array([0.0, 0.0]), ax=axes)
-    plt.close()
 
 
 @pytest.mark.parametrize(

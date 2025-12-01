@@ -73,9 +73,9 @@ dev = [
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=4.0.0",
   "setuptools>=61.0.0",
-  "types-tqdm>=4.64.0",
+  "types-tqdm>=4.67.0",
   "pre-commit>=3.0.0",
-  "pylint>=3.0.0"
+  "pylint>=4.0.0"
 ]
 
 [project.urls]
