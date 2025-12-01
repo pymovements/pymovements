@@ -165,8 +165,10 @@ def main_sequence_plot(
             alpha=alpha,
             s=marker_size,
             marker=marker,
+            label='saccades',
             **kwargs,
         )
+        plt.legend()
     else:
         ax.scatter(
             amplitudes,
@@ -175,11 +177,14 @@ def main_sequence_plot(
             alpha=alpha,
             s=marker_size,
             marker=marker,
+            label='saccades',
             **kwargs,
         )
+        ax.legend()
 
     # --- Linear fit (only if requested) ---
     if fit:
+        # Compute linear fit
         a, b = np.polyfit(amplitudes, peak_velocities, 1)
 
         min_ampl, max_ampl = min(amplitudes), max(amplitudes)
@@ -187,7 +192,8 @@ def main_sequence_plot(
         line_y = [a * min_ampl + b, a * max_ampl + b]
 
         line_axes = plt.gca() if own else ax
-        line_axes.plot(line_x, line_y, c=fit_color)
+
+        fit_label = None
 
         # Compute fit measure if requested
         if fit_measure:
@@ -196,21 +202,22 @@ def main_sequence_plot(
 
             if fit_measure is True or fit_measure == 'r2':
                 val = np.round(r2_score(peak_velocities, y_pred), 3)
-                label = f"R² = {val}"
+                fit_label = f"R² = {val}"
 
             elif fit_measure == 's':
                 s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
                 val = np.round(s, 3)
-                label = f"S = {val}"
+                fit_label = f"S = {val}"
 
             else:
                 raise ValueError("measure must be one of: True, False, 'r2', 's'")
 
-            line_axes.text(
-                0.05, 0.8, label,
-                bbox={'facecolor': None, 'ec': (0, 0, 0), 'fc': (1.0, 1.0, 1.0), 'pad': 4},
-                transform=line_axes.transAxes,
-            )
+        # add fit label to the legend
+        if fit_label is not None:
+            line_axes.plot(line_x, line_y, c=fit_color, label=fit_label)
+        else:
+            line_axes.plot(line_x, line_y, c=fit_color)
+        line_axes.legend()
 
     if title:
         ax.set_title(title)
