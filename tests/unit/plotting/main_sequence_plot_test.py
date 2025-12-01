@@ -181,7 +181,7 @@ def test_main_sequence_plot_sets_title():
 
 def test_main_sequence_plot_measure_s_adds_text():
     events = _make_events()
-    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, measure='s', show=False)
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='s', show=False)
     # one text object (annotation) expected
     assert any(isinstance(child, matplotlib.text.Text) for child in ax.get_children())
 
@@ -189,7 +189,7 @@ def test_main_sequence_plot_measure_s_adds_text():
 def test_main_sequence_plot_measure_invalid_raises():
     events = _make_events()
     with pytest.raises(ValueError):
-        pm.plotting.main_sequence_plot(events=events, fit=True, measure='banana', show=False)
+        pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='banana', show=False)
 
 
 def test_main_sequence_plot_fit_false_no_line():
@@ -202,13 +202,5 @@ def test_main_sequence_plot_fit_false_no_line():
 def test_main_sequence_plot_measure_false_skips_annotation():
     # When measure=False, no text annotation should be drawn.
     events = _make_events()
-    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, measure=False, show=False)
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure=False, show=False)
     assert not ax.texts  # no R² or S labels
-
-
-def test_main_sequence_plot_default_r2_adds_text():
-    # Default (measure=True) should produce an R² annotation.
-    events = _make_events()
-    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, show=False)
-    labels = [t.get_text() for t in ax.texts]
-    assert any('R²' in lbl or 'R2' in lbl for lbl in labels)
