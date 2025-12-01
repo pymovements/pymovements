@@ -303,16 +303,24 @@ def test_parse_begaze_binocular_parametrized(
     assert metadata['tracked_eye'] == expected_tracked_eye
 
 
-def test_from_begaze_loader_uses_parse_begaze(make_text_file):
+@pytest.mark.parametrize(
+    'with_trial_columns',
+    [False, True], ids=['no_trial_columns', 'with_trial_columns'],
+)
+def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns):
     # Exercise the public loader that wraps parse_begaze using the same BEGAZE_TEXT fixture.
 
     filepath = make_text_file(filename='begaze_loader.txt', body=BEGAZE_TEXT, encoding='ascii')
 
-    gaze = io.from_begaze(
-        filepath,
-        patterns=PATTERNS,
-        metadata_patterns=METADATA_PATTERNS,
-    )
+    kwargs = {
+        'patterns': PATTERNS,
+        'metadata_patterns': METADATA_PATTERNS,
+    }
+    # Add a test case where trial_columns is not None
+    if with_trial_columns:
+        kwargs['trial_columns'] = 'trial_id'
+
+    gaze = io.from_begaze(filepath, **kwargs)
 
     # Samples in Gaze use a combined 'pixel' column instead of separate x/y columns.
     expected_samples = BEGAZE_EXPECTED_GAZE_DF.with_columns(
@@ -351,6 +359,10 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file):
     assert pytest.approx(gaze.experiment.sampling_rate, rel=0, abs=1e-9) == 1000.0
     assert gaze.experiment.eyetracker.left is True
     assert gaze.experiment.eyetracker.right is False
+
+    # When trial_columns is provided, it should be set on the Gaze object
+    if with_trial_columns:
+        assert gaze.trial_columns == ['trial_id']
 
 
 @pytest.mark.parametrize('prefer_eye', ['R', 'L'])
@@ -555,6 +567,27 @@ def test_parse_begaze_misc_samples(
 @pytest.mark.parametrize(
     'text, prefer_eye, expected_tracked_eye, expected_rows, expected_events_rows, extra_assert',
     [
+        pytest.param(
+            # Space-separated header: tracked_eye detected but no samples parsed
+            '## [BeGaze]\n'
+            '## Date: 08.03.2023 09:25:20\n'
+            '## Sample Rate: 1000\n'
+            'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
+            'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
+            '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
+            'L', 'L', 0, 0, None,
+            id='space_header_no_samples_L',
+        ),
+        pytest.param(
+            '## [BeGaze]\n'
+            '## Date: 08.03.2023 09:25:20\n'
+            '## Sample Rate: 1000\n'
+            'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
+            'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
+            '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
+            'R', 'R', 0, 0, None,
+            id='space_header_no_samples_R',
+        ),
         pytest.param(
             # No eye columns in header -> no samples/events, but sampling_rate captured
             '## [BeGaze]\n'
