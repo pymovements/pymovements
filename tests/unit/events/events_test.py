@@ -1029,3 +1029,64 @@ def test_drop_event_properties_raises_exception(
 
     with pytest.raises(exception, match=message):
         events.drop(remove_properties)
+
+
+@pytest.mark.parametrize(
+    'locations, expected_x, expected_y',
+    [
+        pytest.param(
+            [[1, 2], [3, 4]],
+            [1, 3],
+            [2, 4],
+            id='two_rows_integers',
+        ),
+        pytest.param(
+            [[None, None]],
+            [None],
+            [None],
+            id='none_pairs_propagate',
+        ),
+    ],
+)
+def test_unnest_location_basic(
+        locations: list[list[int | None]],
+        expected_x: list[int | None],
+        expected_y: list[int | None],
+) -> None:
+    """Events.unnest splits 'location' list into 'location_x'/'location_y' and drops input.
+
+    This test covers typical integer values and None pairs - values are propagated as-is.
+    """
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'] * len(locations),
+            'onset': list(range(len(locations))),
+            'offset': list(range(1, len(locations) + 1)),
+            'location': locations,
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest()
+
+    assert 'location' not in events.frame.columns
+    assert events.frame.get_column('location_x').to_list() == expected_x
+    assert events.frame.get_column('location_y').to_list() == expected_y
+
+
+def test_unnest_location_absent_is_noop() -> None:
+    """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+        },
+    )
+    events = Events(data=df)
+
+    before_cols = set(events.frame.columns)
+    events.unnest()
+    after_cols = set(events.frame.columns)
+
+    assert before_cols == after_cols
