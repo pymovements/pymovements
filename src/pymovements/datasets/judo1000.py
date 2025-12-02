@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -90,7 +91,7 @@ class JuDo1000(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -120,10 +121,12 @@ class JuDo1000(DatasetDefinition):
 
     name: str = 'JuDo1000'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Jumping Dots 1000 Hz dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
@@ -170,7 +173,7 @@ class JuDo1000(DatasetDefinition):
 
     pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(
+    column_map: dict[str, str] | None = field(
         default_factory=lambda: {
             'trialId': 'trial_id',
             'pointId': 'point_id',

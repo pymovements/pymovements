@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,19 +17,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for parsing input data."""
+"""EyeLink parsing module.
+
+This module provides a dedicated namespace for EyeLink-specific parsing logic.
+"""
 from __future__ import annotations
+
+__all__ = [
+    'parse_eyelink',
+]
 
 import calendar
 import datetime
 import re
+
 import warnings
 from collections import defaultdict
+from collections.abc import Sequence
+
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import polars as pl
+
+from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
+    check_nan, _calculate_data_loss_ratio
+
 
 # Define separate regex patterns for monocular and binocular cases
 EYE_TRACKING_SAMPLE_MONOCULAR = re.compile(
@@ -110,6 +124,8 @@ RECORDING_CONFIG_REGEX = re.compile(
     r'(?P<sampling_rate>\d+)\s+'
     r'(?P<file_sample_filter>0|1|2)\s+'
     r'(?P<link_sample_filter>0|1|2)\s+'
+    r'((?P<file_event_filter>0|1|2)\s+)?'
+    r'((?P<link_event_filter>0|1|2)\s+)?'
     r'(?P<tracked_eye>LR|[LR])\s*',
 )
 
@@ -136,85 +152,105 @@ STOP_RECORDING_REGEX = re.compile(
     r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*',
 )
 
-
-def check_nan(sample_location: str) -> float:
-    """Return position as float or np.nan depending on validity of sample.
-
-    Parameters
-    ----------
-    sample_location: str
-        Sample location as extracted from ascii file.
-
-    Returns
-    -------
-    float
-        Returns either the valid sample as a float or np.nan.
-    """
-    try:
-        ret = float(sample_location)
-    except ValueError:
-        ret = np.nan
-    return ret
+# General message format
+MSG_REGEX = re.compile(
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)',
+)
 
 
-def compile_patterns(patterns: list[dict[str, Any] | str]) -> list[dict[str, Any]]:
-    """Compile patterns from strings.
+def _check_reccfg_key(
+        recording_config: list[dict[str, Any]],
+        key: str,
+        astype: type | None = None,
+) -> Any:
+    """Check if the recording configs contain consistent values for the specified key and return it.
+
+    Prints a warning if no recording config is found or if the value is inconsistent across entries.
 
     Parameters
     ----------
-    patterns: list[dict[str, Any] | str]
-        The list of patterns to compile.
+    recording_config: list[dict[str, Any]]
+        List of dictionaries containing recording config details.
+    key: str
+        The key in the recording configs to check for consistency.
+    astype: type | None
+        The type to cast the value to.
 
     Returns
     -------
-    list[dict[str, Any]]
-        Returns from string compiled regex patterns.
+    Any
+        The value of the specified key if available, otherwise None.
     """
-    msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
+    if not recording_config:
+        warnings.warn('No recording configuration found.')
+        return None
 
-    compiled_patterns = []
+    # Extract values for the requested key but ignore entries where the key is missing
+    raw_values = [d.get(key) for d in recording_config]
+    non_none_values = [v for v in raw_values if v is not None]
 
-    for pattern in patterns:
-        if isinstance(pattern, str):
-            compiled_pattern = {'pattern': re.compile(msg_prefix + pattern)}
-            compiled_patterns.append(compiled_pattern)
-            continue
+    if not non_none_values:
+        # The recording config exists but the specific key was never present.
+        # Return None silently to avoid emitting unexpected warnings in callers.
+        return None
 
-        if isinstance(pattern, dict):
-            if isinstance(pattern['pattern'], str):
-                compiled_patterns.append({
-                    **pattern,
-                    'pattern': re.compile(msg_prefix + pattern['pattern']),
-                })
-                continue
+    unique_values = set(non_none_values)
+    if len(unique_values) != 1:
+        # Try to present a sorted list of values for the warning, fall back if not comparable
+        try:
+            sorted_values: list = sorted(unique_values)
+        except TypeError:
+            sorted_values = list(unique_values)
+        warnings.warn(f"Found inconsistent values for '{key}': {sorted_values}")
+        return None
 
-            if isinstance(pattern['pattern'], (tuple, list)):
-                for single_pattern in pattern['pattern']:
-                    compiled_patterns.append({
-                        **pattern,
-                        'pattern': re.compile(msg_prefix + single_pattern),
-                    })
-                continue
-
-            raise ValueError(f'invalid pattern: {pattern}')
-
-        raise ValueError(f'invalid pattern: {pattern}')
-
-    return compiled_patterns
+    value = unique_values.pop()
+    if astype is not None:
+        try:
+            value = astype(value)
+        except (TypeError, ValueError):
+            # If casting fails, return None silently to avoid unexpected warnings.
+            return None
+    return value
 
 
-def get_pattern_keys(compiled_patterns: list[dict[str, Any]], pattern_key: str) -> set[str]:
-    """Get names of capture groups or column/metadata keys."""
-    keys = set()
+def _check_samples_config_key(
+        samples_config: list[dict[str, Any]],
+        key: str,
+        astype: type | None = None,
+) -> Any:
+    """Check if the sample configs contain consistent values for the specified key and return it.
 
-    for compiled_pattern_dict in compiled_patterns:
-        if pattern_key in compiled_pattern_dict:
-            keys.add(compiled_pattern_dict[pattern_key])
+    Prints a warning if no sample config is found or if the value is inconsistent across entries.
 
-        for key in compiled_pattern_dict['pattern'].groupindex.keys():
-            keys.add(key)
+    Parameters
+    ----------
+    samples_config: list[dict[str, Any]]
+        List of dictionaries containing sample config details.
+    key: str
+        The key in the recording configs to check for consistency.
+    astype: type | None
+        The type to cast the value to.
 
-    return keys
+    Returns
+    -------
+    Any
+        The value of the specified key if available, otherwise None.
+    """
+    if not samples_config:
+        warnings.warn('No samples configuration found.')
+        return None
+
+    values = {d.get(key) for d in samples_config}
+    if len(values) != 1:
+        sorted_values: list = sorted(values)
+        warnings.warn(f"Found inconsistent values for '{key}': {sorted_values}")
+        return None
+
+    value = values.pop()
+    if astype is not None:
+        value = astype(value)
+    return value
 
 
 def parse_eyelink_event_start(line: str) -> tuple[str, str] | None:
@@ -279,7 +315,8 @@ def parse_eyelink(
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str | None = None,
-) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
+        messages: bool | Sequence[str] = False,
+) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]:
     """Parse EyeLink asc file.
 
     Parameters
@@ -294,16 +331,29 @@ def parse_eyelink(
         list of patterns to match for additional metadata. (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
+    messages: bool | Sequence[str]
+        Flag indicating if any additional messages should be parsed from the asc file
+        and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
+        The message format is 'MSG <timestamp> <content>'.
+        If True, all available messages will be parsed from the asc,
+        alternatively, a list of regular expressions can be passed and only the
+        messages that match any of the regular expressions will be kept.
+        Regular expressions are only applied to the message content,
+        implicitly parsing the `MSG <timestamp>` prefix.
+        (default: False)
 
     Returns
     -------
-    tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]
-        A tuple containing the parsed gaze sample data, the parsed event data, and the metadata.
+    tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]
+        A tuple containing the parsed gaze sample data, the parsed event data, the metadata,
+        and, if asked for, the parsed messages.
 
     Raises
     ------
     Warning
         If no metadata is found in the file.
+    ValueError
+        If the `messages` parameter is not bool or a list of strings.
 
     Notes
     -----
@@ -311,22 +361,39 @@ def parse_eyelink(
     durations in a different way than pymovements, resulting in a difference of 1 sample duration.
     For 1000 Hz recordings, durations calculated by pymovements are 1 ms shorter than the durations
     reported in the asc file.
+
+    Robustness to unmatched end markers: If an event end line (EBLINK/EFIX/ESACC) appears without a
+    corresponding start line (SBLINK/SFIX/SSACC) for the same eye earlier in the file, a warning is
+    emitted and the event is still recorded. In this case, the parser seeds additional columns from
+    the current context (values derived from the provided ``patterns`` at that line), so trial/task
+    information is preserved when available.
     """
     # pylint: disable=too-many-branches, too-many-statements
+    msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
+
     if patterns is None:
         patterns = []
-    compiled_patterns = compile_patterns(patterns)
+    compiled_patterns = compile_patterns(patterns, msg_prefix)
 
     if metadata_patterns is None:
         metadata_patterns = []
-    compiled_metadata_patterns = compile_patterns(metadata_patterns)
+    compiled_metadata_patterns = compile_patterns(metadata_patterns, msg_prefix)
 
     additional_columns = get_pattern_keys(compiled_patterns, 'column')
     current_additional = {
         additional_column: None for additional_column in additional_columns
     }
-    current_event_additional: dict[str, dict[str, Any]] = {
-        'fixation': {}, 'saccade': {}, 'blink': {},
+    # Track additional metadata and start state per event type and eye
+    # Structure: current_event_additional[event_name][eye] -> dict of additional columns
+    current_event_additional: dict[str, dict[str, dict[str, Any]]] = {
+        'fixation': {'left': {}, 'right': {}},
+        'saccade': {'left': {}, 'right': {}},
+        'blink': {'left': {}, 'right': {}},
+    }
+    current_event_started: dict[str, dict[str, bool]] = {
+        'fixation': {'left': False, 'right': False},
+        'saccade': {'left': False, 'right': False},
+        'blink': {'left': False, 'right': False},
     }
 
     samples: dict[str, list[Any]] = {
@@ -356,6 +423,17 @@ def parse_eyelink(
         metadata[key] = None
 
     compiled_metadata_patterns.extend(EYELINK_META_REGEXES)
+
+    if (
+        not isinstance(messages, (bool, list)) or
+        (isinstance(messages, list) and not all(isinstance(regexp, str) for regexp in messages))
+    ):
+        raise ValueError(
+            'Make sure to pass either a bool or a list of regular expressions '
+            f"as strings. Received {messages}.",
+        )
+
+    messages_list: list[list[str]] = []
 
     cal_timestamp = ''
 
@@ -442,9 +520,9 @@ def parse_eyelink(
 
         elif start_event := parse_eyelink_event_start(line):
             event_name, eye = start_event
-            # store additional metadata for this event type + eye
-            # key by event name only (e.g., 'fixation')
-            current_event_additional[event_name] = {**current_additional}
+            # store additional metadata for this event type and eye
+            current_event_additional[event_name][eye] = {**current_additional}
+            current_event_started[event_name][eye] = True
 
             if event_name == 'blink':
                 blinking = True
@@ -456,11 +534,21 @@ def parse_eyelink(
             events['onset'].append(event_onset)
             events['offset'].append(event_offset)
 
+            # If an event end is found but there is no recorded start for this eye, seed from
+            # current context and warn the user that the file may be corrupt or incomplete.
+            if not current_event_started[event_name][eye]:
+                warnings.warn(
+                    "Missing start marker before end for event '" + event_name +
+                    f"' (onset={event_onset}, offset={event_offset}). "
+                    'Using current context to fill additional columns.',
+                )
+                current_event_additional[event_name][eye] = {**current_additional}
+
             for additional_column in additional_columns:
                 events[additional_column].append(
-                    current_event_additional[event_name][additional_column],
+                    current_event_additional[event_name][eye][additional_column],
                 )
-            current_event_additional[event_name] = {}
+            current_event_additional[event_name][eye] = {}
 
             if event_name == 'blink':
                 # collect blink intervals and compute counts later once sampling rate is known
@@ -468,12 +556,19 @@ def parse_eyelink(
                 blinking = False
 
         elif match := RECORDING_CONFIG_REGEX.match(line):
-            recording_config.append(match.groupdict())
+            # Drop optional groups that weren't present for legacy behaviour
+            rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
+            recording_config.append(rec_cfg)
 
         elif match := GAZE_COORDS_REGEX.match(line):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())
-            # GAZE_COORDS is always logged after RECCFG -> add it to the last recording_config
-            recording_config[-1]['resolution'] = (right - left + 1, bottom - top + 1)
+            # GAZE_COORDS is typically logged after RECCFG - if not, warn and skip assignment.
+            if not recording_config:
+                warnings.warn(
+                    'GAZE_COORDS encountered before any RECCFG. Skipping resolution assignment.',
+                )
+            else:
+                recording_config[-1]['resolution'] = (right - left + 1, bottom - top + 1)
 
         elif match := START_RECORDING_REGEX.match(line):
             start_recording_timestamp = match.groupdict()['timestamp']
@@ -496,6 +591,9 @@ def parse_eyelink(
                     num_expected_samples += round(
                         block_duration * float(current_sampling_rate) / 1000,
                     )
+
+        if messages and (match := MSG_REGEX.match(line)):
+            messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
         # Use the appropriate regex based on the file type
         eye_tracking_sample_match = (
@@ -726,218 +824,30 @@ def parse_eyelink(
     gaze_df = pl.from_dict(data=samples).cast(gaze_schema_overrides)
     event_df = pl.from_dict(data=events).cast(event_schema_overrides)
 
-    return gaze_df, event_df, pre_processed_metadata
-
-
-def _pre_process_metadata(metadata: defaultdict[str, Any]) -> dict[str, Any]:
-    """Pre-process metadata to suitable types and formats.
-
-    Parameters
-    ----------
-    metadata: defaultdict[str, Any]
-        Metadata to pre-process.
-
-    Returns
-    -------
-    dict[str, Any]
-        Pre-processed metadata.
-    """
-    # in case the version strings have not been found, they will be empty strings (defaultdict)
-    metadata['version_number'], metadata['model'] = _parse_full_eyelink_version(
-        metadata['version_1'], metadata['version_2'],
-    )
-
-    if 'DISPLAY_COORDS' in metadata:
-        display_coords = tuple(float(coord) for coord in metadata['DISPLAY_COORDS'].split())
-        metadata['DISPLAY_COORDS'] = display_coords
-
-    # if the date has been parsed fully, convert the date to a datetime object
-    if 'day' in metadata and 'year' in metadata and 'month' in metadata and 'time' in metadata:
-        metadata['day'] = int(metadata['day'])
-        metadata['year'] = int(metadata['year'])
-        month_num = list(calendar.month_abbr).index(metadata['month'])
-        date_time = datetime.datetime(day=metadata['day'], month=month_num, year=metadata['year'])
-        time = datetime.datetime.strptime(metadata['time'], '%H:%M:%S')
-        metadata['datetime'] = datetime.datetime.combine(date_time, time.time())
-
-    if 'mount_configuration' in metadata:
-        metadata['mount_configuration'] = _parse_eyelink_mount_config(
-            metadata['mount_configuration'],
+    # Only return messages if `messages` not False or []. Otherwise, return None.
+    if messages:
+        messages_df = pl.DataFrame(
+            data=messages_list,
+            schema={
+                'time': pl.Float64,
+                'content': pl.String,
+            },
+            orient='row',
         )
-
-    return_metadata: dict[str, Any] = dict(metadata)
-
-    return return_metadata
-
-
-def _check_reccfg_key(
-        recording_config: list[dict[str, Any]],
-        key: str,
-        astype: type | None = None,
-) -> Any:
-    """Check if the recording configs contain consistent values for the specified key and return it.
-
-    Prints a warning if no recording config is found or if the value is inconsistent across entries.
-
-    Parameters
-    ----------
-    recording_config: list[dict[str, Any]]
-        List of dictionaries containing recording config details.
-    key: str
-        The key in the recording configs to check for consistency.
-    astype: type | None
-        The type to cast the value to.
-
-    Returns
-    -------
-    Any
-        The value of the specified key if available, otherwise None.
-    """
-    if not recording_config:
-        warnings.warn('No recording configuration found.')
-        return None
-
-    # Extract values for the requested key but ignore entries where the key is missing
-    raw_values = [d.get(key) for d in recording_config]
-    non_none_values = [v for v in raw_values if v is not None]
-
-    if not non_none_values:
-        # The recording config exists but the specific key was never present.
-        # Return None silently to avoid emitting unexpected warnings in callers.
-        return None
-
-    unique_values = set(non_none_values)
-    if len(unique_values) != 1:
-        # Try to present a sorted list of values for the warning, fall back if not comparable
-        try:
-            sorted_values: list = sorted(unique_values)
-        except TypeError:
-            sorted_values = list(unique_values)
-        warnings.warn(f"Found inconsistent values for '{key}': {sorted_values}")
-        return None
-
-    value = unique_values.pop()
-    if astype is not None:
-        try:
-            value = astype(value)
-        except (TypeError, ValueError):
-            # If casting fails, return None silently to avoid unexpected warnings.
-            return None
-    return value
-
-
-def _check_samples_config_key(
-        samples_config: list[dict[str, Any]],
-        key: str,
-        astype: type | None = None,
-) -> Any:
-    """Check if the sample configs contain consistent values for the specified key and return it.
-
-    Prints a warning if no sample config is found or if the value is inconsistent across entries.
-
-    Parameters
-    ----------
-    samples_config: list[dict[str, Any]]
-        List of dictionaries containing sample config details.
-    key: str
-        The key in the recording configs to check for consistency.
-    astype: type | None
-        The type to cast the value to.
-
-    Returns
-    -------
-    Any
-        The value of the specified key if available, otherwise None.
-    """
-    if not samples_config:
-        warnings.warn('No samples configuration found.')
-        return None
-
-    values = {d.get(key) for d in samples_config}
-    if len(values) != 1:
-        sorted_values: list = sorted(values)
-        warnings.warn(f"Found inconsistent values for '{key}': {sorted_values}")
-        return None
-
-    value = values.pop()
-    if astype is not None:
-        value = astype(value)
-    return value
-
-
-def _calculate_data_loss_ratio(
-        num_expected_samples: int,
-        num_valid_samples: int,
-        num_blink_samples: int,
-) -> tuple[float, float]:
-    """Calculate the total data loss and data loss due to blinks.
-
-    Parameters
-    ----------
-    num_expected_samples: int
-        Number of total expected samples.
-    num_valid_samples: int
-        Number of valid samples (excluding blink samples).
-    num_blink_samples: int
-        Number of blink samples.
-
-    Returns
-    -------
-    tuple[float, float]
-        Data loss ratio and blink loss ratio.
-    """
-    if num_expected_samples == 0:
-        return 0.0, 0.0
-
-    total_data_loss = (num_expected_samples - num_valid_samples) / num_expected_samples
-    blink_data_loss = num_blink_samples / num_expected_samples
-    return total_data_loss, blink_data_loss
-
-
-def _parse_full_eyelink_version(version_str_1: str, version_str_2: str) -> tuple[str, str]:
-    """Parse the two version strings into an eyelink version number and model.
-
-    Parameters
-    ----------
-    version_str_1: str
-        First version string.
-    version_str_2: str
-        Second version string.
-
-    Returns
-    -------
-    tuple[str, str]
-        Version number and model as strings or unknown if it cannot be parsed.
-    """
-    if version_str_1 == 'EYELINK II 1' and version_str_2:
-        version_pattern = re.compile(r'.*v(?P<version_number>[0-9]\.[0-9]+).*')
-        if match := version_pattern.match(version_str_2):
-            version_number = match.groupdict()['version_number']
-            if float(version_number) < 3:
-                model = 'EyeLink II'
-            elif float(version_number) < 5:
-                model = 'EyeLink 1000'
-            elif float(version_number) < 6:
-                model = 'EyeLink 1000 Plus'
-            else:
-                model = 'EyeLink Portable Duo'
-
-        else:
-            version_number = 'unknown'
-            model = 'unknown'
-
+        # Filter messages with regexp if given
+        if isinstance(messages, Sequence):
+            # keep rows where content matches any of the regex patterns
+            # for each row check if content matches any of the regex patterns
+            messages_df = messages_df.filter(
+                pl.col('content').str.contains(
+                    pattern='|'.join(messages),  # RegExps are joined by OR
+                    strict=True,  # Raises error if regexp not valid
+                ),
+            )
     else:
-        # taken from R package eyelinker/eyelink_parser.R
-        version_pattern = re.compile(r'.*\s+(?P<version_number>[0-9]\.[0-9]+).*')
-        model = 'EyeLink I'
-        if match := version_pattern.match(version_str_1):
-            version_number = match.groupdict()['version_number']
+        messages_df = None
 
-        else:
-            model = 'unknown'
-            version_number = 'unknown'
-
-    return version_number, model
+    return gaze_df, event_df, pre_processed_metadata, messages_df
 
 
 def _parse_eyelink_mount_config(mount_config: str) -> dict[str, str]:
@@ -1052,3 +962,90 @@ def _parse_eyelink_mount_config(mount_config: str) -> dict[str, str]:
         'camera_position': 'unknown',
         'short_name': mount_config,
     }
+
+
+def _pre_process_metadata(metadata: defaultdict[str, Any]) -> dict[str, Any]:
+    """Pre-process metadata to suitable types and formats.
+
+    Parameters
+    ----------
+    metadata: defaultdict[str, Any]
+        Metadata to pre-process.
+
+    Returns
+    -------
+    dict[str, Any]
+        Pre-processed metadata.
+    """
+    # in case the version strings have not been found, they will be empty strings (defaultdict)
+    metadata['version_number'], metadata['model'] = _parse_full_eyelink_version(
+        metadata['version_1'], metadata['version_2'],
+    )
+
+    if 'DISPLAY_COORDS' in metadata:
+        display_coords = tuple(float(coord) for coord in metadata['DISPLAY_COORDS'].split())
+        metadata['DISPLAY_COORDS'] = display_coords
+
+    # if the date has been parsed fully, convert the date to a datetime object
+    if 'day' in metadata and 'year' in metadata and 'month' in metadata and 'time' in metadata:
+        metadata['day'] = int(metadata['day'])
+        metadata['year'] = int(metadata['year'])
+        month_num = list(calendar.month_abbr).index(metadata['month'])
+        date_time = datetime.datetime(day=metadata['day'], month=month_num, year=metadata['year'])
+        time = datetime.datetime.strptime(metadata['time'], '%H:%M:%S')
+        metadata['datetime'] = datetime.datetime.combine(date_time, time.time())
+
+    if 'mount_configuration' in metadata:
+        metadata['mount_configuration'] = _parse_eyelink_mount_config(
+            metadata['mount_configuration'],
+        )
+
+    return_metadata: dict[str, Any] = dict(metadata)
+
+    return return_metadata
+
+
+def _parse_full_eyelink_version(version_str_1: str, version_str_2: str) -> tuple[str, str]:
+    """Parse the two version strings into an eyelink version number and model.
+
+    Parameters
+    ----------
+    version_str_1: str
+        First version string.
+    version_str_2: str
+        Second version string.
+
+    Returns
+    -------
+    tuple[str, str]
+        Version number and model as strings or unknown if it cannot be parsed.
+    """
+    if version_str_1 == 'EYELINK II 1' and version_str_2:
+        version_pattern = re.compile(r'.*v(?P<version_number>[0-9]\.[0-9]+).*')
+        if match := version_pattern.match(version_str_2):
+            version_number = match.groupdict()['version_number']
+            if float(version_number) < 3:
+                model = 'EyeLink II'
+            elif float(version_number) < 5:
+                model = 'EyeLink 1000'
+            elif float(version_number) < 6:
+                model = 'EyeLink 1000 Plus'
+            else:
+                model = 'EyeLink Portable Duo'
+
+        else:
+            version_number = 'unknown'
+            model = 'unknown'
+
+    else:
+        # taken from R package eyelinker/eyelink_parser.R
+        version_pattern = re.compile(r'.*\s+(?P<version_number>[0-9]\.[0-9]+).*')
+        model = 'EyeLink I'
+        if match := version_pattern.match(version_str_1):
+            version_number = match.groupdict()['version_number']
+
+        else:
+            model = 'unknown'
+            version_number = 'unknown'
+
+    return version_number, model

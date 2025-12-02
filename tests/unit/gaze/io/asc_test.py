@@ -18,49 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
-import shutil
-from pathlib import Path
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import DatasetDefinition
+from pymovements import DatasetLibrary
 from pymovements import Experiment
 from pymovements import EyeTracker
 from pymovements import Screen
-from pymovements.datasets import ToyDatasetEyeLink
 from pymovements.gaze import from_asc
-
-
-@pytest.fixture(name='testfiles_dirpath')
-def fixture_testfiles_dirpath(request):
-    """Return the path to tests/files."""
-    return request.config.rootpath / 'tests' / 'files'
-
-
-@pytest.fixture(name='make_custom_asc_file', scope='function')
-def fixture_make_custom_asc_file(tmp_path):
-    """Make a custom eyelink asc file with self-written header and body."""
-    def _make_custom_asc_file(
-            filename: str, header: str = '', body: str = '\n', encoding: str = 'utf-8',
-    ) -> Path:
-        content = header + body
-        filepath = tmp_path / filename
-        filepath.write_text(content, encoding=encoding)
-        return filepath
-    return _make_custom_asc_file
-
-
-@pytest.fixture(name='make_example_asc_file', scope='function')
-def fixture_make_example_asc_file(testfiles_dirpath, tmp_path):
-    """Make a copy of an eyelink asc file from one of the example asc files in tests/files."""
-    def _make_example_asc_file(filename: str) -> Path:
-        source_filepath = testfiles_dirpath / filename
-        target_filepath = tmp_path / filename
-        shutil.copy2(source_filepath, target_filepath)
-        return target_filepath
-    return _make_example_asc_file
 
 
 @pytest.mark.parametrize(
@@ -86,9 +52,9 @@ def fixture_make_example_asc_file(testfiles_dirpath, tmp_path):
     ],
 )
 def test_from_asc_has_expected_samples(
-        header, body, kwargs, expected_samples, make_custom_asc_file,
+        header, body, kwargs, expected_samples, make_text_file,
 ):
-    filepath = make_custom_asc_file('test_eyelink.asc', header=header, body=body)
+    filepath = make_text_file('test_eyelink.asc', header=header, body=body)
     gaze = from_asc(filepath, **kwargs)
 
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
@@ -128,7 +94,11 @@ def test_from_asc_has_expected_samples(
 
         pytest.param(
             'eyelink_monocular_example.asc',
-            {'definition': ToyDatasetEyeLink()},
+            {
+                'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
+            },
             pl.DataFrame(
                 data={
                     'time': [
@@ -164,75 +134,6 @@ def test_from_asc_has_expected_samples(
         ),
 
         pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': ToyDatasetEyeLink(
-                    trial_columns=None,
-                    custom_read_kwargs={'gaze': {'column_schema_overrides': {'pupil': pl.Float32}}},
-                ),
-            },
-            pl.DataFrame(
-                data={
-                    'time': [
-                        2154556, 2154557, 2154560, 2154564, 2154596, 2154598, 2154599, 2154695,
-                        2154696, 2339227, 2339245, 2339246, 2339271, 2339272, 2339290, 2339291,
-                    ],
-                    'pupil': [
-                        778.0, 778.0, 777.0, 778.0, 784.0, 784.0, 784.0, 798.0,
-                        799.0, 619.0, 621.0, 622.0, 617.0, 617.0, 618.0, 618.0,
-                    ],
-                    'pixel': [
-                        [138.1, 132.8], [138.2, 132.7], [137.9, 131.6], [138.1, 131.0],
-                        [139.6, 132.1], [139.5, 131.9], [139.5, 131.8], [147.2, 134.4],
-                        [147.3, 134.1], [673.2, 523.8], [629.0, 531.4], [629.9, 531.9],
-                        [639.4, 531.9], [639.0, 531.9], [637.6, 531.4], [637.3, 531.2],
-                    ],
-                },
-                schema={
-                    'time': pl.Int64,
-                    'pupil': pl.Float32,
-                    'pixel': pl.List(pl.Float64),
-                },
-            ),
-            id='eyelink_asc_mono_schema_overrides',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': ToyDatasetEyeLink(
-                    trial_columns=None,
-                    custom_read_kwargs={'gaze': {'column_schema_overrides': {'pupil': pl.Float32}}},
-                ),
-                'column_schema_overrides': {'pupil': pl.Decimal},
-            },
-            pl.DataFrame(
-                data={
-                    'time': [
-                        2154556, 2154557, 2154560, 2154564, 2154596, 2154598, 2154599, 2154695,
-                        2154696, 2339227, 2339245, 2339246, 2339271, 2339272, 2339290, 2339291,
-                    ],
-                    'pupil': [
-                        778.0, 778.0, 777.0, 778.0, 784.0, 784.0, 784.0, 798.0,
-                        799.0, 619.0, 621.0, 622.0, 617.0, 617.0, 618.0, 618.0,
-                    ],
-                    'pixel': [
-                        [138.1, 132.8], [138.2, 132.7], [137.9, 131.6], [138.1, 131.0],
-                        [139.6, 132.1], [139.5, 131.9], [139.5, 131.8], [147.2, 134.4],
-                        [147.3, 134.1], [673.2, 523.8], [629.0, 531.4], [629.9, 531.9],
-                        [639.4, 531.9], [639.0, 531.9], [637.6, 531.4], [637.3, 531.2],
-                    ],
-                },
-                schema={
-                    'time': pl.Int64,
-                    'pupil': pl.Decimal,
-                    'pixel': pl.List(pl.Float64),
-                },
-            ),
-            id='eyelink_asc_mono_schema_overrides_overrides_definition',
-        ),
-
-        pytest.param(
             'eyelink_monocular_2khz_example.asc',
             {'patterns': 'eyelink'},
             pl.from_dict(
@@ -263,10 +164,10 @@ def test_from_asc_has_expected_samples(
         ),
     ],
 )
-def test_from_asc_example_has_expected_samples(
-        filename, kwargs, expected_samples, make_example_asc_file,
+def test_from_asc_example_file_has_expected_samples(
+        filename, kwargs, expected_samples, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
@@ -288,7 +189,40 @@ def test_from_asc_example_has_expected_samples(
 
         pytest.param(
             'eyelink_monocular_example.asc',
-            {'definition': ToyDatasetEyeLink()},
+            {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
+            (16, 4),
+            {
+                'time': pl.Int64,
+                'pupil': pl.Float64,
+                'pixel': pl.List(pl.Float64),
+                'test': pl.String,
+            },
+            id='eyelink_asc_mono_pattern_eyelink_add_columns',
+        ),
+
+        pytest.param(
+            'eyelink_monocular_example.asc',
+            {
+                'patterns': 'eyelink',
+                'add_columns': {'test': 1}, 'column_schema_overrides': {'test': pl.Float64},
+            },
+            (16, 4),
+            {
+                'time': pl.Int64,
+                'pupil': pl.Float64,
+                'pixel': pl.List(pl.Float64),
+                'test': pl.Float64,
+            },
+            id='eyelink_asc_mono_pattern_eyelink_add_columns_with_schema',
+        ),
+
+        pytest.param(
+            'eyelink_monocular_example.asc',
+            {
+                'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
+            },
             (16, 7),
             {
                 'time': pl.Int64,
@@ -299,31 +233,7 @@ def test_from_asc_example_has_expected_samples(
                 'trial_id': pl.Int64,
                 'pixel': pl.List(pl.Float64),
             },
-            id='eyelink_asc_mono_definition',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': ToyDatasetEyeLink(),
-                'schema': {
-                    'trial_id': pl.Int32,
-                    'screen_id': pl.Int32,
-                    'point_id': pl.Int32,
-                    'task': pl.Utf8,
-                },
-            },
-            (16, 7),
-            {
-                'time': pl.Int64,
-                'pupil': pl.Float64,
-                'task': pl.Utf8,
-                'screen_id': pl.Int32,
-                'point_id': pl.Int32,
-                'trial_id': pl.Int32,
-                'pixel': pl.List(pl.Float64),
-            },
-            id='eyelink_asc_mono_schema_overrides_definition',
+            id='eyelink_asc_mono_toydataset_eyelink',
         ),
 
         pytest.param(
@@ -357,28 +267,6 @@ def test_from_asc_example_has_expected_samples(
             'eyelink_monocular_no_dummy_example.asc',
             {
                 'patterns': 'eyelink',
-                'definition': DatasetDefinition(
-                    experiment=None,
-                    custom_read_kwargs={'gaze': {'encoding': 'latin1'}},
-                ),
-            },
-            (297, 3),
-            {
-                'time': pl.Int64,
-                'pupil': pl.Float64,
-                'pixel': pl.List(pl.Float64),
-            },
-            id='eyelink_asc_mono_no_dummy_pattern_eyelink_encoding_definition',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_no_dummy_example.asc',
-            {
-                'patterns': 'eyelink',
-                'definition': DatasetDefinition(
-                    experiment=None,
-                    custom_read_kwargs={'gaze': {'encoding': 'ascii'}},
-                ),
                 'encoding': 'latin1',
             },
             (297, 3),
@@ -387,7 +275,7 @@ def test_from_asc_example_has_expected_samples(
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
-            id='eyelink_asc_mono_no_dummy_pattern_eyelink_encoding_overrides_definition',
+            id='eyelink_asc_mono_no_dummy_pattern_eyelink_encoding_latin1',
         ),
         pytest.param(
             'eyelink_binocular_example.asc',
@@ -402,10 +290,10 @@ def test_from_asc_example_has_expected_samples(
         ),
     ],
 )
-def test_from_asc_example_has_shape_and_schema(
-        filename, kwargs, shape, schema, make_example_asc_file,
+def test_from_asc_example_file_has_shape_and_schema(
+        filename, kwargs, shape, schema, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
     assert gaze.samples.shape == shape
@@ -437,10 +325,10 @@ def test_from_asc_example_has_shape_and_schema(
         ),
     ],
 )
-def test_from_asc_example_raises_exception(
-        filename, kwargs, exception, message_prefix, make_example_asc_file,
+def test_from_asc_example_file_raises_exception(
+        filename, kwargs, exception, message_prefix, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     with pytest.raises(exception) as excinfo:
         from_asc(filepath, **kwargs)
 
@@ -497,67 +385,6 @@ def test_from_asc_example_raises_exception(
                 ),
             ),
             id='monocular_1khz_experiment',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': DatasetDefinition(
-                    experiment=Experiment(
-                        screen_width_cm=66, screen_height_cm=77, sampling_rate=1000,
-                    ),
-                ),
-            },
-            Experiment(
-                screen=Screen(
-                    width_cm=66,
-                    height_cm=77,
-                    width_px=1280,
-                    height_px=1024,
-                ),
-                eyetracker=EyeTracker(
-                    sampling_rate=1000.0,
-                    left=True,
-                    right=False,
-                    model='EyeLink Portable Duo',
-                    version='6.12',
-                    vendor='EyeLink',
-                    mount='Desktop',
-                ),
-            ),
-            id='monocular_1khz_experiment_definition',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': DatasetDefinition(
-                    experiment=Experiment(
-                        screen_width_cm=40, screen_height_cm=30, sampling_rate=1000,
-                    ),
-                ),
-                'experiment': Experiment(
-                    screen_width_cm=80, screen_height_cm=60, sampling_rate=1000,
-                ),
-            },
-            Experiment(
-                screen=Screen(
-                    width_cm=80,
-                    height_cm=60,
-                    width_px=1280,
-                    height_px=1024,
-                ),
-                eyetracker=EyeTracker(
-                    sampling_rate=1000.0,
-                    left=True,
-                    right=False,
-                    model='EyeLink Portable Duo',
-                    version='6.12',
-                    vendor='EyeLink',
-                    mount='Desktop',
-                ),
-            ),
-            id='monocular_1khz_experiment_overrides_definition',
         ),
 
         pytest.param(
@@ -624,10 +451,10 @@ def test_from_asc_example_raises_exception(
         ),
     ],
 )
-def test_from_asc_example_has_expected_experiment(
-        filename, kwargs, expected_experiment, make_example_asc_file,
+def test_from_asc_example_file_has_expected_experiment(
+        filename, kwargs, expected_experiment, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert gaze.experiment == expected_experiment
 
@@ -637,27 +464,20 @@ def test_from_asc_example_has_expected_experiment(
     [
         pytest.param(
             'eyelink_monocular_example.asc',
-            {'definition': ToyDatasetEyeLink()},
-            ['task', 'trial_id'],
-            id='eyelink_asc_mono_definition',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
             {
-                'definition': ToyDatasetEyeLink(),
-                'trial_columns': ['trial_id'],
+                'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
             },
-            ['trial_id'],
-            id='eyelink_asc_mono_trial_columns_override_definition',
+            ['task', 'trial_id'],
+            id='eyelink_asc_mono',
         ),
-
     ],
 )
-def test_from_asc_example_has_expected_trial_columns(
-        filename, kwargs, expected_trial_columns, make_example_asc_file,
+def test_from_asc_example_file_has_expected_trial_columns(
+        filename, kwargs, expected_trial_columns, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert gaze.trial_columns == expected_trial_columns
 
@@ -667,19 +487,13 @@ def test_from_asc_example_has_expected_trial_columns(
     [
         pytest.param(
             'eyelink_monocular_example.asc',
-            {'definition': ToyDatasetEyeLink()},
-            2,
-            id='eyelink_asc_mono_definition',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
             {
-                'definition': ToyDatasetEyeLink(),
-                'trial_columns': ['trial_id'],
+                'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
             },
             2,
-            id='eyelink_asc_mono_trial_columns_override_definition',
+            id='eyelink_asc_mono',
         ),
 
         pytest.param(
@@ -691,10 +505,10 @@ def test_from_asc_example_has_expected_trial_columns(
 
     ],
 )
-def test_from_asc_example_has_expected_n_components(
-        filename, kwargs, expected_n_components, make_example_asc_file,
+def test_from_asc_example_file_has_expected_n_components(
+        filename, kwargs, expected_n_components, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
     assert gaze.n_components == expected_n_components
 
@@ -767,9 +581,9 @@ def test_from_asc_example_has_expected_n_components(
     ],
 )
 def test_from_asc_detects_mismatches_in_experiment_metadata(
-        experiment_kwargs, issues, make_example_asc_file,
+        experiment_kwargs, issues, make_example_file,
 ):
-    filepath = make_example_asc_file('eyelink_monocular_example.asc')
+    filepath = make_example_file('eyelink_monocular_example.asc')
     with pytest.raises(ValueError) as excinfo:
         from_asc(filepath, experiment=Experiment(**experiment_kwargs))
 
@@ -785,7 +599,6 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
         pytest.param(
             'eyelink_monocular_example.asc',
             {
-                'definition': ToyDatasetEyeLink(),
                 'metadata_patterns': [
                     {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
                 ],
@@ -794,49 +607,6 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
                 'subject_id': '-1',
             },
             id='eyelink_asc_mono_subject_id_metadata_patterns',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': ToyDatasetEyeLink(
-                    trial_columns=None,
-                    custom_read_kwargs={
-                        'gaze': {
-                            'metadata_patterns': [
-                                {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
-                            ],
-                        },
-                    },
-                ),
-            },
-            {
-                'subject_id': '-1',
-            },
-            id='eyelink_asc_mono_subject_id_definition',
-        ),
-
-        pytest.param(
-            'eyelink_monocular_example.asc',
-            {
-                'definition': ToyDatasetEyeLink(
-                    trial_columns=None,
-                    custom_read_kwargs={
-                        'gaze': {
-                            'metadata_patterns': [
-                                {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<foobar>-?\d+)'},
-                            ],
-                        },
-                    },
-                ),
-                'metadata_patterns': [
-                    {'pattern': r'!V TRIAL_VAR SUBJECT_ID (?P<subject_id>-?\d+)'},
-                ],
-            },
-            {
-                'subject_id': '-1',
-            },
-            id='eyelink_asc_mono_subject_id_metadata_patterns_overrides_definition',
         ),
 
         pytest.param(
@@ -868,15 +638,60 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
         ),
     ],
 )
-def test_from_asc_example_has_expected_metadata(
-        filename, kwargs, expected_metadata, make_example_asc_file,
+def test_from_asc_example_file_has_expected_metadata(
+        filename, kwargs, expected_metadata, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
     for key, value in expected_metadata.items():
         assert key in gaze._metadata
         assert gaze._metadata[key] == value
+
+
+@pytest.mark.parametrize(
+    'filename', [
+        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ],
+)
+def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
+    filepath = make_example_file(filename)
+    gaze = from_asc(filepath)
+
+    # Calibrations DataFrame present with the expected schema
+    assert isinstance(gaze.calibrations, pl.DataFrame)
+    assert gaze.calibrations.schema == {
+        'time': pl.Float64,
+        'num_points': pl.Int64,
+        'eye': pl.Utf8,
+        'tracking_mode': pl.Utf8,
+    }
+
+    # Example file should contain at least one calibration
+    assert gaze.calibrations.height >= 1
+
+
+@pytest.mark.parametrize(
+    'filename', [
+        pytest.param('eyelink_monocular_example.asc', id='mono'),
+    ],
+)
+def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
+    filepath = make_example_file(filename)
+    gaze = from_asc(filepath)
+
+    # Validations DataFrame present with the expected schema
+    assert isinstance(gaze.validations, pl.DataFrame)
+    assert gaze.validations.schema == {
+        'time': pl.Float64,
+        'num_points': pl.Int64,
+        'eye': pl.Utf8,
+        'accuracy_avg': pl.Float64,
+        'accuracy_max': pl.Float64,
+    }
+
+    # Example file should contain at least one validation
+    assert gaze.validations.height >= 1
 
 
 @pytest.mark.parametrize(
@@ -987,10 +802,10 @@ def test_from_asc_example_has_expected_metadata(
         ),
     ],
 )
-def test_from_asc_example_has_expected_events(
-        filename, kwargs, expected_event_frame, make_example_asc_file,
+def test_from_asc_example_file_has_expected_events(
+        filename, kwargs, expected_event_frame, make_example_file,
 ):
-    filepath = make_example_asc_file(filename)
+    filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
@@ -1002,17 +817,91 @@ def test_from_asc_example_has_expected_events(
 @pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
 @pytest.mark.parametrize(
-    ('header', 'body', 'expected_warning', 'expected_message'),
+    ('header', 'body', 'expected_warning', 'expected_message', 'from_asc_kwargs'),
     [
         pytest.param(
             '', 'END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
             UserWarning, 'END recording message without associated START recording message',
+            {},
             id='no_start_recording',
         ),
     ],
 )
-def test_from_asc_warns(header, body, expected_warning, expected_message, make_custom_asc_file):
-    filepath = make_custom_asc_file(filename='test.asc', header=header, body=body)
+def test_from_asc_warns(
+    header, body, expected_warning, expected_message,
+    make_text_file, from_asc_kwargs,
+):
+    filepath = make_text_file(filename='test.asc', header=header, body=body)
 
     with pytest.warns(expected_warning, match=expected_message):
-        from_asc(filepath)
+        from_asc(filepath, **from_asc_kwargs)
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.parametrize(
+    ('body', 'messages', 'expected_data'),
+    [
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEST 1',
+            True,
+            [(123, 152), ('message here', 'TEST 1')],
+            id='multiple_messages',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEST 1',
+            [r'^.*TEST.*$'],
+            [(152,), ('TEST 1',)],
+            id='filter_messages',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEEST 1',
+            [r'^.*TEST.*$'],
+            [],
+            id='no_match',
+        ),
+        pytest.param(
+            'MSG 123 message here\nMSG 152 TEEST 1',
+            False,
+            None,
+            id='no_parsing',
+        ),
+    ],
+)
+def test_from_asc_messages(make_text_file, body, messages, expected_data):
+    filepath = make_text_file(filename='test.asc', header='', body=body)
+
+    gaze = from_asc(filepath, messages=messages)
+
+    if expected_data is None:
+        assert gaze.messages is None
+    else:
+        assert_frame_equal(
+            gaze.messages,
+            pl.DataFrame(
+                schema={'time': pl.Float64, 'content': pl.String},
+                data=expected_data,
+            ),
+        )
+
+
+def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example_file):
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    gaze = from_asc(filepath)
+
+    # Public frames exist
+    assert isinstance(gaze.calibrations, pl.DataFrame)
+    assert isinstance(gaze.validations, pl.DataFrame)
+
+    # Private _metadata exists and does NOT contain cal/val anymore
+    assert isinstance(gaze._metadata, dict)
+    assert 'calibrations' not in gaze._metadata
+    assert 'validations' not in gaze._metadata
+
+    # Data loss ratios should be present for consumers until we migrate to explicit preprocessing
+    # utilities.
+    assert 'data_loss_ratio' in gaze._metadata
+    assert 'data_loss_ratio_blinks' in gaze._metadata

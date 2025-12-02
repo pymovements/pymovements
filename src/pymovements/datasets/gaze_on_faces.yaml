@@ -1,12 +1,12 @@
-name: 'GazeOnFaces'
+name: "GazeOnFaces"
 
 long_name: 'GazeOnFaces dataset'
 
 resources:
   - content: gaze
-    url: 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip'
-    filename: 'gaze_csv.zip'
-    md5: 'fe219f07c9253cd9aaee6bd50233c034'
+    url: "https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip"
+    filename: "gaze_csv.zip"
+    md5: "fe219f07c9253cd9aaee6bd50233c034"
     filename_pattern: 'gaze_sub{sub_id:d}_trial{trial_id:d}.csv'
     filename_pattern_schema_overrides:
       sub_id: !int
@@ -20,18 +20,16 @@ experiment:
   screen_width_cm: 38
   screen_height_cm: 30
   distance_cm: 57
-  origin: 'center'
+  origin: "center"
   sampling_rate: 60
-
-column_map: {}
 
 custom_read_kwargs:
   gaze:
-    separator: ','
+    separator: ","
     has_header: false
     new_columns:
-      - 'x'
-      - 'y'
+      - "x"
+      - "y"
     schema_overrides:
       - !polars.Float32
       - !polars.Float32

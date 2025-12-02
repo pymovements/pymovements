@@ -9,7 +9,9 @@ resources:
     md5: c8cc645d1fad659f9442d61795da5481
     filename_pattern: gaze4hate_sentence_reading_fix_report.csv
     load_kwargs:
-      trial_columns: ['pno', 'sno']
+      trial_columns:
+        - pno
+        - sno
 
   - content: precomputed_reading_measures
     url: https://osf.io/download/fgdjw/

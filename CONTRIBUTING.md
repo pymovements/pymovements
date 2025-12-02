@@ -8,7 +8,7 @@ Here we give you an overview of the workflow and best practices for contributing
 to pymovements.
 
 **Questions:** If you have any developer-related questions, please [open an issue](
-https://github.com/aeye-lab/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write us at
 [pymovements@python.org](mailto:pymovements@python.org)
 
 ## Table of Contents
@@ -31,19 +31,21 @@ https://github.com/aeye-lab/pymovements/issues/new/choose) or write us at
 
 ## Code of Conduct
 
-Everyone participating in the pymovements project, and in particular in our issue tracker and pull
-requests, is expected to treat other people with respect and more generally to follow the guidelines
-articulated in the [Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
+Everyone participating in the pymovements project, including in issues, pull requests,
+discussions, and any other community spaces, is expected to treat others with respect
+and to contribute to an open, welcoming, and inclusive environment.
+
+Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) for full details.
 
 ## Reporting Bugs
 
 If you discover a bug, as a first step, please check the existing
-[Issues](https://github.com/aeye-lab/pymovements/issues) to see if this bug has already been
+[Issues](https://github.com/pymovements/pymovements/issues) to see if this bug has already been
 reported.
 
 In case the bug has not been reported yet, please do the following:
 
-- [Open an issue](https://github.com/aeye-lab/pymovements/issues/new?labels=bug&template=ISSUE.md).
+- [Open an issue](https://github.com/pymovements/pymovements/issues/new?labels=bug&template=ISSUE.md).
 - Add a descriptive title to the issue and write a short summary of the problem.
 - We provide you with a default template to guide you through a typical reporting process.
 - Adding more context, including error messages and references to the problematic parts of the code,
@@ -54,10 +56,10 @@ Once a bug is reported, our development team will try to address the issue as qu
 ## First-time Contributors
 
 If you're looking for things to help with, try browsing our [issue tracker](
-https://github.com/aeye-lab/pymovements/issues) first. In particular, look for:
+https://github.com/pymovements/pymovements/issues) first. In particular, look for:
 
-- [good first issues](https://github.com/aeye-lab/pymovements/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-- [documentation issues](https://github.com/aeye-lab/pymovements/labels/documentation)
+- [good first issues](https://github.com/pymovements/pymovements/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- [documentation issues](https://github.com/pymovements/pymovements/labels/documentation)
 
 You do not need to ask for permission to work on any of these issues. The current status of the
 issue will let you know if someone else is or was already working on it.
@@ -84,7 +86,7 @@ https://pymovements.readthedocs.io/) first.
 Make sure to install the latest pymovements version from the main branch.
 
 ```bash
-git clone https://github.com/aeye-lab/pymovements.git
+git clone https://github.com/pymovements/pymovements.git
 cd pymovements
 pip install -e .
 ```
@@ -207,10 +209,10 @@ If you add a new feature, please also include appropriate tests to verify its in
 functionality. We try to keep our code coverage close to 100%.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.9 environment use:
+only test event-related functionality using the Python 3.10 environment use:
 
 ```bash
-tox -e py39 -- tests/unit/events
+tox -e py310 -- tests/unit/events
 ```
 
 ### Documentation
@@ -247,7 +249,7 @@ tox -e docs -- -aE
 
 Once you are ready to publish your changes:
 
-- Create a [pull request (PR)](https://github.com/aeye-lab/pymovements/compare).
+- Create a [pull request (PR)](https://github.com/pymovements/pymovements/compare).
 - Provide a summary of the changes you are introducing, according to the default template.
 - In case you are resolving an issue, remember to add a reference in the description.
 
@@ -311,8 +313,8 @@ Before releasing a new pymovements version make sure that all integration tests 
 
 You need to register an account on [PyPI](https://pypi.org/account/register/) and request maintainer privileges for releasing new pymovements versions.
 
-The first step is releasing on GitHub. Our [release-drafter](https://github.com/aeye-lab/pymovements/blob/main/.github/release-drafter.yml) takes care of drafting a release log which should be
-available on the [release page](https://github.com/aeye-lab/pymovements/releases). Please assign the listed PRs into the correct categories in the release draft. If all merged PRs adhered to
+The first step is releasing on GitHub. Our [release-drafter](https://github.com/pymovements/pymovements/blob/main/.github/release-drafter.yml) takes care of drafting a release log which should be
+available on the [release page](https://github.com/pymovements/pymovements/releases). Please assign the listed PRs into the correct categories in the release draft. If all merged PRs adhered to
 the [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) specification the release-drafter will have already taken care of this. Take special care for PRs that introduce breaking
 changes. Specify the version tag according to the [Semantic Versioning 2.0.0](https://semver.org/) specification. After publishing the release on GitHub the latest commit will be tagged with the
 specified version.
@@ -346,7 +348,7 @@ repository. A bot will create a PR and merge it after passing all tests. There m
 ## License
 
 Please note that by contributing to the project, you agree that it will be licensed under the
-[License](https://github.com/aeye-lab/pymovements/blob/main/LICENSE.txt) of this project.
+[License](https://github.com/pymovements/pymovements/blob/main/LICENSE.txt) of this project.
 
 If you did not write the code yourself, ensure the existing license is compatible and include the
 license information in the contributed files, or obtain permission from the original author to
@@ -355,5 +357,5 @@ relicense the contributed code.
 ## Questions
 
 If you have any developer-related questions, please [open an issue](
-https://github.com/aeye-lab/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write us at
 [pymovements-list@uni-potsdam.de](mailto:pymovements-list@uni-potsdam.de)

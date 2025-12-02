@@ -3,8 +3,8 @@ long_name: pymovements Toy Dataset EyeLink
 resources:
 - content: gaze
   filename: pymovements-toy-dataset-eyelink.zip
-  url: http://github.com/aeye-lab/pymovements-toy-dataset-eyelink/zipball/a970d090588542dad745297866e794ab9dad8795/
-  md5: b1d426751403752c8a154fc48d1670ce
+  url: https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip
+  md5: 966c0b6aefe61f32942366ed719454d3
   filename_pattern: subject_{subject_id:d}_session_{session_id:d}.asc
   filename_pattern_schema_overrides:
     subject_id: '!int'

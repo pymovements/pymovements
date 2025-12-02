@@ -18,13 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements plotting utils."""
-import re
-
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.plotting import draw_image_stimulus
 from pymovements.utils.plotting import draw_line_data
 from pymovements.utils.plotting import setup_matplotlib
@@ -38,7 +35,7 @@ from pymovements.utils.plotting import setup_matplotlib
     ],
 )
 def axes_fixture(request):
-    fig = matplotlib.pyplot.figure(figsize=request.param)
+    fig = plt.figure(figsize=request.param)
     yield fig.gca()
 
 
@@ -61,29 +58,14 @@ def test_setup_matplotlib(kwargs):
 
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-@pytest.mark.parametrize(
-    ('plotting_function', 'kwargs'),
-    [
-        pytest.param(
-            draw_image_stimulus,
-            {
-                'image_stimulus': 'tests/files/pexels-zoorg-1000498.jpg',
-            },
-            id='draw_image_stimulus',
-        ),
+def test_draw_image_stimulus(axes, make_example_file):
+    filepath = make_example_file('pexels-zoorg-1000498.jpg')
+    draw_image_stimulus(image_stimulus=filepath, ax=axes)
 
-        pytest.param(
-            draw_line_data,
-            {
-                'x_signal': np.array([0.0, 0.0]),
-                'y_signal': np.array([0.0, 0.0]),
-            },
-            id='_draw_line_data',
-        ),
-    ],
-)
-def test_plotting_function(plotting_function, kwargs, axes):
-    plotting_function(ax=axes, **kwargs)
+
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_draw_line_data(axes):
+    draw_line_data(x_signal=np.array([0.0, 0.0]), y_signal=np.array([0.0, 0.0]), ax=axes)
 
 
 @pytest.mark.parametrize(
@@ -112,47 +94,13 @@ def test_plotting_function(plotting_function, kwargs, axes):
         ),
     ],
 )
-def test_plotting_function_deprecated(plotting_function, kwargs):
-    with pytest.raises(DeprecationWarning):
-        plotting_function(**kwargs)
-
-
-@pytest.mark.parametrize(
-    ('plotting_function', 'kwargs'),
-    [
-        pytest.param(
-            setup_matplotlib,
-            {
-                'x_signal': np.array([0.0, 0.0]),
-                'y_signal': np.array([0.0, 0.0]),
-                'figsize': (10, 15),
-            },
-            id='_setup_matplotlib',
-        ),
-
-        pytest.param(
-            draw_image_stimulus,
-            {},
-            id='draw_image_stimulus',
-        ),
-
-        pytest.param(
-            draw_line_data,
-            {},
-            id='_draw_line_data',
-        ),
-    ],
-)
-def test_plotting_function_removed(plotting_function, kwargs):
+def test_plotting_function_removed(plotting_function, kwargs, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         plotting_function(**kwargs)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='utils/filters.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.27.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/filters.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

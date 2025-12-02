@@ -1,12 +1,12 @@
-name: 'PotsdamBingeWearablePVT'
+name: "PotsdamBingeWearablePVT"
 
 long_name: 'Potsdam Binge Wearable PVT dataset'
 
 resources:
   - content: gaze
-    url: 'https://osf.io/download/9vbs8/'
-    filename: 'a.zip'
-    md5: '87c6c74a9a17cbd093b91f9415e8dd9d'
+    url: "https://osf.io/download/9vbs8/"
+    filename: "a.zip"
+    md5: "87c6c74a9a17cbd093b91f9415e8dd9d"
     filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -14,9 +14,9 @@ resources:
       block_id: !int
 
   - content: gaze
-    url: 'https://osf.io/download/yqukn/'
-    filename: 'b.zip'
-    md5: '54038547b1a373253b38999a227dde63'
+    url: "https://osf.io/download/yqukn/"
+    filename: "b.zip"
+    md5: "54038547b1a373253b38999a227dde63"
     filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -29,9 +29,9 @@ resources:
       pixel_columns: ['x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated']
 
   - content: gaze
-    url: 'https://osf.io/download/yf2xa/'
-    filename: 'e.zip'
-    md5: 'a0d0203cbb273f6908c1b52a42750551'
+    url: "https://osf.io/download/yf2xa/"
+    filename: "e.zip"
+    md5: "a0d0203cbb273f6908c1b52a42750551"
     filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -44,16 +44,14 @@ experiment:
     height_px: 1080
     width_cm: 59.76
     height_cm: 33.615
-    origin: 'center'
+    origin: "center"
   eyetracker:
     sampling_rate: 1000
     left: true
     right: false
-    model: 'Pupil Core eye-tracking glasses'
-    vendor: 'Pupil Labs'
-    mount: 'Wearable'
-
-column_map: {}
+    model: "Pupil Core eye-tracking glasses"
+    vendor: "Pupil Labs"
+    mount: "Wearable"
 
 custom_read_kwargs:
   gaze:

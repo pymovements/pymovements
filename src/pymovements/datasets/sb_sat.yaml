@@ -1,6 +1,6 @@
 name: SBSAT
 
-long_name: 'Stony Brook SAT reading fixation dataset'
+long_name: "Stony Brook SAT reading fixation dataset"
 
 resources:
   - content: gaze
@@ -31,8 +31,6 @@ experiment:
   origin: center
   sampling_rate: 1000
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     separator: "\t"
@@ -51,4 +49,4 @@ custom_read_kwargs:
       y_left: !polars.Float32
       pupil_left: !polars.Float32
   precomputed_events:
-    separator: ','
+    separator: ","

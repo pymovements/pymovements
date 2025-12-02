@@ -21,14 +21,12 @@
 from __future__ import annotations
 
 import os
-import re
 
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import EyeTracker
@@ -383,18 +381,45 @@ def test_gaze_is_copy():
     assert_frame_equal(gaze.samples, gaze_copy.samples)
 
 
-def test_gaze_copy_events():
-    gaze = Gaze(
-        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-        experiment=None,
-        position_columns=['x', 'y'],
-        events=Events(
-            name='saccade',
-            onsets=[0],
-            offsets=[123],
+@pytest.mark.parametrize(
+    'gaze',
+    [
+        pytest.param(
+            Gaze(
+                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                experiment=None,
+                position_columns=['x', 'y'],
+                events=Events(
+                    name='saccade',
+                    onsets=[0],
+                    offsets=[123],
+                ),
+            ),
+            id='simple_events_no_trials',
         ),
-    )
-
+        pytest.param(
+            Gaze(
+                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                experiment=None,
+                position_columns=['x', 'y'],
+                events=Events(
+                    data=pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'name': ['saccade'],
+                            'onset': [0],
+                            'offset': [123],
+                            'custom_property': [42],
+                        },
+                    ),
+                    trial_columns='trial_id',
+                ),
+            ),
+            id='events_with_trial_columns_and_custom_property',  # regression test for #1349
+        ),
+    ],
+)
+def test_gaze_copy_events(gaze):
     gaze_copy = gaze.clone()
 
     assert gaze_copy.events is not gaze.events
@@ -1128,19 +1153,16 @@ def test_gaze_set_attribute_is_deprecated(gaze, attribute, value):
         'frame',
     ],
 )
-def test_gaze_get_attribute_is_removed(attribute):
+def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed):
     definition = Gaze()
     with pytest.raises(DeprecationWarning) as info:
         getattr(definition, attribute)
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name=f'Gaze.{attribute}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'Gaze.{attribute} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
 
 

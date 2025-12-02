@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -82,7 +83,7 @@ class ToyDataset(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -111,16 +112,18 @@ class ToyDataset(DatasetDefinition):
 
     name: str = 'ToyDataset'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'pymovements Toy Dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
-                    'url': 'http://github.com/aeye-lab/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/',  # noqa: E501 # pylint: disable=line-too-long
+                    'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
                     'filename': 'pymovements-toy-dataset.zip',
-                    'md5': '4da622457637a8181d86601fe17f3aa8',
+                    'md5': '256901852c1c07581d375eef705855d6',
                     'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
                     'filename_pattern_schema_overrides': {
                         'text_id': int,
@@ -158,7 +161,7 @@ class ToyDataset(DatasetDefinition):
 
     pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

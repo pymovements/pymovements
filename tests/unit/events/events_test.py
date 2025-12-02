@@ -20,13 +20,10 @@
 """Tests pymovements.events.Events."""
 from __future__ import annotations
 
-import re
-
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 
 
@@ -283,6 +280,48 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             ),
             id='data_one_event_trial_column_enforce_start',
         ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'trial_id': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_preserves_custom_property',
+        ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'trial_id': [1, 1, 2],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_enforce_start_and_preserve_custom',
+        ),
     ],
 )
 def test_init_expected_df(args, kwargs, expected_df):
@@ -501,8 +540,31 @@ def test_columns_same_as_frame():
     assert events.columns == events.frame.columns
 
 
-def test_clone():
-    events = Events(name='saccade', onsets=[0], offsets=[123])
+@pytest.mark.parametrize(
+    'events',
+    [
+        pytest.param(
+            Events(name='saccade', onsets=[0], offsets=[123]),
+            id='simple_events_no_trials',
+        ),
+        pytest.param(
+            Events(
+                data=pl.from_dict(
+                    {
+                        'trial_id': [1],
+                        'name': ['saccade'],
+                        'onset': [0],
+                        'offset': [123],
+                        'custom_property': [42],
+                    },
+                ),
+                trial_columns='trial_id',
+            ),
+            id='events_with_trial_columns_and_custom_property',  # regression test for #1349
+        ),
+    ],
+)
+def test_clone(events):
     events_copy = events.clone()
 
     # We want to have separate dataframes but with the exact same data.
@@ -522,18 +584,15 @@ def test_copy():
     assert_frame_equal(events.frame, events_copy.frame)
 
 
-def test_copy_removed():
+def test_copy_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         Events().copy()
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='Events.copy()',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'Events.copy() was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )
 
 
@@ -970,3 +1029,64 @@ def test_drop_event_properties_raises_exception(
 
     with pytest.raises(exception, match=message):
         events.drop(remove_properties)
+
+
+@pytest.mark.parametrize(
+    'locations, expected_x, expected_y',
+    [
+        pytest.param(
+            [[1, 2], [3, 4]],
+            [1, 3],
+            [2, 4],
+            id='two_rows_integers',
+        ),
+        pytest.param(
+            [[None, None]],
+            [None],
+            [None],
+            id='none_pairs_propagate',
+        ),
+    ],
+)
+def test_unnest_location_basic(
+        locations: list[list[int | None]],
+        expected_x: list[int | None],
+        expected_y: list[int | None],
+) -> None:
+    """Events.unnest splits 'location' list into 'location_x'/'location_y' and drops input.
+
+    This test covers typical integer values and None pairs - values are propagated as-is.
+    """
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'] * len(locations),
+            'onset': list(range(len(locations))),
+            'offset': list(range(1, len(locations) + 1)),
+            'location': locations,
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest()
+
+    assert 'location' not in events.frame.columns
+    assert events.frame.get_column('location_x').to_list() == expected_x
+    assert events.frame.get_column('location_y').to_list() == expected_y
+
+
+def test_unnest_location_absent_is_noop() -> None:
+    """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+        },
+    )
+    events = Events(data=df)
+
+    before_cols = set(events.frame.columns)
+    events.unnest()
+    after_cols = set(events.frame.columns)
+
+    assert before_cols == after_cols
