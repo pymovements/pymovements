@@ -381,18 +381,45 @@ def test_gaze_is_copy():
     assert_frame_equal(gaze.samples, gaze_copy.samples)
 
 
-def test_gaze_copy_events():
-    gaze = Gaze(
-        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-        experiment=None,
-        position_columns=['x', 'y'],
-        events=Events(
-            name='saccade',
-            onsets=[0],
-            offsets=[123],
+@pytest.mark.parametrize(
+    'gaze',
+    [
+        pytest.param(
+            Gaze(
+                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                experiment=None,
+                position_columns=['x', 'y'],
+                events=Events(
+                    name='saccade',
+                    onsets=[0],
+                    offsets=[123],
+                ),
+            ),
+            id='simple_events_no_trials',
         ),
-    )
-
+        pytest.param(
+            Gaze(
+                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                experiment=None,
+                position_columns=['x', 'y'],
+                events=Events(
+                    data=pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'name': ['saccade'],
+                            'onset': [0],
+                            'offset': [123],
+                            'custom_property': [42],
+                        },
+                    ),
+                    trial_columns='trial_id',
+                ),
+            ),
+            id='events_with_trial_columns_and_custom_property',  # regression test for #1349
+        ),
+    ],
+)
+def test_gaze_copy_events(gaze):
     gaze_copy = gaze.clone()
 
     assert gaze_copy.events is not gaze.events
