@@ -197,3 +197,16 @@ def test_main_sequence_plot_fit_false_no_line():
     _, ax = pm.plotting.main_sequence_plot(events=events, fit=False, show=False)
     # there should be no extra line2D beyond the default axes spines; at least 1 scatter exists
     assert not any(isinstance(artist, Line2D) for artist in ax.lines)
+
+
+def test_main_sequence_plot_fit_label_in_legend():
+    events = _make_events()
+
+    _, ax = pm.plotting.main_sequence_plot(
+        events=events,
+        fit=True,
+        show=False,
+    )
+    # Check that the legend "['saccades', 'R² = 0.912']" contains the symbol R²
+    legend_tokens = any('R²' in text.get_text() for text in ax.get_legend().get_texts())
+    assert legend_tokens
