@@ -136,12 +136,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
-                    'load_kwargs': {
-                        'trial_columns': ['task', 'trial_id'],
-                        'time_column': 'time',
-                        'time_unit': 'ms',
-                        'pixel_columns': ['x_pix', 'y_pix'],
-                    },
+                    'load_kwargs': {'trial_columns': ['task', 'trial_id']},
                 },
             ],
         ),
