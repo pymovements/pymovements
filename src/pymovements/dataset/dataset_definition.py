@@ -307,26 +307,96 @@ class DatasetDefinition:
             self.custom_read_kwargs = custom_read_kwargs
 
         if column_map is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.column_map is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.column_map = column_map
 
         self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         if trial_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.trial_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.trial_columns = trial_columns
+
         if time_column is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.time_column is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.time_column = time_column
+
         if time_unit is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.time_unit is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.time_unit = time_unit
+
         if pixel_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.pixel_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.pixel_columns = pixel_columns
+
         if position_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.position_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.position_columns = position_columns
+
         if velocity_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.velocity_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.velocity_columns = velocity_columns
+
         if acceleration_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.acceleration_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.acceleration_columns = acceleration_columns
+
         if distance_column is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.distance_column is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.distance_column = distance_column
 
         if filename_format:

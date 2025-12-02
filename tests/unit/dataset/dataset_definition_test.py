@@ -923,48 +923,48 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
         ),
         pytest.param(
             {'trial_columns': ['trial']},
-            '0.29.0',
+            '0.30.0',
             id='trial_columns',
         ),
         pytest.param(
             {'time_column': 't'},
-            '0.29.0',
+            '0.30.0',
             id='time_column',
         ),
         pytest.param(
 
             {'time_unit': 'ms'},
-            '0.29.0',
+            '0.30.0',
             id='time_unit',
         ),
         pytest.param(
             {'pixel_columns': ['x', 'y']},
-            '0.29.0',
+            '0.30.0',
             id='pixel_columns',
         ),
         pytest.param(
             {'position_columns': ['x', 'y']},
-            '0.29.0',
+            '0.30.0',
             id='position_columns',
         ),
         pytest.param(
             {'velocity_columns': ['x', 'y']},
-            '0.29.0',
+            '0.30.0',
             id='velocity_columns',
         ),
         pytest.param(
             {'acceleration_columns': ['x', 'y']},
-            '0.29.0',
+            '0.30.0',
             id='acceleration_columns',
         ),
         pytest.param(
             {'distance_column': 'd'},
-            '0.29.0',
+            '0.30.0',
             id='distance_column',
         ),
         pytest.param(
             {'column_map': {'a': 'b'}},
-            '0.29.0',
+            '0.30.0',
             id='column_map',
         ),
     ],
