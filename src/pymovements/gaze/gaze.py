@@ -1440,7 +1440,7 @@ class Gaze:
                     for row in tqdm(self.samples.iter_rows(named=True))
                 ]
             elif mode == 'average_lr':
-                lx, ly, rx, ry = payload  # pylint: disable=unbalanced-tuple-unpacking
+                lx, ly, rx, ry = payload
                 for row in tqdm(self.samples.iter_rows(named=True)):
                     xl = row.get(lx)
                     yl = row.get(ly)

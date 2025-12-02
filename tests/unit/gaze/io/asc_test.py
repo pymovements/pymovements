@@ -466,7 +466,7 @@ def test_from_asc_example_file_has_expected_experiment(
             'eyelink_monocular_example.asc',
             {
                 'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
-                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+                **DatasetLibrary.get('ToyDatasetEyeLink').resources.filter('gaze')[0].load_kwargs,
                 **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
             },
             ['task', 'trial_id'],
