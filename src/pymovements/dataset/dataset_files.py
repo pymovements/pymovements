@@ -347,12 +347,6 @@ def load_gaze_file(
             definition=definition,
             **load_function_kwargs,
         )
-    elif load_function_name == 'from_begaze':
-        gaze = from_begaze(
-            filepath,
-            definition=definition,
-            **load_function_kwargs,
-        )
     else:
         valid_load_functions = ['from_csv', 'from_ipc', 'from_asc', 'from_begaze']
         raise ValueError(
