@@ -801,12 +801,10 @@ def _fill_experiment_from_parsing_begaze_metadata(
     """
     # Ensure an Experiment exists
     if experiment is None:
-        experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
-    elif (
-        experiment.eyetracker.sampling_rate is None
-        and metadata.get('sampling_rate') is not None
-    ):
-        # Only set the sampling rate if not set
+        experiment = Experiment()
+
+    # Only set the sampling rate if not set
+    if experiment.eyetracker.sampling_rate is None:
         experiment.eyetracker.sampling_rate = metadata['sampling_rate']
 
     # Tracked eye flags if present (metadata may provide 'L'/'R')

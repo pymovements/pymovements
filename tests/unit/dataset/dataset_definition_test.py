@@ -932,7 +932,6 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             id='time_column',
         ),
         pytest.param(
-
             {'time_unit': 'ms'},
             '0.30.0',
             id='time_unit',

@@ -306,16 +306,6 @@ class DatasetDefinition:
         else:
             self.custom_read_kwargs = custom_read_kwargs
 
-        if column_map is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.column_map is deprecated since version v0.25.0. '
-                    'Please specify ResourceDefinition.load_kwargs instead. '
-                    'This field will be removed in v0.30.0.',
-                ),
-            )
-            self.column_map = column_map
-
         self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
@@ -398,6 +388,16 @@ class DatasetDefinition:
                 ),
             )
             self.distance_column = distance_column
+
+        if column_map is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.column_map is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.column_map = column_map
 
         if filename_format:
             # the setter will raise a deprecation warning

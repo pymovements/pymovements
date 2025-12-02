@@ -20,7 +20,6 @@ resources:
     filename_pattern: "sentence_data_version1.3.csv"
 
 
-
 custom_read_kwargs:
   precomputed_events: {'r_dataframe_key': 'joint.fix'}
   precomputed_reading_measures: {}
