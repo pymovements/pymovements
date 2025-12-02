@@ -275,7 +275,8 @@ def parse_begaze(
                 # like "L POR X [px]". We only accept such a line as the header marker
                 # if there are tab-separated rows following it. Otherwise, keep searching
                 # for a valid tabular header and let the generic error trigger later.
-                has_tabular_rows_ahead = any(('\t' in l) for l in lines[idx + 1:] if l.strip())
+                has_tabular_rows_ahead = any(('\t' in line)
+                                             for line in lines[idx + 1:] if line.strip())
                 if not has_tabular_rows_ahead:
                     # Do not set header_row_index, continue scanning for a proper header
                     continue
