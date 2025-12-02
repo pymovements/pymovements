@@ -61,6 +61,9 @@ class DatasetDefinition:
     mirrors: dict[str, Sequence[str]]
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: {})
+        .. deprecated:: v0.24.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
+        This field will be removed in v0.29.0.
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
@@ -86,40 +89,67 @@ class DatasetDefinition:
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     trial_columns: list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials and the transformation
         methods will be applied to each trial separately. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     position_columns: list[str] | None
         The name of the dva position columns in the input data frame. These columns will be
         nested into the column ``position``. If the list is empty or None, the nested
         ``position`` column will not be created. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
         column will not be created. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     acceleration_columns: list[str] | None
         The name of the acceleration columns in the input data frame. These columns will be
         nested into the column ``acceleration``. If the list is empty or None, the nested
         ``acceleration`` column will not be created. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
     distance_column : str | None
         The name of the column containing eye-to-screen distance in millimeters for each sample
         in the input data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. This column will be renamed to ``distance``. (default: None)
+        .. deprecated:: v0.25.0
+        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+        This field will be removed in v0.30.0.
 
     Parameters
     ----------
@@ -136,7 +166,8 @@ class DatasetDefinition:
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: None)
         .. deprecated:: v0.24.0
-        Please use ``ResourceDefinition.mirrors`` instead. This field will be removed in v0.29.0.
+        Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
+        This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
