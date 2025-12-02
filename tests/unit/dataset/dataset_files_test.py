@@ -355,7 +355,7 @@ def test_load_eyelink_file_has_expected_trial_columns(
         pytest.param(
             'monocular_example.feather',
             '.feather',
-             None,
+            None,
             None,
             id='load_feather_default',
         ),
@@ -486,7 +486,7 @@ def test_load_example_gaze_file(
             {'pixel_columns': ['x', 'y']},
             Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
             marks=pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
             ),
             id='pixel_columns_definition',
         ),
@@ -511,7 +511,7 @@ def test_load_example_gaze_file(
             {'position_columns': ['x', 'y']},
             Gaze(samples=pl.DataFrame({'time': [0], 'position': [[21.2, 23.4]]})),
             marks=pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.position_columns.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.position_columns.*:DeprecationWarning',
             ),
             id='position_columns_definition',
         ),
@@ -536,7 +536,7 @@ def test_load_example_gaze_file(
             {'velocity_columns': ['x', 'y']},
             Gaze(samples=pl.DataFrame({'time': [0], 'velocity': [[21.2, 23.4]]})),
             marks=pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.velocity_columns.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.velocity_columns.*:DeprecationWarning',
             ),
             id='velocity_columns_definition',
         ),
@@ -561,7 +561,7 @@ def test_load_example_gaze_file(
             {'acceleration_columns': ['x', 'y']},
             Gaze(samples=pl.DataFrame({'time': [0], 'acceleration': [[21.2, 23.4]]})),
             marks=pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.acceleration_columns.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.acceleration_columns.*:DeprecationWarning',
             ),
             id='acceleration_columns_definition',
         ),
@@ -626,7 +626,7 @@ def test_load_example_gaze_file(
             {'pixel_columns': ['x', 'y'], 'custom_read_kwargs': {'gaze': {'separator': '\t'}}},
             Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
             marks=pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
             ),
             id='pixel_columns_read_kwargs_definition',
         ),

@@ -153,7 +153,7 @@ class GazeBaseVR(DatasetDefinition):
                             'yT': 'y_target_pos',
                             'zT': 'z_target_pos',
                         },
-                },
+                    },
                 },
             ],
         ),

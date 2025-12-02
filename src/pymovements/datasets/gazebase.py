@@ -147,9 +147,9 @@ class GazeBase(DatasetDefinition):
                         'time_unit': 'ms',
                         'position_columns': ['x', 'y'],
                         'column_map': {
-                                'val': 'validity',
-                                'xT': 'x_target_pos',
-                                'yT': 'y_target_pos',
+                            'val': 'validity',
+                            'xT': 'x_target_pos',
+                            'yT': 'y_target_pos',
                         },
                     },
                 },

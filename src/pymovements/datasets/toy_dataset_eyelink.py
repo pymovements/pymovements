@@ -128,23 +128,21 @@ class ToyDatasetEyeLink(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip',
-                    # noqa: E501 # pylint: disable=line-too-long
+                    'url': 'https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
                     'filename': 'pymovements-toy-dataset-eyelink.zip',
                     'md5': '966c0b6aefe61f32942366ed719454d3',
-                    'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',
-                    # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
                         'subject_id': int,
                         'session_id': int,
                     },
-                        'load_kwargs': {
-                            'trial_columns': ['task', 'trial_id'],
-                            'time_column': 'time',
-                            'time_unit': 'ms',
-                            'pixel_columns': ['x_pix', 'y_pix'],
-                        },
+                    'load_kwargs': {
+                        'trial_columns': ['task', 'trial_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x_pix', 'y_pix'],
                     },
+                },
             ],
         ),
     )
