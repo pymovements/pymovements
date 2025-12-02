@@ -115,6 +115,7 @@ def test_from_begaze_has_correct_samples(
     (
         'exp_kwargs',
         'metadata',
+        'expect_sampling_rate',
         'expect_screen',
         'expect_warnings_regex',
     ),
@@ -123,6 +124,7 @@ def test_from_begaze_has_correct_samples(
             # No experiment provided: should be created and filled
             {},
             {'sampling_rate': 500.0, 'resolution': (1920, 1080), 'tracked_eye': 'LR'},
+            500,
             (1920, 1080),
             None,
             id='create_and_fill_from_metadata',
@@ -131,16 +133,7 @@ def test_from_begaze_has_correct_samples(
             # Experiment without sampling rate provided: should be created and filled
             {'sampling_rate': None},
             {'sampling_rate': 500, 'resolution': None, 'tracked_eye': 'LR'},
-            (1280, 720),
-            None,
-            marks=pytest.mark.xfail(reason='#TODO'),
-            id='fill_sampling_rate',
-        ),
-        pytest.param(
-            # This test case is in conflict with the one abov and should be deleted after resolving
-            # the underlying issue.
-            {'sampling_rate': None},
-            {'sampling_rate': None, 'resolution': None, 'tracked_eye': 'LR'},
+            500,
             (1280, 720),
             None,
             id='fill_sampling_rate',
@@ -149,6 +142,7 @@ def test_from_begaze_has_correct_samples(
             # Pre-set and conflicting resolution: warnings expected for width and height
             {'sampling_rate': 1000.0},
             {'sampling_rate': 1000.0, 'resolution': (1920, 1080), 'tracked_eye': 'L'},
+            1000,
             (1280, 720),
             r'screen (width|height)=\d+ differs',
             id='warn_on_resolution_mismatch_keep_experiment_values',
@@ -157,6 +151,7 @@ def test_from_begaze_has_correct_samples(
             # Invalid resolution format (non-iterable): triggers except branch to set None
             {},
             {'sampling_rate': 250.0, 'resolution': 1920, 'tracked_eye': 'R'},
+            250,
             (None, None),
             None,
             id='invalid_resolution_non_iterable_sets_none_no_warning',
@@ -165,6 +160,7 @@ def test_from_begaze_has_correct_samples(
             # Pre-set left=True, matching parsed 'L' -> no warning, elif not taken
             {'sampling_rate': 500.0},
             {'sampling_rate': 500.0, 'tracked_eye': 'L'},
+            500,
             (None, None),
             None,
             id='left_preset_matches_parsed_no_warning',
@@ -173,6 +169,7 @@ def test_from_begaze_has_correct_samples(
             # Pre-set right=True, matching parsed 'R' -> no warning, elif not taken
             {'sampling_rate': 500.0},
             {'sampling_rate': 500.0, 'tracked_eye': 'R'},
+            500,
             (None, None),
             None,
             id='right_preset_matches_parsed_no_warning',
@@ -180,7 +177,7 @@ def test_from_begaze_has_correct_samples(
     ],
 )
 def test_fill_experiment_from_parsing_begaze_metadata(
-        exp_kwargs, metadata, expect_screen, expect_warnings_regex,
+        exp_kwargs, metadata, expect_sampling_rate, expect_screen, expect_warnings_regex,
 ):
     # Prepare an experiment based on parameters
     experiment: Experiment | None
@@ -212,12 +209,7 @@ def test_fill_experiment_from_parsing_begaze_metadata(
             assert len(wrec) == 0
 
     assert (result.screen.width_px, result.screen.height_px) == expect_screen
-
-    # Sampling rate: created from metadata when the experiment was None - unchanged otherwise
-    if experiment is None:
-        assert result.eyetracker.sampling_rate == metadata.get('sampling_rate')
-    else:
-        assert result.eyetracker.sampling_rate == exp_kwargs.get('sampling_rate')
+    assert result.eyetracker.sampling_rate == expect_sampling_rate
 
     # Tracked eye flags set when None else warnings issued above - ensure values are booleans
     assert isinstance(result.eyetracker.left, (bool, type(None)))
