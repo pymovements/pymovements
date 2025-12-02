@@ -38,8 +38,6 @@ pixel_columns:
   - "R POR X [px]"
   - "R POR Y [px]"
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     separator: "\t"

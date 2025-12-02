@@ -56,8 +56,6 @@ pixel_columns:
   - "x_pix_eyelink"
   - "y_pix_eyelink"
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     schema_overrides:

@@ -36,8 +36,6 @@ pixel_columns:
   - x_left
   - y_left
 
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     separator: "\t"
