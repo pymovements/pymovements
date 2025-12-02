@@ -1,6 +1,6 @@
 name: Gaze4Hate
 
-long_name: 'Gaze4Hate dataset'
+long_name: "Gaze4Hate dataset"
 
 resources:
   - content: precomputed_events
