@@ -1,6 +1,6 @@
 name: BSC
 
-long_name: 'Beijing Sentence Corpus'
+long_name: "Beijing Sentence Corpus"
 
 resources:
   - content: precomputed_events
