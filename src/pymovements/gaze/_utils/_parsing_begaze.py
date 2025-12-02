@@ -272,8 +272,13 @@ def parse_begaze(
                 header_cols = [c.strip() for c in normalized.split('\t')]
             else:
                 # Space-separated headers cannot reliably represent multi-word column names
-                # like "L POR X [px]". We detect tracked eye from the raw string, but we
-                # will not attempt to parse samples from such headers.
+                # like "L POR X [px]". We only accept such a line as the header marker
+                # if there are tab-separated rows following it. Otherwise, keep searching
+                # for a valid tabular header and let the generic error trigger later.
+                has_tabular_rows_ahead = any(('\t' in l) for l in lines[idx + 1:] if l.strip())
+                if not has_tabular_rows_ahead:
+                    # Do not set header_row_index, continue scanning for a proper header
+                    continue
                 header_cols = None
             header_row_index = idx
             # Determine tracked eye from presence of L/R POR columns
@@ -354,7 +359,7 @@ def parse_begaze(
             optional_col_map[src_name] = 'task'
 
     # iterate over data lines following the header row
-    if header_row_index is None or header_cols is None:
+    if header_row_index is None:
         raise ValueError(
             "BeGaze parser: could not find a tabular header row containing 'Time' and 'Type'.",
         )
@@ -400,8 +405,8 @@ def parse_begaze(
                     compiled_metadata_patterns.remove(pattern_dict)
             continue
 
-        # skip if not a sample line
-        type_val = parts[header_idx.get('Type', 1)] if header_idx else 'SMP'
+        # skip if not a sample line. If we have no valid header, never treat as SMP.
+        type_val = parts[header_idx.get('Type', 1)] if header_idx else '-'
         if type_val != 'SMP':
             # Apply metadata_patterns to message lines as well (use prefixed patterns)
             if compiled_metadata_patterns_prefixed:
