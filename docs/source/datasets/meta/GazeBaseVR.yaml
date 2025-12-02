@@ -20,6 +20,10 @@ resources:
     - ry
     - x
     - y
+    column_map:
+      xT: x_target_pos
+      yT: y_target_pos
+      zT: z_target_pos
 experiment:
   eyetracker:
     sampling_rate: 250
@@ -49,7 +53,3 @@ custom_read_kwargs:
       crx: '!polars.datatypes.classes.Float32'
       cry: '!polars.datatypes.classes.Float32'
       crz: '!polars.datatypes.classes.Float32'
-column_map:
-  xT: x_target_pos
-  yT: y_target_pos
-  zT: z_target_pos

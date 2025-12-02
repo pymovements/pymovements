@@ -13,11 +13,6 @@ resources:
     trial_columns:
     - task
     - trial_id
-    time_column: time
-    time_unit: ms
-    pixel_columns:
-    - x_pix
-    - y_pix
 experiment:
   eyetracker:
     sampling_rate: 1000.0
