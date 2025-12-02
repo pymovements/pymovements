@@ -146,6 +146,11 @@ class GazeBase(DatasetDefinition):
                         'time_column': 'n',
                         'time_unit': 'ms',
                         'position_columns': ['x', 'y'],
+                        'column_map': {
+                                'val': 'validity',
+                                'xT': 'x_target_pos',
+                                'yT': 'y_target_pos',
+                        },
                     },
                 },
             ],
@@ -174,13 +179,7 @@ class GazeBase(DatasetDefinition):
 
     position_columns: list[str] | None = None
 
-    column_map: dict[str, str] | None = field(
-        default_factory=lambda: {
-            'val': 'validity',
-            'xT': 'x_target_pos',
-            'yT': 'y_target_pos',
-        },
-    )
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

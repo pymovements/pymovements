@@ -148,7 +148,12 @@ class GazeBaseVR(DatasetDefinition):
                         'time_column': 'n',
                         'time_unit': 'ms',
                         'position_columns': ['lx', 'ly', 'rx', 'ry', 'x', 'y'],
-                    },
+                        'column_map': {
+                            'xT': 'x_target_pos',
+                            'yT': 'y_target_pos',
+                            'zT': 'z_target_pos',
+                        },
+                },
                 },
             ],
         ),
@@ -176,13 +181,7 @@ class GazeBaseVR(DatasetDefinition):
 
     position_columns: list[str] | None = None
 
-    column_map: dict[str, str] | None = field(
-        default_factory=lambda: {
-            'xT': 'x_target_pos',
-            'yT': 'y_target_pos',
-            'zT': 'z_target_pos',
-        },
-    )
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

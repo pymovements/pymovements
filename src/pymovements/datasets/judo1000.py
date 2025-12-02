@@ -47,7 +47,9 @@ class JuDo1000(DatasetDefinition):
     Attributes
     ----------
     name: str
-        The name of the dataset.
+        The name of the dataset.field(
+        default_factory=lambda:
+    )
 
     long_name: str
         The entire name of the dataset.
@@ -143,6 +145,10 @@ class JuDo1000(DatasetDefinition):
                         'time_column': 'time',
                         'time_unit': 'ms',
                         'pixel_columns': ['x_left', 'y_left', 'x_right', 'y_right'],
+                        'column_map': {
+                            'trialId': 'trial_id',
+                            'pointId': 'point_id',
+                        },
                     },
                 },
             ],
@@ -173,12 +179,7 @@ class JuDo1000(DatasetDefinition):
 
     pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] | None = field(
-        default_factory=lambda: {
-            'trialId': 'trial_id',
-            'pointId': 'point_id',
-        },
-    )
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {

@@ -682,6 +682,7 @@ def dataset_fixture(tmp_path):
     yield dataset
 
 
+@pytest.mark.network
 @pytest.mark.parametrize(
     ('aoi_column'),
     [
@@ -706,6 +707,7 @@ def test_event_to_aoi_mapping_char_width_height(aoi_column, dataset, make_exampl
     assert_frame_equal(dataset.events[0].frame, EXPECTED_DF[aoi_column])
 
 
+@pytest.mark.network
 @pytest.mark.parametrize(
     ('aoi_column'),
     [
@@ -755,6 +757,7 @@ def test_map_to_aois_raises_value_error(make_example_file):
     assert msg == 'cannot concat empty list'
 
 
+@pytest.mark.network
 def test_map_to_aois_raises_value_error_missing_width_height(dataset, make_example_file):
     filepath = make_example_file('toy_text_1_1_aoi.csv')
 

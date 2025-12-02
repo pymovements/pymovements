@@ -248,7 +248,7 @@ class DatasetDefinition:
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
-    column_map: dict[str, str] = field(default_factory=dict)
+    column_map: dict[str, str] | None = None
 
     trial_columns: list[str] | None = None
     time_column: str | None = None

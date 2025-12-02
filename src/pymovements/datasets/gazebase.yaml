@@ -16,6 +16,10 @@ resources:
       time_column: 'n'
       time_unit: 'ms'
       position_columns: ['x', 'y']
+      column_map:
+        val: "validity"
+        xT: "x_target_pos"
+        yT: "y_target_pos"
 
 experiment:
   screen_width_px: 1680
@@ -25,11 +29,6 @@ experiment:
   distance_cm: 55
   origin: "upper left"
   sampling_rate: 1000
-
-column_map:
-  val: "validity"
-  xT: "x_target_pos"
-  yT: "y_target_pos"
 
 custom_read_kwargs:
   gaze:

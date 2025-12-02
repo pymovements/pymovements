@@ -831,16 +831,41 @@ def test_dataset_definition_has_resources_not_equal():
             ),
             False,
             {
+                'acceleration_columns': None,
+                'column_map': None,
+                'custom_read_kwargs': {},
+                'distance_column': None,
+                'experiment': None,
+                'extract': None,
+                'long_name': None,
+                'mirrors': {},
                 'name': '.',
+                'pixel_columns': None,
+                'position_columns': None,
                 'resources': [
                     {
                         'content': 'gaze',
+                        'filename': None,
+                        'filename_pattern': None,
+                        'filename_pattern_schema_overrides': None,
+                        'load_function': None,
                         'load_kwargs': {
                             'distance_column': 'test',
-                            'position_columns': ['test', 'foo', 'bar'],
+                            'position_columns': [
+                                'test',
+                                'foo',
+                                'bar',
+                            ],
                         },
+                        'md5': None,
+                        'mirrors': None,
+                        'url': None,
                     },
                 ],
+                'time_column': None,
+                'time_unit': None,
+                'trial_columns': None,
+                'velocity_columns': None,
             },
             id='false_resources',
         ),
@@ -895,6 +920,52 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             },
             '0.28.0',
             id='filename_format_schema_overrides',
+        ),
+        pytest.param(
+            {'trial_columns': ['trial']},
+            '0.29.0',
+            id='trial_columns',
+        ),
+        pytest.param(
+            {'time_column': 't'},
+            '0.29.0',
+            id='time_column',
+        ),
+        pytest.param(
+
+            {'time_unit': 'ms'},
+            '0.29.0',
+            id='time_unit',
+        ),
+        pytest.param(
+            {'pixel_columns': ['x', 'y']},
+            '0.29.0',
+            id='pixel_columns',
+        ),
+        pytest.param(
+            {'position_columns': ['x', 'y']},
+            '0.29.0',
+            id='position_columns',
+        ),
+        pytest.param(
+            {'velocity_columns': ['x', 'y']},
+            '0.29.0',
+            id='velocity_columns',
+        ),
+        pytest.param(
+            {'acceleration_columns': ['x', 'y']},
+            '0.29.0',
+            id='acceleration_columns',
+        ),
+        pytest.param(
+            {'distance_column': 'd'},
+            '0.29.0',
+            id='distance_column',
+        ),
+        pytest.param(
+            {'column_map': {'a': 'b'}},
+            '0.29.0',
+            id='column_map',
         ),
     ],
 )
@@ -1070,70 +1141,6 @@ def test_dataset_definition_set_attribute_is_deprecated(definition, attribute, v
 
 
 @pytest.mark.parametrize(
-    ('attribute', 'value', 'expected_resource'),
-    [
-        pytest.param(
-            'trial_columns',
-            'trial',
-            {'content': 'gaze', 'load_kwargs': {'trial_columns': 'trial'}},
-            id='trial_columns',
-        ),
-        pytest.param(
-            'time_column',
-            't',
-            {'content': 'gaze', 'load_kwargs': {'time_column': 't'}},
-            id='time_column',
-        ),
-        pytest.param(
-            'time_unit',
-            'sec',
-            {'content': 'gaze', 'load_kwargs': {'time_unit': 'sec'}},
-            id='time_unit',
-        ),
-        pytest.param(
-            'pixel_columns',
-            ['px', 'py'],
-            {'content': 'gaze', 'load_kwargs': {'pixel_columns': ['px', 'py']}},
-            id='pixel_columns',
-        ),
-        pytest.param(
-            'position_columns',
-            ['dvax', 'dvay'],
-            {'content': 'gaze', 'load_kwargs': {'pixel_columns': ['dvax', 'dvay']}},
-            id='position_columns',
-        ),
-        pytest.param(
-            'velocity_columns',
-            ['vx', 'vy'],
-            {'content': 'gaze', 'load_kwargs': {'pixel_columns': ['vx', 'vy']}},
-            id='velocity_columns',
-        ),
-        pytest.param(
-            'acceleration_columns',
-            ['ax', 'ay'],
-            {'content': 'gaze', 'load_kwargs': {'pixel_columns': ['ax', 'ay']}},
-            id='acceleration_columns',
-        ),
-        pytest.param(
-            'distance_column',
-            'd',
-            {'content': 'gaze', 'load_kwargs': {'distance_column': 'd'}},
-            id='distance_column',
-        ),
-    ],
-)
-def test_dataset_definition_set_column_attribute_has_expected_resources_and_is_deprecated(
-        attribute, value, expected_resource,
-):
-    definition = DatasetDefinition(resources=[{'content': 'gaze'}]),
-    with pytest.warns(DeprecationWarning):
-        setattr(definition, attribute, value)
-
-    assert len(definition.resources) == 1  # didn't change number of resources
-    assert definition.resources[0] == expected_resource
-
-
-@pytest.mark.parametrize(
     ('attribute', 'scheduled_version'),
     [
         pytest.param(
@@ -1143,38 +1150,6 @@ def test_dataset_definition_set_column_attribute_has_expected_resources_and_is_d
         pytest.param(
             'filename_format_schema_overrides', '0.28.0',
             id='filename_format_schema_overrides',
-        ),
-        pytest.param(
-            'trial_columns', '0.29.0',
-            id='trial_columns',
-        ),
-        pytest.param(
-            'time_column', '0.29.0',
-            id='time_column',
-        ),
-        pytest.param(
-            'time_unit', '0.29.0',
-            id='time_unit',
-        ),
-        pytest.param(
-            'pixel_columns', '0.29.0',
-            id='pixel_columns',
-        ),
-        pytest.param(
-            'position_columns', '0.29.0',
-            id='position_columns',
-        ),
-        pytest.param(
-            'velocity_columns', '0.29.0',
-            id='velocity_columns',
-        ),
-        pytest.param(
-            'acceleration_columns', '0.29.0',
-            id='acceleration_columns',
-        ),
-        pytest.param(
-            'distance_column', '0.29.0',
-            id='distance_column',
         ),
     ],
 )

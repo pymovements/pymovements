@@ -158,6 +158,7 @@ filterwarnings = [
   "ignore:FigureCanvasAgg is non-interactive, and thus cannot be shown:UserWarning",
   "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning"
 ]
+markers = ["network: mark a test as requiring network access"]
 testpaths = ['tests', 'src']
 
 [tool.setuptools.package-data]
