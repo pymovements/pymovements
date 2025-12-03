@@ -61,9 +61,10 @@ class DatasetDefinition:
     mirrors: dict[str, Sequence[str]]
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: {})
+
         .. deprecated:: v0.24.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
-        This field will be removed in v0.29.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
+           This field will be removed in v0.29.0.
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
@@ -76,8 +77,9 @@ class DatasetDefinition:
         The experiment definition. (default: None)
     extract: dict[str, bool] | None
         Decide whether to extract the data. (default: None)
+
         .. deprecated:: v0.22.1
-        This field will be removed in v0.27.0.
+           This field will be removed in v0.27.0.
     custom_read_kwargs: dict[str, dict[str, Any]]
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -98,59 +100,67 @@ class DatasetDefinition:
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials and the transformation
         methods will be applied to each trial separately. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     position_columns: list[str] | None
         The name of the dva position columns in the input data frame. These columns will be
         nested into the column ``position``. If the list is empty or None, the nested
         ``position`` column will not be created. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
         column will not be created. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     acceleration_columns: list[str] | None
         The name of the acceleration columns in the input data frame. These columns will be
         nested into the column ``acceleration``. If the list is empty or None, the nested
         ``acceleration`` column will not be created. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     distance_column : str | None
         The name of the column containing eye-to-screen distance in millimeters for each sample
         in the input data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. This column will be renamed to ``distance``. (default: None)
+
         .. deprecated:: v0.25.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
-        This field will be removed in v0.30.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
 
     Parameters
     ----------
@@ -161,14 +171,16 @@ class DatasetDefinition:
     has_files: dict[str, bool] | None
         Indicate whether the dataset contains 'gaze', 'precomputed_events', and
         'precomputed_reading_measures'. (default: None)
+
         .. deprecated:: v0.23.0
-        This field will be removed in v0.28.0.
+           This field will be removed in v0.28.0.
     mirrors: dict[str, Sequence[str]] | None
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: None)
+
         .. deprecated:: v0.24.0
-        Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
-        This field will be removed in v0.29.0.
+           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
+           This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
@@ -181,18 +193,21 @@ class DatasetDefinition:
         The experiment definition. (default: None)
     extract: dict[str, bool] | None
         Decide whether to extract the data. (default: None)
+
         .. deprecated:: v0.22.1
-        This field will be removed in v0.27.0.
+           This field will be removed in v0.27.0.
     filename_format: dict[str, str] | None
         Regular expression which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe. (default: None)
+
         .. deprecated:: v0.24.1
-        This field will be removed in v0.28.0.
+           This field will be removed in v0.28.0.
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype. (default: None)
+
         .. deprecated:: v0.24.1
-        This field will be removed in v0.28.0.
+           This field will be removed in v0.28.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -468,8 +483,8 @@ class DatasetDefinition:
         Namedgroups will appear in the `fileinfo` dataframe.
 
         .. deprecated:: v0.23.0
-        Please use Resource.filename_pattern instead.
-        This property will be removed in v0.28.0.
+           Please use Resource.filename_pattern instead.
+           This property will be removed in v0.28.0.
 
         Returns
         -------
@@ -519,8 +534,8 @@ class DatasetDefinition:
         This casts specific named groups to a particular datatype.
 
         .. deprecated:: v0.23.0
-        Please use Resource.filename_pattern_schema_overrides instead.
-        This property will be removed in v0.28.0.
+           Please use Resource.filename_pattern_schema_overrides instead.
+           This property will be removed in v0.28.0.
 
         Returns
         -------
@@ -532,7 +547,7 @@ class DatasetDefinition:
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.
-                # deprecated property supports only one dict per content type.
+                # depecated property supports only one dict per content type.
                 data[content_type] = content_resources[0].filename_pattern_schema_overrides
         return data
 
