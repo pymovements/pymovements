@@ -38,6 +38,7 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
+        *,
         alpha: float = 0.5,
         marker: str = 'o',
         marker_size: float = 25,
@@ -49,7 +50,6 @@ def main_sequence_plot(
         title: str | None = None,
         savepath: str | None = None,
         show: bool = True,
-        *,
         event_df: Events | EventDataFrame | None = None,
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
