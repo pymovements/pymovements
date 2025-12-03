@@ -167,9 +167,9 @@ def heatmap(
     heatmap_value /= gaze.experiment.sampling_rate
 
     if origin == 'upper':
-        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
-    else:
         extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
+    else:
+        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
     fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
@@ -194,8 +194,11 @@ def heatmap(
         origin=origin,
         interpolation=interpolation,
         extent=extent,
-        alpha=alpha,
+
     )
+
+    #  make heatmap values == 0 fully transparent
+    heatmap_plot.set_alpha(np.where(heatmap_plot.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
     _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')

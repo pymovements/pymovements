@@ -33,7 +33,7 @@ from typing import Literal
 from typing import overload
 
 import numpy as np
-import polars as pl
+import polars
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
@@ -56,12 +56,15 @@ class Gaze:
 
     Parameters
     ----------
-    samples: pl.DataFrame | None
+    samples: polars.DataFrame | None
         A dataframe that contains gaze samples. (default: None)
     experiment : Experiment | None
         The experiment definition. (default: None)
     events: pm.Events | None
         A dataframe of events in the gaze signal. (default: None)
+    messages: polars.DataFrame | None
+        DataFrame containing messages from the experiment.
+        The required columns are 'time' and 'content'. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
@@ -98,17 +101,14 @@ class Gaze:
         from the experiment definition. This column will be renamed to ``distance``. (default: None)
     auto_column_detect: bool
         Flag indicating if the column names should be inferred automatically. (default: False)
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
-        (default: None)
-    data: pl.DataFrame | None
+    data: polars.DataFrame | None
         A dataframe that contains gaze samples. (default: None)
         .. deprecated:: v0.23.0
         Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Attributes
     ----------
-    samples: pl.DataFrame
+    samples: polars.DataFrame
         A dataframe of recorded gaze samples.
     events: pm.Events
         A dataframe of events in the gaze signal.
@@ -119,6 +119,13 @@ class Gaze:
         methods will be applied to each trial separately.
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
+    calibrations: polars.DataFrame | None
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        None by default, to be populated by I/O helpers (e.g. from_asc).
+    validations: polars.DataFrame | None
+        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        accuracy_max.
+        None by default, to be populated by I/O helpers (e.g. from_asc).
 
     Notes
     -----
@@ -126,7 +133,7 @@ class Gaze:
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
-    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    single column with the corresponding name, e.g. using `pixel_columns` will merge the
     respective columns into the column `pixel`.
 
     The supported number of component columns with the expected order are:
@@ -145,7 +152,7 @@ class Gaze:
     First let's create an example `DataFrame` with three columns:
     the timestamp ``t`` and ``x`` and ``y`` for the pixel position.
 
-    >>> df = pl.from_dict(
+    >>> df = polars.from_dict(
     ...     data={'t': [1000, 1001, 1002], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]},
     ... )
     >>> df
@@ -180,7 +187,7 @@ class Gaze:
     :py:class:`~pymovements.gaze.Experiment` to create a time column with the correct sampling rate
     during initialization. The time column will be represented in millisecond units.
 
-    >>> df_no_time = df.select(pl.exclude('t'))
+    >>> df_no_time = df.select(polars.exclude('t'))
     >>> df_no_time
     shape: (3, 2)
     ┌─────┬─────┐
@@ -198,7 +205,7 @@ class Gaze:
     >>> gaze
     Experiment(screen=Screen(width_px=1024, height_px=768, width_cm=38, height_cm=30,
      distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
+      right=None, model=None, version=None, vendor=None, mount=None))
     shape: (3, 2)
     ┌──────┬────────────┐
     │ time ┆ pixel      │
@@ -211,7 +218,7 @@ class Gaze:
     └──────┴────────────┘
     """
 
-    samples: pl.DataFrame
+    samples: polars.DataFrame
 
     events: pm.Events
 
@@ -221,12 +228,20 @@ class Gaze:
 
     n_components: int | None
 
+    calibrations: polars.DataFrame | None
+
+    validations: polars.DataFrame | None
+
+    # Private leftover metadata from parsing (without calibrations/validations)
+    _metadata: dict[str, Any] | None
+
     def __init__(
             self,
-            samples: pl.DataFrame | None = None,
+            samples: polars.DataFrame | None = None,
             experiment: Experiment | None = None,
             events: pm.Events | None = None,
             *,
+            messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
             time_column: str | None = None,
             time_unit: str | None = None,
@@ -236,8 +251,7 @@ class Gaze:
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
             auto_column_detect: bool = False,
-            definition: pm.DatasetDefinition | None = None,
-            data: pl.DataFrame | None = None,
+            data: polars.DataFrame | None = None,
     ):
         if data is not None:
             warnings.warn(
@@ -251,7 +265,7 @@ class Gaze:
             samples = data
 
         if samples is None:
-            samples = pl.DataFrame()
+            samples = polars.DataFrame()
         else:
             samples = samples.clone()
         self.samples = samples
@@ -259,7 +273,7 @@ class Gaze:
         # Set nan values to null.
         self.samples = self.samples.fill_nan(None)
 
-        self._init_experiment(experiment, definition)
+        self.experiment = experiment
 
         self._init_columns(
             trial_columns=trial_columns,
@@ -271,7 +285,6 @@ class Gaze:
             acceleration_columns=acceleration_columns,
             distance_column=distance_column,
             auto_column_detect=auto_column_detect,
-            definition=definition,
         )
 
         if events is None:
@@ -279,7 +292,7 @@ class Gaze:
                 self.events = pm.Events()
             else:  # Ensure that trial columns with correct dtype are present in event dataframe.
                 self.events = pm.Events(
-                    data=pl.DataFrame(
+                    data=polars.DataFrame(
                         schema={
                             column: self.samples.schema[column] for column in self.trial_columns
                         },
@@ -289,8 +302,14 @@ class Gaze:
         else:
             self.events = events.clone()
 
-        # Remove this attribute once #893 is fixed
-        self._metadata: dict[str, Any] | None = None
+        _check_messages(messages)
+        self.messages = messages
+
+        self.calibrations = None
+        self.validations = None
+
+        # Keep remaining parsed metadata privately if an I/O helper provides it.
+        self._metadata = None
 
     def apply(
             self,
@@ -362,7 +381,7 @@ class Gaze:
         >>> import numpy as np
         >>> import polars as pl
         >>> import pymovements as pm
-        >>> samples = pl.from_dict(
+        >>> samples = polars.from_dict(
         ...     {'x': range(100), 'y': range(100), 'trial': np.repeat([1, 2, 3, 4, 5], 20)},
         ... )
         >>> samples
@@ -446,7 +465,7 @@ class Gaze:
 
         gazes = {
             key: Gaze(
-                samples=grouped_samples.get(key, pl.DataFrame(schema=self.samples.schema)),
+                samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
@@ -460,14 +479,14 @@ class Gaze:
 
     def transform(
             self,
-            transform_method: str | Callable[..., pl.Expr],
+            transform_method: str | Callable[..., polars.Expr],
             **kwargs: Any,
     ) -> None:
         """Apply transformation method.
 
         Parameters
         ----------
-        transform_method: str | Callable[..., pl.Expr]
+        transform_method: str | Callable[..., polars.Expr]
             The transformation method to be applied.
         **kwargs: Any
             Additional keyword arguments to be passed to the transformation method.
@@ -508,7 +527,7 @@ class Gaze:
                         col for col in resample_columns if col not in self.trial_columns
                     ]
 
-                self.samples = pl.concat(
+                self.samples = polars.concat(
                     [
                         transforms.resample(
                             samples=df,
@@ -524,7 +543,7 @@ class Gaze:
 
                 # forward fill trial columns
                 self.samples = self.samples.with_columns(
-                    pl.col(self.trial_columns).fill_null(strategy='forward'),
+                    polars.col(self.trial_columns).fill_null(strategy='forward'),
                 )
 
             # set new sampling rate in experiment
@@ -587,7 +606,7 @@ class Gaze:
             if transform_method.__name__ in {'pos2vel', 'pos2acc'}:
                 if 'position' not in self.samples.columns and 'position_column' not in kwargs:
                     if 'pixel' in self.samples.columns:
-                        raise pl.exceptions.ColumnNotFoundError(
+                        raise polars.exceptions.ColumnNotFoundError(
                             "Neither is 'position' in the samples dataframe columns, "
                             'nor is a position column explicitly specified. '
                             "Since the samples dataframe has a 'pixel' column, consider running "
@@ -596,7 +615,7 @@ class Gaze:
                             f"{transform_method.__name__}(position_column='pixel'). "
                             f'Available columns in samples dataframe are: {self.samples.columns}',
                         )
-                    raise pl.exceptions.ColumnNotFoundError(
+                    raise polars.exceptions.ColumnNotFoundError(
                         "Neither is 'position' in the samples dataframe columns, "
                         'nor is a position column explicitly specified. '
                         'You can specify the position column via: '
@@ -606,7 +625,7 @@ class Gaze:
 
             if transform_method.__name__ in {'pix2deg'}:
                 if 'pixel' not in self.samples.columns and 'pixel_column' not in kwargs:
-                    raise pl.exceptions.ColumnNotFoundError(
+                    raise polars.exceptions.ColumnNotFoundError(
                         "Neither is 'pixel' in the samples dataframe columns, "
                         'nor is a pixel column explicitly specified. '
                         'You can specify the pixel column via: '
@@ -619,7 +638,7 @@ class Gaze:
                     'position_column' in kwargs and
                     kwargs.get('position_column') not in self.samples.columns
                 ):
-                    raise pl.exceptions.ColumnNotFoundError(
+                    raise polars.exceptions.ColumnNotFoundError(
                         f"The specified 'position_column' ({kwargs.get('position_column')}) "
                         'is not found in the samples dataframe columns. '
                         'You can specify the position column via: '
@@ -631,7 +650,7 @@ class Gaze:
             if self.trial_columns is None:
                 self.samples = self.samples.with_columns(transform_method(**kwargs))
             else:
-                self.samples = pl.concat(
+                self.samples = polars.concat(
                     [
                         df.with_columns(transform_method(**kwargs))
                         for group, df in
@@ -813,7 +832,7 @@ class Gaze:
         Lets create an example Gaze of 1000Hz with a time column and a position column.
         Please note that time is always stored in milliseconds in the Gaze.
 
-        >>> df = pl.DataFrame({
+        >>> df = polars.DataFrame({
         ...     'time': [0, 1, 2, 3, 4],
         ...     'x': [1, 2, 3, 4, 5],
         ...     'y': [1, 2, 3, 4, 5],
@@ -959,7 +978,7 @@ class Gaze:
                 self.events = pm.Events()
             else:  # Ensure that trial columns with correct dtype are present in event dataframe.
                 self.events = pm.Events(
-                    data=pl.DataFrame(
+                    data=polars.DataFrame(
                         schema={
                             column: self.samples.schema[column] for column in self.trial_columns
                         },
@@ -986,7 +1005,7 @@ class Gaze:
 
             new_events = method(**method_kwargs)
 
-            self.events.frame = pl.concat(
+            self.events.frame = polars.concat(
                 [self.events.frame, new_events.frame],
                 how='diagonal_relaxed',
             )
@@ -1000,21 +1019,27 @@ class Gaze:
                 if trial_column not in self.events.frame.columns
             ]
             if missing_trial_columns:
-                raise pl.exceptions.ColumnNotFoundError(
+                raise polars.exceptions.ColumnNotFoundError(
                     f'trial columns {missing_trial_columns} missing from events, '
                     f'available columns: {self.events.frame.columns}',
                 )
 
-            new_events_grouped: list[pl.DataFrame] = []
+            new_events_grouped: list[polars.DataFrame] = []
 
             for group_identifier, group_gaze in grouped_samples.items():
                 # Create filter expression for selecting respective group rows.
                 if len(self.trial_columns) == 1:
-                    group_filter_expression = pl.col(self.trial_columns[0]) == group_identifier[0]
+                    group_filter_expression = polars.col(
+                        self.trial_columns[0],
+                    ) == group_identifier[0]
                 else:
-                    group_filter_expression = pl.col(self.trial_columns[0]) == group_identifier[0]
+                    group_filter_expression = polars.col(
+                        self.trial_columns[0],
+                    ) == group_identifier[0]
                     for name, value in zip(self.trial_columns[1:], group_identifier[1:]):
-                        group_filter_expression = group_filter_expression & (pl.col(name) == value)
+                        group_filter_expression = group_filter_expression & (
+                            polars.col(name) == value
+                        )
 
                 # Select group events
                 group_events = pm.Events(self.events.frame.filter(group_filter_expression))
@@ -1033,7 +1058,7 @@ class Gaze:
 
                 new_events_grouped.append(new_events.frame)
 
-            self.events.frame = pl.concat(
+            self.events.frame = polars.concat(
                 [self.events.frame, *new_events_grouped],
                 how='diagonal',
             )
@@ -1110,9 +1135,9 @@ class Gaze:
 
     def measure_samples(
             self,
-            method: str | Callable[..., pl.Expr],
+            method: str | Callable[..., polars.Expr],
             **kwargs: Any,
-    ) -> pl.DataFrame:
+    ) -> polars.DataFrame:
         """Calculate eye movement measure on :py:attr:`~.Gaze.samples`.
 
         If :py:class:``Gaze`` has :py:attr:``trial_columns``, measures will be grouped by
@@ -1120,14 +1145,14 @@ class Gaze:
 
         Parameters
         ----------
-        method: str | Callable[..., pl.Expr]
+        method: str | Callable[..., polars.Expr]
             Measure to be calculated.
         **kwargs: Any
             Keyword arguments to be passed to the respective measure function.
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             Measure results.
 
         Examples
@@ -1161,11 +1186,11 @@ class Gaze:
             return self.samples.select(method(**kwargs))
 
         # Group measure values by trial columns.
-        return pl.concat(
+        return polars.concat(
             [
                 df.select(
                     [  # add trial columns first, then add column for measure.
-                        pl.lit(value).cast(self.samples.schema[name]).alias(name)
+                        polars.lit(value).cast(self.samples.schema[name]).alias(name)
                         for name, value in zip(self.trial_columns, trial_values)
                     ] + [method(**kwargs)],
                 )
@@ -1175,7 +1200,7 @@ class Gaze:
         )
 
     @property
-    def schema(self) -> pl.type_aliases.SchemaDict:
+    def schema(self) -> polars.type_aliases.SchemaDict:
         """Schema of samples dataframe."""
         return self.samples.schema
 
@@ -1190,7 +1215,7 @@ class Gaze:
                'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
-    def frame(self) -> pl.DataFrame:
+    def frame(self) -> polars.DataFrame:
         """Gaze samples dataframe.
 
         .. deprecated:: v0.23.0
@@ -1199,7 +1224,7 @@ class Gaze:
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             Gaze samples dataframe.
 
         """
@@ -1211,7 +1236,7 @@ class Gaze:
                'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
-    def frame(self, data: pl.DataFrame) -> None:
+    def frame(self, data: polars.DataFrame) -> None:
         self.samples = data
 
     def map_to_aois(
@@ -1220,25 +1245,48 @@ class Gaze:
             *,
             eye: str = 'auto',
             gaze_type: str = 'pixel',
+            preserve_structure: bool = True,
+            verbose: bool = True,
     ) -> None:
-        """Map gaze data to aois.
+        """Map gaze samples to AOIs.
 
-        We map each gaze point to an aoi, considering the boundary still part of the
-        area of interest.
+        This maps each gaze point to an AOI label based on the configured stimulus rectangles.
+        The mapping uses half-open intervals [start, end) for spatial bounds.
 
         Parameters
         ----------
         aoi_dataframe: pm.stimulus.TextStimulus
             Area of interest dataframe.
         eye: str
-            String specificer for inferring eye components. Supported values are: auto, mono, left
-            right, cyclops. Default: auto.
+            String specificer for inferring eye components. Supported values are: ``auto``,
+            ``mono``, ``left``, ``right``, ``cyclops``. Default: ``auto``.
         gaze_type: str
-            String specificer for whether to use position or pixel coordinates for
-            mapping. Default: pixel.
+            Whether to use ``position`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
+        preserve_structure: bool
+            Controls how list component columns are handled before mapping.
+
+            - If True (default), ``unnest()`` is attempted so that downstream logic can rely on
+              flat component columns (e.g. ``pixel_xr``/``pixel_yr``). A few common exceptions
+              from unnesting are tolerated and mapping continues without failing.
+            - If False, no unnesting is attempted. Coordinates are extracted per-row from any
+              list columns and passed to the AOI lookup without altering the samples' schema.
+
+        verbose : bool
+            If ``True``, show progress bar. (default: True)
         """
+        # pylint: disable=too-many-statements
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
-        self.unnest()
+        # Schema handling: preserve_structure controls whether we alter the samples schema
+        # (by unnesting) or keep list columns intact and extract per-row. By default,
+        # preserve_structure=True attempts to unnest.
+        if preserve_structure:
+            try:
+                self.unnest()
+            except (Warning, ValueError, AttributeError):  # tolerate common cases
+                # - Warning: nothing to unnest when no list columns exist
+                # - ValueError/AttributeError: shape or configuration related issues
+                # In all these cases: continue without failing and use fallback logic.
+                pass
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
@@ -1249,44 +1297,272 @@ class Gaze:
             if c in self.samples.columns
         ]
 
-        if gaze_type == 'pixel':
-            if eye == 'left':
-                x_eye = [col for col in pixel_columns if col.endswith('xl')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yl')][0]
-            elif eye == 'right':
-                x_eye = [col for col in pixel_columns if col.endswith('xr')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yr')][0]
-            elif eye == 'auto':
-                x_eye = [col for col in pixel_columns if col.endswith('xr')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yr')][0]
-            else:
-                x_eye = [col for col in pixel_columns if col.endswith('xr')][0]
-                y_eye = [col for col in pixel_columns if col.endswith('yr')][0]
-        elif gaze_type == 'position':
-            if eye == 'left':
-                x_eye = [col for col in position_columns if col.endswith('xl')][0]
-                y_eye = [col for col in position_columns if col.endswith('yl')][0]
-            elif eye == 'right':
-                x_eye = [col for col in position_columns if col.endswith('xr')][0]
-                y_eye = [col for col in position_columns if col.endswith('yr')][0]
-            elif eye == 'auto':
-                x_eye = [col for col in position_columns if col.endswith('xr')][0]
-                y_eye = [col for col in position_columns if col.endswith('yr')][0]
-            else:
-                x_eye = [col for col in position_columns if col.endswith('xr')][0]
-                y_eye = [col for col in position_columns if col.endswith('yr')][0]
-        else:
-            raise ValueError(
-                'neither position nor pixel column in samples dataframe, '
-                'at least one needed for mapping',
-            )
+        def _select_components_from_flat_columns() -> tuple | None:
+            """Select flat component strategy.
 
-        aois = [
-            aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
-            for row in tqdm(self.samples.iter_rows(named=True))
-        ]
-        aoi_df = pl.concat(aois)
-        self.samples = pl.concat([self.samples, aoi_df], how='horizontal')
+            Returns
+            -------
+            tuple | None
+                (mode, payload, warn_msg) where:
+
+                - mode == 'direct': payload is (x_col, y_col)
+                - mode == 'average_lr': payload is (lx, ly, rx, ry)
+                - warn_msg: optional string to warn the user about fallbacks
+                or None if no flat columns fit the selection and we should fallback to list logic.
+            """
+            # pylint: disable=too-many-return-statements
+            def pick(cols: list[str], suffix: str) -> str | None:
+                for c in cols:
+                    if c.endswith(suffix):
+                        return c
+                return None
+
+            def choose(prefix_cols: list[str]) -> tuple:
+                # Returns (mono_x, mono_y, left_x, left_y, right_x, right_y, cyclops_x, cyclops_y)
+                mono_x = pick(prefix_cols, 'x')
+                mono_y = pick(prefix_cols, 'y')
+                left_x = pick(prefix_cols, 'xl')
+                left_y = pick(prefix_cols, 'yl')
+                right_x = pick(prefix_cols, 'xr')
+                right_y = pick(prefix_cols, 'yr')
+                cyclops_x = pick(prefix_cols, 'xa')
+                cyclops_y = pick(prefix_cols, 'ya')
+                return mono_x, mono_y, left_x, left_y, right_x, right_y, cyclops_x, cyclops_y
+
+            if gaze_type == 'pixel' and pixel_columns:
+                mono_x, mono_y, lx, ly, rx, ry, cx, cy = choose(pixel_columns)
+            elif gaze_type == 'position' and position_columns:
+                mono_x, mono_y, lx, ly, rx, ry, cx, cy = choose(position_columns)
+            else:
+                return None
+
+            req_eye = eye if eye in {'left', 'right', 'mono', 'auto', 'cyclops'} else 'right'
+            warn_msg: str | None = None
+
+            def direct_pair(xc: str | None, yc: str | None) -> tuple[str, str] | None:
+                if xc and yc:
+                    return xc, yc
+                return None
+
+            # AUTO preference: cyclops -> mono -> right -> left
+            if req_eye == 'auto':
+                pair = direct_pair(
+                    cx,
+                    cy,
+                ) or direct_pair(
+                    mono_x,
+                    mono_y,
+                ) or direct_pair(
+                    rx,
+                    ry,
+                ) or direct_pair(
+                    lx,
+                    ly,
+                )
+                if pair is not None:
+                    return 'direct', pair, None
+                return None
+
+            if req_eye == 'mono':
+                pair = direct_pair(mono_x, mono_y)
+                if pair is not None:
+                    return 'direct', pair, None
+                # fallbacks
+                if direct_pair(rx, ry):
+                    warn_msg = 'Mono eye requested but mono components missing. Using right eye.'
+                    return 'direct', (rx, ry), warn_msg
+                if direct_pair(lx, ly):
+                    warn_msg = 'Mono eye requested but mono components missing. Using left eye.'
+                    return 'direct', (lx, ly), warn_msg
+                if direct_pair(cx, cy):
+                    warn_msg = 'Mono eye requested but mono components missing. Using cyclops.'
+                    return 'direct', (cx, cy), warn_msg
+                return None
+
+            if req_eye == 'left':
+                pair = direct_pair(lx, ly)
+                if pair is not None:
+                    return 'direct', pair, None
+                if direct_pair(mono_x, mono_y):
+                    warn_msg = 'Left eye requested but left components missing. Using mono.'
+                    return 'direct', (mono_x, mono_y), warn_msg  # type: ignore[arg-type]
+                if direct_pair(rx, ry):
+                    warn_msg = 'Left eye requested but left components missing. Using right eye.'
+                    return 'direct', (rx, ry), warn_msg
+                if direct_pair(cx, cy):
+                    warn_msg = 'Left eye requested but left components missing. Using cyclops.'
+                    return 'direct', (cx, cy), warn_msg
+                return None
+
+            if req_eye == 'right':
+                pair = direct_pair(rx, ry)
+                if pair is not None:
+                    return 'direct', pair, None
+                if direct_pair(mono_x, mono_y):
+                    warn_msg = 'Right eye requested but right components missing. Using mono.'
+                    return 'direct', (mono_x, mono_y), warn_msg  # type: ignore[arg-type]
+                if direct_pair(lx, ly):
+                    warn_msg = 'Right eye requested but right components missing. Using left eye.'
+                    return 'direct', (lx, ly), warn_msg
+                if direct_pair(cx, cy):
+                    warn_msg = 'Right eye requested but right components missing. Using cyclops.'
+                    return 'direct', (cx, cy), warn_msg
+                return None
+
+            # cyclops
+            pair = direct_pair(cx, cy)
+            if pair is not None:
+                return 'direct', pair, None
+            if lx and ly and rx and ry:
+                warn_msg = 'Cyclops requested but cyclops components missing. Averaging left/right.'
+                return 'average_lr', (lx, ly, rx, ry), warn_msg
+            if direct_pair(mono_x, mono_y):
+                warn_msg = 'Cyclops requested but cyclops components missing. Using mono.'
+                return 'direct', (mono_x, mono_y), warn_msg  # type: ignore[arg-type]
+            if direct_pair(rx, ry):
+                warn_msg = 'Cyclops requested but cyclops components missing. Using right eye.'
+                return 'direct', (rx, ry), warn_msg
+            if direct_pair(lx, ly):
+                warn_msg = 'Cyclops requested but cyclops components missing. Using left eye.'
+                return 'direct', (lx, ly), warn_msg
+            return None
+
+        flat = _select_components_from_flat_columns()
+        if flat is not None:
+            mode, payload, warn_msg = flat
+            if warn_msg:
+                warnings.warn(warn_msg, UserWarning)
+            aois: list[polars.DataFrame] = []
+            if mode == 'direct':
+                x_eye, y_eye = payload
+                aois = [
+                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
+                    for row in tqdm(self.samples.iter_rows(named=True))
+                ]
+            elif mode == 'average_lr':
+                lx, ly, rx, ry = payload  # pylint: disable=unbalanced-tuple-unpacking
+                for row in tqdm(self.samples.iter_rows(named=True)):
+                    xl = row.get(lx)
+                    yl = row.get(ly)
+                    xr = row.get(rx)
+                    yr = row.get(ry)
+                    # Prefer arithmetic mean if both present. Otherwise fall back to whichever
+                    # is present
+                    xs = [v for v in (xl, xr) if isinstance(v, (int, float))]
+                    ys = [v for v in (yl, yr) if isinstance(v, (int, float))]
+                    x_val = sum(xs) / len(xs) if xs else None
+                    y_val = sum(ys) / len(ys) if ys else None
+                    tmp = dict(row)
+                    tmp['__x'] = x_val
+                    tmp['__y'] = y_val
+                    aois.append(aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y'))
+            else:
+                # This branch is unreachable with the current selector:
+                # the flat-components selector only yields 'direct', 'average_lr' or None
+                # (which takes the list path above).
+                # If this ever triggers, the selector returned an unknown mode and we want
+                # to surface it during development rather than silently append None AOIs.
+                raise AssertionError(  # pragma: no cover
+                    'Internal error: '
+                    "unexpected flat selection mode. Expected 'direct' or 'average_lr'.",
+                )
+        else:
+            # Fallback: extract coordinates from list columns per-row without unnesting
+            source_col = 'pixel' if (
+                gaze_type == 'pixel' and 'pixel' in self.samples.columns
+            ) else None
+            if (
+                source_col is None and gaze_type == 'position' and
+                'position' in self.samples.columns
+            ):
+                source_col = 'position'
+            if source_col is None:
+                raise ValueError(
+                    'neither position nor pixel column in samples dataframe, '
+                    'at least one needed for mapping',
+                )
+
+            def _xy_from_list(
+                values: list[float] | tuple[float, ...],
+            ) -> tuple[float | None, float | None]:
+                # pylint: disable=too-many-return-statements
+                n = len(values) if isinstance(values, (list, tuple)) else 0
+                if n == 0:
+                    return None, None
+                # interpret 2 as mono [x, y]
+                if n == 2:
+                    x_m, y_m = values[0], values[1]
+                    if eye in {'left', 'right', 'cyclops'}:
+                        # fall back from requested L/R/cyclops to mono if only mono available
+                        return x_m, y_m
+                    # auto or mono
+                    return x_m, y_m
+                # interpret >=4 as [xl, yl, xr, yr, (xa, ya)?]
+                xl = values[0] if n >= 1 else None
+                yl = values[1] if n >= 2 else None
+                xr = values[2] if n >= 3 else None
+                yr = values[3] if n >= 4 else None
+                xa = values[4] if n >= 5 else None
+                ya = values[5] if n >= 6 else None
+
+                req_eye = eye if eye in {'left', 'right', 'mono', 'auto', 'cyclops'} else 'right'
+                if req_eye == 'left':
+                    return xl, yl
+                if req_eye == 'right':
+                    return xr, yr
+                if req_eye == 'mono':
+                    # Prefer mono aggregate if provided at positions 4/5, else fall back to
+                    # right then left
+                    if xa is not None and ya is not None:
+                        return xa, ya
+                    return (xr, yr) if (xr is not None and yr is not None) else (xl, yl)
+                if req_eye == 'cyclops':
+                    # Prefer explicit cyclops at positions 4/5.
+                    if xa is not None and ya is not None:
+                        return xa, ya
+                    # Else average L/R if both available
+                    if isinstance(xl, (int, float)) and isinstance(xr, (int, float)) and \
+                       isinstance(yl, (int, float)) and isinstance(yr, (int, float)):
+                        return (xl + xr) / 2.0, (yl + yr) / 2.0
+                    # Else fall back to whichever is available (R preferred)
+                    return (xr, yr) if (xr is not None and yr is not None) else (xl, yl)
+                # auto preference: cyclops -> mono -> right -> left
+                if xa is not None and ya is not None:
+                    return xa, ya
+                if isinstance(xl, (int, float)) and isinstance(xr, (int, float)) and \
+                   isinstance(yl, (int, float)) and isinstance(yr, (int, float)):
+                    return (xl + xr) / 2.0, (yl + yr) / 2.0
+                if xr is not None and yr is not None:
+                    return xr, yr
+                return xl, yl
+
+            aois = []
+            for row in tqdm(
+                self.samples.iter_rows(named=True),
+                total=len(self.samples),
+                desc='Mapping gaze to AOIs',
+                unit='sample',
+                ncols=80,
+                disable=not verbose,
+            ):
+                vals = row.get(source_col)
+                if not isinstance(vals, (list, tuple)):
+                    # create empty AOI row (all None)
+                    aois.append(polars.from_dict({col: None for col in aoi_dataframe.aois.columns}))
+                    continue
+                # Delegate handling of n==0 / insufficient length to _xy_from_list to
+                # exercise all paths
+                x, y = _xy_from_list(vals)
+                if x is None or y is None:
+                    aois.append(polars.from_dict({col: None for col in aoi_dataframe.aois.columns}))
+                    continue
+                tmp_row = dict(row)
+                tmp_row['__x'] = x
+                tmp_row['__y'] = y
+                aois.append(aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y'))
+
+        aoi_df = polars.concat(aois)
+        self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
 
     def nest(
             self,
@@ -1307,7 +1583,7 @@ class Gaze:
         self._check_component_columns(**{output_column: input_columns})
 
         self.samples = self.samples.with_columns(
-            pl.concat_list([pl.col(component) for component in input_columns])
+            polars.concat_list([polars.col(component) for component in input_columns])
             .alias(output_column),
         ).drop(input_columns)
 
@@ -1318,7 +1594,7 @@ class Gaze:
             *,
             output_columns: list[str] | None = None,
     ) -> None:
-        """Explode a column of type ``pl.List`` into one column for each list component.
+        """Explode a column of type ``polars.List`` into one column for each list component.
 
         The input column will be dropped.
 
@@ -1407,7 +1683,7 @@ class Gaze:
         for input_col, column_names in zip(input_columns, col_names):
             self.samples = self.samples.with_columns(
                 [
-                    pl.col(input_col).list.get(component_id).alias(names)
+                    polars.col(input_col).list.get(component_id).alias(names)
                     for component_id, names in enumerate(column_names)
                 ],
             ).drop(input_col)
@@ -1496,7 +1772,7 @@ class Gaze:
 
             for column in columns:
                 if column not in self.samples.columns:
-                    raise pl.exceptions.ColumnNotFoundError(
+                    raise polars.exceptions.ColumnNotFoundError(
                         f'column {column} from {component_type}'
                         ' is not available in samples dataframe',
                     )
@@ -1606,7 +1882,7 @@ class Gaze:
     def _fill_event_detection_kwargs(
             self,
             method: Callable[..., pm.Events],
-            samples: pl.DataFrame,
+            samples: polars.DataFrame,
             events: pm.Events,
             eye_components: tuple[int, int] | None,
             **kwargs: Any,
@@ -1617,7 +1893,7 @@ class Gaze:
         ----------
         method: Callable[..., pm.Events]
             The method for which the keyword argument dictionary will be filled.
-        samples: pl.DataFrame
+        samples: polars.DataFrame
             The samples to be used for filling event detection keyword arguments.
         events: pm.Events
             The event dataframe to be used for filling event detection keyword arguments.
@@ -1636,7 +1912,7 @@ class Gaze:
 
         if 'positions' in method_args:
             if 'position' not in samples.columns:
-                raise pl.exceptions.ColumnNotFoundError(
+                raise polars.exceptions.ColumnNotFoundError(
                     f'Column \'position\' not found.'
                     f' Available columns are: {samples.columns}',
                 )
@@ -1655,7 +1931,7 @@ class Gaze:
 
         if 'velocities' in method_args:
             if 'velocity' not in samples.columns:
-                raise pl.exceptions.ColumnNotFoundError(
+                raise polars.exceptions.ColumnNotFoundError(
                     f'Column \'velocity\' not found.'
                     f' Available columns are: {samples.columns}',
                 )
@@ -1691,35 +1967,8 @@ class Gaze:
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
             auto_column_detect: bool = False,
-            definition: pm.DatasetDefinition | None = None,
     ) -> None:
         """Initialize columns of :py:attr:`~.Gaze.samples`."""
-        # Explicit arguments take precedence over definition.
-        if definition:
-            if trial_columns is None:
-                trial_columns = definition.trial_columns
-
-            if time_column is None:
-                time_column = definition.time_column
-
-            if time_unit is None:
-                time_unit = definition.time_unit
-
-            if pixel_columns is None:
-                pixel_columns = definition.pixel_columns
-
-            if position_columns is None:
-                position_columns = definition.position_columns
-
-            if velocity_columns is None:
-                velocity_columns = definition.velocity_columns
-
-            if acceleration_columns is None:
-                acceleration_columns = definition.acceleration_columns
-
-            if distance_column is None:
-                distance_column = definition.distance_column
-
         # Initialize trial_columns.
         trial_columns = [trial_columns] if isinstance(trial_columns, str) else trial_columns
         if trial_columns is not None and len(trial_columns) == 0:
@@ -1803,7 +2052,7 @@ class Gaze:
             # In case we have an experiment with sampling rate given, we create a time
             if self.experiment is not None and self.experiment.sampling_rate is not None:
                 self.samples = self.samples.with_columns(
-                    time=pl.arange(0, len(self.samples)),
+                    time=polars.arange(0, len(self.samples)),
                 )
 
                 time_column = 'time'
@@ -1824,12 +2073,12 @@ class Gaze:
     def _convert_time_units(self, time_unit: str | None) -> None:
         """Convert the time column to milliseconds based on the specified time unit."""
         if time_unit == 's':
-            self.samples = self.samples.with_columns(pl.col('time').mul(1000))
+            self.samples = self.samples.with_columns(polars.col('time').mul(1000))
 
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
-                    pl.col('time').mul(1000).truediv(self.experiment.sampling_rate),
+                    polars.col('time').mul(1000).truediv(self.experiment.sampling_rate),
                 )
             else:
                 raise ValueError(
@@ -1844,24 +2093,15 @@ class Gaze:
             )
 
         # Convert to int if possible.
-        if self.samples.schema['time'] == pl.Float64:
+        if self.samples.schema['time'] == polars.Float64:
             all_decimals = self.samples.select(
-                pl.col('time').round().eq(pl.col('time')).all(),
+                polars.col('time').round().eq(polars.col('time')).all(),
             ).item()
 
             if all_decimals:
                 self.samples = self.samples.with_columns(
-                    pl.col('time').cast(pl.Int64),
+                    polars.col('time').cast(polars.Int64),
                 )
-
-    def _init_experiment(
-            self, experiment: Experiment | None, definition: pm.DatasetDefinition | None,
-    ) -> None:
-        """Explicitly passed experiment takes precedence over definition."""
-        if definition is not None and experiment is None:
-            self.experiment = definition.experiment
-        else:
-            self.experiment = experiment
 
     def __eq__(self, other: Gaze) -> bool:
         """Check equality between this and another :py:cls:`~pymovements.Gaze` object."""
@@ -1872,14 +2112,30 @@ class Gaze:
         return samples_equal and events_equal and experiment_equal and trial_columns_equal
 
     def __str__(self) -> str:
-        """Return string representation of Gaze."""
-        if self.experiment is None:
-            return self.samples.__str__()
+        """Return string representation of Gaze.
 
-        return self.experiment.__str__() + '\n' + self.samples.__str__()
+        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        where ``N`` is the number of rows.
+        """
+        fields = []
+
+        if self.experiment is not None:
+            fields.append(self.experiment.__str__())
+
+        if self.samples is not None:
+            fields.append(self.samples.__str__())
+
+        if self.messages is not None:
+            fields.append(f'messages={self.messages.height} rows')
+
+        return '\n'.join(fields)
 
     def __repr__(self) -> str:
-        """Return string representation of Gaze."""
+        """Return string representation of Gaze.
+
+        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        where ``N`` is the number of rows.
+        """
         return self.__str__()
 
     def save(
@@ -2037,14 +2293,14 @@ class Gaze:
             )
 
 
-def _check_trial_columns(trial_columns: list[str] | None, samples: pl.DataFrame) -> None:
+def _check_trial_columns(trial_columns: list[str] | None, samples: polars.DataFrame) -> None:
     """Check trial_columns for integrity.
 
     Parameters
     ----------
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame.
-    samples: pl.DataFrame
+    samples: polars.DataFrame
         The samples dataframe that is checked for columns.
     """
     if trial_columns:
@@ -2105,3 +2361,18 @@ def _replace_nones_in_split_keys(
         key_dtypes = events_key_dtypes
 
     return _replace_nones_in_key
+
+
+def _check_messages(messages: polars.DataFrame) -> None:
+    """Check that messages is a polars.DataFrame with the two columns time and content."""
+    if messages is not None:
+        if not isinstance(messages, polars.DataFrame):
+            raise TypeError(
+                "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
+                f"not {type(messages)}.",
+            )
+        required_cols = {'time', 'content'}
+        if not required_cols.issubset(set(messages.columns)):
+            raise TypeError(
+                "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
+            )

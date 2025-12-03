@@ -14,8 +14,6 @@ trial_columns:
   - subjectid
   - textid
 
-column_map: {}
-
 custom_read_kwargs:
   precomputed_reading_measures:
     encoding: "utf8-lossy"

@@ -25,8 +25,12 @@ import pyreadr
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
-from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements import DatasetDefinition
+from pymovements import Experiment
+from pymovements import Gaze
+from pymovements.dataset.dataset_files import load_gaze_file
+from pymovements.dataset.dataset_files import load_precomputed_event_file
+from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
 
 
 ASC_TEXT = r"""\
@@ -152,7 +156,7 @@ MSG	2154569 TRACKER_TIME 1 2222195.987
 MSG	2154570 0 READING_SCREEN_1.STOP
 """
 
-EXPECTED_DF_NO_PATTERNS = pl.from_dict(
+EXPECTED_EYELINK_SAMPLES_NO_PATTERNS = pl.from_dict(
     {
         'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
         'pixel': [
@@ -163,7 +167,7 @@ EXPECTED_DF_NO_PATTERNS = pl.from_dict(
     },
 )
 
-EXPECTED_DF_PATTERNS = pl.from_dict(
+EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
     {
         'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
         'pixel': [
@@ -176,7 +180,7 @@ EXPECTED_DF_PATTERNS = pl.from_dict(
     },
 )
 
-PATTERNS = [
+EYELINK_PATTERNS = [
     {
         'pattern': 'SYNCTIME_READING',
         'column': 'task',
@@ -187,15 +191,42 @@ PATTERNS = [
 
 
 @pytest.mark.parametrize(
-    'read_kwargs',
+    ('load_kwargs', 'definition', 'expected_samples'),
     [
         pytest.param(
-            {'patterns': PATTERNS, 'schema': {'trial_id': pl.Int64}},
-            id='read_kwargs_dict',
+            None,
+            DatasetDefinition(),
+            EXPECTED_EYELINK_SAMPLES_NO_PATTERNS,
+            id='no_load_kwargs_empty_definition',
         ),
+
+        pytest.param(
+            {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+            DatasetDefinition(),
+            EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            id='patterns_via_load_kwargs',
+        ),
+
         pytest.param(
             None,
-            id='read_kwargs_none',
+            DatasetDefinition(
+                custom_read_kwargs={
+                    'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+                },
+            ),
+            EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            id='patterns_via_definition',
+        ),
+
+        pytest.param(
+            {'patterns': 'eyelink'},
+            DatasetDefinition(
+                custom_read_kwargs={
+                    'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+                },
+            ),
+            EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            id='patterns_definition_overrides_load_kwargs',
         ),
     ],
 )
@@ -203,25 +234,71 @@ PATTERNS = [
     'load_function',
     [None, 'from_asc'],
 )
-def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
+def test_load_eyelink_file_has_expected_samples(
+        load_kwargs, load_function, definition, expected_samples, make_text_file,
+):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
-    gaze = pm.dataset.dataset_files.load_gaze_file(
+    gaze = load_gaze_file(
         filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': None},
-        definition=DatasetDefinition(
-            experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
-            custom_read_kwargs={'gaze': read_kwargs},
-        ),
+        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        definition=definition,
     )
 
-    if read_kwargs is not None:
-        expected_df = EXPECTED_DF_PATTERNS
-    else:
-        expected_df = EXPECTED_DF_NO_PATTERNS
-
-    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
     assert gaze.experiment is not None
+
+
+@pytest.mark.parametrize(
+    ('load_kwargs', 'definition', 'expected_trial_columns'),
+    [
+        pytest.param(
+            {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+            DatasetDefinition(),
+            None,
+            id='no_trial_columns',
+        ),
+
+        pytest.param(
+            {
+                'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64},
+                'trial_columns': 'trial_id',
+            },
+            DatasetDefinition(),
+            ['trial_id'],
+            id='trial_columns_via_load_kwargs',
+        ),
+
+        pytest.param(
+            {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
+            DatasetDefinition(trial_columns=['trial_id']),
+            ['trial_id'],
+            id='trial_columns_via_definition',
+        ),
+
+        pytest.param(
+            {
+                'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64},
+                'trial_columns': 'wrong_trial_id',
+            },
+            DatasetDefinition(trial_columns=['trial_id']),
+            ['trial_id'],
+            id='trial_columns_definition_overrides_load_kwargs',
+        ),
+    ],
+)
+def test_load_eyelink_file_has_expected_trial_columns(
+        load_kwargs, definition, expected_trial_columns, make_text_file,
+):
+    filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
+
+    gaze = load_gaze_file(
+        filepath,
+        fileinfo_row={'load_function': 'from_asc', 'load_kwargs': load_kwargs},
+        definition=definition,
+    )
+
+    assert gaze.trial_columns == expected_trial_columns
 
 
 @pytest.mark.parametrize(
@@ -292,7 +369,7 @@ def test_load_eyelink_file(read_kwargs, load_function, make_text_file):
         ),
     ],
 )
-def test_load_gaze_file(
+def test_load_example_gaze_file(
         filename, rename_extension, load_function, load_kwargs, tmp_path, make_example_file,
 ):
     # Copy the file to the temporary path with the new extension
@@ -301,11 +378,11 @@ def test_load_gaze_file(
     renamed_filepath = tmp_path / renamed_filename
     renamed_filepath.write_bytes(filepath.read_bytes())
 
-    gaze = pm.dataset.dataset_files.load_gaze_file(
+    gaze = load_gaze_file(
         renamed_filepath,
         fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
         definition=DatasetDefinition(
-            experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
+            experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
             pixel_columns=['x_left_pix', 'y_left_pix'],
         ),
     )
@@ -319,15 +396,244 @@ def test_load_gaze_file(
     assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
 
 
+@pytest.mark.parametrize(
+    (
+        'make_csv_file_kwargs', 'load_function', 'load_kwargs', 'definition', 'expected_gaze',
+    ),
+    [
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'t': [1], 'x': [1.23], 'y': [3.45]}),
+            },
+            None, {'time_column': 't', 'pixel_columns': ['x', 'y']},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [1], 'pixel': [[1.23, 3.45]]})),
+            id='time_column_and_pixel_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'t': [1], 'x': [1.23], 'y': [3.45]}),
+            },
+            None, {},
+            DatasetDefinition(time_column='t', pixel_columns=['x', 'y']),
+            Gaze(samples=pl.DataFrame({'time': [1], 'pixel': [[1.23, 3.45]]})),
+            id='time_column_and_pixel_columns_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [2], 'x': [0.23], 'y': [0.45]}),
+            },
+            None, {'time_unit': 's', 'pixel_columns': ['x', 'y']},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [2000], 'pixel': [[0.23, 0.45]]})),
+            id='time_unit_and_pixel_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [2], 'x': [0.23], 'y': [0.45]}),
+            },
+            None, {},
+            DatasetDefinition(time_unit='s', pixel_columns=['x', 'y']),
+            Gaze(samples=pl.DataFrame({'time': [2000], 'pixel': [[0.23, 0.45]]})),
+            id='time_unit_and_pixel_columns_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+            },
+            None, {'pixel_columns': ['x', 'y']},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
+            id='pixel_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+            },
+            None, None,
+            DatasetDefinition(pixel_columns=['x', 'y']),
+            Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
+            id='pixel_columns_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+            },
+            None, {'position_columns': ['x', 'y']},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [0], 'position': [[1.2, 3.4]]})),
+            id='position_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [21.2], 'y': [23.4]}),
+            },
+            None, None,
+            DatasetDefinition(position_columns=['x', 'y']),
+            Gaze(samples=pl.DataFrame({'time': [0], 'position': [[21.2, 23.4]]})),
+            id='position_columns_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+            },
+            None, {'velocity_columns': ['x', 'y']},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [0], 'velocity': [[1.2, 3.4]]})),
+            id='velocity_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [21.2], 'y': [23.4]}),
+            },
+            None, None,
+            DatasetDefinition(velocity_columns=['x', 'y']),
+            Gaze(samples=pl.DataFrame({'time': [0], 'velocity': [[21.2, 23.4]]})),
+            id='velocity_columns_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+            },
+            None, {'acceleration_columns': ['x', 'y']},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [0], 'acceleration': [[1.2, 3.4]]})),
+            id='acceleration_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [21.2], 'y': [23.4]}),
+            },
+            None, None,
+            DatasetDefinition(acceleration_columns=['x', 'y']),
+            Gaze(samples=pl.DataFrame({'time': [0], 'acceleration': [[21.2, 23.4]]})),
+            id='acceleration_columns_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.23], 'y': [3.45], 'd': [123.45]}),
+            },
+            None, {'pixel_columns': ['x', 'y'], 'distance_column': 'd'},
+            DatasetDefinition(),
+            Gaze(
+                samples=pl.DataFrame(
+                    {'time': [0], 'distance': [123.45], 'pixel': [[1.23, 3.45]]},
+                ),
+            ),
+            id='distance_column',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [41.23], 'y': [53.45], 'd': [567.89]}),
+            },
+            None, None,
+            DatasetDefinition(pixel_columns=['x', 'y'], distance_column='d'),
+            Gaze(
+                samples=pl.DataFrame(
+                    {'time': [0], 'distance': [567.89], 'pixel': [[41.23, 53.45]]},
+                ),
+            ),
+            id='distance_column_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.tsv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+                'separator': '\t',
+            },
+            None, {'pixel_columns': ['x', 'y'], 'read_csv_kwargs': {'separator': '\t'}},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
+            id='pixel_columns_read_kwargs',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.tsv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
+                'separator': '\t',
+            },
+            None, None,
+            DatasetDefinition(
+                pixel_columns=['x', 'y'], custom_read_kwargs={'gaze': {'separator': '\t'}},
+            ),
+            Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
+            id='pixel_columns_read_kwargs_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4], 'd': [7]}),
+            },
+            None, {'pixel_columns': ['x', 'y'], 'column_map': {'d': 'test'}},
+            DatasetDefinition(),
+            Gaze(samples=pl.DataFrame({'time': [0], 'test': [7], 'pixel': [[1.2, 3.4]]})),
+            id='pixel_columns_column_map',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4], 'd': [8]}),
+            },
+            None, None,
+            DatasetDefinition(pixel_columns=['x', 'y'], column_map={'d': 'fest'}),
+            Gaze(samples=pl.DataFrame({'time': [0], 'fest': [8], 'pixel': [[1.2, 3.4]]})),
+            id='pixel_columns_column_map_definition',
+        ),
+
+    ],
+)
+def test_load_gaze_samples_csv_file(
+        make_csv_file, make_csv_file_kwargs, load_function, load_kwargs, definition, expected_gaze,
+):
+    filepath = make_csv_file(**make_csv_file_kwargs)
+    gaze = load_gaze_file(
+        filepath,
+        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        definition=definition,
+    )
+    assert gaze == expected_gaze
+
+
 def test_load_gaze_file_unsupported_load_function(make_example_file):
     filepath = make_example_file('monocular_example.csv')
 
     with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_gaze_file(
+        load_gaze_file(
             filepath,
             fileinfo_row={'load_function': 'from_a_land_down_under', 'load_kwargs': None},
             definition=DatasetDefinition(
-                experiment=pm.Experiment(1280, 1024, 38, 30, None, 'center', 1000),
+                experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
                 pixel_columns=['x_left_pix', 'y_left_pix'],
             ),
         )
@@ -335,14 +641,14 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
     msg, = exc.value.args
     assert msg == (
         'Unsupported load_function "from_a_land_down_under". '
-        'Available options are: [\'from_csv\', \'from_ipc\', \'from_asc\']'
+        'Available options are: [\'from_csv\', \'from_ipc\', \'from_asc\', \'from_begaze\']'
     )
 
 
 def test_load_precomputed_rm_file(make_example_file):
     filepath = make_example_file('copco_rm_dummy.csv')
 
-    reading_measure = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
+    reading_measure = load_precomputed_reading_measure_file(
         filepath,
         custom_read_kwargs={'separator': ','},
     )
@@ -354,7 +660,7 @@ def test_load_precomputed_rm_file(make_example_file):
 def test_load_precomputed_rm_file_no_kwargs(make_example_file):
     filepath = make_example_file('copco_rm_dummy.csv')
 
-    reading_measure = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
+    reading_measure = load_precomputed_reading_measure_file(
         filepath,
     )
     expected_df = pl.read_csv(filepath)
@@ -365,7 +671,7 @@ def test_load_precomputed_rm_file_no_kwargs(make_example_file):
 def test_load_precomputed_rm_file_xlsx(make_example_file):
     filepath = make_example_file('Sentences.xlsx')
 
-    reading_measure = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
+    reading_measure = load_precomputed_reading_measure_file(
         filepath,
         custom_read_kwargs={'sheet_name': 'Sheet 1'},
     )
@@ -379,7 +685,7 @@ def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
     filepath = make_example_file('binocular_example.feather')
 
     with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_precomputed_reading_measure_file(filepath)
+        load_precomputed_reading_measure_file(filepath)
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". Supported formats are: '\
@@ -389,7 +695,7 @@ def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
 def test_load_precomputed_file_csv(make_example_file):
     filepath = make_example_file('18sat_fixfinal.csv')
 
-    gaze = pm.dataset.dataset_files.load_precomputed_event_file(
+    gaze = load_precomputed_event_file(
         filepath,
         custom_read_kwargs={'separator': ','},
     )
@@ -401,7 +707,7 @@ def test_load_precomputed_file_csv(make_example_file):
 def test_load_precomputed_file_json(make_example_file):
     filepath = make_example_file('test.jsonl')
 
-    gaze = pm.dataset.dataset_files.load_precomputed_event_file(filepath)
+    gaze = load_precomputed_event_file(filepath)
     expected_df = pl.read_ndjson(filepath)
 
     assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
@@ -411,7 +717,7 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
     filepath = make_example_file('binocular_example.feather')
 
     with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_precomputed_event_file(filepath)
+        load_precomputed_event_file(filepath)
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". '\
@@ -421,7 +727,7 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
 def test_load_precomputed_file_rda(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
 
-    gaze = pm.dataset.dataset_files.load_precomputed_event_file(
+    gaze = load_precomputed_event_file(
         filepath,
         custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
     )
@@ -439,7 +745,7 @@ def test_load_precomputed_file_rda_raise_value_error(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
 
     with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_precomputed_event_file(filepath)
+        load_precomputed_event_file(filepath)
 
     msg, = exc.value.args
     assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
@@ -448,7 +754,7 @@ def test_load_precomputed_file_rda_raise_value_error(make_example_file):
 def test_load_precomputed_rm_file_rda(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
 
-    gaze = pm.dataset.dataset_files.load_precomputed_reading_measure_file(
+    gaze = load_precomputed_reading_measure_file(
         filepath,
         custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
     )
@@ -466,7 +772,187 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
 
     with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_precomputed_reading_measure_file(filepath)
+        load_precomputed_reading_measure_file(filepath)
 
     msg, = exc.value.args
     assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
+
+
+@pytest.mark.parametrize(
+    ('load_kwargs', 'definition'),
+    [
+        pytest.param(
+            {'trial_columns': 'trial_id'},
+            DatasetDefinition(),
+            id='trial_columns_via_load_kwargs',
+        ),
+
+        pytest.param(
+            {},
+            DatasetDefinition(trial_columns=['trial_id']),
+            id='trial_columns_via_definition',
+        ),
+
+        pytest.param(
+            {'trial_columns': 'wrong'},
+            DatasetDefinition(trial_columns=['trial_id']),
+            id='trial_columns_definition_overrides_load_kwargs',
+        ),
+
+        pytest.param(
+            {},
+            DatasetDefinition(custom_read_kwargs={'gaze': {'trial_columns': ['trial_id']}}),
+            id='trial_columns_via_custom_read_kwargs',
+        ),
+
+        pytest.param(
+            {},
+            DatasetDefinition(
+                trial_columns=['wrong'],
+                custom_read_kwargs={'gaze': {'trial_columns': ['trial_id']}},
+            ),
+            id='trial_columns_via_custom_read_kwargs_overrides_definition',
+        ),
+    ],
+)
+def test_load_gaze_file_from_begaze(load_kwargs, definition, make_text_file):
+    """Load a BeGaze text export via load_gaze_file using from_begaze.
+
+    Validates that samples are parsed, time is in ms, pixel column exists,
+    and BeGaze events are present.
+    """
+    # Inline BeGaze sample and patterns to avoid cross-test imports
+    BEGAZE_TEXT = (
+        '## [BeGaze]\n'
+        '## Converted from:\tC:\\test.idf\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Version:\tBeGaze 3.7.40\n'
+        '## IDF Version:\t9\n'
+        '## Sample Rate:\t1000\n'
+        '## Separator Type:\tMsg\n'
+        '## Trial Count:\t1\n'
+        '## Uses Plane File:\tFalse\n'
+        '## Number of Samples:\t11\n'
+        '## Reversed:\tnone\n'
+        '## [Run]\n'
+        '## Subject:\tP01\n'
+        '## Description:\tRun1\n'
+        '## [Calibration]\n'
+        '## Calibration Area:\t1680\t1050\n'
+        '## Calibration Point 0:\tPosition(841;526)\n'
+        '## Calibration Point 1:\tPosition(84;52)\n'
+        '## Calibration Point 2:\tPosition(1599;52)\n'
+        '## Calibration Point 3:\tPosition(84;1000)\n'
+        '## Calibration Point 4:\tPosition(1599;1000)\n'
+        '## Calibration Point 5:\tPosition(84;526)\n'
+        '## Calibration Point 6:\tPosition(841;52)\n'
+        '## Calibration Point 7:\tPosition(1599;526)\n'
+        '## Calibration Point 8:\tPosition(841;1000)\n'
+        '## [Geometry]\n'
+        '## Stimulus Dimension [mm]:\t474\t297\n'
+        '## Head Distance [mm]:\t700\n'
+        '## [Hardware Setup]\n'
+        '## System ID:\tIRX0470703-1007\n'
+        '## Operating System :\t6.1\n'
+        '## IView X Version:\t2.8.26\n'
+        '## [Filter Settings]\n'
+        '## Heuristics:\tFalse\n'
+        '## Heuristics Stage:\t0\n'
+        '## Bilateral:\tTrue\n'
+        '## Gaze Cursor Filter:\tTrue\n'
+        '## Saccade Length [px]:\t80\n'
+        '## Filter Depth [ms]:\t20\n'
+        '## Format:\tLEFT, POR, QUALITY, PLANE, MSG\n'
+        '##\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tTiming'
+        '\tPupil Confidence\tR Plane\tInfo\tR Event Info\tStimulus\n'
+        '10000000123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000001123\tMSG\t1\t# Message: START_A\n'
+        '10000002123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000003234\tMSG\t1\t# Message: STOP_A\n'
+        '10000004123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000004234\tMSG\t1\t# Message: METADATA_1 123\n'
+        '10000005234\tMSG\t1\t# Message: START_B\n'
+        '10000006123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000007234\tMSG\t1\t# Message: START_TRIAL_1\n'
+        '10000008123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
+        '10000009234\tMSG\t1\t# Message: STOP_TRIAL_1\n'
+        '10000010234\tMSG\t1\t# Message: START_TRIAL_2\n'
+        '10000011123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tSaccade\ttest.bmp\n'
+        '10000012234\tMSG\t1\t# Message: STOP_TRIAL_2\n'
+        '10000013234\tMSG\t1\t# Message: START_TRIAL_3\n'
+        '10000014234\tMSG\t1\t# Message: METADATA_2 abc\n'
+        '10000014235\tMSG\t1\t# Message: METADATA_1 456\n'
+        '10000014345\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tSaccade\ttest.bmp\n'
+        '10000015234\tMSG\t1\t# Message: STOP_TRIAL_3\n'
+        '10000016234\tMSG\t1\t# Message: STOP_B\n'
+        '10000017234\tMSG\t1\t# Message: METADATA_3\n'
+        '10000017345\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tSaccade\ttest.bmp\n'
+        '10000019123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tSaccade\ttest.bmp\n'
+        '10000020123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tBlink\ttest.bmp\n'
+        '10000021123\tSMP\t1\t850.71\t717.53\t714.00\t0\t0\t-1\tBlink\ttest.bmp\n'
+    )
+
+    BEGAZE_PATTERNS = [
+        {'pattern': 'START_A', 'column': 'task', 'value': 'A'},
+        {'pattern': 'START_B', 'column': 'task', 'value': 'B'},
+        {'pattern': ('STOP_A', 'STOP_B'), 'column': 'task', 'value': None},
+        r'START_TRIAL_(?P<trial_id>\d+)',
+        {'pattern': r'STOP_TRIAL', 'column': 'trial_id', 'value': None},
+    ]
+
+    BEGAZE_METADATA_PATTERNS = [
+        r'METADATA_1 (?P<metadata_1>\d+)',
+        {'pattern': r'METADATA_2 (?P<metadata_2>\w+)'},
+        {'pattern': r'METADATA_3', 'key': 'metadata_3', 'value': True},
+        {'pattern': r'METADATA_4', 'key': 'metadata_4', 'value': True},
+    ]
+
+    # Expected numeric values for comparison (subset)
+    EXPECTED_TIMES = [
+        10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123,
+        10000011.123, 10000014.345, 10000017.345, 10000019.123, 10000020.123,
+        10000021.123,
+    ]
+    EXPECTED_X = [850.7] * 9 + [None, None]
+    EXPECTED_Y = [717.5] * 9 + [None, None]
+
+    # Create a temporary BeGaze file
+    filepath = make_text_file(filename='sub.txt', body=BEGAZE_TEXT, encoding='ascii')
+
+    # Call loader with explicit from_begaze and corresponding kwargs
+    gaze = load_gaze_file(
+        filepath=filepath,
+        fileinfo_row={
+            'load_function': 'from_begaze',
+            'load_kwargs': {
+                'patterns': BEGAZE_PATTERNS,
+                'metadata_patterns': BEGAZE_METADATA_PATTERNS,
+                **load_kwargs,
+            },
+        },
+        definition=definition,
+    )
+
+    # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
+    # Build expected samples accordingly (time + pixel)
+    # Build expected samples from inline numeric expectations
+    expected_df = pl.DataFrame({
+        'time': EXPECTED_TIMES,
+        'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
+    })
+    # Compare only rows where pixel values are present (blink rows are None in expected)
+    mask = [all(v is not None for v in pair) for pair in expected_df['pixel'].to_list()]
+    expected_df_non_nan = expected_df.filter(pl.Series(mask))
+    gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
+    assert_frame_equal(
+        gaze_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        expected_df_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        check_column_order=False,
+    )
+
+    # Events should include BeGaze-derived names
+    assert set(gaze.events.frame['name'].to_list()) == {
+        'fixation_begaze', 'saccade_begaze', 'blink_begaze',
+    }
+    assert gaze.trial_columns == ['trial_id']
