@@ -89,6 +89,7 @@ class DatasetDefinition:
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
+
         .. deprecated:: v0.25.0
         Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
         This field will be removed in v0.30.0.
