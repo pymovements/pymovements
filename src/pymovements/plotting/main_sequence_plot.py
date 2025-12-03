@@ -73,9 +73,10 @@ def main_sequence_plot(
         Draw a linear fit line if True. If False, no line is drawn.
     fit_measure: bool | Literal['r2', 's']
         Annotate a goodness-of-fit statistic:
-        - True or 'r2': coefficient of determination (R²)
-        - 's': standard error of the regression (S)
-        - False: no annotation
+
+        - ``True`` or ``'r2'``: coefficient of determination (R²)
+        - ``'s'``: standard error of the regression (S)
+        - ``False``: no annotation
     fit_color: str
         Color of the linear fit line (default: 'red')
     figsize: tuple[int, int]
