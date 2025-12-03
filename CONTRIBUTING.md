@@ -215,6 +215,12 @@ only test event-related functionality using the Python 3.10 environment use:
 tox -e py310 -- tests/unit/events
 ```
 
+In case you only want to run tests locally that do not require any network access you can use:
+
+```bash
+tox -e py310 -- -m "not network"
+```
+
 ### Documentation
 
 Make sure to add docstrings to every class, method, and function that you add to the codebase.
