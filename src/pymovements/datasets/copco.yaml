@@ -46,8 +46,6 @@ pixel_columns:
   - "x_right"
   - "y_right"
 
-column_map: {}
-
 custom_read_kwargs:
   gaze: {}
   precomputed_events:

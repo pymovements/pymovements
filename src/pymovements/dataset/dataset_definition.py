@@ -83,9 +83,9 @@ class DatasetDefinition:
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
-    column_map : dict[str, str]
+    column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
-        (default: field(default_factory=dict))
+        (default: None)
     trial_columns: list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
@@ -248,7 +248,7 @@ class DatasetDefinition:
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
-    column_map: dict[str, str] = field(default_factory=dict)
+    column_map: dict[str, str] | None = None
 
     trial_columns: list[str] | None = None
     time_column: str | None = None
@@ -315,9 +315,7 @@ class DatasetDefinition:
         else:
             self.custom_read_kwargs = custom_read_kwargs
 
-        if column_map is None:
-            self.column_map = {}
-        else:
+        if column_map is not None:
             self.column_map = column_map
 
         self.resources = self._initialize_resources(resources=resources)

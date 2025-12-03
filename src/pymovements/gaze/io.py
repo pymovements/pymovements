@@ -27,7 +27,6 @@ from typing import Any
 
 import polars as pl
 
-import pymovements as pm  # pylint: disable=cyclic-import
 from pymovements.events.frame import Events
 from pymovements.gaze._utils._parsing_begaze import parse_begaze
 from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
@@ -51,7 +50,6 @@ def from_csv(
         column_map: dict[str, str] | None = None,
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, type] | None = None,
-        definition: pm.DatasetDefinition | None = None,
         read_csv_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
 ) -> Gaze:
@@ -106,9 +104,6 @@ def from_csv(
         (default: None)
     column_schema_overrides:  dict[str, type] | None
         Dictionary containing types for columns.
-        (default: None)
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
         (default: None)
     read_csv_kwargs: dict[str, Any] | None
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
@@ -239,21 +234,12 @@ def from_csv(
         warnings.warn(
             DeprecationWarning(
                 "from_csv() argument '**kwargs' is deprecated since version v0.24.0. "
-                'This argument will be removed in v0.29.0.',
+                'This argument will be removed in v0.29.0.'
                 "Please use argument 'read_csv_kwargs' instead. ",
             ),
         )
         # merge dictionaries, **kwargs takes precedence
         read_csv_kwargs = {**read_csv_kwargs, **kwargs}
-
-    # explicit arguments take precedence over definition.
-    if definition:
-        if column_map is None:
-            column_map = definition.column_map
-
-        if not read_csv_kwargs and 'gaze' in definition.custom_read_kwargs:
-            if definition.custom_read_kwargs['gaze']:
-                read_csv_kwargs = definition.custom_read_kwargs['gaze']
 
     # Read data.
     samples = pl.read_csv(file, **read_csv_kwargs)
@@ -298,7 +284,6 @@ def from_csv(
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        definition=definition,
         trial_columns=trial_columns,
         time_column=time_column,
         time_unit=time_unit,
@@ -402,7 +387,6 @@ def from_asc(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = None,
-        definition: pm.DatasetDefinition | None = None,
         events: bool = False,
         messages: bool | list[str] = False,
 ) -> Gaze:
@@ -436,9 +420,6 @@ def from_asc(
         (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
-        (default: None)
     events: bool
         Flag indicating if events should be parsed from the asc file. (default: False)
     messages: bool | list[str]
@@ -537,32 +518,6 @@ def from_asc(
             raise ValueError(f"unknown pattern key '{patterns}'. Supported keys are: eyelink")
     else:
         _patterns = patterns
-
-    # Explicit arguments take precedence over definition.
-    if definition:
-        if experiment is None:
-            experiment = definition.experiment
-
-        if trial_columns is None:
-            trial_columns = definition.trial_columns
-
-        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
-            custom_read_kwargs = definition.custom_read_kwargs['gaze']
-
-            if _patterns is None and 'patterns' in custom_read_kwargs:
-                _patterns = custom_read_kwargs['patterns']
-
-            if metadata_patterns is None and 'metadata_patterns' in custom_read_kwargs:
-                metadata_patterns = custom_read_kwargs['metadata_patterns']
-
-            if schema is None and 'schema' in custom_read_kwargs:
-                schema = custom_read_kwargs['schema']
-
-            if column_schema_overrides is None and 'column_schema_overrides' in custom_read_kwargs:
-                column_schema_overrides = custom_read_kwargs['column_schema_overrides']
-
-            if encoding is None and 'encoding' in custom_read_kwargs:
-                encoding = custom_read_kwargs['encoding']
 
     # Read data.
     samples, event_data, metadata, messages_df = parse_eyelink(
@@ -846,12 +801,10 @@ def _fill_experiment_from_parsing_begaze_metadata(
     """
     # Ensure an Experiment exists
     if experiment is None:
-        experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
-    elif (
-        experiment.eyetracker.sampling_rate is None
-        and metadata.get('sampling_rate') is not None
-    ):
-        # Only set the sampling rate if not set
+        experiment = Experiment()
+
+    # Only set the sampling rate if not set
+    if experiment.eyetracker.sampling_rate is None:
         experiment.eyetracker.sampling_rate = metadata['sampling_rate']
 
     # Tracked eye flags if present (metadata may provide 'L'/'R')
@@ -912,7 +865,6 @@ def from_begaze(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = 'ascii',
-        definition: pm.DatasetDefinition | None = None,
         prefer_eye: str = 'L',
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze` from a BeGaze text export.
@@ -937,8 +889,6 @@ def from_begaze(
         Dictionary containing types for columns.
     encoding: str | None
         Text encoding of the file. Defaults to ASCII, which is the common BeGaze export encoding.
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
 
@@ -947,37 +897,6 @@ def from_begaze(
     Gaze
         The initialized gaze object read from the BeGaze text file.
     """
-    # Explicit arguments take precedence over definition.
-    if definition:
-        if experiment is None:
-            experiment = definition.experiment
-
-        if trial_columns is None:  # pragma: no cover
-            trial_columns = definition.trial_columns
-
-        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
-            custom_read_kwargs = definition.custom_read_kwargs['gaze']
-
-            if patterns is None and 'patterns' in custom_read_kwargs:
-                patterns = custom_read_kwargs['patterns']
-
-            if metadata_patterns is None and 'metadata_patterns' in custom_read_kwargs:
-                metadata_patterns = custom_read_kwargs['metadata_patterns']
-
-            if schema is None and 'schema' in custom_read_kwargs:
-                schema = custom_read_kwargs['schema']
-
-            if column_schema_overrides is None and 'column_schema_overrides' in custom_read_kwargs:
-                column_schema_overrides = custom_read_kwargs['column_schema_overrides']
-
-            if encoding is None and 'encoding' in custom_read_kwargs:
-                encoding = custom_read_kwargs['encoding']
-
-            if 'prefer_eye' in custom_read_kwargs and isinstance(
-                    custom_read_kwargs['prefer_eye'], str,
-            ):
-                prefer_eye = custom_read_kwargs['prefer_eye']
-
     # Read data via BeGaze parser.
     samples, event_data, metadata = parse_begaze(
         file,
