@@ -39,10 +39,10 @@ from pymovements.plotting._matplotlib import prepare_figure
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
         *,
-        alpha: float = 0.5,
         marker: str = 'o',
         marker_size: float = 25,
         marker_color: str = 'purple',
+        marker_alpha: float = 0.5,
         fit: bool = True,
         fit_measure: bool | Literal['r2', 's'] = True,
         fit_color: str = 'red',
@@ -61,14 +61,14 @@ def main_sequence_plot(
     ----------
     events: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude".
-    alpha: float
-        Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
     marker: str
         Marker symbol. Possible values defined by matplotlib.markers. (default: 'o')
     marker_size: float
         Size of the marker symbol. (default: 25)
     marker_color: str
         Color of the marker symbol. (default: 'purple')
+    marker_alpha: float
+        Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
     fit: bool
         Draw a linear fit line if True. If False, no line is drawn.
     fit_measure: bool | Literal['r2', 's']
@@ -88,6 +88,8 @@ def main_sequence_plot(
         If True, figure will be shown. (default: True)
     event_df: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude". (default: None)
+        .. deprecated:: v0.22.0
+        Please use the ``events`` argument instead. This argument will be removed in v0.27.0.
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None
@@ -162,7 +164,7 @@ def main_sequence_plot(
             amplitudes,
             peak_velocities,
             color=marker_color,
-            alpha=alpha,
+            alpha=marker_alpha,
             s=marker_size,
             marker=marker,
             label='saccades',
@@ -174,7 +176,7 @@ def main_sequence_plot(
             amplitudes,
             peak_velocities,
             color=marker_color,
-            alpha=alpha,
+            alpha=marker_alpha,
             s=marker_size,
             marker=marker,
             label='saccades',
