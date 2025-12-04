@@ -46,6 +46,13 @@ class GazeOnFaces(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`GazeOnFaces`.
 
+    Warning
+    -------
+    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
+    archive extraction.
+
+    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
+
     Attributes
     ----------
     name: str
@@ -125,9 +132,8 @@ class GazeOnFaces(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'gaze_csv.zip',
-                    'md5': 'fe219f07c9253cd9aaee6bd50233c034',
+                    'url': 'https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=',
+                    'filename': 'database3_sciencemuseum.zip',
                     'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
                     'filename_pattern_schema_overrides': {
                         'sub_id': int,
