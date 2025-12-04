@@ -367,8 +367,23 @@ def test_from_asc_parameter_is_deprecated(
 
 
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
-def test_from_csv_decimal_overrides_bare_decimal_defaults_precision(tmp_path):
+def test_from_csv_decimal_overrides_bare_decimal_is_invalid(tmp_path):
     # Minimal CSV with a scalar numeric column that we can override
+    p = tmp_path / 'mini.csv'
+    p.write_text('time,pupil\n0,1.23\n1,4.56\n')
+
+    # Passing bare pl.Decimal (without precision/scale) should be invalid
+    with pytest.raises(TypeError):
+        from_csv(
+            file=str(p),
+            time_column='time',
+            time_unit='ms',
+            column_schema_overrides={'pupil': pl.Decimal},
+        )
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     p = tmp_path / 'mini.csv'
     p.write_text('time,pupil\n0,1.23\n1,4.56\n')
 
@@ -376,9 +391,7 @@ def test_from_csv_decimal_overrides_bare_decimal_defaults_precision(tmp_path):
         file=str(p),
         time_column='time',
         time_unit='ms',
-        # Ensure override is exercised
-        column_schema_overrides={'pupil': pl.Decimal},
+        column_schema_overrides={'pupil': pl.Decimal(38, 10)},
     )
 
-    # Bare pl.Decimal is normalised to a concrete precision/scale
     assert gaze.samples.schema['pupil'] == pl.Decimal(38, 10)

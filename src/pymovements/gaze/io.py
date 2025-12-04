@@ -289,19 +289,10 @@ def from_csv(
             ])
 
     if column_schema_overrides is not None:
-        # Normalise Decimal dtype without precision/scale for newer Polars versions
-        normalised_overrides: dict[str, Any] = {}
-        for fileinfo_key, fileinfo_dtype in column_schema_overrides.items():
-            # Handle bare pl.Decimal without precision/scale
-            if fileinfo_dtype is pl.Decimal:  # type: ignore[comparison-overlap]
-                # Choose a conservative default; adjust if needed by callers
-                fileinfo_dtype = pl.Decimal(38, 10)
-
-            normalised_overrides[fileinfo_key] = fileinfo_dtype
-
+        # Apply overrides as provided - callers should pass concrete pl.DataType instances
         samples = samples.with_columns([
             pl.col(column_key).cast(column_dtype)
-            for column_key, column_dtype in normalised_overrides.items()
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Create gaze object.
@@ -592,16 +583,9 @@ def from_asc(
         ])
 
     if column_schema_overrides is not None:
-        # Normalise Decimal dtype without precision/scale for newer Polars versions
-        normalised_overrides: dict[str, Any] = {}
-        for fileinfo_key, fileinfo_dtype in column_schema_overrides.items():
-            if fileinfo_dtype is pl.Decimal:  # type: ignore[comparison-overlap]
-                fileinfo_dtype = pl.Decimal(38, 10)
-            normalised_overrides[fileinfo_key] = fileinfo_dtype
-
         samples = samples.with_columns([
             pl.col(column_key).cast(column_dtype)
-            for column_key, column_dtype in normalised_overrides.items()
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Fill experiment with parsed metadata.

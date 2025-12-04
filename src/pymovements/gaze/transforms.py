@@ -28,6 +28,7 @@ from typing import TypeVar
 import numpy as np
 import polars as pl
 import scipy
+from polars.datatypes.classes import NumericType
 
 from pymovements._utils import _checks
 
@@ -806,21 +807,22 @@ def resample(
     # Sort columns by datetime
     samples = samples.sort('datetime')
 
-    # Helper: determine numeric columns among the target columns
-    def _is_numeric_dtype(dtype: pl.DataType) -> bool:
-        base_dtype = dtype.inner if isinstance(dtype, pl.List) else dtype
-        return (
-            base_dtype in {
-                pl.Int8, pl.Int16, pl.Int32, pl.Int64,
-                pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64,
-                pl.Float32, pl.Float64,
-            }
-            or isinstance(base_dtype, pl.Decimal)
-        )
-
     numeric_columns: list[str] | None = None
     if columns is not None:
-        numeric_columns = [c for c in columns if _is_numeric_dtype(samples.schema[c])]
+        def _base_dtype(dt: pl.DataType) -> pl.DataType:
+            # Follow nested dtypes (e.g., List(inner=...)) until reaching the base type
+            while hasattr(dt, 'inner'):
+                # type: ignore[attr-defined]
+                dt = dt.inner  # pyright: ignore[reportAttributeAccessIssue]
+            return dt
+
+        numeric_columns = [
+            c for c in columns
+            if issubclass(
+                (bd if isinstance(bd := _base_dtype(samples.schema[c]), type) else type(bd)),
+                NumericType,
+            )
+        ]
 
     # Replace pre-existing null values with NaN only for numeric columns, as they should not be
     # interpolated. Ensure we cast to Float64 so the UDF output dtype matches the declaration.
@@ -989,19 +991,16 @@ def smooth(
         if padding is not None:
             pad_kwargs['mode'] = padding
             pad_kwargs['pad_width'] = int(np.ceil(window_length / 2))
+            # Create a callable that applies numpy padding and ignores any extra kwargs
 
-            pad_func = partial(
-                np.pad,
-                **pad_kwargs,
-            )
-
-            # Wrap to ignore any unexpected keyword arguments Polars may pass
-            def _wrapped_pad(x: np.ndarray, **_: Any) -> np.ndarray:
-                return pad_func(x)  # pragma: no cover
+            def pad_callable(x: np.ndarray, **_: Any) -> np.ndarray:
+                return np.pad(x, **pad_kwargs)  # pragma: no cover
+            pad_func = pad_callable
         else:
-            # Default wrapper: identity when no padding is applied
-            def _wrapped_pad(x: np.ndarray, **_: Any) -> np.ndarray:
+            # No padding: identity callable that ignores any extra kwargs
+            def identity_callable(x: np.ndarray, **_: Any) -> np.ndarray:
                 return x  # pragma: no cover
+            pad_func = identity_callable
 
         if method == 'moving_average':
 
@@ -1009,7 +1008,7 @@ def smooth(
                 [
                     pl.col(column)
                     .list.get(component)
-                    .map_batches(_wrapped_pad, return_dtype=pl.Float64)
+                    .map_batches(pad_func, return_dtype=pl.Float64)
                     .list.explode()
                     .rolling_mean(window_size=window_length, center=True)
                     .shift(n=pad_kwargs['pad_width'])
@@ -1022,7 +1021,7 @@ def smooth(
             [
                 pl.col(column)
                 .list.get(component)
-                .map_batches(_wrapped_pad, return_dtype=pl.Float64)
+                .map_batches(pad_func, return_dtype=pl.Float64)
                 .list.explode()
                 .ewm_mean(
                     span=window_length,

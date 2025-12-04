@@ -171,7 +171,7 @@ def test_from_asc_has_expected_samples(
                     trial_columns=None,
                     custom_read_kwargs={'gaze': {'column_schema_overrides': {'pupil': pl.Float32}}},
                 ),
-                'column_schema_overrides': {'pupil': pl.Decimal},
+                'column_schema_overrides': {'pupil': pl.Decimal(38, 10)},
             },
             pl.DataFrame(
                 data={
