@@ -256,12 +256,8 @@ def test_parse_eyelink(make_text_file):
         messages=True,
     )
 
-    try:
-        assert_frame_equal(gaze_df, EXPECTED_GAZE_DF, check_column_order=False, rel_tol=0)
-        assert_frame_equal(event_df, EXPECTED_EVENT_DF, check_column_order=False, rel_tol=0)
-    except TypeError:
-        assert_frame_equal(gaze_df, EXPECTED_GAZE_DF, check_column_order=False, rtol=0)
-        assert_frame_equal(event_df, EXPECTED_EVENT_DF, check_column_order=False, rtol=0)
+    assert_frame_equal(gaze_df, EXPECTED_GAZE_DF, check_column_order=False, rel_tol=0)
+    assert_frame_equal(event_df, EXPECTED_EVENT_DF, check_column_order=False, rel_tol=0)
 
     assert metadata == EXPECTED_METADATA_EYELINK
     assert messages_df.shape == (18, 2)
@@ -1103,10 +1099,7 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
         },
     )
 
-    try:
-        assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rel_tol=0)
-    except TypeError:
-        assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rtol=0)
+    assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rel_tol=0)
 
     assert isinstance(event_df, pl.DataFrame)
     assert 'name' in event_df.columns

@@ -201,12 +201,8 @@ def test_parse_begaze(make_text_file, body, expected_gaze, expected_event):
         metadata_patterns=METADATA_PATTERNS,
     )
 
-    try:
-        assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rel_tol=0)
-        assert_frame_equal(event_df, expected_event, check_column_order=False, rel_tol=0)
-    except TypeError:
-        assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rtol=0)
-        assert_frame_equal(event_df, expected_event, check_column_order=False, rtol=0)
+    assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rel_tol=0)
+    assert_frame_equal(event_df, expected_event, check_column_order=False, rel_tol=0)
 
     assert metadata == EXPECTED_METADATA_BEGAZE
 
@@ -332,40 +328,24 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
             pl.when(pl.element().is_nan()).then(None).otherwise(pl.element()),
         ).alias('pixel'),
     )
-    try:
-        assert_frame_equal(
-            gaze.samples.select(expected_samples.columns),
-            expected_samples,
-            check_column_order=False,
-            rel_tol=0,
-        )
-    except TypeError:
-        assert_frame_equal(
-            gaze.samples.select(expected_samples.columns),
-            expected_samples,
-            check_column_order=False,
-            rtol=0,
-        )
+    assert_frame_equal(
+        gaze.samples.select(expected_samples.columns),
+        expected_samples,
+        check_column_order=False,
+        rel_tol=0,
+    )
 
     # Events should be attached and match expected.
     assert gaze.events is not None
     # Events returned by the loader may include computed 'duration' - compare on common columns.
     ev_actual = gaze.events.frame
     common_cols = [c for c in BEGAZE_EXPECTED_EVENT_DF.columns if c in ev_actual.columns]
-    try:
-        assert_frame_equal(
-            ev_actual.select(common_cols),
-            BEGAZE_EXPECTED_EVENT_DF.select(common_cols),
-            check_column_order=False,
-            rel_tol=0,
-        )
-    except TypeError:
-        assert_frame_equal(
-            ev_actual.select(common_cols),
-            BEGAZE_EXPECTED_EVENT_DF.select(common_cols),
-            check_column_order=False,
-            rtol=0,
-        )
+    assert_frame_equal(
+        ev_actual.select(common_cols),
+        BEGAZE_EXPECTED_EVENT_DF.select(common_cols),
+        check_column_order=False,
+        rel_tol=0,
+    )
 
     # Experiment should be filled from metadata (sampling_rate)
     assert pytest.approx(gaze.experiment.sampling_rate, rel=0, abs=1e-9) == 1000.0
