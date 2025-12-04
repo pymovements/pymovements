@@ -45,6 +45,7 @@ from pymovements import gaze as gaze_module
         'gazebase_vr',
         'judo1000',
         'potec',
+        'raccoons',
     ],
 )
 def fixture_gaze_init_kwargs(request, make_example_file):
@@ -151,6 +152,11 @@ def fixture_gaze_init_kwargs(request, make_example_file):
             'experiment': DatasetLibrary.get('PoTeC').experiment,
             **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
             'read_csv_kwargs': DatasetLibrary.get('PoTeC').custom_read_kwargs['gaze'],
+        },
+        'raccoons': {
+            'file': 'tests/files/raccoons.asc',
+            'experiment': pm.DatasetLibrary.get('RaCCooNS').experiment,
+            **pm.DatasetLibrary.get('RaCCooNS').custom_read_kwargs['gaze'],
         },
 
     }
