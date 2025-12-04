@@ -9,6 +9,7 @@ resources:
     filename_format_schema_overrides:
       participant_id: !str
     load_kwargs:
+      trial_columns: ["trial_index0"]
       patterns:
         - 'TRIALID (?P<trial_index0>\d+)'
         - pattern: "TRIAL_RESULT"
