@@ -4,7 +4,7 @@ long_name: "Radboud Coregistration Corpus of Narrative Sentences"
 
 resources:
   - content: gaze
-    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip'
+    url: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip'
     filename: "ET_raw_data.zip"
     md5: null
     filename_pattern: "{participant_id:s}.asc"
@@ -20,7 +20,7 @@ resources:
       encoding: "latin-1"
 
   - content: precomputed_events
-    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv'
+    url: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv'
     filename: "ET_fix_data.tsv"
     md5: null
     filename_pattern: "ET_fix_data.tsv"
@@ -29,7 +29,7 @@ resources:
       encoding: "latin-1"
 
   - content: precomputed_reading_measures
-    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv'
+    url: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv'
     filename: "ET_word_data.tsv"
     md5: null
     filename_pattern: "ET_word_data.tsv"
