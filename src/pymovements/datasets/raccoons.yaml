@@ -2,7 +2,7 @@ name: "RaCCooNS"
 
 resources:
   - content: gaze
-    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking%2FET_raw_data.zip'
+    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip'
     filename: "ET_raw_data.zip"
     md5: null
     filename_format: "{participant_id:s}.asc"
@@ -17,7 +17,7 @@ resources:
       encoding: "latin-1"
 
   - content: precomputed_events
-    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking%2FET_fix_data.tsv'
+    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv'
     filename: "ET_fix_data.tsv"
     md5: null
     filename_format: "ET_fix_data.tsv"
@@ -26,7 +26,7 @@ resources:
       encoding: "latin-1"
 
   - content: precomputed_reading_measures
-    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking%2FET_word_data.tsv'
+    resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv'
     filename: "ET_word_data.tsv"
     md5: null
     filename_format: "ET_word_data.tsv"
