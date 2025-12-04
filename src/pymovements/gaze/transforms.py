@@ -812,8 +812,7 @@ def resample(
         def _base_dtype(dt: pl.DataType) -> pl.DataType:
             # Follow nested dtypes (e.g., List(inner=...)) until reaching the base type
             while hasattr(dt, 'inner'):
-                # type: ignore[attr-defined]
-                dt = dt.inner  # pyright: ignore[reportAttributeAccessIssue]
+                dt = dt.inner
             return dt
 
         numeric_columns = [
