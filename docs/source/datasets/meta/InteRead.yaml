@@ -6,6 +6,16 @@ resources:
   url: https://osf.io/download/6ju3x/
   md5: 06b2cdff1827086fa125a703ee9d4324
   filename_pattern: resampled_gaze.csv
+  load_kwargs:
+    trial_columns:
+    - participant_id
+    - page_id
+    - interruption_state
+    time_column: ''
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
 - content: precomputed_events
   filename: resumption_fixation.csv
   url: https://osf.io/download/85ckh/
@@ -24,11 +34,3 @@ experiment:
 custom_read_kwargs:
   gaze: {}
   precomputed_events: {}
-trial_columns:
-- participant_id
-- page_id
-- interruption_state
-time_unit: ms
-pixel_columns:
-- x
-- y

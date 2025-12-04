@@ -62,7 +62,7 @@ class IITB_HGC(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
@@ -111,6 +111,9 @@ class IITB_HGC(DatasetDefinition):
                     'filename': 'IITB_HGC.jsonl',
                     'md5': 'cde5dd88534e87d9b2f1ab6e47133b5c',
                     'filename_pattern': 'IITB_HGC.jsonl',
+                    'load_kwargs': {
+                        'trial_columns': ['participant_id', 'trial_id'],
+                    },
                 },
             ],
         ),
@@ -120,12 +123,7 @@ class IITB_HGC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'participant_id',
-            'trial_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] | None = None
 

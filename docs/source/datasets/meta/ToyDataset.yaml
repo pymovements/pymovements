@@ -9,6 +9,12 @@ resources:
   filename_pattern_schema_overrides:
     text_id: '!int'
     page_id: '!int'
+  load_kwargs:
+    time_column: timestamp
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -35,8 +41,3 @@ custom_read_kwargs:
       stimuli_y: '!polars.datatypes.classes.Float64'
     separator: "\t"
     null_values: '-32768.00'
-time_column: timestamp
-time_unit: ms
-pixel_columns:
-- x
-- y

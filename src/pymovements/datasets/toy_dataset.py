@@ -68,17 +68,17 @@ class ToyDataset(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
@@ -119,17 +119,22 @@ class ToyDataset(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'pymovements-toy-dataset.zip',
-                        'md5': '256901852c1c07581d375eef705855d6',
-                        'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'text_id': int,
-                            'page_id': int,
-                        },
+                {
+                    'content': 'gaze',
+                    'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'pymovements-toy-dataset.zip',
+                    'md5': '256901852c1c07581d375eef705855d6',
+                    'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'text_id': int,
+                        'page_id': int,
                     },
+                    'load_kwargs': {
+                        'time_column': 'timestamp',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                    },
+                },
             ],
         ),
     )
@@ -150,11 +155,11 @@ class ToyDataset(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'timestamp'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
     column_map: dict[str, str] | None = None
 

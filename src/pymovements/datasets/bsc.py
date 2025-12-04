@@ -64,7 +64,7 @@ class BSC(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
@@ -112,6 +112,9 @@ class BSC(DatasetDefinition):
                     'filename': 'BSC.EMD.zip',
                     'md5': 'c7118bfe48c91264d69c45d347f11416',
                     'filename_pattern': 'BSC.EMD.txt',
+                    'load_kwargs': {
+                        'trial_columns': ['book_name', 'screen_id'],
+                    },
                 },
             ],
         ),
@@ -121,12 +124,7 @@ class BSC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book_name',
-            'screen_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] | None = None
 

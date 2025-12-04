@@ -342,6 +342,13 @@ def mock_toy(
                 'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
                     'gaze', None,
                 ),
+                'load_kwargs': {
+                    'time_column': 'time',
+                    'time_unit': 'ms',
+                    'distance_column': distance_column,
+                    'pixel_columns': pixel_columns,
+                    'trial_columns': ['task', 'trial'],
+                },
             },
             {
                 'content': 'precomputed_events',
@@ -358,12 +365,17 @@ def mock_toy(
                 ),
             },
         ],
-        time_column='time',
-        time_unit='ms',
-        distance_column=distance_column,
-        pixel_columns=pixel_columns,
-        trial_columns=['task', 'trial'],
         extract=extract,
+    )
+
+    fileinfo = fileinfo.with_columns(
+        pl.lit({
+            'time_column': 'time',
+            'time_unit': 'ms',
+            'distance_column': distance_column,
+            'pixel_columns': pixel_columns,
+            'trial_columns': ['task', 'trial'],
+        }).alias('load_kwargs'),
     )
 
     precomputed_dfs = []
@@ -419,8 +431,8 @@ def mock_toy(
         },
         'fileinfo': {
             'gaze': fileinfo,
-            'precomputed_events': fileinfo,
-            'precomputed_reading_measures': fileinfo,
+            'precomputed_events': fileinfo.with_columns(load_kwargs=pl.lit(None)),
+            'precomputed_reading_measures': fileinfo.with_columns(load_kwargs=pl.lit(None)),
         },
         'raw_gazes': gazes,
         'preprocessed_gazes': preprocessed_gazes,

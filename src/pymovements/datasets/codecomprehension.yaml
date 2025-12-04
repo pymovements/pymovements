@@ -14,5 +14,5 @@ resources:
 custom_read_kwargs:
   precomputed_events:
     separator: "\t"
-    null_values: "."
+    null_values: '.'
     quote_char: '"'

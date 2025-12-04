@@ -12,6 +12,12 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_eyelink', 'y_pix_eyelink']
+
   - content: gaze
     url: "https://osf.io/download/yqukn/"
     filename: "b.zip"
@@ -21,6 +27,7 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+
   - content: gaze
     url: "https://osf.io/download/yf2xa/"
     filename: "e.zip"
@@ -45,16 +52,6 @@ experiment:
     model: "EyeLink 1000 Plus"
     vendor: "EyeLink"
     mount: "Remote"
-
-time_column: "eyelink_timestamp"
-
-time_unit: "ms"
-
-distance_column: "target_distance"
-
-pixel_columns:
-  - "x_pix_eyelink"
-  - "y_pix_eyelink"
 
 custom_read_kwargs:
   gaze:

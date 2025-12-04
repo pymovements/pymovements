@@ -11,6 +11,10 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
       session_id: !int
+    load_kwargs:
+      trial_columns:
+        - task
+        - trial_id
 
 experiment:
   screen_width_px: 1280
@@ -25,18 +29,6 @@ experiment:
     right: false
     model: "EyeLink Portable Duo"
     vendor: "EyeLink"
-
-trial_columns:
-  - task
-  - trial_id
-
-time_column: "time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x_pix"
-  - "y_pix"
 
 custom_read_kwargs:
   gaze:

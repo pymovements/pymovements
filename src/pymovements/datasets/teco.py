@@ -66,7 +66,7 @@ class TECO(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
@@ -113,6 +113,9 @@ class TECO(DatasetDefinition):
                     'filename': 'wordmeasure_v1.csv',
                     'md5': '61502321a757c0ffee01c0047b29a22b',
                     'filename_pattern': 'wordmeasure_v1.csv',
+                    'load_kwargs': {
+                        'trial_columns': ['book', 'subjectid', 'textid'],
+                    },
                 },
             ],
         ),
@@ -122,13 +125,7 @@ class TECO(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book',
-            'subjectid',
-            'textid',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
     column_map: dict[str, str] | None = None
 
