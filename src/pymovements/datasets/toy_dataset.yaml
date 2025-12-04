@@ -11,6 +11,10 @@ resources:
     filename_pattern_schema_overrides:
       text_id: !int
       page_id: !int
+    load_kwargs:
+      time_column: 'timestamp'
+      time_unit: 'ms'
+      pixel_columns: ['x', 'y']
 
 experiment:
   screen_width_px: 1280
@@ -20,14 +24,6 @@ experiment:
   distance_cm: 68
   origin: "upper left"
   sampling_rate: 1000
-
-time_column: "timestamp"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x"
-  - "y"
 
 custom_read_kwargs:
   gaze:

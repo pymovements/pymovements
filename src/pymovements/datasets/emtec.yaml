@@ -10,11 +10,18 @@ resources:
     filename_pattern: 'ET_{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
+    load_kwargs:
+      trial_columns: ['item_id']
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['x', 'y']
+
   - content: precomputed_events
     url: "https://osf.io/download/2hs8p/"
     filename: "fixations.csv"
     md5: "5e05a364a1d8a044d8b36506aa91437e"
     filename_pattern: "fixations.csv"
+
   - content: precomputed_reading_measures
     url: "https://osf.io/download/s4ny8/"
     filename: "reading_measures.csv"
@@ -29,17 +36,6 @@ experiment:
   distance_cm: 60
   origin: "center"
   sampling_rate: 2000
-
-trial_columns:
-  - "item_id"
-
-time_column: "time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x"
-  - "y"
 
 custom_read_kwargs:
   gaze:

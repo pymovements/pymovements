@@ -119,10 +119,7 @@ from pymovements.gaze import from_csv
             {
                 'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
                 'read_csv_kwargs': DatasetLibrary.get('GazeOnFaces').custom_read_kwargs['gaze'],
-                'trial_columns': DatasetLibrary.get('GazeOnFaces').trial_columns,
-                'time_column': DatasetLibrary.get('GazeOnFaces').time_column,
-                'time_unit': DatasetLibrary.get('GazeOnFaces').time_unit,
-                'pixel_columns': DatasetLibrary.get('GazeOnFaces').pixel_columns,
+                **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
             },
             (10, 2),
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
@@ -134,10 +131,7 @@ from pymovements.gaze import from_csv
             {
                 'experiment': DatasetLibrary.get('GazeBase').experiment,
                 'read_csv_kwargs': DatasetLibrary.get('GazeBase').custom_read_kwargs['gaze'],
-                'column_map': DatasetLibrary.get('GazeBase').column_map,
-                'time_column': DatasetLibrary.get('GazeBase').time_column,
-                'time_unit': DatasetLibrary.get('GazeBase').time_unit,
-                'position_columns': DatasetLibrary.get('GazeBase').position_columns,
+                **DatasetLibrary.get('GazeBase').resources[0].load_kwargs,
             },
             (10, 7),
             {
@@ -152,11 +146,8 @@ from pymovements.gaze import from_csv
             'gazebase_vr_example.csv',
             {
                 'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+                **DatasetLibrary.get('GazeBaseVR').resources[0].load_kwargs,
                 'read_csv_kwargs': DatasetLibrary.get('GazeBaseVR').custom_read_kwargs['gaze'],
-                'column_map': DatasetLibrary.get('GazeBaseVR').column_map,
-                'time_column': DatasetLibrary.get('GazeBaseVR').time_column,
-                'time_unit': DatasetLibrary.get('GazeBaseVR').time_unit,
-                'position_columns': DatasetLibrary.get('GazeBaseVR').position_columns,
             },
             (10, 11),
             {
@@ -173,11 +164,8 @@ from pymovements.gaze import from_csv
             'hbn_example.csv',
             {
                 'experiment': DatasetLibrary.get('HBN').experiment,
+                **DatasetLibrary.get('HBN').resources[0].load_kwargs,
                 'read_csv_kwargs': DatasetLibrary.get('HBN').custom_read_kwargs['gaze'],
-                'trial_columns': DatasetLibrary.get('HBN').trial_columns,
-                'time_column': DatasetLibrary.get('HBN').time_column,
-                'time_unit': DatasetLibrary.get('HBN').time_unit,
-                'pixel_columns': DatasetLibrary.get('HBN').pixel_columns,
             },
             (10, 2),
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
@@ -188,12 +176,8 @@ from pymovements.gaze import from_csv
             'judo1000_example.csv',
             {
                 'experiment': DatasetLibrary.get('JuDo1000').experiment,
+                **DatasetLibrary.get('JuDo1000').resources[0].load_kwargs,
                 'read_csv_kwargs': DatasetLibrary.get('JuDo1000').custom_read_kwargs['gaze'],
-                'column_map': DatasetLibrary.get('JuDo1000').column_map,
-                'trial_columns': DatasetLibrary.get('JuDo1000').trial_columns,
-                'time_column': DatasetLibrary.get('JuDo1000').time_column,
-                'time_unit': DatasetLibrary.get('JuDo1000').time_unit,
-                'pixel_columns': DatasetLibrary.get('JuDo1000').pixel_columns,
             },
             (10, 4),
             {
@@ -207,9 +191,7 @@ from pymovements.gaze import from_csv
             'potec_example.tsv',
             {
                 'experiment': DatasetLibrary.get('PoTeC').experiment,
-                'time_column': DatasetLibrary.get('PoTeC').time_column,
-                'time_unit': DatasetLibrary.get('PoTeC').time_unit,
-                'pixel_columns': DatasetLibrary.get('PoTeC').pixel_columns,
+                **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
                 'read_csv_kwargs': DatasetLibrary.get('PoTeC').custom_read_kwargs['gaze'],
             },
             (10, 3),
@@ -223,9 +205,7 @@ from pymovements.gaze import from_csv
             'potec_example.tsv',
             {
                 'experiment': DatasetLibrary.get('PoTeC').experiment,
-                'time_column': DatasetLibrary.get('PoTeC').time_column,
-                'time_unit': DatasetLibrary.get('PoTeC').time_unit,
-                'pixel_columns': DatasetLibrary.get('PoTeC').pixel_columns,
+                **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
                 'separator': '\t',
             },
             (10, 3),
@@ -233,18 +213,15 @@ from pymovements.gaze import from_csv
                 'time': pl.Int64, 'pupil_diameter': pl.Float64, 'pixel': pl.List(pl.Float64),
             },
             marks=pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning'),
-            id='potec_example_depracted_kwargs',
+            id='potec_example_deprecated_kwargs',
         ),
 
         pytest.param(
             'sbsat_example.csv',
             {
                 'experiment': DatasetLibrary.get('SBSAT').experiment,
+                **DatasetLibrary.get('SBSAT').resources[0].load_kwargs,
                 'read_csv_kwargs': DatasetLibrary.get('SBSAT').custom_read_kwargs['gaze'],
-                'trial_columns': DatasetLibrary.get('SBSAT').trial_columns,
-                'time_column': DatasetLibrary.get('SBSAT').time_column,
-                'time_unit': DatasetLibrary.get('SBSAT').time_unit,
-                'pixel_columns': DatasetLibrary.get('SBSAT').pixel_columns,
             },
             (10, 5),
             {

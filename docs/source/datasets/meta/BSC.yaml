@@ -6,9 +6,10 @@ resources:
   url: https://osf.io/download/xfe4s/
   md5: c7118bfe48c91264d69c45d347f11416
   filename_pattern: BSC.EMD.txt
+  load_kwargs:
+    trial_columns:
+    - book_name
+    - screen_id
 custom_read_kwargs:
   precomputed_events:
     separator: "\t"
-trial_columns:
-- book_name
-- screen_id
