@@ -43,7 +43,7 @@ class CoLAGaze(DatasetDefinition):
     Warning
     -------
     This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    parsing.
+    parsing of individual files.
 
     See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
 
