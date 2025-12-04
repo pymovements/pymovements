@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -66,7 +67,7 @@ class Provo(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -75,11 +76,11 @@ class Provo(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.SBSAT` definition:
+    :py:class:`~pymovements.datasets.Provo` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("SBSAT", path='data/SBSAT')
+    >>> dataset = pm.Dataset("Provo", path='data/Provo')
 
     Download the dataset resources:
 
@@ -95,10 +96,12 @@ class Provo(DatasetDefinition):
 
     name: str = 'Provo'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Provo Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',
@@ -116,7 +119,7 @@ class Provo(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda:

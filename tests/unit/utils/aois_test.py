@@ -18,20 +18,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.parsing."""
-import re
-
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements.stimulus import text
 from pymovements.utils.aois import get_aoi
 
 
 @pytest.fixture(name='text_stimulus')
-def fixture_text_stimulus():
+def fixture_text_stimulus(make_example_file):
+    filepath = make_example_file('toy_text_1_1_aoi.csv')
     yield text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        filepath,
         aoi_column='word',
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -61,16 +59,13 @@ def test_get_aoi_deprecated(text_stimulus):
         get_aoi(text_stimulus, {'x': 400, 'y': 125}, 'x', 'y')
 
 
-def test_get_aoi_removed(text_stimulus):
+def test_get_aoi_removed(text_stimulus, assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         get_aoi(text_stimulus, {'x': 400, 'y': 125}, 'x', 'y')
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='utils/parsing.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/parsing.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

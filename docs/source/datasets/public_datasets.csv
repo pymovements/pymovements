@@ -1,33 +1,33 @@
-Dataset,Citation,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampling Rate,Stimulus Type
-:py:class:`~pymovements.datasets.BSC`,:cite:p:`BSC`,,X,,60,1,500 Hz,Text (sentences)
-:py:class:`~pymovements.datasets.BSCII`,:cite:p:`BSCII`,,X,,60,1,1000 Hz,Text (sentences)
-:py:class:`~pymovements.datasets.ChineseReading`,:cite:p:`ChineseReading`,,X,X,303,1,1000 Hz,Text (sentences)
-:py:class:`~pymovements.datasets.CodeComprehension`,:cite:p:`CodeComprehension`,,X,,27,1-2,2000 Hz,Text (code)
-:py:class:`~pymovements.datasets.CoLAGaze`,:cite:p:`CoLAGaze`,,X,X,42,1,2000 Hz,Text (sentences)
-:py:class:`~pymovements.datasets.CopCo`,":cite:p:`CopCoL1Hollenstein,CopCoL1DysBjornsdottir,CopCoL2`",X,X,X,58,1,1000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.DAEMONS`,:cite:p:`DAEMONS`,,X,,250,1,1000 Hz,Image
-:py:class:`~pymovements.datasets.DIDEC`,:cite:p:`DIDEC`,X,,,112,1,250 Hz,Image
-:py:class:`~pymovements.datasets.EMTeC`,:cite:p:`EMTeC`,X,X,,107,1,2000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.ETDD70`,:cite:p:`ETDD70`,X,X,,70,1,250 Hz,Text (documents)
-:py:class:`~pymovements.datasets.FakeNewsPerception`,:cite:p:`FakeNewsPerception`,,X,,25,1,600 Hz,"Text (documents), Image"
-:py:class:`~pymovements.datasets.Gaze4Hate`,:cite:p:`Gaze4Hate`,,X,X,43,1,1000 Hz,Text (sentences)
-:py:class:`~pymovements.datasets.GazeGraph`,:cite:p:`GazeGraph`,X,,,8,1,30 Hz,Various
-:py:class:`~pymovements.datasets.GazeOnFaces`,:cite:p:`GazeOnFaces`,X,,,405,1,250 Hz,Video
-:py:class:`~pymovements.datasets.GazeBase`,:cite:p:`GazeBase`,X,,,322,1-9,1000 Hz,"Random Dots, Text (documents), Video, Game"
-:py:class:`~pymovements.datasets.GazeBaseVR`,:cite:p:`GazeBaseVR`,X,,,407,1-6,250 Hz,"Random Dots, Text (documents), Video, Game"
-:py:class:`~pymovements.datasets.HBN`,:cite:p:`HBN`,X,,,1246,1,120 Hz,Video
-:py:class:`~pymovements.datasets.InteRead`,:cite:p:`InteRead`,X,X,,50,1,1200 Hz,Text (documents)
-:py:class:`~pymovements.datasets.IITB_HGC`,:cite:p:`IITB_HGC`,,X,,5,1,2000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.JuDo1000`,:cite:p:`JuDo1000`,X,,,150,4,1000 Hz,Random Dots
-:py:class:`~pymovements.datasets.MouseCursor`,:cite:p:`MouseCursor`,X,,,2,1,3 Hz,Mouse Cursor
-:py:class:`~pymovements.datasets.MECOL1W1`,:cite:p:`MECOL1W1`,,X,X,580,1,Various Hz,Text (documents)
-:py:class:`~pymovements.datasets.MECOL2W1`,:cite:p:`MECOL2W1`,,X,,542,1,Various Hz,Text (documents)
-:py:class:`~pymovements.datasets.MECOL2W2`,:cite:p:`MECOL2W2`,,X,,660,1,Various Hz,Text (documents)
-:py:class:`~pymovements.datasets.OneStop`,:cite:p:`OneStop`,,X,X,360,1,1000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.PoTeC`,:cite:p:`PoTeC`,X,,,75,1,1000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.PotsdamBingeRemotePVT`,:cite:p:`PotsdamBingePVT`,X,,,57,2,1000 Hz,Dots (PVT test)
-:py:class:`~pymovements.datasets.PotsdamBingeWearablePVT`,:cite:p:`PotsdamBingePVT`,X,,,57,2,200 Hz (upsampled to 1000 Hz),Dots (PVT test)
-:py:class:`~pymovements.datasets.Provo`,:cite:p:`Provo`,,X,,470,1,1000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.RaCCooNS`,:cite:p:`RaCCooNS`,X,X,X,37,1,1000 Hz,Text (sentences)
-:py:class:`~pymovements.datasets.SBSAT`,:cite:p:`SB-SAT`,X,X,,95,1,1000 Hz,Text (documents)
-:py:class:`~pymovements.datasets.UCL`,:cite:p:`UCL`,,X,X,43,1,500 Hz,Text (sentences)
+Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampling Rate,Stimulus Type
+":py:class:`~pymovements.datasets.BSC` :cite:p:`BSC`",,X,,60,1,500 Hz,Text (sentences)
+":py:class:`~pymovements.datasets.BSCII` :cite:p:`BSCII`",,X,,60,1,1000 Hz,Text (sentences)
+":py:class:`~pymovements.datasets.ChineseReading` :cite:p:`ChineseReading`",,X,X,303,1,1000 Hz,Text (sentences)
+":py:class:`~pymovements.datasets.CodeComprehension` :cite:p:`CodeComprehension`",,X,,27,1-2,2000 Hz,Text (code)
+":py:class:`~pymovements.datasets.CoLAGaze` :cite:p:`CoLAGaze`",,X,X,42,1,2000 Hz,Text (sentences)
+":py:class:`~pymovements.datasets.CopCo` :cite:p:`CopCoL1Hollenstein,CopCoL1DysBjornsdottir,CopCoL2`",X,X,X,58,1,1000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.DAEMONS` :cite:p:`DAEMONS`",,X,,250,1,1000 Hz,Image
+":py:class:`~pymovements.datasets.DIDEC` :cite:p:`DIDEC`",X,,,112,1,250 Hz,Image
+":py:class:`~pymovements.datasets.EMTeC` :cite:p:`EMTeC`",X,X,,107,1,2000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.ETDD70` :cite:p:`ETDD70`",X,X,,70,1,250 Hz,Text (documents)
+":py:class:`~pymovements.datasets.FakeNewsPerception` :cite:p:`FakeNewsPerception`",,X,,25,1,600 Hz,"Text (documents), Image"
+":py:class:`~pymovements.datasets.Gaze4Hate` :cite:p:`Gaze4Hate`",,X,X,43,1,1000 Hz,Text (sentences)
+":py:class:`~pymovements.datasets.GazeGraph` :cite:p:`GazeGraph`",X,,,8,1,30 Hz,Various
+":py:class:`~pymovements.datasets.GazeOnFaces` :cite:p:`GazeOnFaces`",X,,,405,1,250 Hz,Video
+":py:class:`~pymovements.datasets.GazeBase` :cite:p:`GazeBase`",X,,,322,1-9,1000 Hz,"Random Dots, Text (documents), Video, Game"
+":py:class:`~pymovements.datasets.GazeBaseVR` :cite:p:`GazeBaseVR`",X,,,407,1-6,250 Hz,"Random Dots, Text (documents), Video, Game"
+":py:class:`~pymovements.datasets.HBN` :cite:p:`HBN`",X,,,1246,1,120 Hz,Video
+":py:class:`~pymovements.datasets.InteRead` :cite:p:`InteRead`",X,X,,50,1,1200 Hz,Text (documents)
+":py:class:`~pymovements.datasets.IITB_HGC` :cite:p:`IITB_HGC`",,X,,5,1,2000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.JuDo1000` :cite:p:`JuDo1000`",X,,,150,4,1000 Hz,Random Dots
+":py:class:`~pymovements.datasets.MouseCursor` :cite:p:`MouseCursor`",X,,,2,1,3 Hz,Mouse Cursor
+":py:class:`~pymovements.datasets.MECOL1W1` :cite:p:`MECOL1W1`",,X,X,580,1,Various Hz,Text (documents)
+":py:class:`~pymovements.datasets.MECOL2W1` :cite:p:`MECOL2W1`",,X,,542,1,Various Hz,Text (documents)
+":py:class:`~pymovements.datasets.MECOL2W2` :cite:p:`MECOL2W2`",,X,,660,1,Various Hz,Text (documents)
+":py:class:`~pymovements.datasets.OneStop` :cite:p:`OneStop`",,X,X,360,1,1000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.PoTeC` :cite:p:`PoTeC`",X,,,75,1,1000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.PotsdamBingeRemotePVT` :cite:p:`PotsdamBingePVT`",X,,,57,2,1000 Hz,Dots (PVT test)
+":py:class:`~pymovements.datasets.PotsdamBingeWearablePVT` :cite:p:`PotsdamBingePVT`",X,,,57,2,200 Hz (upsampled to 1000 Hz),Dots (PVT test)
+":py:class:`~pymovements.datasets.Provo` :cite:p:`Provo`",,X,,470,1,1000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.RaCCooNS` :cite:p:`RaCCooNS`",X,X,X,37,1,1000 Hz,Text (sentences)
+":py:class:`~pymovements.datasets.SBSAT` :cite:p:`SB-SAT`",X,X,,95,1,1000 Hz,Text (documents)
+":py:class:`~pymovements.datasets.UCL` :cite:p:`UCL`",,X,X,43,1,500 Hz,Text (sentences)

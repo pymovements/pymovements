@@ -18,11 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test basic preprocessing on various gaze files."""
-import os.path
-
 import pytest
 
-from pymovements import datasets
+from pymovements import DatasetLibrary
 from pymovements import Experiment
 from pymovements import EyeTracker
 from pymovements import gaze as gaze_module
@@ -50,17 +48,17 @@ from pymovements import gaze as gaze_module
         'raccoons',
     ],
 )
-def fixture_gaze_init_kwargs(request):
+def fixture_gaze_init_kwargs(request, make_example_file):
     init_param_dict = {
         'csv_monocular': {
-            'file': 'tests/files/monocular_example.csv',
+            'file': make_example_file('monocular_example.csv'),
             'time_column': 'time',
             'time_unit': 'ms',
             'pixel_columns': ['x_left_pix', 'y_left_pix'],
             'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         },
         'csv_binocular': {
-            'file': 'tests/files/binocular_example.csv',
+            'file': make_example_file('binocular_example.csv'),
             'time_column': 'time',
             'time_unit': 'ms',
             'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
@@ -68,19 +66,21 @@ def fixture_gaze_init_kwargs(request):
             'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         },
         'ipc_monocular': {
-            'file': 'tests/files/monocular_example.feather',
+            'file': make_example_file('monocular_example.feather'),
             'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         },
         'ipc_binocular': {
-            'file': 'tests/files/binocular_example.feather',
+            'file': make_example_file('binocular_example.feather'),
             'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         },
         'eyelink_monocular': {
-            'file': 'tests/files/eyelink_monocular_example.asc',
-            'definition': datasets.ToyDatasetEyeLink(),
+            'file': make_example_file('eyelink_monocular_example.asc'),
+            'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+            'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
+            **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
         },
         'eyelink_monocular_2khz': {
-            'file': 'tests/files/eyelink_monocular_2khz_example.asc',
+            'file': make_example_file('eyelink_monocular_2khz_example.asc'),
             'experiment': Experiment(
                 1280, 1024, 38, 30.2, 68, 'upper left',
                 eyetracker=EyeTracker(
@@ -90,7 +90,7 @@ def fixture_gaze_init_kwargs(request):
             ),
         },
         'eyelink_monocular_no_dummy': {
-            'file': 'tests/files/eyelink_monocular_no_dummy_example.asc',
+            'file': make_example_file('eyelink_monocular_no_dummy_example.asc'),
             'experiment': Experiment(
                 1920, 1080, 38, 30.2, 68, 'upper left',
                 eyetracker=EyeTracker(
@@ -100,40 +100,58 @@ def fixture_gaze_init_kwargs(request):
             ),
         },
         'didec': {
-            'file': 'tests/files/didec_example.txt',
-            'definition': datasets.DIDEC(),
+            'file': make_example_file('didec_example.txt'),
+            'experiment': DatasetLibrary.get('DIDEC').experiment,
+            **DatasetLibrary.get('DIDEC').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('DIDEC').custom_read_kwargs['gaze'],
         },
         'emtec': {
-            'file': 'tests/files/emtec_example.csv',
-            'definition': datasets.EMTeC(),
+            'file': make_example_file('emtec_example.csv'),
+            'experiment': DatasetLibrary.get('EMTeC').experiment,
+            **DatasetLibrary.get('EMTeC').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('EMTeC').custom_read_kwargs['gaze'],
         },
         'hbn': {
-            'file': 'tests/files/hbn_example.csv',
-            'definition': datasets.HBN(),
+            'file': make_example_file('hbn_example.csv'),
+            'experiment': DatasetLibrary.get('HBN').experiment,
+            **DatasetLibrary.get('HBN').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('HBN').custom_read_kwargs['gaze'],
         },
         'sbsat': {
-            'file': 'tests/files/sbsat_example.csv',
-            'definition': datasets.SBSAT(),
+            'file': make_example_file('sbsat_example.csv'),
+            'experiment': DatasetLibrary.get('SBSAT').experiment,
+            **DatasetLibrary.get('SBSAT').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('SBSAT').custom_read_kwargs['gaze'],
         },
         'gaze_on_faces': {
-            'file': 'tests/files/gaze_on_faces_example.csv',
-            'definition': datasets.GazeOnFaces(),
+            'file': make_example_file('gaze_on_faces_example.csv'),
+            'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
+            **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('GazeOnFaces').custom_read_kwargs['gaze'],
         },
         'gazebase': {
-            'file': 'tests/files/gazebase_example.csv',
-            'definition': datasets.GazeBase(),
+            'file': make_example_file('gazebase_example.csv'),
+            'experiment': DatasetLibrary.get('GazeBase').experiment,
+            **DatasetLibrary.get('GazeBase').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('GazeBase').custom_read_kwargs['gaze'],
         },
         'gazebase_vr': {
-            'file': 'tests/files/gazebase_vr_example.csv',
-            'definition': datasets.GazeBaseVR(),
+            'file': make_example_file('gazebase_vr_example.csv'),
+            'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+            **DatasetLibrary.get('GazeBaseVR').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('GazeBaseVR').custom_read_kwargs['gaze'],
         },
         'judo1000': {
-            'file': 'tests/files/judo1000_example.csv',
-            'definition': datasets.JuDo1000(),
+            'file': make_example_file('judo1000_example.csv'),
+            'experiment': DatasetLibrary.get('JuDo1000').experiment,
+            **DatasetLibrary.get('JuDo1000').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('JuDo1000').custom_read_kwargs['gaze'],
         },
         'potec': {
-            'file': 'tests/files/potec_example.tsv',
-            'definition': datasets.PoTeC(),
+            'file': make_example_file('potec_example.tsv'),
+            'experiment': DatasetLibrary.get('PoTeC').experiment,
+            **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
+            'read_csv_kwargs': DatasetLibrary.get('PoTeC').custom_read_kwargs['gaze'],
         },
         'raccoons': {
             'file': 'tests/files/raccoons.asc',
@@ -147,8 +165,10 @@ def fixture_gaze_init_kwargs(request):
 
 def test_gaze_file_processing(gaze_from_kwargs):
     # Load in gaze file.
-    file_extension = os.path.splitext(gaze_from_kwargs['file'])[1]
+    file_extension = gaze_from_kwargs['file'].suffix
     gaze = None
+
+    # Load in gaze file.
     if file_extension in {'.csv', '.tsv', '.txt'}:
         gaze = gaze_module.from_csv(**gaze_from_kwargs)
     elif file_extension in {'.feather', '.ipc'}:

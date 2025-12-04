@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.io import from_asc
+from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.reading_measures import ReadingMeasures
@@ -95,6 +97,10 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
 
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
         fileinfo_df = fileinfo_df.sort(by='filepath')
+        fileinfo_df = fileinfo_df.with_columns(
+            load_function=pl.lit(resource_definition.load_function),
+            load_kwargs=pl.lit(resource_definition.load_kwargs),
+        )
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()
@@ -112,18 +118,16 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
 
 
 def load_event_files(
-        definition: DatasetDefinition,
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
         events_dirname: str | None = None,
         extension: str = 'feather',
+        verbose: bool = True,
 ) -> list[Events]:
     """Load all event files according to fileinfo dataframe.
 
     Parameters
     ----------
-    definition: DatasetDefinition
-        The dataset definition.
     fileinfo: pl.DataFrame
         A dataframe holding file information.
     paths: DatasetPaths
@@ -136,6 +140,8 @@ def load_event_files(
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `tsv`, `txt`.
         (default: 'feather')
+    verbose : bool
+        If ``True``, show progress bar. (default: True)
 
     Returns
     -------
@@ -152,7 +158,13 @@ def load_event_files(
     list_of_events: list[Events] = []
 
     # read and preprocess input files
-    for fileinfo_row in tqdm(fileinfo.to_dicts()):
+    for fileinfo_row in tqdm(
+            fileinfo.to_dicts(),
+            total=len(fileinfo),
+            desc='Loading event files',
+            unit='file',
+            disable=not verbose,
+    ):
         filepath = Path(fileinfo_row['filepath'])
         filepath = paths.raw / filepath
 
@@ -172,13 +184,6 @@ def load_event_files(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
             )
-
-        # Add fileinfo columns to dataframe.
-        events = add_fileinfo(
-            definition=definition,
-            df=events,
-            fileinfo=fileinfo_row,
-        )
 
         list_of_events.append(Events(events))
 
@@ -231,7 +236,12 @@ def load_gaze_files(
     gazes: list[Gaze] = []
 
     # Read gaze files from fileinfo attribute.
-    for fileinfo_row in tqdm(fileinfo.to_dicts()):
+    for fileinfo_row in tqdm(
+            fileinfo.to_dicts(),
+            total=len(fileinfo),
+            desc='Loading gaze files',
+            unit='file',
+    ):
         filepath = Path(fileinfo_row['filepath'])
         filepath = paths.raw / filepath
 
@@ -284,35 +294,27 @@ def load_gaze_file(
     ValueError
         If extension is not in list of valid extensions.
     """
-    fileinfo_columns = {
-        column: fileinfo_row[column] for column in
-        [column for column in fileinfo_row.keys() if column != 'filepath']
-    }
-    # overrides types in fileinfo_columns that are later passed via add_columns.
-    gaze_resource_definitions = definition.resources.filter('gaze')
-    if gaze_resource_definitions:
-        column_schema_overrides = gaze_resource_definitions[0].filename_pattern_schema_overrides
-    else:
-        column_schema_overrides = None
-
-    # check if we have any trial columns specified.
-    if not definition.trial_columns:
-        trial_columns = list(fileinfo_columns)
-    else:  # check for duplicates and merge.
-        trial_columns = definition.trial_columns
-
-        # Make sure fileinfo row is not duplicated as a trial_column:
-        if set(trial_columns).intersection(list(fileinfo_columns)):
-            dupes = set(trial_columns).intersection(list(fileinfo_columns))
-            warnings.warn(
-                f'removed duplicated fileinfo columns from trial_columns: {", ".join(dupes)}',
+    load_function_name = fileinfo_row['load_function']
+    if load_function_name is None:
+        if filepath.suffix in {'.csv', '.txt', '.tsv'}:
+            load_function_name = 'from_csv'
+        elif filepath.suffix == '.feather':
+            load_function_name = 'from_ipc'
+        elif filepath.suffix == '.asc':
+            load_function_name = 'from_asc'
+        else:
+            valid_extensions = ['csv', 'tsv', 'txt', 'feather', 'asc']
+            raise ValueError(
+                f'Unknown file extension "{filepath.suffix}". '
+                f'Known extensions are: {valid_extensions}\n'
+                f'Otherwise, specify load_function in the resource definition.',
             )
-            trial_columns = list(set(trial_columns).difference(list(fileinfo_columns)))
 
-        # expand trial columns with added fileinfo columns
-        trial_columns = list(fileinfo_columns) + trial_columns
+    load_function_kwargs = fileinfo_row['load_kwargs']
+    if load_function_kwargs is None:
+        load_function_kwargs = {}
 
-    if filepath.suffix in {'.csv', '.txt', '.tsv'}:
+    if load_function_name == 'from_csv':
         if preprocessed:
             # Time unit is always milliseconds for preprocessed data if a time column is present.
             time_unit = 'ms'
@@ -321,42 +323,71 @@ def load_gaze_file(
                 filepath,
                 time_unit=time_unit,
                 auto_column_detect=True,
-                trial_columns=trial_columns,  # this includes all fileinfo_columns.
-                add_columns=fileinfo_columns,
-                column_schema_overrides=column_schema_overrides,
             )
         else:
+            if definition.trial_columns is not None:
+                load_function_kwargs['trial_columns'] = definition.trial_columns
+            if definition.time_column is not None:
+                load_function_kwargs['time_column'] = definition.time_column
+            if definition.time_unit is not None:
+                load_function_kwargs['time_unit'] = definition.time_unit
+            if definition.pixel_columns is not None:
+                load_function_kwargs['pixel_columns'] = definition.pixel_columns
+            if definition.position_columns is not None:
+                load_function_kwargs['position_columns'] = definition.position_columns
+            if definition.velocity_columns is not None:
+                load_function_kwargs['velocity_columns'] = definition.velocity_columns
+            if definition.acceleration_columns is not None:
+                load_function_kwargs['acceleration_columns'] = definition.acceleration_columns
+            if definition.distance_column is not None:
+                load_function_kwargs['distance_column'] = definition.distance_column
+            if definition.column_map:
+                load_function_kwargs['column_map'] = definition.column_map
+            if definition.custom_read_kwargs:
+                read_csv_kwargs = definition.custom_read_kwargs.get('gaze', {})
+                load_function_kwargs['read_csv_kwargs'] = {
+                    **load_function_kwargs.get('read_csv_kwargs', {}), **read_csv_kwargs,
+                }
+
             gaze = from_csv(
                 filepath,
-                definition=definition,
-                trial_columns=trial_columns,  # this includes all fileinfo_columns.
-                add_columns=fileinfo_columns,
-                # column_schema_overrides is used for fileinfo_columns passed as add_columns.
-                column_schema_overrides=column_schema_overrides,
+                experiment=definition.experiment,
+                **load_function_kwargs,
             )
-    elif filepath.suffix == '.feather':
+    elif load_function_name == 'from_ipc':
         gaze = from_ipc(
             filepath,
             experiment=definition.experiment,
-            trial_columns=trial_columns,  # this includes all fileinfo_columns.
-            add_columns=fileinfo_columns,
-            # column_schema_overrides is used for fileinfo_columns passed as add_columns.
-            column_schema_overrides=column_schema_overrides,
         )
-    elif filepath.suffix == '.asc':
+    elif load_function_name == 'from_asc':
+        if definition.trial_columns is not None:
+            load_function_kwargs['trial_columns'] = definition.trial_columns
+        if definition.custom_read_kwargs:
+            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
+            load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
+
         gaze = from_asc(
             filepath,
-            definition=definition,
-            trial_columns=trial_columns,  # this includes all fileinfo_columns.
-            add_columns=fileinfo_columns,
-            # column_schema_overrides is used for fileinfo_columns passed as add_columns.
-            column_schema_overrides=column_schema_overrides,
+            experiment=definition.experiment,
+            **load_function_kwargs,
+        )
+    elif load_function_name == 'from_begaze':
+        if definition.trial_columns is not None:
+            load_function_kwargs['trial_columns'] = definition.trial_columns
+        if definition.custom_read_kwargs:
+            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
+            load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
+
+        gaze = from_begaze(
+            filepath,
+            experiment=definition.experiment,
+            **load_function_kwargs,
         )
     else:
-        valid_extensions = ['csv', 'tsv', 'txt', 'feather', 'asc']
+        valid_load_functions = ['from_csv', 'from_ipc', 'from_asc', 'from_begaze']
         raise ValueError(
-            f'unsupported file format "{filepath.suffix}".'
-            f'Supported formats are: {valid_extensions}',
+            f'Unsupported load_function "{load_function_name}". '
+            f'Available options are: {valid_load_functions}',
         )
 
     return gaze
@@ -556,49 +587,8 @@ def load_precomputed_event_file(
     return PrecomputedEventDataFrame(data=precomputed_event_df)
 
 
-def add_fileinfo(
-        definition: DatasetDefinition,
-        df: pl.DataFrame,
-        fileinfo: dict[str, Any],
-) -> pl.DataFrame:
-    """Add columns from fileinfo to dataframe.
-
-    Parameters
-    ----------
-    definition: DatasetDefinition
-        The dataset definition.
-    df: pl.DataFrame
-        Base dataframe to add fileinfo to.
-    fileinfo : dict[str, Any]
-        Dictionary of fileinfo row.
-
-    Returns
-    -------
-    pl.DataFrame
-        Dataframe with added columns from fileinfo dictionary keys.
-    """
-    df = df.select(
-        [
-            pl.lit(value).alias(column)
-            for column, value in fileinfo.items()
-            if column != 'filepath' and column not in df.columns
-        ] + [pl.all()],
-    )
-
-    # Cast columns from fileinfo according to specification.
-    resource_definitions = definition.resources.filter('gaze')
-    # overrides types in fileinfo_columns.
-    _schema_overrides = resource_definitions[0].filename_pattern_schema_overrides
-    df = df.with_columns([
-        pl.col(fileinfo_key).cast(fileinfo_dtype)
-        for fileinfo_key, fileinfo_dtype in _schema_overrides.items()
-    ])
-
-    return df
-
-
 def save_events(
-        events: list[Events],
+        events: Sequence[Events],
         fileinfo: pl.DataFrame,
         paths: DatasetPaths,
         events_dirname: str | None = None,
@@ -612,8 +602,8 @@ def save_events(
 
     Parameters
     ----------
-    events: list[Events]
-        The event dataframes to save.
+    events: Sequence[Events]
+        A sequence of :py:class:`pymovements.Events` objects to save.
     fileinfo: pl.DataFrame
         A dataframe holding file information.
     paths: DatasetPaths
@@ -636,26 +626,29 @@ def save_events(
     """
     disable_progressbar = not verbose
 
-    for file_id, events_in in enumerate(tqdm(events, disable=disable_progressbar)):
+    for file_id, events_instance in enumerate(
+        tqdm(
+            events,
+            total=len(events),
+            desc='Saving event files',
+            unit='file',
+            disable=disable_progressbar,
+        ),
+    ):
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         events_filepath = paths.raw_to_event_filepath(
             raw_filepath, events_dirname=events_dirname,
             extension=extension,
         )
 
-        events_out = events_in.frame.clone()
-        for column in events_out.columns:
-            if column in fileinfo.columns:
-                events_out = events_out.drop(column)
-
         if verbose >= 2:
             print('Save file to', events_filepath)
 
         events_filepath.parent.mkdir(parents=True, exist_ok=True)
         if extension == 'feather':
-            events_out.write_ipc(events_filepath)
+            events_instance.frame.write_ipc(events_filepath)
         elif extension == 'csv':
-            events_out.write_csv(events_filepath)
+            events_instance.frame.write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -703,7 +696,15 @@ def save_preprocessed(
     """
     disable_progressbar = not verbose
 
-    for file_id, gaze in enumerate(tqdm(gazes, disable=disable_progressbar)):
+    for file_id, gaze in enumerate(
+        tqdm(
+            gazes,
+            total=len(gazes),
+            desc='Saving preprocessed files',
+            unit='file',
+            disable=disable_progressbar,
+        ),
+    ):
         gaze = gaze.clone()
 
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
@@ -714,10 +715,6 @@ def save_preprocessed(
 
         if extension == 'csv':
             gaze.unnest()
-
-        for column in gaze.columns:
-            if column in fileinfo.columns:
-                gaze.samples = gaze.samples.drop(column)
 
         if verbose >= 2:
             print('Save file to', preprocessed_filepath)

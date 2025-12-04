@@ -31,7 +31,7 @@ from typing import Any
 import polars as pl
 from deprecated.sphinx import deprecated
 
-from pymovements.gaze._utils.parsing import parse_eyelink as _parse_eyelink
+from pymovements.gaze._utils._parsing_eyelink import parse_eyelink as _parse_eyelink
 
 
 @deprecated(
@@ -75,7 +75,7 @@ def parse_eyelink(
     Warning
         If no metadata is found in the file.
     """
-    gaze, _, metadata = _parse_eyelink(
+    gaze, _, metadata, _ = _parse_eyelink(
         filepath=filepath,
         patterns=patterns,
         schema=schema,

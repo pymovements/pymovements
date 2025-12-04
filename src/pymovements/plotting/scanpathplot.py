@@ -21,27 +21,22 @@
 from __future__ import annotations
 
 import math
-import sys
 from warnings import warn
 
-import matplotlib.colors
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
+import polars as pl
 from matplotlib.patches import Circle
 
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
-from pymovements.plotting._matplotlib import _setup_matplotlib
+from pymovements.plotting._matplotlib import _set_screen_axes
+from pymovements.plotting._matplotlib import _setup_axes_and_colormap
+from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
-
-# This is really a dirty workaround to use the Agg backend if runnning pytest.
-# This is needed as Windows workers on GitHub fail randomly with other backends.
-# Unfortunately the Agg module cannot show plots in jupyter notebooks.
-if 'pytest' in sys.modules:  # pragma: no cover
-    matplotlib.use('Agg')
 
 
 def scanpathplot(
@@ -67,7 +62,11 @@ def scanpathplot(
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
         events: Events | EventDataFrame | None = None,
-) -> None:
+        *,
+        event_name: str = 'fixation',
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
     """Plot scanpath from positional data.
 
     Parameters
@@ -117,6 +116,17 @@ def scanpathplot(
         Origin of stimuls to plot on the stimulus. (default: 'upper')
     events: Events | EventDataFrame | None
         The events to plot. (default: None)
+    event_name: str
+        Filters events for a particular value in ``name`` column. (default: 'fixation')
+    ax: plt.Axes | None
+        External axes to draw into. If provided, the function will not show or close the figure.
+    closefig: bool | None
+        Whether to close the figure. If None, close only when the function created the figure.
+
+    Returns
+    -------
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and axes.
 
     Raises
     ------
@@ -142,28 +152,33 @@ def scanpathplot(
         assert gaze is not None
         assert gaze.events is not None
         events = gaze.events
+    assert isinstance(events, Events)  # otherwise mypy complains
 
-    # pylint: disable=duplicate-code
-    x_signal = events.frame[position_column].list.get(0)
-    y_signal = events.frame[position_column].list.get(1)
+    fixations = events.frame.filter(pl.col('name') == event_name)
 
-    fig, ax, cmap, cmap_norm, cval, show_cbar = _setup_matplotlib(
-        x_signal=x_signal,
-        y_signal=y_signal,
-        figsize=figsize,
-        cmap=cmap,
-        cmap_norm=cmap_norm,
-        cmap_segmentdata=cmap_segmentdata,
-        cval=cval,
-        show_cbar=show_cbar,
-        add_stimulus=add_stimulus,
-        path_to_image_stimulus=path_to_image_stimulus,
-        stimulus_origin=stimulus_origin,
-        padding=padding,
-        pad_factor=pad_factor,
+    x_signal = fixations[position_column].list.get(0)
+    y_signal = fixations[position_column].list.get(1)
+
+    own_figure = ax is None
+
+    fig, ax, cmap, cmap_norm, cval, show_cbar = _setup_axes_and_colormap(
+        x_signal,
+        y_signal,
+        figsize,
+        cmap,
+        cmap_norm,
+        cmap_segmentdata,
+        cval,
+        show_cbar,
+        add_stimulus,
+        path_to_image_stimulus,
+        stimulus_origin,
+        padding,
+        pad_factor,
+        ax=ax,
     )
 
-    for row in events.frame.iter_rows(named=True):
+    for row in fixations.iter_rows(named=True):
         fixation = Circle(
             row[position_column],
             math.sqrt(row['duration']),
@@ -192,12 +207,19 @@ def scanpathplot(
             # sm.set_array(cval)
             fig.colorbar(line, label=cbar_label, ax=ax)
 
+    if gaze is not None and gaze.experiment is not None:
+        _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
+
     if title:
         ax.set_title(title)
 
-    if savepath is not None:
-        fig.savefig(savepath)
+    finalize_figure(
+        fig,
+        show=show,
+        savepath=savepath,
+        closefig=closefig,
+        own_figure=own_figure,
+        func_name='scanpathplot',
+    )
 
-    if show:
-        plt.show()
-    plt.close(fig)
+    return fig, ax

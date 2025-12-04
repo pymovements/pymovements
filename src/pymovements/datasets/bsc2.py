@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -32,12 +33,16 @@ from pymovements.dataset.resources import ResourceDefinitions
 class BSCII(DatasetDefinition):
     """BSCII dataset :cite:p:`BSCII`.
 
-    This dataset includes monocular eye tracking data from a single participant in a single
-    session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
-    eye tracker and precomputed events on aoi level are reported.
+    The Beijing Sentence Corpus II (BSCII) is a Traditional Chinese sentence corpus of eye-tracking
+    data, based on the original Beijing Sentence Corpus (BSC) in Simplified Chinese. Data was
+    collected from 60 native Traditional Chinese readers. The corpus enables analyses of word
+    frequency, visual complexity, and predictability on fixation location and duration.
 
-    The participant is instructed to read texts and answer questions. The original purpose was to
-    look into the differences in processing when reading simplified and traditional Chinese.
+    Since the BSCII sentences are nearly identical to those in the BSC, the two corpora together
+    provide a valuable resource for studying cross-script similarities and differences between
+    Simplified and Traditional Chinese.
+
+    Eye-movements were recorded with an Eyelink 1000 system at 1000 Hz.
 
     Check the respective paper for details :cite:p:`BSCII`.
 
@@ -64,13 +69,13 @@ class BSCII(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
             methods will be applied to each trial separately.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -79,11 +84,11 @@ class BSCII(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.SBSAT` definition:
+    :py:class:`~pymovements.datasets.BSCII` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("SBSAT", path='data/SBSAT')
+    >>> dataset = pm.Dataset("BSCII", path='data/BSCII')
 
     Download the dataset resources:
 
@@ -99,10 +104,12 @@ class BSCII(DatasetDefinition):
 
     name: str = 'BSCII'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Beijing Sentence Corpus II'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',
@@ -110,6 +117,9 @@ class BSCII(DatasetDefinition):
                     'filename': 'BSCII.EMD.rev.zip',
                     'md5': '4daad0fa922785d8c681a883b1197e1e',
                     'filename_pattern': 'BSCII.EMD.rev.txt',
+                    'load_kwargs': {
+                        'trial_columns': ['book_name', 'screen_id'],
+                    },
                 },
             ],
         ),
@@ -119,14 +129,9 @@ class BSCII(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book_name',
-            'screen_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda:

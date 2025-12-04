@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -32,11 +33,11 @@ from pymovements.dataset.resources import ResourceDefinitions
 class BSC(DatasetDefinition):
     """BSC dataset :cite:p:`BSC`.
 
-    This dataset includes monocular eye tracking data from a single participant in a single
-    session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
-    eye tracker and precomputed events on aoi level are reported.
-
-    The participant is instructed to read texts and answer questions.
+    The Beijing Sentence Corpus (BSC) is a Simplified Chinese sentence corpus of eye-tracking data,
+    including word boundaries and predictability norms for each word. The sentences were selected
+    from the People's Daily, the largest newspaper group and an official newspaper of the People's
+    Republic of China. Data was collected from 60 native Chinese university students. The eye
+    movements were recorded with an Eyelink II system running at 500 Hz.
 
     Check the respective paper for details :cite:p:`BSC`.
 
@@ -63,13 +64,13 @@ class BSC(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
             methods will be applied to each trial separately.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]]
@@ -78,11 +79,11 @@ class BSC(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.SBSAT` definition:
+    :py:class:`~pymovements.datasets.BSC` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("SBSAT", path='data/SBSAT')
+    >>> dataset = pm.Dataset("BSC", path='data/BSC')
 
     Download the dataset resources:
 
@@ -98,10 +99,12 @@ class BSC(DatasetDefinition):
 
     name: str = 'BSC'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Beijing Sentence Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',
@@ -109,6 +112,9 @@ class BSC(DatasetDefinition):
                     'filename': 'BSC.EMD.zip',
                     'md5': 'c7118bfe48c91264d69c45d347f11416',
                     'filename_pattern': 'BSC.EMD.txt',
+                    'load_kwargs': {
+                        'trial_columns': ['book_name', 'screen_id'],
+                    },
                 },
             ],
         ),
@@ -118,14 +124,9 @@ class BSC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book_name',
-            'screen_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] = field(
         default_factory=lambda:

@@ -68,7 +68,6 @@ class Dataset:
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
         self.gaze: list[Gaze] = []
-        self.events: list[Events] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
 
@@ -165,10 +164,60 @@ class Dataset:
                 events_dirname=events_dirname,
                 extension=extension,
             )
-            for loaded_gaze, loaded_events in zip(self.gaze, self.events):
-                loaded_gaze.events = loaded_events
 
         return self
+
+    @property
+    def events(self) -> tuple[Events, ...]:
+        """Return ``Events`` for all ``Gaze`` objects in the ``Dataset``.
+
+        Each element in the returned tuple references :py:attr:`~pymovements.Gaze.events` of the
+        corresponding :py:class:`~pymovements.Gaze` in :py:attr:`~pymovements.Dataset.gaze`.
+
+        Returns
+        -------
+        tuple[Events, ...]
+            Tuple mapping ``Dataset.events[i]`` to ``Dataset.gaze[i].events``.
+
+        Notes
+        -----
+        Changes to ``Dataset.events[i]`` are also reflected in ``Dataset.gaze[i].events`` and vice
+        versa as they both reference the same :py:class:`~pymovements.Events` object.
+        """
+        return tuple(gaze.events for gaze in self.gaze)
+
+    @events.setter
+    def events(self, data: Sequence[Events]) -> None:
+        """Assign ``Events`` to each ``Gaze`` object in the ``Dataset``.
+
+        Each :py:class:`~pymovements.Gaze` in :py:attr:`~pymovements.Dataset.gaze` is updated with
+        the corresponding :py:class:`~pymovements.Events` of the input.
+
+        Parameters
+        ----------
+        data: Sequence[Events]
+            Must have the same length as :py:attr:`~pymovements.Dataset.gaze`.
+
+        Raises
+        ------
+        ValueError
+            If the lengths of ``data`` and :py:attr:`~pymovements.Dataset.gaze` do not match.
+
+        Notes
+        -----
+        Assigning to a single element of :py:attr:`~pymovements.Dataset.events` raises a
+        ``TypeError`` as :py:attr:`~pymovements.Dataset.events` returns an immutable tuple.
+
+        To assign to a single element, assign directly via ``Dataset.gaze[i].events = new_events``
+        instead.
+        """
+        if len(data) != len(self.gaze):
+            raise ValueError(
+                f"Number of events ({len(data)}) does not match "
+                f"number of gazes ({len(self.gaze)}).",
+            )
+        for gaze, ev in zip(self.gaze, data):
+            gaze.events = ev
 
     def scan(self) -> Dataset:
         """Infer information from filepaths and filenames.
@@ -303,7 +352,7 @@ class Dataset:
         all_fileinfo_rows = []
 
         for frame, fileinfo_row in zip(self.gaze, fileinfo_dicts):
-            split_frames = frame.split(by=by)
+            split_frames = frame.split(by=by, as_dict=False)
             all_gaze_frames.extend(split_frames)
             all_fileinfo_rows.extend([fileinfo_row] * len(split_frames))
 
@@ -359,13 +408,13 @@ class Dataset:
             If extension is not in list of valid extensions.
         """
         self._check_fileinfo()
-        self.events = dataset_files.load_event_files(
-            definition=self.definition,
+        events = dataset_files.load_event_files(
             fileinfo=self.fileinfo['gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
         )
+        self.events = events
         return self
 
     def apply(
@@ -427,7 +476,13 @@ class Dataset:
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze in tqdm(self.gaze, disable=disable_progressbar):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc=f'Applying {function}',
+                unit='file',
+                disable=disable_progressbar,
+        ):
             gaze.apply(function, **kwargs)
 
         return self
@@ -758,22 +813,40 @@ class Dataset:
         """
         self._check_gaze()
 
-        if not self.events:
-            self.events = [gaze.events for gaze in self.gaze]
-
         disable_progressbar = not verbose
-        for file_id, (gaze, fileinfo_row) in tqdm(
-                enumerate(zip(self.gaze, self.fileinfo['gaze'].to_dicts())),
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Detecting events',
+                unit='file',
                 disable=disable_progressbar,
         ):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
-            # workaround until events are fully part of the Gaze
-            gaze.events.frame = dataset_files.add_fileinfo(
-                definition=self.definition,
-                df=gaze.events.frame,
-                fileinfo=fileinfo_row,
-            )
-            self.events[file_id] = gaze.events
+        return self
+
+    def drop_event_properties(
+            self,
+            event_properties: str | list[str],
+    ) -> Dataset:
+        """Remove event properties from the event dataframe.
+
+        Parameters
+        ----------
+        event_properties: str | list[str]
+            The event properties to remove.
+
+        Raises
+        ------
+        InvalidProperty
+            If ``event_properties`` does not exist in the event dataframe
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+        """
+        for gaze in self.gaze:
+            gaze.drop_event_properties(event_properties)
         return self
 
     def compute_event_properties(
@@ -809,7 +882,13 @@ class Dataset:
         Dataset
             Returns self, useful for method cascading.
         """
-        for gaze in tqdm(self.gaze, disable=not verbose):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Computing event properties',
+                unit='file',
+                disable=not verbose,
+        ):
             gaze.compute_event_properties(event_properties, name=name)
         return self
 
@@ -861,8 +940,8 @@ class Dataset:
         if len(self.events) == 0:
             return self
 
-        for file_id, _ in enumerate(self.events):
-            self.events[file_id] = Events()
+        for gaze in self.gaze:
+            gaze.events = Events()
 
         return self
 

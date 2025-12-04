@@ -32,7 +32,7 @@ import numpy as np
 from deprecated.sphinx import deprecated
 
 from pymovements.plotting._matplotlib import _draw_line_data
-from pymovements.plotting._matplotlib import _setup_matplotlib
+from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 from pymovements.plotting._matplotlib import MatplotlibSetupType
 from pymovements.stimulus.image import _draw_image_stimulus
@@ -96,7 +96,7 @@ def setup_matplotlib(
     MatplotlibSetupType
         Configures fig, ax, cmap, cmap_norm, cmap_segmentdata, cval, and show_cbar.
     """
-    return _setup_matplotlib(
+    return _setup_axes_and_colormap(
         x_signal=x_signal,
         y_signal=y_signal,
         figsize=figsize,
