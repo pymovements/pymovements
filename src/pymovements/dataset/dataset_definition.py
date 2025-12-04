@@ -88,6 +88,10 @@ class DatasetDefinition:
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
@@ -216,8 +220,10 @@ class DatasetDefinition:
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: None)
-        .. deprecated:: v0.24.2
-        This field will be removed in v0.29.0.
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
@@ -335,9 +341,6 @@ class DatasetDefinition:
         self.long_name = long_name
 
         self.experiment = experiment
-
-        self.resources = self._initialize_resources(resources=resources)
-        self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         self.extract = extract
 
