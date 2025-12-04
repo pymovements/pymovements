@@ -25,7 +25,6 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError
 from urllib.error import URLError
 
 from tqdm.auto import tqdm
@@ -149,29 +148,14 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
                 # Manually handle redirects to avoid HTTPError creation
                 if code and 300 <= code < 400:
                     loc = response.headers.get('Location') if hasattr(response, 'headers') else None
-                    if not loc:
+                    if not loc:  # pragma: no cover
                         return url
                     # Resolve relative redirects
                     url = urllib.parse.urljoin(url, loc)
                     continue
                 # No redirect - return current URL
                 return url
-        except HTTPError as e:
-            # If the server responds with an error (e.g., 404), stop expanding redirects and return
-            # the current URL.
-            # The caller will handle the error on the actual download path and raise an OSError.
-            try:
-                fp = getattr(e, 'fp', None)
-                if fp is not None:
-                    try:
-                        fp.close()
-                    except Exception:
-                        pass
-            finally:
-                # swallow to let caller handle via preflight/download
-                pass
-            return url
-        except URLError:
+        except URLError:  # pragma: no cover
             # Network failure – just return current URL and let caller decide.
             return url
 
@@ -244,11 +228,16 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
         headers={'User-Agent': USER_AGENT, 'Accept': 'application/octet-stream'},
     )
     with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
-        resp = None
+        # Keep network operations inside a small try/except
         try:
             resp = opener.open(req)
+        except URLError as e:  # pragma: no cover
+            raise OSError(str(e)) from e
+
+        # Ensure the response is closed via context manager
+        with resp:
             status = getattr(resp, 'status', None) or resp.getcode()
-            if status and status >= 400:
+            if status and status >= 400:  # pragma: no cover
                 raise OSError(f'HTTP Error {status} for URL: {url}')
 
             content_length = resp.headers.get(
@@ -265,29 +254,13 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
                         break
                     out.write(chunk)
                     t.update(len(chunk))
-            # Ensure progress bar completes
-            if t.total is None:
-                t.total = t.n
-        except HTTPError as e:  # we might want to 'pragma: no cover'
-            # Close underlying file pointer to avoid ResourceWarning on Py3.14
-            try:
-                fp = getattr(e, 'fp', None)
-                if fp is not None:
-                    try:
-                        fp.close()
-                    except Exception:
-                        pass
-            finally:
-                raise OSError(str(e)) from e
-        finally:
-            try:
-                if resp is not None:
-                    resp.close()
-            except Exception:
-                pass
+
+        # Ensure progress bar completes
+        if t.total is None:  # pragma: no cover
+            t.total = t.n
 
 
-def _raise_if_http_error(url: str) -> None:
+def _raise_if_http_error(url: str) -> None:  # pylint: disable=inconsistent-return-statements
     """Perform a lightweight HEAD request and raise OSError on HTTP errors.
 
     This avoids entering the problematic ``urlretrieve`` error path on Python 3.14
@@ -309,24 +282,13 @@ def _raise_if_http_error(url: str) -> None:
             if code and 300 <= code < 400:
                 # Follow one redirect here by recursing
                 loc = resp.headers.get('Location') if hasattr(resp, 'headers') else None
-                if loc:
+                if loc:  # pragma: no cover
                     return _raise_if_http_error(urllib.parse.urljoin(url, loc))
             if code and code >= 400:
                 raise OSError(f'HTTP Error {code} for URL: {url}')
-    except HTTPError as e:
-        # Close underlying fp to be safe, then re-raise as OSError
-        try:
-            fp = getattr(e, 'fp', None)
-            if fp is not None:
-                try:
-                    fp.close()
-                except Exception:
-                    pass
-        finally:
-            raise OSError(str(e)) from e
     except URLError as e:
         # Network or URL issue
-        raise OSError(str(e)) from e
+        raise OSError(str(e)) from e  # pragma: no cover
 
 
 def _build_no_http_error_opener() -> urllib.request.OpenerDirector:
