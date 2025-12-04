@@ -46,6 +46,12 @@ class GazeOnFaces(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`GazeOnFaces`.
 
+    Notes
+    -----
+    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
+    archive extraction.
+    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
+
     Attributes
     ----------
     name: str
@@ -92,12 +98,6 @@ class GazeOnFaces(DatasetDefinition):
 
     custom_read_kwargs: dict[str, dict[str, Any]]
         If specified, these keyword arguments will be passed to the file reading function.
-
-    Notes
-    -----
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    archive extraction.
-    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
 
     Examples
     --------
