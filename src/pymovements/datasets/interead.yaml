@@ -28,7 +28,3 @@ experiment:
   distance_cm: 57
   origin: "center"
   sampling_rate: 1200
-
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}

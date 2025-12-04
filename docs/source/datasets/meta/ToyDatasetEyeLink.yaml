@@ -13,22 +13,6 @@ resources:
     trial_columns:
     - task
     - trial_id
-experiment:
-  eyetracker:
-    sampling_rate: 1000.0
-    left: true
-    right: false
-    model: EyeLink Portable Duo
-    vendor: EyeLink
-  screen:
-    width_px: 1280
-    height_px: 1024
-    width_cm: 38
-    height_cm: 30.2
-    distance_cm: 68
-    origin: upper left
-custom_read_kwargs:
-  gaze:
     patterns:
     - pattern: SYNCTIME_READING_SCREEN
       column: task
@@ -59,3 +43,17 @@ custom_read_kwargs:
       point_id: '!polars.datatypes.classes.Int64'
       task: '!polars.datatypes.classes.String'
     encoding: ascii
+experiment:
+  eyetracker:
+    sampling_rate: 1000.0
+    left: true
+    right: false
+    model: EyeLink Portable Duo
+    vendor: EyeLink
+  screen:
+    width_px: 1280
+    height_px: 1024
+    width_cm: 38
+    height_cm: 30.2
+    distance_cm: 68
+    origin: upper left

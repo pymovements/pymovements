@@ -10,13 +10,11 @@ resources:
     trial_columns:
     - uniform_id
     - itemid
+    r_dataframe_key: joint.fix.l2_w2
 - content: precomputed_reading_measures
   filename: joint_data_trimmed_L2_wave2_2025_01_03.rda
   url: https://osf.io/download/tma46/
   md5: 87077697db7f09172a3431615397a5e9
   filename_pattern: joint_data_trimmed_L2_wave2_2025_01_03.rda
-custom_read_kwargs:
-  precomputed_events:
-    r_dataframe_key: joint.fix.l2_w2
-  precomputed_reading_measures:
+  load_kwargs:
     r_dataframe_key: joint.data

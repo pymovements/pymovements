@@ -95,8 +95,9 @@ class CopCo(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, Any]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -149,6 +150,14 @@ class CopCo(DatasetDefinition):
                     'md5': None,  # type:ignore
                     'filename_pattern': r'FIX_report_P{subject_id:d}.txt',
                     'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'separator': '\t',
+                        'null_values': ['.', 'UNDEFINEDnull'],
+                        'infer_schema_length': 100000,
+                        'truncate_ragged_lines': True,
+                        'decimal_comma': True,
+                        'quote_char': None,
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -188,17 +197,4 @@ class CopCo(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'gaze': {},
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': ['.', 'UNDEFINEDnull'],
-                'infer_schema_length': 100000,
-                'truncate_ragged_lines': True,
-                'decimal_comma': True,
-                'quote_char': None,
-            },
-            'precomputed_reading_measures': {},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

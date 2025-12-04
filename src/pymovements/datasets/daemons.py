@@ -72,8 +72,9 @@ class DAEMONS(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -112,6 +113,7 @@ class DAEMONS(DatasetDefinition):
                     'md5': '2779b4c140a0b1e3c9976488994f08f3',
                     'filename_pattern': r'SAC_{data_split:s}.csv',
                     'filename_pattern_schema_overrides': {'data_split': str},
+                    'load_kwargs': {'null_values': ['NA']},
                 },
             ],
         ),
@@ -123,9 +125,4 @@ class DAEMONS(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {'null_values': ['NA']},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

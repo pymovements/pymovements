@@ -78,8 +78,9 @@ class BSCII(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -119,6 +120,7 @@ class BSCII(DatasetDefinition):
                     'filename_pattern': 'BSCII.EMD.rev.txt',
                     'load_kwargs': {
                         'trial_columns': ['book_name', 'screen_id'],
+                        'separator': '\t', 'null_values': ['NA'],
                     },
                 },
             ],
@@ -133,12 +135,4 @@ class BSCII(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {
-                    'separator': '\t',
-                    'null_values': ['NA'],
-                },
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

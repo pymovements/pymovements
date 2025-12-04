@@ -70,8 +70,9 @@ class Provo(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -110,6 +111,11 @@ class Provo(DatasetDefinition):
                     'md5': '7aa239e51e5d78528e2430f84a23da3f',
                     'filename_pattern':
                     'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
+                    'load_kwargs': {
+                        'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
+                        'encoding': 'macroman',
+                        'null_values': ['.'],
+                    },
                 },
             ],
         ),
@@ -121,13 +127,4 @@ class Provo(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-        {
-            'precomputed_events': {
-                'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
-                'encoding': 'macroman',
-                'null_values': ['.'],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

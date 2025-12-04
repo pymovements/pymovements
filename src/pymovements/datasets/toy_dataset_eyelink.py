@@ -93,8 +93,9 @@ class ToyDatasetEyeLink(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -136,7 +137,54 @@ class ToyDatasetEyeLink(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
-                    'load_kwargs': {'trial_columns': ['task', 'trial_id']},
+                    'load_kwargs': {
+                        'trial_columns': ['task', 'trial_id'],
+                        'patterns': [
+                            {
+                                'pattern': 'SYNCTIME_READING_SCREEN',
+                                'column': 'task',
+                                'value': 'reading',
+                            },
+                            {
+                                'pattern': 'SYNCTIME_JUDO',
+                                'column': 'task',
+                                'value': 'judo',
+                            },
+                            {
+                                'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
+                                'column': 'task',
+                                'value': None,
+                            },
+
+                            r'TRIALID (?P<trial_id>\d+)',
+                            {
+                                'pattern': 'TRIAL_RESULT',
+                                'column': 'trial_id',
+                                'value': None,
+                            },
+
+                            r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
+                            {
+                                'pattern': 'READING[.]STOP',
+                                'column': 'screen_id',
+                                'value': None,
+                            },
+
+                            r'SYNCTIME.P(?P<point_id>\d+)',
+                            {
+                                'pattern': r'P\d[.]STOP',
+                                'column': 'point_id',
+                                'value': None,
+                            },
+                        ],
+                        'schema': {
+                            'trial_id': pl.Int64,
+                            'screen_id': pl.Int64,
+                            'point_id': pl.Int64,
+                            'task': pl.Utf8,
+                        },
+                        'encoding': 'ascii',
+                    },
                 },
             ],
         ),
@@ -174,54 +222,4 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'patterns': [
-                    {
-                        'pattern': 'SYNCTIME_READING_SCREEN',
-                        'column': 'task',
-                        'value': 'reading',
-                    },
-                    {
-                        'pattern': 'SYNCTIME_JUDO',
-                        'column': 'task',
-                        'value': 'judo',
-                    },
-                    {
-                        'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
-                        'column': 'task',
-                        'value': None,
-                    },
-
-                    r'TRIALID (?P<trial_id>\d+)',
-                    {
-                        'pattern': 'TRIAL_RESULT',
-                        'column': 'trial_id',
-                        'value': None,
-                    },
-
-                    r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
-                    {
-                        'pattern': 'READING[.]STOP',
-                        'column': 'screen_id',
-                        'value': None,
-                    },
-
-                    r'SYNCTIME.P(?P<point_id>\d+)',
-                    {
-                        'pattern': r'P\d[.]STOP',
-                        'column': 'point_id',
-                        'value': None,
-                    },
-                ],
-                'schema': {
-                    'trial_id': pl.Int64,
-                    'screen_id': pl.Int64,
-                    'point_id': pl.Int64,
-                    'task': pl.Utf8,
-                },
-                'encoding': 'ascii',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

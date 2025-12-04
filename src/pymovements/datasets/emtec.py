@@ -89,8 +89,9 @@ class EMTeC(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -134,6 +135,31 @@ class EMTeC(DatasetDefinition):
                         'time_column': 'time',
                         'time_unit': 'ms',
                         'pixel_columns': ['x', 'y'],
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'columns': [
+                                'item_id',
+                                'TRIAL_ID',
+                                'Trial_Index_',
+                                'model',
+                                'decoding_strategy',
+                                'time',
+                                'x',
+                                'y',
+                                'pupil_right',
+                            ],
+                            'schema_overrides': {
+                                'item_id': pl.Utf8,
+                                'TRIAL_ID': pl.Int64,
+                                'Trial_Index_': pl.Int64,
+                                'model': pl.Utf8,
+                                'decoding_strategy': pl.Utf8,
+                                'time': pl.Int64,
+                                'x': pl.Float32,
+                                'y': pl.Float32,
+                                'pupil_right': pl.Float32,
+                            },
+                        },
                     },
                 },
                 {
@@ -142,6 +168,7 @@ class EMTeC(DatasetDefinition):
                     'filename': 'fixations.csv',
                     'md5': '5e05a364a1d8a044d8b36506aa91437e',
                     'filename_pattern': r'fixations.csv',
+                    'load_kwargs': {'separator': '\t'},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -149,6 +176,7 @@ class EMTeC(DatasetDefinition):
                     'filename': 'reading_measures.csv',
                     'md5': '56880f50af20682558065ac2d26be827',
                     'filename_pattern': r'reading_measures.csv',
+                    'load_kwargs': {'separator': '\t'},
                 },
             ],
         ),
@@ -178,34 +206,4 @@ class EMTeC(DatasetDefinition):
 
     pixel_columns: list[str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': '\t',
-                'columns': [
-                    'item_id',
-                    'TRIAL_ID',
-                    'Trial_Index_',
-                    'model',
-                    'decoding_strategy',
-                    'time',
-                    'x',
-                    'y',
-                    'pupil_right',
-                ],
-                'schema_overrides': {
-                    'item_id': pl.Utf8,
-                    'TRIAL_ID': pl.Int64,
-                    'Trial_Index_': pl.Int64,
-                    'model': pl.Utf8,
-                    'decoding_strategy': pl.Utf8,
-                    'time': pl.Int64,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'pupil_right': pl.Float32,
-                },
-            },
-            'precomputed_events': {'separator': '\t'},
-            'precomputed_reading_measures': {'separator': '\t'},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

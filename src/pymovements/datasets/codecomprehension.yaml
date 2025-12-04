@@ -10,9 +10,7 @@ resources:
     filename_pattern: 'fix_report_P{subject_id:s}.txt'
     filename_pattern_schema_overrides:
       subject_id: !polars.Utf8
-
-custom_read_kwargs:
-  precomputed_events:
-    separator: "\t"
-    null_values: '.'
-    quote_char: '"'
+    load_kwargs:
+      separator: "\t"
+      null_values: "."
+      quote_char: '"'

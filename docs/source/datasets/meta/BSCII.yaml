@@ -10,8 +10,6 @@ resources:
     trial_columns:
     - book_name
     - screen_id
-custom_read_kwargs:
-  precomputed_events:
     separator: "\t"
     null_values:
     - NA

@@ -67,8 +67,9 @@ class UCL(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, Any]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -106,6 +107,7 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_events.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.fix',
+                    'load_kwargs': {'separator': '\t', 'null_values': ['NaN']},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -113,6 +115,7 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_measures.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.RT',
+                    'load_kwargs': {'separator': '\t'},
                 },
             ],
         ),
@@ -124,12 +127,4 @@ class UCL(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': ['NaN'],
-            },
-            'precomputed_reading_measures': {'separator': '\t'},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

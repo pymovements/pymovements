@@ -20,11 +20,11 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
-import warnings
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import polars as pl
 import pyreadr
@@ -79,7 +79,7 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
         elif content_type == 'precomputed_reading_measures':
             resource_dirpath = paths.precomputed_reading_measures
         else:
-            warnings.warn(
+            warn(
                 f'content type {content_type} is not supported. '
                 'supported contents are: gaze, precomputed_events, precomputed_reading_measures. '
                 'skipping this resource definition during scan.',
@@ -415,13 +415,29 @@ def load_precomputed_reading_measures(
         Return list of precomputed event dataframes.
     """
     precomputed_reading_measures = []
-    for filepath in fileinfo.to_dicts():
-        data_path = paths.precomputed_reading_measures / Path(filepath['filepath'])
+    for fileinfo_row in fileinfo.to_dicts():
+        relative_filepath = Path(fileinfo_row['filepath'])
+        data_path = paths.precomputed_reading_measures / relative_filepath
+
+        load_function_kwargs = fileinfo_row['load_kwargs']
+        if load_function_kwargs is None:
+            load_function_kwargs = {}
+        if definition.custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
+            custom_read_kwargs = definition.custom_read_kwargs.get(
+                'precomputed_reading_measures', {},
+            )
+            load_function_kwargs.update(custom_read_kwargs)
+
         precomputed_reading_measures.append(
-            load_precomputed_reading_measure_file(
-                data_path,
-                definition.custom_read_kwargs.get('precomputed_reading_measures', None),
-            ),
+            load_precomputed_reading_measure_file(data_path, load_function_kwargs),
         )
     return precomputed_reading_measures
 
@@ -506,7 +522,6 @@ def load_precomputed_event_files(
     fileinfo: pl.DataFrame
         Information about the files, including a 'filepath' column with relative paths.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
-
     paths: DatasetPaths
         Adjustable paths to extract datasets, specifically the precomputed_events directory.
 
@@ -516,13 +531,27 @@ def load_precomputed_event_files(
         Return list of precomputed event dataframes.
     """
     precomputed_events = []
-    for filepath in fileinfo.to_dicts():
-        data_path = paths.precomputed_events / Path(filepath['filepath'])
+    for fileinfo_row in fileinfo.to_dicts():
+        relative_filepath = Path(fileinfo_row['filepath'])
+        data_path = paths.precomputed_events / relative_filepath
+
+        load_function_kwargs = fileinfo_row['load_kwargs']
+        if load_function_kwargs is None:
+            load_function_kwargs = {}
+        if definition.custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
+
+            custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
+            load_function_kwargs.update(custom_read_kwargs)
+
         precomputed_events.append(
-            load_precomputed_event_file(
-                data_path,
-                definition.custom_read_kwargs.get('precomputed_events', None),
-            ),
+            load_precomputed_event_file(data_path, load_function_kwargs),
         )
     return precomputed_events
 

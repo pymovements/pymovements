@@ -69,8 +69,9 @@ class ChineseReading(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -108,6 +109,7 @@ class ChineseReading(DatasetDefinition):
                     'filename_pattern': 'Raw Data.txt',
                     'load_kwargs': {
                         'trial_columns': ['Subject', 'Sentence_ID'],
+                        'separator': '\t',
                     },
                 },
                 {
@@ -116,6 +118,7 @@ class ChineseReading(DatasetDefinition):
                     'filename': 'chinese_reading_measures.zip',
                     'md5': None,  # type: ignore
                     'filename_pattern': r'{measure_type:s} Measures.xlsx',
+                    'load_kwargs': {'sheet_name': 'Sheet 1'},
                 },
             ],
         ),
@@ -129,10 +132,4 @@ class ChineseReading(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'precomputed_events': {'separator': '\t'},
-                'precomputed_reading_measures': {'sheet_name': 'Sheet 1'},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

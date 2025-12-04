@@ -19,7 +19,16 @@ resources:
       column_map:
         trialId: "trial_id"
         pointId: "point_id"
-
+      read_csv_kwargs:
+        schema_overrides:
+          trialId: !polars.Int64
+          pointId: !polars.Int64
+          time: !polars.Int64
+          x_left: !polars.Float32
+          y_left: !polars.Float32
+          x_right: !polars.Float32
+          y_right: !polars.Float32
+        separator: "\t"
 
 experiment:
   screen_width_px: 1280
@@ -29,15 +38,3 @@ experiment:
   distance_cm: 68
   origin: "upper left"
   sampling_rate: 1000
-
-custom_read_kwargs:
-  gaze:
-    schema_overrides:
-      trialId: !polars.Int64
-      pointId: !polars.Int64
-      time: !polars.Int64
-      x_left: !polars.Float32
-      y_left: !polars.Float32
-      x_right: !polars.Float32
-      y_right: !polars.Float32
-    separator: "\t"

@@ -15,6 +15,16 @@ resources:
     pixel_columns:
     - x_pix
     - y_pix
+    read_csv_kwargs:
+      separator: ','
+      columns:
+      - time
+      - x_pix
+      - y_pix
+      schema_overrides:
+        time: '!polars.datatypes.classes.Int64'
+        x_pix: '!polars.datatypes.classes.Float32'
+        y_pix: '!polars.datatypes.classes.Float32'
 experiment:
   eyetracker:
     sampling_rate: 120
@@ -25,14 +35,3 @@ experiment:
     height_cm: 27.0
     distance_cm: 63.5
     origin: center
-custom_read_kwargs:
-  gaze:
-    separator: ','
-    columns:
-    - time
-    - x_pix
-    - y_pix
-    schema_overrides:
-      time: '!polars.datatypes.classes.Int64'
-      x_pix: '!polars.datatypes.classes.Float32'
-      y_pix: '!polars.datatypes.classes.Float32'

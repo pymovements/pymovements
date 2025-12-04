@@ -31,6 +31,3 @@ experiment:
     height_cm: 29.7
     distance_cm: 57
     origin: center
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}
