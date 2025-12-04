@@ -14,9 +14,13 @@ resources:
     participant: '!int'
     session: '!int'
     trial: '!int'
+  load_function: from_begaze
+  load_kwargs:
+    encoding: ascii
+    prefer_eye: L
 experiment:
   eyetracker:
-    sampling_rate: 1000
+    sampling_rate: 250
   screen:
     width_px: 1680
     height_px: 1050
