@@ -50,7 +50,7 @@ class GazeOnFaces(DatasetDefinition):
     -------
     This dataset currently cannot be fully processed by ``pymovements`` due to an error during
     archive extraction.
-    
+
     See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
 
     Attributes
