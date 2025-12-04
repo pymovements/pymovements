@@ -191,41 +191,47 @@ EYELINK_PATTERNS = [
 
 
 @pytest.mark.parametrize(
-    ('load_kwargs', 'definition', 'expected_samples'),
+    ('load_kwargs', 'definition_kwargs', 'expected_samples'),
     [
         pytest.param(
             None,
-            DatasetDefinition(),
+            {},
             EXPECTED_EYELINK_SAMPLES_NO_PATTERNS,
             id='no_load_kwargs_empty_definition',
         ),
 
         pytest.param(
             {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
-            DatasetDefinition(),
+            {},
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
             id='patterns_via_load_kwargs',
         ),
 
         pytest.param(
             None,
-            DatasetDefinition(
-                custom_read_kwargs={
+            {
+                'custom_read_kwargs': {
                     'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
                 },
-            ),
+            },
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+            ),
             id='patterns_via_definition',
         ),
 
         pytest.param(
             {'patterns': 'eyelink'},
-            DatasetDefinition(
-                custom_read_kwargs={
+            {
+                'custom_read_kwargs': {
                     'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
                 },
-            ),
+            },
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+            ),
             id='patterns_definition_overrides_load_kwargs',
         ),
     ],
@@ -235,14 +241,14 @@ EYELINK_PATTERNS = [
     [None, 'from_asc'],
 )
 def test_load_eyelink_file_has_expected_samples(
-        load_kwargs, load_function, definition, expected_samples, make_text_file,
+        load_kwargs, load_function, definition_kwargs, expected_samples, make_text_file,
 ):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
     gaze = load_gaze_file(
         filepath,
         fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
-        definition=definition,
+        definition=DatasetDefinition(**definition_kwargs),
     )
 
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
@@ -625,9 +631,14 @@ def test_load_example_gaze_file(
             None, None,
             {'pixel_columns': ['x', 'y'], 'custom_read_kwargs': {'gaze': {'separator': '\t'}}},
             Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
-            marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
-            ),
+            marks=[
+                pytest.mark.filterwarnings(
+                    'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                ),
+                pytest.mark.filterwarnings(
+                    'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
+                ),
+            ],
             id='pixel_columns_read_kwargs_definition',
         ),
 
@@ -861,6 +872,9 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
         pytest.param(
             {},
             {'custom_read_kwargs': {'gaze': {'trial_columns': ['trial_id']}}},
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+            ),
             id='trial_columns_via_custom_read_kwargs',
         ),
 
@@ -870,9 +884,14 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
                 'trial_columns': ['wrong'],
                 'custom_read_kwargs': {'gaze': {'trial_columns': ['trial_id']}},
             },
-            marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.trial_columns.*:DeprecationWarning',
-            ),
+            marks=[
+                pytest.mark.filterwarnings(
+                    'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                ),
+                pytest.mark.filterwarnings(
+                    'ignore:.*DatasetDefinition.trial_columns.*:DeprecationWarning',
+                ),
+            ],
             id='trial_columns_via_custom_read_kwargs_overrides_definition',
         ),
     ],
