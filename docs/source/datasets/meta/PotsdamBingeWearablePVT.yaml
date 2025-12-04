@@ -63,7 +63,6 @@ resources:
         prev_bac: '!polars.datatypes.classes.Float32'
         next_bac: '!polars.datatypes.classes.Float32'
       separator: ','
-
 - content: gaze
   filename: e.zip
   url: https://osf.io/download/yf2xa/
@@ -92,7 +91,6 @@ resources:
         prev_bac: '!polars.datatypes.classes.Float32'
         next_bac: '!polars.datatypes.classes.Float32'
       separator: ','
-
 experiment:
   eyetracker:
     sampling_rate: 1000

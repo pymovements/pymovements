@@ -21,7 +21,6 @@ resources:
       schema_overrides:
       - '!polars.datatypes.classes.Float32'
       - '!polars.datatypes.classes.Float32'
-
 experiment:
   eyetracker:
     sampling_rate: 60

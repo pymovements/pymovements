@@ -8,15 +8,14 @@ resources:
   filename_pattern: resampled_gaze.csv
   load_kwargs:
     trial_columns:
-      - participant_id
-      - page_id
-      - interruption_state
+    - participant_id
+    - page_id
+    - interruption_state
     time_column: ''
     time_unit: ms
     pixel_columns:
-      - x
-      - y
-
+    - x
+    - y
 - content: precomputed_events
   filename: resumption_fixation.csv
   url: https://osf.io/download/85ckh/

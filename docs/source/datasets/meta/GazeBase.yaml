@@ -31,7 +31,6 @@ resources:
         lab: '!polars.datatypes.classes.Int64'
         xT: '!polars.datatypes.classes.Float32'
         yT: '!polars.datatypes.classes.Float32'
-
 experiment:
   eyetracker:
     sampling_rate: 1000

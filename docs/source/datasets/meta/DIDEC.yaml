@@ -53,12 +53,3 @@ experiment:
     height_cm: 29.7
     distance_cm: 70
     origin: upper left
-trial_columns:
-- Stimulus
-time_column: Time
-time_unit: ms
-pixel_columns:
-- L POR X [px]
-- L POR Y [px]
-- R POR X [px]
-- R POR Y [px]

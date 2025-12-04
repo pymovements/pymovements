@@ -13,3 +13,5 @@ resources:
   filename: chinese_reading_measures.zip
   url: https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip=
   filename_pattern: '{measure_type:s} Measures.xlsx'
+  load_kwargs:
+    sheet_name: Sheet 1

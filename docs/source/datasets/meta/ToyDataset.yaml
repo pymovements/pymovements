@@ -10,11 +10,6 @@ resources:
     text_id: '!int'
     page_id: '!int'
   load_kwargs:
-    time_column: timestamp
-    time_unit: ms
-    pixel_columns:
-    - x
-    - y
     read_csv_kwargs:
       columns:
       - timestamp
@@ -30,7 +25,6 @@ resources:
         stimuli_y: '!polars.datatypes.classes.Float64'
       separator: "\t"
       null_values: '-32768.00'
-
 experiment:
   eyetracker:
     sampling_rate: 1000

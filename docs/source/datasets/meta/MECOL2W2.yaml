@@ -11,7 +11,6 @@ resources:
     - uniform_id
     - itemid
     r_dataframe_key: joint.fix.l2_w2
-
 - content: precomputed_reading_measures
   filename: joint_data_trimmed_L2_wave2_2025_01_03.rda
   url: https://osf.io/download/tma46/

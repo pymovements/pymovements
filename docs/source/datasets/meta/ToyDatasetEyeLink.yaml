@@ -43,7 +43,6 @@ resources:
       point_id: '!polars.datatypes.classes.Int64'
       task: '!polars.datatypes.classes.String'
     encoding: ascii
-
 experiment:
   eyetracker:
     sampling_rate: 1000.0

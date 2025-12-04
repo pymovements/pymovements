@@ -32,7 +32,6 @@ resources:
         x_right: '!polars.datatypes.classes.Float32'
         y_right: '!polars.datatypes.classes.Float32'
       separator: "\t"
-
 experiment:
   eyetracker:
     sampling_rate: 1000

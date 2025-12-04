@@ -42,7 +42,6 @@ resources:
         crx: '!polars.datatypes.classes.Float32'
         cry: '!polars.datatypes.classes.Float32'
         crz: '!polars.datatypes.classes.Float32'
-
 experiment:
   eyetracker:
     sampling_rate: 250

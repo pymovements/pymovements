@@ -11,7 +11,6 @@ resources:
     - uniform_id
     - itemid
     r_dataframe_key: joint.fix.l2
-
 - content: precomputed_reading_measures
   filename: joint_data_l2_trimmed_version2.0.rda
   url: https://osf.io/download/re7uy/

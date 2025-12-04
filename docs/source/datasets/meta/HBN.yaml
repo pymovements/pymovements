@@ -25,7 +25,6 @@ resources:
         time: '!polars.datatypes.classes.Int64'
         x_pix: '!polars.datatypes.classes.Float32'
         y_pix: '!polars.datatypes.classes.Float32'
-
 experiment:
   eyetracker:
     sampling_rate: 120

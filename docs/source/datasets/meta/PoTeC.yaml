@@ -22,7 +22,6 @@ resources:
         y: '!polars.datatypes.classes.Float32'
         pupil_diameter: '!polars.datatypes.classes.Float32'
       separator: "\t"
-
 - content: precomputed_events
   filename: fixation.zip
   url: https://osf.io/download/d8pyg/
@@ -34,7 +33,6 @@ resources:
   load_kwargs:
     separator: "\t"
     null_values: .
-
 - content: precomputed_reading_measures
   filename: reading_measures.zip
   url: https://osf.io/download/3ywhz/
@@ -47,7 +45,6 @@ resources:
     separator: "\t"
     null_values: .
     infer_schema_length: 10000
-
 experiment:
   eyetracker:
     sampling_rate: 1000
