@@ -46,35 +46,11 @@ class GazeOnFaces(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`GazeOnFaces`.
 
-    Attention
-    ---------
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    archive extraction.
-    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
-
-    Caution
-    -------
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    archive extraction.
-    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
-
-    Error
-    -----
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    archive extraction.
-    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
-
-    Notes
-    -----
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    archive extraction.
-    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
-
     Warning
     -------
     This dataset currently cannot be fully processed by ``pymovements`` due to an error during
     archive extraction.
-    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
+    | See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
 
     Attributes
     ----------
