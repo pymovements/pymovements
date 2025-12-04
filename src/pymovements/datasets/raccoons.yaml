@@ -5,8 +5,8 @@ resources:
     resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip'
     filename: "ET_raw_data.zip"
     md5: null
-    filename_format: "{participant_id:s}.asc"
-    filename_format_schema_overrides:
+    filename_pattern: "{participant_id:s}.asc"
+    filename_pattern_schema_overrides:
       participant_id: !str
     load_kwargs:
       trial_columns: ["trial_index0"]
@@ -21,7 +21,7 @@ resources:
     resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv'
     filename: "ET_fix_data.tsv"
     md5: null
-    filename_format: "ET_fix_data.tsv"
+    filename_pattern: "ET_fix_data.tsv"
     load_kwargs:
       separator: "\t"
       encoding: "latin-1"
@@ -30,7 +30,7 @@ resources:
     resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv'
     filename: "ET_word_data.tsv"
     md5: null
-    filename_format: "ET_word_data.tsv"
+    filename_pattern: "ET_word_data.tsv"
     load_kwargs:
       separator: "\t"
       encoding: "latin-1"
