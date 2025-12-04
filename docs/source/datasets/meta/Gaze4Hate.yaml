@@ -6,6 +6,10 @@ resources:
   url: https://osf.io/download/dbshf/
   md5: c8cc645d1fad659f9442d61795da5481
   filename_pattern: gaze4hate_sentence_reading_fix_report.csv
+  load_kwargs:
+    trial_columns:
+    - pno
+    - sno
 - content: precomputed_reading_measures
   filename: gaze4hate_sentence_reading_IA_report.csv
   url: https://osf.io/download/fgdjw/
@@ -27,6 +31,3 @@ custom_read_kwargs:
     null_values: .
   precomputed_reading_measures:
     separator: "\t"
-trial_columns:
-- pno
-- sno

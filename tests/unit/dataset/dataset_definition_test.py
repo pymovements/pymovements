@@ -257,7 +257,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'name': 'Example',
                 'long_name': 'Example',
                 'acceleration_columns': None,
-                'column_map': {},
+                'column_map': None,
                 'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': None,
@@ -291,7 +291,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'name': 'Example',
                 'long_name': 'Example',
                 'acceleration_columns': None,
-                'column_map': {},
+                'column_map': None,
                 'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': {
@@ -340,7 +340,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'name': 'MyDatasetDefinition',
                 'long_name': None,
                 'acceleration_columns': None,
-                'column_map': {},
+                'column_map': None,
                 'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': {
@@ -382,7 +382,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'long_name': None,
                 '_foobar': 'test',
                 'acceleration_columns': None,
-                'column_map': {},
+                'column_map': None,
                 'custom_read_kwargs': {},
                 'distance_column': None,
                 'experiment': {
@@ -700,35 +700,6 @@ def test_dataset_definition_has_resources_not_equal():
         ),
 
         pytest.param(
-            DatasetDefinition(
-                distance_column='test',
-                position_columns=['test', 'foo', 'bar'],
-            ),
-            True,
-            {
-                'name': '.',
-                'position_columns': ['test', 'foo', 'bar'],
-                'distance_column': 'test',
-            },
-            id='true_str_dict_list',
-        ),
-
-        pytest.param(
-            DatasetDefinition(
-                experiment=Experiment(origin=None),
-                distance_column='test',
-                position_columns=['test', 'foo', 'bar'],
-            ),
-            True,
-            {
-                'name': '.',
-                'position_columns': ['test', 'foo', 'bar'],
-                'distance_column': 'test',
-            },
-            id='true_str_dict_list_experiment_origin_none',
-        ),
-
-        pytest.param(
             DatasetDefinition(),
             False,
             {
@@ -739,7 +710,7 @@ def test_dataset_definition_has_resources_not_equal():
                 'experiment': None,
                 'extract': None,
                 'custom_read_kwargs': {},
-                'column_map': {},
+                'column_map': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -763,7 +734,7 @@ def test_dataset_definition_has_resources_not_equal():
                 'experiment': None,
                 'extract': None,
                 'custom_read_kwargs': {},
-                'column_map': {},
+                'column_map': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -805,7 +776,7 @@ def test_dataset_definition_has_resources_not_equal():
                 },
                 'extract': None,
                 'custom_read_kwargs': {},
-                'column_map': {},
+                'column_map': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -816,6 +787,87 @@ def test_dataset_definition_has_resources_not_equal():
                 'distance_column': None,
             },
             id='false_experiment_origin_none',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                    },
+                ],
+            ),
+            True,
+            {
+                'name': '.',
+                'resources': [
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                    },
+                ],
+            },
+            id='true_resources',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                    },
+                ],
+            ),
+            False,
+            {
+                'acceleration_columns': None,
+                'column_map': None,
+                'custom_read_kwargs': {},
+                'distance_column': None,
+                'experiment': None,
+                'extract': None,
+                'long_name': None,
+                'mirrors': {},
+                'name': '.',
+                'pixel_columns': None,
+                'position_columns': None,
+                'resources': [
+                    {
+                        'content': 'gaze',
+                        'filename': None,
+                        'filename_pattern': None,
+                        'filename_pattern_schema_overrides': None,
+                        'load_function': None,
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': [
+                                'test',
+                                'foo',
+                                'bar',
+                            ],
+                        },
+                        'md5': None,
+                        'mirrors': None,
+                        'url': None,
+                    },
+                ],
+                'time_column': None,
+                'time_unit': None,
+                'trial_columns': None,
+                'velocity_columns': None,
+            },
+            id='false_resources',
         ),
     ],
 )
@@ -868,6 +920,51 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             },
             '0.28.0',
             id='filename_format_schema_overrides',
+        ),
+        pytest.param(
+            {'trial_columns': ['trial']},
+            '0.30.0',
+            id='trial_columns',
+        ),
+        pytest.param(
+            {'time_column': 't'},
+            '0.30.0',
+            id='time_column',
+        ),
+        pytest.param(
+            {'time_unit': 'ms'},
+            '0.30.0',
+            id='time_unit',
+        ),
+        pytest.param(
+            {'pixel_columns': ['x', 'y']},
+            '0.30.0',
+            id='pixel_columns',
+        ),
+        pytest.param(
+            {'position_columns': ['x', 'y']},
+            '0.30.0',
+            id='position_columns',
+        ),
+        pytest.param(
+            {'velocity_columns': ['x', 'y']},
+            '0.30.0',
+            id='velocity_columns',
+        ),
+        pytest.param(
+            {'acceleration_columns': ['x', 'y']},
+            '0.30.0',
+            id='acceleration_columns',
+        ),
+        pytest.param(
+            {'distance_column': 'd'},
+            '0.30.0',
+            id='distance_column',
+        ),
+        pytest.param(
+            {'column_map': {'a': 'b'}},
+            '0.30.0',
+            id='column_map',
         ),
     ],
 )

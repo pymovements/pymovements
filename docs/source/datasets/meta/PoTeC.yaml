@@ -9,6 +9,12 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
     text_id: '!str'
+  load_kwargs:
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
 - content: precomputed_events
   filename: fixation.zip
   url: https://osf.io/download/d8pyg/
@@ -50,8 +56,3 @@ custom_read_kwargs:
     separator: "\t"
     null_values: .
     infer_schema_length: 10000
-time_column: time
-time_unit: ms
-pixel_columns:
-- x
-- y

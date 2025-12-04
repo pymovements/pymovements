@@ -27,6 +27,7 @@ from pymovements.utils.downloads import download_and_extract_archive
 from pymovements.utils.downloads import download_file
 
 
+@pytest.mark.network
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_download_and_extract_archive(tmp_path):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
@@ -54,6 +55,7 @@ def test_download_and_extract_archive(tmp_path):
         assert hashlib.md5(file_bytes).hexdigest() == md5
 
 
+@pytest.mark.network
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 @pytest.mark.parametrize(
     'verbose',
@@ -97,6 +99,7 @@ def test_download_and_extract_archive_extract_dirpath_None(tmp_path, capsys, ver
         assert out == ''
 
 
+@pytest.mark.network
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_download_and_extract_archive_invalid_md5(tmp_path):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
@@ -112,6 +115,7 @@ def test_download_and_extract_archive_invalid_md5(tmp_path):
         'not found or download corrupted.'
 
 
+@pytest.mark.network
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 @pytest.mark.parametrize('download_function', [download_and_extract_archive, download_file])
 def test_deprecated_download_function(download_function, tmp_path):

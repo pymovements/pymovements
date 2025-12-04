@@ -29,6 +29,7 @@ from pymovements.dataset._utils._downloads import _get_redirected_url
 from pymovements.dataset._utils._downloads import download_file
 
 
+@pytest.mark.network
 @pytest.mark.parametrize(
     'verbose',
     [
@@ -52,6 +53,7 @@ def test_download_file(tmp_path, verbose):
         assert hashlib.md5(file_bytes).hexdigest() == md5
 
 
+@pytest.mark.network
 def test_download_file_md5_None(tmp_path):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
@@ -105,6 +107,7 @@ def test_download_file_http_failure(tmp_path):
             download_file(url, tmp_path, filename, md5)
 
 
+@pytest.mark.network
 def test_download_file_with_invalid_md5(tmp_path):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
@@ -118,6 +121,7 @@ def test_download_file_with_invalid_md5(tmp_path):
         'not found or download corrupted.'
 
 
+@pytest.mark.network
 def test__get_redirected_url():
     url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
     expected_url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
@@ -127,6 +131,7 @@ def test__get_redirected_url():
     assert final_url == expected_url
 
 
+@pytest.mark.network
 def test__get_redirected_url_with_redirects():
     url = 'https://github.com/pymovements/pymovements/archive/master.zip'
     expected_final_url = 'https://codeload.github.com/pymovements/pymovements/zip/main'
@@ -136,6 +141,7 @@ def test__get_redirected_url_with_redirects():
     assert final_url == expected_final_url
 
 
+@pytest.mark.network
 def test__get_redirected_url_with_redirects_max_hops():
     url = 'https://github.com/pymovements/pymovements/archive/master.zip'
 

@@ -42,6 +42,7 @@ dependencies = [
   "pyopenssl>=22.0.0",
   "pyreadr>=0.5.2",
   "pyyaml>=6.0.2",
+  "scikit-learn>=1.2",
   "scipy>=1.8.0",
   "tqdm>=4.63.0",
   "typing_extensions>=4.0.0"
@@ -73,9 +74,9 @@ dev = [
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=4.0.0",
   "setuptools>=61.0.0",
-  "types-tqdm>=4.64.0",
+  "types-tqdm>=4.67.0",
   "pre-commit>=3.0.0",
-  "pylint>=3.0.0"
+  "pylint>=4.0.0"
 ]
 
 [project.urls]
@@ -159,6 +160,7 @@ filterwarnings = [
   "ignore:FigureCanvasAgg is non-interactive, and thus cannot be shown:UserWarning",
   "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning"
 ]
+markers = ["network: mark a test as requiring network access"]
 testpaths = ['tests', 'src']
 
 [tool.setuptools.package-data]
