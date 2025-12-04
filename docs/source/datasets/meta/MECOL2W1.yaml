@@ -6,6 +6,10 @@ resources:
   url: https://osf.io/download/8rygu/
   md5: 1ff32c5823eb70c22bab725499fbbf87
   filename_pattern: joint_l2_fixation_trimmed_report_2.0.rda
+  load_kwargs:
+    trial_columns:
+    - uniform_id
+    - itemid
 - content: precomputed_reading_measures
   filename: joint_data_l2_trimmed_version2.0.rda
   url: https://osf.io/download/re7uy/
@@ -16,6 +20,3 @@ custom_read_kwargs:
     r_dataframe_key: joint.fix.l2
   precomputed_reading_measures:
     r_dataframe_key: joint.data
-trial_columns:
-- uniform_id
-- itemid

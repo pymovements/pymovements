@@ -11,6 +11,10 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
       task: !str
+    load_kwargs:
+      time_column: null
+      time_unit: null
+      pixel_columns: ['x', 'y']
 
 experiment:
   screen_width_px: 3440
@@ -20,17 +24,6 @@ experiment:
   distance_cm: 50
   origin: "center"
   sampling_rate: 30
-
-# TODO
-time_column: null
-
-time_unit: null
-
-pixel_columns:
-  - "x"
-  - "y"
-
-column_map: {}
 
 custom_read_kwargs:
   gaze:

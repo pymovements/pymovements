@@ -12,6 +12,7 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+
   - content: gaze
     url: "https://osf.io/download/yqukn/"
     filename: "b.zip"
@@ -21,6 +22,12 @@ resources:
       subject_id: !int
       trial_id: !int
       block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated']
+
   - content: gaze
     url: "https://osf.io/download/yf2xa/"
     filename: "e.zip"
@@ -46,18 +53,6 @@ experiment:
     vendor: "Pupil Labs"
     mount: "Wearable"
 
-time_column: "eyelink_timestamp"
-
-time_unit: "ms"
-
-distance_column: "target_distance"
-
-pixel_columns:
-  - "x_pix_pupilcore_interpolated"
-  - "y_pix_pupilcore_interpolated"
-
-column_map: {}
-
 custom_read_kwargs:
   gaze:
     schema_overrides:
@@ -76,4 +71,4 @@ custom_read_kwargs:
       time_to_next_bac: !polars.Float32
       prev_bac: !polars.Float32
       next_bac: !polars.Float32
-    separator: ","
+    separator: ','

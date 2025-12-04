@@ -8,6 +8,15 @@ resources:
   filename_pattern: Experiment {experiment_id:d}.csv
   filename_pattern_schema_overrides:
     experiment_id: '!int'
+  load_kwargs:
+    trial_columns:
+    - Trial
+    - Participant
+    time_column: Time
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
 experiment:
   eyetracker:
     sampling_rate: 3
@@ -29,11 +38,3 @@ custom_read_kwargs:
       x: '!polars.datatypes.classes.Float32'
       y: '!polars.datatypes.classes.Float32'
       Participant: '!polars.datatypes.classes.Int64'
-trial_columns:
-- Trial
-- Participant
-time_column: Time
-time_unit: ms
-pixel_columns:
-- x
-- y
