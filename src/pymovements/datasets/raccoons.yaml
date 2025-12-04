@@ -1,5 +1,7 @@
 name: "RaCCooNS"
 
+long_name: "Radboud Coregistration Corpus of Narrative Sentences"
+
 resources:
   - content: gaze
     resource: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip'
