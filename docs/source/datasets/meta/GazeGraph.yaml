@@ -10,6 +10,11 @@ resources:
     subject_id: '!int'
     task: '!str'
   load_kwargs:
+    time_column: null
+    time_unit: null
+    pixel_columns:
+    - x
+    - y
     read_csv_kwargs:
       separator: ','
       has_header: false
@@ -19,6 +24,7 @@ resources:
       schema_overrides:
       - '!polars.datatypes.classes.Float32'
       - '!polars.datatypes.classes.Float32'
+
 experiment:
   eyetracker:
     sampling_rate: 30
@@ -29,6 +35,3 @@ experiment:
     height_cm: 34.0106
     distance_cm: 50
     origin: center
-pixel_columns:
-- x
-- y

@@ -13,6 +13,13 @@ resources:
       subject_id: !int
       session_id: !int
     load_kwargs:
+      time_column: 'n'
+      time_unit: 'ms'
+      position_columns: ['x', 'y']
+      column_map:
+        val: "validity"
+        xT: "x_target_pos"
+        yT: "y_target_pos"
       read_csv_kwargs:
         null_values: "NaN"
         schema_overrides:
@@ -33,16 +40,3 @@ experiment:
   distance_cm: 55
   origin: "upper left"
   sampling_rate: 1000
-
-time_column: "n"
-
-time_unit: "ms"
-
-position_columns:
-  - "x"
-  - "y"
-
-column_map:
-  val: "validity"
-  xT: "x_target_pos"
-  yT: "y_target_pos"

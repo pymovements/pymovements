@@ -9,7 +9,11 @@ resources:
     md5: "f7eaf80ac5916d79351419fd4f1da2f6"
     filename_pattern: "joint_fix_trimmed_L2_wave2.rda"
     load_kwargs:
+      trial_columns:
+        - uniform_id
+        - itemid
       r_dataframe_key: 'joint.fix.l2_w2'
+
   - content: precomputed_reading_measures
     url: "https://osf.io/download/tma46/"
     filename: "joint_data_trimmed_L2_wave2_2025_01_03.rda"
@@ -17,9 +21,3 @@ resources:
     filename_pattern: "joint_data_trimmed_L2_wave2_2025_01_03.rda"
     load_kwargs:
       r_dataframe_key: 'joint.data'
-
-trial_columns:
-  - "uniform_id"
-  - "itemid"
-
-column_map: {}

@@ -19,15 +19,39 @@
 # SOFTWARE.
 """Test basic preprocessing on various datasets."""
 import shutil
+from pathlib import Path
 
+import polars as pl
 import pytest
 
 from pymovements import Dataset
 from pymovements import DatasetDefinition
+from pymovements import DatasetLibrary
 from pymovements import DatasetPaths
-from pymovements import datasets
 from pymovements import Experiment
 from pymovements import ResourceDefinitions
+
+
+@pytest.fixture(name='make_example_dataset_files', scope='function')
+def fixture_make_example_dataset_files(tmp_path, testfiles_dirpath):
+    def _make_example_dataset_files(
+            example_filename: str,
+            filename_pattern: str,
+            fill_filename_df: pl.DataFrame,
+    ) -> Path:
+        # Make samples subdirectory
+        samples_dirpath = tmp_path / 'raw'
+        samples_dirpath.mkdir()
+
+        for filename_pattern_values in fill_filename_df.to_dicts():
+            # Create target filepath by filling filename pattern with passed data.
+            target_filename = filename_pattern.format(**filename_pattern_values)
+            target_filepath = samples_dirpath / target_filename
+            # Get filepath of source example file and copy file to target filepath.
+            source_filepath = testfiles_dirpath / example_filename
+            shutil.copy2(source_filepath, target_filepath)
+        return tmp_path
+    return _make_example_dataset_files
 
 
 @pytest.fixture(
@@ -51,120 +75,153 @@ from pymovements import ResourceDefinitions
         'potsdam_binge_wearable_pvt',
     ],
 )
-def fixture_dataset_init_kwargs(request, make_example_file):
+def fixture_dataset_init_kwargs(request, make_example_dataset_files):
     if request.param == 'csv_monocular':
-        filepath = make_example_file('monocular_example.csv')
         definition = DatasetDefinition(
-            resources=[{'content': 'gaze', 'filename_pattern': 'monocular_example.csv'}],
-            time_column='time',
-            time_unit='ms',
-            pixel_columns=['x_left_pix', 'y_left_pix'],
+            resources=[{
+                'content': 'gaze',
+                'filename_pattern': '{subject_id:d}.csv',
+                'load_kwargs': {
+                    'time_column': 'time',
+                    'time_unit': 'ms',
+                    'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                },
+            }],
             experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         )
+        example_filename = 'monocular_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
     elif request.param == 'csv_binocular':
-        filepath = make_example_file('binocular_example.csv')
         definition = DatasetDefinition(
-            resources=[{'content': 'gaze', 'filename_pattern': 'binocular_example.csv'}],
-            time_column='time',
-            time_unit='ms',
-            pixel_columns=['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
-            position_columns=['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
+            resources=[{
+                'content': 'gaze',
+                'filename_pattern': '{subject_id:d}.csv',
+                'load_kwargs': {
+                    'time_column': 'time',
+                    'time_unit': 'ms',
+                    'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
+                    'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
+                },
+            }],
             experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         )
+        example_filename = 'binocular_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
     elif request.param == 'ipc_monocular':
-        filepath = make_example_file('monocular_example.feather')
         definition = DatasetDefinition(
-            resources=[{'content': 'gaze', 'filename_pattern': 'monocular_example.feather'}],
+            resources=[{'content': 'gaze', 'filename_pattern': '{subject_id:d}.feather'}],
             experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         )
+        example_filename = 'monocular_example.feather'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
     elif request.param == 'ipc_binocular':
-        filepath = make_example_file('binocular_example.feather')
         definition = DatasetDefinition(
-            resources=[{'content': 'gaze', 'filename_pattern': 'binocular_example.feather'}],
+            resources=[{'content': 'gaze', 'filename_pattern': '{subject_id:d}.feather'}],
             experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),
         )
+        example_filename = 'binocular_example.feather'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
     elif request.param == 'didec':
-        filepath = make_example_file('didec_example.txt')
-        definition = datasets.DIDEC()
-        definition.resources[0].filename_pattern = 'didec_example.txt'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('DIDEC')
+        example_filename = 'didec_example.txt'
+        filename_config = pl.from_dict({
+            'experiment': [1, 2],
+            'list': [1, 2],
+            'version': [1, 2],
+            'participant': [1, 2],
+            'session': [1, 2],
+            'trial': [1, 2],
+        })
     elif request.param == 'emtec':
-        filepath = make_example_file('emtec_example.csv')
-        definition = datasets.EMTeC(trial_columns=None)
-        definition.resources[0].filename_pattern = 'emtec_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('EMTeC')
+        example_filename = 'emtec_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
     elif request.param == 'hbn':
-        filepath = make_example_file('hbn_example.csv')
-        definition = datasets.HBN()
-        definition.resources[0].filename_pattern = 'hbn_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
-    elif request.param == 'sbsat':
-        filepath = make_example_file('sbsat_example.csv')
-        definition = datasets.SBSAT()
-        definition.resources[0].filename_pattern = 'sbsat_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('HBN')
+        example_filename = 'hbn_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3], 'video_id': [1, 2, 3]})
     elif request.param == 'gaze_on_faces':
-        filepath = make_example_file('gaze_on_faces_example.csv')
-        definition = datasets.GazeOnFaces()
-        definition.resources[0].filename_pattern = 'gaze_on_faces_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('GazeOnFaces')
+        example_filename = 'gaze_on_faces_example.csv'
+        filename_config = pl.from_dict({'sub_id': [1, 2, 3], 'trial_id': [1, 2, 3]})
     elif request.param == 'gazebase':
-        filepath = make_example_file('gazebase_example.csv')
-        definition = datasets.GazeBase()
-        definition.resources[0].filename_pattern = 'gazebase_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('GazeBase')
+        example_filename = 'gazebase_example.csv'
+        filename_config = pl.from_dict({
+            'round_id': [1, 2],
+            'subject_id': [1, 2],
+            'session_id': [1, 2],
+            'task_name': [1, 2],
+        })
     elif request.param == 'gazebase_vr':
-        filepath = make_example_file('gazebase_vr_example.csv')
-        definition = datasets.GazeBaseVR()
-        definition.resources[0].filename_pattern = 'gazebase_vr_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('GazeBaseVR')
+        example_filename = 'gazebase_vr_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
+        filename_config = pl.from_dict({
+            'round_id': [1, 2],
+            'subject_id': [1, 2],
+            'session_id': [1, 2],
+            'task_name': [1, 2],
+        })
     elif request.param == 'gazegraph':
-        filepath = make_example_file('gazegraph_example.csv')
-        definition = datasets.GazeGraph()
-        definition.resources[0].filename_pattern = 'gazegraph_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('GazeGraph')
+        example_filename = 'gazegraph_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
+        filename_config = pl.from_dict({'subject_id': [1, 2], 'task': [1, 2]})
     elif request.param == 'judo1000':
-        filepath = make_example_file('judo1000_example.csv')
-        definition = datasets.JuDo1000()
-        definition.resources[0].filename_pattern = 'judo1000_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('JuDo1000')
+        example_filename = 'judo1000_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2], 'session_id': [1, 2]})
     elif request.param == 'potec':
-        filepath = make_example_file('potec_example.tsv')
-        definition = datasets.PoTeC()
-        definition.resources[0].filename_pattern = 'potec_example.tsv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('PoTeC')
+        example_filename = 'potec_example.tsv'
+        filename_config = pl.from_dict({'subject_id': [1, 2], 'text_id': [1, 2]})
     elif request.param == 'potsdam_binge_remote_pvt':
-        filepath = make_example_file('potsdam_binge_pvt_example.csv')
-        definition = datasets.PotsdamBingeRemotePVT()
-        definition.resources[0].filename_pattern = 'potsdam_binge_pvt_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('PotsdamBingeRemotePVT')
+        definition.resources = ResourceDefinitions([definition.resources[0]])
+        example_filename = 'potsdam_binge_pvt_example.csv'
+        filename_config = pl.from_dict({
+            'subject_id': [1, 2],
+            'session_id': [1, 2],
+            'condition': ['A', 'B'],
+            'trial_id': [1, 2],
+            'block_id': [1, 2],
+        })
     elif request.param == 'potsdam_binge_wearable_pvt':
-        filepath = make_example_file('potsdam_binge_pvt_example.csv')
-        definition = datasets.PotsdamBingeWearablePVT()
-        definition.resources[0].filename_pattern = 'potsdam_binge_pvt_example.csv'
-        definition.resources[0].filename_pattern_schema_overrides = None
+        definition = DatasetLibrary.get('PotsdamBingeWearablePVT')
+        definition.resources = ResourceDefinitions([definition.resources[1]])
+        example_filename = 'potsdam_binge_pvt_example.csv'
+        filename_config = pl.from_dict({
+            'subject_id': [1, 2],
+            'session_id': [1, 2],
+            'condition': ['A', 'B'],
+            'trial_id': [1, 2],
+            'block_id': [1, 2],
+        })
+    elif request.param == 'sbsat':
+        definition = DatasetLibrary.get('SBSAT')
+        example_filename = 'sbsat_example.csv'
+        filename_config = pl.from_dict({'subject_id': [1, 2, 3, 4, 5]})
     else:
-        raise NotImplementedError(request.param)
+        raise ValueError('unknown request.param {request.param}')
 
-    # make directory for raw data and move example file there
-    dataset_path = filepath.parent
-    raw_dirpath = dataset_path / 'raw'
-    raw_dirpath.mkdir()
-    filepath = shutil.move(filepath, raw_dirpath)
+    dataset_path = make_example_dataset_files(
+        example_filename,
+        definition.resources.filter('gaze')[0].filename_pattern,
+        filename_config,
+    )
 
-    # currently this tests only for a single gaze resource.
-    definition.resources = ResourceDefinitions([definition.resources.filter('gaze')[0]])
+    # Only use gaze sample data in this functional test.
+    definition.resources = definition.resources.filter('gaze')
 
     yield Dataset(
         definition=definition,
-        path=DatasetPaths(
-            root=dataset_path,
-            dataset='.',
-        ),
+        path=DatasetPaths(root=dataset_path, dataset='.'),
     )
 
 
 def test_dataset_save_load_preprocessed(dataset):
+    dataset.scan()
     dataset.load()
 
     if 'pixel' in dataset.gaze[0].samples.columns:

@@ -9,6 +9,13 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
   load_kwargs:
+    trial_columns:
+    - item_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
     read_csv_kwargs:
       separator: "\t"
       columns:
@@ -31,6 +38,8 @@ resources:
         x: '!polars.datatypes.classes.Float32'
         y: '!polars.datatypes.classes.Float32'
         pupil_right: '!polars.datatypes.classes.Float32'
+
+
 - content: precomputed_events
   filename: fixations.csv
   url: https://osf.io/download/2hs8p/
@@ -38,6 +47,7 @@ resources:
   filename_pattern: fixations.csv
   load_kwargs:
     separator: "\t"
+
 - content: precomputed_reading_measures
   filename: reading_measures.csv
   url: https://osf.io/download/s4ny8/
@@ -45,6 +55,7 @@ resources:
   filename_pattern: reading_measures.csv
   load_kwargs:
     separator: "\t"
+
 experiment:
   eyetracker:
     sampling_rate: 2000
@@ -55,10 +66,3 @@ experiment:
     height_cm: 30.2
     distance_cm: 60
     origin: center
-trial_columns:
-- item_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x
-- y

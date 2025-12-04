@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -76,22 +77,22 @@ class GazeBaseVR(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    position_columns: list[str]
+    position_columns: list[str] | None
         The name of the dva position columns in the input data frame. These columns will be
         nested into the column ``position``. If the list is empty or None, the nested
         ``position`` column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -121,6 +122,8 @@ class GazeBaseVR(DatasetDefinition):
 
     name: str = 'GazeBaseVR'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'GazeBaseVR dataset'
 
     resources: ResourceDefinitions = field(
@@ -142,6 +145,14 @@ class GazeBaseVR(DatasetDefinition):
                         'session_id': int,
                     },
                     'load_kwargs': {
+                        'time_column': 'n',
+                        'time_unit': 'ms',
+                        'position_columns': ['lx', 'ly', 'rx', 'ry', 'x', 'y'],
+                        'column_map': {
+                            'xT': 'x_target_pos',
+                            'yT': 'y_target_pos',
+                            'zT': 'z_target_pos',
+                        },
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'n': pl.Float32,
@@ -184,18 +195,12 @@ class GazeBaseVR(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'n'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    position_columns: list[str] = field(default_factory=lambda: ['lx', 'ly', 'rx', 'ry', 'x', 'y'])
+    position_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(
-        default_factory=lambda: {
-            'xT': 'x_target_pos',
-            'yT': 'y_target_pos',
-            'zT': 'z_target_pos',
-        },
-    )
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None

@@ -12,6 +12,9 @@ resources:
       subject_id: !int
       session_id: !int
     load_kwargs:
+      trial_columns:
+        - task
+        - trial_id
       patterns:
         - pattern: 'SYNCTIME_READING_SCREEN'
           column: "task"
@@ -56,17 +59,3 @@ experiment:
     right: false
     model: "EyeLink Portable Duo"
     vendor: "EyeLink"
-
-trial_columns:
-  - task
-  - trial_id
-
-time_column: "time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x_pix"
-  - "y_pix"
-
-column_map: {}

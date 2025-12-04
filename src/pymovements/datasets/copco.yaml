@@ -10,6 +10,12 @@ resources:
     filename_pattern: 'P{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
+    load_kwargs:
+      trial_columns: ['paragraph_id', 'speech_id']
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['x_right', 'y_right']
+
   - content: precomputed_events
     url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip="
     filename: "FixationReports.zip"
@@ -26,6 +32,7 @@ resources:
       truncate_ragged_lines: true
       decimal_comma: true
       quote_char: null
+
   - content: precomputed_reading_measures
     url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip="
     filename: "ReadingMeasures.zip"
@@ -42,17 +49,3 @@ experiment:
   distance_cm: 85
   origin: "center"
   sampling_rate: 1000
-
-trial_columns:
-  - "paragraph_id"
-  - "speech_id"
-
-time_column: "time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x_right"
-  - "y_right"
-
-column_map: {}

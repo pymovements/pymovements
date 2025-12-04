@@ -9,6 +9,14 @@ resources:
   filename_pattern_schema_overrides:
     experiment_id: '!int'
   load_kwargs:
+    trial_columns:
+    - Trial
+    - Participant
+    time_column: Time
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
     read_csv_kwargs:
       schema_overrides:
         Tracking: '!polars.datatypes.classes.String'
@@ -19,6 +27,7 @@ resources:
         x: '!polars.datatypes.classes.Float32'
         y: '!polars.datatypes.classes.Float32'
         Participant: '!polars.datatypes.classes.Int64'
+
 experiment:
   eyetracker:
     sampling_rate: 3
@@ -29,11 +38,3 @@ experiment:
     height_cm: 29.81
     distance_cm: 50
     origin: upper left
-trial_columns:
-- Trial
-- Participant
-time_column: Time
-time_unit: ms
-pixel_columns:
-- x
-- y

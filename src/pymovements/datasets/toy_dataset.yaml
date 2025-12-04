@@ -12,6 +12,10 @@ resources:
       text_id: !int
       page_id: !int
     load_kwargs:
+      time_column: 'timestamp'
+      time_unit: 'ms'
+      pixel_columns: ['x', 'y']
+    load_kwargs:
       read_csv_kwargs:
         columns:
           - "timestamp"
@@ -36,13 +40,3 @@ experiment:
   distance_cm: 68
   origin: "upper left"
   sampling_rate: 1000
-
-time_column: "timestamp"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x"
-  - "y"
-
-column_map: {}

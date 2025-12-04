@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -68,7 +69,7 @@ class DAEMONS(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -98,6 +99,8 @@ class DAEMONS(DatasetDefinition):
 
     name: str = 'DAEMONS'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Potsdam data set of eye movement on natural scenes'
 
     resources: ResourceDefinitions = field(
@@ -120,6 +123,6 @@ class DAEMONS(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None

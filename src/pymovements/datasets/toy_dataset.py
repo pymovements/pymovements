@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -67,22 +68,22 @@ class ToyDataset(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -112,36 +113,41 @@ class ToyDataset(DatasetDefinition):
 
     name: str = 'ToyDataset'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'pymovements Toy Dataset'
 
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'pymovements-toy-dataset.zip',
-                        'md5': '256901852c1c07581d375eef705855d6',
-                        'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'text_id': int,
-                            'page_id': int,
-                        },
-                        'load_kwargs': {
-                            'read_csv_kwargs': {
-                                'columns': ['timestamp', 'x', 'y', 'stimuli_x', 'stimuli_y'],
-                                'schema_overrides': {
-                                    'timestamp': pl.Float64,
-                                    'x': pl.Float64,
-                                    'y': pl.Float64,
-                                    'stimuli_x': pl.Float64,
-                                    'stimuli_y': pl.Float64,
-                                },
-                                'separator': '\t',
-                                'null_values': '-32768.00',
+                {
+                    'content': 'gaze',
+                    'url': 'https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'pymovements-toy-dataset.zip',
+                    'md5': '256901852c1c07581d375eef705855d6',
+                    'filename_pattern': r'trial_{text_id:d}_{page_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'text_id': int,
+                        'page_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'timestamp',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                        'read_csv_kwargs': {
+                            'columns': ['timestamp', 'x', 'y', 'stimuli_x', 'stimuli_y'],
+                            'schema_overrides': {
+                                'timestamp': pl.Float64,
+                                'x': pl.Float64,
+                                'y': pl.Float64,
+                                'stimuli_x': pl.Float64,
+                                'stimuli_y': pl.Float64,
                             },
+                            'separator': '\t',
+                            'null_values': '-32768.00',
                         },
                     },
+                },
             ],
         ),
     )
@@ -162,12 +168,12 @@ class ToyDataset(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'timestamp'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None

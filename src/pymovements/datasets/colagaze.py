@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -92,6 +93,8 @@ class CoLAGaze(DatasetDefinition):
 
     name: str = 'CoLAGaze'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Corpus of Eye Movements for Linguistic Acceptability'
 
     resources: ResourceDefinitions = field(
@@ -99,7 +102,7 @@ class CoLAGaze(DatasetDefinition):
             [
                     {
                         'content': 'gaze',
-                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215',  # noqa: E501 # pylint: disable=line-too-long
+                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215/?zip=',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'raw_data.zip',
                         'md5': None,  # type: ignore
                         'filename_pattern': '{subject_id:d}.asc',
@@ -107,7 +110,7 @@ class CoLAGaze(DatasetDefinition):
                     },
                     {
                         'content': 'precomputed_events',
-                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215',  # noqa: E501 # pylint: disable=line-too-long
+                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e0b41987c157db5204d3b/?zip=',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'fixations.zip',
                         'md5': None,  # type: ignore
                         'filename_pattern': 'fixations_report_{subject_id:d}.csv',
@@ -115,7 +118,7 @@ class CoLAGaze(DatasetDefinition):
                     },
                     {
                         'content': 'precomputed_reading_measures',
-                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215',  # noqa: E501 # pylint: disable=line-too-long
+                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e045672fc74248add6338/?zip=',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'measures.zip',
                         'md5': None,  # type: ignore
                         'filename_pattern': 'raw_measures_for_features{subject_id:d}.csv',

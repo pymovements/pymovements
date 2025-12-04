@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -74,22 +75,22 @@ class ToyDatasetEyeLink(DatasetDefinition):
             the input data frame is assumed to contain multiple trials and the transformation
             methods will be applied to each trial separately.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -119,69 +120,72 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     name: str = 'ToyDatasetEyeLink'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'pymovements Toy Dataset EyeLink'
 
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
             [
-                        {
-                            'content': 'gaze',
-                            'url': 'https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
-                            'filename': 'pymovements-toy-dataset-eyelink.zip',
-                            'md5': '966c0b6aefe61f32942366ed719454d3',
-                            'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',  # noqa: E501 # pylint: disable=line-too-long
-                            'filename_pattern_schema_overrides': {
-                                'subject_id': int,
-                                'session_id': int,
+                {
+                    'content': 'gaze',
+                    'url': 'https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'pymovements-toy-dataset-eyelink.zip',
+                    'md5': '966c0b6aefe61f32942366ed719454d3',
+                    'filename_pattern': r'subject_{subject_id:d}_session_{session_id:d}.asc',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'session_id': int,
+                    },
+                    'load_kwargs': {
+                        'trial_columns': ['task', 'trial_id'],
+                        'patterns': [
+                            {
+                                'pattern': 'SYNCTIME_READING_SCREEN',
+                                'column': 'task',
+                                'value': 'reading',
                             },
-                            'load_kwargs': {
-                                'patterns': [
-                                    {
-                                        'pattern': 'SYNCTIME_READING_SCREEN',
-                                        'column': 'task',
-                                        'value': 'reading',
-                                    },
-                                    {
-                                        'pattern': 'SYNCTIME_JUDO',
-                                        'column': 'task',
-                                        'value': 'judo',
-                                    },
-                                    {
-                                        'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
-                                        'column': 'task',
-                                        'value': None,
-                                    },
-
-                                    r'TRIALID (?P<trial_id>\d+)',
-                                    {
-                                        'pattern': 'TRIAL_RESULT',
-                                        'column': 'trial_id',
-                                        'value': None,
-                                    },
-
-                                    r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
-                                    {
-                                        'pattern': 'READING[.]STOP',
-                                        'column': 'screen_id',
-                                        'value': None,
-                                    },
-
-                                    r'SYNCTIME.P(?P<point_id>\d+)',
-                                    {
-                                        'pattern': r'P\d[.]STOP',
-                                        'column': 'point_id',
-                                        'value': None,
-                                    },
-                                ],
-                                'schema': {
-                                    'trial_id': pl.Int64,
-                                    'screen_id': pl.Int64,
-                                    'point_id': pl.Int64,
-                                    'task': pl.Utf8,
-                                },
-                                'encoding': 'ascii',
+                            {
+                                'pattern': 'SYNCTIME_JUDO',
+                                'column': 'task',
+                                'value': 'judo',
                             },
+                            {
+                                'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
+                                'column': 'task',
+                                'value': None,
+                            },
+
+                            r'TRIALID (?P<trial_id>\d+)',
+                            {
+                                'pattern': 'TRIAL_RESULT',
+                                'column': 'trial_id',
+                                'value': None,
+                            },
+
+                            r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
+                            {
+                                'pattern': 'READING[.]STOP',
+                                'column': 'screen_id',
+                                'value': None,
+                            },
+
+                            r'SYNCTIME.P(?P<point_id>\d+)',
+                            {
+                                'pattern': r'P\d[.]STOP',
+                                'column': 'point_id',
+                                'value': None,
+                            },
+                        ],
+                        'schema': {
+                            'trial_id': pl.Int64,
+                            'screen_id': pl.Int64,
+                            'point_id': pl.Int64,
+                            'task': pl.Utf8,
                         },
+                        'encoding': 'ascii',
+                    },
+                },
             ],
         ),
     )
@@ -208,16 +212,14 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] | None = field(
-        default_factory=lambda: ['task', 'trial_id'],
-    )
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None

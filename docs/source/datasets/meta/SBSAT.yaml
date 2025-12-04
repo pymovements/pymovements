@@ -9,6 +9,14 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!int'
   load_kwargs:
+    trial_columns:
+    - book_name
+    - screen_id
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x_left
+    - y_left
     read_csv_kwargs:
       separator: "\t"
       columns:
@@ -25,6 +33,7 @@ resources:
         x_left: '!polars.datatypes.classes.Float32'
         y_left: '!polars.datatypes.classes.Float32'
         pupil_left: '!polars.datatypes.classes.Float32'
+
 - content: precomputed_events
   filename: 18sat_fixfinal.csv
   url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
@@ -32,6 +41,7 @@ resources:
   filename_pattern: 18sat_fixfinal.csv
   load_kwargs:
     separator: ','
+
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -42,11 +52,3 @@ experiment:
     height_cm: 42.4
     distance_cm: 70
     origin: center
-trial_columns:
-- book_name
-- screen_id
-time_column: time
-time_unit: ms
-pixel_columns:
-- x_left
-- y_left

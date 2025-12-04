@@ -7,12 +7,13 @@ resources:
   md5: 3c969a930a71cd62c67b936426dd079b
   filename_pattern: joint_l1_fixation_version1.3.rda
   load_kwargs:
+    trial_columns:
+    - uniform_id
+    - itemid
     r_dataframe_key: joint.fix
+
 - content: precomputed_reading_measures
   filename: sentence_data_version1.3.csv
   url: https://osf.io/download/n5pvh/
   md5: 609f82b6f45b7c98a0769c6ce14ee6e9
   filename_pattern: sentence_data_version1.3.csv
-trial_columns:
-- uniform_id
-- itemid

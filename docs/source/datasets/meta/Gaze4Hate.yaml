@@ -7,6 +7,9 @@ resources:
   md5: c8cc645d1fad659f9442d61795da5481
   filename_pattern: gaze4hate_sentence_reading_fix_report.csv
   load_kwargs:
+    trial_columns:
+    - pno
+    - sno
     separator: "\t"
     null_values: .
 - content: precomputed_reading_measures
@@ -26,6 +29,3 @@ experiment:
     height_cm: 33.6
     distance_cm: 78.0
     origin: center
-trial_columns:
-- pno
-- sno

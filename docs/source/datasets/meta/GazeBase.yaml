@@ -11,6 +11,15 @@ resources:
     subject_id: '!int'
     session_id: '!int'
   load_kwargs:
+    time_column: n
+    time_unit: ms
+    position_columns:
+    - x
+    - y
+    column_map:
+      val: validity
+      xT: x_target_pos
+      yT: y_target_pos
     read_csv_kwargs:
       null_values: NaN
       schema_overrides:
@@ -22,6 +31,7 @@ resources:
         lab: '!polars.datatypes.classes.Int64'
         xT: '!polars.datatypes.classes.Float32'
         yT: '!polars.datatypes.classes.Float32'
+
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -32,12 +42,3 @@ experiment:
     height_cm: 29.7
     distance_cm: 55
     origin: upper left
-column_map:
-  val: validity
-  xT: x_target_pos
-  yT: y_target_pos
-time_column: n
-time_unit: ms
-position_columns:
-- x
-- y

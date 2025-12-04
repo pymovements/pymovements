@@ -11,6 +11,10 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
     load_kwargs:
+      trial_columns: ['book_name', 'screen_id']
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['x_left', 'y_left']
       read_csv_kwargs:
         separator: "\t"
         columns:
@@ -27,6 +31,7 @@ resources:
           x_left: !polars.Float32
           y_left: !polars.Float32
           pupil_left: !polars.Float32
+
   - content: precomputed_events
     url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
     filename: 18sat_fixfinal.csv
@@ -43,16 +48,3 @@ experiment:
   distance_cm: 70
   origin: center
   sampling_rate: 1000
-
-trial_columns:
-  - 'book_name'
-  - 'screen_id'
-
-time_column: time
-time_unit: ms
-
-pixel_columns:
-  - x_left
-  - y_left
-
-column_map: {}

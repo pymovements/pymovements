@@ -16,6 +16,10 @@ resources:
       session: !int
       trial: !int
     load_kwargs:
+      trial_columns: ['Stimulus']
+      time_column: 'Time'
+      time_unit: 'ms'
+      pixel_columns: ['L POR X [px]', 'L POR Y [px]', 'R POR X [px]', 'R POR Y [px]']
       read_csv_kwargs:
         separator: "\t"
         skip_rows: 43
@@ -44,18 +48,3 @@ experiment:
   distance_cm: 70
   origin: "upper left"
   sampling_rate: 1000
-
-trial_columns:
-  - "Stimulus"
-
-time_column: "Time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "L POR X [px]"
-  - "L POR Y [px]"
-  - "R POR X [px]"
-  - "R POR Y [px]"
-
-column_map: {}
