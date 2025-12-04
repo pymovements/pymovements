@@ -6,7 +6,7 @@ resources:
     filename: "ET_raw_data.zip"
     md5: null
     filename_format: "{participant_id:s}.asc"
-    filename_format_schema_overrides: 
+    filename_format_schema_overrides:
       participant_id: !str
     load_kwargs:
       patterns:
