@@ -113,7 +113,7 @@ class RaCCooNS(DatasetDefinition):
 
     name: str = 'RaCCooNS'
 
-    long_name: str | None = "Radboud Coregistration Corpus of Narrative Sentences"
+    long_name: str | None = 'Radboud Coregistration Corpus of Narrative Sentences'
 
     has_files: dict[str, bool] = field(
         default_factory=lambda: {
