@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+import packaging.version
 import polars as pl
 import pytest
 
@@ -272,6 +273,10 @@ def test_from_asc_parameter_is_deprecated(
 
 
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+@pytest.mark.xfail(
+    packaging.version.parse(pl.__version__) < packaging.version.parse('1.34.0'),
+    reason='Bare decimal without precision/scale is only invalid in polars>=1.34.0',
+)
 def test_from_csv_decimal_overrides_bare_decimal_is_invalid(tmp_path):
     # Minimal CSV with a scalar numeric column that we can override
     p = tmp_path / 'mini.csv'
