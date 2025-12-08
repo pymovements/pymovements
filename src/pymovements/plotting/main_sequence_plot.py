@@ -92,7 +92,7 @@ def main_sequence_plot(
         .. deprecated:: v0.22.0
         Please use the ``events`` argument instead. This argument will be removed in v0.27.0.
     event_name: str
-        Filters events for a particular value in ``name`` column. (default: 'saccade')
+        Filters events for a particular value in "name" column. (default: 'saccades')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None
