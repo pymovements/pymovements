@@ -51,7 +51,7 @@ def main_sequence_plot(
         savepath: str | None = None,
         show: bool = True,
         event_df: Events | EventDataFrame | None = None,
-        event_name: str = 'saccade',
+        event_name: str = 'saccades',
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
         **kwargs: Collection,
