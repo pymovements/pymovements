@@ -139,24 +139,28 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
     opener = _build_no_http_error_opener()
 
     for _ in range(max_hops + 1):
-        req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
+        request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
         # backwards-compatible
-        req.get_method = lambda: 'HEAD'  # type: ignore[assignment]
+        request.get_method = lambda: 'HEAD'  # type: ignore[assignment]
+
         try:
-            with opener.open(req) as response:
-                code = getattr(response, 'status', None) or response.getcode()
-                # Manually handle redirects to avoid HTTPError creation
-                if code and 300 <= code < 400:
-                    loc = response.headers.get('Location') if hasattr(response, 'headers') else None
-                    if not loc:  # pragma: no cover
-                        return url
-                    # Resolve relative redirects
-                    url = urllib.parse.urljoin(url, loc)
-                    continue
-                # No redirect - return current URL
-                return url
+            response = opener.open(request)
         except URLError:  # pragma: no cover
             # Network failure – just return current URL and let caller decide.
+            return url
+
+        # Ensure the response is closed via context manager
+        with response:
+            code = getattr(response, 'status', None) or response.getcode()
+            # Manually handle redirects to avoid HTTPError creation
+            if code and 300 <= code < 400:
+                loc = response.headers.get('Location') if hasattr(response, 'headers') else None
+                if not loc:  # pragma: no cover
+                    return url
+                # Resolve relative redirects
+                url = urllib.parse.urljoin(url, loc)
+                continue
+            # No redirect - return current URL
             return url
 
     raise RuntimeError(
@@ -223,33 +227,33 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     # This prevents creation of HTTPError objects that can hold temp files and
     # lead to unraisable warnings on Python 3.14.
     opener = _build_no_http_error_opener()
-    req = urllib.request.Request(
+    request = urllib.request.Request(
         url,
         headers={'User-Agent': USER_AGENT, 'Accept': 'application/octet-stream'},
     )
     with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
         # Keep network operations inside a small try/except
         try:
-            resp = opener.open(req)
+            response = opener.open(request)
         except URLError as e:  # pragma: no cover
             raise OSError(str(e)) from e
 
         # Ensure the response is closed via context manager
-        with resp:
-            status = getattr(resp, 'status', None) or resp.getcode()
+        with response:
+            status = getattr(response, 'status', None) or response.getcode()
             if status and status >= 400:  # pragma: no cover
                 raise OSError(f'HTTP Error {status} for URL: {url}')
 
-            content_length = resp.headers.get(
+            content_length = response.headers.get(
                 'Content-Length',
-            ) if hasattr(resp, 'headers') else None
+            ) if hasattr(response, 'headers') else None
             total = int(content_length) if content_length and content_length.isdigit() else None
             if total is not None:
                 t.total = total
 
             with open(destination, 'wb') as out:
                 while True:
-                    chunk = resp.read(8192)
+                    chunk = response.read(8192)
                     if not chunk:
                         break
                     out.write(chunk)
@@ -271,24 +275,28 @@ def _raise_if_http_error(url: str) -> None:  # pylint: disable=inconsistent-retu
     # redirection behavior GitHub uses for archives (redirects to codeload).
     # This lets us detect a 4xx early.
     opener = _build_no_http_error_opener()
-    req = urllib.request.Request(
+    request = urllib.request.Request(
         url,
         headers={'User-Agent': USER_AGENT, 'Accept': 'application/octet-stream'},
     )
-    req.get_method = lambda: 'HEAD'  # type: ignore[assignment]
+    request.get_method = lambda: 'HEAD'  # type: ignore[assignment]
+
     try:
-        with opener.open(req) as resp:
-            code = getattr(resp, 'status', None) or resp.getcode()
-            if code and 300 <= code < 400:
-                # Follow one redirect here by recursing
-                loc = resp.headers.get('Location') if hasattr(resp, 'headers') else None
-                if loc:  # pragma: no cover
-                    return _raise_if_http_error(urllib.parse.urljoin(url, loc))
-            if code and code >= 400:
-                raise OSError(f'HTTP Error {code} for URL: {url}')
+        response = opener.open(request)
     except URLError as e:
         # Network or URL issue
         raise OSError(str(e)) from e  # pragma: no cover
+
+    # Ensure the response is closed via context manager
+    with response:
+        code = getattr(response, 'status', None) or response.getcode()
+        if code and 300 <= code < 400:
+            # Follow one redirect here by recursing
+            loc = response.headers.get('Location') if hasattr(response, 'headers') else None
+            if loc:  # pragma: no cover
+                return _raise_if_http_error(urllib.parse.urljoin(url, loc))
+        if code and code >= 400:
+            raise OSError(f'HTTP Error {code} for URL: {url}')
 
 
 def _build_no_http_error_opener() -> urllib.request.OpenerDirector:
