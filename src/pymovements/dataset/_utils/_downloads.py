@@ -283,9 +283,9 @@ def _raise_if_http_error(url: str) -> None:  # pylint: disable=inconsistent-retu
 
     try:
         response = opener.open(request)
-    except URLError as e:
+    except URLError as e:  # pragma: no cover
         # Network or URL issue
-        raise OSError(str(e)) from e  # pragma: no cover
+        raise OSError(str(e)) from e
 
     # Ensure the response is closed via context manager
     with response:
