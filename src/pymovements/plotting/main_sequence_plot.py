@@ -51,7 +51,7 @@ def main_sequence_plot(
         savepath: str | None = None,
         show: bool = True,
         event_df: Events | EventDataFrame | None = None,
-        event_name: str = 'saccades',
+        event_name: str = 'saccade',
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
         **kwargs: Collection,
@@ -92,7 +92,7 @@ def main_sequence_plot(
         .. deprecated:: v0.22.0
         Please use the ``events`` argument instead. This argument will be removed in v0.27.0.
     event_name: str
-        Filters events for a particular value in "name" column. (default: 'saccades')
+        Filters events for a particular value in "name" column. (default: 'saccade')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None
