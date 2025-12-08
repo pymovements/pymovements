@@ -518,10 +518,7 @@ def test_deg2pix_returns(kwargs, series, expected_df, distance_as_column):
     result_df = df.select(
         pm.gaze.transforms.deg2pix(**kwargs),
     )
-    try:
-        assert_frame_equal(result_df, expected_df.to_frame(), abs_tol=1e-4)
-    except TypeError:
-        assert_frame_equal(result_df, expected_df.to_frame(), atol=1e-4)
+    assert_frame_equal(result_df, expected_df.to_frame(), abs_tol=1e-4)
 
 
 @pytest.mark.parametrize(
