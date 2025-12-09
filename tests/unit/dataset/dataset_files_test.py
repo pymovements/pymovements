@@ -22,8 +22,6 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
 
 import polars as pl
 import pyreadr
@@ -31,15 +29,11 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import DatasetDefinition
-from pymovements import DatasetPaths
 from pymovements import Experiment
 from pymovements import Gaze
-from pymovements import ResourceDefinition
-from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_files import load_gaze_file
 from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
-from pymovements.dataset.dataset_files import scan_dataset
 
 
 ASC_TEXT = r"""\
