@@ -839,7 +839,7 @@ def test_dataset_definition_has_resources_not_equal():
             {
                 'acceleration_columns': None,
                 'column_map': None,
-                'custom_read_kwargs': {},
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
