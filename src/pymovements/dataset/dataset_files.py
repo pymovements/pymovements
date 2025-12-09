@@ -20,11 +20,13 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
-import warnings
 from collections.abc import Sequence
 from copy import deepcopy
+from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import polars as pl
 import pyreadr
@@ -34,6 +36,7 @@ from pymovements._utils._paths import match_filepaths
 from pymovements._utils._strings import curly_to_regex
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.resources import ResourceDefinition
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze.gaze import Gaze
@@ -44,7 +47,16 @@ from pymovements.gaze.io import from_ipc
 from pymovements.reading_measures import ReadingMeasures
 
 
-def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str, pl.DataFrame]:
+@dataclass
+class DatasetFile:
+    path: Path
+    definition: ResourceDefinition
+    metadata: dict[str, Any]
+
+
+def scan_dataset(
+        definition: DatasetDefinition, paths: DatasetPaths,
+) -> tuple[dict[str, pl.DataFrame], list[DatasetFile]]:
     """Infer information from filepaths and filenames.
 
     Parameters
@@ -68,6 +80,7 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
     """
     # Get all filepaths that match regular expression.
     _fileinfo_dicts: dict[str, pl.DataFrame] = {}
+    _files: list[DatasetFile] = []
 
     for resource_definition in definition.resources:
         content_type = resource_definition.content
@@ -79,7 +92,7 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
         elif content_type == 'precomputed_reading_measures':
             resource_dirpath = paths.precomputed_reading_measures
         else:
-            warnings.warn(
+            warn(
                 f'content type {content_type} is not supported. '
                 'supported contents are: gaze, precomputed_events, precomputed_reading_measures. '
                 'skipping this resource definition during scan.',
@@ -97,10 +110,6 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
 
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
         fileinfo_df = fileinfo_df.sort(by='filepath')
-        fileinfo_df = fileinfo_df.with_columns(
-            load_function=pl.lit(resource_definition.load_function),
-            load_kwargs=pl.lit(resource_definition.load_kwargs),
-        )
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()
@@ -114,22 +123,32 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
         else:
             _fileinfo_dicts[content_type] = fileinfo_df
 
-    return _fileinfo_dicts
+        content_files = [
+            DatasetFile(
+                path=resource_dirpath / file['filepath'],  # absolute path
+                definition=resource_definition,
+                metadata={key: value for key, value in file.items() if key != 'filepath'},
+            )
+            for file in fileinfo_df.to_dicts()
+        ]
+        _files.extend(content_files)
+
+    return _fileinfo_dicts, _files
 
 
 def load_event_files(
-        fileinfo: pl.DataFrame,
+        files: list[DatasetFile],
         paths: DatasetPaths,
         events_dirname: str | None = None,
         extension: str = 'feather',
         verbose: bool = True,
 ) -> list[Events]:
-    """Load all event files according to fileinfo dataframe.
+    """Load all event files associated to a gaze sample file.
 
     Parameters
     ----------
-    fileinfo: pl.DataFrame
-        A dataframe holding file information.
+    files: list[DatasetFiles]
+        Load event files of content .
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
@@ -158,18 +177,11 @@ def load_event_files(
     list_of_events: list[Events] = []
 
     # read and preprocess input files
-    for fileinfo_row in tqdm(
-            fileinfo.to_dicts(),
-            total=len(fileinfo),
-            desc='Loading event files',
-            unit='file',
-            disable=not verbose,
+    for file in tqdm(
+            files, total=len(files), desc='Loading event files', unit='file', disable=not verbose,
     ):
-        filepath = Path(fileinfo_row['filepath'])
-        filepath = paths.raw / filepath
-
         filepath = paths.raw_to_event_filepath(
-            filepath,
+            file.path,
             events_dirname=events_dirname,
             extension=extension,
         )
@@ -192,7 +204,7 @@ def load_event_files(
 
 def load_gaze_files(
         definition: DatasetDefinition,
-        fileinfo: pl.DataFrame,
+        files: list[DatasetFile],
         paths: DatasetPaths,
         preprocessed: bool = False,
         preprocessed_dirname: str | None = None,
@@ -204,7 +216,7 @@ def load_gaze_files(
     ----------
     definition: DatasetDefinition
         The dataset definition.
-    fileinfo: pl.DataFrame
+    files: pl.DataFrame
         A dataframe holding file information.
     paths: DatasetPaths
         Path of directory containing event files.
@@ -235,26 +247,21 @@ def load_gaze_files(
     """
     gazes: list[Gaze] = []
 
-    # Read gaze files from fileinfo attribute.
-    for fileinfo_row in tqdm(
-            fileinfo.to_dicts(),
-            total=len(fileinfo),
-            desc='Loading gaze files',
-            unit='file',
-    ):
-        filepath = Path(fileinfo_row['filepath'])
-        filepath = paths.raw / filepath
-
+    for file in tqdm(files, total=len(files), desc='Loading gaze files', unit='file'):
+        # Preprocessed files are in a separate directory.
         if preprocessed:
-            filepath = paths.get_preprocessed_filepath(
-                filepath, preprocessed_dirname=preprocessed_dirname,
-                extension=extension,
+            file = replace(
+                file,
+                path=paths.get_preprocessed_filepath(
+                    file.path, preprocessed_dirname=preprocessed_dirname,
+                    extension=extension,
+                ),
             )
 
         gaze = load_gaze_file(
-            filepath=filepath,
-            fileinfo_row=fileinfo_row,
-            definition=deepcopy(definition),
+            filepath=file.path,
+            resource_definition=file.definition,
+            dataset_definition=deepcopy(definition),
             preprocessed=preprocessed,
         )
         gazes.append(gaze)
@@ -264,8 +271,8 @@ def load_gaze_files(
 
 def load_gaze_file(
         filepath: Path,
-        fileinfo_row: dict[str, Any],
-        definition: DatasetDefinition,
+        resource_definition: ResourceDefinition,
+        dataset_definition: DatasetDefinition,
         preprocessed: bool = False,
 ) -> Gaze:
     """Load a gaze data file as Gaze.
@@ -274,9 +281,9 @@ def load_gaze_file(
     ----------
     filepath: Path
         Path of gaze file.
-    fileinfo_row: dict[str, Any]
-        A dictionary holding file information.
-    definition: DatasetDefinition
+    resource_definition: ResourceDefinition
+        Use this ResourceDefinition to get the correct load function and keyword arguments.
+    dataset_definition: DatasetDefinition
         The dataset definition.
     preprocessed: bool
         If ``True``, saved preprocessed data will be loaded, otherwise raw data will be loaded.
@@ -294,7 +301,7 @@ def load_gaze_file(
     ValueError
         If extension is not in list of valid extensions.
     """
-    load_function_name = fileinfo_row['load_function']
+    load_function_name = resource_definition.load_function
     if load_function_name is None:
         if filepath.suffix in {'.csv', '.txt', '.tsv'}:
             load_function_name = 'from_csv'
@@ -310,7 +317,7 @@ def load_gaze_file(
                 f'Otherwise, specify load_function in the resource definition.',
             )
 
-    load_function_kwargs = fileinfo_row['load_kwargs']
+    load_function_kwargs = resource_definition.load_kwargs
     if load_function_kwargs is None:
         load_function_kwargs = {}
 
@@ -325,62 +332,63 @@ def load_gaze_file(
                 auto_column_detect=True,
             )
         else:
-            if definition.trial_columns is not None:
-                load_function_kwargs['trial_columns'] = definition.trial_columns
-            if definition.time_column is not None:
-                load_function_kwargs['time_column'] = definition.time_column
-            if definition.time_unit is not None:
-                load_function_kwargs['time_unit'] = definition.time_unit
-            if definition.pixel_columns is not None:
-                load_function_kwargs['pixel_columns'] = definition.pixel_columns
-            if definition.position_columns is not None:
-                load_function_kwargs['position_columns'] = definition.position_columns
-            if definition.velocity_columns is not None:
-                load_function_kwargs['velocity_columns'] = definition.velocity_columns
-            if definition.acceleration_columns is not None:
-                load_function_kwargs['acceleration_columns'] = definition.acceleration_columns
-            if definition.distance_column is not None:
-                load_function_kwargs['distance_column'] = definition.distance_column
-            if definition.column_map:
-                load_function_kwargs['column_map'] = definition.column_map
-            if definition.custom_read_kwargs:
-                read_csv_kwargs = definition.custom_read_kwargs.get('gaze', {})
+            if dataset_definition.trial_columns is not None:
+                load_function_kwargs['trial_columns'] = dataset_definition.trial_columns
+            if dataset_definition.time_column is not None:
+                load_function_kwargs['time_column'] = dataset_definition.time_column
+            if dataset_definition.time_unit is not None:
+                load_function_kwargs['time_unit'] = dataset_definition.time_unit
+            if dataset_definition.pixel_columns is not None:
+                load_function_kwargs['pixel_columns'] = dataset_definition.pixel_columns
+            if dataset_definition.position_columns is not None:
+                load_function_kwargs['position_columns'] = dataset_definition.position_columns
+            if dataset_definition.velocity_columns is not None:
+                load_function_kwargs['velocity_columns'] = dataset_definition.velocity_columns
+            if dataset_definition.acceleration_columns is not None:
+                acceleration_columns = dataset_definition.acceleration_columns
+                load_function_kwargs['acceleration_columns'] = acceleration_columns
+            if dataset_definition.distance_column is not None:
+                load_function_kwargs['distance_column'] = dataset_definition.distance_column
+            if dataset_definition.column_map:
+                load_function_kwargs['column_map'] = dataset_definition.column_map
+            if dataset_definition.custom_read_kwargs:
+                read_csv_kwargs = dataset_definition.custom_read_kwargs.get('gaze', {})
                 load_function_kwargs['read_csv_kwargs'] = {
                     **load_function_kwargs.get('read_csv_kwargs', {}), **read_csv_kwargs,
                 }
 
             gaze = from_csv(
                 filepath,
-                experiment=definition.experiment,
+                experiment=dataset_definition.experiment,
                 **load_function_kwargs,
             )
     elif load_function_name == 'from_ipc':
         gaze = from_ipc(
             filepath,
-            experiment=definition.experiment,
+            experiment=dataset_definition.experiment,
         )
     elif load_function_name == 'from_asc':
-        if definition.trial_columns is not None:
-            load_function_kwargs['trial_columns'] = definition.trial_columns
-        if definition.custom_read_kwargs:
-            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
+        if dataset_definition.trial_columns is not None:
+            load_function_kwargs['trial_columns'] = dataset_definition.trial_columns
+        if dataset_definition.custom_read_kwargs:
+            custom_read_kwargs = dataset_definition.custom_read_kwargs.get('gaze', {})
             load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
 
         gaze = from_asc(
             filepath,
-            experiment=definition.experiment,
+            experiment=dataset_definition.experiment,
             **load_function_kwargs,
         )
     elif load_function_name == 'from_begaze':
-        if definition.trial_columns is not None:
-            load_function_kwargs['trial_columns'] = definition.trial_columns
-        if definition.custom_read_kwargs:
-            custom_read_kwargs = definition.custom_read_kwargs.get('gaze', {})
+        if dataset_definition.trial_columns is not None:
+            load_function_kwargs['trial_columns'] = dataset_definition.trial_columns
+        if dataset_definition.custom_read_kwargs:
+            custom_read_kwargs = dataset_definition.custom_read_kwargs.get('gaze', {})
             load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
 
         gaze = from_begaze(
             filepath,
-            experiment=definition.experiment,
+            experiment=dataset_definition.experiment,
             **load_function_kwargs,
         )
     else:
@@ -395,19 +403,16 @@ def load_gaze_file(
 
 def load_precomputed_reading_measures(
         definition: DatasetDefinition,
-        fileinfo: pl.DataFrame,
-        paths: DatasetPaths,
+        files: list[DatasetFile],
 ) -> list[ReadingMeasures]:
     """Load reading measures files.
 
     Parameters
     ----------
-    definition:  DatasetDefinition
+    definition: DatasetDefinition
         Dataset definition to load precomputed events.
-    fileinfo: pl.DataFrame
-        Information about the files.
-    paths: DatasetPaths
-        Adjustable paths to extract datasets.
+    files: list[DatasetFiles]
+        TODO
 
     Returns
     -------
@@ -415,13 +420,18 @@ def load_precomputed_reading_measures(
         Return list of precomputed event dataframes.
     """
     precomputed_reading_measures = []
-    for filepath in fileinfo.to_dicts():
-        data_path = paths.precomputed_reading_measures / Path(filepath['filepath'])
+    for file in files:
+        load_function_kwargs = file.definition.load_kwargs
+        if load_function_kwargs is None:
+            load_function_kwargs = {}
+        if definition.custom_read_kwargs is not None:
+            custom_read_kwargs = definition.custom_read_kwargs.get(
+                'precomputed_reading_measures', {},
+            )
+            load_function_kwargs.update(custom_read_kwargs)
+
         precomputed_reading_measures.append(
-            load_precomputed_reading_measure_file(
-                data_path,
-                definition.custom_read_kwargs.get('precomputed_reading_measures', None),
-            ),
+            load_precomputed_reading_measure_file(file.path, load_function_kwargs),
         )
     return precomputed_reading_measures
 
@@ -489,8 +499,7 @@ def load_precomputed_reading_measure_file(
 
 def load_precomputed_event_files(
         definition: DatasetDefinition,
-        fileinfo: pl.DataFrame,
-        paths: DatasetPaths,
+        files: list[DatasetFile],
 ) -> list[PrecomputedEventDataFrame]:
     """Load precomputed event dataframes from files.
 
@@ -503,12 +512,9 @@ def load_precomputed_event_files(
     definition:  DatasetDefinition
         Dataset definition to load precomputed events.
 
-    fileinfo: pl.DataFrame
+    files: pl.DataFrame
         Information about the files, including a 'filepath' column with relative paths.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
-
-    paths: DatasetPaths
-        Adjustable paths to extract datasets, specifically the precomputed_events directory.
 
     Returns
     -------
@@ -516,13 +522,16 @@ def load_precomputed_event_files(
         Return list of precomputed event dataframes.
     """
     precomputed_events = []
-    for filepath in fileinfo.to_dicts():
-        data_path = paths.precomputed_events / Path(filepath['filepath'])
+    for file in files:
+        load_function_kwargs = file.definition.load_kwargs
+        if load_function_kwargs is None:
+            load_function_kwargs = {}
+        if definition.custom_read_kwargs is not None:
+            custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
+            load_function_kwargs.update(custom_read_kwargs)
+
         precomputed_events.append(
-            load_precomputed_event_file(
-                data_path,
-                definition.custom_read_kwargs.get('precomputed_events', None),
-            ),
+            load_precomputed_event_file(file.path, load_function_kwargs),
         )
     return precomputed_events
 
