@@ -49,6 +49,27 @@ from pymovements.reading_measures import ReadingMeasures
 
 @dataclass
 class DatasetFile:
+    """A file of a dataset.
+
+    Attributes
+    ----------
+    path: Path
+        Absolute path of the dataset file.
+    definition: ResourceDefinition
+        Associated :py:class:`~pymovements.ResourceDefinition`.
+    metadata: dict[str, Any]
+        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+
+    Parameters
+    ----------
+    path: Path
+        Absolute path of the dataset file.
+    definition: ResourceDefinition
+        Associated :py:class:`~pymovements.ResourceDefinition`.
+    metadata: dict[str, Any]
+        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+    """
+
     path: Path
     definition: ResourceDefinition
     metadata: dict[str, Any]
