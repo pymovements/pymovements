@@ -65,8 +65,8 @@ def fixture_make_dataset(tmp_path: Path) -> Callable[[list[str], Path | None], P
 
     Returns
     -------
-    Callable[[str], Path]
-        Function that takes a directory structure and returns the Path to the copied file.
+    Callable[[list[str], Path | None], Path]
+        Function that takes a directory structure and returns the Path to the root directory.
 
     """
     def _make_dataset(files: list[str], root: Path | None = None) -> Path:

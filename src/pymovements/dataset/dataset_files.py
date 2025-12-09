@@ -91,6 +91,8 @@ def scan_dataset(
     -------
     dict[str, pl.DataFrame]
         File information dataframe for each content type.
+    list[DatasetFile]
+        List of scanned dataset files.
 
     Raises
     ------
@@ -168,8 +170,8 @@ def load_event_files(
 
     Parameters
     ----------
-    files: list[DatasetFiles]
-        Load event files of content .
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
@@ -237,8 +239,8 @@ def load_gaze_files(
     ----------
     definition: DatasetDefinition
         The dataset definition.
-    files: pl.DataFrame
-        A dataframe holding file information.
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
     paths: DatasetPaths
         Path of directory containing event files.
     preprocessed : bool
@@ -432,8 +434,8 @@ def load_precomputed_reading_measures(
     ----------
     definition: DatasetDefinition
         Dataset definition to load precomputed events.
-    files: list[DatasetFiles]
-        TODO
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
     Returns
     -------
@@ -532,9 +534,8 @@ def load_precomputed_event_files(
     ----------
     definition:  DatasetDefinition
         Dataset definition to load precomputed events.
-
-    files: pl.DataFrame
-        Information about the files, including a 'filepath' column with relative paths.
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
 
     Returns
