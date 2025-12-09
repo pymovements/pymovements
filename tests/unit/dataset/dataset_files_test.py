@@ -248,9 +248,13 @@ def test_load_eyelink_file_has_expected_samples(
 ):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
+    resource_definition = ResourceDefinition(
+        content='gaze', load_function=load_function, load_kwargs=load_kwargs,
+    )
+
     gaze = load_gaze_file(
-        filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        filepath=filepath,
+        resource_definition=resource_definition,
         dataset_definition=DatasetDefinition(**definition_kwargs),
     )
 
@@ -307,9 +311,13 @@ def test_load_eyelink_file_has_expected_trial_columns(
 ):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT)
 
+    resource_definition = ResourceDefinition(
+        content='gaze', load_function='from_asc', load_kwargs=load_kwargs,
+    )
+
     gaze = load_gaze_file(
-        filepath,
-        fileinfo_row={'load_function': 'from_asc', 'load_kwargs': load_kwargs},
+        filepath=filepath,
+        resource_definition=resource_definition,
         dataset_definition=DatasetDefinition(**definition_dict),
     )
 
@@ -393,9 +401,13 @@ def test_load_example_gaze_file(
     renamed_filepath = tmp_path / renamed_filename
     renamed_filepath.write_bytes(filepath.read_bytes())
 
+    resource_definition = ResourceDefinition(
+        content='gaze', load_function=load_function, load_kwargs=load_kwargs,
+    )
+
     gaze = load_gaze_file(
         renamed_filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        resource_definition=resource_definition,
         dataset_definition=DatasetDefinition(
             experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
         ),
@@ -682,9 +694,14 @@ def test_load_gaze_samples_csv_file(
         expected_gaze,
 ):
     filepath = make_csv_file(**make_csv_file_kwargs)
+
+    resource_definition = ResourceDefinition(
+        content='gaze', load_function=load_function, load_kwargs=load_kwargs,
+    )
+
     gaze = load_gaze_file(
         filepath,
-        fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
+        resource_definition=resource_definition,
         dataset_definition=DatasetDefinition(**definition_dict),
     )
     assert gaze == expected_gaze
@@ -696,10 +713,11 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
     with pytest.raises(ValueError) as exc:
         load_gaze_file(
             filepath,
-            fileinfo_row={
-                'load_function': 'from_a_land_down_under',
-                'load_kwargs': {'pixel_columns': ['x_left_pix', 'y_left_pix']},
-            },
+            resource_definition=ResourceDefinition(
+                content='gaze',
+                load_function='from_a_land_down_under',
+                load_kwargs={'pixel_columns': ['x_left_pix', 'y_left_pix']},
+            ),
             dataset_definition=DatasetDefinition(
                 experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
             ),
@@ -1005,16 +1023,18 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     filepath = make_text_file(filename='sub.txt', body=BEGAZE_TEXT, encoding='ascii')
 
     # Call loader with explicit from_begaze and corresponding kwargs
+    resource_definition = ResourceDefinition(
+        content='gaze',
+        load_function='from_begaze',
+        load_kwargs={
+            'patterns': BEGAZE_PATTERNS,
+            'metadata_patterns': BEGAZE_METADATA_PATTERNS,
+            **load_kwargs,
+        },
+    )
     gaze = load_gaze_file(
         filepath=filepath,
-        fileinfo_row={
-            'load_function': 'from_begaze',
-            'load_kwargs': {
-                'patterns': BEGAZE_PATTERNS,
-                'metadata_patterns': BEGAZE_METADATA_PATTERNS,
-                **load_kwargs,
-            },
-        },
+        resource_definition=resource_definition,
         dataset_definition=DatasetDefinition(**definition_dict),
     )
 
