@@ -309,15 +309,15 @@ class Dataset:
         self._check_fileinfo()
         precomputed_event_files = [
             file for file in self._files
-            if file.definition.content == 'precomputed_events']
+            if file.definition.content == 'precomputed_events'
         ]
-            self.precomputed_events = dataset_files.load_precomputed_event_files(
-            definition = self.definition,
-            files = precomputed_event_files,
-            paths = self.paths,
+        self.precomputed_events = dataset_files.load_precomputed_event_files(
+            definition=self.definition,
+            files=precomputed_event_files,
+            paths=self.paths,
         )
 
-        def load_precomputed_reading_measures(self) -> None:
+    def load_precomputed_reading_measures(self) -> None:
         """Load precomputed reading measures.
 
         This method checks that the file information for precomputed reading measures are
@@ -338,20 +338,20 @@ class Dataset:
         """
         self._check_fileinfo()
         reading_measure_files = [
-           file for file in self._files
-            if file.definition.content == 'precomputed_reading_measures']
-            ]
-            self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
+            file for file in self._files
+            if file.definition.content == 'precomputed_reading_measures'
+        ]
+        self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
             definition=self.definition,
             files=reading_measure_files,
             paths=self.paths,
         )
 
-                def split_gaze_data(
+    def split_gaze_data(
             self,
             by: Sequence[str],
     ) -> None:
-                """Split gaze data into separated Gaze objects.
+        """Split gaze data into separated Gaze objects.
 
         Parameters
         ----------
@@ -364,18 +364,18 @@ class Dataset:
         all_fileinfo_rows = []
 
         for frame, fileinfo_row in zip(self.gaze, fileinfo_dicts):
-                        split_frames = frame.split(by=by, as_dict=False)
+            split_frames = frame.split(by=by, as_dict=False)
             all_gaze_frames.extend(split_frames)
             all_fileinfo_rows.extend([fileinfo_row] * len(split_frames))
 
         self.gaze = all_gaze_frames
         self.fileinfo['gaze'] = pl.concat([pl.from_dict(row) for row in all_fileinfo_rows])
 
-                def split_precomputed_events(
+    def split_precomputed_events(
             self,
             by: list[str] | str,
     ) -> None:
-                """Split precomputed event data into separated PrecomputedEventDataFrame's.
+        """Split precomputed event data into separated PrecomputedEventDataFrame's.
 
         Parameters
         ----------
@@ -383,18 +383,18 @@ class Dataset:
             Column's to split dataframe by.
         """
         if isinstance(by, str):
-                        by = [by]
+            by = [by]
         self.precomputed_events = [
             PrecomputedEventDataFrame(new_frame) for _frame in self.precomputed_events
             for new_frame in _frame.frame.partition_by(by=by)
-    ]
+        ]
 
-                def load_event_files(
+    def load_event_files(
             self,
-            events_dirname: str | None= None,
-            extension: str= 'feather',
+            events_dirname: str | None = None,
+            extension: str = 'feather',
     ) -> Dataset:
-                """Load all available event files.
+        """Load all available event files.
 
         Parameters
         ----------
@@ -425,18 +425,18 @@ class Dataset:
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
-    )
+        )
         self.events = events
         return self
 
-                def apply(
+    def apply(
             self,
             function: str,
             *,
-            verbose: bool= True,
+            verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-                """Apply preprocessing method to all Gazes in Dataset.
+        """Apply preprocessing method to all Gazes in Dataset.
 
         Parameters
         ----------
@@ -495,21 +495,21 @@ class Dataset:
                 unit='file',
                 disable=disable_progressbar,
         ):
-                        gaze.apply(function, **kwargs)
+            gaze.apply(function, **kwargs)
 
         return self
 
-                def clip(
+    def clip(
             self,
             lower_bound: int | float | None,
             upper_bound: int | float | None,
             *,
             input_column: str,
             output_column: str,
-            verbose: bool= True,
+            verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-                """Clip gaze signal values.
+        """Clip gaze signal values.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -549,16 +549,16 @@ class Dataset:
             output_column=output_column,
             verbose=verbose,
             **kwargs,
-    )
+        )
 
-                def resample(
+    def resample(
             self,
             resampling_rate: float,
-            columns: str | list[str]= 'all',
-            fill_null_strategy: str= 'interpolate_linear',
-            verbose: bool= True,
+            columns: str | list[str] = 'all',
+            fill_null_strategy: str = 'interpolate_linear',
+            verbose: bool = True,
     ) -> Dataset:
-                """Resample a DataFrame to a new sampling rate by timestamps in time column.
+        """Resample a DataFrame to a new sampling rate by timestamps in time column.
 
         The DataFrame is resampled by upsampling or downsampling the data to the new sampling rate.
         Can also be used to achieve a constant sampling rate for inconsistent data.
@@ -588,10 +588,10 @@ class Dataset:
             fill_null_strategy=fill_null_strategy,
             columns=columns,
             verbose=verbose,
-    )
+        )
 
     def pix2deg(self, verbose: bool = True) -> Dataset:
-                """Compute gaze positions in degrees of visual angle from pixel coordinates.
+        """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -615,14 +615,14 @@ class Dataset:
         """
         return self.apply('pix2deg', verbose=verbose)
 
-                def deg2pix(
+    def deg2pix(
             self,
-            pixel_origin: str= 'upper left',
-            position_column: str= 'position',
-            pixel_column: str= 'pixel',
-            verbose: bool= True,
+            pixel_origin: str = 'upper left',
+            position_column: str = 'position',
+            pixel_column: str = 'pixel',
+            verbose: bool = True,
     ) -> Dataset:
-                """Compute gaze positions in pixel coordinates from degrees of visual angle.
+        """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -657,17 +657,17 @@ class Dataset:
             position_column=position_column,
             pixel_column=pixel_column,
             verbose=verbose,
-    )
+        )
 
-                def pos2acc(
+    def pos2acc(
             self,
             *,
-            degree: int= 2,
-            window_length: int= 7,
-            padding: str | float | int | None= 'nearest',
-            verbose: bool= True,
+            degree: int = 2,
+            window_length: int = 7,
+            padding: str | float | int | None = 'nearest',
+            verbose: bool = True,
     ) -> Dataset:
-                """Compute gaze accelerations in dva/s^2 from dva coordinates.
+        """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -701,16 +701,16 @@ class Dataset:
             degree=degree,
             padding=padding,
             verbose=verbose,
-    )
+        )
 
-                def pos2vel(
+    def pos2vel(
             self,
-            method: str= 'fivepoint',
+            method: str = 'fivepoint',
             *,
-            verbose: bool= True,
+            verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-                """Compute gaze velocities in dva/s from dva coordinates.
+        """Compute gaze velocities in dva/s from dva coordinates.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -739,16 +739,16 @@ class Dataset:
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
-                def detect_events(
+    def detect_events(
             self,
             method: Callable[..., Events] | str,
             *,
-            eye: str= 'auto',
-            clear: bool= False,
-            verbose: bool= True,
+            eye: str = 'auto',
+            clear: bool = False,
+            verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-                """Detect events by applying a specific event detection method.
+        """Detect events by applying a specific event detection method.
 
         Parameters
         ----------
@@ -782,18 +782,18 @@ class Dataset:
             clear=clear,
             verbose=verbose,
             **kwargs,
-    )
+        )
 
-                def detect(
+    def detect(
             self,
             method: Callable[..., Events] | str,
             *,
-            eye: str= 'auto',
-            clear: bool= False,
-            verbose: bool= True,
+            eye: str = 'auto',
+            clear: bool = False,
+            verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-                """Detect events by applying a specific event detection method.
+        """Detect events by applying a specific event detection method.
 
         Alias for :py:meth:`pymovements.Dataset.detect_events`
 
@@ -833,14 +833,14 @@ class Dataset:
                 unit='file',
                 disable=disable_progressbar,
         ):
-                        gaze.detect(method, eye=eye, clear=clear, **kwargs)
+            gaze.detect(method, eye=eye, clear=clear, **kwargs)
         return self
 
-                def drop_event_properties(
+    def drop_event_properties(
             self,
             event_properties: str | list[str],
     ) -> Dataset:
-                """Remove event properties from the event dataframe.
+        """Remove event properties from the event dataframe.
 
         Parameters
         ----------
@@ -858,17 +858,17 @@ class Dataset:
             Returns self, useful for method cascading.
         """
         for gaze in self.gaze:
-                        gaze.drop_event_properties(event_properties)
+            gaze.drop_event_properties(event_properties)
         return self
 
-                def compute_event_properties(
+    def compute_event_properties(
             self,
             event_properties: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
-            name: str | None= None,
-            verbose: bool= True,
+            name: str | None = None,
+            verbose: bool = True,
     ) -> Dataset:
-                """Calculate an event property and add it as a column to the event dataframe.
+        """Calculate an event property and add it as a column to the event dataframe.
 
         Parameters
         ----------
@@ -901,17 +901,17 @@ class Dataset:
                 unit='file',
                 disable=not verbose,
         ):
-                        gaze.compute_event_properties(event_properties, name=name)
+            gaze.compute_event_properties(event_properties, name=name)
         return self
 
-                def compute_properties(
+    def compute_properties(
             self,
             event_properties: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
-            name: str | None= None,
-            verbose: bool= True,
+            name: str | None = None,
+            verbose: bool = True,
     ) -> Dataset:
-                """Calculate an event property for and add it as a column to the event dataframe.
+        """Calculate an event property for and add it as a column to the event dataframe.
 
         Alias for :py:meth:`pymovements.Dataset.compute_event_properties`
 
@@ -939,10 +939,10 @@ class Dataset:
             event_properties=event_properties,
             name=name,
             verbose=verbose,
-    )
+        )
 
     def clear_events(self) -> Dataset:
-                """Clear event DataFrame.
+        """Clear event DataFrame.
 
         Returns
         -------
@@ -950,21 +950,21 @@ class Dataset:
             Returns self, useful for method cascading.
         """
         if len(self.events) == 0:
-                        return self
+            return self
 
         for gaze in self.gaze:
-                        gaze.events = Events()
+            gaze.events = Events()
 
         return self
 
-                def save(
+    def save(
             self,
-            events_dirname: str | None= None,
-            preprocessed_dirname: str | None= None,
-            verbose: int= 1,
-            extension: str= 'feather',
+            events_dirname: str | None = None,
+            preprocessed_dirname: str | None = None,
+            verbose: int = 1,
+            extension: str = 'feather',
     ) -> Dataset:
-                """Save preprocessed gaze and event files.
+        """Save preprocessed gaze and event files.
 
         Data will be saved as feather/csv files to ``Dataset.preprocessed_roothpath`` or
         ``Dataset.events_roothpath`` with the same directory structure as the raw data.
@@ -994,13 +994,13 @@ class Dataset:
         self.save_preprocessed(preprocessed_dirname, verbose=verbose, extension=extension)
         return self
 
-                def save_events(
+    def save_events(
             self,
-            events_dirname: str | None= None,
-            verbose: int= 1,
-            extension: str= 'feather',
+            events_dirname: str | None = None,
+            verbose: int = 1,
+            extension: str = 'feather',
     ) -> Dataset:
-                """Save events to files.
+        """Save events to files.
 
         Data will be saved as feather files to ``Dataset.events_roothpath`` with the same directory
         structure as the raw data.
@@ -1035,16 +1035,16 @@ class Dataset:
             events_dirname=events_dirname,
             verbose=verbose,
             extension=extension,
-    )
+        )
         return self
 
-                def save_preprocessed(
+    def save_preprocessed(
             self,
-            preprocessed_dirname: str | None= None,
-            verbose: int= 1,
-            extension: str= 'feather',
+            preprocessed_dirname: str | None = None,
+            verbose: int = 1,
+            extension: str = 'feather',
     ) -> Dataset:
-                """Save preprocessed gaze files.
+        """Save preprocessed gaze files.
 
         Data will be saved as feather files to ``Dataset.preprocessed_roothpath`` with the same
         directory structure as the raw data.
@@ -1079,18 +1079,18 @@ class Dataset:
             preprocessed_dirname=preprocessed_dirname,
             verbose=verbose,
             extension=extension,
-    )
+        )
         return self
 
-                def download(
+    def download(
             self,
             *,
-            extract: bool= True,
-            remove_finished: bool= False,
-            resume: bool= True,
-            verbose: int= 1,
+            extract: bool = True,
+            remove_finished: bool = False,
+            resume: bool = True,
+            verbose: int = 1,
     ) -> Dataset:
-                """Download dataset resources.
+        """Download dataset resources.
 
         This downloads all resources of the dataset. Per default this also extracts all archives
         into :py:meth:`Dataset.paths.raw`,
@@ -1138,18 +1138,18 @@ class Dataset:
             remove_finished=remove_finished,
             resume=resume,
             verbose=bool(verbose),
-    )
+        )
         return self
 
-                def extract(
+    def extract(
             self,
             *,
-            remove_finished: bool= False,
-            remove_top_level: bool= True,
-            resume: bool= True,
-            verbose: int= 1,
+            remove_finished: bool = False,
+            remove_top_level: bool = True,
+            resume: bool = True,
+            verbose: int = 1,
     ) -> Dataset:
-                """Extract downloaded dataset archive files.
+        """Extract downloaded dataset archive files.
 
         Parameters
         ----------
@@ -1177,12 +1177,12 @@ class Dataset:
             remove_top_level=remove_top_level,
             resume=resume,
             verbose=verbose,
-    )
+        )
         return self
 
-    @ property
+    @property
     def path(self) -> Path:
-                """The path to the dataset directory.
+        """The path to the dataset directory.
 
         The dataset path points to the dataset directory under the root path. Per default the
         dataset path points to the exact same directory as the root path. Add ``dataset_dirname``
@@ -1219,27 +1219,27 @@ class Dataset:
         return self.paths.dataset
 
     def _check_fileinfo(self) -> None:
-                """Check if fileinfo attribute is set and there is at least one row present."""
+        """Check if fileinfo attribute is set and there is at least one row present."""
         if self.fileinfo is None:
-                        raise AttributeError(
+            raise AttributeError(
                 'fileinfo was not loaded yet. please run load() or scan() beforehand',
-        )
+            )
         if len(self.fileinfo) == 0:
-                        raise AttributeError('no files present in fileinfo attribute')
+            raise AttributeError('no files present in fileinfo attribute')
 
     def _check_gaze(self) -> None:
-                """Check if gaze attribute is set and there is at least one gaze dataframe available."""
+        """Check if gaze attribute is set and there is at least one gaze dataframe available."""
         if self.gaze is None:
-                        raise AttributeError('gaze files were not loaded yet. please run load() beforehand')
+            raise AttributeError('gaze files were not loaded yet. please run load() beforehand')
         if len(self.gaze) == 0:
-                        raise AttributeError('no files present in gaze attribute')
+            raise AttributeError('no files present in gaze attribute')
 
     def _disclaimer(self) -> str:
-                """Return string for dataset download disclaimer."""
+        """Return string for dataset download disclaimer."""
         if self.definition.long_name is not None:
-                        dataset_name = self.definition.long_name
+            dataset_name = self.definition.long_name
         else:
-                        dataset_name = self.definition.name + ' dataset'
+            dataset_name = self.definition.name + ' dataset'
 
         return f"""
         You are downloading the {dataset_name}. Please be aware that pymovements does not
