@@ -187,9 +187,9 @@ def load_event_files(
         )
 
         if extension == 'feather':
-            events = pl.read_ipc(file.path)
+            events = pl.read_ipc(filepath)
         elif extension in {'csv', 'tsv', 'txt'}:
-            events = pl.read_csv(file.path)
+            events = pl.read_csv(filepath)
         else:
             valid_extensions = ['csv', 'txt', 'tsv', 'feather']
             raise ValueError(
@@ -345,7 +345,8 @@ def load_gaze_file(
             if dataset_definition.velocity_columns is not None:
                 load_function_kwargs['velocity_columns'] = dataset_definition.velocity_columns
             if dataset_definition.acceleration_columns is not None:
-                load_function_kwargs['acceleration_columns'] = dataset_definition.acceleration_columns
+                acceleration_columns = dataset_definition.acceleration_columns
+                load_function_kwargs['acceleration_columns'] = acceleration_columns
             if dataset_definition.distance_column is not None:
                 load_function_kwargs['distance_column'] = dataset_definition.distance_column
             if dataset_definition.column_map:
@@ -403,16 +404,15 @@ def load_gaze_file(
 def load_precomputed_reading_measures(
         definition: DatasetDefinition,
         files: list[DatasetFile],
-        paths: DatasetPaths,
 ) -> list[ReadingMeasures]:
     """Load reading measures files.
 
     Parameters
     ----------
-    definition:  DatasetDefinition
+    definition: DatasetDefinition
         Dataset definition to load precomputed events.
-    paths: DatasetPaths
-        Adjustable paths to extract datasets.
+    files: list[DatasetFiles]
+        TODO
 
     Returns
     -------
@@ -421,7 +421,7 @@ def load_precomputed_reading_measures(
     """
     precomputed_reading_measures = []
     for file in files:
-        load_function_kwargs = file.load_kwargs
+        load_function_kwargs = file.definition.load_kwargs
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
@@ -500,7 +500,6 @@ def load_precomputed_reading_measure_file(
 def load_precomputed_event_files(
         definition: DatasetDefinition,
         files: list[DatasetFile],
-        paths: DatasetPaths,
 ) -> list[PrecomputedEventDataFrame]:
     """Load precomputed event dataframes from files.
 
@@ -516,8 +515,6 @@ def load_precomputed_event_files(
     files: pl.DataFrame
         Information about the files, including a 'filepath' column with relative paths.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
-    paths: DatasetPaths
-        Adjustable paths to extract datasets, specifically the precomputed_events directory.
 
     Returns
     -------
@@ -526,7 +523,7 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        load_function_kwargs = file.load_kwargs
+        load_function_kwargs = file.definition.load_kwargs
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:

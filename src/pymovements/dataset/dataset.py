@@ -314,7 +314,6 @@ class Dataset:
         self.precomputed_events = dataset_files.load_precomputed_event_files(
             definition=self.definition,
             files=precomputed_event_files,
-            paths=self.paths,
         )
 
     def load_precomputed_reading_measures(self) -> None:
@@ -344,7 +343,6 @@ class Dataset:
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
             definition=self.definition,
             files=reading_measure_files,
-            paths=self.paths,
         )
 
     def split_gaze_data(
