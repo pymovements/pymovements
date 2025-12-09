@@ -423,14 +423,6 @@ def load_precomputed_reading_measures(
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
-                    'Please specify ResourceDefinition.load_kwargs instead. '
-                    'This field will be removed in v0.29.0.',
-                ),
-            )
-
             custom_read_kwargs = definition.custom_read_kwargs.get(
                 'precomputed_reading_measures', {},
             )
@@ -539,14 +531,6 @@ def load_precomputed_event_files(
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.24.2. '
-                    'Please specify ResourceDefinition.load_kwargs instead. '
-                    'This field will be removed in v0.29.0.',
-                ),
-            )
-
             custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
             load_function_kwargs.update(custom_read_kwargs)
 
