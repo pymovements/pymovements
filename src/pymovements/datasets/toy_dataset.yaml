@@ -15,7 +15,6 @@ resources:
       time_column: 'timestamp'
       time_unit: 'ms'
       pixel_columns: ['x', 'y']
-    load_kwargs:
       read_csv_kwargs:
         columns:
           - "timestamp"

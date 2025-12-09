@@ -145,25 +145,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'trial_id': int,
                         'block_id': int,
                     },
-                },
-                {
-                    'content': 'gaze',
-                    'url': 'https://osf.io/download/yqukn/',
-                    'filename': 'b.zip',
-                    'md5': '54038547b1a373253b38999a227dde63',
-                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename_pattern_schema_overrides': {
-                        'subject_id': int,
-                        'trial_id': int,
-                        'block_id': int,
-                    },
                     'load_kwargs': {
-                        'time_column': 'eyelink_timestamp',
-                        'time_unit': 'ms',
-                        'distance_column': 'target_distance',
-                        'pixel_columns': [
-                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
-                        ],
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,
@@ -198,6 +180,12 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'block_id': int,
                     },
                     'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
+                        ],
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,

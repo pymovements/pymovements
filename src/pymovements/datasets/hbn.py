@@ -136,6 +136,7 @@ class HBN(DatasetDefinition):
                     'load_kwargs': {
                         'time_column': 'time',
                         'time_unit': 'step',
+                        'pixel_columns': ['x_pix', 'y_pix'],
                         'read_csv_kwargs': {
                             'separator': ',',
                             'columns': ['time', 'x_pix', 'y_pix'],
