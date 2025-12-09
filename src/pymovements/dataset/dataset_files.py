@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from warnings import warn
@@ -34,6 +35,7 @@ from pymovements._utils._paths import match_filepaths
 from pymovements._utils._strings import curly_to_regex
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.resources import ResourceDefinition
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze.gaze import Gaze
@@ -44,7 +46,16 @@ from pymovements.gaze.io import from_ipc
 from pymovements.reading_measures import ReadingMeasures
 
 
-def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str, pl.DataFrame]:
+@dataclass
+class DatasetFile:
+    path: Path
+    definition: ResourceDefinition
+    metadata: dict[str, Any]
+
+
+def scan_dataset(
+        definition: DatasetDefinition, paths: DatasetPaths,
+) -> tuple[dict[str, pl.DataFrame], list[DatasetFile]]:
     """Infer information from filepaths and filenames.
 
     Parameters
@@ -68,6 +79,7 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
     """
     # Get all filepaths that match regular expression.
     _fileinfo_dicts: dict[str, pl.DataFrame] = {}
+    _files: list[DatasetFile] = []
 
     for resource_definition in definition.resources:
         content_type = resource_definition.content
@@ -97,10 +109,6 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
 
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
         fileinfo_df = fileinfo_df.sort(by='filepath')
-        fileinfo_df = fileinfo_df.with_columns(
-            load_function=pl.lit(resource_definition.load_function),
-            load_kwargs=pl.lit(resource_definition.load_kwargs),
-        )
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()
@@ -114,7 +122,17 @@ def scan_dataset(definition: DatasetDefinition, paths: DatasetPaths) -> dict[str
         else:
             _fileinfo_dicts[content_type] = fileinfo_df
 
-    return _fileinfo_dicts
+        content_files = [
+            DatasetFile(
+                path=resource_dirpath / file['filepath'],  # absolute path
+                definition=resource_definition,
+                metadata={key: value for key, value in file.items() if key != 'filepath'},
+            )
+            for file in filepaths
+        ]
+        _files.extend(content_files)
+
+    return _fileinfo_dicts, _files
 
 
 def load_event_files(

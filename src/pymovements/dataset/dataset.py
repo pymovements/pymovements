@@ -34,6 +34,7 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.events import Events
@@ -67,6 +68,7 @@ class Dataset:
             path: str | Path | DatasetPaths,
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self._files: list[DatasetFile] = []
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
@@ -234,7 +236,9 @@ class Dataset:
         RuntimeError
             If an error occurred during matching filenames or no files have been found.
         """
-        self.fileinfo = dataset_files.scan_dataset(definition=self.definition, paths=self.paths)
+        self.fileinfo, self._files = dataset_files.scan_dataset(
+            definition=self.definition, paths=self.paths,
+        )
         return self
 
     def load_gaze_files(
