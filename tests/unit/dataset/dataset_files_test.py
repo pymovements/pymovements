@@ -443,7 +443,7 @@ def test_load_eyelink_file_has_expected_samples(
     gaze = load_gaze_file(
         filepath,
         fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
-        definition=DatasetDefinition(**definition_kwargs),
+        dataset_definition=DatasetDefinition(**definition_kwargs),
     )
 
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
@@ -502,7 +502,7 @@ def test_load_eyelink_file_has_expected_trial_columns(
     gaze = load_gaze_file(
         filepath,
         fileinfo_row={'load_function': 'from_asc', 'load_kwargs': load_kwargs},
-        definition=DatasetDefinition(**definition_dict),
+        dataset_definition=DatasetDefinition(**definition_dict),
     )
 
     assert gaze.trial_columns == expected_trial_columns
@@ -588,7 +588,7 @@ def test_load_example_gaze_file(
     gaze = load_gaze_file(
         renamed_filepath,
         fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
-        definition=DatasetDefinition(
+        dataset_definition=DatasetDefinition(
             experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
         ),
     )
@@ -877,7 +877,7 @@ def test_load_gaze_samples_csv_file(
     gaze = load_gaze_file(
         filepath,
         fileinfo_row={'load_function': load_function, 'load_kwargs': load_kwargs},
-        definition=DatasetDefinition(**definition_dict),
+        dataset_definition=DatasetDefinition(**definition_dict),
     )
     assert gaze == expected_gaze
 
@@ -892,7 +892,7 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
                 'load_function': 'from_a_land_down_under',
                 'load_kwargs': {'pixel_columns': ['x_left_pix', 'y_left_pix']},
             },
-            definition=DatasetDefinition(
+            dataset_definition=DatasetDefinition(
                 experiment=Experiment(1280, 1024, 38, 30, None, 'center', 1000),
             ),
         )
@@ -1207,7 +1207,7 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
                 **load_kwargs,
             },
         },
-        definition=DatasetDefinition(**definition_dict),
+        dataset_definition=DatasetDefinition(**definition_dict),
     )
 
     # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
