@@ -30,6 +30,7 @@ from polars.testing import assert_frame_equal
 from pymovements import DatasetDefinition
 from pymovements import Experiment
 from pymovements import Gaze
+from pymovements import ResourceDefinition
 from pymovements.dataset.dataset_files import load_gaze_file
 from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
