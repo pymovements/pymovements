@@ -199,7 +199,15 @@ from pymovements.gaze import from_csv
             'potec_example.tsv',
             {
                 'experiment': DatasetLibrary.get('PoTeC').experiment,
-                **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
+                'time_column': 'time',
+                'time_unit': 'ms',
+                'pixel_columns': ['x', 'y'],
+                'schema_overrides': {
+                    'time': pl.Int64,
+                    'x': pl.Float64,
+                    'y': pl.Float64,
+                    'pupil_diameter': pl.Float64,
+                },
                 'separator': '\t',
             },
             (10, 3),
