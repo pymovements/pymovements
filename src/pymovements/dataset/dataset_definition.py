@@ -352,6 +352,7 @@ class DatasetDefinition:
         self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
+
         if mirrors is None:
             self.mirrors = {}
         else:
