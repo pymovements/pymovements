@@ -49,6 +49,27 @@ from pymovements.reading_measures import ReadingMeasures
 
 @dataclass
 class DatasetFile:
+    """A file of a dataset.
+
+    Attributes
+    ----------
+    path: Path
+        Absolute path of the dataset file.
+    definition: ResourceDefinition
+        Associated :py:class:`~pymovements.ResourceDefinition`.
+    metadata: dict[str, Any]
+        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+
+    Parameters
+    ----------
+    path: Path
+        Absolute path of the dataset file.
+    definition: ResourceDefinition
+        Associated :py:class:`~pymovements.ResourceDefinition`.
+    metadata: dict[str, Any]
+        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+    """
+
     path: Path
     definition: ResourceDefinition
     metadata: dict[str, Any]
@@ -70,6 +91,8 @@ def scan_dataset(
     -------
     dict[str, pl.DataFrame]
         File information dataframe for each content type.
+    list[DatasetFile]
+        List of scanned dataset files.
 
     Raises
     ------
@@ -147,8 +170,8 @@ def load_event_files(
 
     Parameters
     ----------
-    files: list[DatasetFiles]
-        Load event files of content .
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
@@ -216,8 +239,8 @@ def load_gaze_files(
     ----------
     definition: DatasetDefinition
         The dataset definition.
-    files: pl.DataFrame
-        A dataframe holding file information.
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
     paths: DatasetPaths
         Path of directory containing event files.
     preprocessed : bool
@@ -411,8 +434,8 @@ def load_precomputed_reading_measures(
     ----------
     definition: DatasetDefinition
         Dataset definition to load precomputed events.
-    files: list[DatasetFiles]
-        TODO
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
     Returns
     -------
@@ -511,9 +534,8 @@ def load_precomputed_event_files(
     ----------
     definition:  DatasetDefinition
         Dataset definition to load precomputed events.
-
-    files: pl.DataFrame
-        Information about the files, including a 'filepath' column with relative paths.
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
 
     Returns
@@ -743,16 +765,19 @@ def save_preprocessed(
 
 def take_subset(
         fileinfo: pl.DataFrame,
+        files: list[DatasetFile],
         subset: dict[
             str, bool | float | int | str | list[bool | float | int | str],
         ] | None = None,
-) -> pl.DataFrame:
-    """Take a subset of the fileinfo dataframe.
+) -> tuple[pl.DataFrame, list[DatasetFile]]:
+    """Take a subset of the fileinfo dataframe and dataset file list.
 
     Parameters
     ----------
     fileinfo: pl.DataFrame
         File information dataframe.
+    files: list[DatasetFile]
+        Filter this list of dataset files for values specified by subset.
     subset: dict[str, bool | float | int | str | list[bool | float | int | str]] | None
         If specified, take a subset of the dataset. All keys in the dictionary must be
         present in the fileinfo dataframe inferred by `scan_dataset()`. Values can be either
@@ -762,6 +787,8 @@ def take_subset(
     -------
     pl.DataFrame
         Subset of file information dataframe.
+    list[DatasetFile]
+        Subset of dataset files.
 
     Raises
     ------
@@ -771,33 +798,44 @@ def take_subset(
         If dictionary key or value is not of valid type.
     """
     if subset is None:
-        return fileinfo
+        return fileinfo, files
 
     if not isinstance(subset, dict):
         raise TypeError(f'subset must be of type dict but is of type {type(subset)}')
 
-    for subset_key, subset_value in subset.items():
-        if not isinstance(subset_key, str):
+    for metadata_key, metadata_value in subset.items():
+        if not isinstance(metadata_key, str):
             raise TypeError(
-                f'subset keys must be of type str but key {subset_key} is of type'
-                f' {type(subset_key)}',
+                f'subset keys must be of type str but key {metadata_key} is of type'
+                f' {type(metadata_key)}',
             )
 
-        if subset_key not in fileinfo['gaze'].columns:
+        if metadata_key not in fileinfo['gaze'].columns:
             raise ValueError(
-                f'subset key {subset_key} must be a column in the fileinfo attribute.'
+                f'subset key {metadata_key} must be a column in the fileinfo attribute.'
                 f" Available columns are: {fileinfo['gaze'].columns}",
             )
 
-        if isinstance(subset_value, (bool, float, int, str)):
-            column_values = [subset_value]
-        elif isinstance(subset_value, (list, tuple, range)):
-            column_values = subset_value
+        for file in files:
+            if metadata_key not in file.metadata:  # pragma: no cover
+                # This code is currently unreachable via public interfaces.
+                # The pragma directive should be removed after the removal of fileinfo from Dataset.
+                raise ValueError(
+                    f'subset key {metadata_key} must exist as metadata key in DatasetFile. '
+                    f"Available metadata: {file.metadata}",
+                )
+
+        if isinstance(metadata_value, (bool, float, int, str)):
+            metadata_values = [metadata_value]
+        elif isinstance(metadata_value, (list, tuple, range)):
+            metadata_values = metadata_value
         else:
             raise TypeError(
                 f'subset values must be of type bool, float, int, str, range, or list, '
-                f'but value of pair {subset_key}: {subset_value} is of type {type(subset_value)}',
+                f'but value of pair {metadata_key}: {metadata_value} is of type: '
+                f'{type(metadata_value)}',
             )
 
-        fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(subset_key).is_in(column_values))
-    return fileinfo
+        fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(metadata_key).is_in(metadata_values))
+        files = [file for file in files if file.metadata[metadata_key] in metadata_values]
+    return fileinfo, files

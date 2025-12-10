@@ -24,6 +24,7 @@ import os
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -65,8 +66,8 @@ def fixture_make_dataset(tmp_path: Path) -> Callable[[list[str], Path | None], P
 
     Returns
     -------
-    Callable[[str], Path]
-        Function that takes a directory structure and returns the Path to the copied file.
+    Callable[[list[str], Path | None], Path]
+        Function that takes a directory structure and returns the Path to the root directory.
 
     """
     def _make_dataset(files: list[str], root: Path | None = None) -> Path:
@@ -2101,6 +2102,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
         'ToyRightPrecomputedEventAndGaze',
         'ToyPrecomputedEvent',
         'ToyPrecomputedEventNoExtract',
+        'ToyPrecomputedEventLoadKwargs',
     ],
 )
 def precomputed_fixture_dataset(request, tmp_path):
@@ -2127,6 +2129,18 @@ def precomputed_fixture_dataset(request, tmp_path):
             eyes='right',
             filename_format_schema_overrides={'precomputed_events': {}},
         )
+    elif dataset_type == 'ToyPrecomputedEventLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[1],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[1] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
@@ -2158,6 +2172,7 @@ def test_load_no_files_precomputed_raises_exception(precomputed_dataset_configur
         'ToyRightPrecomputedEventAndGazeAndRM',
         'ToyPrecomputedRM',
         'ToyPrecomputedRMNoExtract',
+        'ToyPrecomputedRMLoadKwargs',
     ],
 )
 def precomputed_rm_fixture_dataset(request, tmp_path):
@@ -2186,6 +2201,18 @@ def precomputed_rm_fixture_dataset(request, tmp_path):
                 'precomputed_reading_measures': {},
             },
         )
+    elif dataset_type == 'ToyPrecomputedRMLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[2],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[2] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
