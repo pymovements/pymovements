@@ -2172,6 +2172,7 @@ def test_load_no_files_precomputed_raises_exception(precomputed_dataset_configur
         'ToyRightPrecomputedEventAndGazeAndRM',
         'ToyPrecomputedRM',
         'ToyPrecomputedRMNoExtract',
+        'ToyPrecomputedRMLoadKwargs',
     ],
 )
 def precomputed_rm_fixture_dataset(request, tmp_path):
