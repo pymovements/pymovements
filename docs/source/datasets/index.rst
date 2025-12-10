@@ -34,10 +34,10 @@ Download your dataset and load it into memory with these few lines of code:
 
     .. grid-item-card::
 
-        **Is your dataset missing?**
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        **Are you missing a dataset?**
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-        Check out this tutorial on how to add your dataset to the library:
+        Check out this guide on how to contribute datasets to the library:
 
         .. button-link:: ../tutorials/adding-public-dataset.html
             :color: primary
