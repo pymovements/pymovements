@@ -21,9 +21,9 @@
 from __future__ import annotations
 
 import math
+import warnings
 from pathlib import Path
 from typing import Any
-from warnings import warn
 
 import polars as pl
 
@@ -231,7 +231,7 @@ def from_csv(
         read_csv_kwargs = {}
 
     if kwargs:
-        warn(
+        warnings.warn(
             DeprecationWarning(
                 "from_csv() argument '**kwargs' is deprecated since version v0.24.0. "
                 'This argument will be removed in v0.29.0.'
@@ -658,7 +658,7 @@ def from_ipc(
         read_ipc_kwargs = {}
 
     if kwargs:
-        warn(
+        warnings.warn(
             DeprecationWarning(
                 "from_ipc() argument '**kwargs' is deprecated since version v0.24.0. "
                 'This argument will be removed in v0.29.0.',
@@ -722,7 +722,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
             experiment.screen.width_px = math.ceil(width)
             experiment.screen.height_px = math.ceil(height)
         except TypeError:
-            warn('No screen resolution found.')
+            warnings.warn('No screen resolution found.')
     elif experiment_resolution != metadata['resolution']:
         issues.append(f"Screen resolution: {experiment_resolution} != {metadata['resolution']}")
 
@@ -749,7 +749,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         try:
             experiment.eyetracker.mount = metadata['mount_configuration']['mount_type']
         except KeyError:
-            warn('No mount configuration found.')
+            warnings.warn('No mount configuration found.')
     elif experiment.eyetracker.mount != metadata['mount_configuration']['mount_type']:
         issues.append(
             f'Mount configuration: {experiment.eyetracker.mount} != '
@@ -815,7 +815,7 @@ def _fill_experiment_from_parsing_begaze_metadata(
     if experiment.eyetracker.left is None:
         experiment.eyetracker.left = left_parsed
     elif experiment.eyetracker.left != left_parsed:
-        warn(
+        warnings.warn(
             f"BeGaze metadata suggests left tracked={left_parsed} but experiment has "
             f"{experiment.eyetracker.left}; keeping experiment value.",
         )
@@ -823,7 +823,7 @@ def _fill_experiment_from_parsing_begaze_metadata(
     if experiment.eyetracker.right is None:
         experiment.eyetracker.right = right_parsed
     elif experiment.eyetracker.right != right_parsed:
-        warn(
+        warnings.warn(
             f"BeGaze metadata suggests right tracked={right_parsed} but experiment has "
             f"{experiment.eyetracker.right}; keeping experiment value.",
         )
@@ -839,14 +839,14 @@ def _fill_experiment_from_parsing_begaze_metadata(
         if experiment.screen.width_px is None and width is not None:
             experiment.screen.width_px = int(width)
         elif width is not None and experiment.screen.width_px not in (None, int(width)):
-            warn(
+            warnings.warn(
                 f"BeGaze metadata screen width={width} differs from experiment value "
                 f"{experiment.screen.width_px}; keeping experiment value.",
             )
         if experiment.screen.height_px is None and height is not None:
             experiment.screen.height_px = int(height)
         elif height is not None and experiment.screen.height_px not in (None, int(height)):
-            warn(
+            warnings.warn(
                 f"BeGaze metadata screen height={height} differs from experiment value "
                 f"{experiment.screen.height_px}; keeping experiment value.",
             )
