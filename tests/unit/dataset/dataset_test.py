@@ -434,6 +434,7 @@ def mock_toy(
         filename_pattern_schema_overrides=filename_format_schema_overrides.get(
             'precomputed_events', None,
         ),
+        load_kwargs={'separator': ','},
     )
 
     precomputed_events_files = [
@@ -472,6 +473,7 @@ def mock_toy(
         filename_pattern_schema_overrides=filename_format_schema_overrides.get(
             'precomputed_reading_measures', None,
         ),
+        load_kwargs={'separator': ','},
     )
 
     precomputed_rm_files = [
