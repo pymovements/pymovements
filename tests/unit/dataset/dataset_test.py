@@ -24,6 +24,7 @@ import os
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -434,7 +435,6 @@ def mock_toy(
         filename_pattern_schema_overrides=filename_format_schema_overrides.get(
             'precomputed_events', None,
         ),
-        load_kwargs={'separator': ','},
     )
 
     precomputed_events_files = [
@@ -473,7 +473,6 @@ def mock_toy(
         filename_pattern_schema_overrides=filename_format_schema_overrides.get(
             'precomputed_reading_measures', None,
         ),
-        load_kwargs={'separator': ','},
     )
 
     precomputed_rm_files = [
@@ -2103,6 +2102,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
         'ToyRightPrecomputedEventAndGaze',
         'ToyPrecomputedEvent',
         'ToyPrecomputedEventNoExtract',
+        'ToyPrecomputedEventLoadKwargs',
     ],
 )
 def precomputed_fixture_dataset(request, tmp_path):
@@ -2129,6 +2129,18 @@ def precomputed_fixture_dataset(request, tmp_path):
             eyes='right',
             filename_format_schema_overrides={'precomputed_events': {}},
         )
+    elif dataset_type == 'ToyPrecomputedEventLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[1],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[1] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
@@ -2188,6 +2200,18 @@ def precomputed_rm_fixture_dataset(request, tmp_path):
                 'precomputed_reading_measures': {},
             },
         )
+    elif dataset_type == 'ToyPrecomputedRMLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[2],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[2] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
