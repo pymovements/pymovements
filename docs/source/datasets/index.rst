@@ -39,7 +39,7 @@ Download your dataset and load it into memory with these few lines of code:
 
         Check out this tutorial on how to add your dataset to the library:
 
-        .. button-link:: tutorials/adding-public-dataset.html
+        .. button-link:: ../tutorials/adding-public-dataset.html
             :color: primary
             :shadow:
 
