@@ -24,11 +24,6 @@ Download your dataset and load it into memory with these few lines of code:
  Public Datasets
 -----------------
 
-.. csv-table::
-   :file: public_datasets.csv
-   :widths: 45, 5, 5, 5, 5, 5, 5, 5
-   :header-rows: 1
-
 .. grid::
     :gutter: 5
 
@@ -44,6 +39,11 @@ Download your dataset and load it into memory with these few lines of code:
             :shadow:
 
             Adding a Public Dataset to the Library
+
+.. csv-table::
+   :file: public_datasets.csv
+   :widths: 45, 5, 5, 5, 5, 5, 5, 5
+   :header-rows: 1
 
 ------------------
  Example Datasets
