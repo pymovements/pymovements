@@ -30,7 +30,7 @@ Download your dataset and load it into memory with these few lines of code:
 
         Check out this guide on how to contribute datasets to the library:
 
-        .. button-link:: adding_public_dataset
+        .. button-ref:: adding_public_dataset
             :ref-type: ref
             :color: primary
             :shadow:
