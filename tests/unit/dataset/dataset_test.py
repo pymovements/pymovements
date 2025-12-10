@@ -18,9 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all functionality in pymovements.dataset.dataset."""
+from __future__ import annotations
+
 import os
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -36,6 +40,8 @@ from pymovements import DatasetPaths
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
+from pymovements import ResourceDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.events import fill
 from pymovements.events import idt
 from pymovements.events import ivt
@@ -47,6 +53,56 @@ from pymovements.exceptions import InvalidProperty
 
 class _UNSET:
     ...
+
+
+@pytest.fixture(name='make_dataset', scope='function')
+def fixture_make_dataset(tmp_path: Path) -> Callable[[list[str], Path | None], Path]:
+    """Make a dataset of empty files.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where files are copied to.
+
+    Returns
+    -------
+    Callable[[list[str], Path | None], Path]
+        Function that takes a directory structure and returns the Path to the root directory.
+
+    """
+    def _make_dataset(files: list[str], root: Path | None = None) -> Path:
+        if root is None:
+            root = tmp_path
+
+        for relative_filepath in files:
+            filepath = root / relative_filepath
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            # Create new empty file.
+            with open(filepath, 'x', encoding='utf-8'):
+                pass
+        return root
+
+    return _make_dataset
+
+
+@pytest.mark.parametrize(
+    'files',
+    [
+        pytest.param([], id='no_files'),
+        pytest.param(['test.abc'], id='single_file_in_root_directory'),
+        pytest.param(['my/test.abc'], id='single_file_in_child_directory'),
+        pytest.param(['one.abc', 'two.abc'], id='two_files_in_root_directory'),
+        pytest.param(['one/test.abc', 'two/test.abc'], id='two_files_in_separate_directories'),
+    ],
+)
+def test_make_dataset_creates_correct_tree(files, make_dataset, tmp_path):
+    dataset_dirpath = make_dataset(files, tmp_path)
+
+    created_files = {path for path in Path(dataset_dirpath).rglob('*') if not path.is_dir()}
+
+    expected_files = {tmp_path / relative_filepath for relative_filepath in files}
+
+    assert created_files == expected_files
 
 
 def create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
@@ -133,8 +189,6 @@ def mock_toy(
 
     fileinfo = fileinfo.with_columns([
         pl.format('{}.' + raw_fileformat, 'subject_id').alias('filepath'),
-        pl.lit(None).alias('load_function'),
-        pl.lit(None).alias('load_kwargs'),
     ])
 
     fileinfo = fileinfo.sort(by='filepath')
@@ -265,6 +319,30 @@ def mock_toy(
 
     create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath / 'raw')
 
+    gaze_sample_resource_definition = ResourceDefinition(
+        content='gaze',
+        filename_pattern=r'{subject_id:d}.' + raw_fileformat,
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
+            'gaze', None,
+        ),
+        load_kwargs={
+            'time_column': 'time',
+            'time_unit': 'ms',
+            'distance_column': distance_column,
+            'pixel_columns': pixel_columns,
+            'trial_columns': ['task', 'trial'],
+        },
+    )
+
+    files = [
+        DatasetFile(
+            path=rootpath / 'raw' / fileinfo_row['filepath'],  # absolute path
+            definition=gaze_sample_resource_definition,
+            metadata={key: value for key, value in fileinfo_row.items() if key != 'filepath'},
+        )
+        for fileinfo_row in fileinfo.to_dicts()
+    ]
+
     # Create Gazes for passing as ground truth
     gazes = [
         Gaze(gaze, pixel_columns=pixel_columns)
@@ -325,59 +403,6 @@ def mock_toy(
 
     create_event_files_from_fileinfo(events_list, fileinfo, rootpath / 'events')
 
-    dataset_definition = DatasetDefinition(
-        experiment=Experiment(
-            screen_width_px=1280,
-            screen_height_px=1024,
-            screen_width_cm=38,
-            screen_height_cm=30.2,
-            distance_cm=distance_cm,
-            origin='upper left',
-            sampling_rate=1000,
-        ),
-        resources=[
-            {
-                'content': 'gaze',
-                'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-                'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
-                    'gaze', None,
-                ),
-                'load_kwargs': {
-                    'time_column': 'time',
-                    'time_unit': 'ms',
-                    'distance_column': distance_column,
-                    'pixel_columns': pixel_columns,
-                    'trial_columns': ['task', 'trial'],
-                },
-            },
-            {
-                'content': 'precomputed_events',
-                'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-                'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
-                    'precomputed_events', None,
-                ),
-            },
-            {
-                'content': 'precomputed_reading_measures',
-                'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-                'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
-                    'precomputed_reading_measures', None,
-                ),
-            },
-        ],
-        extract=extract,
-    )
-
-    fileinfo = fileinfo.with_columns(
-        pl.lit({
-            'time_column': 'time',
-            'time_unit': 'ms',
-            'distance_column': distance_column,
-            'pixel_columns': pixel_columns,
-            'trial_columns': ['task', 'trial'],
-        }).alias('load_kwargs'),
-    )
-
     precomputed_dfs = []
     for _ in range(fileinfo.height):
         precomputed_events = pl.from_dict(
@@ -404,6 +429,24 @@ def mock_toy(
         rootpath / 'precomputed_events',
     )
 
+    precomputed_events_resource_definition = ResourceDefinition(
+        content='precomputed_events',
+        filename_pattern=r'{subject_id:d}.' + raw_fileformat,
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
+            'precomputed_events', None,
+        ),
+    )
+
+    precomputed_events_files = [
+        DatasetFile(
+            path=rootpath / 'precomputed_events' / fileinfo_row['filepath'],  # absolute path
+            definition=precomputed_events_resource_definition,
+            metadata={key: value for key, value in fileinfo_row.items() if key != 'filepath'},
+        )
+        for fileinfo_row in fileinfo.to_dicts()
+    ]
+    files.extend(precomputed_events_files)
+
     precomputed_rm_dfs = []
     for _ in range(fileinfo.height):
         precomputed_rm_df = pl.from_dict(
@@ -424,6 +467,42 @@ def mock_toy(
         rootpath / 'precomputed_reading_measures',
     )
 
+    precomputed_rm_resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        filename_pattern=r'{subject_id:d}.' + raw_fileformat,
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
+            'precomputed_reading_measures', None,
+        ),
+    )
+
+    precomputed_rm_files = [
+        DatasetFile(
+            path=rootpath / 'precomputed_reading_measures' / fileinfo_row['filepath'],
+            definition=precomputed_rm_resource_definition,
+            metadata={key: value for key, value in fileinfo_row.items() if key != 'filepath'},
+        )
+        for fileinfo_row in fileinfo.to_dicts()
+    ]
+    files.extend(precomputed_rm_files)
+
+    dataset_definition = DatasetDefinition(
+        experiment=Experiment(
+            screen_width_px=1280,
+            screen_height_px=1024,
+            screen_width_cm=38,
+            screen_height_cm=30.2,
+            distance_cm=distance_cm,
+            origin='upper left',
+            sampling_rate=1000,
+        ),
+        resources=[
+            gaze_sample_resource_definition,
+            precomputed_events_resource_definition,
+            precomputed_rm_resource_definition,
+        ],
+        extract=extract,
+    )
+
     return {
         'init_kwargs': {
             'definition': dataset_definition,
@@ -431,9 +510,10 @@ def mock_toy(
         },
         'fileinfo': {
             'gaze': fileinfo,
-            'precomputed_events': fileinfo.with_columns(load_kwargs=pl.lit(None)),
-            'precomputed_reading_measures': fileinfo.with_columns(load_kwargs=pl.lit(None)),
+            'precomputed_events': fileinfo,
+            'precomputed_reading_measures': fileinfo,
         },
+        'files': files,
         'raw_gazes': gazes,
         'preprocessed_gazes': preprocessed_gazes,
         'events_list': events_list,
@@ -486,6 +566,154 @@ def test_init_with_definition_class():
     dataset = Dataset(CustomPublicDataset, path='.')
 
     assert dataset.definition == CustomPublicDataset()
+
+
+def test_scan_correct_files_from_dataset_configuration(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.scan()
+
+    expected_files = gaze_dataset_configuration['files']
+    assert dataset._files == expected_files
+
+
+@pytest.mark.parametrize(
+    ('dataset_tree', 'resources', 'expected_files'),
+    [
+        pytest.param(
+            [], [], [],
+            id='no_files_no_resources',
+        ),
+
+        pytest.param(
+            ['test.csv'], [], [],
+            id='single_file_no_resources',
+        ),
+
+        pytest.param(
+            ['raw/test.csv'], [{'content': 'gaze', 'filename_pattern': 'test.csv'}],
+            [
+                {
+                    'path': 'raw/test.csv',
+                    'definition': ResourceDefinition(content='gaze', filename_pattern='test.csv'),
+                },
+            ],
+            id='single_file_matches_resource_defintion',
+        ),
+
+        pytest.param(
+            ['raw/01/test.csv', 'raw/02/test.csv'],
+            [{'content': 'gaze', 'filename_pattern': 'test.csv'}],
+            [
+                {
+                    'path': 'raw/01/test.csv',
+                    'definition': ResourceDefinition(content='gaze', filename_pattern='test.csv'),
+                },
+                {
+                    'path': 'raw/02/test.csv',
+                    'definition': ResourceDefinition(content='gaze', filename_pattern='test.csv'),
+                },
+            ],
+            id='two_files_match_single_resource_defintion',
+        ),
+
+        pytest.param(
+            ['raw/01.csv', 'raw/02.csv'],
+            [{'content': 'gaze', 'filename_pattern': '{participant_id:d}.csv'}],
+            [
+                {
+                    'path': 'raw/01.csv',
+                    'definition': ResourceDefinition(
+                        content='gaze', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '01'},
+                },
+                {
+                    'path': 'raw/02.csv',
+                    'definition': ResourceDefinition(
+                        content='gaze', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '02'},
+                },
+            ],
+            id='two_files_match_single_resource_defintion_with_metadata',
+        ),
+
+        pytest.param(
+            ['precomputed_events/fixations.csv', 'precomputed_events/saccades.csv'],
+            [
+                {'content': 'precomputed_events', 'filename_pattern': 'fixations.csv'},
+                {'content': 'precomputed_events', 'filename_pattern': 'saccades.csv'},
+            ],
+            [
+                {
+                    'path': 'precomputed_events/fixations.csv',
+                    'definition': ResourceDefinition(
+                        content='precomputed_events', filename_pattern='fixations.csv',
+                    ),
+                },
+                {
+                    'path': 'precomputed_events/saccades.csv',
+                    'definition': ResourceDefinition(
+                        content='precomputed_events', filename_pattern='saccades.csv',
+                    ),
+                },
+            ],
+            id='two_files_match_two_resource_defintions',
+        ),
+
+        pytest.param(
+            ['raw/01.csv', 'precomputed_events/01.csv'],
+            [
+                {'content': 'gaze', 'filename_pattern': '{participant_id:d}.csv'},
+                {'content': 'precomputed_events', 'filename_pattern': '{participant_id:d}.csv'},
+            ],
+            [
+                {
+                    'path': 'raw/01.csv',
+                    'definition': ResourceDefinition(
+                        content='gaze', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '01'},
+                },
+                {
+                    'path': 'precomputed_events/01.csv',
+                    'definition': ResourceDefinition(
+                        content='precomputed_events', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '01'},
+                },
+            ],
+            id='two_files_match_two_resource_defintions_with_metadata',
+        ),
+    ],
+)
+def test_dataset_scan_correct_files_from_dataset_tree(
+        dataset_tree, resources, expected_files, make_dataset,
+):
+    dirpath = make_dataset(dataset_tree)
+
+    dataset_paths = DatasetPaths(root=dirpath, dataset='.')
+    definition = DatasetDefinition(name='test', resources=resources)
+    dataset = Dataset(definition=definition, path=dataset_paths)
+
+    dataset.scan()
+    scanned_files = dataset._files
+
+    # add dataset dirpath to relative paths in specified expected files
+    expected_files = [
+        DatasetFile(
+            path=dirpath / expected_file['path'],
+            definition=expected_file['definition'],
+            metadata=expected_file.get('metadata', {}),
+        )
+        for expected_file in expected_files
+    ]
+
+    # sort lists by filepath
+    scanned_files = sorted(scanned_files, key=lambda file: file.path)
+    expected_files = sorted(expected_files, key=lambda file: file.path)
+
+    assert scanned_files == expected_files
 
 
 def test_load_correct_fileinfo(gaze_dataset_configuration):
@@ -1874,6 +2102,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
         'ToyRightPrecomputedEventAndGaze',
         'ToyPrecomputedEvent',
         'ToyPrecomputedEventNoExtract',
+        'ToyPrecomputedEventLoadKwargs',
     ],
 )
 def precomputed_fixture_dataset(request, tmp_path):
@@ -1900,6 +2129,18 @@ def precomputed_fixture_dataset(request, tmp_path):
             eyes='right',
             filename_format_schema_overrides={'precomputed_events': {}},
         )
+    elif dataset_type == 'ToyPrecomputedEventLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[1],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[1] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
@@ -1931,6 +2172,7 @@ def test_load_no_files_precomputed_raises_exception(precomputed_dataset_configur
         'ToyRightPrecomputedEventAndGazeAndRM',
         'ToyPrecomputedRM',
         'ToyPrecomputedRMNoExtract',
+        'ToyPrecomputedRMLoadKwargs',
     ],
 )
 def precomputed_rm_fixture_dataset(request, tmp_path):
@@ -1959,6 +2201,18 @@ def precomputed_rm_fixture_dataset(request, tmp_path):
                 'precomputed_reading_measures': {},
             },
         )
+    elif dataset_type == 'ToyPrecomputedRMLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[2],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[2] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
