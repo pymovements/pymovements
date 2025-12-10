@@ -10,6 +10,16 @@ resources:
     round_id: '!int'
     subject_id: '!int'
     session_id: '!int'
+  load_kwargs:
+    time_column: n
+    time_unit: ms
+    position_columns:
+    - x
+    - y
+    column_map:
+      val: validity
+      xT: x_target_pos
+      yT: y_target_pos
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -32,12 +42,3 @@ custom_read_kwargs:
       lab: '!polars.datatypes.classes.Int64'
       xT: '!polars.datatypes.classes.Float32'
       yT: '!polars.datatypes.classes.Float32'
-column_map:
-  val: validity
-  xT: x_target_pos
-  yT: y_target_pos
-time_column: n
-time_unit: ms
-position_columns:
-- x
-- y

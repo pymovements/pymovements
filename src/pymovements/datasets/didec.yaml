@@ -17,6 +17,7 @@ resources:
       trial: !int
     load_function: from_begaze
     load_kwargs:
+      trial_columns: ['Stimulus']
       encoding: ascii
       prefer_eye: L
 
@@ -28,39 +29,3 @@ experiment:
   distance_cm: 70
   origin: "upper left"
   sampling_rate: 250
-
-trial_columns:
-  - "Stimulus"
-
-time_column: "Time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "L POR X [px]"
-  - "L POR Y [px]"
-  - "R POR X [px]"
-  - "R POR Y [px]"
-
-column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    separator: "\t"
-    skip_rows: 43
-    has_header: false
-    new_columns:
-      - "Time"
-      - "Type"
-      - "Trial"
-      - "L POR X [px]"
-      - "L POR Y [px]"
-      - "R POR X [px]"
-      - "R POR Y [px]"
-      - "Timing"
-      - "Pupil Confidence"
-      - "L Plane"
-      - "R Plane"
-      - "L Event Info"
-      - "R Event Info"
-      - "Stimulus"

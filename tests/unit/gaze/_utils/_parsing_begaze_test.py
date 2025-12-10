@@ -28,7 +28,6 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.gaze import io
 from pymovements.gaze._utils import _parsing_begaze
 from pymovements.gaze.experiment import Experiment
@@ -363,40 +362,6 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
     # When trial_columns is provided, it should be set on the Gaze object
     if with_trial_columns:
         assert gaze.trial_columns == ['trial_id']
-
-
-@pytest.mark.parametrize('prefer_eye', ['R', 'L'])
-def test_from_begaze_loader_prefer_eye_via_definition(make_text_file, prefer_eye):
-    # prefer_eye should be read from the DatasetDefinition.custom_read_kwargs path
-    # and respected by from_begaze.
-
-    text = (
-        '## [BeGaze]\n'
-        '## Date:\t08.03.2023 09:25:20\n'
-        '## Sample Rate:\t1000\n'
-        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]'
-        '\tR POR X [px]\tR POR Y [px]\tR Pupil Diameter [mm]\tPupil Confidence\t'
-        'L Event Info\tR Event Info\n'
-        '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n'
-        '10000001100\tSMP\t1\t11\t21\t3.1\t111\t121\t4.1\t1\tSaccade\tFixation\n'
-    )
-    p = make_text_file(filename='begaze_loader_pref_eye.txt', body=text, encoding='ascii')
-
-    definition = DatasetDefinition(
-        experiment=Experiment(sampling_rate=None),
-        custom_read_kwargs={'gaze': {'prefer_eye': prefer_eye}},
-    )
-
-    gaze = io.from_begaze(p, definition=definition)
-
-    # Right eye should be selected per definition: reflected in experiment flags.
-    assert gaze.experiment.eyetracker.left is (prefer_eye == 'L')
-    assert gaze.experiment.eyetracker.right is (prefer_eye == 'R')
-    # Gaze samples expose combined pixel column
-    if prefer_eye == 'R':
-        assert gaze.samples['pixel'].to_list() == [[110.0, 120.0], [111.0, 121.0]]
-    else:
-        assert gaze.samples['pixel'].to_list() == [[10.0, 20.0], [11.0, 21.0]]
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,11 @@ resources:
     filename: edd_raw.zip
     md5: null
     filename_pattern: 'Subject_{subject_id:d}_{task:s}_raw.csv'
+    load_kwargs:
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right']
+
   - content: precomputed_events
     url: https://zenodo.org/api/records/13332134/files-archive
     filename: edd_fix.zip
@@ -22,16 +27,6 @@ experiment:
   distance_cm: 65  # in the paper it is written (60-70cm)
   origin: 'center'
   sampling_rate: 250
-
-time_column: 'time'
-
-time_unit: 'ms'
-
-pixel_columns:
-  - gaze_x_left
-  - gaze_y_left
-  - gaze_x_right
-  - gaze_y_right
 
 custom_read_kwargs:
   gaze: {}

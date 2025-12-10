@@ -2,13 +2,16 @@ name: GazeOnFaces
 long_name: GazeOnFaces dataset
 resources:
 - content: gaze
-  filename: gaze_csv.zip
-  url: https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip
-  md5: fe219f07c9253cd9aaee6bd50233c034
+  filename: database3_sciencemuseum.zip
+  url: https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=
   filename_pattern: gaze_sub{sub_id:d}_trial{trial_id:d}.csv
   filename_pattern_schema_overrides:
     sub_id: '!int'
     trial_id: '!int'
+  load_kwargs:
+    pixel_columns:
+    - x
+    - y
 experiment:
   eyetracker:
     sampling_rate: 60
@@ -29,6 +32,3 @@ custom_read_kwargs:
     schema_overrides:
     - '!polars.datatypes.classes.Float32'
     - '!polars.datatypes.classes.Float32'
-pixel_columns:
-- x
-- y
