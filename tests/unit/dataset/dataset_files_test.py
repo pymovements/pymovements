@@ -435,20 +435,46 @@ def test_load_example_gaze_file(
         pytest.param(
             {
                 'filename': 'test.csv',
+                'data': pl.DataFrame({'trial': [1], 't': [0], 'x': [1.23], 'y': [3.45]}),
+            },
+            None, {'trial_columns': 'trial', 'time_column': 't', 'pixel_columns': ['x', 'y']},
+            {},
+            Gaze(
+                samples=pl.DataFrame({'trial': [1], 'time': [0], 'pixel': [[1.23, 3.45]]}),
+                trial_columns=['trial'],
+            ),
+            id='trial_columns_time_column_pixel_columns',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
                 'data': pl.DataFrame({'t': [1], 'x': [1.23], 'y': [3.45]}),
             },
-            None, {},
-            {'time_column': 't', 'pixel_columns': ['x', 'y']},
+            None, {'pixel_columns': ['x', 'y']},
+            {'time_column': 't'},
             Gaze(samples=pl.DataFrame({'time': [1], 'pixel': [[1.23, 3.45]]})),
-            marks=[
-                pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.time_column.*:DeprecationWarning',
-                ),
-                pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
-                ),
-            ],
-            id='time_column_and_pixel_columns_definition',
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*DatasetDefinition.time_column.*:DeprecationWarning',
+            ),
+            id='time_column_definition',
+        ),
+
+        pytest.param(
+            {
+                'filename': 'test.csv',
+                'data': pl.DataFrame({'trial': [1], 't': [0], 'x': [1.23], 'y': [3.45]}),
+            },
+            None, {'time_column': 't', 'pixel_columns': ['x', 'y']},
+            {'trial_columns': 'trial'},
+            Gaze(
+                samples=pl.DataFrame({'trial': [1], 'time': [0], 'pixel': [[1.23, 3.45]]}),
+                trial_columns=['trial'],
+            ),
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*DatasetDefinition.trial_columns.*:DeprecationWarning',
+            ),
+            id='trial_columns_definition',
         ),
 
         pytest.param(

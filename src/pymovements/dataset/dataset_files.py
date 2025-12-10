@@ -765,16 +765,19 @@ def save_preprocessed(
 
 def take_subset(
         fileinfo: pl.DataFrame,
+        files: list[DatasetFile],
         subset: dict[
             str, bool | float | int | str | list[bool | float | int | str],
         ] | None = None,
-) -> pl.DataFrame:
-    """Take a subset of the fileinfo dataframe.
+) -> tuple[pl.DataFrame, list[DatasetFile]]:
+    """Take a subset of the fileinfo dataframe and dataset file list.
 
     Parameters
     ----------
     fileinfo: pl.DataFrame
         File information dataframe.
+    files: list[DatasetFile]
+        Filter this list of dataset files for values specified by subset.
     subset: dict[str, bool | float | int | str | list[bool | float | int | str]] | None
         If specified, take a subset of the dataset. All keys in the dictionary must be
         present in the fileinfo dataframe inferred by `scan_dataset()`. Values can be either
@@ -784,6 +787,8 @@ def take_subset(
     -------
     pl.DataFrame
         Subset of file information dataframe.
+    list[DatasetFile]
+        Subset of dataset files.
 
     Raises
     ------
@@ -793,69 +798,7 @@ def take_subset(
         If dictionary key or value is not of valid type.
     """
     if subset is None:
-        return fileinfo
-
-    if not isinstance(subset, dict):
-        raise TypeError(f'subset must be of type dict but is of type {type(subset)}')
-
-    for subset_key, subset_value in subset.items():
-        if not isinstance(subset_key, str):
-            raise TypeError(
-                f'subset keys must be of type str but key {subset_key} is of type'
-                f' {type(subset_key)}',
-            )
-
-        if subset_key not in fileinfo['gaze'].columns:
-            raise ValueError(
-                f'subset key {subset_key} must be a column in the fileinfo attribute.'
-                f" Available columns are: {fileinfo['gaze'].columns}",
-            )
-
-        if isinstance(subset_value, (bool, float, int, str)):
-            column_values = [subset_value]
-        elif isinstance(subset_value, (list, tuple, range)):
-            column_values = subset_value
-        else:
-            raise TypeError(
-                f'subset values must be of type bool, float, int, str, range, or list, '
-                f'but value of pair {subset_key}: {subset_value} is of type {type(subset_value)}',
-            )
-
-        fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(subset_key).is_in(column_values))
-    return fileinfo
-
-
-def take_subset_files(
-        files: list[DatasetFile],
-        subset: dict[
-            str, bool | float | int | str | list[bool | float | int | str],
-        ] | None = None,
-) -> list[DatasetFile]:
-    """Take a subset of the fileinfo dataframe.
-
-    Parameters
-    ----------
-    files: list[DatasetFile]
-        List of dataset files.
-    subset: dict[str, bool | float | int | str | list[bool | float | int | str]] | None
-        If specified, take a subset of the dataset. All keys in the dictionary must be
-        present in the fileinfo dataframe inferred by `scan_dataset()`. Values can be either
-        bool, float, int , str or a list of these. (default: None)
-
-    Returns
-    -------
-    list[DatasetFile]
-        Subset of dataset files.
-
-    Raises
-    ------
-    ValueError
-        If metadata key is not available in :py:attr:`pymovements.DatasetFile.metadata`.
-    TypeError
-        If dictionary key or value is not of valid type.
-    """
-    if subset is None:
-        return files
+        return fileinfo, files
 
     if not isinstance(subset, dict):
         raise TypeError(f'subset must be of type dict but is of type {type(subset)}')
@@ -865,6 +808,12 @@ def take_subset_files(
             raise TypeError(
                 f'subset keys must be of type str but key {metadata_key} is of type'
                 f' {type(metadata_key)}',
+            )
+
+        if metadata_key not in fileinfo['gaze'].columns:
+            raise ValueError(
+                f'subset key {metadata_key} must be a column in the fileinfo attribute.'
+                f" Available columns are: {fileinfo['gaze'].columns}",
             )
 
         for file in files:
@@ -885,5 +834,6 @@ def take_subset_files(
                 f'{type(metadata_value)}',
             )
 
+        fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(metadata_key).is_in(metadata_values))
         files = [file for file in files if file.metadata[metadata_key] in metadata_values]
-    return files
+    return fileinfo, files

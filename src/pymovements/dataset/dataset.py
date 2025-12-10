@@ -143,8 +143,11 @@ class Dataset:
             Returns self, useful for method cascading.
         """
         self.scan()
-        self.fileinfo = dataset_files.take_subset(fileinfo=self.fileinfo, subset=subset)
-        self._files = dataset_files.take_subset_files(files=self._files, subset=subset)
+        self.fileinfo, self._files = dataset_files.take_subset(
+            fileinfo=self.fileinfo,
+            files=self._files,
+            subset=subset,
+        )
 
         if self.definition.resources.has_content('gaze'):
             self.load_gaze_files(
