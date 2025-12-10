@@ -817,7 +817,9 @@ def take_subset(
             )
 
         for file in files:
-            if metadata_key not in file.metadata:
+            if metadata_key not in file.metadata:  # pragma: no cover
+                # This code is currently unreachable via public interfaces.
+                # The pragma directive should be removed after the removal of fileinfo from Dataset.
                 raise ValueError(
                     f'subset key {metadata_key} must exist as metadata key in DatasetFile. '
                     f"Available metadata: {file.metadata}",
