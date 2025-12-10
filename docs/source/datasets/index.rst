@@ -29,6 +29,22 @@ Download your dataset and load it into memory with these few lines of code:
    :widths: 45, 5, 5, 5, 5, 5, 5, 5
    :header-rows: 1
 
+.. grid::
+    :gutter: 5
+
+    .. grid-item-card::
+
+        **Is your dataset missing?**
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        Check out this tutorial on how to add your dataset to the library:
+
+        .. button-link:: tutorials/adding-public-dataset.html
+            :color: primary
+            :shadow:
+
+            Adding a Public Dataset to the Library
+
 ------------------
  Example Datasets
 ------------------
