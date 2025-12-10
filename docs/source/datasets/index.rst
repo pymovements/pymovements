@@ -20,10 +20,6 @@ Download your dataset and load it into memory with these few lines of code:
     # Load the dataset into memory for processing
     dataset.load()
 
------------------
- Public Datasets
------------------
-
 .. grid::
     :gutter: 5
 
@@ -39,6 +35,10 @@ Download your dataset and load it into memory with these few lines of code:
             :shadow:
 
             Adding a Public Dataset to the Library
+
+-----------------
+ Public Datasets
+-----------------
 
 .. csv-table::
    :file: public_datasets.csv
