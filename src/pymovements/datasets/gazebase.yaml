@@ -20,6 +20,17 @@ resources:
         val: "validity"
         xT: "x_target_pos"
         yT: "y_target_pos"
+      read_csv_kwargs:
+        null_values: "NaN"
+        schema_overrides:
+          n: !polars.Int64
+          x: !polars.Float32
+          y: !polars.Float32
+          val: !polars.Int64
+          dP: !polars.Float32
+          lab: !polars.Int64
+          xT: !polars.Float32
+          yT: !polars.Float32
 
 experiment:
   screen_width_px: 1680
@@ -29,16 +40,3 @@ experiment:
   distance_cm: 55
   origin: "upper left"
   sampling_rate: 1000
-
-custom_read_kwargs:
-  gaze:
-    null_values: "NaN"
-    schema_overrides:
-      n: !polars.Int64
-      x: !polars.Float32
-      y: !polars.Float32
-      val: !polars.Int64
-      dP: !polars.Float32
-      lab: !polars.Int64
-      xT: !polars.Float32
-      yT: !polars.Float32

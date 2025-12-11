@@ -80,7 +80,7 @@ class DatasetDefinition:
 
         .. deprecated:: v0.22.1
            This field will be removed in v0.27.0.
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv` the keyword arguments will be passed
@@ -88,6 +88,10 @@ class DatasetDefinition:
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
@@ -216,6 +220,10 @@ class DatasetDefinition:
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
@@ -256,26 +264,31 @@ class DatasetDefinition:
 
     Notes
     -----
-    When working with the ``gaze_custom_read_kwargs`` attribute there are specific use cases and
+    .. deprecated:: v0.25.0
+       The ``custom_read_kwargs`` attribute is deprecated.
+       Please specify :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+       This field will be removed in v0.30.0.
+
+    When working with the ``custom_read_kwargs`` attribute there are specific use cases and
     considerations to keep in mind, especially for reading csv files:
 
     1. Custom separator
     To read a csv file with a custom separator, you can pass the `separator` keyword argument to
-    ``gaze_custom_read_kwargs``. For example pass ``gaze_custom_read_kwargs={'separator': ';'}`` to
+    ``custom_read_kwargs``. For example pass ``custom_read_kwargs={'separator': ';'}`` to
     read a semicolon-separated csv file.
 
     2. Reading subset of columns
-    To read only specific columns, specify them in ``gaze_custom_read_kwargs``. For example:
-    ``gaze_custom_read_kwargs={'columns': ['col1', 'col2']}``
+    To read only specific columns, specify them in ``custom_read_kwargs``. For example:
+    ``custom_read_kwargs={'columns': ['col1', 'col2']}``
 
     3. Specifying column datatypes
     :py:func:`polars.read_csv` infers data types from a fixed number of rows,
     which might not be accurate for the entire dataset.
     To ensure correct data types, you can pass a dictionary to the
-    ``schema_overrides`` keyword argument in ``gaze_custom_read_kwargs``.
+    ``schema_overrides`` keyword argument in ``custom_read_kwargs``.
     Use data types from the :py:mod:`polars` library.
     For instance:
-    ``gaze_custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
+    ``custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -293,7 +306,7 @@ class DatasetDefinition:
 
     extract: dict[str, bool] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(default_factory=dict)
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
 
     column_map: dict[str, str] | None = None
 
@@ -336,6 +349,9 @@ class DatasetDefinition:
 
         self.extract = extract
 
+        self.resources = self._initialize_resources(resources=resources)
+        self._has_resources = _HasResourcesIndexer(resources=self.resources)
+
         if mirrors is None:
             self.mirrors = {}
         else:
@@ -347,14 +363,6 @@ class DatasetDefinition:
                 ),
             )
             self.mirrors = mirrors
-
-        if custom_read_kwargs is None:
-            self.custom_read_kwargs = {}
-        else:
-            self.custom_read_kwargs = custom_read_kwargs
-
-        self.resources = self._initialize_resources(resources=resources)
-        self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         if trial_columns is not None:
             warn(
@@ -446,6 +454,16 @@ class DatasetDefinition:
             )
             self.column_map = column_map
 
+        if custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.custom_read_kwargs = custom_read_kwargs
+
         if filename_format:
             # the setter will raise a deprecation warning
             self.filename_format = filename_format
@@ -458,7 +476,7 @@ class DatasetDefinition:
             warn(
                 DeprecationWarning(
                     'DatasetDefinition.has_files is deprecated since version v0.23.0. '
-                    'Please specify Resource.filename_pattern instead. '
+                    'Please specify ResourceDefinition.filename_pattern instead. '
                     'This field will be removed in v0.28.0.',
                 ),
             )
@@ -483,8 +501,8 @@ class DatasetDefinition:
         Namedgroups will appear in the `fileinfo` dataframe.
 
         .. deprecated:: v0.23.0
-           Please use Resource.filename_pattern instead.
-           This property will be removed in v0.28.0.
+        Please use ResourceDefinition.filename_pattern instead.
+        This property will be removed in v0.28.0.
 
         Returns
         -------
@@ -534,8 +552,8 @@ class DatasetDefinition:
         This casts specific named groups to a particular datatype.
 
         .. deprecated:: v0.23.0
-           Please use Resource.filename_pattern_schema_overrides instead.
-           This property will be removed in v0.28.0.
+        Please use ResourceDefinition.filename_pattern_schema_overrides instead.
+        This property will be removed in v0.28.0.
 
         Returns
         -------

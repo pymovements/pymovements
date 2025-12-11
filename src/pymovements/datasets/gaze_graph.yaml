@@ -15,6 +15,15 @@ resources:
       time_column: null
       time_unit: null
       pixel_columns: ['x', 'y']
+      read_csv_kwargs:
+        separator: ","
+        has_header: false
+        new_columns:
+          - "x"
+          - "y"
+        schema_overrides:
+          - !polars.Float32
+          - !polars.Float32
 
 experiment:
   screen_width_px: 3440
@@ -24,14 +33,3 @@ experiment:
   distance_cm: 50
   origin: "center"
   sampling_rate: 30
-
-custom_read_kwargs:
-  gaze:
-    separator: ","
-    has_header: false
-    new_columns:
-      - "x"
-      - "y"
-    schema_overrides:
-      - !polars.Float32
-      - !polars.Float32

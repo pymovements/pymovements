@@ -87,8 +87,9 @@ class ETDD70(DatasetDefinition):
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -167,10 +168,4 @@ class ETDD70(DatasetDefinition):
 
     pixel_columns: list[str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'gaze': {},
-                'precomputed_events': {},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
