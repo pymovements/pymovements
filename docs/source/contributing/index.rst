@@ -9,6 +9,11 @@ We encourage you to report any bugs or contribute to new features, optimisations
 In the following guides we give you an overview of the workflow and best practices for contributing
 to pymovements.
 
+.. toctree::
+    :hidden:
+    :maxdepth: 1
+
+    code-of-conduct
 
 .. toctree::
     :maxdepth: 1
