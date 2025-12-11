@@ -34,6 +34,7 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.events import Events
@@ -67,6 +68,7 @@ class Dataset:
             path: str | Path | DatasetPaths,
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self._files: list[DatasetFile] = []
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
@@ -141,7 +143,11 @@ class Dataset:
             Returns self, useful for method cascading.
         """
         self.scan()
-        self.fileinfo = dataset_files.take_subset(fileinfo=self.fileinfo, subset=subset)
+        self.fileinfo, self._files = dataset_files.take_subset(
+            fileinfo=self.fileinfo,
+            files=self._files,
+            subset=subset,
+        )
 
         if self.definition.resources.has_content('gaze'):
             self.load_gaze_files(
@@ -234,7 +240,9 @@ class Dataset:
         RuntimeError
             If an error occurred during matching filenames or no files have been found.
         """
-        self.fileinfo = dataset_files.scan_dataset(definition=self.definition, paths=self.paths)
+        self.fileinfo, self._files = dataset_files.scan_dataset(
+            definition=self.definition, paths=self.paths,
+        )
         return self
 
     def load_gaze_files(
@@ -275,7 +283,7 @@ class Dataset:
         self._check_fileinfo()
         self.gaze = dataset_files.load_gaze_files(
             definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+            files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             preprocessed=preprocessed,
             preprocessed_dirname=preprocessed_dirname,
@@ -303,10 +311,13 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
+        precomputed_event_files = [
+            file for file in self._files
+            if file.definition.content == 'precomputed_events'
+        ]
         self.precomputed_events = dataset_files.load_precomputed_event_files(
-            self.definition,
-            self.fileinfo['precomputed_events'],
-            self.paths,
+            definition=self.definition,
+            files=precomputed_event_files,
         )
 
     def load_precomputed_reading_measures(self) -> None:
@@ -329,10 +340,13 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
+        reading_measure_files = [
+            file for file in self._files
+            if file.definition.content == 'precomputed_reading_measures'
+        ]
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
-            self.definition,
-            self.fileinfo['precomputed_reading_measures'],
-            self.paths,
+            definition=self.definition,
+            files=reading_measure_files,
         )
 
     def split_gaze_data(
@@ -409,8 +423,7 @@ class Dataset:
         """
         self._check_fileinfo()
         events = dataset_files.load_event_files(
-            definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+            files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
@@ -477,7 +490,13 @@ class Dataset:
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze in tqdm(self.gaze, disable=disable_progressbar):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc=f'Applying {function}',
+                unit='file',
+                disable=disable_progressbar,
+        ):
             gaze.apply(function, **kwargs)
 
         return self
@@ -809,18 +828,14 @@ class Dataset:
         self._check_gaze()
 
         disable_progressbar = not verbose
-        for gaze, fileinfo_row in tqdm(
-                zip(self.gaze, self.fileinfo['gaze'].to_dicts()),
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Detecting events',
+                unit='file',
                 disable=disable_progressbar,
         ):
             gaze.detect(method, eye=eye, clear=clear, **kwargs)
-            # workaround until events are fully part of the Gaze
-            gaze.events.frame = dataset_files.add_fileinfo(
-                definition=self.definition,
-                df=gaze.events.frame,
-                fileinfo=fileinfo_row,
-            )
-
         return self
 
     def drop_event_properties(
@@ -881,7 +896,13 @@ class Dataset:
         Dataset
             Returns self, useful for method cascading.
         """
-        for gaze in tqdm(self.gaze, disable=not verbose):
+        for gaze in tqdm(
+                self.gaze,
+                total=len(self.gaze),
+                desc='Computing event properties',
+                unit='file',
+                disable=not verbose,
+        ):
             gaze.compute_event_properties(event_properties, name=name)
         return self
 

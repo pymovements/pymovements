@@ -29,6 +29,7 @@ from unittest.mock import Mock
 import matplotlib.pyplot as plt
 import polars as pl
 import pytest
+from matplotlib.lines import Line2D
 
 import pymovements as pm
 
@@ -175,3 +176,48 @@ def test_main_sequence_plot_sets_title():
     events = pm.Events(df)
     _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
     assert ax.get_title() == 'Main Sequence'
+
+
+def test_main_sequence_plot_measure_s_adds_text():
+    events = _make_events()
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='s', show=False)
+    # one text object (annotation) expected
+    legend_tokens = any('S' in text.get_text() for text in ax.get_legend().get_texts())
+    assert legend_tokens
+
+
+def test_main_sequence_plot_measure_invalid_raises():
+    events = _make_events()
+    with pytest.raises(ValueError):
+        pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='banana', show=False)
+
+
+def test_main_sequence_plot_fit_false_no_line():
+    events = _make_events()
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=False, show=False)
+    # there should be no extra line2D beyond the default axes spines; at least 1 scatter exists
+    assert not any(isinstance(artist, Line2D) for artist in ax.lines)
+
+
+def test_main_sequence_plot_fit_with_measure_false_draws_unlabeled_line():
+    events = _make_events()
+
+    _, ax = pm.plotting.main_sequence_plot(
+        events=events,
+        fit=True,
+        fit_measure=False,
+        show=False,
+    )
+
+    # We expect at least one line (the fit line)
+    assert any(isinstance(artist, Line2D) for artist in ax.lines)
+
+    # Legend should exist (from the scatter 'saccades' label)
+    legend = ax.get_legend()
+    assert legend is not None
+
+    legend_texts = [t.get_text() for t in legend.get_texts()]
+
+    # Only the 'saccades' label should be there, no R² or S
+    assert any(text == 'saccades' for text in legend_texts)
+    assert not any('R²' in text or 'S =' in text or text.startswith('S ') for text in legend_texts)

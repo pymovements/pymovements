@@ -209,10 +209,16 @@ If you add a new feature, please also include appropriate tests to verify its in
 functionality. We try to keep our code coverage close to 100%.
 
 It is possible to limit the scope of testing to specific environments and files. For example, to
-only test event-related functionality using the Python 3.9 environment use:
+only test event-related functionality using the Python 3.10 environment use:
 
 ```bash
-tox -e py39 -- tests/unit/events
+tox -e py310 -- tests/unit/events
+```
+
+In case you only want to run tests locally that do not require any network access you can use:
+
+```bash
+tox -e py310 -- -m "not network"
 ```
 
 ### Documentation

@@ -20,7 +20,7 @@
 """Test basic preprocessing on various gaze files."""
 import pytest
 
-from pymovements import datasets
+from pymovements import DatasetLibrary
 from pymovements import Experiment
 from pymovements import EyeTracker
 from pymovements import gaze as gaze_module
@@ -74,7 +74,8 @@ def fixture_gaze_init_kwargs(request, make_example_file):
         },
         'eyelink_monocular': {
             'file': make_example_file('eyelink_monocular_example.asc'),
-            'definition': datasets.ToyDatasetEyeLink(),
+            'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+            **DatasetLibrary.get('ToyDatasetEyeLink').resources[0].load_kwargs,
         },
         'eyelink_monocular_2khz': {
             'file': make_example_file('eyelink_monocular_2khz_example.asc'),
@@ -98,39 +99,48 @@ def fixture_gaze_init_kwargs(request, make_example_file):
         },
         'didec': {
             'file': make_example_file('didec_example.txt'),
-            'definition': datasets.DIDEC(),
+            'experiment': DatasetLibrary.get('DIDEC').experiment,
+            **DatasetLibrary.get('DIDEC').resources[0].load_kwargs,
         },
         'emtec': {
             'file': make_example_file('emtec_example.csv'),
-            'definition': datasets.EMTeC(),
+            'experiment': DatasetLibrary.get('EMTeC').experiment,
+            **DatasetLibrary.get('EMTeC').resources[0].load_kwargs,
         },
         'hbn': {
             'file': make_example_file('hbn_example.csv'),
-            'definition': datasets.HBN(),
+            'experiment': DatasetLibrary.get('HBN').experiment,
+            **DatasetLibrary.get('HBN').resources[0].load_kwargs,
         },
         'sbsat': {
             'file': make_example_file('sbsat_example.csv'),
-            'definition': datasets.SBSAT(),
+            'experiment': DatasetLibrary.get('SBSAT').experiment,
+            **DatasetLibrary.get('SBSAT').resources[0].load_kwargs,
         },
         'gaze_on_faces': {
             'file': make_example_file('gaze_on_faces_example.csv'),
-            'definition': datasets.GazeOnFaces(),
+            'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
+            **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
         },
         'gazebase': {
             'file': make_example_file('gazebase_example.csv'),
-            'definition': datasets.GazeBase(),
+            'experiment': DatasetLibrary.get('GazeBase').experiment,
+            **DatasetLibrary.get('GazeBase').resources[0].load_kwargs,
         },
         'gazebase_vr': {
             'file': make_example_file('gazebase_vr_example.csv'),
-            'definition': datasets.GazeBaseVR(),
+            'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+            **DatasetLibrary.get('GazeBaseVR').resources[0].load_kwargs,
         },
         'judo1000': {
             'file': make_example_file('judo1000_example.csv'),
-            'definition': datasets.JuDo1000(),
+            'experiment': DatasetLibrary.get('JuDo1000').experiment,
+            **DatasetLibrary.get('JuDo1000').resources[0].load_kwargs,
         },
         'potec': {
             'file': make_example_file('potec_example.tsv'),
-            'definition': datasets.PoTeC(),
+            'experiment': DatasetLibrary.get('PoTeC').experiment,
+            **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
         },
 
     }

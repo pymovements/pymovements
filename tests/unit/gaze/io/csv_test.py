@@ -21,8 +21,7 @@
 import polars as pl
 import pytest
 
-from pymovements import DatasetDefinition
-from pymovements import datasets
+from pymovements import DatasetLibrary
 from pymovements.gaze import from_csv
 
 
@@ -44,20 +43,6 @@ from pymovements.gaze import from_csv
         pytest.param(
             'monocular_example.csv',
             {
-                'definition': DatasetDefinition(
-                    time_column='time',
-                    time_unit='ms',
-                    pixel_columns=['x_left_pix', 'y_left_pix'],
-                ),
-            },
-            (10, 2),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
-            id='csv_mono_shape_definition',
-        ),
-
-        pytest.param(
-            'monocular_example.csv',
-            {
                 'column_map': {
                     'x_left_pix': 'pixel_xl',
                     'y_left_pix': 'pixel_yl',
@@ -67,6 +52,20 @@ from pymovements.gaze import from_csv
             (10, 2),
             {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_auto_column_detect',
+        ),
+
+        pytest.param(
+            'monocular_example.csv',
+            {
+                'time_column': 'time',
+                'time_unit': 'ms',
+                'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                'add_columns': {'test': 1},
+                'column_schema_overrides': {'test': pl.Float64},
+            },
+            (10, 3),
+            {'time': pl.Int64, 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
+            id='csv_mono_shape_add_columns',
         ),
 
         pytest.param(
@@ -118,51 +117,19 @@ from pymovements.gaze import from_csv
         pytest.param(
             'gaze_on_faces_example.csv',
             {
-                'definition': datasets.GazeOnFaces(),
+                'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
+                **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
             },
             (10, 2),
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
-        ),
-
-        pytest.param(
-            'gaze_on_faces_example.csv',
-            {
-                'definition': datasets.GazeOnFaces(),
-                'pixel_columns': ['foo', 'bar'],
-                'read_csv_kwargs': {
-                    'separator': ',',
-                    'has_header': False,
-                    'new_columns': ['foo', 'bar'],
-                    'schema_overrides': [pl.Float32, pl.Float32],
-                },
-            },
-            (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
-            id='gaze_on_faces_dataset_explicit_read_kwargs_and_columns',
-        ),
-
-        pytest.param(
-            'gaze_on_faces_example.csv',
-            {
-                'definition': datasets.GazeOnFaces(),
-                'pixel_columns': ['foo', 'bar'],
-                **{
-                    'separator': ',',
-                    'has_header': False,
-                    'new_columns': ['foo', 'bar'],
-                    'schema_overrides': [pl.Float32, pl.Float32],
-                },
-            },
-            (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
-            marks=pytest.mark.filterwarnings('ignore:.*from_csv.*kwargs.*:DeprecationWarning'),
-            id='gaze_on_faces_dataset_**kwargs_and_columns',
+            id='gaze_on_faces_example',
         ),
 
         pytest.param(
             'gazebase_example.csv',
             {
-                'definition': datasets.GazeBase(),
+                'experiment': DatasetLibrary.get('GazeBase').experiment,
+                **DatasetLibrary.get('GazeBase').resources[0].load_kwargs,
             },
             (10, 7),
             {
@@ -170,28 +137,14 @@ from pymovements.gaze import from_csv
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
-            id='gazebase_dataset_example',
-        ),
-
-        pytest.param(
-            'gazebase_example.csv',
-            {
-                'definition': datasets.GazeBase(),
-                'column_map': {'dP': 'test'},
-            },
-            (10, 7),
-            {
-                'time': pl.Int64, 'val': pl.Int64, 'test': pl.Float32, 'lab': pl.Int64,
-                'xT': pl.Float32, 'yT': pl.Float32,
-                'position': pl.List(pl.Float32),
-            },
-            id='gazebase_dataset_example_column_map_overrides_definition',
+            id='gazebase_example',
         ),
 
         pytest.param(
             'gazebase_vr_example.csv',
             {
-                'definition': datasets.GazeBaseVR(),
+                'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+                **DatasetLibrary.get('GazeBaseVR').resources[0].load_kwargs,
             },
             (10, 11),
             {
@@ -201,129 +154,82 @@ from pymovements.gaze import from_csv
                 'crx': pl.Float32, 'cry': pl.Float32, 'crz': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
-            id='gazebase_vr_dataset_example',
+            id='gazebase_vr_example',
         ),
 
         pytest.param(
             'hbn_example.csv',
             {
-                'definition': datasets.HBN(),
+                'experiment': DatasetLibrary.get('HBN').experiment,
+                **DatasetLibrary.get('HBN').resources[0].load_kwargs,
             },
             (10, 2),
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
-            id='hbn_dataset_example',
-        ),
-
-        pytest.param(
-            'hbn_example.csv',
-            {
-                'definition': datasets.HBN(),
-                'pixel_columns': [],
-                'position_columns': ['x_pix', 'y_pix'],
-            },
-            (10, 2),
-            {'time': pl.Float64, 'position': pl.List(pl.Float32)},
-            id='hbn_dataset_example_columns_override_definition',
+            id='hbn_example',
         ),
 
         pytest.param(
             'judo1000_example.csv',
             {
-                'definition': datasets.JuDo1000(),
+                'experiment': DatasetLibrary.get('JuDo1000').experiment,
+                **DatasetLibrary.get('JuDo1000').resources[0].load_kwargs,
             },
             (10, 4),
             {
                 'trial_id': pl.Int64, 'point_id': pl.Int64,
                 'time': pl.Int64, 'pixel': pl.List(pl.Float32),
             },
-            id='judo1000_dataset_example',
+            id='judo1000_example',
         ),
 
         pytest.param(
-            'judo1000_example.csv',
+            'potec_example.tsv',
             {
-                'definition': datasets.JuDo1000(),
-                'column_schema_overrides': {'trial_id': pl.String},
+                'experiment': DatasetLibrary.get('PoTeC').experiment,
+                **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
             },
-            (10, 4),
+            (10, 3),
             {
-                'trial_id': pl.String, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'time': pl.Int64, 'pupil_diameter': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
-            id='judo1000_dataset_example_column_schema_overrides',
+            id='potec_example',
         ),
 
         pytest.param(
-            'judo1000_example.csv',
+            'potec_example.tsv',
             {
-                'definition': datasets.JuDo1000(
-                    custom_read_kwargs={
-                        'gaze': {
-                            'schema_overrides': {
-                                'trialId': pl.String,
-                                'pointId': pl.String,
-                                'time': pl.Int64,
-                                'x_left': pl.Float32,
-                                'y_left': pl.Float32,
-                                'x_right': pl.Float32,
-                                'y_right': pl.Float32,
-                            },
-                            'separator': '\t',
-                        },
-                    },
-                ),
-            },
-            (10, 4),
-            {
-                'trial_id': pl.String, 'point_id': pl.String,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
-            },
-            id='judo1000_dataset_example_schema_overrides_from_definition',
-        ),
-
-        pytest.param(
-            'judo1000_example.csv',
-            {
-                'definition': datasets.JuDo1000(
-                    custom_read_kwargs={
-                        'gaze': {
-                            'schema_overrides': {
-                                'trialId': pl.String,
-                                'pointId': pl.String,
-                                'time': pl.Int64,
-                                'x_left': pl.Float32,
-                                'y_left': pl.Float32,
-                                'x_right': pl.Float32,
-                                'y_right': pl.Float32,
-                            },
-                            'separator': '\t',
-                        },
-                    },
-                ),
-                'column_schema_overrides': {
-                    'trial_id': pl.Int64,
-                    'point_id': pl.Int64,
+                'experiment': DatasetLibrary.get('PoTeC').experiment,
+                'time_column': 'time',
+                'time_unit': 'ms',
+                'pixel_columns': ['x', 'y'],
+                'schema_overrides': {
+                    'time': pl.Int64,
+                    'x': pl.Float64,
+                    'y': pl.Float64,
+                    'pupil_diameter': pl.Float64,
                 },
+                'separator': '\t',
             },
-            (10, 4),
+            (10, 3),
             {
-                'trial_id': pl.Int64, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'time': pl.Int64, 'pupil_diameter': pl.Float64, 'pixel': pl.List(pl.Float64),
             },
-            id='judo1000_dataset_example_column_schema_overrides_overrides_definition',
+            marks=pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning'),
+            id='potec_example_deprecated_kwargs',
         ),
 
         pytest.param(
             'sbsat_example.csv',
             {
-                'definition': datasets.SBSAT(),
+                'experiment': DatasetLibrary.get('SBSAT').experiment,
+                **DatasetLibrary.get('SBSAT').resources[0].load_kwargs,
             },
             (10, 5),
             {
                 'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Int64,
                 'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
-            id='sbsat_dataset_example',
+            id='sbsat_example',
         ),
     ],
 )

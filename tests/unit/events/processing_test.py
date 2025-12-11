@@ -18,12 +18,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test event processing classes."""
+from math import sqrt
+
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements import EventGazeProcessor
+from pymovements import EventProcessor
+from pymovements import Events
+from pymovements import Gaze
+from pymovements.exceptions import InvalidProperty
 
 
 @pytest.mark.parametrize(
@@ -38,7 +44,7 @@ import pymovements as pm
     ],
 )
 def test_event_processor_init(args, kwargs, expected_property_definitions):
-    processor = pm.EventProcessor(*args, **kwargs)
+    processor = EventProcessor(*args, **kwargs)
 
     assert processor.event_properties == expected_property_definitions
 
@@ -48,14 +54,14 @@ def test_event_processor_init(args, kwargs, expected_property_definitions):
     [
         pytest.param(
             ['foo'], {},
-            pm.exceptions.InvalidProperty, ('foo', 'invalid', 'duration'),
+            InvalidProperty, ('foo', 'invalid', 'duration'),
             id='unknown_event_property',
         ),
     ],
 )
 def test_event_processor_init_exceptions(args, kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.EventProcessor(*args, **kwargs)
+        EventProcessor(*args, **kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -88,8 +94,8 @@ def test_event_processor_init_exceptions(args, kwargs, exception, msg_substrings
 def test_event_processor_process_correct_result(
         events_kwargs, event_properties, expected_dataframe,
 ):
-    events = pm.Events(**events_kwargs)
-    processor = pm.EventProcessor(event_properties)
+    events = Events(**events_kwargs)
+    processor = EventProcessor(event_properties)
 
     property_result = processor.process(events)
     assert_frame_equal(property_result, expected_dataframe)
@@ -107,7 +113,7 @@ def test_event_processor_process_correct_result(
     ],
 )
 def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
-    processor = pm.EventGazeProcessor(*args, **kwargs)
+    processor = EventGazeProcessor(*args, **kwargs)
 
     assert processor.event_properties == expected_property_definitions
 
@@ -117,7 +123,7 @@ def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
     [
         pytest.param(
             ['foo'], {},
-            pm.exceptions.InvalidProperty, ('foo', 'invalid', 'peak_velocity'),
+            InvalidProperty, ('foo', 'invalid', 'peak_velocity'),
             id='unknown_event_property',
         ),
         pytest.param(
@@ -164,7 +170,7 @@ def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
 )
 def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.EventGazeProcessor(*args, **kwargs)
+        EventGazeProcessor(*args, **kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -175,53 +181,70 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
     ('events', 'gaze', 'init_kwargs', 'process_kwargs', 'expected_dataframe'),
     [
         pytest.param(
-            pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
-            ),
-            pm.Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.ones(10),
-                        'y_vel': np.zeros(10),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict({'name': ['fixation'], 'onset': [0], 'offset': [4]}),
+            Gaze(
+                pl.from_dict({
+                    'time': [0, 1, 2, 3, 4],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+                }),
             ),
             {'event_properties': 'peak_velocity'},
-            {'identifiers': 'subject_id'},
+            {'identifiers': None},
+            pl.from_dict(
+                {'name': ['fixation'], 'onset': [0], 'offset': [4], 'peak_velocity': [0.0]},
+            ),
+            id='no_identifier_one_fixation_default_columns_peak_velocity',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7]},
+            ),
+            Gaze(
+                pl.from_dict({
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+                }),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': None},
             pl.from_dict(
                 {
-                    'subject_id': [1],
-                    'name': [None],
-                    'onset': [0],
-                    'offset': [10],
-                    'peak_velocity': [1],
-                },
-                schema={
-                    'subject_id': pl.Int64,
-                    'name': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'peak_velocity': pl.Float64,
+                    'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7],
+                    'peak_velocity': [0.0, sqrt(2)],
                 },
             ),
-            id='peak_velocity_single_event_complete_window',
+            id='no_identifier_two_events_default_columns_peak_velocity',
         ),
+
+        pytest.param(
+            pl.from_dict(
+                {'name': ['fixation', 'saccade', 'blink'], 'onset': [0, 3, 7], 'offset': [2, 6, 7]},
+            ),
+            Gaze(
+                pl.from_dict({
+                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 1]],
+                }),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': None},
+            pl.from_dict(
+                {
+                    'name': ['fixation', 'saccade', 'blink'],
+                    'onset': [0, 3, 7], 'offset': [2, 6, 7],
+                    'peak_velocity': [0.0, 1, sqrt(2)],
+                },
+            ),
+            id='no_identifier_three_events_default_columns_peak_velocity',
+        ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(10),
@@ -256,14 +279,15 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='peak_velocity_custom_columns_single_event_complete_window',
+            id='one_identifier_single_event_complete_window_peak_velocity',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1], 'onset': [0], 'offset': [5]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(10),
@@ -298,14 +322,15 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='peak_velocity_single_event_half_window',
+            id='one_identifier_single_event_half_window_peak_velocity',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(10),
@@ -340,14 +365,15 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'dispersion': pl.Float64,
                 },
             ),
-            id='dispersion_single_event_complete_window',
+            id='one_identifier_single_event_complete_window_dispersion',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(10),
@@ -382,8 +408,9 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='peak_velocity_single_event_complete_window',
+            id='one_identifier_single_event_complete_window_peak_velocity',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
@@ -391,7 +418,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -426,8 +453,9 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='two_events_different_names_different_peak_velocity',
+            id='one_identifier_two_events_peak_velocity',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
@@ -435,7 +463,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -470,8 +498,9 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='two_events_peak_velocity_name_filter',
+            id='one_identifier_two_events_peak_velocity_name_filter',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
@@ -479,7 +508,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -514,8 +543,9 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_different_names_different_location',
+            id='one_identifier_two_events_location',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
@@ -523,7 +553,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -562,8 +592,9 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_location_method_mean',
+            id='one_identifier_two_events_location_method_mean',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
@@ -571,7 +602,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -610,8 +641,9 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_location_method_median',
+            id='one_identifier_two_events_location_method_median',
         ),
+
         pytest.param(
             pl.from_dict(
                 {'subject_id': [1, 1], 'name': ['A', 'B'], 'onset': [0, 80], 'offset': [10, 100]},
@@ -619,7 +651,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -658,15 +690,109 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='two_events_location_position_column_pixel',
+            id='one_identifier_two_events_location_position_column_pixel',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'task': ['A', 'B'], 'trial': [0, 0],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'offset': [3, 8],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            Gaze(
+                pl.from_dict(
+                    {
+                        'task': ['A'] * 10 + ['B'] * 10,
+                        'trial': [0] * 20,
+                        'time': list(range(10)) * 2,
+                        'velocity': [
+                            *[[1, 1]] * 3 + [[0, 0]] * 7,  # task A, trial 0
+                            *[[0, 0]] * 7 + [[1, 0]] * 2 + [[0, 0]],  # task B, trial 0
+                        ],
+                    },
+                    schema={
+                        'task': pl.Utf8, 'trial': pl.Int64,
+                        'time': pl.Int64, 'velocity': pl.List(pl.Float64),
+                    },
+                ),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': ['task', 'trial']},
+            pl.from_dict(
+                {
+                    'task': ['A', 'B'], 'trial': [0, 0],
+                    'name': ['fixation', 'saccade'], 'onset': [0, 7], 'offset': [3, 8],
+                    'peak_velocity': [sqrt(2), 1],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='two_identifiers_two_events_peak_velocity',
+        ),
+
+        pytest.param(
+            pl.from_dict(
+                {
+                    'task': ['A', 'A', 'B', 'B'], 'trial': [0, 1, 0, 1],
+                    'name': ['fixation', 'saccade', 'fixation', 'saccade'],
+                    'onset': [0, 2, 5, 4], 'offset': [8, 6, 7, 9],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
+            ),
+            Gaze(
+                pl.from_dict(
+                    {
+                        'task': ['A'] * 20 + ['B'] * 20,
+                        'trial': [0] * 10 + [1] * 10 + [0] * 10 + [1] * 10,
+                        'time': list(range(10)) * 4,
+                        'velocity': [
+                            *[[1, 1]] * 8 + [[0, 0]] * 2,  # task A, trial 0
+                            *[[1, 1]] * 2 + [[1, 0]] * 4 + [[0, 0]] * 4,  # task A, trial 1
+                            *[[0, 0]] * 5 + [[1, 1]] * 2 + [[0, 0]] * 3,  # task B, trial 0
+                            *[[1, 1]] * 4 + [[0, 0]] * 6,  # task B, trial 1
+                        ],
+                    },
+                    schema={
+                        'task': pl.Utf8, 'trial': pl.Int64,
+                        'time': pl.Int64, 'velocity': pl.List(pl.Float64),
+                    },
+                ),
+            ),
+            {'event_properties': 'peak_velocity'},
+            {'identifiers': ['task', 'trial']},
+            pl.from_dict(
+                {
+                    'task': ['A', 'A', 'B', 'B'], 'trial': [0, 1, 0, 1],
+                    'name': ['fixation', 'saccade', 'fixation', 'saccade'],
+                    'onset': [0, 2, 5, 4], 'offset': [8, 6, 7, 9],
+                    'peak_velocity': [sqrt(2), 1, sqrt(2), 0],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
+            ),
+            id='two_identifiers_four_events_peak_velocity',
         ),
     ],
 )
 def test_event_gaze_processor_process_correct_result(
         events, gaze, init_kwargs, process_kwargs, expected_dataframe,
 ):
-    events = pm.Events(events)
-    processor = pm.EventGazeProcessor(**init_kwargs)
+    events = Events(events)
+    processor = EventGazeProcessor(**init_kwargs)
     property_result = processor.process(events, gaze, **process_kwargs)
     assert_frame_equal(property_result, expected_dataframe)
 
@@ -676,41 +802,12 @@ def test_event_gaze_processor_process_correct_result(
     [
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
-            ),
-            pm.Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.ones(10),
-                        'y_vel': np.zeros(10),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
-            ),
-            {'event_properties': 'peak_velocity'},
-            {'identifiers': []},
-            ValueError,
-            ('identifiers', 'list', 'must', 'not', 'empty'),
-            id='empty_list',
-        ),
-
-        pytest.param(
-            pl.from_dict(
                 {'subject_id': [1, 1], 'name': 'abcdef', 'onset': [0, 80], 'offset': [10, 100]},
                 schema={
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            pm.Gaze(
+            Gaze(
                 pl.from_dict(
                     {
                         'subject_id': np.ones(100),
@@ -738,8 +835,8 @@ def test_event_gaze_processor_process_correct_result(
 def test_event_processor_process_exceptions(
         events, gaze, init_kwargs, process_kwargs, exception, msg_substrings,
 ):
-    processor = pm.EventGazeProcessor(**init_kwargs)
-    events = pm.Events(events)
+    processor = EventGazeProcessor(**init_kwargs)
+    events = Events(events)
 
     with pytest.raises(exception) as excinfo:
         processor.process(events, gaze, **process_kwargs)

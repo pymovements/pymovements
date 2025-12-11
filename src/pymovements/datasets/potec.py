@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -79,23 +80,24 @@ class PoTeC(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -120,44 +122,69 @@ class PoTeC(DatasetDefinition):
 
     name: str = 'PoTeC'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Potsdam Textbook Corpus'
 
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/tgd9q/',
-                        'filename': 'PoTeC.zip',
-                        'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
-                        'filename_pattern': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'text_id': str,
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/tgd9q/',
+                    'filename': 'PoTeC.zip',
+                    'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
+                    'filename_pattern': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'text_id': str,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'time': pl.Int64,
+                                'x': pl.Float32,
+                                'y': pl.Float32,
+                                'pupil_diameter': pl.Float32,
+                            },
+                            'separator': '\t',
                         },
                     },
-                    {
-                        'content': 'precomputed_events',
-                        'url': 'https://osf.io/download/d8pyg/',
-                        'filename': 'fixation.zip',
-                        'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
-                        'filename_pattern': r'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'text_id': str,
-                        },
+                },
+                {
+                    'content': 'precomputed_events',
+                    'url': 'https://osf.io/download/d8pyg/',
+                    'filename': 'fixation.zip',
+                    'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
+                    'filename_pattern': r'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'text_id': str,
                     },
-                    {
-                        'content': 'precomputed_reading_measures',
-                        'url': 'https://osf.io/download/3ywhz/',
-                        'filename': 'reading_measures.zip',
-                        'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
-                        'filename_pattern': r'reader{subject_id:d}_{text_id}_merged.tsv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'text_id': str,
-                        },
+                    'load_kwargs': {
+                        'separator': '\t',
+                        'null_values': '.',
                     },
+                },
+                {
+                    'content': 'precomputed_reading_measures',
+                    'url': 'https://osf.io/download/3ywhz/',
+                    'filename': 'reading_measures.zip',
+                    'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
+                    'filename_pattern': r'reader{subject_id:d}_{text_id}_merged.tsv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'text_id': str,
+                    },
+                    'load_kwargs': {
+                        'separator': '\t',
+                        'null_values': '.',
+                        'infer_schema_length': 10000,
+                    },
+                },
             ],
         ),
     )
@@ -178,35 +205,10 @@ class PoTeC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x', 'y',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'time': pl.Int64,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'pupil_diameter': pl.Float32,
-                },
-                'separator': '\t',
-            },
-            'precomputed_events': {
-                'separator': '\t',
-                'null_values': '.',
-            },
-            'precomputed_reading_measures': {
-                'separator': '\t',
-                'null_values': '.',
-                'infer_schema_length': 10000,
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

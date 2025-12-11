@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -71,23 +72,24 @@ class ETDD70(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -112,6 +114,8 @@ class ETDD70(DatasetDefinition):
 
     name: str = 'ETDD70'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Eye-Tracking Dyslexia Dataset'
 
     resources: ResourceDefinitions = field(
@@ -123,6 +127,13 @@ class ETDD70(DatasetDefinition):
                     'filename': 'edd_raw.zip',
                     'md5': None,  # type: ignore
                     'filename_pattern': r'Subject_{subject_id:d}_{task:s}_raw.csv',
+                    'load_kwargs': {
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': [
+                            'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
+                        ],
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -151,20 +162,10 @@ class ETDD70(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'gaze': {},
-                'precomputed_events': {},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

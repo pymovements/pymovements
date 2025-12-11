@@ -72,11 +72,11 @@
 
         Get familiar with *pymovements* by working through this beginner tutorial:
 
-        .. button-link:: tutorials/pymovements-in-10-minutes.html
+        .. button-ref:: pymovements_in_10_minutes
             :color: primary
             :shadow:
 
-            pymovements-in-10-minutes
+            pymovements in 10 minutes
 
 
 .. toctree::
