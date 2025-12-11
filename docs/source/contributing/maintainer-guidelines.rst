@@ -13,14 +13,14 @@ Maintainers should follow these rules when processing pull requests:
 - Edit the final commit message before merging to conform to the
   `Conventional Commit <https://www.conventionalcommits.org/en/v1.0.0/>`_ specification.
 
-```
-<type>[optional scope]: <description> (#PR-id)
+.. code::
 
-- detailed description, wrapped at 72 characters
-- bullet points or sentences are okay
-- all changes should be documented and explained
-- valid scopes are the names of main package modules, like `dataset`, `gaze`, or `plotting`
-```
+    <type>[optional scope]: <description> (#PR-id)
+
+    - detailed description, wrapped at 72 characters
+    - bullet points or sentences are okay
+    - all changes should be documented and explained
+    - valid scopes are the names of main package modules, like `dataset`, `gaze`, or `plotting`
 
 Make sure:
 
