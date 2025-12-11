@@ -188,7 +188,6 @@ def test_gaze_file_processing(init_kwargs):
     elif load_function_name == 'from_begaze':
         load_function = gaze_module.from_begaze
 
-
     if init_kwargs['definition'].load_kwargs is None:
         load_kwargs = {}
     else:
