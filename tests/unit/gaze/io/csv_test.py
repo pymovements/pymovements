@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
-import packaging.version
 import polars as pl
 import pytest
 
@@ -274,6 +273,8 @@ def test_from_asc_parameter_is_deprecated(
 
 
 pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+
+
 def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     p = tmp_path / 'mini.csv'
     p.write_text('time,pupil\n0,1.23\n1,4.56\n')
