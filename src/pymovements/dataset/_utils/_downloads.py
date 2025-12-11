@@ -248,7 +248,7 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
                 'Content-Length',
             ) if hasattr(response, 'headers') else None
             total = int(content_length) if content_length and content_length.isdigit() else None
-            if total is not None:
+            if total is not None:  # pragma: no cover
                 t.total = total
 
             with open(destination, 'wb') as out:
