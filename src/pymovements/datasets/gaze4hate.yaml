@@ -12,12 +12,16 @@ resources:
       trial_columns:
         - pno
         - sno
+      separator: "\t"
+      null_values: '.'
 
   - content: precomputed_reading_measures
     url: https://osf.io/download/fgdjw/
     filename: gaze4hate_sentence_reading_IA_report.csv
     md5: e09e791e7d31d6ac3c69cd862d139c57
     filename_pattern: gaze4hate_sentence_reading_IA_report.csv
+    load_kwargs:
+      separator: "\t"
 
 experiment:
   screen_width_px: 2560
@@ -27,10 +31,3 @@ experiment:
   distance_cm: 78.0
   origin: center
   sampling_rate: 1000
-
-custom_read_kwargs:
-  precomputed_events:
-    separator: "\t"
-    null_values: '.'
-  precomputed_reading_measures:
-    separator: "\t"
