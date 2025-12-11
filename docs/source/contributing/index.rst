@@ -28,11 +28,11 @@ to pymovements.
 Code of Conduct
 ---------------
 
-Everyone participating in the pymovements project, including in issues, pull requests,
-discussions, and any other community spaces, is expected to treat others with respect
-and to contribute to an open, welcoming, and inclusive environment.
+At **pymovements**, we are commited to providing a welcoming, inclusive, and harassment-free
+experience for everyone.
 
-Please read and follow our :ref:`code-of-conduct` for full details.
+It is important to us that all participants treat one another’s person and contributions with
+respect and dignity. Please read and follow our :ref:`code-of-conduct` for full details.
 
 License
 -------
