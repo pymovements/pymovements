@@ -20,6 +20,22 @@ Download your dataset and load it into memory with these few lines of code:
     # Load the dataset into memory for processing
     dataset.load()
 
+.. grid::
+    :gutter: 5
+
+    .. grid-item-card::
+
+        **Are you missing a dataset?**
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        Check out this guide on how to contribute datasets to the library:
+
+        .. button-ref:: adding_public_dataset
+            :color: primary
+            :shadow:
+
+            Adding a public dataset to the library
+
 -----------------
  Public Datasets
 -----------------
