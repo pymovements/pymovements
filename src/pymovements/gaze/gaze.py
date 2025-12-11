@@ -491,6 +491,7 @@ class Gaze:
         **kwargs: Any
             Additional keyword arguments to be passed to the transformation method.
         """
+        # pylint: disable=too-many-branches
         if isinstance(transform_method, str):
             transform_method = transforms.TransformLibrary.get(transform_method)
 
@@ -600,6 +601,10 @@ class Gaze:
                 kwargs['sampling_rate'] = self.experiment.sampling_rate
 
             if 'n_components' in method_kwargs and 'n_components' not in kwargs:
+                # If we are going to group by trials, but there are no rows, return early
+                # without checking components to avoid raising on empty inputs.
+                if self.trial_columns is not None and self.samples.is_empty():
+                    return
                 self._check_n_components()
                 kwargs['n_components'] = self.n_components
 
@@ -650,13 +655,17 @@ class Gaze:
             if self.trial_columns is None:
                 self.samples = self.samples.with_columns(transform_method(**kwargs))
             else:
-                self.samples = polars.concat(
-                    [
-                        df.with_columns(transform_method(**kwargs))
-                        for group, df in
-                        self.samples.group_by(self.trial_columns, maintain_order=True)
-                    ],
-                )
+                # If samples are empty, grouping yields no groups – return without changes.
+                if self.samples.is_empty():
+                    return
+                grouped_frames = [
+                    df.with_columns(transform_method(**kwargs))
+                    for _, df in self.samples.group_by(self.trial_columns, maintain_order=True)
+                ]
+                if not grouped_frames:
+                    # No groups to transform (e.g., empty samples) - keep samples unchanged
+                    return
+                self.samples = polars.concat(grouped_frames)
 
     def clip(
             self,

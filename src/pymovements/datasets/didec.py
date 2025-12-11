@@ -144,36 +144,11 @@ class DIDEC(DatasetDefinition):
                         'session': int,
                         'trial': int,
                     },
+                    'load_function': 'from_begaze',
                     'load_kwargs': {
                         'trial_columns': ['Stimulus'],
-                        'time_column': 'Time',
-                        'time_unit': 'ms',
-                        'pixel_columns': [
-                            'L POR X [px]', 'L POR Y [px]',
-                            'R POR X [px]', 'R POR Y [px]',
-                        ],
-                        'read_csv_kwargs': {
-                            'separator': '\t',
-                            # skip begaze tracker data
-                            'skip_rows': 43,
-                            'has_header': False,
-                            'new_columns': [
-                                'Time',
-                                'Type',
-                                'Trial',
-                                'L POR X [px]',
-                                'L POR Y [px]',
-                                'R POR X [px]',
-                                'R POR Y [px]',
-                                'Timing',
-                                'Pupil Confidence',
-                                'L Plane',
-                                'R Plane',
-                                'L Event Info',
-                                'R Event Info',
-                                'Stimulus',
-                            ],
-                        },
+                        'encoding': 'ascii',
+                        'prefer_eye': 'L',
                     },
                 },
             ],
@@ -188,7 +163,7 @@ class DIDEC(DatasetDefinition):
             screen_height_cm=29.7,
             distance_cm=70,
             origin='upper left',
-            sampling_rate=1000,
+            sampling_rate=250,
         ),
     )
 

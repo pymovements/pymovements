@@ -258,6 +258,11 @@ def pix2deg(
     _check_screen_resolution(screen_resolution)
     _check_screen_size(screen_size)
 
+    # Defensive guard: some loaders may not infer components before calling pix2deg.
+    # Default to 2 components to represent x/y if an invalid value is passed.
+    if not isinstance(n_components, int) or n_components < 1:
+        n_components = 2
+
     centered_pixels = center_origin(
         screen_resolution=screen_resolution,
         origin=origin,
