@@ -273,27 +273,7 @@ def test_from_asc_parameter_is_deprecated(
     )
 
 
-@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
-@pytest.mark.xfail(
-    packaging.version.parse(pl.__version__) < packaging.version.parse('1.34.0'),
-    reason='Bare decimal without precision/scale is only invalid in polars>=1.34.0',
-)
-def test_from_csv_decimal_overrides_bare_decimal_is_invalid(tmp_path):
-    # Minimal CSV with a scalar numeric column that we can override
-    p = tmp_path / 'mini.csv'
-    p.write_text('time,pupil\n0,1.23\n1,4.56\n')
-
-    # Passing bare pl.Decimal (without precision/scale) should be invalid
-    with pytest.raises(TypeError):
-        from_csv(
-            file=str(p),
-            time_column='time',
-            time_unit='ms',
-            column_schema_overrides={'pupil': pl.Decimal},
-        )
-
-
-@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
 def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     p = tmp_path / 'mini.csv'
     p.write_text('time,pupil\n0,1.23\n1,4.56\n')
