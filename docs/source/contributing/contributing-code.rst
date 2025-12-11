@@ -9,37 +9,39 @@ Everyone participating in the pymovements project, including in issues, pull req
 discussions, and any other community spaces, is expected to treat others with respect
 and to contribute to an open, welcoming, and inclusive environment.
 
-Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) for full details.
+Please read and follow our :ref:`code-of-conduct` for full details.
 
 First-time Contributors
 -----------------------
 
-If you're looking for things to help with, try browsing our [issue tracker](
-https://github.com/pymovements/pymovements/issues) first. In particular, look for:
+If you're looking for things to help with, try browsing our
+`issue tracker <https://github.com/pymovements/pymovements/issues>`_ first. In particular, look for:
 
-- [good first issues](https://github.com/pymovements/pymovements/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-- [documentation issues](https://github.com/pymovements/pymovements/labels/documentation)
+- `good first issues <https://github.com/pymovements/pymovements/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>`_
+- `documentation issues <https://github.com/pymovements/pymovements/labels/documentation>`_
 
 You do not need to ask for permission to work on any of these issues. The current status of the
 issue will let you know if someone else is or was already working on it.
 
 To get help fixing a specific issue, it's often best to comment on the issue itself. You're much
-more likely to get targeted help if you provide details about what you've tried and where you've looked.
+more likely to get targeted help if you provide details about what you've tried and where you've
+looked.
 
-To start out with developing, [install the dependencies](#development-installation) and
-[create a branch](#creating-a-branch) for your contribution.
+To start out with developing, :ref:`install the dependencies <development-installation>` and
+:ref:`create a branch <creating-a-branch>` for your contribution.
 
-Create a [pull request](#pull-requests) when you feel confident to publish your progress. Don't
-hesitate if it's a work in progress, we can give you early feedback on your work.
-If you can, try to add [unit tests](#testing) early on to verify correctness.
+Create a :ref:`pull request <creating-pull-requests>` when you feel confident to publish your
+progress. Don't hesitate if it's a work in progress, we can give you early feedback on your work.
+If you can, try to add :ref:`tests <testing>` early on to verify correctness.
 
 Getting Started
 ---------------
 
 This is a general guide to contributing changes to pymovements.
 
-Before you start developing, make sure to read our [documentation](
-https://pymovements.readthedocs.io/) first.
+Before you start developing, make sure to read our :ref:`documentation <documentation_index>` first.
+
+.. _development-installation:
 
 Development Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +54,10 @@ cd pymovements
 pip install -e .
 ```
 
-If you have a problem e.g. `command not found: pip`, check whether you have activated a virtual environment.
+If you have a problem e.g. `command not found: pip`, check whether you have activated a virtual
+environment.
+
+.. _create-branch:
 
 Creating a Branch
 ^^^^^^^^^^^^^^^^^
@@ -79,26 +84,28 @@ git newb your-new-branch
 ```
 
 We do not allow for pushing directly to the `main` branch and merge changes exclusively by
-[pull requests](#pull-requests).
+:ref:`pull request <creating-pull-requests>`.
 
 We will squash your commits into a single commit on merge to maintain a clean git history.
 We use a linear git-history, where each commit contains a full feature/bug fix, such that each
 commit represents an executable version. This way you also don't have to worry much about your
 intermediate commits and can focus on getting your work done first.
 
+.. _code-style:
+
 Code Style
 ^^^^^^^^^^
 
-We write our code to follow [PEP-8](https://www.python.org/dev/peps/pep-0008) with a maximum
-line-width of 100 characters. We additionally use type annotations as in [PEP-484](
-https://peps.python.org/pep-0484). For docstrings we use the [numpydoc](
-https://numpydoc.readthedocs.io/en/latest/format.html) formatting standard.
+We write our code to follow `PEP-8 <https://www.python.org/dev/peps/pep-0008)>`_ with a maximum
+line-width of 100 characters. We additionally use type annotations as in
+`PEP-484 <https://peps.python.org/pep-0484)>`_. For docstrings we use the
+`numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_ formatting standard.
 
-We use [`flake8`](https://pypi.org/project/flake8/) for quick style checks and
-[`pylint`](https://pypi.org/project/pylint/) for thorough style checks and [`mypy`](
-https://pypi.org/project/mypy/) for checking type annotations.
+We use `flake8 <https://pypi.org/project/flake8/>`_ for quick style checks,
+`pylint <https://pypi.org/project/pylint/>`_ for thorough style checks and
+`mypy <https://pypi.org/project/mypy/>`_ for checking type annotations.
 
-You can check your code style by using [pre-commit](https://www.pre-commit.com).
+You can check your code style by using `pre-commit <https://www.pre-commit.com>`_.
 You can install `pre-commit` and `pylint` via pip.
 
 **Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
@@ -147,11 +154,13 @@ For running a specific hook on all git repository files use
 pre-commit run mypy -a
 ```
 
+.. _testing:
+
 Testing
 ^^^^^^^
 
-Tests are written using [Pytest](https://docs.pytest.org) and executed
-in a separate environment using [Tox](https://tox.readthedocs.io/en/latest/).
+Tests are written using `pytest <https://docs.pytest.org>`_ and executed
+in a separate environment using `tox <https://tox.readthedocs.io/en/latest/>`_.
 
 If you have not yet installed `tox` and the testing dependencies you can do so via
 
@@ -159,7 +168,8 @@ If you have not yet installed `tox` and the testing dependencies you can do so v
 pip install -e '.[dev]'
 ```
 
-You can run all tests on all supported python versions run by simply calling `tox` in the repository root.
+You can run all tests on all supported python versions run by simply calling `tox` in the
+repository root.
 
 ```bash
 tox
@@ -185,6 +195,8 @@ In case you only want to run tests locally that do not require any network acces
 tox -e py310 -- -m "not network"
 ```
 
+.. _documentation:
+
 Documentation
 ^^^^^^^^^^^^^
 
@@ -198,7 +210,7 @@ To generate documentation pages, you can install the necessary dependencies usin
 pip install -e '.[docs]'
 ```
 
-[Sphinx](https://www.sphinx-doc.org) generates the API documentation from the
+`Sphinx <https://www.sphinx-doc.org>`_ generates the API documentation from the
 numpydoc-style docstring of the respective modules/classes/functions.
 You can build the documentation locally using the respective tox environment:
 
@@ -208,7 +220,7 @@ tox -e docs
 
 It will appear in the `build/docs` directory.
 Please note that in order to reproduce the documentation locally, you may need to install `pandoc`.
-If necessary, please refer to the [installation guide](https://pandoc.org/installing.html) for
+If necessary, please refer to the `installation guide <https://pandoc.org/installing.html>`_ for
 detailed instructions.
 
 To rebuild the full documentation use
@@ -216,13 +228,23 @@ To rebuild the full documentation use
 ```bash
 tox -e docs -- -aE
 ```
+.. _continuous-integration:
 
-Pull Requests
-^^^^^^^^^^^^^
+Continuous Integration
+^^^^^^^^^^^^^^^^^^^^^^
+
+Tests, code style, and documentation are all additionally checked using a GitHub Actions
+workflow which executes the appropriate tox environments. Merging of Pull requests will not be
+possible until all checks pass.
+
+.. _creating-pull-requests:
+
+Creating Pull Requests
+^^^^^^^^^^^^^^^^^^^^^^
 
 Once you are ready to publish your changes:
 
-- Create a [pull request (PR)](https://github.com/pymovements/pymovements/compare).
+- Create a `pull request (PR) <https://github.com/pymovements/pymovements/compare>`_.
 - Provide a summary of the changes you are introducing, according to the default template.
 - In case you are resolving an issue, remember to add a reference in the description.
 
@@ -241,10 +263,3 @@ pull requests for open-source projects applies.
 
 Do not squash your commits after you have submitted a pull request, as this
 erases context during review. We will squash commits when the pull request is ready to be merged.
-
-Continuous Integration
-^^^^^^^^^^^^^^^^^^^^^^
-
-Tests, code style, and documentation are all additionally checked using a GitHub Actions
-workflow which executes the appropriate tox environments. Merging of Pull requests will not be
-possible until all checks pass.

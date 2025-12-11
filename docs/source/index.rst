@@ -1,3 +1,5 @@
+.. _documentation-index:
+
 =========================================
 Welcome to the pymovements documentation!
 =========================================

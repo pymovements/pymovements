@@ -8,9 +8,9 @@ Merging Pull Requests
 Maintainers should follow these rules when processing pull requests:
 
 - Always wait for tests to pass before merging PRs.
-- Use "[Squash and merge](https://github.com/blog/2141-squash-your-commits)" to merge PRs.
+- Use "`Squash and merge <https://github.com/blog/2141-squash-your-commits>`_" to merge PRs.
 - Delete branches for merged PRs.
-- Edit the final commit message before merging to conform to the [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) specification:
+- Edit the final commit message before merging to conform to the `Conventional Commit <https://www.conventionalcommits.org/en/v1.0.0/>`_ specification:
 
 ```
 <type>[optional scope]: <description> (#PR-id)
@@ -40,12 +40,12 @@ Publishing Releases
 
 Before releasing a new pymovements version make sure that all integration tests pass via `tox -e integration`.
 
-You need to register an account on [PyPI](https://pypi.org/account/register/) and request maintainer privileges for releasing new pymovements versions.
+You need to register an account on `PyPI <https://pypi.org/account/register/>`_ and request maintainer privileges for releasing new pymovements versions.
 
-The first step is releasing on GitHub. Our [release-drafter](https://github.com/pymovements/pymovements/blob/main/.github/release-drafter.yml) takes care of drafting a release log which should be
-available on the [release page](https://github.com/pymovements/pymovements/releases). Please assign the listed PRs into the correct categories in the release draft. If all merged PRs adhered to
-the [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) specification the release-drafter will have already taken care of this. Take special care for PRs that introduce breaking
-changes. Specify the version tag according to the [Semantic Versioning 2.0.0](https://semver.org/) specification. After publishing the release on GitHub the latest commit will be tagged with the
+The first step is releasing on GitHub. Our `release-drafter <https://github.com/pymovements/pymovements/blob/main/.github/release-drafter.yml>`_ takes care of drafting a release log which should be
+available on the `release page <https://github.com/pymovements/pymovements/releases>`_. Please assign the listed PRs into the correct categories in the release draft. If all merged PRs adhered to
+the `Conventional Commit <https://www.conventionalcommits.org/en/v1.0.0/>`_ specification the release-drafter will have already taken care of this. Take special care for PRs that introduce breaking
+changes. Specify the version tag according to the `Semantic Versioning 2.0.0 <https://semver.org/>`_ specification. After publishing the release on GitHub the latest commit will be tagged with the
 specified version.
 
 The next step is releasing pymovements on the PyPI repository.
@@ -68,8 +68,8 @@ Now you can upload your `.whl` and `.tar.gz` files via
 python -m twine upload dist/pymovements-${VERSION}*
 ```
 
-Check that the [pymovements page](https://pypi.org/project/pymovements/) at the PyPI repository features the new pymovements version.
+Check that the `pymovements page <https://pypi.org/project/pymovements/>`_ at the PyPI repository features the new pymovements version.
 
-The next step is making sure the new version is uploaded into the conda-forge repository. This part is automated via the [pymovements-feedstock](https://github.com/conda-forge/pymovements-feedstock)
+The next step is making sure the new version is uploaded into the conda-forge repository. This part is automated via the `pymovements-feedstock <https://github.com/conda-forge/pymovements-feedstock`_
 repository. A bot will create a PR and merge it after passing all tests. There might be issues when the new pymovements release includes changes in dependencies. You will then need to adjust the
 `meta.yaml` found in the `recipe` directory.
