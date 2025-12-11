@@ -224,6 +224,8 @@ class Gaze:
 
     experiment: Experiment | None
 
+    metadata: dict[str, Any]
+
     trial_columns: list[str] | None
 
     n_components: int | None
@@ -241,6 +243,7 @@ class Gaze:
             experiment: Experiment | None = None,
             events: pm.Events | None = None,
             *,
+            metadata: dict[str, Any] | None = None,
             messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
             time_column: str | None = None,
@@ -301,6 +304,11 @@ class Gaze:
                 )
         else:
             self.events = events.clone()
+
+        if metadata is None:
+            self.metadata = {}
+        else:
+            self.metadata = metadata
 
         _check_messages(messages)
         self.messages = messages
