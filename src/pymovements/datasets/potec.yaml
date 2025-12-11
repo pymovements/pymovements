@@ -15,6 +15,13 @@ resources:
       time_column: 'time'
       time_unit: 'ms'
       pixel_columns: ['x', 'y']
+      read_csv_kwargs:
+        schema_overrides:
+          time: !polars.Int64
+          x: !polars.Float32
+          y: !polars.Float32
+          pupil_diameter: !polars.Float32
+        separator: "\t"
 
   - content: precomputed_events
     url: "https://osf.io/download/d8pyg/"
@@ -24,6 +31,10 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
       text_id: !str
+    load_kwargs:
+      separator: "\t"
+      null_values: '.'
+
   - content: precomputed_reading_measures
     url: "https://osf.io/download/3ywhz/"
     filename: "reading_measures.zip"
@@ -32,6 +43,10 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
       text_id: !str
+    load_kwargs:
+      separator: "\t"
+      null_values: '.'
+      infer_schema_length: 10000
 
 experiment:
   screen_width_px: 1680
@@ -41,19 +56,3 @@ experiment:
   distance_cm: 65
   origin: "upper left"
   sampling_rate: 1000
-
-custom_read_kwargs:
-  gaze:
-    schema_overrides:
-      time: !polars.Int64
-      x: !polars.Float32
-      y: !polars.Float32
-      pupil_diameter: !polars.Float32
-    separator: "\t"
-  precomputed_events:
-    separator: "\t"
-    null_values: '.'
-  precomputed_reading_measures:
-    separator: "\t"
-    null_values: '.'
-    infer_schema_length: 10000
