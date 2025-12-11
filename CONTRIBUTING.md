@@ -364,4 +364,4 @@ relicense the contributed code.
 
 If you have any developer-related questions, please [open an issue](
 https://github.com/pymovements/pymovements/issues/new/choose) or write us at
-[pymovements-list@uni-potsdam.de](mailto:pymovements-list@uni-potsdam.de)
+[pymovements@python.org](mailto:pymovements@python.org)
