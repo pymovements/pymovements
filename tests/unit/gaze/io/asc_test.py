@@ -96,8 +96,7 @@ def test_from_asc_has_expected_samples(
             'eyelink_monocular_example.asc',
             {
                 'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
-                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
-                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
+                **DatasetLibrary.get('ToyDatasetEyeLink').resources.filter('gaze')[0].load_kwargs,
             },
             pl.DataFrame(
                 data={
@@ -220,8 +219,7 @@ def test_from_asc_example_file_has_expected_samples(
             'eyelink_monocular_example.asc',
             {
                 'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
-                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
-                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
+                **DatasetLibrary.get('ToyDatasetEyeLink').resources.filter('gaze')[0].load_kwargs,
             },
             (16, 7),
             {
@@ -467,7 +465,6 @@ def test_from_asc_example_file_has_expected_experiment(
             {
                 'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
                 **DatasetLibrary.get('ToyDatasetEyeLink').resources.filter('gaze')[0].load_kwargs,
-                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
             },
             ['task', 'trial_id'],
             id='eyelink_asc_mono',
@@ -489,8 +486,7 @@ def test_from_asc_example_file_has_expected_trial_columns(
             'eyelink_monocular_example.asc',
             {
                 'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
-                'trial_columns': DatasetLibrary.get('ToyDatasetEyeLink').trial_columns,
-                **DatasetLibrary.get('ToyDatasetEyeLink').custom_read_kwargs['gaze'],
+                **DatasetLibrary.get('ToyDatasetEyeLink').resources.filter('gaze')[0].load_kwargs,
             },
             2,
             id='eyelink_asc_mono',

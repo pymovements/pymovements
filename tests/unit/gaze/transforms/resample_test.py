@@ -589,6 +589,71 @@ import pymovements as pm
             pl.DataFrame(schema={'time': pl.Int32, 'pixel': pl.Float32}),
             id='resample_empty_df',
         ),
+        # Handle non-numeric columns
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': 'backward',
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [None, 2, 4],
+                    'description': ['text', 'more_text', None],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [None, 2., 2., 4., 4.],
+                    'description': ['text', 'more_text', 'more_text', None, None],
+                },
+            ),
+            id='resample_non_numeric_columns_backfilled',
+        ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': 'forward',
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [None, 2, 4],
+                    'description': ['text', 'more_text', None],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [None, None, 2., 2., 4.],
+                    'description': ['text', 'text', 'more_text', 'more_text', 'more_text'],
+                },
+            ),
+            id='resample_non_numeric_columns_forwardfilled',
+        ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': 'forward',
+                'columns': 'description',
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [None, 2, 4],
+                    'description': ['text', 'more_text', None],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [None, None, 2, None, 4],
+                    'description': ['text', 'text', 'more_text', 'more_text', 'more_text'],
+                },
+            ),
+            id='resample_non_numeric_columns_forwardfilled_no_numerical',
+        ),
     ],
 )
 def test_resample_returns(kwargs, df, expected_df):

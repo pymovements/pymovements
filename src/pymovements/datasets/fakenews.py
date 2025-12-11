@@ -71,8 +71,9 @@ class FakeNewsPerception(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, Any]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
     """
 
     name: str = 'FakeNewsPerception'
@@ -94,6 +95,7 @@ class FakeNewsPerception(DatasetDefinition):
                         'subject_id': int, 'session_id': int,
                         'truth_value': str,
                     },
+                    'load_kwargs': {'null_values': 'NA', 'quote_char': '"'},
                 },
             ],
         ),
@@ -117,11 +119,4 @@ class FakeNewsPerception(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'precomputed_events': {
-                'null_values': 'NA',
-                'quote_char': '"',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

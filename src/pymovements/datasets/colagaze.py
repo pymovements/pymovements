@@ -40,13 +40,6 @@ class CoLAGaze(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`CoLAGaze`.
 
-    Warning
-    -------
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    parsing of individual files.
-
-    See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
-
     Attributes
     ----------
     name: str
@@ -73,8 +66,9 @@ class CoLAGaze(DatasetDefinition):
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -150,10 +144,4 @@ class CoLAGaze(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {},
-            'precomputed_events': {},
-            'precomputed_reading_measures': {},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
