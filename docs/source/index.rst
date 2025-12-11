@@ -1,4 +1,4 @@
-.. _documentation-index:
+.. _startpage:
 
 =========================================
 Welcome to the pymovements documentation!

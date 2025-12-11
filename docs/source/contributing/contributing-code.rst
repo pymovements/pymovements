@@ -39,7 +39,7 @@ Getting Started
 
 This is a general guide to contributing changes to pymovements.
 
-Before you start developing, make sure to read our :ref:`documentation <documentation_index>` first.
+Before you start developing, make sure to read our :ref:`documentation <startpage>` first.
 
 .. _development-installation:
 

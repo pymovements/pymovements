@@ -44,6 +44,9 @@ If you did not write the code yourself, ensure the existing license is compatibl
 license information in the contributed files, or obtain permission from the original author to
 relicense the contributed code.
 
-**Questions:** If you have any further questions, please
+Questions
+---------
+
+If you have any further questions, please
 `open an issue <https://github.com/pymovements/pymovements/issues/new/choose>`_ or write us at
 `pymovements@python.org <mailto:pymovements@python.org>`_.
