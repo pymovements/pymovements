@@ -20,7 +20,7 @@ Maintainers should follow these rules when processing pull requests:
     - detailed description, wrapped at 72 characters
     - bullet points or sentences are okay
     - all changes should be documented and explained
-    - valid scopes are the names of main package modules, like `dataset`, `gaze`, or `plotting`
+    - valid scopes are the names of main package modules, like dataset, gaze, or plotting
 
 Make sure:
 
@@ -63,4 +63,4 @@ The next step is making sure the new version is uploaded into the conda-forge re
 is automated via the `pymovements-feedstock <https://github.com/conda-forge/pymovements-feedstock>`_
 repository. A bot will create a PR and merge it after passing all tests. There might be issues when
 the new pymovements release includes changes in dependencies. You will then need to adjust the
-`meta.yaml` found in the `recipe` directory.
+``meta.yaml`` found in the ``recipe`` directory.

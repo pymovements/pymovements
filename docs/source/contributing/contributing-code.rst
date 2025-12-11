@@ -48,13 +48,13 @@ Development Installation
 
 Make sure to install the latest pymovements version from the main branch.
 
-```bash
-git clone https://github.com/pymovements/pymovements.git
-cd pymovements
-pip install -e .
-```
+.. code:: bash
 
-If you have a problem e.g. `command not found: pip`, check whether you have activated a virtual
+    git clone https://github.com/pymovements/pymovements.git
+    cd pymovements
+    pip install -e .
+
+If you have a problem e.g. ``command not found: pip``, check whether you have activated a virtual
 environment.
 
 .. _create-branch:
@@ -63,27 +63,27 @@ Creating a Branch
 ^^^^^^^^^^^^^^^^^
 
 Before you start making changes to the code, create a local branch from the latest version of the
-`main` branch.
+``main`` branch.
 
-```bash
-git checkout main
-git pull origin main
-git checkout -b feature/your-feature-branch
-```
+.. code:: bash
+
+    git checkout main
+    git pull origin main
+    git checkout -b feature/your-feature-branch
 
 To shorten this call you can create a git alias via
 
-```bash
-git config alias.newb '!f() { git checkout main; git pull; git checkout -b $1; }; f'
-```
+.. code:: bash
+
+    git config alias.newb '!f() { git checkout main; git pull; git checkout -b $1; }; f'
 
 You can then update main and create new branches with this command:
 
-```bash
-git newb your-new-branch
-```
+.. code:: bash
 
-We do not allow for pushing directly to the `main` branch and merge changes exclusively by
+    git newb your-new-branch
+
+We do not allow for pushing directly to the ``main`` branch and merge changes exclusively by
 :ref:`pull request <creating-pull-requests>`.
 
 We will squash your commits into a single commit on merge to maintain a clean git history.
@@ -106,53 +106,53 @@ We use `flake8 <https://pypi.org/project/flake8/>`_ for quick style checks,
 `mypy <https://pypi.org/project/mypy/>`_ for checking type annotations.
 
 You can check your code style by using `pre-commit <https://www.pre-commit.com>`_.
-You can install `pre-commit` and `pylint` via pip.
+You can install ``pre-commit`` and ``pylint`` via pip.
 
 **Note**: Quoting '.[dev]' ensures the command works in both bash and zsh.
 
-```bash
-pip install -e '.[dev]'
-```
+.. code:: bash
+
+    pip install -e '.[dev]'
 
 To always run style checks when pushing commits upstream,
 you can register a pre-push hook by
 
-```bash
-pre-commit install --hook-type pre-push
-```
+.. code:: bash
+
+    pre-commit install --hook-type pre-push
 
 If you want to run pre-commit for all your currently staged files, use
 
-```bash
-pre-commit
-```
+.. code:: bash
 
-You can find the names of all defined hooks in the file `.pre-commit-config.yaml`.
+    pre-commit
+
+You can find the names of all defined hooks in the file ``.pre-commit-config.yaml``.
 
 If you want to run a specific hook you can use
 
-```bash
-pre-commit run mypy
-pre-commit run pydocstyle
-```
+.. code:: bash
+
+    pre-commit run mypy
+    pre-commit run pydocstyle
 
 If you want to run a specific hook on a single file you can use
 
-```bash
-pre-commit run mypy --files src/pymovements/gaze/transforms.py
-```
+.. code:: bash
+
+    pre-commit run mypy --files src/pymovements/gaze/transforms.py
 
 If you want to run all hooks on all git repository files use
 
-```bash
-pre-commit run -a
-```
+.. code:: bash
+
+    pre-commit run -a
 
 For running a specific hook on all git repository files use
 
-```bash
-pre-commit run mypy -a
-```
+.. code:: bash
+
+    pre-commit run mypy -a
 
 .. _testing:
 
@@ -162,20 +162,20 @@ Testing
 Tests are written using `pytest <https://docs.pytest.org>`_ and executed
 in a separate environment using `tox <https://tox.readthedocs.io/en/latest/>`_.
 
-If you have not yet installed `tox` and the testing dependencies you can do so via
+If you have not yet installed ``tox`` and the testing dependencies you can do so via
 
-```bash
-pip install -e '.[dev]'
-```
+.. code:: bash
 
-You can run all tests on all supported python versions run by simply calling `tox` in the
+    pip install -e '.[dev]'
+
+You can run all tests on all supported python versions run by simply calling ``tox`` in the
 repository root.
 
-```bash
-tox
-```
+.. code:: bash
 
-Running `tox` the first time in the repository will take a few minutes, as all necessary python
+    tox
+
+Running ``tox`` the first time in the repository will take a few minutes, as all necessary python
 environments will have to be set up with their dependencies. Runtime should be short on the
 subsequent runs.
 
@@ -185,15 +185,15 @@ functionality. We try to keep our code coverage close to 100%.
 It is possible to limit the scope of testing to specific environments and files. For example, to
 only test event-related functionality using the Python 3.10 environment use:
 
-```bash
-tox -e py310 -- tests/unit/events
-```
+.. code:: bash
+
+    tox -e py310 -- tests/unit/events
 
 In case you only want to run tests locally that do not require any network access you can use:
 
-```bash
-tox -e py310 -- -m "not network"
-```
+.. code:: bash
+
+    tox -e py310 -- -m "not network"
 
 .. _documentation:
 
@@ -206,28 +206,30 @@ documentation as an example.
 
 To generate documentation pages, you can install the necessary dependencies using:
 
-```bash
-pip install -e '.[docs]'
-```
+.. code:: bash
+
+    pip install -e '.[docs]'
 
 `Sphinx <https://www.sphinx-doc.org>`_ generates the API documentation from the
 numpydoc-style docstring of the respective modules/classes/functions.
 You can build the documentation locally using the respective tox environment:
 
-```bash
-tox -e docs
-```
+.. code:: bash
 
-It will appear in the `build/docs` directory.
-Please note that in order to reproduce the documentation locally, you may need to install `pandoc`.
+    tox -e docs
+
+It will appear in the ``build/docs`` directory.
+Please note that in order to reproduce the documentation locally, you may need to install
+``pandoc``.
 If necessary, please refer to the `installation guide <https://pandoc.org/installing.html>`_ for
 detailed instructions.
 
 To rebuild the full documentation use
 
-```bash
-tox -e docs -- -aE
-```
+.. code:: bash
+
+    tox -e docs -- -aE
+
 .. _continuous-integration:
 
 Continuous Integration
