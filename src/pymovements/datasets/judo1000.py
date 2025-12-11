@@ -94,9 +94,9 @@ class JuDo1000(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -147,6 +147,18 @@ class JuDo1000(DatasetDefinition):
                             'trialId': 'trial_id',
                             'pointId': 'point_id',
                         },
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trialId': pl.Int64,
+                                'pointId': pl.Int64,
+                                'time': pl.Int64,
+                                'x_left': pl.Float32,
+                                'y_left': pl.Float32,
+                                'x_right': pl.Float32,
+                                'y_right': pl.Float32,
+                            },
+                            'separator': '\t',
+                        },
                     },
                 },
             ],
@@ -179,19 +191,4 @@ class JuDo1000(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trialId': pl.Int64,
-                    'pointId': pl.Int64,
-                    'time': pl.Int64,
-                    'x_left': pl.Float32,
-                    'y_left': pl.Float32,
-                    'x_right': pl.Float32,
-                    'y_right': pl.Float32,
-                },
-                'separator': '\t',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

@@ -8,12 +8,10 @@ resources:
     trial_columns:
     - Subject
     - Sentence_ID
+    separator: "\t"
 - content: precomputed_reading_measures
   filename: chinese_reading_measures.zip
   url: https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip=
   filename_pattern: '{measure_type:s} Measures.xlsx'
-custom_read_kwargs:
-  precomputed_events:
-    separator: "\t"
-  precomputed_reading_measures:
+  load_kwargs:
     sheet_name: Sheet 1

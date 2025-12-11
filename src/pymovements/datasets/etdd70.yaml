@@ -27,7 +27,3 @@ experiment:
   distance_cm: 65  # in the paper it is written (60-70cm)
   origin: 'center'
   sampling_rate: 250
-
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}
