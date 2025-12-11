@@ -28,6 +28,7 @@ from typing import TypeVar
 import numpy as np
 import polars as pl
 import scipy
+from polars.datatypes.classes import NumericType
 
 from pymovements._utils import _checks
 
@@ -718,7 +719,10 @@ def savitzky_golay(
 
     return pl.concat_list(
         [
-            pl.col(input_column).list.get(component).map_batches(func).list.explode()
+            pl.col(input_column)
+            .list.get(component)
+            .map_batches(func, return_dtype=pl.Float64)
+            .list.explode()
             for component in range(n_components)
         ],
     ).alias(output_column)
@@ -808,13 +812,31 @@ def resample(
     # Sort columns by datetime
     samples = samples.sort('datetime')
 
-    # Replace pre-existing null values with NaN as they should not be interpolated
+    numeric_columns: list[str] | None = None
     if columns is not None:
+        def _base_dtype(dt: pl.DataType) -> pl.DataType:
+            # Follow nested dtypes (e.g., List(inner=...)) until reaching the base type
+            while hasattr(dt, 'inner'):
+                dt = dt.inner
+            return dt
+
+        numeric_columns = [
+            c for c in columns
+            if issubclass(
+                (bd if isinstance(bd := _base_dtype(samples.schema[c]), type) else type(bd)),
+                NumericType,
+            )
+        ]
+
+    # Replace pre-existing null values with NaN only for numeric columns, as they should not be
+    # interpolated. Ensure we cast to Float64 so the UDF output dtype matches the declaration.
+    if numeric_columns:
         samples = _apply_on_columns(
             samples,
-            columns=columns,
-            transformation=lambda series: series.fill_null(np.nan),
+            columns=numeric_columns,
+            transformation=lambda series: series.cast(pl.Float64).fill_null(np.nan),
             n_components=n_components,
+            return_dtype=pl.Float64,
         )
 
     # Resample data by datetime column, create milliseconds time column and drop datetime column
@@ -846,11 +868,13 @@ def resample(
 
             samples = _apply_on_columns(
                 frame=samples,
-                columns=columns,
-                transformation=lambda series: series.interpolate(
+                columns=numeric_columns,
+                transformation=lambda series: series.cast(pl.Float64).interpolate(
                     method=interpolate_method,
                 ),
                 n_components=n_components,
+                # Interpolation yields floats - ensure dtype is Float64.
+                return_dtype=pl.Float64,
             )
         else:
             raise ValueError(
@@ -971,17 +995,25 @@ def smooth(
         if padding is not None:
             pad_kwargs['mode'] = padding
             pad_kwargs['pad_width'] = int(np.ceil(window_length / 2))
+            # Create a callable that applies numpy padding and ignores any extra kwargs
 
-            pad_func = partial(
-                np.pad,
-                **pad_kwargs,
-            )
+            def pad_callable(x: np.ndarray, **_: Any) -> np.ndarray:
+                return np.pad(x, **pad_kwargs)  # pragma: no cover
+            pad_func = pad_callable
+        else:
+            # No padding: identity callable that ignores any extra kwargs
+            def identity_callable(x: np.ndarray, **_: Any) -> np.ndarray:
+                return x  # pragma: no cover
+            pad_func = identity_callable
 
         if method == 'moving_average':
 
             return pl.concat_list(
                 [
-                    pl.col(column).list.get(component).map_batches(pad_func).list.explode()
+                    pl.col(column)
+                    .list.get(component)
+                    .map_batches(pad_func, return_dtype=pl.Float64)
+                    .list.explode()
                     .rolling_mean(window_size=window_length, center=True)
                     .shift(n=pad_kwargs['pad_width'])
                     .slice(pad_kwargs['pad_width'] * 2)
@@ -991,7 +1023,10 @@ def smooth(
 
         return pl.concat_list(
             [
-                pl.col(column).list.get(component).map_batches(pad_func).list.explode()
+                pl.col(column)
+                .list.get(component)
+                .map_batches(pad_func, return_dtype=pl.Float64)
+                .list.explode()
                 .ewm_mean(
                     span=window_length,
                     adjust=False,
@@ -1066,6 +1101,7 @@ def _apply_on_columns(
         columns: list[str],
         transformation: Callable,
         n_components: int | None = None,
+        return_dtype: pl.DataType | None = None,
 ) -> pl.DataFrame:
     """Apply a function on nested and normal columns of a DataFrame.
 
@@ -1079,6 +1115,8 @@ def _apply_on_columns(
         The function to apply on the specified columns.
     n_components: int | None
         Number of components of nested columns in columns. (default: None)
+    return_dtype: pl.DataType | None
+        The data type to return for the transformed columns. (default: None)
 
     Returns
     -------
@@ -1092,7 +1130,7 @@ def _apply_on_columns(
     """
     for column in columns:
         # Determine if the column is nested based on its data type
-        if frame.schema[column] == pl.List:
+        if isinstance(frame.schema[column], pl.List):
 
             # Raise an error if n_components is not specified for nested columns
             if n_components is None:
@@ -1104,14 +1142,32 @@ def _apply_on_columns(
             frame = frame.with_columns(
                 pl.concat_list(
                     [
-                        pl.col(column).list.get(component).map_batches(transformation)
+                        pl.col(column)
+                        .list.get(component)
+                        .map_batches(
+                            transformation,
+                            # If an override is provided, prefer it. For a list column we expect
+                            # the override to describe the inner element type.
+                            return_dtype=(
+                                return_dtype
+                                if return_dtype is not None
+                                else (
+                                    frame.schema[column].inner
+                                    if hasattr(frame.schema[column], 'inner')
+                                    else pl.Float64
+                                )
+                            ),
+                        )
                         for component in range(n_components)
                     ],
                 ).alias(column),
             )
         else:
             frame = frame.with_columns(
-                pl.col(column).map_batches(transformation).alias(column),
+                pl.col(column).map_batches(
+                    transformation,
+                    return_dtype=(return_dtype or frame.schema[column]),
+                ).alias(column),
             )
 
     return frame

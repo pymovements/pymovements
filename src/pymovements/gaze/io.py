@@ -275,6 +275,7 @@ def from_csv(
             ])
 
     if column_schema_overrides is not None:
+        # Apply overrides as provided - callers should pass concrete pl.DataType instances
         samples = samples.with_columns([
             pl.col(column_key).cast(column_dtype)
             for column_key, column_dtype in column_schema_overrides.items()

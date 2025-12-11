@@ -91,8 +91,9 @@ class DIDEC(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -180,29 +181,4 @@ class DIDEC(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': '\t',
-                # skip begaze tracker data
-                'skip_rows': 43,
-                'has_header': False,
-                'new_columns': [
-                    'Time',
-                    'Type',
-                    'Trial',
-                    'L POR X [px]',
-                    'L POR Y [px]',
-                    'R POR X [px]',
-                    'R POR Y [px]',
-                    'Timing',
-                    'Pupil Confidence',
-                    'L Plane',
-                    'R Plane',
-                    'L Event Info',
-                    'R Event Info',
-                    'Stimulus',
-                ],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

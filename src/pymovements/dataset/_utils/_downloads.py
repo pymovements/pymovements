@@ -21,9 +21,11 @@
 from __future__ import annotations
 
 import hashlib
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+from urllib.error import URLError
 
 from tqdm.auto import tqdm
 
@@ -131,16 +133,35 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
         If number of redirects exceed `max_hops`.
     """
     initial_url = url
-    headers = {'Method': 'HEAD', 'User-Agent': USER_AGENT}
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-Agent', USER_AGENT)]
-    urllib.request.install_opener(opener)
+    # Use a HEAD request to cheaply follow redirects and discover the final URL
+    # without downloading the full content. Avoid installing a global opener to
+    # prevent side effects in other parts of the application/tests.
+    opener = _build_no_http_error_opener()
 
     for _ in range(max_hops + 1):
-        with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as response:
-            if response.url == url or response.url is None:
-                return url
-            url = response.url
+        request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
+        # backwards-compatible
+        request.get_method = lambda: 'HEAD'  # type: ignore[assignment]
+
+        try:
+            response = opener.open(request)
+        except URLError:  # pragma: no cover
+            # Network failure – just return current URL and let caller decide.
+            return url
+
+        # Ensure the response is closed via context manager
+        with response:
+            code = getattr(response, 'status', None) or response.getcode()
+            # Manually handle redirects to avoid HTTPError creation
+            if code and 300 <= code < 400:
+                loc = response.headers.get('Location') if hasattr(response, 'headers') else None
+                if not loc:  # pragma: no cover
+                    return url
+                # Resolve relative redirects
+                url = urllib.parse.urljoin(url, loc)
+                continue
+            # No redirect - return current URL
+            return url
 
     raise RuntimeError(
         f'Request to {initial_url} exceeded {max_hops} redirects.'
@@ -198,9 +219,102 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     verbose : bool
         If True, show progressbar.
     """
+    # Preflight request to avoid urlretrieve creating an HTTPError with
+    # unclosed temporary file objects on Python 3.14 (PytestUnraisableExceptionWarning).
+    _raise_if_http_error(url)
+
+    # Stream download with an opener that does NOT raise HTTPError automatically.
+    # This prevents creation of HTTPError objects that can hold temp files and
+    # lead to unraisable warnings on Python 3.14.
+    opener = _build_no_http_error_opener()
+    request = urllib.request.Request(
+        url,
+        headers={'User-Agent': USER_AGENT, 'Accept': 'application/octet-stream'},
+    )
     with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
-        urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
-        t.total = t.n
+        # Keep network operations inside a small try/except
+        try:
+            response = opener.open(request)
+        except URLError as e:  # pragma: no cover
+            raise OSError(str(e)) from e
+
+        # Ensure the response is closed via context manager
+        with response:
+            status = getattr(response, 'status', None) or response.getcode()
+            if status and status >= 400:  # pragma: no cover
+                raise OSError(f'HTTP Error {status} for URL: {url}')
+
+            content_length = response.headers.get(
+                'Content-Length',
+            ) if hasattr(response, 'headers') else None
+            total = int(content_length) if content_length and content_length.isdigit() else None
+            if total is not None:  # pragma: no cover
+                t.total = total
+
+            with open(destination, 'wb') as out:
+                while True:
+                    chunk = response.read(8192)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    t.update(len(chunk))
+
+        # Ensure progress bar completes
+        if t.total is None:  # pragma: no cover
+            t.total = t.n
+
+
+def _raise_if_http_error(url: str) -> None:  # pylint: disable=inconsistent-return-statements
+    """Perform a lightweight HEAD request and raise OSError on HTTP errors.
+
+    This avoids entering the problematic ``urlretrieve`` error path on Python 3.14
+    where an ``HTTPError`` may keep a temporary file object alive, causing
+    ``PytestUnraisableExceptionWarning`` during test teardown.
+    """
+    # Use a HEAD request with an Accept header that mimics a binary download to trigger the same
+    # redirection behavior GitHub uses for archives (redirects to codeload).
+    # This lets us detect a 4xx early.
+    opener = _build_no_http_error_opener()
+    request = urllib.request.Request(
+        url,
+        headers={'User-Agent': USER_AGENT, 'Accept': 'application/octet-stream'},
+    )
+    request.get_method = lambda: 'HEAD'  # type: ignore[assignment]
+
+    try:
+        response = opener.open(request)
+    except URLError as e:  # pragma: no cover
+        # Network or URL issue
+        raise OSError(str(e)) from e
+
+    # Ensure the response is closed via context manager
+    with response:
+        code = getattr(response, 'status', None) or response.getcode()
+        if code and 300 <= code < 400:
+            # Follow one redirect here by recursing
+            loc = response.headers.get('Location') if hasattr(response, 'headers') else None
+            if loc:  # pragma: no cover
+                return _raise_if_http_error(urllib.parse.urljoin(url, loc))
+        if code and code >= 400:
+            raise OSError(f'HTTP Error {code} for URL: {url}')
+
+
+def _build_no_http_error_opener() -> urllib.request.OpenerDirector:
+    """Build an opener that does not turn HTTP status >=400 into HTTPError.
+
+    By omitting the HTTPErrorProcessor handler we ensure that responses with
+    error status codes are returned as regular responses. This lets us manage
+    them deterministically without creating HTTPError objects that may retain
+    temporary file handles on Python 3.14.
+    """
+    opener = urllib.request.OpenerDirector()
+    # Keep standard handlers except HTTPErrorProcessor
+    opener.add_handler(urllib.request.ProxyHandler())
+    opener.add_handler(urllib.request.UnknownHandler())
+    opener.add_handler(urllib.request.HTTPHandler())
+    opener.add_handler(urllib.request.HTTPSHandler())
+    # Do not add HTTPRedirectHandler to avoid internal HTTPError use
+    return opener
 
 
 def _check_integrity(filepath: Path, md5: str | None = None) -> bool:

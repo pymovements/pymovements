@@ -203,14 +203,9 @@ def test_parse_begaze(make_text_file, body, expected_gaze, expected_event):
         metadata_patterns=METADATA_PATTERNS,
     )
 
-    assert_frame_equal(
-        gaze_df, expected_gaze, check_column_order=False,
-        rtol=0,
-    )
-    assert_frame_equal(
-        event_df, expected_event, check_column_order=False,
-        rtol=0,
-    )
+    assert_frame_equal(gaze_df, expected_gaze, check_column_order=False, rel_tol=0)
+    assert_frame_equal(event_df, expected_event, check_column_order=False, rel_tol=0)
+
     assert metadata == EXPECTED_METADATA_BEGAZE
 
 
@@ -339,7 +334,7 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
         gaze.samples.select(expected_samples.columns),
         expected_samples,
         check_column_order=False,
-        rtol=0,
+        rel_tol=0,
     )
 
     # Events should be attached and match expected.
@@ -351,7 +346,7 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
         ev_actual.select(common_cols),
         BEGAZE_EXPECTED_EVENT_DF.select(common_cols),
         check_column_order=False,
-        rtol=0,
+        rel_tol=0,
     )
 
     # Experiment should be filled from metadata (sampling_rate)
