@@ -13,7 +13,6 @@ These How-Tos provide detailed guides to implement the most important use cases 
     public-datasets
     local-dataset
     parsing-dataset
-    adding-public-dataset
     plotting
     preprocessing-raw-data
     saving-loading-preprocessed

@@ -225,12 +225,6 @@ html_css_files = [
 html_theme_options = {
     'navigation_with_keys': False,
     'sidebar_includehidden': True,
-    'external_links': [
-        {
-            'name': 'Contributing',
-            'url': 'https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md',
-        },
-    ],
     'icon_links': [
         {
             'name': 'GitHub',
