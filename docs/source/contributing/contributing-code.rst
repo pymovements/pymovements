@@ -28,7 +28,7 @@ more likely to get targeted help if you provide details about what you've tried 
 looked.
 
 To start out with developing, :ref:`install the dependencies <development-installation>` and
-:ref:`create a branch <creating-a-branch>` for your contribution.
+:ref:`create a branch <create-branch>` for your contribution.
 
 Create a :ref:`pull request <creating-pull-requests>` when you feel confident to publish your
 progress. Don't hesitate if it's a work in progress, we can give you early feedback on your work.
