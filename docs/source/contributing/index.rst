@@ -6,20 +6,9 @@ Thank you for taking your time to contribute to pymovements!
 
 We encourage you to report any bugs or contribute to new features, optimisations, or documentation.
 
-Here we give you an overview of the workflow and best practices for contributing
+In the following guides we give you an overview of the workflow and best practices for contributing
 to pymovements.
 
-Code of Conduct
----------------
-
-Everyone participating in the pymovements project, including in issues, pull requests,
-discussions, and any other community spaces, is expected to treat others with respect
-and to contribute to an open, welcoming, and inclusive environment.
-
-Please read and follow our :ref:`code-of-conduct` for full details.
-
-How to Contribute
------------------
 
 .. toctree::
     :maxdepth: 1
@@ -29,6 +18,16 @@ How to Contribute
     contributing-datasets
     contributing-documentation
     maintainer-guidelines
+
+
+Code of Conduct
+---------------
+
+Everyone participating in the pymovements project, including in issues, pull requests,
+discussions, and any other community spaces, is expected to treat others with respect
+and to contribute to an open, welcoming, and inclusive environment.
+
+Please read and follow our :ref:`code-of-conduct` for full details.
 
 License
 -------
