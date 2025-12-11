@@ -34,7 +34,7 @@ Download your dataset and load it into memory with these few lines of code:
             :color: primary
             :shadow:
 
-            Contributing datasets
+            Contributing Datasets
 
 -----------------
  Public Datasets
