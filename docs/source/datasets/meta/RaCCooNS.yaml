@@ -33,8 +33,6 @@ resources:
 experiment:
   eyetracker:
     sampling_rate: 1000
-    left: true
-    right: false
     model: EyeLink 1000
     vendor: EyeLink
     mount: Desktop
