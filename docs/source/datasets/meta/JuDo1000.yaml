@@ -22,6 +22,16 @@ resources:
     column_map:
       trialId: trial_id
       pointId: point_id
+    read_csv_kwargs:
+      schema_overrides:
+        trialId: '!polars.datatypes.classes.Int64'
+        pointId: '!polars.datatypes.classes.Int64'
+        time: '!polars.datatypes.classes.Int64'
+        x_left: '!polars.datatypes.classes.Float32'
+        y_left: '!polars.datatypes.classes.Float32'
+        x_right: '!polars.datatypes.classes.Float32'
+        y_right: '!polars.datatypes.classes.Float32'
+      separator: "\t"
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -32,14 +42,3 @@ experiment:
     height_cm: 30.2
     distance_cm: 68
     origin: upper left
-custom_read_kwargs:
-  gaze:
-    schema_overrides:
-      trialId: '!polars.datatypes.classes.Int64'
-      pointId: '!polars.datatypes.classes.Int64'
-      time: '!polars.datatypes.classes.Int64'
-      x_left: '!polars.datatypes.classes.Float32'
-      y_left: '!polars.datatypes.classes.Float32'
-      x_right: '!polars.datatypes.classes.Float32'
-      y_right: '!polars.datatypes.classes.Float32'
-    separator: "\t"

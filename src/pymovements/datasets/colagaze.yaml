@@ -35,8 +35,3 @@ experiment:
   distance_cm: 60
   origin: "bottom left"
   sampling_rate: 2000
-
-custom_read_kwargs:
-  gaze: {}
-  precomputed_events: {}
-  precomputed_reading_measures: {}

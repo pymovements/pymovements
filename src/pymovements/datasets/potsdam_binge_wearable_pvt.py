@@ -100,9 +100,9 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -145,6 +145,28 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'trial_id': int,
                         'block_id': int,
                     },
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
+                    },
                 },
                 {
                     'content': 'gaze',
@@ -164,6 +186,26 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'pixel_columns': [
                             'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
                     },
                 },
                 {
@@ -176,6 +218,28 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'subject_id': int,
                         'trial_id': int,
                         'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
                     },
                 },
             ],
@@ -218,27 +282,4 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trial_id': pl.Float32,
-                    'block_id': pl.Float32,
-                    'x_pix_eyelink': pl.Float32,
-                    'y_pix_eyelink': pl.Float32,
-                    'eyelink_timestamp': pl.Int64,
-                    'x_pix_pupilcore_interpolated': pl.Float32,
-                    'y_pix_pupilcore_interpolated': pl.Float32,
-                    'pupil_size_eyelink': pl.Float32,
-                    'target_distance': pl.Float32,
-                    'pupil_size_pupilcore_interpolated': pl.Float32,
-                    'pupil_confidence_interpolated': pl.Float32,
-                    'time_to_prev_bac': pl.Float32,
-                    'time_to_next_bac': pl.Float32,
-                    'prev_bac': pl.Float32,
-                    'next_bac': pl.Float32,
-                },
-                'separator': ',',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

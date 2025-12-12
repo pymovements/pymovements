@@ -97,8 +97,9 @@ class GazeOnFaces(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -141,6 +142,12 @@ class GazeOnFaces(DatasetDefinition):
                     },
                     'load_kwargs': {
                         'pixel_columns': ['x', 'y'],
+                        'read_csv_kwargs': {
+                            'separator': ',',
+                            'has_header': False,
+                            'new_columns': ['x', 'y'],
+                            'schema_overrides': [pl.Float32, pl.Float32],
+                        },
                     },
                 },
             ],
@@ -171,13 +178,4 @@ class GazeOnFaces(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': ',',
-                'has_header': False,
-                'new_columns': ['x', 'y'],
-                'schema_overrides': [pl.Float32, pl.Float32],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

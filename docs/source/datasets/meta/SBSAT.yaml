@@ -17,11 +17,29 @@ resources:
     pixel_columns:
     - x_left
     - y_left
+    read_csv_kwargs:
+      separator: "\t"
+      columns:
+      - time
+      - book_name
+      - screen_id
+      - x_left
+      - y_left
+      - pupil_left
+      schema_overrides:
+        time: '!polars.datatypes.classes.Int64'
+        book_name: '!polars.datatypes.classes.String'
+        screen_id: '!polars.datatypes.classes.Int64'
+        x_left: '!polars.datatypes.classes.Float32'
+        y_left: '!polars.datatypes.classes.Float32'
+        pupil_left: '!polars.datatypes.classes.Float32'
 - content: precomputed_events
   filename: 18sat_fixfinal.csv
   url: https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
   md5: 4cf3212a71e6fc2fbe7041ce7c691927
   filename_pattern: 18sat_fixfinal.csv
+  load_kwargs:
+    separator: ','
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -32,22 +50,3 @@ experiment:
     height_cm: 42.4
     distance_cm: 70
     origin: center
-custom_read_kwargs:
-  gaze:
-    separator: "\t"
-    columns:
-    - time
-    - book_name
-    - screen_id
-    - x_left
-    - y_left
-    - pupil_left
-    schema_overrides:
-      time: '!polars.datatypes.classes.Int64'
-      book_name: '!polars.datatypes.classes.String'
-      screen_id: '!polars.datatypes.classes.Int64'
-      x_left: '!polars.datatypes.classes.Float32'
-      y_left: '!polars.datatypes.classes.Float32'
-      pupil_left: '!polars.datatypes.classes.Float32'
-  precomputed_events:
-    separator: ','
