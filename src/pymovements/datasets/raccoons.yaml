@@ -48,9 +48,6 @@ experiment:
     origin: "center"
   eyetracker:
     sampling_rate: 1000
-    # double check once data back online
-    left: true
-    right: false
     model: "EyeLink 1000"
     vendor: "EyeLink"
     mount: "Desktop"

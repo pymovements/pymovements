@@ -144,9 +144,9 @@ def fixture_gaze_init_kwargs(request, make_example_file):
             **DatasetLibrary.get('PoTeC').resources[0].load_kwargs,
         },
         'raccoons': {
-            'file': 'tests/files/raccoons.asc',
-            'experiment': pm.DatasetLibrary.get('RaCCooNS').experiment,
-            **pm.DatasetLibrary.get('RaCCooNS').custom_read_kwargs['gaze'],
+            'file': make_example_file('raccoons.asc'),
+            'experiment': DatasetLibrary.get('RaCCooNS').experiment,
+            **DatasetLibrary.get('RaCCooNS').resources[0].load_kwargs,
         },
 
     }
