@@ -324,7 +324,12 @@ def load_gaze_file(
     ValueError
         If extension is not in list of valid extensions.
     """
-    load_function_name = resource_definition.load_function
+    # if loading preprocessed gaze data, infer load function from filename extension
+    if preprocessed:
+        load_function_name = None
+    else:
+        load_function_name = resource_definition.load_function
+
     if load_function_name is None:
         if filepath.suffix in {'.csv', '.txt', '.tsv'}:
             load_function_name = 'from_csv'
