@@ -178,6 +178,8 @@ def test_gaze_file_processing(init_kwargs):
         load_function_name = 'from_ipc'
     elif file_extension == '.asc':
         load_function_name = 'from_asc'
+    else:
+        load_function_name = 'from_csv'
 
     if load_function_name == 'from_csv':
         load_function = gaze_module.from_csv
@@ -187,6 +189,8 @@ def test_gaze_file_processing(init_kwargs):
         load_function = gaze_module.from_asc
     elif load_function_name == 'from_begaze':
         load_function = gaze_module.from_begaze
+    else:
+        load_function = gaze_module.from_csv
 
     if init_kwargs['definition'].load_kwargs is None:
         load_kwargs = {}
