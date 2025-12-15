@@ -2,7 +2,7 @@ name: tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_call:
   workflow_dispatch:
 
@@ -28,7 +28,6 @@ jobs:
           - py311
           - py312
           - py313
-          - py314
         include:
           - tox_env: py310
             python: "3.10"
@@ -38,8 +37,6 @@ jobs:
             python: "3.12"
           - tox_env: py313
             python: "3.13"
-          - tox_env: py314
-            python: "3.14"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -203,7 +200,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
       - name: Install tox
         run: python -m pip install tox
