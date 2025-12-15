@@ -2,7 +2,7 @@ name: benchmark
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_call:
   workflow_dispatch:
 
@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            benchmark-ubuntu-latest-py314-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/benchmark.yml') }}
+            benchmark-ubuntu-latest-py313-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/benchmark.yml') }}
           path: |
             ~/.cache
             ~/.tox
@@ -33,7 +33,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
       - name: Install tox
         run: python -m pip install tox
