@@ -173,7 +173,7 @@ EXPECTED_DF = polars.DataFrame(
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs', 'expected'),
+    ('filename', 'load_kwargs', 'expected'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -228,7 +228,7 @@ def test_text_stimulus_unsupported_format():
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs'),
+    ('filename', 'load_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -260,7 +260,7 @@ def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs'),
+    ('filename', 'load_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -292,7 +292,7 @@ def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, mak
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs'),
+    ('filename', 'load_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
