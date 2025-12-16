@@ -10,6 +10,7 @@ Measures
     :template: function.rst
 
     null_ratio
+    data_loss
 
 .. rubric:: Classes
 
