@@ -26,8 +26,8 @@ from typing import Any
 
 import polars as pl
 
-from pymovements.measure.event_properties import EVENT_PROPERTIES
 from pymovements.exceptions import InvalidProperty
+from pymovements.measure.event_properties import EVENT_PROPERTIES
 
 
 class EventProcessor:

@@ -25,9 +25,9 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import EventSamplesProcessor
 from pymovements import EventProcessor
 from pymovements import Events
+from pymovements import EventSamplesProcessor
 from pymovements import Gaze
 from pymovements.exceptions import InvalidProperty
 

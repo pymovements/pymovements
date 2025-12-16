@@ -27,16 +27,11 @@ from __future__ import annotations
 
 import polars as pl
 
-from pymovements._utils._checks import check_is_mutual_exclusive
-from pymovements._utils._html import repr_html
 from pymovements._utils._deprecated import DeprecatedMetaClass
+from pymovements._utils._html import repr_html
 from pymovements.events import Events
 from pymovements.gaze import Gaze
-from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
-from pymovements.measure import SampleMeasureLibrary
-from pymovements.measure.event_processing import EventSamplesProcessor
-from pymovements.stimulus import TextStimulus
 
 
 @repr_html(['samples', 'events', 'trial_columns', 'experiment'])
