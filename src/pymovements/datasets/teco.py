@@ -116,8 +116,7 @@ class TECO(DatasetDefinition):
                     'filename_pattern': 'wordmeasure_v1.csv',
                     'load_kwargs': {
                         'trial_columns': ['book', 'subjectid', 'textid'],
-                        'encoding': 'utf8-lossy',
-                        'null_values': ['NA'],
+                        'read_csv_kwargs': {'encoding': 'utf8-lossy', 'null_values': ['NA']},
                     },
                 },
             ],

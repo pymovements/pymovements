@@ -8,7 +8,8 @@ resources:
     filename_pattern: 'Raw Data.txt'
     load_kwargs:
       trial_columns: ['Subject', 'Sentence_ID']
-      separator: "\t"
+      read_csv_kwargs:
+        separator: "\t"
 
   - content: precomputed_reading_measures
     url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip='
@@ -16,4 +17,5 @@ resources:
     md5: null
     filename_pattern: '{measure_type:s} Measures.xlsx'
     load_kwargs:
-      sheet_name: 'Sheet 1'
+      read_excel_kwargs:
+        sheet_name: 'Sheet 1'
