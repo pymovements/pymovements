@@ -161,7 +161,7 @@ def fixture_init_kwargs(request, make_example_file):
         'raccoons': {
             'file': make_example_file('raccoons.asc'),
             'experiment': DatasetLibrary.get('RaCCooNS').experiment,
-            **DatasetLibrary.get('RaCCooNS').resources[0].load_kwargs,
+            'definition': DatasetLibrary.get('RaCCooNS').resources[0],
         },
 
     }
@@ -173,11 +173,11 @@ def test_gaze_file_processing(init_kwargs):
     file_extension = init_kwargs['file'].suffix
     gaze = None
 
-    definition = init_kwargs['definition']
+    resource_definition = init_kwargs['definition']
 
     # Load in gaze file.
-    if definition.load_function is not None:
-        load_function_name = definition.load_function
+    if resource_definition.load_function is not None:
+        load_function_name = resource_definition.load_function
     elif file_extension in {'.csv', '.tsv', '.txt'}:
         load_function_name = 'from_csv'
     elif file_extension in {'.feather', '.ipc'}:
@@ -198,10 +198,10 @@ def test_gaze_file_processing(init_kwargs):
     else:
         load_function = gaze_module.from_csv
 
-    if init_kwargs['definition'].load_kwargs is None:
+    if resource_definition.load_kwargs is None:
         load_kwargs = {}
     else:
-        load_kwargs = init_kwargs['definition'].load_kwargs
+        load_kwargs = resource_definition.load_kwargs
 
     gaze = load_function(
         file=init_kwargs['file'],
