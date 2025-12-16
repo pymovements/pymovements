@@ -107,7 +107,11 @@ class CodeComprehension(DatasetDefinition):
                     'md5': '3a3c6fb96550bc2c2ddcf5d458fb12a2',
                     'filename_pattern': 'fix_report_P{subject_id:s}.txt',
                     'filename_pattern_schema_overrides': {'subject_id': pl.String},
-                    'load_kwargs': {'separator': '\t', 'null_values': '.', 'quote_char': '"'},
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'separator': '\t', 'null_values': '.', 'quote_char': '"',
+                        },
+                    },
                 },
             ],
         ),

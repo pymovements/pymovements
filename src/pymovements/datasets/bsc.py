@@ -115,7 +115,9 @@ class BSC(DatasetDefinition):
                     'filename_pattern': 'BSC.EMD.txt',
                     'load_kwargs': {
                         'trial_columns': ['book_name', 'screen_id'],
-                        'separator': '\t',
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                        },
                     },
                 },
             ],

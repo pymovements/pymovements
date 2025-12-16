@@ -112,9 +112,11 @@ class Provo(DatasetDefinition):
                     'filename_pattern':
                         'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
                     'load_kwargs': {
-                        'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
-                        'encoding': 'macroman',
-                        'null_values': ['.'],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
+                            'encoding': 'macroman',
+                            'null_values': ['.'],
+                        },
                     },
                 },
             ],

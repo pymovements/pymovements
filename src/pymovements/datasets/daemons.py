@@ -113,7 +113,7 @@ class DAEMONS(DatasetDefinition):
                     'md5': '2779b4c140a0b1e3c9976488994f08f3',
                     'filename_pattern': r'SAC_{data_split:s}.csv',
                     'filename_pattern_schema_overrides': {'data_split': str},
-                    'load_kwargs': {'null_values': ['NA']},
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': ['NA']}},
                 },
             ],
         ),

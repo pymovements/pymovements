@@ -165,8 +165,7 @@ class PoTeC(DatasetDefinition):
                         'text_id': str,
                     },
                     'load_kwargs': {
-                        'separator': '\t',
-                        'null_values': '.',
+                        'read_csv_kwargs': {'separator': '\t', 'null_values': '.'},
                     },
                 },
                 {
@@ -180,9 +179,11 @@ class PoTeC(DatasetDefinition):
                         'text_id': str,
                     },
                     'load_kwargs': {
-                        'separator': '\t',
-                        'null_values': '.',
-                        'infer_schema_length': 10000,
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'null_values': '.',
+                            'infer_schema_length': 10000,
+                        },
                     },
                 },
             ],

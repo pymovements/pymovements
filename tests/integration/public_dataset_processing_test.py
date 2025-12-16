@@ -22,17 +22,18 @@ import shutil
 
 import pytest
 
-import pymovements as pm
+from pymovements.dataset import Dataset
+from pymovements.dataset import DatasetLibrary
 
 
 @pytest.mark.parametrize(
     'dataset_name',
-    list(pm.dataset.DatasetLibrary.definitions.keys()),
+    list(DatasetLibrary.definitions.keys()),
 )
 def test_public_dataset_processing(dataset_name, tmp_path):
     # Initialize dataset.
     dataset_path = tmp_path / dataset_name
-    dataset = pm.Dataset(dataset_name, path=dataset_path)
+    dataset = Dataset(dataset_name, path=dataset_path)
 
     # Download and load in dataset.
     dataset.download()

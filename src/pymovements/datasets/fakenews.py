@@ -95,7 +95,7 @@ class FakeNewsPerception(DatasetDefinition):
                         'subject_id': int, 'session_id': int,
                         'truth_value': str,
                     },
-                    'load_kwargs': {'null_values': 'NA', 'quote_char': '"'},
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': 'NA', 'quote_char': '"'}},
                 },
             ],
         ),

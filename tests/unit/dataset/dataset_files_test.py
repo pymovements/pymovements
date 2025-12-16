@@ -761,7 +761,7 @@ def test_load_precomputed_rm_file(make_example_file):
 
     reading_measure = load_precomputed_reading_measure_file(
         filepath,
-        custom_read_kwargs={'separator': ','},
+        load_kwargs={'separator': ','},
     )
     expected_df = pl.read_csv(filepath)
 
@@ -784,7 +784,7 @@ def test_load_precomputed_rm_file_xlsx(make_example_file):
 
     reading_measure = load_precomputed_reading_measure_file(
         filepath,
-        custom_read_kwargs={'sheet_name': 'Sheet 1'},
+        load_kwargs={'sheet_name': 'Sheet 1'},
     )
 
     expected_df = pl.from_dict({'test': ['foo', 'bar'], 'id': [0, 1]})
@@ -808,7 +808,7 @@ def test_load_precomputed_file_csv(make_example_file):
 
     gaze = load_precomputed_event_file(
         filepath,
-        custom_read_kwargs={'separator': ','},
+        load_kwargs={'read_csv_kwargs': {'separator': ','}},
     )
     expected_df = pl.read_csv(filepath)
 
@@ -840,7 +840,7 @@ def test_load_precomputed_file_rda(make_example_file):
 
     gaze = load_precomputed_event_file(
         filepath,
-        custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
     )
 
     expected_df = pyreadr.read_r(filepath)
@@ -859,7 +859,7 @@ def test_load_precomputed_file_rda_raise_value_error(make_example_file):
         load_precomputed_event_file(filepath)
 
     msg, = exc.value.args
-    assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
+    assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
 
 
 def test_load_precomputed_rm_file_rda(make_example_file):
@@ -867,7 +867,7 @@ def test_load_precomputed_rm_file_rda(make_example_file):
 
     gaze = load_precomputed_reading_measure_file(
         filepath,
-        custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
     )
 
     expected_df = pyreadr.read_r(filepath)
@@ -886,7 +886,7 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
         load_precomputed_reading_measure_file(filepath)
 
     msg, = exc.value.args
-    assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
+    assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
 
 
 @pytest.mark.parametrize(

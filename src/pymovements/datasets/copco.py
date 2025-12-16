@@ -151,12 +151,14 @@ class CopCo(DatasetDefinition):
                     'filename_pattern': r'FIX_report_P{subject_id:d}.txt',
                     'filename_pattern_schema_overrides': {'subject_id': int},
                     'load_kwargs': {
-                        'separator': '\t',
-                        'null_values': ['.', 'UNDEFINEDnull'],
-                        'infer_schema_length': 100000,
-                        'truncate_ragged_lines': True,
-                        'decimal_comma': True,
-                        'quote_char': None,
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'null_values': ['.', 'UNDEFINEDnull'],
+                            'infer_schema_length': 100000,
+                            'truncate_ragged_lines': True,
+                            'decimal_comma': True,
+                            'quote_char': None,
+                        },
                     },
                 },
                 {

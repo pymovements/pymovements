@@ -114,7 +114,7 @@ class OneStop(DatasetDefinition):
                     'filename': 'fixations_Paragraph.csv.zip',
                     'md5': '3d3b6a3794a50e174e025f43735674bd',
                     'filename_pattern': 'fixations_Paragraph.csv',
-                    'load_kwargs': {'null_values': '.'},
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': '.'}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -122,7 +122,7 @@ class OneStop(DatasetDefinition):
                     'filename': 'ia_Paragraph.csv.zip',
                     'md5': '9b9548e49efdc7dbf63d4f3a5dc3af22',
                     'filename_pattern': 'ia_Paragraph.csv',
-                    'load_kwargs': {'null_values': '.'},
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': '.'}},
                 },
             ],
         ),
