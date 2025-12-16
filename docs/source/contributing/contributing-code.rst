@@ -5,7 +5,7 @@
 Code of Conduct
 ---------------
 
-At **pymovements**, we are commited to providing a welcoming, inclusive, and harassment-free
+At **pymovements**, we are committed to providing a welcoming, inclusive, and harassment-free
 experience for everyone.
 
 It is important to us that all participants treat one another’s person and contributions with

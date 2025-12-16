@@ -81,13 +81,13 @@ def setup_matplotlib(
     show_cbar: bool
         Shows color bar if True. (default: False)
     add_stimulus: bool
-        Boolean value indicationg whether to plot the scanpath on the stimuls. (default: False)
+        Boolean value indicating whether to plot the scanpath on the stimulus. (default: False)
     path_to_image_stimulus: str | None
         Path of the stimulus to be shown. (default: None)
     stimulus_origin: str
-        Origin of stimuls to plot on the stimulus. (default: 'upper')
+        Origin of stimulus to plot on the stimulus. (default: 'upper')
     padding: float | None
-        Absolute padding value. If None it is inferred from pad_factor and limits. (default: None)
+        Absolute padding value. If None, it is inferred from pad_factor and limits. (default: None)
     pad_factor: float | None
         Relative padding factor to construct padding from value. (default: 0.05)
 

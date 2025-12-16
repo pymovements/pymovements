@@ -40,7 +40,7 @@ class GazeGraph(DatasetDefinition):
     aged between 24 and 35) using the Pupil Core eye tracker. During data collection,
     the subjects wear the eye tracker and sit in front of the computer screen
     (a 34-inch display) at a distance of approximately 50cm. We conduct the
-    manufacturer's default on-screen five-points calibration for each of
+    manufacturer's default on-screen five-point calibration for each of
     the subjects.
     Note that we have done only one calibration per subject, and the subjects
     can move their heads and upper bodies freely during the experiment.
@@ -67,7 +67,7 @@ class GazeGraph(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -77,7 +77,7 @@ class GazeGraph(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: Any

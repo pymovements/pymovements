@@ -166,7 +166,7 @@ def load_event_files(
         extension: str = 'feather',
         verbose: bool = True,
 ) -> list[Events]:
-    """Load all event files associated to a gaze sample file.
+    """Load all event files associated with a gaze sample file.
 
     Parameters
     ----------
@@ -183,7 +183,7 @@ def load_event_files(
         `tsv`, `txt`.
         (default: 'feather')
     verbose : bool
-        If ``True``, show progress bar. (default: True)
+        If ``True``, show a progress bar. (default: True)
 
     Returns
     -------
@@ -195,7 +195,7 @@ def load_event_files(
     AttributeError
         If `fileinfo` is None or the `fileinfo` dataframe is empty.
     ValueError
-        If extension is not in list of valid extensions.
+        If the extension is not in list of valid extensions.
     """
     list_of_events: list[Events] = []
 
