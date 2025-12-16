@@ -20,17 +20,17 @@
 """Provides eye movement measures."""
 from pymovements.measure.event_processing import EventProcessor
 from pymovements.measure.event_processing import EventSamplesProcessor
-from pymovements.measure.sample_measures import amplitude
-from pymovements.measure.sample_measures import dispersion
-from pymovements.measure.sample_measures import disposition
 from pymovements.measure.event_properties import duration
 from pymovements.measure.event_properties import EVENT_PROPERTIES
-from pymovements.measure.sample_measures import location
-from pymovements.measure.sample_measures import peak_velocity
 from pymovements.measure.event_properties import register_event_property
 from pymovements.measure.library import register_sample_measure
 from pymovements.measure.library import SampleMeasureLibrary
+from pymovements.measure.sample_measures import amplitude
+from pymovements.measure.sample_measures import dispersion
+from pymovements.measure.sample_measures import disposition
+from pymovements.measure.sample_measures import location
 from pymovements.measure.sample_measures import null_ratio
+from pymovements.measure.sample_measures import peak_velocity
 
 
 __all__ = [

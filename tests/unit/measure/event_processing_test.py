@@ -115,7 +115,7 @@ def test_event_processor_process_correct_result(
 def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
     processor = EventSamplesProcessor(*args, **kwargs)
 
-    assert processor.event_properties == expected_property_definitions
+    assert processor.measures == expected_property_definitions
 
 
 @pytest.mark.parametrize(

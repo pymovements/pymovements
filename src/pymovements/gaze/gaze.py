@@ -39,6 +39,7 @@ from tqdm import tqdm
 
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
@@ -329,7 +330,7 @@ class Gaze:
         """
         if transforms.TransformLibrary.__contains__(function):
             self.transform(function, **kwargs)
-        elif Events.EventDetectionLibrary.__contains__(function):
+        elif EventDetectionLibrary.__contains__(function):
             self.detect(function, **kwargs)
         else:
             raise ValueError(f"unsupported method '{function}'")
@@ -998,7 +999,7 @@ class Gaze:
                 )
 
         if isinstance(method, str):
-            method = Events.EventDetectionLibrary.get(method)
+            method = EventDetectionLibrary.get(method)
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
