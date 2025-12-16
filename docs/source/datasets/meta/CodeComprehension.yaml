@@ -9,6 +9,7 @@ resources:
   filename_pattern_schema_overrides:
     subject_id: '!polars.datatypes.classes.String'
   load_kwargs:
-    separator: "\t"
-    null_values: .
-    quote_char: '"'
+    read_csv_kwargs:
+      separator: "\t"
+      null_values: .
+      quote_char: '"'

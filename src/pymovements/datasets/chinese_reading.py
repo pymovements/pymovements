@@ -109,7 +109,7 @@ class ChineseReading(DatasetDefinition):
                     'filename_pattern': 'Raw Data.txt',
                     'load_kwargs': {
                         'trial_columns': ['Subject', 'Sentence_ID'],
-                        'separator': '\t',
+                        'read_csv_kwargs': {'separator': '\t'},
                     },
                 },
                 {
@@ -118,7 +118,9 @@ class ChineseReading(DatasetDefinition):
                     'filename': 'chinese_reading_measures.zip',
                     'md5': None,  # type: ignore
                     'filename_pattern': r'{measure_type:s} Measures.xlsx',
-                    'load_kwargs': {'sheet_name': 'Sheet 1'},
+                    'load_kwargs': {
+                        'read_excel_kwargs': {'sheet_name': 'Sheet 1'},
+                    },
                 },
             ],
         ),
