@@ -501,8 +501,8 @@ def load_precomputed_reading_measure_file(
     excel_extensions = {'.xlsx'}
     valid_extensions = csv_extensions | r_extensions | excel_extensions
     if data_path.suffix in csv_extensions:
-        read_csv_kwargs = load_kwargs.pop('read_csv_kwargs', {})
-        precomputed_reading_measure_df = pl.read_csv(data_path, **read_csv_kwargs)
+        read_kwargs = load_kwargs.pop('read_csv_kwargs', {})
+        precomputed_reading_measure_df = pl.read_csv(data_path, **read_kwargs)
     elif data_path.suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
             precomputed_r = pyreadr.read_r(data_path)
@@ -513,10 +513,8 @@ def load_precomputed_reading_measure_file(
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
     elif data_path.suffix in excel_extensions:
-        precomputed_reading_measure_df = pl.read_excel(
-            data_path,
-            sheet_name=load_kwargs['sheet_name'],
-        )
+        read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
+        precomputed_reading_measure_df = pl.read_excel(data_path, **read_kwargs)
     else:
         raise ValueError(
             f'unsupported file format "{data_path.suffix}". '

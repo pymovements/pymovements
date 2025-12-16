@@ -12,8 +12,9 @@ resources:
       trial_columns:
         - pno
         - sno
-      separator: "\t"
-      null_values: '.'
+      read_csv_kwargs:
+        separator: "\t"
+        null_values: '.'
 
   - content: precomputed_reading_measures
     url: https://osf.io/download/fgdjw/
@@ -21,7 +22,8 @@ resources:
     md5: e09e791e7d31d6ac3c69cd862d139c57
     filename_pattern: gaze4hate_sentence_reading_IA_report.csv
     load_kwargs:
-      separator: "\t"
+      read_csv_kwargs:
+        separator: "\t"
 
 experiment:
   screen_width_px: 2560

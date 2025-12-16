@@ -107,7 +107,7 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_events.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.fix',
-                    'load_kwargs': {'separator': '\t', 'null_values': ['NaN']},
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t', 'null_values': ['NaN']}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -115,7 +115,7 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_measures.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.RT',
-                    'load_kwargs': {'separator': '\t'},
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
             ],
         ),

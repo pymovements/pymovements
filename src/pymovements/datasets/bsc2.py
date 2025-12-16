@@ -120,7 +120,9 @@ class BSCII(DatasetDefinition):
                     'filename_pattern': 'BSCII.EMD.rev.txt',
                     'load_kwargs': {
                         'trial_columns': ['book_name', 'screen_id'],
-                        'separator': '\t', 'null_values': ['NA'],
+                        'read_csv_kwargs': {
+                            'separator': '\t', 'null_values': ['NA'],
+                        },
                     },
                 },
             ],
