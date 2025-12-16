@@ -123,7 +123,9 @@ class RaCCooNS(DatasetDefinition):
                     'md5': '98dff690022d0c0555987a6d88de992b',
                     'filename_pattern': r'ET_fix_data.tsv',
                     'filename_pattern_schema_overrides': {},
-                    'load_kwargs': {'separator': '\t', 'encoding': 'latin-1'},
+                    'load_kwargs': {
+                        'read_csv_kwargs': {'separator': '\t', 'encoding': 'latin-1'},
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -133,7 +135,9 @@ class RaCCooNS(DatasetDefinition):
                     'md5': 'c40886c4515c43187aba8fbc32c8c935',
                     'filename_pattern': r'ET_word_data.tsv',
                     'filename_pattern_schema_overrides': {},
-                    'load_kwargs': {'separator': '\t', 'encoding': 'latin-1'},
+                    'load_kwargs': {
+                        'read_csv_kwargs': {'separator': '\t', 'encoding': 'latin-1'},
+                    },
                 },
             ],
         ),
