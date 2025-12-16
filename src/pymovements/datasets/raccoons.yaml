@@ -40,7 +40,6 @@ resources:
 experiment:
   screen:
     width_px: 1920
-    # double check with stefan -- 1018 in the paper
     height_px: 1080
     width_cm: 56.8
     height_cm: 33.5

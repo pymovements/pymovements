@@ -143,7 +143,6 @@ class RaCCooNS(DatasetDefinition):
         default_factory=lambda: Experiment(
             screen=Screen(
                 width_px=1920,
-                # in the paper its written 1018, but assume typo
                 height_px=1080,
                 width_cm=56.8,
                 height_cm=33.5,
