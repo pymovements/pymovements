@@ -54,12 +54,12 @@ class EventProcessor:
 
         self.event_properties = event_properties
 
-    def process(self, events: Events) -> pl.DataFrame:
+    def process(self, events: pl.DataFrame) -> pl.DataFrame:
         """Process event dataframe.
 
         Parameters
         ----------
-        events: Events
+        events: pl.DataFrame
             Event data to process event properties from.
 
         Returns
@@ -83,7 +83,7 @@ class EventProcessor:
             property_expression().alias(property_name)
             for property_name, property_expression in property_expressions.items()
         ]
-        result = events.frame.select(expression_list)
+        result = events.select(expression_list)
         return result
 
 
