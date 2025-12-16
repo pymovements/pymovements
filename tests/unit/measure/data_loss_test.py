@@ -142,7 +142,9 @@ def test_data_loss(
     )
 
     # Compare with tolerance to accommodate floating point representation for time/ratio
-    assert_frame_equal(result, expected, check_exact=False, rtol=1e-12, atol=1e-12)
+    assert_frame_equal(
+        result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12,
+    )
 
 
 @pytest.mark.parametrize('bad_unit', ['invalid', '', None, 'COUNT'])
