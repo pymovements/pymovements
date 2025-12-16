@@ -26,9 +26,7 @@ from typing import Any
 
 import polars as pl
 
-import pymovements as pm  # pylint: disable=cyclic-import
-from pymovements.events.events import Events
-from pymovements.events.properties import EVENT_PROPERTIES
+from pymovements.measure.event_properties import EVENT_PROPERTIES
 from pymovements.exceptions import InvalidProperty
 
 
@@ -89,46 +87,46 @@ class EventProcessor:
         return result
 
 
-class EventGazeProcessor:
+class EventSamplesProcessor:
     """Processes events and gaze samples.
 
     Parameters
     ----------
-    event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
-        List of event property names.
+    measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
+        List of sample measures.
     """
 
     def __init__(
             self,
-            event_properties: str | tuple[str, dict[str, Any]]
+            measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
     ):
-        _check_event_properties(event_properties)
+        _check_event_properties(measures)
 
-        event_properties_with_kwargs: list[tuple[str, dict[str, Any]]]
-        if isinstance(event_properties, str):
-            event_properties_with_kwargs = [(event_properties, {})]
-        elif isinstance(event_properties, tuple):
-            event_properties_with_kwargs = [event_properties]
+        measures_with_kwargs: list[tuple[str, dict[str, Any]]]
+        if isinstance(measures, str):
+            measures_with_kwargs = [(measures, {})]
+        elif isinstance(measures, tuple):
+            measures_with_kwargs = [measures]
         else:  # we already validated above, it must be a list of strings and tuples
-            event_properties_with_kwargs = [
+            measures_with_kwargs = [
                 (event_property, {}) if isinstance(event_property, str) else event_property
-                for event_property in event_properties
+                for event_property in measures
             ]
 
-        for property_name, _ in event_properties_with_kwargs:
+        for property_name, _ in measures_with_kwargs:
             if property_name not in EVENT_PROPERTIES:
                 valid_properties = list(EVENT_PROPERTIES.keys())
                 raise InvalidProperty(
                     property_name=property_name, valid_properties=valid_properties,
                 )
 
-        self.event_properties: list[tuple[str, dict[str, Any]]] = event_properties_with_kwargs
+        self.measures: list[tuple[str, dict[str, Any]]] = measures_with_kwargs
 
     def process(
             self,
-            events: Events,
-            gaze: pm.Gaze,
+            events: pl.DataFrame,
+            samples: pl.DataFrame,
             identifiers: str | list[str] | None = None,
             name: str | None = None,
     ) -> pl.DataFrame:
@@ -136,12 +134,12 @@ class EventGazeProcessor:
 
         Parameters
         ----------
-        events: Events
+        events: pl.DataFrame
             Event data to process event properties from.
-        gaze: pm.Gaze
-            Gaze data to process event properties from.
+        samples: pl.DataFrame
+            Samples data to process event properties from.
         identifiers: str | list[str] | None
-            Column names to join on events and gaze dataframes. (default: None)
+            Column names to join on events and samples dataframes. (default: None)
         name: str | None
             Process only events that match the name. (default: None)
 
@@ -162,38 +160,37 @@ class EventGazeProcessor:
             If specified event name ``name`` is missing from ``events``.
         """
         if identifiers is None:
-            trial_identifiers = []
+            _identifiers = []
         elif isinstance(identifiers, str):
-            trial_identifiers = [identifiers]
+            _identifiers = [identifiers]
         else:
-            trial_identifiers = identifiers
+            _identifiers = identifiers
 
         property_expressions: list[Callable[..., pl.Expr]] = [
-            EVENT_PROPERTIES[property_name] for property_name, _ in self.event_properties
+            EVENT_PROPERTIES[property_name] for property_name, _ in self.measures
         ]
 
-        property_names: list[str] = [property_name for property_name, _ in self.event_properties]
+        property_names: list[str] = [property_name for property_name, _ in self.measures]
 
         property_kwargs: list[dict[str, Any]] = [
-            property_kwargs for _, property_kwargs in self.event_properties
+            property_kwargs for _, property_kwargs in self.measures
         ]
 
         # Each event is uniquely defined by a list of trial identifiers,
         # a name and its on- and offset.
-        event_identifiers = [*trial_identifiers, 'name', 'onset', 'offset']
+        event_identifiers = [*_identifiers, 'name', 'onset', 'offset']
 
-        events_frame = events.frame
         if name is not None:
-            events_frame = events_frame.filter(pl.col('name').str.contains(f'^{name}$'))
-            if len(events_frame) == 0:
+            events = events.filter(pl.col('name').str.contains(f'^{name}$'))
+            if len(events) == 0:
                 raise RuntimeError(f'No events with name "{name}" found in data frame')
 
         property_values = defaultdict(list)
-        for event in events_frame.iter_rows(named=True):
+        for event in events.iter_rows(named=True):
             # Find gaze samples that belong to the current event.
-            event_samples = gaze.samples.filter(
+            event_samples = samples.filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
-                *[pl.col(identifier) == event[identifier] for identifier in trial_identifiers],
+                *[pl.col(identifier) == event[identifier] for identifier in _identifiers],
             )
             # Compute event property values.
             values = event_samples.select(
@@ -209,7 +206,7 @@ class EventGazeProcessor:
                 property_values[property_name].append(values[property_name].item())
 
         # The resulting DataFrame contains the event identifiers and the computed properties.
-        result = events_frame.select(event_identifiers).with_columns(
+        result = events.select(event_identifiers).with_columns(
             *[pl.Series(name, values) for name, values in property_values.items()],
         )
         return result

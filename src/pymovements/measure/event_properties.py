@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2023-2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,27 +17,42 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality."""
-from pymovements.events.detection import fill
-from pymovements.events.detection import idt
-from pymovements.events.detection import ivt
-from pymovements.events.detection import microsaccades
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
-from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
-from pymovements.events.precomputed import PrecomputedEventDataFrame
+"""Provides functions for calculating event properties."""
+from __future__ import annotations
+
+from collections.abc import Callable
+
+import polars as pl
+
+EVENT_PROPERTIES: dict[str, Callable] = {}
 
 
-__all__ = [
-    'EventDetectionLibrary',
-    'register_event_detection',
-    'fill',
-    'idt',
-    'ivt',
-    'microsaccades',
+def register_event_property(function: Callable) -> Callable:
+    """Register a function as a valid property.
 
-    'PrecomputedEventDataFrame',
-    'Events',
-    'EventDataFrame',
-]
+    Parameters
+    ----------
+    function: Callable
+        Function to be registered as a valid property.
+
+    Returns
+    -------
+    Callable
+        The function that was passed as an argument.
+    """
+    EVENT_PROPERTIES[function.__name__] = function
+    return function
+
+
+@register_event_property
+def duration() -> pl.Expr:
+    """Duration of an event.
+
+    The duration is defined as the difference between offset time and onset time.
+
+    Returns
+    -------
+    pl.Expr
+        The duration of the event.
+    """
+    return pl.col('offset') - pl.col('onset')

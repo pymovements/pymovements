@@ -27,11 +27,16 @@ from __future__ import annotations
 
 import polars as pl
 
-import pymovements as pm  # pylint: disable=cyclic-import
-from pymovements._utils._deprecated import DeprecatedMetaClass
+from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._deprecated import DeprecatedMetaClass
+from pymovements.events import Events
+from pymovements.gaze import Gaze
+from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.gaze import Gaze
+from pymovements.measure import SampleMeasureLibrary
+from pymovements.measure.event_processing import EventSamplesProcessor
+from pymovements.stimulus import TextStimulus
 
 
 @repr_html(['samples', 'events', 'trial_columns', 'experiment'])
@@ -53,7 +58,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         A dataframe that contains gaze samples. (default: None)
     experiment : Experiment | None
         The experiment definition. (default: None)
-    events: pm.Events | None
+    events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
@@ -91,7 +96,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         from the experiment definition. This column will be renamed to ``distance``. (default: None)
     auto_column_detect: bool
         Flag indicating if the column names should be inferred automatically. (default: False)
-    definition: pm.DatasetDefinition | None
+    definition: DatasetDefinition | None
         A dataset definition. Explicitly passed arguments take precedence over definition.
         (default: None)
     data: pl.DataFrame | None
@@ -101,7 +106,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     ----------
     samples: pl.DataFrame
         A dataframe to be transformed to a polars dataframe.
-    events: pm.Events
+    events: Events
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
@@ -208,7 +213,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
 
     samples: pl.DataFrame
 
-    events: pm.Events
+    events: Events
 
     experiment: Experiment | None
 

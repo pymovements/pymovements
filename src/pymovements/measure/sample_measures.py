@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2024-2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,34 +17,15 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides functions for calculating event properties."""
+"""Provides eye movement measure implementations."""
 from __future__ import annotations
-
-from collections.abc import Callable
 
 import polars as pl
 
-EVENT_PROPERTIES: dict[str, Callable] = {}
+from pymovements.measure.library import register_sample_measure
 
 
-def register_event_property(function: Callable) -> Callable:
-    """Register a function as a valid property.
-
-    Parameters
-    ----------
-    function: Callable
-        Function to be registered as a valid property.
-
-    Returns
-    -------
-    Callable
-        The function that was passed as an argument.
-    """
-    EVENT_PROPERTIES[function.__name__] = function
-    return function
-
-
-@register_event_property
+@register_sample_measure
 def amplitude(
         *,
         position_column: str = 'position',
@@ -91,7 +72,7 @@ def amplitude(
     ).sqrt()
 
 
-@register_event_property
+@register_sample_measure
 def dispersion(
         *,
         position_column: str = 'position',
@@ -134,7 +115,7 @@ def dispersion(
     return x_position.max() - x_position.min() + y_position.max() - y_position.min()
 
 
-@register_event_property
+@register_sample_measure
 def disposition(
         *,
         position_column: str = 'position',
@@ -180,21 +161,7 @@ def disposition(
     ).sqrt()
 
 
-@register_event_property
-def duration() -> pl.Expr:
-    """Duration of an event.
-
-    The duration is defined as the difference between offset time and onset time.
-
-    Returns
-    -------
-    pl.Expr
-        The duration of the event.
-    """
-    return pl.col('offset') - pl.col('onset')
-
-
-@register_event_property
+@register_sample_measure
 def location(
         method: str = 'mean',
         *,
@@ -261,7 +228,42 @@ def location(
     return pl.concat_list(component_expressions).first()
 
 
-@register_event_property
+@register_sample_measure
+def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
+    """Ratio of null values to overall values.
+
+    In case of list columns, a null element in the list will count as overall null for the
+    respective cell.
+
+    Parameters
+    ----------
+    column: str
+        Name of measured column.
+    column_dtype: pl.DataType
+        Data type of measured column.
+
+    Returns
+    -------
+    pl.Expr
+        Null ratio expression.
+    """
+    if column_dtype in {pl.Float64, pl.Int64}:
+        value = 1 - pl.col(column).fill_nan(pl.lit(None)).count() / pl.col(column).len()
+    elif column_dtype == pl.Utf8:
+        value = 1 - pl.col(column).count() / pl.col(column).len()
+    elif column_dtype == pl.List:
+        non_null_lengths = pl.col(column).list.drop_nulls().drop_nans().list.len()
+        value = 1 - (non_null_lengths == pl.col(column).list.len()).sum() / pl.col(column).len()
+    else:
+        raise TypeError(
+            'column_dtype must be of type {Float64, Int64, Utf8, List}'
+            f' but is of type {column_dtype}',
+        )
+
+    return value.alias('null_ratio')
+
+
+@register_sample_measure
 def peak_velocity(
         *,
         velocity_column: str = 'velocity',

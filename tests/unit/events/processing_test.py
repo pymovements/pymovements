@@ -25,7 +25,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import EventGazeProcessor
+from pymovements import EventSamplesProcessor
 from pymovements import EventProcessor
 from pymovements import Events
 from pymovements import Gaze
@@ -113,7 +113,7 @@ def test_event_processor_process_correct_result(
     ],
 )
 def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
-    processor = EventGazeProcessor(*args, **kwargs)
+    processor = EventSamplesProcessor(*args, **kwargs)
 
     assert processor.event_properties == expected_property_definitions
 
@@ -170,7 +170,7 @@ def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
 )
 def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        EventGazeProcessor(*args, **kwargs)
+        EventSamplesProcessor(*args, **kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -792,7 +792,7 @@ def test_event_gaze_processor_process_correct_result(
         events, gaze, init_kwargs, process_kwargs, expected_dataframe,
 ):
     events = Events(events)
-    processor = EventGazeProcessor(**init_kwargs)
+    processor = EventSamplesProcessor(**init_kwargs)
     property_result = processor.process(events, gaze, **process_kwargs)
     assert_frame_equal(property_result, expected_dataframe)
 
@@ -835,7 +835,7 @@ def test_event_gaze_processor_process_correct_result(
 def test_event_processor_process_exceptions(
         events, gaze, init_kwargs, process_kwargs, exception, msg_substrings,
 ):
-    processor = EventGazeProcessor(**init_kwargs)
+    processor = EventSamplesProcessor(**init_kwargs)
     events = Events(events)
 
     with pytest.raises(exception) as excinfo:

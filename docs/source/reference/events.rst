@@ -26,7 +26,7 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     :template: class.rst
 
     EventProcessor
-    EventGazeProcessor
+    EventSamplesProcessor
 
 .. currentmodule:: pymovements.events.detection
 
