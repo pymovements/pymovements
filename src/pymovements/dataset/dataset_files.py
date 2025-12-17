@@ -149,7 +149,7 @@ def scan_dataset(
         content_files = [
             DatasetFile(
                 path=resource_dirpath / file['filepath'],  # absolute path
-                definition=resource_definition,
+                definition=resource_definition.clone(),
                 metadata={key: value for key, value in file.items() if key != 'filepath'},
             )
             for file in fileinfo_df.to_dicts()
@@ -345,7 +345,7 @@ def load_gaze_file(
                 f'Otherwise, specify load_function in the resource definition.',
             )
 
-    load_function_kwargs = resource_definition.load_kwargs
+    load_function_kwargs = deepcopy(resource_definition.load_kwargs)
     if load_function_kwargs is None:
         load_function_kwargs = {}
 
@@ -449,7 +449,8 @@ def load_precomputed_reading_measures(
     """
     precomputed_reading_measures = []
     for file in files:
-        load_function_kwargs = file.definition.load_kwargs
+        load_function_kwargs = deepcopy(file.definition.load_kwargs)
+
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
@@ -548,7 +549,8 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        load_function_kwargs = file.definition.load_kwargs
+        load_function_kwargs = deepcopy(file.definition.load_kwargs)
+
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
