@@ -20,6 +20,9 @@
 """Test data_loss sample measure."""
 from __future__ import annotations
 
+from math import inf
+from math import nan
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -30,6 +33,8 @@ import pymovements as pm
 @pytest.mark.parametrize(
     (
         'times',
+        'values',
+        'sampling_rate',
         'start',
         'end',
         'expected_count',
@@ -37,94 +42,90 @@ import pymovements as pm
         'expected_ratio',
     ),
     [
-        # Regular sampling, one internal gap: [0,1,2,4]
-        # span=4, median ISI=1 -> expected=5, observed=4 -> missing=1
+        # 1 Hz with one internal time gap and one invalid value (NaN) -> missing=1
+        # (time) + 1 (invalid)
         pytest.param(
-            [0.0, 1.0, 2.0, 4.0], None, None, 1, 1.0, 1 / 5,
-            id='regular_internal_gap',
+            [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, nan, 1.0], 1.0, None, None,
+            2, 2.0, 2 / 5,
+            id='gap_plus_nan_invalid',
         ),
 
-        # Explicit recording start/end expanding range by 2 samples
-        # times=[10,11,12], start=9, end=13: span=4, ISI=1 -> expected=5, observed=3 -> missing=2
+        # Explicit bounds expand range (2 expected missing) and one +inf value -> total 3
         pytest.param(
-            [10.0, 11.0, 12.0], 9.0, 13.0, 2, 2.0, 2 / 5,
-            id='explicit_bounds',
+            [10.0, 11.0, 12.0], [1.0, inf, 1.0], 1.0, 9.0, 13.0,
+            3, 3.0, 3 / 5,
+            id='explicit_bounds_with_inf',
         ),
 
-        # Irregular sampling, median ISI computed from [0,2,6] -> diffs [2,4] -> median=3
-        # end=12 -> span=12 -> expected=floor(12/3)+1=5, observed=3 -> missing=2
+        # Irregular times, 1/3 Hz expectation over [0,12], plus one None value
         pytest.param(
-            [0.0, 2.0, 6.0], None, 12.0, 2, 6.0, 2 / 5,
-            id='irregular_sampling',
+            [0.0, 2.0, 6.0], [1.0, None, 1.0], 1 / 3, None, 12.0,
+            3, 9.0, 3 / 5,
+            id='irregular_with_none',
         ),
 
-        # Single sample -> median ISI null, returns 0
-        pytest.param([1.0], None, None, 0, 0.0, 0.0, id='single_sample'),
-
-        # Degenerate interval (end == start) -> returns 0
-        pytest.param([1.0, 2.0], 5.0, 5.0, 0, 0.0, 0.0, id='degenerate_interval'),
-
-        # Clip negative missing to zero: observed > expected due to narrow end
-        # times=[0,1,2], start=0, end=1.5 -> ISI=1, expected=2, observed=3 -> missing -> 0
-        pytest.param([0.0, 1.0, 2.0], 0.0, 1.5, 0, 0.0, 0.0, id='clip_negative'),
-
-        # Perfect regular sampling: no missing
-        # times=[0,1,2,3], span=3, ISI=1 -> expected=4, observed=4 -> 0
+        # Single sample - include invalid value to ensure invalid path is counted when expected>=1
         pytest.param(
-            [0.0, 1.0, 2.0, 3.0], None, None, 0, 0.0, 0.0,
-            id='no_missing_regular',
+            [5.0], [None], 1.0, None, None, 1, 1.0, 1.0,
+            id='single_sample_invalid_only',
         ),
 
-        # Non-integer ISI (0.5): end extends range -> missing occurs
-        # times=[0,0.5,1.0], end=2.0, ISI=0.5, span=2 -> expected=5, observed=3 -> 2
+        # Degenerate interval (end==start) -> no time-based missing - with all valid values -> 0
         pytest.param(
-            [0.0, 0.5, 1.0], None, 2.0, 2, 1.0, 2 / 5,
-            id='half_second_isi_extend_end',
+            [1.0, 2.0], [1.0, 1.0], 1.0, 5.0, 5.0, 0, 0.0, 0.0,
+            id='degenerate_interval_zero',
         ),
 
-        # Start earlier than first timestamp adds expected samples at the beginning
-        # times=[5,6,7], start=3, end=None -> span= (7-3)=4, ISI=1 -> expected=5, observed=3 -> 2
+        # Clip negative: observed > expected due to narrow end - invalid present but should still be
+        # clipped by expected? No: invalid rows are counted regardless - however our function
+        # sums both. To keep observed>expected scenario only, use no invalids -> 0.
         pytest.param(
-            [5.0, 6.0, 7.0], 3.0, None, 2, 2.0, 2 / 5,
-            id='start_before_first',
+            [0.0, 1.0, 2.0], [1.0, 1.0, 1.0], 1.0, 0.0, 1.5, 0, 0.0, 0.0,
+            id='clip_negative_time_only',
         ),
 
-        # End before last timestamp reduces expected below observed -> clipped to 0
-        # times=[0,1,2,3], end=1.1 -> expected=floor((1.1-0)/1)+1=2, observed=4 -> 0
+        # Unsorted input with an invalid (-inf) value
         pytest.param(
-            [0.0, 1.0, 2.0, 3.0], None, 1.1, 0, 0.0, 0.0,
-            id='end_before_last_clip',
+            [3.0, 1.0, 0.0, 4.0], [1.0, 1.0, -inf, 1.0], 1.0, None, None,
+            2, 2.0, 2 / 5,
+            id='unsorted_with_neginf',
         ),
 
-        # Unsorted timestamps: sorting inside measure should handle it (one missing between 1 and 3)
-        # times=[3,1,0,4] -> sorted [0,1,3,4], ISI median=1 -> expected=5, observed=4 -> 1
+        # Larger internal gap and one invalid in values
         pytest.param(
-            [3.0, 1.0, 0.0, 4.0], None, None, 1, 1.0, 1 / 5,
-            id='unsorted_input',
+            [0.0, 1.0, 2.0, 6.0, 7.0], [1.0, None, 1.0, 1.0, 1.0], 1.0, None, None,
+            4, 4.0, 4 / 8,
+            id='large_gap_with_invalid',
         ),
 
-        # Larger gap inside
-        # times=[0,1,2,6,7], ISI median=1, span=7 -> expected=8, observed=5 -> missing=3
+        # Perfect regular sampling at 2 Hz with all valid -> 0
         pytest.param(
-            [0.0, 1.0, 2.0, 6.0, 7.0], None, None, 3, 3.0, 3 / 8,
-            id='large_internal_gap',
+            [0.0, 0.5, 1.0, 1.5], [1.0, 1.0, 1.0, 1.0], 2.0, None, None,
+            0, 0.0, 0.0,
+            id='no_missing_regular_all_valid',
         ),
 
-        # Very short span with two samples -> expected=2, observed=2 -> 0
+        # List at 1 Hz with invalid values and missing samples
         pytest.param(
-            [10.0, 10.1], None, None, 0, 0.0, 0.0,
-            id='short_span_two_samples_no_missing',
+            [1, 2, 3, 4, 5, 9], [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
+            1.0, None, None,
+            6, 6.0, 6 / 9,
+            id='list_with_invalid_and_missing',
         ),
     ],
 )
 @pytest.mark.parametrize('unit', ['count', 'time', 'ratio'])
 def test_data_loss(
-        times, start, end, expected_count, expected_time,
+        times, values, sampling_rate, start, end, expected_count, expected_time,
         expected_ratio, unit,
 ):
-    df = pl.from_dict(data={'time': times}, schema={'time': pl.Float64})
+    df = pl.from_dict(
+        data={'time': times, 'value': values},
+    )
 
-    expr = pm.measure.data_loss('time', start_time=start, end_time=end, unit=unit)
+    expr = pm.measure.data_loss(
+        'time', 'value', sampling_rate=sampling_rate, start_time=start, end_time=end, unit=unit,
+    )
     result = df.select(expr)
 
     expected_column_by_unit = {
@@ -141,18 +142,15 @@ def test_data_loss(
         data={expected_column_by_unit[unit]: [expected_value_by_unit[unit]]},
     )
 
-    # Compare with tolerance to accommodate floating point representation for time/ratio
-    assert_frame_equal(
-        result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12,
-    )
+    assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
 
 
 @pytest.mark.parametrize('bad_unit', ['invalid', '', None, 'COUNT'])
 def test_data_loss_invalid_unit_raises(bad_unit):
-    df = pl.DataFrame({'time': [0.0, 1.0]})
+    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
     # We purposely pass an invalid unit to exercise the error branch
     with pytest.raises(ValueError) as excinfo:
-        df.select(pm.measure.data_loss('time', unit=bad_unit))
+        df.select(pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=bad_unit))
 
     (message,) = excinfo.value.args
     assert message == "unit must be one of {'count', 'time', 'ratio'} but got: " + repr(
@@ -160,12 +158,45 @@ def test_data_loss_invalid_unit_raises(bad_unit):
     )
 
 
-@pytest.mark.parametrize('bad_timestamp_col', [123, None, ['time'], {'col': 'time'}])
-def test_data_loss_invalid_timestamp_col_raises(bad_timestamp_col):
-    df = pl.DataFrame({'time': [0.0, 1.0]})
+@pytest.mark.parametrize('bad_time_column', [123, None, {'col': 'time'}])
+def test_data_loss_invalid_time_column_raises(bad_time_column):
+    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
     with pytest.raises(TypeError) as excinfo:
-        df.select(pm.measure.data_loss(bad_timestamp_col))
+        df.select(pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0))
 
     (message,) = excinfo.value.args
-    assert message == (f'timestamp_col must be a string, but got: '
-                       f'{type(bad_timestamp_col).__name__}')
+    assert message == (
+        f"invalid type for 'time_column'. Expected 'str' , got "
+        f"'{type(bad_time_column).__name__}'"
+    )
+
+
+@pytest.mark.parametrize('bad_sampling_rate', [0, -1, 0.0, -10.5, '1Hz'])
+def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
+    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
+    with pytest.raises(ValueError) as excinfo:
+        df.select(pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate))
+
+    (message,) = excinfo.value.args
+    assert message == (
+        f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
+    )
+
+
+def test_data_loss_wraps_typeerror_from_polars_col(monkeypatch):
+    # Simulate a TypeError raised inside pl.col when time_column is a valid string
+    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
+
+    def _raise_typeerror(_):
+        raise TypeError('simulated polars.col TypeError')
+
+    monkeypatch.setattr(pl, 'col', _raise_typeerror)
+
+    with pytest.raises(TypeError) as excinfo:
+        df.select(pm.measure.data_loss('time', 'value', sampling_rate=1.0))
+
+    (message,) = excinfo.value.args
+    assert message == (
+        "invalid type for 'time_column'. Expected 'str' , got 'str'"
+    )
+    assert isinstance(excinfo.value.__cause__, TypeError)
