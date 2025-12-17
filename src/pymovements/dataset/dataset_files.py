@@ -149,7 +149,7 @@ def scan_dataset(
         content_files = [
             DatasetFile(
                 path=resource_dirpath / file['filepath'],  # absolute path
-                definition=resource_definition.clone(),
+                definition=resource_definition,
                 metadata={key: value for key, value in file.items() if key != 'filepath'},
             )
             for file in fileinfo_df.to_dicts()
