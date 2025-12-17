@@ -44,7 +44,7 @@ from pymovements.events import Events
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure import SampleMeasureLibrary
-from pymovements.measure.event_processing import EventSamplesProcessor
+from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.stimulus import TextStimulus
 
 
@@ -1131,7 +1131,7 @@ class Gaze:
         identifiers = self.trial_columns if self.trial_columns is not None else []
         processor = EventSamplesProcessor(event_properties)
 
-        event_property_names = [property[0] for property in processor.event_properties]
+        event_property_names = [property[0] for property in processor.measures]
         existing_columns = set(self.events.columns) & set(event_property_names)
         if existing_columns:
             raise ValueError(

@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,30 +17,24 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides eye movement measures."""
-from pymovements.measure import events
-from pymovements.measure import reading
-from pymovements.measure import samples
-from pymovements.measure.events.measures import EVENT_MEASURES
-from pymovements.measure.events.measures import register_event_measure
-from pymovements.measure.events.processing import EventProcessor
-from pymovements.measure.events.processing import EventSamplesProcessor
-from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
+from pymovements.measure.samples.measures import amplitude
+from pymovements.measure.samples.measures import dispersion
+from pymovements.measure.samples.measures import disposition
+from pymovements.measure.samples.measures import location
+from pymovements.measure.samples.measures import null_ratio
+from pymovements.measure.samples.measures import peak_velocity
 
 
 __all__ = [
-    'events',
-    'EVENT_MEASURES',
-    'register_event_measure',
-    'EventProcessor',
-    'EventSamplesProcessor',
-
-    'reading',
-    'ReadingMeasures',
-
-    'samples',
-    'SampleMeasureLibrary',
     'register_sample_measure',
+    'SampleMeasureLibrary',
+
+    'amplitude',
+    'dispersion',
+    'disposition',
+    'location',
+    'null_ratio',
+    'peak_velocity',
 ]

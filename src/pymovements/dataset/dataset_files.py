@@ -44,7 +44,7 @@ from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
-from pymovements.reading_measures import ReadingMeasures
+from pymovements.measure.reading import ReadingMeasures
 
 
 @dataclass

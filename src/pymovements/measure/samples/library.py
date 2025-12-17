@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,7 +17,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for the measure library."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -76,7 +75,7 @@ class SampleMeasureLibrary:
         Returns
         -------
         bool
-            True if MeasureLibrary contains method with given name, else False.
+            True if SampleMeasureLibrary contains method with given name, else False.
         """
         return name in cls.methods
 

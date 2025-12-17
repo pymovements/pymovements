@@ -27,7 +27,7 @@ from typing import Any
 import polars as pl
 
 from pymovements.exceptions import InvalidProperty
-from pymovements.measure.event_properties import EVENT_PROPERTIES
+from pymovements.measure.events.measures import EVENT_MEASURES
 
 
 class EventProcessor:
@@ -75,7 +75,7 @@ class EventProcessor:
             :py:mod:`pymovements.events` for an overview of supported properties.
         """
         property_expressions: dict[str, Callable[[], pl.Expr]] = {
-            property_name: EVENT_PROPERTIES[property_name]
+            property_name: EVENT_MEASURES[property_name]
             for property_name in self.event_properties
         }
 
@@ -88,7 +88,7 @@ class EventProcessor:
 
 
 class EventSamplesProcessor:
-    """Processes events and gaze samples.
+    """Processes gaze samples grouped by individual events.
 
     Parameters
     ----------
@@ -115,8 +115,8 @@ class EventSamplesProcessor:
             ]
 
         for property_name, _ in measures_with_kwargs:
-            if property_name not in EVENT_PROPERTIES:
-                valid_properties = list(EVENT_PROPERTIES.keys())
+            if property_name not in EVENT_MEASURES:
+                valid_properties = list(EVENT_MEASURES.keys())
                 raise InvalidProperty(
                     property_name=property_name, valid_properties=valid_properties,
                 )
@@ -167,7 +167,7 @@ class EventSamplesProcessor:
             _identifiers = identifiers
 
         property_expressions: list[Callable[..., pl.Expr]] = [
-            EVENT_PROPERTIES[property_name] for property_name, _ in self.measures
+            EVENT_MEASURES[property_name] for property_name, _ in self.measures
         ]
 
         property_names: list[str] = [property_name for property_name, _ in self.measures]

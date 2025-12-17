@@ -24,11 +24,11 @@ from collections.abc import Callable
 
 import polars as pl
 
-EVENT_PROPERTIES: dict[str, Callable] = {}
+EVENT_MEASURES: dict[str, Callable] = {}
 
 
-def register_event_property(function: Callable) -> Callable:
-    """Register a function as a valid property.
+def register_event_measure(function: Callable) -> Callable:
+    """Register an event measure.
 
     Parameters
     ----------
@@ -40,11 +40,11 @@ def register_event_property(function: Callable) -> Callable:
     Callable
         The function that was passed as an argument.
     """
-    EVENT_PROPERTIES[function.__name__] = function
+    EVENT_MEASURES[function.__name__] = function
     return function
 
 
-@register_event_property
+@register_event_measure
 def duration() -> pl.Expr:
     """Duration of an event.
 

@@ -40,7 +40,7 @@ from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
-from pymovements.reading_measures import ReadingMeasures
+from pymovements.measure.reading import ReadingMeasures
 
 
 logging.basicConfig(level=logging.INFO)

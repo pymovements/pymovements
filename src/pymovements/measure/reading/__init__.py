@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to reading measure classes."""
-from pymovements.reading_measures.frame import ReadingMeasures
+from pymovements.measure.reading.frame import ReadingMeasures
 
 
 __all__ = [

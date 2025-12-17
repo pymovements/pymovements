@@ -25,7 +25,6 @@ from pymovements import exceptions
 from pymovements import gaze
 from pymovements import measure
 from pymovements import plotting
-from pymovements import reading_measures
 from pymovements import stimulus
 from pymovements import synthetic
 from pymovements import utils
@@ -43,8 +42,11 @@ from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
 from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
+from pymovements.measure import EVENT_MEASURES
 from pymovements.measure import EventProcessor
 from pymovements.measure import EventSamplesProcessor
+from pymovements.measure import ReadingMeasures
+from pymovements.measure import register_event_measure
 from pymovements.measure import register_sample_measure
 from pymovements.measure import SampleMeasureLibrary
 from pymovements.stimulus import text
@@ -76,11 +78,15 @@ __all__ = [
     'exceptions',
 
     'measure',
+    'EVENT_MEASURES',
+    'register_event_measure',
+    'EventProcessor',
+    'EventSamplesProcessor',
+    'ReadingMeasures',
     'SampleMeasureLibrary',
     'register_sample_measure',
 
     'plotting',
-    'reading_measures',
     'stimulus',
     'synthetic',
     'utils',

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from pymovements.measure.library import register_sample_measure
+from pymovements.measure.samples.library import register_sample_measure
 
 
 @register_sample_measure
