@@ -29,7 +29,7 @@ from pymovements import EventProcessor
 from pymovements import Events
 from pymovements import EventSamplesProcessor
 from pymovements import Gaze
-from pymovements.exceptions import InvalidProperty
+from pymovements.exceptions import UnknownMeasure
 
 
 @pytest.mark.parametrize(
@@ -46,7 +46,7 @@ from pymovements.exceptions import InvalidProperty
 def test_event_processor_init(args, kwargs, expected_property_definitions):
     processor = EventProcessor(*args, **kwargs)
 
-    assert processor.event_properties == expected_property_definitions
+    assert processor.measures == expected_property_definitions
 
 
 @pytest.mark.parametrize(
@@ -54,7 +54,7 @@ def test_event_processor_init(args, kwargs, expected_property_definitions):
     [
         pytest.param(
             ['foo'], {},
-            InvalidProperty, ('foo', 'invalid', 'duration'),
+            UnknownMeasure, ('foo', 'invalid', 'duration'),
             id='unknown_event_property',
         ),
     ],
@@ -123,7 +123,7 @@ def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
     [
         pytest.param(
             ['foo'], {},
-            InvalidProperty, ('foo', 'invalid', 'peak_velocity'),
+            UnknownMeasure, ('foo', 'invalid', 'peak_velocity'),
             id='unknown_event_property',
         ),
         pytest.param(

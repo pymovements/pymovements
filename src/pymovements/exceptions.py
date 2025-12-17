@@ -21,20 +21,20 @@
 from __future__ import annotations
 
 
-class InvalidProperty(Exception):
-    """Raised if requested property is invalid.
+class UnknownMeasure(Exception):
+    """Raised if requested measure is unknown.
 
     Parameters
     ----------
-    property_name: str
+    measure_name: str
         Name of the property which is invalid.
 
-    valid_properties: list[str]
+    known_measures: list[str]
         List of valid properties.
     """
 
-    def __init__(self, property_name: str, valid_properties: list[str]):
-        message = f"property '{property_name}' is invalid. Valid properties are: {valid_properties}"
+    def __init__(self, measure_name: str, known_measures: list[str]):
+        message = f"Measure '{measure_name}' is unknown. Known measures are: {known_measures}"
         super().__init__(message)
 
 

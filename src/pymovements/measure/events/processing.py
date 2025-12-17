@@ -26,7 +26,7 @@ from typing import Any
 
 import polars as pl
 
-from pymovements.exceptions import InvalidProperty
+from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 
 
@@ -35,24 +35,24 @@ class EventProcessor:
 
     Parameters
     ----------
-    event_properties: str | list[str]
-        List of event property names.
+    measures: str | list[str]
+        List of event measure names.
     """
 
-    def __init__(self, event_properties: str | list[str]):
-        _check_event_properties(event_properties)
+    def __init__(self, measures: str | list[str]):
+        _check_event_properties(measures)
 
-        if isinstance(event_properties, str):
-            event_properties = [event_properties]
+        if isinstance(measures, str):
+            measures = [measures]
 
-        valid_properties = ['duration']  # all other properties need gaze samples.
-        for property_name in event_properties:
-            if property_name not in valid_properties:
-                raise InvalidProperty(
-                    property_name=property_name, valid_properties=valid_properties,
+        known_measures = ['duration']  # all other properties need gaze samples.
+        for measure_name in measures:
+            if measure_name not in known_measures:
+                raise UnknownMeasure(
+                    measure_name=measure_name, known_measures=known_measures,
                 )
 
-        self.event_properties = event_properties
+        self.measures = measures
 
     def process(self, events: pl.DataFrame) -> pl.DataFrame:
         """Process event dataframe.
@@ -70,18 +70,18 @@ class EventProcessor:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
+        UnknownMeasure
+            If ``measure_name`` is not a valid property. See
             :py:mod:`pymovements.events` for an overview of supported properties.
         """
-        property_expressions: dict[str, Callable[[], pl.Expr]] = {
-            property_name: EVENT_MEASURES[property_name]
-            for property_name in self.event_properties
+        measure_expressions: dict[str, Callable[[], pl.Expr]] = {
+            measure_name: EVENT_MEASURES[measure_name]
+            for measure_name in self.measures
         }
 
         expression_list = [
-            property_expression().alias(property_name)
-            for property_name, property_expression in property_expressions.items()
+            measure_expression().alias(measure_name)
+            for measure_name, measure_expression in measure_expressions.items()
         ]
         result = events.select(expression_list)
         return result
@@ -114,11 +114,11 @@ class EventSamplesProcessor:
                 for event_property in measures
             ]
 
-        for property_name, _ in measures_with_kwargs:
-            if property_name not in EVENT_MEASURES:
-                valid_properties = list(EVENT_MEASURES.keys())
-                raise InvalidProperty(
-                    property_name=property_name, valid_properties=valid_properties,
+        for measure_name, _ in measures_with_kwargs:
+            if measure_name not in EVENT_MEASURES:
+                known_measures = list(EVENT_MEASURES.keys())
+                raise UnknownMeasure(
+                    measure_name=measure_name, known_measures=known_measures,
                 )
 
         self.measures: list[tuple[str, dict[str, Any]]] = measures_with_kwargs
@@ -153,8 +153,8 @@ class EventSamplesProcessor:
         ------
         ValueError
             If list of identifiers is empty.
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
+        UnknownMeasure
+            If ``measure_name`` is not a valid property. See
             :py:mod:`pymovements.events` for an overview of supported properties.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -166,14 +166,14 @@ class EventSamplesProcessor:
         else:
             _identifiers = identifiers
 
-        property_expressions: list[Callable[..., pl.Expr]] = [
-            EVENT_MEASURES[property_name] for property_name, _ in self.measures
+        measure_expressions: list[Callable[..., pl.Expr]] = [
+            EVENT_MEASURES[measure_name] for measure_name, _ in self.measures
         ]
 
-        property_names: list[str] = [property_name for property_name, _ in self.measures]
+        measure_names: list[str] = [measure_name for measure_name, _ in self.measures]
 
-        property_kwargs: list[dict[str, Any]] = [
-            property_kwargs for _, property_kwargs in self.measures
+        measure_kwargs: list[dict[str, Any]] = [
+            measure_kwargs for _, measure_kwargs in self.measures
         ]
 
         # Each event is uniquely defined by a list of trial identifiers,
@@ -185,7 +185,7 @@ class EventSamplesProcessor:
             if len(events) == 0:
                 raise RuntimeError(f'No events with name "{name}" found in data frame')
 
-        property_values = defaultdict(list)
+        measure_values = defaultdict(list)
         for event in events.iter_rows(named=True):
             # Find gaze samples that belong to the current event.
             event_samples = samples.filter(
@@ -195,19 +195,19 @@ class EventSamplesProcessor:
             # Compute event property values.
             values = event_samples.select(
                 [
-                    this_property_expression(**this_property_kwargs)
-                    .alias(this_property_name)
-                    for this_property_name, this_property_expression, this_property_kwargs,
-                    in zip(property_names, property_expressions, property_kwargs)
+                    this_measure_expression(**this_measure_kwargs)
+                    .alias(this_measure_name)
+                    for this_measure_name, this_measure_expression, this_measure_kwargs,
+                    in zip(measure_names, measure_expressions, measure_kwargs)
                 ],
             )
             # Collect property values.
-            for property_name in property_names:
-                property_values[property_name].append(values[property_name].item())
+            for measure_name in measure_names:
+                measure_values[measure_name].append(values[measure_name].item())
 
         # The resulting DataFrame contains the event identifiers and the computed properties.
         result = events.select(event_identifiers).with_columns(
-            *[pl.Series(name, values) for name, values in property_values.items()],
+            *[pl.Series(name, values) for name, values in measure_values.items()],
         )
         return result
 

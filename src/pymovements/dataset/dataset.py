@@ -851,7 +851,7 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
+        UnknownMeasure
             If ``event_properties`` does not exist in the event dataframe
 
         Returns
@@ -883,8 +883,8 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
+        UnknownMeasure
+            If ``measure_name`` is not a valid property. See
             :py:mod:`pymovements.events` for an overview of supported properties.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -933,8 +933,8 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
+        UnknownMeasure
+            If ``measure_name`` is not a valid property. See
             :py:mod:`pymovements.events` for an overview of supported properties.
         """
         return self.compute_event_properties(

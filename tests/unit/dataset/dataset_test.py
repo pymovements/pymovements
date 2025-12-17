@@ -46,7 +46,7 @@ from pymovements.events import fill
 from pymovements.events import idt
 from pymovements.events import ivt
 from pymovements.events import microsaccades
-from pymovements.exceptions import InvalidProperty
+from pymovements.exceptions import UnknownMeasure
 
 
 # pylint: disable=too-many-lines
@@ -1881,7 +1881,7 @@ def test_velocity_columns(gaze_dataset_configuration):
     [
         pytest.param(
             {'event_properties': 'foo'},
-            InvalidProperty,
+            UnknownMeasure,
             ('foo', 'invalid', 'valid', 'peak_velocity'),
             id='invalid_property',
         ),

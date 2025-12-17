@@ -176,7 +176,7 @@ nitpick_ignore_regex = [
     (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
 
     # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^InvalidProperty$'),
+    (r'py:exc', r'^UnknownMeasure$'),
     (r'py:exc', r'^\.\.\s+deprecated:$'),
 
 
