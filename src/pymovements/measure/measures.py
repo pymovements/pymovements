@@ -55,8 +55,8 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     elif column_dtype == pl.List:
         non_null_lengths = pl.col(column).list.drop_nulls().drop_nans().list.len()
         value = (
-            1 - (non_null_lengths == pl.col(column).list.len()).sum() /
-            pl.col(column).len()
+                1 - (non_null_lengths == pl.col(column).list.len()).sum() /
+                pl.col(column).len()
         )
     else:
         raise TypeError(
@@ -80,13 +80,15 @@ def data_loss(
     """Measure data loss using an expected, evenly sampled time base.
 
     The measure computes missing samples in three categories and returns either:
+
     - "count": total number of lost samples (integer)
     - "time": lost time in the units of ``time_column`` (``count / sampling_rate``)
     - "ratio": fraction of lost to expected samples in [0, 1]
 
     Lost samples are the sum of:
-    1) Missing rows implied by gaps in the time axis, given ``sampling_rate``.
-    2) Invalid rows in ``data_column``, where a row is invalid if it is ``null`` or
+
+    1. Missing rows implied by gaps in the time axis, given ``sampling_rate``.
+    2. Invalid rows in ``data_column``, where a row is invalid if it is ``null`` or
        contains any ``null``/``NaN``/``inf`` element
        (for list columns, any invalid element marks the row invalid).
 
