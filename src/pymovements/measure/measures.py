@@ -55,8 +55,8 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     elif column_dtype == pl.List:
         non_null_lengths = pl.col(column).list.drop_nulls().drop_nans().list.len()
         value = (
-                1 - (non_null_lengths == pl.col(column).list.len()).sum() /
-                pl.col(column).len()
+            1 - (non_null_lengths == pl.col(column).list.len()).sum() /
+            pl.col(column).len()
         )
     else:
         raise TypeError(
