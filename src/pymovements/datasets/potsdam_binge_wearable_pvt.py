@@ -146,6 +146,10 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'block_id': int,
                     },
                     'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': ['x_pix_eyelink', 'y_pix_eyelink'],
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,

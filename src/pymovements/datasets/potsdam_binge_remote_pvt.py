@@ -183,6 +183,12 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                         'block_id': int,
                     },
                     'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
+                        ],
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,
