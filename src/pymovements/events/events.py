@@ -56,7 +56,7 @@ class Events:
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
-        List of trial columns in passed dataframe.
+        List of trial columns in the passed dataframe.
 
     Attributes
     ----------
@@ -569,7 +569,7 @@ class Events:
             Control whether to derive component columns and drop the list column as described
             above. Default: True.
         verbose : bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Raises
         ------
