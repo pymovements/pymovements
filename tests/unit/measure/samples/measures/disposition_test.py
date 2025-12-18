@@ -29,7 +29,7 @@ from pymovements.measure.samples import disposition
 @pytest.mark.parametrize(
     ('event_property', 'init_kwargs', 'input_df', 'exception', 'msg_substrings'),
     [
-@pytest.mark.parametrize(
+@ pytest.mark.parametrize(
     ('event_property', 'init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
@@ -118,7 +118,7 @@ from pymovements.measure.samples import disposition
     ],
 )
 def test_property_has_expected_result(event_property, init_kwargs, input_df, expected_df):
-    expression = event_property(**init_kwargs).alias(event_property.__name__)
-    result_df = input_df.select([expression])
+    expression= event_property(**init_kwargs).alias(event_property.__name__)
+    result_df= input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)
