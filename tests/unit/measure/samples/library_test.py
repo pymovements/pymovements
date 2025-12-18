@@ -22,16 +22,22 @@ from __future__ import annotations
 
 import pytest
 
-import pymovements as pm
+from pymovements import measure
+from pymovements import SampleMeasureLibrary
 
 
 @pytest.mark.parametrize(
     ('method', 'name'),
     [
-        pytest.param(pm.measure.null_ratio, 'null_ratio', id='null_ratio'),
+        pytest.param(measure.samples.amplitude, 'amplitude', id='amplitude'),
+        pytest.param(measure.samples.dispersion, 'dispersion', id='dispersion'),
+        pytest.param(measure.samples.disposition, 'disposition', id='disposition'),
+        pytest.param(measure.samples.location, 'location', id='location'),
+        pytest.param(measure.samples.null_ratio, 'null_ratio', id='null_ratio'),
+        pytest.param(measure.samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
     ],
 )
 def test_measure_registered(method, name):
-    assert name in pm.measure.SampleMeasureLibrary()
-    assert pm.measure.SampleMeasureLibrary.get(name) == method
-    assert pm.measure.SampleMeasureLibrary.get(name).__name__ == name
+    assert name in SampleMeasureLibrary()
+    assert SampleMeasureLibrary.get(name) == method
+    assert SampleMeasureLibrary.get(name).__name__ == name
