@@ -438,14 +438,14 @@ def load_precomputed_reading_measures(
     Parameters
     ----------
     definition: DatasetDefinition
-        Dataset definition to load precomputed events.
+        Dataset definition to load precomputed reading measures.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
     Returns
     -------
     list[ReadingMeasures]
-        Return list of precomputed event dataframes.
+        Return list of precomputed reading measures.
     """
     precomputed_reading_measures = []
     for file in files:

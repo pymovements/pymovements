@@ -31,9 +31,12 @@ from pymovements import DatasetDefinition
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_files import load_gaze_file
 from pymovements.dataset.dataset_files import load_precomputed_event_file
+from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
+from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 
 
 ASC_TEXT = r"""\
@@ -779,6 +782,54 @@ def test_load_precomputed_rm_file_no_kwargs(make_example_file):
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
 
 
+def test_load_precomputed_rm_files_rda(make_example_file):
+    filepath1 = make_example_file('rda_test_file.rda', '1.rda')
+    filepath2 = make_example_file('rda_test_file.rda', '2.rda')
+
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    definition = DatasetDefinition(
+        name='rda_dataset',
+        resources=[resource_definition],
+    )
+
+    files = [
+        DatasetFile(path=filepath1, definition=resource_definition, metadata={'subject_id': '1'}),
+        DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
+    ]
+
+    precomputed_rm_list = load_precomputed_reading_measures(definition, files)
+
+    for file, measures in zip(files, precomputed_rm_list):
+        expected_df = pyreadr.read_r(file.path)
+
+        assert_frame_equal(
+            measures.frame,
+            pl.DataFrame(expected_df['joint.fix']),
+            check_column_order=False,
+        )
+
+
+def test_load_precomputed_rm_file_rda(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+
+    gaze = load_precomputed_reading_measure_file(
+        filepath,
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    expected_df = pyreadr.read_r(filepath)
+
+    assert_frame_equal(
+        gaze.frame,
+        pl.DataFrame(expected_df['joint.fix']),
+        check_column_order=False,
+    )
+
+
 def test_load_precomputed_rm_file_xlsx(make_example_file):
     filepath = make_example_file('Sentences.xlsx')
 
@@ -835,6 +886,37 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
         'Supported formats are: .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
 
 
+def test_load_precomputed_files_rda(make_example_file):
+    filepath1 = make_example_file('rda_test_file.rda', '1.rda')
+    filepath2 = make_example_file('rda_test_file.rda', '2.rda')
+
+    resource_definition = ResourceDefinition(
+        content='precomputed_events',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    definition = DatasetDefinition(
+        name='rda_dataset',
+        resources=[resource_definition],
+    )
+
+    files = [
+        DatasetFile(path=filepath1, definition=resource_definition, metadata={'subject_id': '1'}),
+        DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
+    ]
+
+    precomputed_events_list = load_precomputed_event_files(definition, files)
+
+    for file, events in zip(files, precomputed_events_list):
+        expected_df = pyreadr.read_r(file.path)
+
+        assert_frame_equal(
+            events.frame,
+            pl.DataFrame(expected_df['joint.fix']),
+            check_column_order=False,
+        )
+
+
 def test_load_precomputed_file_rda(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
 
@@ -860,23 +942,6 @@ def test_load_precomputed_file_rda_raise_value_error(make_example_file):
 
     msg, = exc.value.args
     assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
-
-
-def test_load_precomputed_rm_file_rda(make_example_file):
-    filepath = make_example_file('rda_test_file.rda')
-
-    gaze = load_precomputed_reading_measure_file(
-        filepath,
-        load_kwargs={'r_dataframe_key': 'joint.fix'},
-    )
-
-    expected_df = pyreadr.read_r(filepath)
-
-    assert_frame_equal(
-        gaze.frame,
-        pl.DataFrame(expected_df['joint.fix']),
-        check_column_order=False,
-    )
 
 
 def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
