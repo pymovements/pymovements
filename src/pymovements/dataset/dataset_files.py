@@ -388,8 +388,9 @@ def load_gaze_file(
 
             if 'experiment' in load_function_kwargs:
                 if type(load_function_kwargs['experiment']) is dict:
-                    dataset_definition.experiment = Experiment.from_dict(load_function_kwargs['experiment'])
-                    load_function_kwargs['experiment'] = dataset_definition.experiment   
+                    dataset_definition.experiment = Experiment.from_dict(
+                        load_function_kwargs['experiment'])
+                    load_function_kwargs['experiment'] = dataset_definition.experiment
                 gaze = from_csv(
                     filepath,
                     **load_function_kwargs,

@@ -85,7 +85,7 @@ __all__ = [
     'PoTeC',
     'PotsdamBingePVT',
     'PotsdamBingeRemotePVT',
-    'PotsdamBingeWearablePVT',    
+    'PotsdamBingeWearablePVT',
     'Provo',
     'RaCCooNS',
     'SBSAT',

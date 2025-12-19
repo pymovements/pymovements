@@ -29,9 +29,6 @@ import polars as pl
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
-from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.eyetracker import EyeTracker
-from pymovements.gaze.screen import Screen
 
 
 @dataclass
@@ -39,10 +36,10 @@ class PotsdamBingePVT(DatasetDefinition):
     """PotsdamBingePVT dataset :cite:p:`PotsdamBingePVT`.
 
     This dataset includes monocular eye tracking data from 57 participants in two sessions with an
-    interval of at least one week between two sessions. Eye movements are recorded with two 
-    eye tracking devices at a sampling frequency of ~200 Hz using Pupil Core eye-tracking 
+    interval of at least one week between two sessions. Eye movements are recorded with two
+    eye tracking devices at a sampling frequency of ~200 Hz using Pupil Core eye-tracking
     glasses upsampled to 1000 Hz and synchronised with the EyeLink 1000 Plus
-    tracking the right eye and are provided as pixel coordinates. 
+    tracking the right eye and are provided as pixel coordinates.
     Participants are instructed to perform a PVT trial.
 
     Check the respective `repository <https://osf.io/qf7e6/>`_ for details.
