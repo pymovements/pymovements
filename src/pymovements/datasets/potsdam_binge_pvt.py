@@ -35,14 +35,15 @@ from pymovements.gaze.screen import Screen
 
 
 @dataclass
-class PotsdamBingeWearablePVT(DatasetDefinition):
-    """PotsdamBingeWearablePVT dataset :cite:p:`PotsdamBingePVT`.
+class PotsdamBingePVT(DatasetDefinition):
+    """PotsdamBingePVT dataset :cite:p:`PotsdamBingePVT`.
 
     This dataset includes monocular eye tracking data from 57 participants in two sessions with an
-    interval of at least one week between two sessions. Eye movements are recorded at a sampling
-    frequency of ~200 Hz (upsampled to 1000 Hz and synchronised with the EyeLink 1000 Plus
-    tracking the right eye) using Pupil Core eye-tracking glasses and are provided as
-    pixel coordinates. Participants are instructed to perform a PVT trial.
+    interval of at least one week between two sessions. Eye movements are recorded with two 
+    eye tracking devices at a sampling frequency of ~200 Hz using Pupil Core eye-tracking 
+    glasses upsampled to 1000 Hz and synchronised with the EyeLink 1000 Plus
+    tracking the right eye and are provided as pixel coordinates. 
+    Participants are instructed to perform a PVT trial.
 
     Check the respective `repository <https://osf.io/qf7e6/>`_ for details.
 
@@ -111,7 +112,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("PotsdamBingeWearablePVT", path='data/PotsdamBingeWearablePVT')
+    >>> dataset = pm.Dataset("PotsdamBingePVT", path='data/PotsdamBingePVT')
 
     Download the dataset resources:
 
@@ -125,11 +126,11 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
     # pylint: disable=similarities
     # The DatasetDefinition child classes potentially share code chunks for definitions.
 
-    name: str = 'PotsdamBingeWearablePVT'
+    name: str = 'PotsdamBingePVT'
 
     _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
-    long_name: str = 'Potsdam Binge Wearable PVT dataset'
+    long_name: str = 'Potsdam Binge PVT dataset'
 
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
@@ -150,8 +151,139 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'time_unit': 'ms',
                         'distance_column': 'target_distance',
                         'pixel_columns': [
+                            'x_pix_eyelink', 'y_pix_eyelink',
+                        ],
+                        'experiment': {
+                            'screen': {
+                                'width_px': 1920,
+                                'height_px': 1080,
+                                'width_cm': 59.76,
+                                'height_cm': 33.615,
+                                'origin': 'center',
+                            },
+                            'eyetracker': {
+                                'sampling_rate': 1000,
+                                'left': False,
+                                'right': True,
+                                'model': 'EyeLink 1000 Plus',
+                                'vendor': 'EyeLink',
+                                'mount': 'Remote',
+                            },
+                        },
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
+                    },
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/9vbs8/',
+                    'filename': 'a.zip',
+                    'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
                             'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
+                        'experiment': {
+                            'screen': {
+                                'width_px': 1920,
+                                'height_px': 1080,
+                                'width_cm': 59.76,
+                                'height_cm': 33.615,
+                                'origin': 'center',
+                            },
+                            'eyetracker': {
+                                'sampling_rate': 1000,
+                                'left': True,
+                                'right': False,
+                                'model': 'Pupil Core eye-tracking glasses',
+                                'vendor': 'Pupil Labs',
+                                'mount': 'Wearable',
+                            },
+                        },
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
+                    },
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/yqukn/',
+                    'filename': 'b.zip',
+                    'md5': '54038547b1a373253b38999a227dde63',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_eyelink', 'y_pix_eyelink',
+                        ],
+                        'experiment': {
+                            'screen': {
+                                'width_px': 1920,
+                                'height_px': 1080,
+                                'width_cm': 59.76,
+                                'height_cm': 33.615,
+                                'origin': 'center',
+                            },
+                            'eyetracker': {
+                                'sampling_rate': 1000,
+                                'left': False,
+                                'right': True,
+                                'model': 'EyeLink 1000 Plus',
+                                'vendor': 'EyeLink',
+                                'mount': 'Remote',
+                            },
+                        },
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,
@@ -192,6 +324,80 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'pixel_columns': [
                             'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
+                        'experiment': {
+                            'screen': {
+                                'width_px': 1920,
+                                'height_px': 1080,
+                                'width_cm': 59.76,
+                                'height_cm': 33.615,
+                                'origin': 'center',
+                            },
+                            'eyetracker': {
+                                'sampling_rate': 1000,
+                                'left': True,
+                                'right': False,
+                                'model': 'Pupil Core eye-tracking glasses',
+                                'vendor': 'Pupil Labs',
+                                'mount': 'Wearable',
+                            },
+                        },
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
+                    },
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/yf2xa/',
+                    'filename': 'e.zip',
+                    'md5': 'a0d0203cbb273f6908c1b52a42750551',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_eyelink', 'y_pix_eyelink',
+                        ],
+                        'experiment': {
+                            'screen': {
+                                'width_px': 1920,
+                                'height_px': 1080,
+                                'width_cm': 59.76,
+                                'height_cm': 33.615,
+                                'origin': 'center',
+                            },
+                            'eyetracker': {
+                                'sampling_rate': 1000,
+                                'left': False,
+                                'right': True,
+                                'model': 'EyeLink 1000 Plus',
+                                'vendor': 'EyeLink',
+                                'mount': 'Remote',
+                            },
+                        },
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,
@@ -232,6 +438,23 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'pixel_columns': [
                             'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
+                        'experiment': {
+                            'screen': {
+                                'width_px': 1920,
+                                'height_px': 1080,
+                                'width_cm': 59.76,
+                                'height_cm': 33.615,
+                                'origin': 'center',
+                            },
+                            'eyetracker': {
+                                'sampling_rate': 1000,
+                                'left': True,
+                                'right': False,
+                                'model': 'Pupil Core eye-tracking glasses',
+                                'vendor': 'Pupil Labs',
+                                'mount': 'Wearable',
+                            },
+                        },
                         'read_csv_kwargs': {
                             'schema_overrides': {
                                 'trial_id': pl.Float32,
@@ -255,26 +478,6 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                     },
                 },
             ],
-        ),
-    )
-
-    experiment: Experiment = field(
-        default_factory=lambda: Experiment(
-            screen=Screen(
-                width_px=1920,
-                height_px=1080,
-                width_cm=59.76,
-                height_cm=33.615,
-                origin='center',
-            ),
-            eyetracker=EyeTracker(
-                sampling_rate=1000,
-                left=True,
-                right=False,
-                model='Pupil Core eye-tracking glasses',
-                vendor='Pupil Labs',
-                mount='Wearable',
-            ),
         ),
     )
 

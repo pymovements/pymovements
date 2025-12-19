@@ -39,6 +39,7 @@ from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
+from pymovements.gaze.gaze import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_begaze
@@ -385,11 +386,20 @@ def load_gaze_file(
                     **load_function_kwargs.get('read_csv_kwargs', {}), **read_csv_kwargs,
                 }
 
-            gaze = from_csv(
-                filepath,
-                experiment=dataset_definition.experiment,
-                **load_function_kwargs,
-            )
+            if 'experiment' in load_function_kwargs:
+                if type(load_function_kwargs['experiment']) is dict:
+                    dataset_definition.experiment = Experiment.from_dict(load_function_kwargs['experiment'])
+                    load_function_kwargs['experiment'] = dataset_definition.experiment   
+                gaze = from_csv(
+                    filepath,
+                    **load_function_kwargs,
+                )
+            else:
+                gaze = from_csv(
+                    filepath,
+                    experiment=dataset_definition.experiment,
+                    **load_function_kwargs,
+                )
     elif load_function_name == 'from_ipc':
         gaze = from_ipc(
             filepath,
