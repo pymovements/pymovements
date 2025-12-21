@@ -55,4 +55,5 @@ def duration() -> pl.Expr:
     pl.Expr
         The duration of the event.
     """
-    return pl.col('offset') - pl.col('onset')
+    result = pl.col('offset') - pl.col('onset')
+    return result.alias('duration')

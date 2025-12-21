@@ -33,89 +33,89 @@ from pymovements.exceptions import UnknownMeasure
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs', 'expected_property_definitions'),
+    ('args', 'kwargs', 'expected_measure_definitions'),
     [
         pytest.param(['duration'], {}, ['duration'], id='arg_str_duration'),
         pytest.param([['duration']], {}, ['duration'], id='arg_list_duration'),
         pytest.param(
-            [], {'event_properties': 'duration'}, ['duration'],
-            id='kwarg_properties_duration',
+            [], {'measures': 'duration'}, ['duration'],
+            id='kwarg_measures_duration',
         ),
     ],
 )
-def test_event_processor_init(args, kwargs, expected_property_definitions):
+def test_event_processor_init(args, kwargs, expected_measure_definitions):
     processor = EventProcessor(*args, **kwargs)
 
-    assert processor.measures == expected_property_definitions
+    assert processor.measures == expected_measure_definitions
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs', 'exception', 'msg_substrings'),
+    ('args', 'kwargs', 'exception', 'message'),
     [
         pytest.param(
             ['foo'], {},
-            UnknownMeasure, ('foo', 'invalid', 'duration'),
-            id='unknown_event_property',
+            UnknownMeasure,
+            "Measure 'foo' is unknown.",
+            id='unknown_measure',
         ),
     ],
 )
-def test_event_processor_init_exceptions(args, kwargs, exception, msg_substrings):
-    with pytest.raises(exception) as excinfo:
+def test_event_processor_init_exceptions(args, kwargs, exception, message):
+    with pytest.raises(exception, match=message) as excinfo:
         EventProcessor(*args, **kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
 
 
 @pytest.mark.parametrize(
-    ('events_kwargs', 'event_properties', 'expected_dataframe'),
+    ('events', 'measures', 'expected_dataframe'),
     [
         pytest.param(
-            {'onsets': [], 'offsets': []},
+            pl.DataFrame(schema={'onset': pl.Int64, 'offset': pl.Int64}),
             'duration',
             pl.DataFrame(schema={'duration': pl.Int64}),
             id='duration_no_event',
         ),
         pytest.param(
-            {'onsets': [0], 'offsets': [1]},
+            pl.DataFrame(
+                data={'onset': [0], 'offset': [1]},
+                schema={'onset': pl.Int64, 'offset': pl.Int64},
+            ),
             'duration',
             pl.DataFrame(data=[1], schema={'duration': pl.Int64}),
             id='duration_single_event',
         ),
         pytest.param(
-            {'onsets': [0, 100], 'offsets': [1, 111]},
+            pl.DataFrame(
+                data={'onset': [0, 100], 'offset': [1, 111]},
+                schema={'onset': pl.Int64, 'offset': pl.Int64},
+            ),
             'duration',
             pl.DataFrame(data=[1, 11], schema={'duration': pl.Int64}),
             id='duration_two_events',
         ),
     ],
 )
-def test_event_processor_process_correct_result(
-        events_kwargs, event_properties, expected_dataframe,
-):
-    events = Events(**events_kwargs)
-    processor = EventProcessor(event_properties)
+def test_event_processor_process_correct_result(events, measures, expected_dataframe):
+    processor = EventProcessor(measures)
 
-    property_result = processor.process(events)
-    assert_frame_equal(property_result, expected_dataframe)
+    measure_result = processor.process(events)
+    assert_frame_equal(measure_result, expected_dataframe)
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs', 'expected_property_definitions'),
+    ('args', 'kwargs', 'expected_measure_definitions'),
     [
         pytest.param(['peak_velocity'], {}, [('peak_velocity', {})], id='arg_str_peak_velocity'),
         pytest.param([['peak_velocity']], {}, [('peak_velocity', {})], id='arg_list_peak_velocity'),
         pytest.param(
-            [], {'event_properties': 'peak_velocity'}, [('peak_velocity', {})],
-            id='kwarg_properties_peak_velocity',
+            [], {'measures': 'peak_velocity'}, [('peak_velocity', {})],
+            id='kwarg_measures_peak_velocity',
         ),
     ],
 )
-def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
+def test_event_samples_processor_init(args, kwargs, expected_measure_definitions):
     processor = EventSamplesProcessor(*args, **kwargs)
 
-    assert processor.measures == expected_property_definitions
+    assert processor.measures == expected_measure_definitions
 
 
 @pytest.mark.parametrize(
@@ -124,7 +124,7 @@ def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
         pytest.param(
             ['foo'], {},
             UnknownMeasure, ('foo', 'invalid', 'peak_velocity'),
-            id='unknown_event_property',
+            id='unknown_event_measure',
         ),
         pytest.param(
             [('peak_velocity', {}, None)], {},
@@ -163,12 +163,12 @@ def test_event_gaze_processor_init(args, kwargs, expected_property_definitions):
         ),
         pytest.param(
             [1], {},
-            TypeError, ('event_properties must be of type str, tuple, or list'),
-            id='event_properties_invalid_type',
+            TypeError, ('measures must be of type str, tuple, or list'),
+            id='measures_invalid_type',
         ),
     ],
 )
-def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_substrings):
+def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         EventSamplesProcessor(*args, **kwargs)
 
@@ -188,7 +188,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
                 }),
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
                 {'name': ['fixation'], 'onset': [0], 'offset': [4], 'peak_velocity': [0.0]},
@@ -206,7 +206,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
                 }),
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
                 {
@@ -227,7 +227,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     'velocity': [[0, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 1]],
                 }),
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
                 {
@@ -261,7 +261,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 velocity_columns=['x_vel', 'y_vel'],
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -304,7 +304,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 velocity_columns=['x_vel', 'y_vel'],
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -347,7 +347,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 position_columns=['x_pos', 'y_pos'],
             ),
-            {'event_properties': 'dispersion'},
+            {'measures': 'dispersion'},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -390,7 +390,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 velocity_columns=['x_vel', 'y_vel'],
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -435,7 +435,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 velocity_columns=['x_vel', 'y_vel'],
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -480,7 +480,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 velocity_columns=['x_vel', 'y_vel'],
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id', 'name': 'A'},
             pl.from_dict(
                 {
@@ -525,7 +525,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 position_columns=['x_pos', 'y_pos'],
             ),
-            {'event_properties': 'location'},
+            {'measures': 'location'},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -574,7 +574,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 position_columns=['x_pos', 'y_pos'],
             ),
-            {'event_properties': ('location', {'method': 'mean'})},
+            {'measures': ('location', {'method': 'mean'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -623,7 +623,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 position_columns=['x_pos', 'y_pos'],
             ),
-            {'event_properties': ('location', {'method': 'median'})},
+            {'measures': ('location', {'method': 'median'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -672,7 +672,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
             ),
-            {'event_properties': ('location', {'position_column': 'pixel'})},
+            {'measures': ('location', {'position_column': 'pixel'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -721,7 +721,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     },
                 ),
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': ['task', 'trial']},
             pl.from_dict(
                 {
@@ -769,7 +769,7 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
                     },
                 ),
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': ['task', 'trial']},
             pl.from_dict(
                 {
@@ -788,13 +788,13 @@ def test_event_gaze_processor_init_exceptions(args, kwargs, exception, msg_subst
         ),
     ],
 )
-def test_event_gaze_processor_process_correct_result(
+def test_event_samples_processor_process_correct_result(
         events, gaze, init_kwargs, process_kwargs, expected_dataframe,
 ):
     events = Events(events)
     processor = EventSamplesProcessor(**init_kwargs)
-    property_result = processor.process(events, gaze, **process_kwargs)
-    assert_frame_equal(property_result, expected_dataframe)
+    measure_result = processor.process(events, gaze, **process_kwargs)
+    assert_frame_equal(measure_result, expected_dataframe)
 
 
 @pytest.mark.parametrize(
@@ -824,7 +824,7 @@ def test_event_gaze_processor_process_correct_result(
                 ),
                 velocity_columns=['x_vel', 'y_vel'],
             ),
-            {'event_properties': 'peak_velocity'},
+            {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id', 'name': 'cde'},
             RuntimeError,
             ('No events with name "cde" found in data frame',),

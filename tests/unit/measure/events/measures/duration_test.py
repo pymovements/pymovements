@@ -22,44 +22,38 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements.measure.events import duration
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'exception', 'msg_substrings'),
+    ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            pm.events.duration,
             {},
             pl.DataFrame(schema={'onset': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
-            ('offset',),
-            id='duration_missing_offset_column',
+            'offset',
+            id='missing_offset_column',
         ),
         pytest.param(
-            pm.events.duration,
             {},
             pl.DataFrame(schema={'offset': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
-            ('onset',),
-            id='duration_missing_onset_column',
+            'onset',
+            id='missing_onset_column',
         ),
     ],
 )
-def test_property_exceptions(event_property, init_kwargs, input_df, exception, msg_substrings):
-    property_expression = event_property(**init_kwargs)
-    with pytest.raises(exception) as excinfo:
-        input_df.select([property_expression])
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
+def test_duration_exceptions(init_kwargs, input_df, exception, message):
+    expression = duration(**init_kwargs)
+    with pytest.raises(exception, match=message) as excinfo:
+        input_df.select([expression])
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'expected_df'),
+    ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
-            pm.events.duration,
             {},
             pl.DataFrame(schema={'onset': pl.Int64, 'offset': pl.Int64}),
             pl.DataFrame(schema={'duration': pl.Int64}),
@@ -67,7 +61,6 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
 
         pytest.param(
-            pm.events.duration,
             {},
             pl.DataFrame({'onset': 0, 'offset': 1}, schema={'onset': pl.Int64, 'offset': pl.Int64}),
             pl.DataFrame({'duration': 1}, schema={'duration': pl.Int64}),
@@ -75,7 +68,6 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
 
         pytest.param(
-            pm.events.duration,
             {},
             pl.DataFrame(
                 {'onset': [0, 10], 'offset': [9, 23]},
@@ -89,27 +81,8 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
     ],
 )
-def test_property_has_expected_result(event_property, init_kwargs, input_df, expected_df):
-    expression = event_property(**init_kwargs).alias(event_property.__name__)
+def test_duration_has_expected_result(init_kwargs, input_df, expected_df):
+    expression = duration(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)
-
-
-@pytest.mark.parametrize(
-    ('property_function', 'property_function_name'),
-    [
-        pytest.param(pm.events.duration, 'duration', id='duration'),
-    ],
-)
-def test_property_registered(property_function, property_function_name):
-    property_dict = pm.events.EVENT_PROPERTIES
-
-    assert property_function_name in property_dict
-    assert property_dict[property_function_name] == property_function
-    assert property_dict[property_function_name].__name__ == property_function_name
-
-
-@pytest.mark.parametrize('property_function', pm.events.EVENT_PROPERTIES.values())
-def test_property_returns_polars_expression(property_function):
-    assert isinstance(property_function(), pl.Expr)
