@@ -27,33 +27,27 @@ from pymovements.measure.samples import amplitude
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'exception', 'msg_substrings'),
+    ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            amplitude,
             {'position_column': 'position'},
             pl.DataFrame(schema={'_position': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
-            ('position',),
-            id='amplitude_missing_position_column',
+            'position',
+            id='missing_position_column',
         ),
     ],
 )
-def test_property_exceptions(event_property, init_kwargs, input_df, exception, msg_substrings):
-    property_expression = event_property(**init_kwargs)
-    with pytest.raises(exception) as excinfo:
-        input_df.select([property_expression])
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
+def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
+    expression = amplitude(**init_kwargs)
+    with pytest.raises(exception, match=message) as excinfo:
+        input_df.select([expression])
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'expected_df'),
+    ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
-            amplitude,
             {},
             pl.DataFrame(
                 {'position': [[4, 5]]},
@@ -63,11 +57,10 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
                 {'amplitude': [0]},
                 schema={'amplitude': pl.Float64},
             ),
-            id='amplitude_one_sample',
+            id='one_sample',
         ),
 
         pytest.param(
-            amplitude,
             {},
             pl.DataFrame(
                 {'position': [[2, 0], [0, 0]]},
@@ -77,11 +70,10 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
                 {'amplitude': [2]},
                 schema={'amplitude': pl.Float64},
             ),
-            id='amplitude_two_samples_x_move',
+            id='two_samples_x_move',
         ),
 
         pytest.param(
-            amplitude,
             {},
             pl.DataFrame(
                 {'position': [[0, 3], [0, 0]]},
@@ -91,10 +83,10 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
                 {'amplitude': [3]},
                 schema={'amplitude': pl.Float64},
             ),
-            id='amplitude_two_samples_y_move',
+            id='two_samples_y_move',
         ),
+
         pytest.param(
-            amplitude,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [1, 1]]},
@@ -104,12 +96,12 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
                 {'amplitude': [np.sqrt(2)]},
                 schema={'amplitude': pl.Float64},
             ),
-            id='amplitude_two_samples_xy_move',
+            id='two_samples_xy_move',
         ),
     ],
 )
-def test_property_has_expected_result(event_property, init_kwargs, input_df, expected_df):
-    expression = event_property(**init_kwargs).alias(event_property.__name__)
+def test_amplitude_has_expected_result(init_kwargs, input_df, expected_df):
+    expression = amplitude(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)

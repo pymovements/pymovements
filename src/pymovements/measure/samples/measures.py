@@ -66,10 +66,12 @@ def amplitude(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    return (
+    result = (
         (x_position.max() - x_position.min()).pow(2)
         + (y_position.max() - y_position.min()).pow(2)
     ).sqrt()
+
+    return result.alias('amplitude')
 
 
 @register_sample_measure
@@ -112,7 +114,9 @@ def dispersion(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    return x_position.max() - x_position.min() + y_position.max() - y_position.min()
+    result =  x_position.max() - x_position.min() + y_position.max() - y_position.min()
+
+    return result.alias('dispersion')
 
 
 @register_sample_measure
@@ -155,10 +159,12 @@ def disposition(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    return (
+    result = (
         (x_position.head(n=1) - x_position.reverse().head(n=1)).pow(2)
         + (y_position.head(n=1) - y_position.reverse().head(n=1)).pow(2)
     ).sqrt()
+
+    return result.alias('disposition')
 
 
 @register_sample_measure
@@ -225,7 +231,9 @@ def location(
         component_expressions.append(expression_component)
 
     # Not sure why first() is needed here, but an outer list is being created somehow.
-    return pl.concat_list(component_expressions).first()
+    result = pl.concat_list(component_expressions).first()
+
+    return result.alias('location')
 
 
 @register_sample_measure
@@ -302,7 +310,9 @@ def peak_velocity(
     x_velocity = pl.col(velocity_column).list.get(0)
     y_velocity = pl.col(velocity_column).list.get(1)
 
-    return (x_velocity.pow(2) + y_velocity.pow(2)).sqrt().max()
+    result = (x_velocity.pow(2) + y_velocity.pow(2)).sqrt().max()
+
+    return result.alias('peak_velocity')
 
 
 def _check_has_two_componenents(n_components: int) -> None:

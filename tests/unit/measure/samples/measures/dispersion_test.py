@@ -26,33 +26,27 @@ from pymovements.measure.samples import dispersion
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'exception', 'msg_substrings'),
+    ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            dispersion,
             {'position_column': 'position'},
             pl.DataFrame(schema={'_position': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
-            ('position',),
+            'position',
             id='dispersion_missing_position_column',
         ),
     ],
 )
-def test_property_exceptions(event_property, init_kwargs, input_df, exception, msg_substrings):
-    property_expression = event_property(**init_kwargs)
-    with pytest.raises(exception) as excinfo:
-        input_df.select([property_expression])
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
+def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
+    expression = dispersion(**init_kwargs)
+    with pytest.raises(exception, match=message) as excinfo:
+        input_df.select([expression])
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'expected_df'),
+    ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
-            dispersion,
             {},
             pl.DataFrame(
                 {'position': [[2, 3]]},
@@ -66,7 +60,6 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
 
         pytest.param(
-            dispersion,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [2, 0]]},
@@ -80,7 +73,6 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
 
         pytest.param(
-            dispersion,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [0, 3]]},
@@ -94,7 +86,6 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
 
         pytest.param(
-            dispersion,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [2, 3]]},
@@ -108,8 +99,8 @@ def test_property_exceptions(event_property, init_kwargs, input_df, exception, m
         ),
     ],
 )
-def test_property_has_expected_result(event_property, init_kwargs, input_df, expected_df):
-    expression = event_property(**init_kwargs).alias(event_property.__name__)
+def test_dispersion_has_expected_result(init_kwargs, input_df, expected_df):
+    expression = dispersion(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)

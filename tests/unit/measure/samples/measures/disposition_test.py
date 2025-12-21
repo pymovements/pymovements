@@ -26,14 +26,10 @@ from polars.testing import assert_frame_equal
 from pymovements.measure.samples import disposition
 
 
-@pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'exception', 'msg_substrings'),
-    [
 @ pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'expected_df'),
+    ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
-            disposition,
             {},
             pl.DataFrame(
                 {'position': [[2, 1]]},
@@ -47,7 +43,6 @@ from pymovements.measure.samples import disposition
         ),
 
         pytest.param(
-            disposition,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [1, 0]]},
@@ -61,7 +56,6 @@ from pymovements.measure.samples import disposition
         ),
 
         pytest.param(
-            disposition,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [0, 1]]},
@@ -75,7 +69,6 @@ from pymovements.measure.samples import disposition
         ),
 
         pytest.param(
-            disposition,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [1, 1]]},
@@ -89,7 +82,6 @@ from pymovements.measure.samples import disposition
         ),
 
         pytest.param(
-            disposition,
             {},
             pl.DataFrame(
                 {'position': [[0, 0], [1.1, 0], [1, 0]]},
@@ -103,7 +95,6 @@ from pymovements.measure.samples import disposition
         ),
 
         pytest.param(
-            disposition,
             {},
             pl.DataFrame(
                 {'position': [[-1, 0], [0, 0], [1, 0]]},
@@ -117,8 +108,8 @@ from pymovements.measure.samples import disposition
         ),
     ],
 )
-def test_property_has_expected_result(event_property, init_kwargs, input_df, expected_df):
-    expression= event_property(**init_kwargs).alias(event_property.__name__)
+def test_disposition_has_expected_result(init_kwargs, input_df, expected_df):
+    expression= disposition(**init_kwargs)
     result_df= input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)

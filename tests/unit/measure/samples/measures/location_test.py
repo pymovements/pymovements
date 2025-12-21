@@ -26,31 +26,25 @@ from pymovements.measure.samples import location
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'exception', 'msg_substrings'),
+    ('init_kwargs', 'exception', 'message'),
     [
         pytest.param(
-            location,
             {'method': 'foo'},
             ValueError,
-            ('method', 'foo', 'not', 'supported', 'mean', 'median'),
+            "Method 'foo' not supported",
             id='position_unsupported_method_raises_value_error',
         ),
     ],
 )
-def test_property_init_exceptions(event_property, init_kwargs, exception, msg_substrings):
-    with pytest.raises(exception) as excinfo:
-        event_property(**init_kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
+def test_location_exceptions(init_kwargs, exception, message):
+    with pytest.raises(exception, match=message) as excinfo:
+        location(**init_kwargs)
 
 
 @pytest.mark.parametrize(
-    ('event_property', 'init_kwargs', 'input_df', 'expected_df'),
+    ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
-            location,
             {'method': 'mean'},
             pl.DataFrame(
                 {'position': [[0, 0], [1, 0]]},
@@ -62,8 +56,8 @@ def test_property_init_exceptions(event_property, init_kwargs, exception, msg_su
             ),
             id='position_two_samples_mean',
         ),
+
         pytest.param(
-            location,
             {'method': 'mean'},
             pl.DataFrame(
                 {'position': [[0, 0], [0, 1], [0, 3]]},
@@ -75,8 +69,8 @@ def test_property_init_exceptions(event_property, init_kwargs, exception, msg_su
             ),
             id='position_three_samples_mean',
         ),
+
         pytest.param(
-            location,
             {'method': 'median'},
             pl.DataFrame(
                 {'position': [[0, 0], [2, 1], [3, 3]]},
@@ -90,8 +84,8 @@ def test_property_init_exceptions(event_property, init_kwargs, exception, msg_su
         ),
     ],
 )
-def test_property_has_expected_result(event_property, init_kwargs, input_df, expected_df):
-    expression = event_property(**init_kwargs).alias(event_property.__name__)
+def test_location_has_expected_result(init_kwargs, input_df, expected_df):
+    expression = location(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)
