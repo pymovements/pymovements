@@ -945,7 +945,7 @@ def test_gaze_detect_custom_method_no_arguments():
 
 
 @pytest.mark.parametrize(
-    ('measure', 'kwargs', 'gaze', 'exception', 'exception_msg'),
+    ('method', 'kwargs', 'gaze', 'exception', 'exception_msg'),
     [
         pytest.param(
             'ivt',
@@ -1062,7 +1062,7 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
 
 
 @pytest.mark.parametrize(
-    ('measure', 'column'),
+    ('method', 'column'),
     [
         ('ivt', 'velocity'),
         ('idt', 'position'),
