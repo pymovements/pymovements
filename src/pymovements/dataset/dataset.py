@@ -140,7 +140,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
         """
         self.scan()
         self.fileinfo, self._files = dataset_files.take_subset(
@@ -231,7 +231,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -271,7 +271,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -295,7 +295,7 @@ class Dataset:
     def load_precomputed_events(self) -> None:
         """Load precomputed events.
 
-        This measure checks that the file information for precomputed events is available,
+        This method checks that the file information for precomputed events is available,
         then loads each event file listed in `self.fileinfo['precomputed_events']` using
         the dataset definition and path settings. The resulting list of
         `PrecomputedEventDataFrame` objects is assigned to `self.precomputed_events`.
@@ -323,7 +323,7 @@ class Dataset:
     def load_precomputed_reading_measures(self) -> None:
         """Load precomputed reading measures.
 
-        This measure checks that the file information for precomputed reading measures are
+        This method checks that the file information for precomputed reading measures are
         available, then loads each event file listed in
         `self.fileinfo['precomputed_reading_measures']` using the dataset definition and
         path settings. The resulting list of `ReadingMeasures` objects is assigned to
@@ -884,8 +884,9 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``method_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+            If ``event_properties`` includes an unknwon measure. See
+            :py:mod:`pymovements.measure.events` and :py:mod:`pymovements.measure.samples`
+            for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         ValueError

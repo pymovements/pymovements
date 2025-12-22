@@ -1115,8 +1115,9 @@ class Gaze:
         Raises
         ------
         UnknownMeasure
-            If ``measure_name`` is not a valid property. See
-            :py:mod:`pymovements.events.event_properties` for an overview of supported properties.
+            If ``event_properties`` includes an unknwon measure. See
+            :py:mod:`pymovements.measure.events` and :py:mod:`pymovements.measure.samples`
+            for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         ValueError

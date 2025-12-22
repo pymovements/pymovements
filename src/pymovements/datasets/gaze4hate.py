@@ -70,7 +70,7 @@ class Gaze4Hate(DatasetDefinition):
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
-            measures will be applied to each trial separately.
+            methods will be applied to each trial separately.
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
