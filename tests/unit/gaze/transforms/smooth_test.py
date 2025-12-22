@@ -31,7 +31,7 @@ import pymovements as pm
         # Method: moving_average
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 1,
                 'padding': 'nearest',
@@ -42,7 +42,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': None,
@@ -58,7 +58,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 0.0,
@@ -69,7 +69,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 1.0,
@@ -82,7 +82,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 'nearest',
@@ -93,7 +93,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 'mirror',
@@ -109,7 +109,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': None,
@@ -125,7 +125,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 0.0,
@@ -141,7 +141,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 1.0,
@@ -154,7 +154,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 'nearest',
@@ -170,7 +170,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'moving_average',
+                'measure': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 'mirror',
@@ -187,7 +187,7 @@ import pymovements as pm
         # Method: exponential_moving_average
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 1,
                 'padding': 'nearest',
@@ -198,7 +198,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': None,
@@ -214,7 +214,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 0.0,
@@ -225,7 +225,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 1.0,
@@ -238,7 +238,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 'nearest',
@@ -249,7 +249,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 'mirror',
@@ -262,7 +262,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': None,
@@ -273,7 +273,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 0.0,
@@ -284,7 +284,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 1.0,
@@ -295,7 +295,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 'nearest',
@@ -306,7 +306,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'exponential_moving_average',
+                'measure': 'exponential_moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 'mirror',
@@ -320,7 +320,7 @@ import pymovements as pm
         # Method: savitzky_golay
         pytest.param(
             {
-                'method': 'savitzky_golay',
+                'measure': 'savitzky_golay',
                 'n_components': 2,
                 'window_length': 2,
                 'degree': 1,
@@ -331,7 +331,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
+                'measure': 'savitzky_golay',
                 'n_components': 2,
                 'window_length': 3,
                 'degree': 1,
@@ -347,7 +347,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
+                'measure': 'savitzky_golay',
                 'n_components': 2,
                 'window_length': 3,
                 'degree': 2,
@@ -374,23 +374,23 @@ def test_smooth_returns(kwargs, series, expected_df):
     [
         pytest.param(
             {
-                'method': 'invalid_method',
+                'measure': 'invalid_method',
                 'n_components': 2,
                 'window_length': 3,
             },
             ValueError,
-            "Unkown method 'invalid_method'. Supported methods are: ",
+            "Unkown measure 'invalid_method'. Supported measures are: ",
             id='invalid_method_raises_value_error',
         ),
         pytest.param(
             {
-                'method': 'savitzky_golay',
+                'measure': 'savitzky_golay',
                 'n_components': 2,
                 'window_length': 3,
                 'degree': None,
             },
             TypeError,
-            "'degree' must not be none for method 'savitzky_golay'",
+            "'degree' must not be none for measure 'savitzky_golay'",
             id='savitzky_golay_degree_none_raises_type_error',
         ),
     ],

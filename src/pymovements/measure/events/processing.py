@@ -23,11 +23,14 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
+from warnings import warn
 
 import polars as pl
 
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
+from pymovements.measure.samples.library import SampleMeasure
+from pymovements.measure.samples.library import SampleMeasureLibrary
 
 
 class EventProcessor:
@@ -37,22 +40,31 @@ class EventProcessor:
     ----------
     measures: str | list[str]
         List of event measure names.
+
+    Raises
+    ------
+    UnknownMeasure
+        If ``measures`` includes an unknwon measure. See
+        :py:mod:`pymovements.measure.events` for an overview of supported measures.
     """
 
     def __init__(self, measures: str | list[str]):
-        _check_event_properties(measures)
+        _check_measures(measures)
 
         if isinstance(measures, str):
             measures = [measures]
 
-        known_measures = ['duration']  # all other properties need gaze samples.
         for measure_name in measures:
-            if measure_name not in known_measures:
+            if measure_name not in EVENT_MEASURES:
                 raise UnknownMeasure(
-                    measure_name=measure_name, known_measures=known_measures,
+                    measure_name=measure_name, known_measures=list(EVENT_MEASURES.keys()),
                 )
 
-        self.measures = measures
+        self.measures = [
+            # initialize measure functions to create polars expressions.
+            EVENT_MEASURES[measure_name]()
+            for measure_name in measures
+        ]
 
     def process(self, events: pl.DataFrame) -> pl.DataFrame:
         """Process event dataframe.
@@ -67,23 +79,8 @@ class EventProcessor:
         pl.DataFrame
             :py:class:`polars.DataFrame` with properties as columns and rows refering to the rows in
             the source dataframe.
-
-        Raises
-        ------
-        UnknownMeasure
-            If ``measure_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
         """
-        measure_expressions: dict[str, Callable[[], pl.Expr]] = {
-            measure_name: EVENT_MEASURES[measure_name]
-            for measure_name in self.measures
-        }
-
-        expression_list = [
-            measure_expression().alias(measure_name)
-            for measure_name, measure_expression in measure_expressions.items()
-        ]
-        result = events.select(expression_list)
+        result = events.select(self.measures)
         return result
 
 
@@ -94,6 +91,10 @@ class EventSamplesProcessor:
     ----------
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
         List of sample measures.
+
+    UnknownMeasure
+        If ``measures`` includes an unknwon measure. See
+        :py:mod:`pymovements.measure.samples` for an overview of supported measures.
     """
 
     def __init__(
@@ -101,7 +102,7 @@ class EventSamplesProcessor:
             measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
     ):
-        _check_event_properties(measures)
+        _check_measures(measures)
 
         measures_with_kwargs: list[tuple[str, dict[str, Any]]]
         if isinstance(measures, str):
@@ -110,18 +111,22 @@ class EventSamplesProcessor:
             measures_with_kwargs = [measures]
         else:  # we already validated above, it must be a list of strings and tuples
             measures_with_kwargs = [
-                (event_property, {}) if isinstance(event_property, str) else event_property
-                for event_property in measures
+                (measure, {}) if isinstance(measure, str) else measure
+                for measure in measures
             ]
 
         for measure_name, _ in measures_with_kwargs:
-            if measure_name not in EVENT_MEASURES:
-                known_measures = list(EVENT_MEASURES.keys())
+            if measure_name not in SampleMeasureLibrary.measures:
+                known_measures = list(SampleMeasureLibrary.measures.keys())
                 raise UnknownMeasure(
                     measure_name=measure_name, known_measures=known_measures,
                 )
 
-        self.measures: list[tuple[str, dict[str, Any]]] = measures_with_kwargs
+        self.measures: list[pl.Expr] = [
+            # initialize measure functions to create polars expressions.
+            SampleMeasureLibrary.get(measure_name)(**measure_kwargs)
+            for measure_name, measure_kwargs in measures_with_kwargs
+        ]
 
     def process(
             self,
@@ -153,9 +158,6 @@ class EventSamplesProcessor:
         ------
         ValueError
             If list of identifiers is empty.
-        UnknownMeasure
-            If ``measure_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         """
@@ -166,16 +168,6 @@ class EventSamplesProcessor:
         else:
             _identifiers = identifiers
 
-        measure_expressions: list[Callable[..., pl.Expr]] = [
-            EVENT_MEASURES[measure_name] for measure_name, _ in self.measures
-        ]
-
-        measure_names: list[str] = [measure_name for measure_name, _ in self.measures]
-
-        measure_kwargs: list[dict[str, Any]] = [
-            measure_kwargs for _, measure_kwargs in self.measures
-        ]
-
         # Each event is uniquely defined by a list of trial identifiers,
         # a name and its on- and offset.
         event_identifiers = [*_identifiers, 'name', 'onset', 'offset']
@@ -183,25 +175,18 @@ class EventSamplesProcessor:
         if name is not None:
             events = events.filter(pl.col('name').str.contains(f'^{name}$'))
             if len(events) == 0:
-                raise RuntimeError(f'No events with name "{name}" found in data frame')
+                warn(f'No events with name "{name}" found in data frame')
 
         measure_values = defaultdict(list)
         for event in events.iter_rows(named=True):
-            # Find gaze samples that belong to the current event.
+            # Find samples that belong to the current event.
             event_samples = samples.filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
                 *[pl.col(identifier) == event[identifier] for identifier in _identifiers],
             )
-            # Compute event property values.
-            values = event_samples.select(
-                [
-                    this_measure_expression(**this_measure_kwargs)
-                    .alias(this_measure_name)
-                    for this_measure_name, this_measure_expression, this_measure_kwargs,
-                    in zip(measure_names, measure_expressions, measure_kwargs)
-                ],
-            )
-            # Collect property values.
+            # Compute event measure values.
+            values = event_samples.select([measure for measure in self.measures])
+            # Collect measure values.
             for measure_name in measure_names:
                 measure_values[measure_name].append(values[measure_name].item())
 
@@ -212,48 +197,48 @@ class EventSamplesProcessor:
         return result
 
 
-def _check_event_properties(
-        event_properties: str | tuple[str, dict[str, Any]] | list[str]
+def _check_measures(
+        measures: str | tuple[str, dict[str, Any]] | list[str]
         | list[str | tuple[str, dict[str, Any]]],
 ) -> None:
     """Validate event properties."""
-    if isinstance(event_properties, str):
+    if isinstance(measures, str):
         pass
-    elif isinstance(event_properties, tuple):
-        if len(event_properties) != 2:
+    elif isinstance(measures, tuple):
+        if len(measures) != 2:
             raise ValueError('Tuple must have a length of 2.')
-        if not isinstance(event_properties[0], str):
+        if not isinstance(measures[0], str):
             raise TypeError(
                 f'First item of tuple must be a string, '
-                f"but received {type(event_properties[0])}.",
+                f"but received {type(measures[0])}.",
             )
-        if not isinstance(event_properties[1], dict):
+        if not isinstance(measures[1], dict):
             raise TypeError(
                 'Second item of tuple must be a dictionary, '
-                f"but received {type(event_properties[1])}.",
+                f"but received {type(measures[1])}.",
             )
-    elif isinstance(event_properties, list):
-        for event_property in event_properties:
-            if not isinstance(event_property, (str, tuple)):
+    elif isinstance(measures, list):
+        for measure in measures:
+            if not isinstance(measure, (str, tuple)):
                 raise TypeError(
                     'Each item in the list must be either a string or a tuple, '
-                    f"but received {type(event_property)}.",
+                    f"but received {type(measure)}.",
                 )
-            if isinstance(event_property, tuple):
-                if len(event_property) != 2:
+            if isinstance(measure, tuple):
+                if len(measure) != 2:
                     raise ValueError('Tuple must have a length of 2.')
-                if not isinstance(event_property[0], str):
+                if not isinstance(measure[0], str):
                     raise TypeError(
                         'First item of tuple must be a string, '
-                        f'but received {type(event_property[0])}.',
+                        f'but received {type(measure[0])}.',
                     )
-                if not isinstance(event_property[1], dict):
+                if not isinstance(measure[1], dict):
                     raise TypeError(
                         'Second item of tuple must be a dictionary, '
-                        f'but received {type(event_property[1])}.',
+                        f'but received {type(measure[1])}.',
                     )
     else:
         raise TypeError(
-            'event_properties must be of type str, tuple, or list, '
-            f"but received {type(event_properties)}.",
+            'measures must be of type str, tuple, or list, '
+            f"but received {type(measures)}.",
         )

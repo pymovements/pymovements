@@ -1051,7 +1051,7 @@ def test_clip(gaze_dataset_configuration):
     [
         pytest.param(
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
                 'eye': 'auto',
             },
@@ -1059,7 +1059,7 @@ def test_clip(gaze_dataset_configuration):
         ),
         pytest.param(
             {
-                'method': 'microsaccades',
+                'measure': 'microsaccades',
                 'threshold': 1,
                 'eye': 'auto',
             },
@@ -1067,21 +1067,21 @@ def test_clip(gaze_dataset_configuration):
         ),
         pytest.param(
             {
-                'method': fill,
+                'measure': fill,
                 'eye': 'auto',
             },
             id='fill_class',
         ),
         pytest.param(
             {
-                'method': 'fill',
+                'measure': 'fill',
                 'eye': 'auto',
             },
             id='fill_string',
         ),
         pytest.param(
             {
-                'method': 'ivt',
+                'measure': 'ivt',
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
                 'eye': 'auto',
@@ -1090,7 +1090,7 @@ def test_clip(gaze_dataset_configuration):
         ),
         pytest.param(
             {
-                'method': ivt,
+                'measure': ivt,
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
                 'eye': 'auto',
@@ -1099,14 +1099,14 @@ def test_clip(gaze_dataset_configuration):
         ),
         pytest.param(
             {
-                'method': 'idt',
+                'measure': 'idt',
                 'eye': 'auto',
             },
             id='idt_string',
         ),
         pytest.param(
             {
-                'method': idt,
+                'measure': idt,
                 'eye': 'auto',
             },
             id='idt_class',
@@ -1137,7 +1137,7 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
     [
         pytest.param(
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
                 'eye': 'left',
             },
@@ -1145,7 +1145,7 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
         ),
         pytest.param(
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
                 'eye': 'right',
             },
@@ -1190,12 +1190,12 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
     [
         pytest.param(
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
                 'eye': 'auto',
             },
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
                 'eye': 'auto',
             },
@@ -1211,12 +1211,12 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
         ),
         pytest.param(
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
                 'eye': 'auto',
             },
             {
-                'method': ivt,
+                'measure': ivt,
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
             },
@@ -1254,7 +1254,7 @@ def test_detect_events_multiple_calls(
     [
         pytest.param(
             {
-                'method': 'microsaccades',
+                'measure': 'microsaccades',
                 'threshold': 1,
                 'eye': 'auto',
                 'clear': False,
@@ -1289,7 +1289,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
     dataset.pos2vel()
 
     detect_event_kwargs = {
-        'method': microsaccades,
+        'measure': microsaccades,
         'threshold': 1,
         'eye': 'right',
     }
@@ -1309,7 +1309,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
         pytest.param(
             {'position': 'custom_position'},
             {
-                'method': idt,
+                'measure': idt,
                 'threshold': 1,
             },
             (
@@ -1321,7 +1321,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
         pytest.param(
             {'velocity': 'custom_velocity'},
             {
-                'method': microsaccades,
+                'measure': microsaccades,
                 'threshold': 1,
             },
             (
@@ -1411,21 +1411,21 @@ def test_clear_events(events_init, events_expected, tmp_path):
     ('detect_event_kwargs', 'events_dirname', 'expected_save_dirpath', 'save_kwargs'),
     [
         pytest.param(
-            {'method': microsaccades, 'threshold': 1, 'eye': 'auto'},
+            {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'},
             None,
             'events',
             {},
             id='none_dirname',
         ),
         pytest.param(
-            {'method': microsaccades, 'threshold': 1, 'eye': 'auto'},
+            {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'},
             'events_test',
             'events_test',
             {},
             id='explicit_dirname',
         ),
         pytest.param(
-            {'method': microsaccades, 'threshold': 1, 'eye': 'auto'},
+            {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'},
             None,
             'events',
             {'extension': 'csv'},
@@ -1461,21 +1461,21 @@ def test_save_events(
     ('detect_event_kwargs', 'events_dirname', 'expected_save_dirpath', 'load_save_kwargs'),
     [
         pytest.param(
-            {'method': microsaccades, 'threshold': 1, 'eye': 'auto'},
+            {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'},
             None,
             'events',
             {},
             id='none_dirname',
         ),
         pytest.param(
-            {'method': microsaccades, 'threshold': 1, 'eye': 'auto'},
+            {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'},
             'events_test',
             'events_test',
             {},
             id='explicit_dirname',
         ),
         pytest.param(
-            {'method': microsaccades, 'threshold': 1, 'eye': 'auto'},
+            {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'},
             None,
             'events',
             {'extension': 'csv'},
@@ -1658,7 +1658,7 @@ def test_save_creates_correct_directory(
     dataset.pix2deg()
     dataset.pos2vel()
 
-    detect_events_kwargs = {'method': microsaccades, 'threshold': 1, 'eye': 'auto'}
+    detect_events_kwargs = {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'}
     dataset.detect_events(**detect_events_kwargs)
 
     preprocessed_dirname = save_kwargs.get('preprocessed_dirname', 'preprocessed')
@@ -1707,7 +1707,7 @@ def test_save_files_have_correct_extension(
     dataset.pos2vel()
     dataset.pos2acc()
 
-    detect_events_kwargs = {'method': microsaccades, 'threshold': 1, 'eye': 'auto'}
+    detect_events_kwargs = {'measure': microsaccades, 'threshold': 1, 'eye': 'auto'}
     dataset.detect_events(**detect_events_kwargs)
 
     preprocessed_dirname = save_kwargs.get('preprocessed_dirname', 'preprocessed')

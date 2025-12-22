@@ -36,72 +36,72 @@ TransformMethod = TypeVar('TransformMethod', bound=Callable[..., pl.Expr])
 
 
 class TransformLibrary:
-    """Provides access by name to transformation methods.
+    """Provides access by name to transformation measures.
 
     Attributes
     ----------
     methods: dict[str, Callable[..., pl.Expr]]
-        Dictionary of transformation methods.
+        Dictionary of transformation measures.
     """
 
     methods: dict[str, Callable[..., pl.Expr]] = {}
 
     @classmethod
     def add(cls, method: Callable[..., pl.Expr]) -> None:
-        """Add a transformation method to the library.
+        """Add a transformation measure to the library.
 
         Parameters
         ----------
         method: Callable[..., pl.Expr]
-            The transformation method to add to the library.
+            The transformation measure to add to the library.
         """
         cls.methods[method.__name__] = method
 
     @classmethod
     def get(cls, name: str) -> Callable[..., pl.Expr]:
-        """Get transformation method py name.
+        """Get transformation measure py name.
 
         Parameters
         ----------
         name: str
-            Name of the transformation method in the library.
+            Name of the transformation measure in the library.
 
         Returns
         -------
         Callable[..., pl.Expr]
-            The transformation method.
+            The transformation measure.
         """
         return cls.methods[name]
 
     @classmethod
     def __contains__(cls, name: str) -> bool:
-        """Check if class contains method of given name.
+        """Check if class contains measure of given name.
 
         Parameters
         ----------
         name: str
-            Name of the method to check.
+            Name of the measure to check.
 
         Returns
         -------
         bool
-            True if TransformsLibrary contains method with given name, else False.
+            True if TransformsLibrary contains measure with given name, else False.
         """
         return name in cls.methods
 
 
 def register_transform(method: TransformMethod) -> TransformMethod:
-    """Register a transform method.
+    """Register a transform measure.
 
     Parameters
     ----------
     method: TransformMethod
-        The transform method to register.
+        The transform measure to register.
 
     Returns
     -------
     TransformMethod
-        The registered transform method.
+        The registered transform measure.
     """
     TransformLibrary.add(method)
     return method
@@ -469,7 +469,7 @@ def pos2acc(
     window_length: int
         The window size to use. (default: 7)
     padding: str | float | int | None
-        The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
+        The padding measure to use. See ``savitzky_golay`` for details. (default: 'nearest')
     position_column: str
         The input position column name. (default: 'position')
     acceleration_column: str
@@ -511,18 +511,18 @@ def pos2vel(
     sampling_rate: float
         Sampling rate of input time series.
     method: str
-        The method to use for velocity calculation.
+        The measure to use for velocity calculation.
     n_components: int
         Number of components in input column.
     degree: int | None
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
-        calculation method. (default: None)
+        calculation measure. (default: None)
     window_length: int | None
         The window size to use. This has only an effect if using ``savitzky_golay`` as calculation
-        method. (default: None)
+        measure. (default: None)
     padding: str | float | int | None
         The padding to use.  This has only an effect if using ``savitzky_golay`` as calculation
-        method. (default: 'nearest')
+        measure. (default: 'nearest')
     position_column: str
         The input position column name. (default: 'position')
     velocity_column: str
@@ -535,7 +535,7 @@ def pos2vel(
 
     Notes
     -----
-    There are three methods available for velocity calculation:
+    There are three measures available for velocity calculation:
 
     * ``savitzky_golay``: velocity is calculated by a polynomial of fixed degree and window length.
       See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
@@ -585,9 +585,9 @@ def pos2vel(
 
     if method == 'savitzky_golay':
         if window_length is None:
-            raise TypeError("'window_length' must not be none for method 'savitzky_golay'")
+            raise TypeError("'window_length' must not be none for measure 'savitzky_golay'")
         if degree is None:
-            raise TypeError("'degree' must not be none for method 'savitzky_golay'")
+            raise TypeError("'degree' must not be none for measure 'savitzky_golay'")
 
         return savitzky_golay(
             window_length=window_length,
@@ -602,7 +602,7 @@ def pos2vel(
 
     supported_methods = ['preceding', 'neighbors', 'fivepoint', 'smooth', 'savitzky_golay']
     raise ValueError(
-        f"Unknown method '{method}'. Supported methods are: {supported_methods}",
+        f"Unknown measure '{method}'. Supported measures are: {supported_methods}",
     )
 
 
@@ -650,7 +650,7 @@ def savitzky_golay(
         is fit to the last ``window_length`` values of the edges, and this polynomial is used to
         evaluate the last ``window_length // 2`` output values.
         When passing a scalar value, data will be padded using the passed value.
-        See the Notes for more details on the padding methods ``mirror``, ``nearest`` or ``wrap``.
+        See the Notes for more details on the padding measures ``mirror``, ``nearest`` or ``wrap``.
         (default: 'nearest')
 
     Returns
@@ -909,7 +909,7 @@ def smooth(
     Parameters
     ----------
     method: str
-        The method to use for smoothing. See Notes for more details.
+        The measure to use for smoothing. See Notes for more details.
     window_length: int
         For ``moving_average`` this is the window size to calculate the mean of the subsequent
         samples. For ``savitzky_golay`` this is the window size to use for the polynomial fit.
@@ -918,7 +918,7 @@ def smooth(
         Number of components in input column.
     degree: int | None
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
-        smoothing method. `degree` must be less than `window_length`. (default: None)
+        smoothing measure. `degree` must be less than `window_length`. (default: None)
     column: str
         The input column name to which the smoothing is applied. (default: 'position')
     padding: str | float | int | None
@@ -927,7 +927,7 @@ def smooth(
         which the filter is applied.
         When passing ``None``, no extension padding is used.
         When passing a scalar value, data will be padded using the passed value.
-        See the Notes for more details on the padding methods.
+        See the Notes for more details on the padding measures.
         (default: 'nearest')
 
     Returns
@@ -937,7 +937,7 @@ def smooth(
 
     Notes
     -----
-    There following methods are available for smoothing:
+    There following measures are available for smoothing:
 
     * ``savitzky_golay``: Smooth data by applying a Savitzky-Golay filter.
     See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
@@ -1039,7 +1039,7 @@ def smooth(
 
     if method == 'savitzky_golay':
         if degree is None:
-            raise TypeError("'degree' must not be none for method 'savitzky_golay'")
+            raise TypeError("'degree' must not be none for measure 'savitzky_golay'")
 
         return savitzky_golay(
             window_length=window_length,
@@ -1055,7 +1055,7 @@ def smooth(
     supported_methods = ['moving_average', 'exponential_moving_average', 'savitzky_golay']
 
     raise ValueError(
-        f"Unknown method '{method}'. Supported methods are: {supported_methods}",
+        f"Unknown measure '{method}'. Supported measures are: {supported_methods}",
     )
 
 

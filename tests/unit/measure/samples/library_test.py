@@ -27,7 +27,7 @@ from pymovements import SampleMeasureLibrary
 
 
 @pytest.mark.parametrize(
-    ('method', 'name'),
+    ('measure', 'name'),
     [
         pytest.param(measure.samples.amplitude, 'amplitude', id='amplitude'),
         pytest.param(measure.samples.dispersion, 'dispersion', id='dispersion'),

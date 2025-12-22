@@ -25,28 +25,27 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import EventProcessor
-from pymovements import Events
-from pymovements import EventSamplesProcessor
-from pymovements import Gaze
+from pymovements.measure.events import duration
+from pymovements.measure.events import EventProcessor
+from pymovements.measure.events import EventSamplesProcessor
+from pymovements.measure.samples import peak_velocity
 from pymovements.exceptions import UnknownMeasure
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs', 'expected_measure_definitions'),
+    ('args', 'kwargs', 'expected_measures'),
     [
-        pytest.param(['duration'], {}, ['duration'], id='arg_str_duration'),
-        pytest.param([['duration']], {}, ['duration'], id='arg_list_duration'),
-        pytest.param(
-            [], {'measures': 'duration'}, ['duration'],
-            id='kwarg_measures_duration',
-        ),
+        pytest.param(['duration'], {}, [duration], id='arg_str_duration'),
+        pytest.param([['duration']], {}, [duration], id='arg_list_duration'),
+        pytest.param([], {'measures': 'duration'}, [duration], id='kwarg_measures_duration'),
     ],
 )
-def test_event_processor_init(args, kwargs, expected_measure_definitions):
+def test_event_processor_init(args, kwargs, expected_measures):
     processor = EventProcessor(*args, **kwargs)
 
-    assert processor.measures == expected_measure_definitions
+    assert len(processor.measures) == len(expected_measures)
+    for measure, expected_measure in zip(processor.measures, expected_measures):
+        assert str(measure) == str(expected_measure())
 
 
 @pytest.mark.parametrize(
@@ -102,92 +101,97 @@ def test_event_processor_process_correct_result(events, measures, expected_dataf
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs', 'expected_measure_definitions'),
+    ('args', 'kwargs', 'expected_measures'),
     [
-        pytest.param(['peak_velocity'], {}, [('peak_velocity', {})], id='arg_str_peak_velocity'),
-        pytest.param([['peak_velocity']], {}, [('peak_velocity', {})], id='arg_list_peak_velocity'),
+        pytest.param(['peak_velocity'], {}, [peak_velocity], id='arg_str_peak_velocity'),
+        pytest.param([['peak_velocity']], {}, [peak_velocity], id='arg_list_peak_velocity'),
         pytest.param(
-            [], {'measures': 'peak_velocity'}, [('peak_velocity', {})],
+            [], {'measures': 'peak_velocity'}, [peak_velocity],
             id='kwarg_measures_peak_velocity',
         ),
     ],
 )
-def test_event_samples_processor_init(args, kwargs, expected_measure_definitions):
+def test_event_samples_processor_init(args, kwargs, expected_measures):
     processor = EventSamplesProcessor(*args, **kwargs)
 
-    assert processor.measures == expected_measure_definitions
+    assert len(processor.measures) == len(expected_measures)
+    for measure, expected_measure in zip(processor.measures, expected_measures):
+        assert str(measure) == str(expected_measure())
 
 
 @pytest.mark.parametrize(
-    ('args', 'kwargs', 'exception', 'msg_substrings'),
+    ('args', 'kwargs', 'exception', 'message'),
     [
         pytest.param(
             ['foo'], {},
-            UnknownMeasure, ('foo', 'invalid', 'peak_velocity'),
+            UnknownMeasure,
+            "Measure 'foo' is unknown.",
             id='unknown_event_measure',
         ),
         pytest.param(
             [('peak_velocity', {}, None)], {},
-            ValueError, ('Tuple must have a length of 2.'),
+            ValueError,
+            'Tuple must have a length of 2.',
             id='tuple_length_incorrect',
         ),
         pytest.param(
             [[('peak_velocity', {}), ('amplitude', {}, 1)]], {},
-            ValueError, ('Tuple must have a length of 2.'),
+            ValueError,
+            'Tuple must have a length of 2.',
             id='tuple_length_incorrect1',
         ),
         pytest.param(
             [(1, {})], {},
-            TypeError, ('First item of tuple must be a string'),
+            TypeError,
+            'First item of tuple must be a string',
             id='first_item_not_string',
         ),
         pytest.param(
             [('peak_velocity', 1)], {},
-            TypeError, ('Second item of tuple must be a dictionary'),
+            TypeError,
+            'Second item of tuple must be a dictionary',
             id='second_item_not_dict',
         ),
         pytest.param(
             [[(1, 1), (1, {})]], {},
-            TypeError, ('First item of tuple must be a string'),
+            TypeError,
+            'First item of tuple must be a string',
             id='first_item_not_string1',
         ),
         pytest.param(
             [[('peak_velocity', 1), ('amplitude', 1)]], {},
-            TypeError, ('Second item of tuple must be a dictionary'),
+            TypeError,
+            'Second item of tuple must be a dictionary',
             id='second_item_not_dict1',
         ),
         pytest.param(
             [['peak_velocity', 1]], {},
-            TypeError, ('Each item in the list must be either a string or a tuple'),
+            TypeError,
+            'Each item in the list must be either a string or a tuple',
             id='list_contains_invalid_item',
         ),
         pytest.param(
             [1], {},
-            TypeError, ('measures must be of type str, tuple, or list'),
+            TypeError,
+            'measures must be of type str, tuple, or list',
             id='measures_invalid_type',
         ),
     ],
 )
-def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_substrings):
-    with pytest.raises(exception) as excinfo:
+def test_event_samples_processor_init_exceptions(args, kwargs, exception, message):
+    with pytest.raises(exception, match=message) as excinfo:
         EventSamplesProcessor(*args, **kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
 
 
 @pytest.mark.parametrize(
-    ('events', 'gaze', 'init_kwargs', 'process_kwargs', 'expected_dataframe'),
+    ('events', 'samples', 'init_kwargs', 'process_kwargs', 'expected_dataframe'),
     [
         pytest.param(
             pl.from_dict({'name': ['fixation'], 'onset': [0], 'offset': [4]}),
-            Gaze(
-                pl.from_dict({
-                    'time': [0, 1, 2, 3, 4],
-                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
-                }),
-            ),
+            pl.from_dict({
+                'time': [0, 1, 2, 3, 4],
+                'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+            }),
             {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
@@ -200,12 +204,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
             pl.from_dict(
                 {'name': ['fixation', 'saccade'], 'onset': [0, 5], 'offset': [4, 7]},
             ),
-            Gaze(
-                pl.from_dict({
-                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
-                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
-                }),
-            ),
+            pl.from_dict({
+                'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+            }),
             {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
@@ -221,12 +223,10 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
             pl.from_dict(
                 {'name': ['fixation', 'saccade', 'blink'], 'onset': [0, 3, 7], 'offset': [2, 6, 7]},
             ),
-            Gaze(
-                pl.from_dict({
-                    'time': [0, 1, 2, 3, 4, 5, 6, 7],
-                    'velocity': [[0, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 1]],
-                }),
-            ),
+            pl.from_dict({
+                'time': [0, 1, 2, 3, 4, 5, 6, 7],
+                'velocity': [[0, 0], [0, 0], [0, 0], [1, 0], [0, 0], [0, 0], [0, 0], [1, 1]],
+            }),
             {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
@@ -244,22 +244,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.ones(10),
-                        'y_vel': np.zeros(10),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(10),
+                    'time': np.arange(10),
+                    'x_vel': np.ones(10),
+                    'y_vel': np.zeros(10),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_vel': pl.Float64,
+                    'y_vel': pl.Float64,
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
@@ -287,22 +284,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                 {'subject_id': [1], 'onset': [0], 'offset': [5]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.concatenate([np.ones(5), np.zeros(5)]),
-                        'y_vel': np.zeros(10),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(10),
+                    'time': np.arange(10),
+                    'x_vel': np.concatenate([np.ones(5), np.zeros(5)]),
+                    'y_vel': np.zeros(10),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_vel': pl.Float64,
+                    'y_vel': pl.Float64,
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
@@ -330,22 +324,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_pos': np.concatenate([np.ones(5), np.zeros(5)]),
-                        'y_pos': np.concatenate([np.zeros(5), np.ones(5)]),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_pos': pl.Float64,
-                        'y_pos': pl.Float64,
-                    },
-                ),
-                position_columns=['x_pos', 'y_pos'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(10),
+                    'time': np.arange(10),
+                    'x_pos': np.concatenate([np.ones(5), np.zeros(5)]),
+                    'y_pos': np.concatenate([np.zeros(5), np.ones(5)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_pos': pl.Float64,
+                    'y_pos': pl.Float64,
+                },
             ),
             {'measures': 'dispersion'},
             {'identifiers': 'subject_id'},
@@ -373,22 +364,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                 {'subject_id': [1], 'onset': [0], 'offset': [10]},
                 schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(10),
-                        'time': np.arange(10),
-                        'x_vel': np.concatenate([np.arange(0.1, 1.1, 0.1)]),
-                        'y_vel': np.concatenate([np.arange(0.1, 1.1, 0.1)]),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(10),
+                    'time': np.arange(10),
+                    'x_vel': np.concatenate([np.arange(0.1, 1.1, 0.1)]),
+                    'y_vel': np.concatenate([np.arange(0.1, 1.1, 0.1)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_vel': pl.Float64,
+                    'y_vel': pl.Float64,
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
@@ -418,22 +406,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                        'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_vel': pl.Float64,
+                    'y_vel': pl.Float64,
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
@@ -463,22 +448,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                        'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_vel': pl.Float64,
+                    'y_vel': pl.Float64,
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id', 'name': 'A'},
@@ -508,22 +490,19 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_pos': np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
-                        'y_pos': np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_pos': pl.Float64,
-                        'y_pos': pl.Float64,
-                    },
-                ),
-                position_columns=['x_pos', 'y_pos'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_pos': np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
+                    'y_pos': np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_pos': pl.Float64,
+                    'y_pos': pl.Float64,
+                },
             ),
             {'measures': 'location'},
             {'identifiers': 'subject_id'},
@@ -553,28 +532,25 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_pos': np.concatenate(
-                            [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                        ),
-                        'y_pos': np.concatenate(
-                            [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                        ),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_pos': pl.Float64,
-                        'y_pos': pl.Float64,
-                    },
-                ),
-                position_columns=['x_pos', 'y_pos'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_pos': np.concatenate(
+                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
+                    ),
+                    'y_pos': np.concatenate(
+                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
+                    ),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_pos': pl.Float64,
+                    'y_pos': pl.Float64,
+                },
             ),
-            {'measures': ('location', {'method': 'mean'})},
+            {'measures': ('location', {'measure': 'mean'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -602,28 +578,25 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_pos': np.concatenate(
-                            [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                        ),
-                        'y_pos': np.concatenate(
-                            [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                        ),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_pos': pl.Float64,
-                        'y_pos': pl.Float64,
-                    },
-                ),
-                position_columns=['x_pos', 'y_pos'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_pos': np.concatenate(
+                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
+                    ),
+                    'y_pos': np.concatenate(
+                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
+                    ),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_pos': pl.Float64,
+                    'y_pos': pl.Float64,
+                },
             ),
-            {'measures': ('location', {'method': 'median'})},
+            {'measures': ('location', {'measure': 'median'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -651,26 +624,23 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_pix': np.concatenate(
-                            [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                        ),
-                        'y_pix': np.concatenate(
-                            [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                        ),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_pix': pl.Float64,
-                        'y_pix': pl.Float64,
-                    },
-                ),
-                pixel_columns=['x_pix', 'y_pix'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_pix': np.concatenate(
+                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
+                    ),
+                    'y_pix': np.concatenate(
+                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
+                    ),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_pix': pl.Float64,
+                    'y_pix': pl.Float64,
+                },
             ),
             {'measures': ('location', {'position_column': 'pixel'})},
             {'identifiers': 'subject_id'},
@@ -704,22 +674,20 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'task': ['A'] * 10 + ['B'] * 10,
-                        'trial': [0] * 20,
-                        'time': list(range(10)) * 2,
-                        'velocity': [
-                            *[[1, 1]] * 3 + [[0, 0]] * 7,  # task A, trial 0
-                            *[[0, 0]] * 7 + [[1, 0]] * 2 + [[0, 0]],  # task B, trial 0
-                        ],
-                    },
-                    schema={
-                        'task': pl.Utf8, 'trial': pl.Int64,
-                        'time': pl.Int64, 'velocity': pl.List(pl.Float64),
-                    },
-                ),
+            pl.from_dict(
+                {
+                    'task': ['A'] * 10 + ['B'] * 10,
+                    'trial': [0] * 20,
+                    'time': list(range(10)) * 2,
+                    'velocity': [
+                        *[[1, 1]] * 3 + [[0, 0]] * 7,  # task A, trial 0
+                        *[[0, 0]] * 7 + [[1, 0]] * 2 + [[0, 0]],  # task B, trial 0
+                    ],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'time': pl.Int64, 'velocity': pl.List(pl.Float64),
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': ['task', 'trial']},
@@ -750,24 +718,22 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
                     'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'task': ['A'] * 20 + ['B'] * 20,
-                        'trial': [0] * 10 + [1] * 10 + [0] * 10 + [1] * 10,
-                        'time': list(range(10)) * 4,
-                        'velocity': [
-                            *[[1, 1]] * 8 + [[0, 0]] * 2,  # task A, trial 0
-                            *[[1, 1]] * 2 + [[1, 0]] * 4 + [[0, 0]] * 4,  # task A, trial 1
-                            *[[0, 0]] * 5 + [[1, 1]] * 2 + [[0, 0]] * 3,  # task B, trial 0
-                            *[[1, 1]] * 4 + [[0, 0]] * 6,  # task B, trial 1
-                        ],
-                    },
-                    schema={
-                        'task': pl.Utf8, 'trial': pl.Int64,
-                        'time': pl.Int64, 'velocity': pl.List(pl.Float64),
-                    },
-                ),
+            pl.from_dict(
+                {
+                    'task': ['A'] * 20 + ['B'] * 20,
+                    'trial': [0] * 10 + [1] * 10 + [0] * 10 + [1] * 10,
+                    'time': list(range(10)) * 4,
+                    'velocity': [
+                        *[[1, 1]] * 8 + [[0, 0]] * 2,  # task A, trial 0
+                        *[[1, 1]] * 2 + [[1, 0]] * 4 + [[0, 0]] * 4,  # task A, trial 1
+                        *[[0, 0]] * 5 + [[1, 1]] * 2 + [[0, 0]] * 3,  # task B, trial 0
+                        *[[1, 1]] * 4 + [[0, 0]] * 6,  # task B, trial 1
+                    ],
+                },
+                schema={
+                    'task': pl.Utf8, 'trial': pl.Int64,
+                    'time': pl.Int64, 'velocity': pl.List(pl.Float64),
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': ['task', 'trial']},
@@ -789,16 +755,15 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, msg_su
     ],
 )
 def test_event_samples_processor_process_correct_result(
-        events, gaze, init_kwargs, process_kwargs, expected_dataframe,
+        events, samples, init_kwargs, process_kwargs, expected_dataframe,
 ):
-    events = Events(events)
     processor = EventSamplesProcessor(**init_kwargs)
-    measure_result = processor.process(events, gaze, **process_kwargs)
+    measure_result = processor.process(events, samples, **process_kwargs)
     assert_frame_equal(measure_result, expected_dataframe)
 
 
 @pytest.mark.parametrize(
-    ('events', 'gaze', 'init_kwargs', 'process_kwargs', 'exception', 'msg_substrings'),
+    ('events', 'samples', 'init_kwargs', 'process_kwargs', 'warning', 'message'),
     [
         pytest.param(
             pl.from_dict(
@@ -807,40 +772,32 @@ def test_event_samples_processor_process_correct_result(
                     'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
                 },
             ),
-            Gaze(
-                pl.from_dict(
-                    {
-                        'subject_id': np.ones(100),
-                        'time': np.arange(100),
-                        'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                        'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                    },
-                    schema={
-                        'subject_id': pl.Int64,
-                        'time': pl.Int64,
-                        'x_vel': pl.Float64,
-                        'y_vel': pl.Float64,
-                    },
-                ),
-                velocity_columns=['x_vel', 'y_vel'],
+            pl.from_dict(
+                {
+                    'subject_id': np.ones(100),
+                    'time': np.arange(100),
+                    'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                },
+                schema={
+                    'subject_id': pl.Int64,
+                    'time': pl.Int64,
+                    'x_vel': pl.Float64,
+                    'y_vel': pl.Float64,
+                },
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id', 'name': 'cde'},
-            RuntimeError,
-            ('No events with name "cde" found in data frame',),
+            UserWarning,
+            'No events with name "cde" found in data frame',
             id='event_name_not_in_dataframe',
         ),
     ],
 )
-def test_event_processor_process_exceptions(
-        events, gaze, init_kwargs, process_kwargs, exception, msg_substrings,
+def test_event_samples_processor_process_exceptions(
+        events, samples, init_kwargs, process_kwargs, warning, message,
 ):
     processor = EventSamplesProcessor(**init_kwargs)
-    events = Events(events)
 
-    with pytest.raises(exception) as excinfo:
-        processor.process(events, gaze, **process_kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
+    with pytest.warns(warning, match=message):
+        processor.process(events, samples, **process_kwargs)

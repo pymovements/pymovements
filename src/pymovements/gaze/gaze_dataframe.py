@@ -59,7 +59,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials and the transformation
-        methods will be applied to each trial separately. (default: None)
+        measures will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
@@ -106,7 +106,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     experiment : Experiment | None
         The experiment definition.
     trial_columns: list[str] | None
-        The name of the trial columns in the data frame. If not None, the transformation methods
+        The name of the trial columns in the data frame. If not None, the transformation measures
         will be applied to each trial separately.
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.

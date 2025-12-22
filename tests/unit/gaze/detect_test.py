@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test Gaze detect method."""
+"""Test Gaze detect measure."""
 import numpy as np
 import polars as pl
 import pytest
@@ -28,7 +28,7 @@ from pymovements.synthetic import step_function
 
 
 @pytest.mark.parametrize(
-    ('method', 'kwargs', 'gaze', 'expected'),
+    ('measure', 'kwargs', 'gaze', 'expected'),
     [
         pytest.param(
             'idt',
@@ -945,7 +945,7 @@ def test_gaze_detect_custom_method_no_arguments():
 
 
 @pytest.mark.parametrize(
-    ('method', 'kwargs', 'gaze', 'exception', 'exception_msg'),
+    ('measure', 'kwargs', 'gaze', 'exception', 'exception_msg'),
     [
         pytest.param(
             'ivt',
@@ -1062,7 +1062,7 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
 
 
 @pytest.mark.parametrize(
-    ('method', 'column'),
+    ('measure', 'column'),
     [
         ('ivt', 'velocity'),
         ('idt', 'position'),

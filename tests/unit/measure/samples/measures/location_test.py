@@ -29,7 +29,7 @@ from pymovements.measure.samples import location
     ('init_kwargs', 'exception', 'message'),
     [
         pytest.param(
-            {'method': 'foo'},
+            {'measure': 'foo'},
             ValueError,
             "Method 'foo' not supported",
             id='position_unsupported_method_raises_value_error',
@@ -45,7 +45,7 @@ def test_location_exceptions(init_kwargs, exception, message):
     ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
-            {'method': 'mean'},
+            {'measure': 'mean'},
             pl.DataFrame(
                 {'position': [[0, 0], [1, 0]]},
                 schema={'position': pl.List(pl.Float64)},
@@ -58,7 +58,7 @@ def test_location_exceptions(init_kwargs, exception, message):
         ),
 
         pytest.param(
-            {'method': 'mean'},
+            {'measure': 'mean'},
             pl.DataFrame(
                 {'position': [[0, 0], [0, 1], [0, 3]]},
                 schema={'position': pl.List(pl.Float64)},
@@ -71,7 +71,7 @@ def test_location_exceptions(init_kwargs, exception, message):
         ),
 
         pytest.param(
-            {'method': 'median'},
+            {'measure': 'median'},
             pl.DataFrame(
                 {'position': [[0, 0], [2, 1], [3, 3]]},
                 schema={'position': pl.List(pl.Float64)},

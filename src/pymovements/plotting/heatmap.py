@@ -73,8 +73,8 @@ def heatmap(
     cmap: colors.Colormap | str
         The colormap to use. (default: 'jet')
     interpolation: str
-        The interpolation method to use for plotting the heatmap.
-        See matplotlib.pyplot.imshow for more information on available methods
+        The interpolation measure to use for plotting the heatmap.
+        See matplotlib.pyplot.imshow for more information on available measures
         for interpolation. (default: 'gaussian')
     origin: str
         Set origin of y-axis, valid values are 'lower' or 'upper'. (default: 'upper')

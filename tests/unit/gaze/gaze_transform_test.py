@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test Gaze transform method."""
+"""Test Gaze transform measure."""
 import numpy as np
 import polars as pl
 import pytest
@@ -659,7 +659,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'pos2vel', {'method': 'preceding'},
+            'pos2vel', {'measure': 'preceding'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -697,7 +697,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'pos2vel', {'method': 'neighbors'},
+            'pos2vel', {'measure': 'neighbors'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -734,7 +734,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'pos2vel', {'method': 'fivepoint'},
+            'pos2vel', {'measure': 'fivepoint'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -773,7 +773,7 @@ def fixture_experiment():
                 'position_columns': ['x_dva', 'y_dva'],
                 'trial_columns': 'trial_id',
             },
-            'pos2vel', {'method': 'preceding'},
+            'pos2vel', {'measure': 'preceding'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -801,7 +801,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'smooth', {'method': 'moving_average', 'window_length': 3},
+            'smooth', {'measure': 'moving_average', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -825,7 +825,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            pm.gaze.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
+            pm.gaze.transforms.smooth, {'measure': 'moving_average', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -1034,7 +1034,7 @@ def test_gaze_pix2deg_creates_position_column(samples, experiment, pixel_columns
                 'pixel_columns': ['x', 'y'],
             },
             AttributeError,
-            'experiment must not be None for this method to work',
+            'experiment must not be None for this measure to work',
             id='no_experiment',
         ),
         pytest.param(
@@ -1134,7 +1134,7 @@ def test_gaze_pix2deg_warnings(init_kwargs, warning, expected_msg):
                 'pixel_columns': ['x', 'y'],
             },
             AttributeError,
-            'experiment must not be None for this method to work',
+            'experiment must not be None for this measure to work',
             id='no_experiment',
         ),
         pytest.param(
@@ -1258,7 +1258,7 @@ def test_gaze_pos2acc_creates_acceleration_column(samples, experiment, position_
                 'position_columns': ['x', 'y'],
             },
             AttributeError,
-            'experiment must not be None for this method to work',
+            'experiment must not be None for this measure to work',
             id='no_experiment',
         ),
     ],
@@ -1381,7 +1381,7 @@ def test_gaze_clip_creates_new_column(experiment):
                 'position_columns': ['x', 'y'],
             },
             AttributeError,
-            'experiment must not be None for this method to work',
+            'experiment must not be None for this measure to work',
             id='no_experiment',
         ),
     ],
@@ -1413,7 +1413,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            {'method': 'moving_average', 'column': 'pixel', 'window_length': 3},
+            {'measure': 'moving_average', 'column': 'pixel', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -1443,7 +1443,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            {'method': 'moving_average', 'column': 'position', 'window_length': 3},
+            {'measure': 'moving_average', 'column': 'position', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {

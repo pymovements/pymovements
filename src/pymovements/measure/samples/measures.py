@@ -176,12 +176,12 @@ def location(
 ) -> pl.Expr:
     r"""Location of an event.
 
-    For method ``mean`` the location is calculated as:
+    For measure ``mean`` the location is calculated as:
 
     .. math::
         \text{Location} = \frac{1}{n} \sum_{i=1}^n \text{position}_i
 
-    For method ``median`` the location is calculated as:
+    For measure ``median`` the location is calculated as:
 
     .. math::
         \text{Location} = \text{median} \left(\text{position}_1, \ldots,
@@ -191,7 +191,7 @@ def location(
     Parameters
     ----------
     method: str
-        The centroid method to be used for calculation. Supported methods are ``mean``, ``median``.
+        The centroid measure to be used for calculation. Supported measures are ``mean``, ``median``.
         (default: 'mean')
     position_column: str
         The column name of the position tuples. (default: 'position')
@@ -207,7 +207,7 @@ def location(
     Raises
     ------
     ValueError
-        If method is not one of the supported methods.
+        If measure is not one of the supported measures.
     """
     if method not in {'mean', 'median'}:
         raise ValueError(

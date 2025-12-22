@@ -67,7 +67,7 @@ class MECOL2W1(DatasetDefinition):
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
-            methods will be applied to each trial separately.
+            measures will be applied to each trial separately.
 
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.

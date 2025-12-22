@@ -72,7 +72,7 @@ class Gaze:
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials and the transformation
-        methods will be applied to each trial separately. (default: None)
+        measures will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
@@ -119,7 +119,7 @@ class Gaze:
         The experiment definition.
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame. If not None, the transformation
-        methods will be applied to each trial separately.
+        measures will be applied to each trial separately.
     n_components: int | None
         The number of components in the pixel, position, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
@@ -319,21 +319,21 @@ class Gaze:
             function: str,
             **kwargs: Any,
     ) -> None:
-        """Apply preprocessing method to Gaze.
+        """Apply preprocessing measure to Gaze.
 
         Parameters
         ----------
         function: str
             Name of the preprocessing function to apply.
         **kwargs: Any
-            kwargs that will be forwarded when calling the preprocessing method.
+            kwargs that will be forwarded when calling the preprocessing measure.
         """
         if transforms.TransformLibrary.__contains__(function):
             self.transform(function, **kwargs)
         elif EventDetectionLibrary.__contains__(function):
             self.detect(function, **kwargs)
         else:
-            raise ValueError(f"unsupported method '{function}'")
+            raise ValueError(f"unsupported measure '{function}'")
 
     @overload
     def split(
@@ -374,7 +374,7 @@ class Gaze:
 
         Notes
         -----
-            The original gaze data and metadata are not modified; the method returns new
+            The original gaze data and metadata are not modified; the measure returns new
             Gaze objects.
 
         Examples
@@ -485,14 +485,14 @@ class Gaze:
             transform_method: str | Callable[..., polars.Expr],
             **kwargs: Any,
     ) -> None:
-        """Apply transformation method.
+        """Apply transformation measure.
 
         Parameters
         ----------
         transform_method: str | Callable[..., polars.Expr]
-            The transformation method to be applied.
+            The transformation measure to be applied.
         **kwargs: Any
-            Additional keyword arguments to be passed to the transformation method.
+            Additional keyword arguments to be passed to the transformation measure.
         """
         # pylint: disable=too-many-branches
         if isinstance(transform_method, str):
@@ -681,7 +681,7 @@ class Gaze:
     ) -> None:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This measure requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
         After success, the values in :py:attr:`~.Gaze.samples` are clipped.
 
@@ -696,7 +696,7 @@ class Gaze:
         output_column : str
             Name of the output column.
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to the :func:`~transforms.clip()` measure.
 
         Raises
         ------
@@ -715,7 +715,7 @@ class Gaze:
     def pix2deg(self) -> None:
         """Compute gaze positions in degrees of visual angle from pixel position coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This measure requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
         After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
 
@@ -734,7 +734,7 @@ class Gaze:
     ) -> None:
         """Compute gaze positions in pixel position coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This measure requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
         After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
 
@@ -769,7 +769,7 @@ class Gaze:
     ) -> None:
         """Compute gaze acceleration in dva/s^2 from dva position coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This measure requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
         After success, :py:attr:`~.Gaze.samples` is extended by the resulting velocity columns.
 
@@ -780,7 +780,7 @@ class Gaze:
         window_length: int
             The window size to use. (default: 7)
         padding: str | float | int | None
-            The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
+            The padding measure to use. See ``savitzky_golay`` for details. (default: 'nearest')
 
         Raises
         ------
@@ -796,17 +796,17 @@ class Gaze:
     ) -> None:
         """Compute gaze velocity in dva/s from dva position coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This measure requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
         After success, :py:attr:`~.Gaze.samples` is extended by the resulting velocity columns.
 
         Parameters
         ----------
         method: str
-            Computation method. See :func:`~transforms.pos2vel()` for details, default: fivepoint.
+            Computation measure. See :func:`~transforms.pos2vel()` for details, default: fivepoint.
             (default: 'fivepoint')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
+            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` measure.
 
         Raises
         ------
@@ -926,7 +926,7 @@ class Gaze:
         Parameters
         ----------
         method: str
-            The method to use for smoothing. Choose from ``savitzky_golay``, ``moving_average``,
+            The measure to use for smoothing. Choose from ``savitzky_golay``, ``moving_average``,
             ``exponential_moving_average``. See :func:`~transforms.smooth()` for details.
             (default: 'savitzky_golay')
         window_length: int
@@ -935,7 +935,7 @@ class Gaze:
             For ``exponential_moving_average`` this is the span parameter. (default: 7)
         degree: int
             The degree of the polynomial to use. This has only an effect if using
-            ``savitzky_golay`` as smoothing method. `degree` must be less than `window_length`.
+            ``savitzky_golay`` as smoothing measure. `degree` must be less than `window_length`.
             (default: 2)
         column: str
             The input column name to which the smoothing is applied. (default: 'position')
@@ -946,10 +946,10 @@ class Gaze:
             which the filter is applied.
             When passing ``None``, no extension padding is used.
             When passing a scalar value, sample series will be padded using the passed value.
-            See :func:`~transforms.smooth()` for details on the padding methods.
+            See :func:`~transforms.smooth()` for details on the padding measures.
             (default: 'nearest')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.smooth()` method.
+            Additional keyword arguments to be passed to the :func:`~transforms.smooth()` measure.
         """
         self.transform(
             'smooth',
@@ -969,12 +969,12 @@ class Gaze:
             clear: bool = False,
             **kwargs: Any,
     ) -> None:
-        """Detect events by applying a specific event detection method.
+        """Detect events by applying a specific event detection measure.
 
         Parameters
         ----------
         method: Callable[..., Events] | str
-            The event detection method to be applied.
+            The event detection measure to be applied.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -983,7 +983,7 @@ class Gaze:
             If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
             merged into the existing one. (default: False)
         **kwargs: Any
-            Additional keyword arguments to be passed to the event detection method.
+            Additional keyword arguments to be passed to the event detection measure.
         """
         if self.events is None or clear:
             if self.trial_columns is None:
@@ -1725,7 +1725,7 @@ class Gaze:
             If experiment is None.
         """
         if self.experiment is None:
-            raise AttributeError('experiment must not be None for this method to work')
+            raise AttributeError('experiment must not be None for this measure to work')
 
     def _check_n_components(self) -> None:
         """Check that n_components is either 2, 4 or 6.
@@ -1899,12 +1899,12 @@ class Gaze:
             eye_components: tuple[int, int] | None,
             **kwargs: Any,
     ) -> dict[str, Any]:
-        """Fill event detection method kwargs with gaze attributes.
+        """Fill event detection measure kwargs with gaze attributes.
 
         Parameters
         ----------
         method: Callable[..., Events]
-            The method for which the keyword argument dictionary will be filled.
+            The measure for which the keyword argument dictionary will be filled.
         samples: polars.DataFrame
             The samples to be used for filling event detection keyword arguments.
         events: Events
@@ -1912,7 +1912,7 @@ class Gaze:
         eye_components: tuple[int, int] | None
             The eye components to be used for filling event detection keyword arguments.
         **kwargs: Any
-            The source keyword arguments passed to the `Gaze.detect()` method.
+            The source keyword arguments passed to the `Gaze.detect()` measure.
 
         Returns
         -------
@@ -2041,7 +2041,7 @@ class Gaze:
 
         self.n_components = self._infer_n_components(column_specifiers)
         # Warning if contains samples but no gaze-related columns were provided.
-        # This can lead to failure in downstream methods that rely on those columns
+        # This can lead to failure in downstream measures that rely on those columns
         # (e.g., transformations).
         if len(self.samples) > 0 and not self.n_components:
             warnings.warn(
@@ -2050,7 +2050,7 @@ class Gaze:
                 ' and the content could not be autodetected from the column names. \n'
                 "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
                 " or 'acceleration_columns' explicitly during initialization."
-                ' Otherwise, transformation methods may fail.',
+                ' Otherwise, transformation measures may fail.',
             )
 
     def _init_time_column(
@@ -2172,7 +2172,7 @@ class Gaze:
         Returns
         -------
         Gaze
-            Returns self, useful for method cascading.
+            Returns self, useful for measure cascading.
 
         Parameters
         ----------

@@ -209,27 +209,27 @@ def test_microsaccades_detects_saccades(kwargs, expected):
     ('params', 'expected'),
     [
         pytest.param(
-            {'method': 'invalid'},
+            {'measure': 'invalid'},
             {'exception': ValueError},
             id='invalid_method_raises_value_error',
         ),
         pytest.param(
-            {'method': 'std'},
+            {'measure': 'std'},
             {'value': (1.16619038, 1.16619038)},
             id='std',
         ),
         pytest.param(
-            {'method': 'mad'},
+            {'measure': 'mad'},
             {'value': (1, 1)},
             id='mad',
         ),
         pytest.param(
-            {'method': 'engbert2003'},
+            {'measure': 'engbert2003'},
             {'value': np.array((1., 1.))},
             id='engbert2003',
         ),
         pytest.param(
-            {'method': 'engbert2015'},
+            {'measure': 'engbert2015'},
             {'value': np.array((1., 1.))},
             id='engbert2015',
         ),

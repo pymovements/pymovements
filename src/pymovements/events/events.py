@@ -63,7 +63,7 @@ class Events:
     frame: pl.DataFrame
         A dataframe of events.
     trial_columns: list[str] | None
-        The name of the trial columns in the data frame. If not None, processing methods
+        The name of the trial columns in the data frame. If not None, processing measures
         will be applied to each trial separately.
 
     Raises

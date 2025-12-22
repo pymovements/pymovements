@@ -271,7 +271,7 @@ def pos2vel(
     sampling_rate: float
         Sampling rate of input time series. (default: 1000)
     method: str
-        Following methods are available:
+        Following measures are available:
         * *smooth*: velocity is calculated from the difference of the mean values
         of the subsequent two samples and the preceding two samples
         * *neighbors*: velocity is calculated from difference of the subsequent
@@ -280,7 +280,7 @@ def pos2vel(
         sample to the preceding sample
         (default: 'smooth')
     **kwargs: int | float | str
-        Additional keyword arguments used for savitzky golay method.
+        Additional keyword arguments used for savitzky golay measure.
 
     Returns
     -------
@@ -290,8 +290,8 @@ def pos2vel(
     Raises
     ------
     ValueError
-        If selected method is invalid, input array is too short for the
-        selected method or the sampling rate is below zero
+        If selected measure is invalid, input array is too short for the
+        selected measure or the sampling rate is below zero
 
     Examples
     --------
@@ -299,7 +299,7 @@ def pos2vel(
     >>> pos2vel(
     ...    arr=arr,
     ...    sampling_rate=1000,
-    ...    method="smooth",
+    ...    measure="smooth",
     ... )
     array([[ 500.,  500.],
            [1000., 1000.],
@@ -320,19 +320,19 @@ def pos2vel(
         )
     if method == 'smooth' and arr.shape[0] < 6:
         raise ValueError(
-            'arr has to have at least 6 elements for method "smooth"',
+            'arr has to have at least 6 elements for measure "smooth"',
         )
     if method == 'neighbors' and arr.shape[0] < 3:
         raise ValueError(
-            'arr has to have at least 3 elements for method "neighbors"',
+            'arr has to have at least 3 elements for measure "neighbors"',
         )
     if method == 'preceding' and arr.shape[0] < 2:
         raise ValueError(
-            'arr has to have at least 2 elements for method "preceding"',
+            'arr has to have at least 2 elements for measure "preceding"',
         )
     if method != 'savitzky_golay' and kwargs:
         raise ValueError(
-            'selected method doesn\'t support any additional kwargs',
+            'selected measure doesn\'t support any additional kwargs',
         )
 
     N = arr.shape[0]

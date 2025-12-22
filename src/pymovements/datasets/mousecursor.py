@@ -42,7 +42,7 @@ class MouseCursor(DatasetDefinition):
     the mouse cursor based on pupil position.
     The experiments involved two participants completing tasks to either position the
     cursor within target areas or move it to a target location as quickly as possible.
-    The dataset is intended to help researchers evaluate and compare eye tracking methods
+    The dataset is intended to help researchers evaluate and compare eye tracking measures
     without needing to build the system themselves.
 
     Attributes
@@ -75,7 +75,7 @@ class MouseCursor(DatasetDefinition):
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
             the input data frame is assumed to contain multiple trials and the transformation
-            methods will be applied to each trial separately.
+            measures will be applied to each trial separately.
 
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
