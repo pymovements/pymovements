@@ -1,0 +1,286 @@
+name: "PotsdamBingePVT"
+
+long_name: 'Potsdam Binge PVT dataset'
+
+resources:
+  - content: gaze
+    url: "https://osf.io/download/9vbs8/"
+    filename: "a.zip"
+    md5: "87c6c74a9a17cbd093b91f9415e8dd9d"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_eyelink', 'y_pix_eyelink']
+      experiment:
+          screen:
+            width_px: 1920
+            height_px: 1080
+            width_cm: 59.76
+            height_cm: 33.615
+            origin: "center"
+          eyetracker:
+            sampling_rate: 1000
+            left: false
+            right: true
+            model: "EyeLink 1000 Plus"
+            vendor: "EyeLink"
+            mount: "Remote"
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
+
+  - content: gaze
+    url: "https://osf.io/download/9vbs8/"
+    filename: "a.zip"
+    md5: "87c6c74a9a17cbd093b91f9415e8dd9d"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated']
+      experiment:
+          screen:
+            width_px: 1920
+            height_px: 1080
+            width_cm: 59.76
+            height_cm: 33.615
+            origin: "center"
+          eyetracker:
+            sampling_rate: 1000
+            left: true
+            right: false
+            model: "Pupil Core eye-tracking glasses"
+            vendor: "Pupil Labs"
+            mount: "Wearable"
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
+
+  - content: gaze
+    url: "https://osf.io/download/yqukn/"
+    filename: "b.zip"
+    md5: "54038547b1a373253b38999a227dde63"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_eyelink', 'y_pix_eyelink']
+      experiment:
+          screen:
+            width_px: 1920
+            height_px: 1080
+            width_cm: 59.76
+            height_cm: 33.615
+            origin: "center"
+          eyetracker:
+            sampling_rate: 1000
+            left: false
+            right: true
+            model: "EyeLink 1000 Plus"
+            vendor: "EyeLink"
+            mount: "Remote"
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
+
+  - content: gaze
+    url: "https://osf.io/download/yqukn/"
+    filename: "b.zip"
+    md5: "54038547b1a373253b38999a227dde63"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated']
+      experiment:
+          screen:
+            width_px: 1920
+            height_px: 1080
+            width_cm: 59.76
+            height_cm: 33.615
+            origin: "center"
+          eyetracker:
+            sampling_rate: 1000
+            left: true
+            right: false
+            model: "Pupil Core eye-tracking glasses"
+            vendor: "Pupil Labs"
+            mount: "Wearable"
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
+
+  - content: gaze
+    url: "https://osf.io/download/yf2xa/"
+    filename: "e.zip"
+    md5: "a0d0203cbb273f6908c1b52a42750551"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_eyelink', 'y_pix_eyelink']
+      experiment:
+          screen:
+            width_px: 1920
+            height_px: 1080
+            width_cm: 59.76
+            height_cm: 33.615
+            origin: "center"
+          eyetracker:
+            sampling_rate: 1000
+            left: false
+            right: true
+            model: "EyeLink 1000 Plus"
+            vendor: "EyeLink"
+            mount: "Remote"
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
+
+  - content: gaze
+    url: "https://osf.io/download/yf2xa/"
+    filename: "e.zip"
+    md5: "a0d0203cbb273f6908c1b52a42750551"
+    filename_pattern: '{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      trial_id: !int
+      block_id: !int
+    load_kwargs:
+      time_column: 'eyelink_timestamp'
+      time_unit: 'ms'
+      distance_column: 'target_distance'
+      pixel_columns: ['x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated']
+      experiment:
+          screen:
+            width_px: 1920
+            height_px: 1080
+            width_cm: 59.76
+            height_cm: 33.615
+            origin: "center"
+          eyetracker:
+            sampling_rate: 1000
+            left: true
+            right: false
+            model: "Pupil Core eye-tracking glasses"
+            vendor: "Pupil Labs"
+            mount: "Wearable"
+      read_csv_kwargs:
+        schema_overrides:
+          trial_id: !polars.Float32
+          block_id: !polars.Float32
+          x_pix_eyelink: !polars.Float32
+          y_pix_eyelink: !polars.Float32
+          eyelink_timestamp: !polars.Int64
+          x_pix_pupilcore_interpolated: !polars.Float32
+          y_pix_pupilcore_interpolated: !polars.Float32
+          pupil_size_eyelink: !polars.Float32
+          target_distance: !polars.Float32
+          pupil_size_pupilcore_interpolated: !polars.Float32
+          pupil_confidence_interpolated: !polars.Float32
+          time_to_prev_bac: !polars.Float32
+          time_to_next_bac: !polars.Float32
+          prev_bac: !polars.Float32
+          next_bac: !polars.Float32
+        separator: ","
