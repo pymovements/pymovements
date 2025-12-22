@@ -241,21 +241,21 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'offset': [10]},
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
             ),
             pl.from_dict(
                 {
                     'subject_id': np.ones(10),
                     'time': np.arange(10),
-                    'x_vel': np.ones(10),
-                    'y_vel': np.zeros(10),
+                    'velocity': np.repeat([[0, 1]], 10, axis=0),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_vel': pl.Float64,
-                    'y_vel': pl.Float64,
+                    'velocity': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'peak_velocity'},
@@ -263,7 +263,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1],
-                    'name': [None],
+                    'name': ['saccade'],
                     'onset': [0],
                     'offset': [10],
                     'peak_velocity': [1],
@@ -368,14 +368,12 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(10),
                     'time': np.arange(10),
-                    'x_vel': np.concatenate([np.arange(0.1, 1.1, 0.1)]),
-                    'y_vel': np.concatenate([np.arange(0.1, 1.1, 0.1)]),
+                    'velocity': np.column_stack([np.arange(0.1, 1.1, 0.1), np.arange(0.1, 1.1, 0.1)])
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_vel': pl.Float64,
-                    'y_vel': pl.Float64,
+                    'velocity': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'peak_velocity'},

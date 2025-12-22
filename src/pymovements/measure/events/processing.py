@@ -177,24 +177,25 @@ class EventSamplesProcessor:
             if len(events) == 0:
                 warn(f'No events with name "{name}" found in data frame')
 
-        measure_values = defaultdict(list)
+        results = []
         for event in events.iter_rows(named=True):
-            # Find samples that belong to the current event.
-            event_samples = samples.filter(
+            # Find samples that belong to the current event (lazy evaluation).
+            event_samples = samples.lazy().filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
                 *[pl.col(identifier) == event[identifier] for identifier in _identifiers],
             )
-            # Compute event measure values.
-            values = event_samples.select([measure for measure in self.measures])
-            # Collect measure values.
-            for measure_name in measure_names:
-                measure_values[measure_name].append(values[measure_name].item())
+            # Compute event measure values and include identifier columns.
+            result = event_samples.select(
+                *[pl.lit(event[column_name]).alias(column_name) for column_name in event_identifiers],
+                *[measure for measure in self.measures],
+            )
+            results.append(result)
 
-        # The resulting DataFrame contains the event identifiers and the computed properties.
-        result = events.select(event_identifiers).with_columns(
-            *[pl.Series(name, values) for name, values in measure_values.items()],
-        )
-        return result
+        result = pl.concat(results)
+
+        # Join original events dataframe with measure results.
+        joined = events.lazy().join(result, on=event_identifiers)
+        return joined.collect()
 
 
 def _check_measures(

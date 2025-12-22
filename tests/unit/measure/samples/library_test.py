@@ -37,7 +37,7 @@ from pymovements import SampleMeasureLibrary
         pytest.param(measure.samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
     ],
 )
-def test_measure_registered(method, name):
+def test_measure_registered(measure, name):
     assert name in SampleMeasureLibrary()
-    assert SampleMeasureLibrary.get(name) == method
+    assert SampleMeasureLibrary.get(name) == measure
     assert SampleMeasureLibrary.get(name).__name__ == name
