@@ -64,7 +64,7 @@ class OneStop(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -100,8 +100,10 @@ class OneStop(DatasetDefinition):
 
     _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
-    long_name: str = 'OneStop: A 360-Participant English Eye Tracking Dataset with Different '\
-        'Reading Regimes'
+    long_name: str = (
+        'OneStop: A 360-Participant English Eye Tracking Dataset with '
+        'Different Reading Regimes'
+    )
 
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(

@@ -59,8 +59,9 @@ def step_function(
     Raises
     ------
     ValueError
-        If steps not sorted in ascending order or length of steps not equal to length of values. If
-        noise is negative.
+        If ``steps`` are not sorted in ascending order or
+        length of ``steps`` not equal to the length of values.
+        If noise is negative.
 
     Examples
     --------

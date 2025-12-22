@@ -8,7 +8,7 @@ Here we give you an overview of the workflow and best practices for contributing
 to pymovements.
 
 **Questions:** If you have any developer-related questions, please [open an issue](
-https://github.com/pymovements/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)
 
 ## Table of Contents
@@ -104,13 +104,13 @@ git pull origin main
 git checkout -b feature/your-feature-branch
 ```
 
-To shorten this call you can create a git alias via
+To shorten this call, you can create a git alias via
 
 ```bash
 git config alias.newb '!f() { git checkout main; git pull; git checkout -b $1; }; f'
 ```
 
-You can then update main and create new branches with this command:
+You can then update the main and create new branches with this command:
 
 ```bash
 git newb your-new-branch
@@ -159,14 +159,14 @@ pre-commit
 
 You can find the names of all defined hooks in the file `.pre-commit-config.yaml`.
 
-If you want to run a specific hook you can use
+If you want to run a specific hook, you can use
 
 ```bash
 pre-commit run mypy
 pre-commit run pydocstyle
 ```
 
-If you want to run a specific hook on a single file you can use
+If you want to run a specific hook on a single file, you can use
 
 ```bash
 pre-commit run mypy --files src/pymovements/gaze/transforms.py
@@ -215,7 +215,7 @@ only test event-related functionality using the Python 3.10 environment use:
 tox -e py310 -- tests/unit/events
 ```
 
-In case you only want to run tests locally that do not require any network access you can use:
+In case you only want to run tests locally that do not require any network access, you can use:
 
 ```bash
 tox -e py310 -- -m "not network"
@@ -321,8 +321,8 @@ You need to register an account on [PyPI](https://pypi.org/account/register/) an
 
 The first step is releasing on GitHub. Our [release-drafter](https://github.com/pymovements/pymovements/blob/main/.github/release-drafter.yml) takes care of drafting a release log which should be
 available on the [release page](https://github.com/pymovements/pymovements/releases). Please assign the listed PRs into the correct categories in the release draft. If all merged PRs adhered to
-the [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) specification the release-drafter will have already taken care of this. Take special care for PRs that introduce breaking
-changes. Specify the version tag according to the [Semantic Versioning 2.0.0](https://semver.org/) specification. After publishing the release on GitHub the latest commit will be tagged with the
+the [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) specification, the release-drafter will have already taken care of this. Take special care for PRs that introduce breaking
+changes. Specify the version tag according to the [Semantic Versioning 2.0.0](https://semver.org/) specification. After publishing the release on GitHub, the latest commit will be tagged with the
 specified version.
 
 The next step is releasing pymovements on the PyPI repository.
@@ -336,7 +336,8 @@ python -m build
 ```
 
 This should result in two files being created in the `dist` directory: a `.whl` file and a `.tar.gz` file. The filenames should match the specified python version. If the filenames include the word
-`dirty` then you need to make sure you work on a clean pymovements source. Your local files must not include any uncommited changes or files, otherwise your build will be flagged as dirty and will not
+`dirty` then you need to make sure you work on a clean pymovements source. Your local files must not include any uncommitted changes or files, otherwise your build will be flagged as dirty and will
+not
 be adequate for uploading.
 
 Now you can upload your `.whl` and `.tar.gz` files via
@@ -363,5 +364,5 @@ relicense the contributed code.
 ## Questions
 
 If you have any developer-related questions, please [open an issue](
-https://github.com/pymovements/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)

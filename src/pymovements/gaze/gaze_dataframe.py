@@ -58,15 +58,15 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns:list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
@@ -117,7 +117,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
-    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    single column with the corresponding name, e.g. using `pixel_columns` will merge the
     respective columns into the column `pixel`.
 
     The supported number of component columns with the expected order are:
@@ -133,7 +133,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
 
     Examples
     --------
-    First let's create an example `DataFrame` with three columns:
+    First, let's create an example `DataFrame` with three columns:
     the timestamp ``t`` and ``x`` and ``y`` for the pixel position.
 
     >>> df = pl.from_dict(
