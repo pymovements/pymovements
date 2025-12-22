@@ -47,7 +47,7 @@ def microsaccades(
     This algorithm has a noise-adaptive velocity threshold parameter, which can also be set
     explicitly.
 
-    The implemetation and its default parameter values are based on the description from
+    The implementation and its default parameter values are based on the description from
     Engbert & Kliegl :cite:p:`EngbertKliegl2003` and is adopted from the Microsaccade Toolbox 0.9
     originally implemented in R :cite:p:`Engbert2015`.
 

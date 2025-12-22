@@ -28,9 +28,9 @@ CURLY_TO_REGEX = re.compile(
 
 
 def curly_to_regex(s: str) -> re.Pattern:
-    """Return regex pattern converted from provided python formatting style pattern.
+    """Return regex pattern converted from a provided python formatting style pattern.
 
-    By default all parameters are strings, if you want to specify number you can do: {num:d}
+    By default, all parameters are strings, if you want to specify number you can do: {num:d}
     If you want to specify parameter's length you can do: {two_symbols:2} or {four_digits:4d}
     Characters { and } can be escaped the same way as in python: {{ and }}
     For example:

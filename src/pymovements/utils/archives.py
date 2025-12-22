@@ -49,8 +49,8 @@ def extract_archive(
 ) -> Path:
     """Extract an archive.
 
-    The archive type and a possible compression is automatically detected from the file name.
-    If the file is compressed but not an archive the call is dispatched to :func:`_decompress`.
+    The archive type and a possible compression are automatically detected from the file name.
+    If the file is compressed but not an archive, the call is dispatched to :func:`_decompress`.
 
     .. deprecated:: v0.21.1
        Please use :py:meth:`pymovements.Dataset.extract()` instead.
@@ -64,14 +64,14 @@ def extract_archive(
         Path to the directory the file will be extracted to. If omitted, the directory of the file
         is used. (default: None)
     recursive: bool
-        Recursively extract archives which are included in extracted archive. (default: True)
+        Recursively extract archives which are included in the extracted archive. (default: True)
     remove_finished: bool
         If ``True``, remove the file after the extraction. (default: False)
     remove_top_level: bool
         If ``True``, remove the top-level directory if it has only one child. (default: True)
     resume: bool
         Resume previous extraction by skipping existing files.
-        Checks for correct size of existing files but not integrity. (default: False)
+        Checks for the correct size of existing files but not integrity. (default: False)
     verbose: int
         Verbosity levels: (1) Print messages for extracting each dataset resource without printing
         messages for recursive archives. (2) Print additional messages for each recursive archive
