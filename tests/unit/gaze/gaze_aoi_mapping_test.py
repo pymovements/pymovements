@@ -1275,7 +1275,7 @@ def test_flat_selector_returns_none_for_incomplete_flat_columns_triggers_fallbac
 ) -> None:
     # Create samples with a single flat pixel component so that the flat selection logic runs
     # but cannot find a valid (x,y) pair for any eye setting. This makes the selector return None
-    # at the eye-specific branch, then the measure falls back to list logic and raises because no
+    # at the eye-specific branch, then the method falls back to list logic and raises because no
     # 'pixel'/'position' list column exists.
     samples = pl.DataFrame({
         'pixel_x': [1.0, 2.0],  # only X present, no matching Y nor other pairs

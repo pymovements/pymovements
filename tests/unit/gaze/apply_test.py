@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test Gaze detect measure."""
+"""Test Gaze detect method."""
 import numpy as np
 import polars as pl
 import pytest
@@ -28,7 +28,7 @@ from pymovements.synthetic import step_function
 
 
 @pytest.mark.parametrize(
-    ('measure', 'kwargs', 'gaze', 'expected'),
+    ('method', 'kwargs', 'gaze', 'expected'),
     [
         pytest.param(
             'ivt',
@@ -202,7 +202,7 @@ from pymovements.synthetic import step_function
 
         pytest.param(
             'pos2vel',
-            {'measure': 'preceding'},
+            {'method': 'preceding'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -246,7 +246,7 @@ def test_gaze_apply(method, kwargs, gaze, expected):
 
 
 @pytest.mark.parametrize(
-    ('measure', 'kwargs', 'gaze', 'exception', 'exception_msg'),
+    ('method', 'kwargs', 'gaze', 'exception', 'exception_msg'),
     [
         pytest.param(
             'foobar',
@@ -259,7 +259,7 @@ def test_gaze_apply(method, kwargs, gaze, expected):
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
             ),
             ValueError,
-            "unsupported measure 'foobar'",
+            "unsupported method 'foobar'",
             id='unknown_method',
         ),
 

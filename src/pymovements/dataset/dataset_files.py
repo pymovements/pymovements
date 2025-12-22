@@ -259,7 +259,7 @@ def load_gaze_files(
     Returns
     -------
     list[Gaze]
-        Returns self, useful for measure cascading.
+        Returns self, useful for method cascading.
 
     Raises
     ------

@@ -27,7 +27,7 @@ from warnings import warn
 class DeprecatedMetaClass(type):
     """MetaClass for deprecated class aliases.
 
-    The class serves as an equivalent alias for the `isinstance()` and `issubclass()` measures.
+    The class serves as an equivalent alias for the `isinstance()` and `issubclass()` methods.
     It supports subclassing of the deprecated class.
 
     Examples
@@ -122,6 +122,6 @@ class DeprecatedMetaClass(type):
         Provides implementation for isinstance().
         """
         # pylint: disable=no-value-for-parameter
-        # pylint doesn't get that this is a metaclass measure:
+        # pylint doesn't get that this is a metaclass method:
         # see: https://github.com/pylint-dev/pylint/issues/3268
         return any(cls.__subclasscheck__(c) for c in (type(instance), instance.__class__))

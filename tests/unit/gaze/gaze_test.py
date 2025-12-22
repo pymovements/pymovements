@@ -1346,7 +1346,7 @@ def test_transform_early_return_on_empty_grouped_frames():
     gaze = Gaze(samples=samples, trial_columns='trial')
 
     # Calling a transform that would normally require an input column should do nothing
-    # because grouped_frames will be empty and the measure returns early.
+    # because grouped_frames will be empty and the method returns early.
     before = gaze.samples.clone()
     gaze.clip(lower_bound=None, upper_bound=None, input_column='position', output_column='clipped')
     after = gaze.samples

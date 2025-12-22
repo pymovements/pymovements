@@ -169,7 +169,7 @@ nitpick_ignore_regex = [
     # Shorthand alias used in docs for our own package
     (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
 
-    # Internal cross-refs to objects/attrs/measures that autosummary may not emit
+    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
     (r'py:(obj|attr|meth)', r'^pymovements\..*'),
 
     # Modules referenced in text but not importable via intersphinx targets
@@ -188,7 +188,7 @@ nitpick_ignore_regex = [
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
-        r'DatasetDefinitionClass|measure\.library\.SampleMeasure)$',
+        r'DatasetDefinitionClass|method\.library\.SampleMeasure)$',
     ),
 
     # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
@@ -199,7 +199,7 @@ nitpick_ignore_regex = [
     # Internal helper functions referenced in docs text
     (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
 
-    # Residual autosummary cross-refs to attributes/measures on our high-level classes
+    # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
 ]
 

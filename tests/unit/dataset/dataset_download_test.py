@@ -1483,7 +1483,7 @@ def test_dataset_download_default_extract_precomputed(
             ),
             ValueError,
             'unknown url type: ',
-            id='no_http_resource_measures',
+            id='no_http_resource_methods',
         ),
     ],
 )

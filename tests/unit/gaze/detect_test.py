@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test Gaze detect measure."""
+"""Test Gaze detect method."""
 import numpy as np
 import polars as pl
 import pytest
@@ -28,7 +28,7 @@ from pymovements.synthetic import step_function
 
 
 @pytest.mark.parametrize(
-    ('measure', 'kwargs', 'gaze', 'expected'),
+    ('method', 'kwargs', 'gaze', 'expected'),
     [
         pytest.param(
             'idt',

@@ -113,7 +113,7 @@ def _obj_html(obj: object, attrs: list[str] | None = None) -> str:
                 value = getattr(obj, attr)
             except BaseException:
                 continue
-            # Skip measures
+            # Skip methods
             if not callable(value):
                 attrs.append(attr)
 

@@ -438,7 +438,7 @@ class Dataset:
             verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-        """Apply preprocessing measure to all Gazes in Dataset.
+        """Apply preprocessing method to all Gazes in Dataset.
 
         Parameters
         ----------
@@ -447,7 +447,7 @@ class Dataset:
         verbose : bool
             If True, show progress bar of computation. (default: True)
         **kwargs: Any
-            kwargs that will be forwarded when calling the preprocessing measure.
+            kwargs that will be forwarded when calling the preprocessing method.
 
         Returns
         -------
@@ -472,7 +472,7 @@ class Dataset:
         >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
-        >>> dataset.apply('pos2vel', measure='neighbors')# doctest:+ELLIPSIS
+        >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
         Use apply for your event detection:
@@ -513,7 +513,7 @@ class Dataset:
     ) -> Dataset:
         """Clip gaze signal values.
 
-        This measure requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
         After success, the gaze dataframe is clipped.
 
@@ -530,12 +530,12 @@ class Dataset:
         verbose : bool
             If True, show progress of computation. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` measure.
+            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
 
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -595,7 +595,7 @@ class Dataset:
     def pix2deg(self, verbose: bool = True) -> Dataset:
         """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
-        This measure requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -607,7 +607,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -626,7 +626,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
-        This measure requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -645,7 +645,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -671,7 +671,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
-        This measure requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting acceleration columns.
 
@@ -682,14 +682,14 @@ class Dataset:
         window_length: int
             The window size to use. (default: 7)
         padding: str | float | int | None
-            The padding measure to use. See ``savitzky_golay`` for details. (default: 'nearest')
+            The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
         verbose: bool
             If True, show progress of computation. (default: True)
 
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -714,24 +714,24 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze velocities in dva/s from dva coordinates.
 
-        This measure requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting velocity columns.
 
         Parameters
         ----------
         method: str
-            Computation measure. See :func:`~transforms.pos2vel()` for details.
+            Computation method. See :func:`~transforms.pos2vel()` for details.
             (default: 'fivepoint')
         verbose: bool
             If True, show progress of computation. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` measure.
+            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
 
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -750,12 +750,12 @@ class Dataset:
             verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-        """Detect events by applying a specific event detection measure.
+        """Detect events by applying a specific event detection method.
 
         Parameters
         ----------
         method : Callable[..., Events] | str
-            The event detection measure to be applied.
+            The event detection method to be applied.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -766,12 +766,12 @@ class Dataset:
         verbose: bool
             If ``True``, show progress bar. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the event detection measure.
+            Additional keyword arguments to be passed to the event detection method.
 
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -795,14 +795,14 @@ class Dataset:
             verbose: bool = True,
             **kwargs: Any,
     ) -> Dataset:
-        """Detect events by applying a specific event detection measure.
+        """Detect events by applying a specific event detection method.
 
         Alias for :py:meth:`pymovements.Dataset.detect_events`
 
         Parameters
         ----------
         method: Callable[..., Events] | str
-            The event detection measure to be applied.
+            The event detection method to be applied.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
@@ -813,12 +813,12 @@ class Dataset:
         verbose: bool
             If ``True``, show progress bar. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the event detection measure.
+            Additional keyword arguments to be passed to the event detection method.
 
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -857,7 +857,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
         """
         for gaze in self.gaze:
             gaze.drop_event_properties(event_properties)
@@ -884,7 +884,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``measure_name`` is not a valid property. See
+            If ``method_name`` is not a valid property. See
             :py:mod:`pymovements.events` for an overview of supported properties.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -894,7 +894,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
         """
         for gaze in tqdm(
                 self.gaze,
@@ -929,12 +929,12 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
         UnknownMeasure
-            If ``measure_name`` is not a valid property. See
+            If ``method_name`` is not a valid property. See
             :py:mod:`pymovements.events` for an overview of supported properties.
         """
         return self.compute_event_properties(
@@ -949,7 +949,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
         """
         if len(self.events) == 0:
             return self
@@ -974,7 +974,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Parameters
         ----------
@@ -1023,7 +1023,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -1067,7 +1067,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -1122,7 +1122,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Raises
         ------
@@ -1170,7 +1170,7 @@ class Dataset:
         Returns
         -------
         Dataset
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
         """
         dataset_download.extract_dataset(
             definition=self.definition,
