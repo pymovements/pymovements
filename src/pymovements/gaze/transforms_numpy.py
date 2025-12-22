@@ -165,7 +165,7 @@ def pix2deg(
     elif origin != 'center':
         raise ValueError(f'origin {origin} is not supported.')
 
-    # 180 / pi transforms arc method to degrees.
+    # 180 / pi transforms arc measure to degrees.
     return np.arctan2(arr, distance_px) * 180 / np.pi
 
 
