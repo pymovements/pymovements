@@ -42,7 +42,7 @@ class MouseCursor(DatasetDefinition):
     the mouse cursor based on pupil position.
     The experiments involved two participants completing tasks to either position the
     cursor within target areas or move it to a target location as quickly as possible.
-    The dataset is intended to help researchers evaluate and compare eye tracking measures
+    The dataset is intended to help researchers evaluate and compare eye tracking methods
     without needing to build the system themselves.
 
     Attributes

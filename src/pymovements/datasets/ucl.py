@@ -37,7 +37,7 @@ class UCL(DatasetDefinition):
     self-paced reading and eye-tracking experiments to evaluate
     computational psycholinguistic models of English sentence comprehension.
     361 sentences from narrative sources, ensuring they were understandable without context,
-    and recorded reading times from participants using both measures.
+    and recorded reading times from participants using both methods.
 
     For more details check out the original paper :cite:p:`UCL`.
 

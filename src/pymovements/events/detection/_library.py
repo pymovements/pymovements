@@ -26,51 +26,51 @@ from pymovements.events.events import Events
 
 
 class EventDetectionLibrary:
-    """Provides access by name to event detection measures.
+    """Provides access by name to event detection methods.
 
     Attributes
     ----------
     methods: dict[str, Callable[..., Events]]
-        Dictionary of event detection measures.
+        Dictionary of event detection methods.
     """
 
     methods: dict[str, Callable[..., Events]] = {}
 
     @classmethod
     def add(cls, method: Callable[..., Events]) -> None:
-        """Add an event detection measure to the library.
+        """Add an event detection method to the library.
 
         Parameter
         ---------
-        measure: Callable[..., Events]
-            The event detection measure to add to the library.
+        method: Callable[..., Events]
+            The event detection method to add to the library.
         """
         cls.methods[method.__name__] = method
 
     @classmethod
     def get(cls, name: str) -> Callable[..., Events]:
-        """Get event detection measure py name.
+        """Get event detection method py name.
 
         Parameter
         ---------
         name: str
-            Name of the event detection measure in the library.
+            Name of the event detection method in the library.
         """
         return cls.methods[name]
 
     @classmethod
     def __contains__(cls, name: str) -> bool:
-        """Check if class contains measure of given name.
+        """Check if class contains method of given name.
 
         Parameters
         ----------
         name: str
-            Name of the measure to check.
+            Name of the method to check.
 
         Returns
         -------
         bool
-            True if EventDetectionLibrary contains measure with given name, else False.
+            True if EventDetectionLibrary contains method with given name, else False.
         """
         return name in cls.methods
 
@@ -78,17 +78,17 @@ class EventDetectionLibrary:
 def register_event_detection(
         method: Callable[..., Events],
 ) -> Callable[..., Events]:
-    """Register an event detection measure.
+    """Register an event detection method.
 
     Parameters
     ----------
     method: Callable[..., Events]
-        The event detection measure to register.
+        The event detection method to register.
 
     Returns
     -------
     Callable[..., Events]
-        The event detection measure.
+        The event detection method.
 
     """
     EventDetectionLibrary.add(method)

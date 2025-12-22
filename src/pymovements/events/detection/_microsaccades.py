@@ -66,8 +66,8 @@ def microsaccades(
          (default: 6)
     threshold: np.ndarray | tuple[float, float] | str
         If tuple of floats then use this as explicit elliptic threshold. If str, then use
-        a data-driven velocity threshold measure. See :func:`~events.engbert.compute_threshold` for
-        a reference of valid measures. (default: 'engbert2015')
+        a data-driven velocity threshold method. See :func:`~events.engbert.compute_threshold` for
+        a reference of valid methods. (default: 'engbert2015')
     threshold_factor: float
         factor for relative velocity threshold computation. (default: 6)
     minimum_threshold: float
@@ -88,7 +88,7 @@ def microsaccades(
     ------
     ValueError
         If `threshold` value is below `min_threshold` value.
-        If passed `threshold` is either not two-dimensional or not a supported measure.
+        If passed `threshold` is either not two-dimensional or not a supported method.
     """
     velocities = np.array(velocities)
 
@@ -150,12 +150,12 @@ def microsaccades(
 def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarray:
     """Determine threshold by computing variation.
 
-    The following measures are supported:
+    The following methods are supported:
 
     - `std`: This is the channel-wise standard deviation.
     - `mad`: This is the channel-wise median absolute deviation.
-    - `engbert2003`: This is the threshold measure as described in :cite:p:`EngbertKliegl2003`.
-    - `engbert2015`: This is the threshold measure as described in :cite:p:`Engbert2015`.
+    - `engbert2003`: This is the threshold method as described in :cite:p:`EngbertKliegl2003`.
+    - `engbert2015`: This is the threshold method as described in :cite:p:`Engbert2015`.
 
     Parameters
     ----------
@@ -172,7 +172,7 @@ def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarra
     Raises
     ------
     ValueError
-        If passed measure is not supported.
+        If passed method is not supported.
     """
     if method == 'std':
         thx = np.nanstd(arr[:, 0])
@@ -196,6 +196,6 @@ def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarra
 
     else:
         valid_methods = ['std', 'mad', 'engbert2003', 'engbert2015']
-        raise ValueError(f'Method "{method}" not implemented. Valid measures: {valid_methods}')
+        raise ValueError(f'Method "{method}" not implemented. Valid methods: {valid_methods}')
 
     return np.array([thx, thy])

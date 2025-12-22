@@ -65,7 +65,7 @@ def from_csv(
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials and the transformation
-        measures will be applied to each trial separately. (default: None)
+        methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. (default: None)
     time_unit: str | None
@@ -412,7 +412,7 @@ def from_asc(
         The names of the columns (extracted by patterns) to use as trial columns.
         If the list is empty or None, the asc file is assumed to contain only one trial.
         If the list is not empty, the asc file is assumed to contain multiple trials and
-        the transformation measures will be applied to each trial separately. (default: None)
+        the transformation methods will be applied to each trial separately. (default: None)
     add_columns: dict[str, str] | None
         Dictionary containing columns to add to loaded data frame.
         (default: None)
@@ -608,7 +608,7 @@ def from_ipc(
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials and the transformation
-        measures will be applied to each trial separately. (default: None)
+        methods will be applied to each trial separately. (default: None)
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)

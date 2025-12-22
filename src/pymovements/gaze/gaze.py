@@ -983,7 +983,7 @@ class Gaze:
             If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
             merged into the existing one. (default: False)
         **kwargs: Any
-            Additional keyword arguments to be passed to the event detection measure.
+            Additional keyword arguments to be passed to the event detection method.
         """
         if self.events is None or clear:
             if self.trial_columns is None:
@@ -1115,7 +1115,7 @@ class Gaze:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See
+            If ``event_properties`` includes an unknown measure. See
             :py:mod:`pymovements.measure.events` and :py:mod:`pymovements.measure.samples`
             for an overview of supported measures.
         RuntimeError
@@ -1726,7 +1726,7 @@ class Gaze:
             If experiment is None.
         """
         if self.experiment is None:
-            raise AttributeError('experiment must not be None for this measure to work')
+            raise AttributeError('experiment must not be None for this method to work')
 
     def _check_n_components(self) -> None:
         """Check that n_components is either 2, 4 or 6.
@@ -1900,12 +1900,12 @@ class Gaze:
             eye_components: tuple[int, int] | None,
             **kwargs: Any,
     ) -> dict[str, Any]:
-        """Fill event detection measure kwargs with gaze attributes.
+        """Fill event detection method kwargs with gaze attributes.
 
         Parameters
         ----------
         method: Callable[..., Events]
-            The measure for which the keyword argument dictionary will be filled.
+            The method for which the keyword argument dictionary will be filled.
         samples: polars.DataFrame
             The samples to be used for filling event detection keyword arguments.
         events: Events
@@ -1913,7 +1913,7 @@ class Gaze:
         eye_components: tuple[int, int] | None
             The eye components to be used for filling event detection keyword arguments.
         **kwargs: Any
-            The source keyword arguments passed to the `Gaze.detect()` measure.
+            The source keyword arguments passed to the `Gaze.detect()` method.
 
         Returns
         -------
@@ -2042,7 +2042,7 @@ class Gaze:
 
         self.n_components = self._infer_n_components(column_specifiers)
         # Warning if contains samples but no gaze-related columns were provided.
-        # This can lead to failure in downstream measures that rely on those columns
+        # This can lead to failure in downstream methods that rely on those columns
         # (e.g., transformations).
         if len(self.samples) > 0 and not self.n_components:
             warnings.warn(
@@ -2051,7 +2051,7 @@ class Gaze:
                 ' and the content could not be autodetected from the column names. \n'
                 "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
                 " or 'acceleration_columns' explicitly during initialization."
-                ' Otherwise, transformation measures may fail.',
+                ' Otherwise, transformation methods may fail.',
             )
 
     def _init_time_column(
@@ -2173,7 +2173,7 @@ class Gaze:
         Returns
         -------
         Gaze
-            Returns self, useful for measure cascading.
+            Returns self, useful for method cascading.
 
         Parameters
         ----------

@@ -232,9 +232,9 @@ class Experiment:
         arr: list[float] | list[list[float]] | np.ndarray
             Continuous 2D position time series.
         method: str
-            Computation measure. See :func:`~transforms.pos2vel` for details. (default: 'smooth')
+            Computation method. See :func:`~transforms.pos2vel` for details. (default: 'smooth')
         **kwargs: int | float | str
-            Additional keyword arguments used for savitzky golay measure.
+            Additional keyword arguments used for savitzky golay method.
 
         Returns
         -------
@@ -244,8 +244,8 @@ class Experiment:
         Raises
         ------
         ValueError
-            If selected measure is invalid, input array is too short for the
-            selected measure or the sampling rate is below zero
+            If selected method is invalid, input array is too short for the
+            selected method or the sampling rate is below zero
 
         Examples
         --------
@@ -261,7 +261,7 @@ class Experiment:
         >>> arr = [[0., 0.], [1., 1.], [2., 2.], [3., 3.], [4., 4.], [5., 5.]]
         >>> experiment.pos2vel(
         ...    arr=arr,
-        ...    measure="smooth",
+        ...    method="smooth",
         ... )
         array([[ 500.,  500.],
                [1000., 1000.],

@@ -935,8 +935,9 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``method_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+            If ``event_properties`` includes an unknwon measure. See
+            :py:mod:`pymovements.measure.events` and :py:mod:`pymovements.measure.samples`
+            for an overview of supported measures.
         """
         return self.compute_event_properties(
             event_properties=event_properties,
