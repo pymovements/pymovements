@@ -47,7 +47,7 @@ class Foo:
         raise RuntimeError()
 
     def method(self) -> None:
-        """All measures should be excluded from the HTML representation."""
+        """All methods should be excluded from the HTML representation."""
 
 
 @pytest.mark.parametrize(

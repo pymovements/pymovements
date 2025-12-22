@@ -26,7 +26,7 @@ import pymovements as pm
 
 
 @pytest.mark.parametrize(
-    ('measure', 'name'),
+    ('method', 'name'),
     [
         pytest.param(pm.events.idt, 'idt', id='idt'),
         pytest.param(pm.events.ivt, 'ivt', id='ivt'),
