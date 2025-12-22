@@ -23,7 +23,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
-from warnings import warn
 
 import polars as pl
 
@@ -175,7 +174,7 @@ class EventSamplesProcessor:
         if name is not None:
             events = events.filter(pl.col('name').str.contains(f'^{name}$'))
             if len(events) == 0:
-                warn(f'No events with name "{name}" found in data frame')
+                raise RuntimeError(f'No events with name "{name}" found in data frame')
 
         results = []
         for event in events.iter_rows(named=True):

@@ -764,7 +764,7 @@ def test_event_samples_processor_process_correct_result(
 
 
 @pytest.mark.parametrize(
-    ('events', 'samples', 'init_kwargs', 'process_kwargs', 'warning', 'message'),
+    ('events', 'samples', 'init_kwargs', 'process_kwargs', 'exception', 'message'),
     [
         pytest.param(
             pl.from_dict(
@@ -790,16 +790,16 @@ def test_event_samples_processor_process_correct_result(
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id', 'name': 'cde'},
-            UserWarning,
+            RuntimeError,
             'No events with name "cde" found in data frame',
             id='event_name_not_in_dataframe',
         ),
     ],
 )
 def test_event_samples_processor_process_exceptions(
-        events, samples, init_kwargs, process_kwargs, warning, message,
+        events, samples, init_kwargs, process_kwargs, exception, message,
 ):
     processor = EventSamplesProcessor(**init_kwargs)
 
-    with pytest.warns(warning, match=message):
+    with pytest.raises(exception, match=message):
         processor.process(events, samples, **process_kwargs)
