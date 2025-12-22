@@ -281,21 +281,23 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [5]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'offset': [5]},
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
             ),
             pl.from_dict(
                 {
                     'subject_id': np.ones(10),
                     'time': np.arange(10),
-                    'x_vel': np.concatenate([np.ones(5), np.zeros(5)]),
-                    'y_vel': np.zeros(10),
+                    'velocity': np.column_stack([
+                        np.concatenate([np.ones(5), np.zeros(5)]), np.zeros(10),
+                    ])
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_vel': pl.Float64,
-                    'y_vel': pl.Float64,
+                    'velocity': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'peak_velocity'},
@@ -303,7 +305,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1],
-                    'name': [None],
+                    'name': ['saccade'],
                     'onset': [0],
                     'offset': [5],
                     'peak_velocity': [1],
@@ -321,21 +323,24 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'subject_id': [1], 'name': ['fixation'], 'onset': [0], 'offset': [10]},
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
             ),
             pl.from_dict(
                 {
                     'subject_id': np.ones(10),
                     'time': np.arange(10),
-                    'x_pos': np.concatenate([np.ones(5), np.zeros(5)]),
-                    'y_pos': np.concatenate([np.zeros(5), np.ones(5)]),
+                    'position': np.column_stack([
+                        np.concatenate([np.ones(5), np.zeros(5)]),
+                        np.concatenate([np.zeros(5), np.ones(5)]),
+                    ])
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_pos': pl.Float64,
-                    'y_pos': pl.Float64,
+                    'position': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'dispersion'},
@@ -343,7 +348,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1],
-                    'name': [None],
+                    'name': ['fixation'],
                     'onset': [0],
                     'offset': [10],
                     'dispersion': [2],
@@ -361,14 +366,18 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
 
         pytest.param(
             pl.from_dict(
-                {'subject_id': [1], 'onset': [0], 'offset': [10]},
-                schema={'subject_id': pl.Int64, 'onset': pl.Int64, 'offset': pl.Int64},
+                {'subject_id': [1], 'name': ['saccade'], 'onset': [0], 'offset': [10]},
+                schema={
+                    'subject_id': pl.Int64, 'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                },
             ),
             pl.from_dict(
                 {
                     'subject_id': np.ones(10),
                     'time': np.arange(10),
-                    'velocity': np.column_stack([np.arange(0.1, 1.1, 0.1), np.arange(0.1, 1.1, 0.1)])
+                    'velocity': np.column_stack([
+                        np.arange(0.1, 1.1, 0.1), np.arange(0.1, 1.1, 0.1),
+                    ])
                 },
                 schema={
                     'subject_id': pl.Int64,
@@ -381,7 +390,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
             pl.from_dict(
                 {
                     'subject_id': [1],
-                    'name': [None],
+                    'name': ['saccade'],
                     'onset': [0],
                     'offset': [10],
                     'peak_velocity': [np.sqrt(2)],
@@ -394,7 +403,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'peak_velocity': pl.Float64,
                 },
             ),
-            id='one_identifier_single_event_complete_window_peak_velocity',
+            id='one_identifier_single_event_rising_velocity_peak_velocity',
         ),
 
         pytest.param(
@@ -408,14 +417,15 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                    'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    'velocity': np.column_stack([
+                        np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                        np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_vel': pl.Float64,
-                    'y_vel': pl.Float64,
+                    'velocity': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'peak_velocity'},
@@ -450,14 +460,15 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                    'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    'velocity': np.column_stack([
+                        np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                        np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_vel': pl.Float64,
-                    'y_vel': pl.Float64,
+                    'velocity': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'peak_velocity'},
@@ -492,14 +503,15 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_pos': np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
-                    'y_pos': np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
+                    'position': np.column_stack([
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_pos': pl.Float64,
-                    'y_pos': pl.Float64,
+                    'position': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'location'},
@@ -534,21 +546,18 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_pos': np.concatenate(
-                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                    ),
-                    'y_pos': np.concatenate(
-                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                    ),
+                    'position': np.column_stack([
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_pos': pl.Float64,
-                    'y_pos': pl.Float64,
+                    'position': pl.List(pl.Float64),
                 },
             ),
-            {'measures': ('location', {'measure': 'mean'})},
+            {'measures': ('location', {'method': 'mean'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -580,21 +589,18 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_pos': np.concatenate(
-                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                    ),
-                    'y_pos': np.concatenate(
-                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                    ),
+                    'position': np.column_stack([
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_pos': pl.Float64,
-                    'y_pos': pl.Float64,
+                    'position': pl.List(pl.Float64),
                 },
             ),
-            {'measures': ('location', {'measure': 'median'})},
+            {'measures': ('location', {'method': 'median'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -626,18 +632,15 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_pix': np.concatenate(
-                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                    ),
-                    'y_pix': np.concatenate(
-                        [np.ones(11), np.zeros(69), 2 * np.ones(19), [200]],
-                    ),
+                    'pixel': np.column_stack([
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
+                        np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_pix': pl.Float64,
-                    'y_pix': pl.Float64,
+                    'pixel': pl.List(pl.Float64),
                 },
             ),
             {'measures': ('location', {'position_column': 'pixel'})},
@@ -774,14 +777,15 @@ def test_event_samples_processor_process_correct_result(
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'x_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
-                    'y_vel': np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    'velocity': np.column_stack([
+                        np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                        np.concatenate([np.ones(10), np.zeros(70), 2 * np.ones(20)]),
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'x_vel': pl.Float64,
-                    'y_vel': pl.Float64,
+                    'velocity': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'peak_velocity'},
