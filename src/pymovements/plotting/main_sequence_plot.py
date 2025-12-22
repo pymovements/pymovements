@@ -44,7 +44,7 @@ def main_sequence_plot(
         marker_color: str = 'purple',
         marker_alpha: float = 0.5,
         fit: bool = True,
-        fit_method: bool | Literal['r2', 's'] = True,
+        fit_measure: bool | Literal['r2', 's'] = True,
         fit_color: str = 'red',
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
@@ -72,7 +72,7 @@ def main_sequence_plot(
         Alpha value (=transparency) of the marker symbol. Between 0 and 1. (default: 0.5)
     fit: bool
         Draw a linear fit line if True. If False, no line is drawn.
-    fit_method: bool | Literal['r2', 's']
+    fit_measure: bool | Literal['r2', 's']
         Annotate a goodness-of-fit statistic:
         - ``True`` or ``'r2'``: coefficient of determination (R²)
         - ``'s'``: standard error of the regression (S)
@@ -200,22 +200,22 @@ def main_sequence_plot(
 
         fit_label = None
 
-        # Compute fit method if requested
-        if fit_method:
+        # Compute fit measure if requested
+        if fit_measure:
             y_pred = np.array(amplitudes) * a + b
             residuals = np.array(peak_velocities) - y_pred
 
-            if fit_method is True or fit_method == 'r2':
+            if fit_measure is True or fit_measure == 'r2':
                 val = np.round(r2_score(peak_velocities, y_pred), 3)
                 fit_label = f"R² = {val}"
 
-            elif fit_method == 's':
+            elif fit_measure == 's':
                 s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
                 val = np.round(s, 3)
                 fit_label = f"S = {val}"
 
             else:
-                raise ValueError("method must be one of: True, False, 'r2', 's'")
+                raise ValueError("measure must be one of: True, False, 'r2', 's'")
 
         # add fit label to the legend
         if fit_label is not None:

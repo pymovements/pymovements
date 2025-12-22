@@ -31,7 +31,7 @@ import pymovements as pm
         # Method: moving_average
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 1,
                 'padding': 'nearest',
@@ -42,7 +42,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': None,
@@ -58,7 +58,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 0.0,
@@ -69,7 +69,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 1.0,
@@ -82,7 +82,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 'nearest',
@@ -93,7 +93,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 2,
                 'padding': 'mirror',
@@ -109,7 +109,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': None,
@@ -125,7 +125,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 0.0,
@@ -141,7 +141,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 1.0,
@@ -154,7 +154,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 'nearest',
@@ -170,7 +170,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'measure': 'moving_average',
+                'method': 'moving_average',
                 'n_components': 2,
                 'window_length': 3,
                 'padding': 'mirror',

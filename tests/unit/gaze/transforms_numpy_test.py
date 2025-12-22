@@ -538,7 +538,7 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
         pytest.param(
             {
                 'arr': [0] * 5,
-                'measure': 'smooth',
+                'method': 'smooth',
             },
             ValueError,
             id='list_length_below_six_method_smooth_raises_value_error',
@@ -546,7 +546,7 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
         pytest.param(
             {
                 'arr': [0] * 2,
-                'measure': 'neighbors',
+                'method': 'neighbors',
             },
             ValueError,
             id='list_length_below_three_method_neighbors_raises_value_error',
@@ -554,7 +554,7 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
         pytest.param(
             {
                 'arr': [0],
-                'measure': 'preceding',
+                'method': 'preceding',
             },
             ValueError,
             id='list_length_below_two_method_preceding_raises_value_error',
@@ -562,7 +562,7 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
         pytest.param(
             {
                 'arr': [0] * 10,
-                'measure': 'invalid',
+                'method': 'invalid',
             },
             ValueError,
             id='invalid_method_raises_value_error',
@@ -570,7 +570,7 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
         pytest.param(
             {
                 'arr': np.ones((3, 3, 3)),
-                'measure': 'smooth',
+                'method': 'smooth',
             },
             ValueError,
             id='wrong_dimensions_input_arr_raises_value_error',
@@ -578,7 +578,7 @@ def test_pos2acc_returns(kwargs, padding, expected_value):
         pytest.param(
             {
                 'arr': np.ones(10),
-                'measure': 'smooth',
+                'method': 'smooth',
                 'kwargs': {},
             },
             ValueError,
@@ -592,7 +592,7 @@ def test_pos2vel_raises_error(kwargs, expected_error):
 
 
 @pytest.mark.parametrize(
-    'measure',
+    'method',
     [
         pytest.param('smooth', id='method_smooth'),
         pytest.param('neighbors', id='method_neighbors'),
@@ -631,22 +631,22 @@ def test_pos2vel_returns(method, kwargs, padding, expected_value):
     ('params', 'expected_value'),
     [
         pytest.param(
-            {'measure': 'preceding', 'sampling_rate': 1},
+            {'method': 'preceding', 'sampling_rate': 1},
             np.array([2.0, 0.0] * (100 // 2)),
             id='method_preceding_alternating_velocity',
         ),
         pytest.param(
-            {'measure': 'neighbors', 'sampling_rate': 1},
+            {'method': 'neighbors', 'sampling_rate': 1},
             np.ones((100,)),
             id='method_neighbors_linear_velocity',
         ),
         pytest.param(
-            {'measure': 'smooth', 'sampling_rate': 1},
+            {'method': 'smooth', 'sampling_rate': 1},
             np.ones((100,)),
             id='method_smooth_linear_velocity',
         ),
         pytest.param(
-            {'measure': 'savitzky_golay', 'window_length': 7, 'polyorder': 2, 'sampling_rate': 1},
+            {'method': 'savitzky_golay', 'window_length': 7, 'polyorder': 2, 'sampling_rate': 1},
             np.concatenate([
                 np.array([0.71428571, 0.80952381, 0.9047619]),
                 np.ones((94,)),
@@ -671,7 +671,7 @@ def test_pos2vel_stepped_input_returns(params, expected_value):
     ('params', 'expected_value'),
     [
         pytest.param(
-            {'measure': 'savitzky_golay', 'window_length': 7, 'polyorder': 2, 'sampling_rate': 1},
+            {'method': 'savitzky_golay', 'window_length': 7, 'polyorder': 2, 'sampling_rate': 1},
             np.concatenate([
                 np.array([
                     [0.71428571, 0.71428571],

@@ -1413,7 +1413,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            {'measure': 'moving_average', 'column': 'pixel', 'window_length': 3},
+            {'method': 'moving_average', 'column': 'pixel', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -1443,7 +1443,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            {'measure': 'moving_average', 'column': 'position', 'window_length': 3},
+            {'method': 'moving_average', 'column': 'position', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
