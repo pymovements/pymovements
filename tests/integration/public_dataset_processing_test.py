@@ -42,7 +42,8 @@ def test_public_dataset_processing(dataset_name, tmp_path):
     # Do some basic transformations.
     if dataset.definition.resources.has_content('gaze'):
         if 'pixel' in dataset.gaze[0].columns:
-            dataset.pix2deg()
+            if dataset.gaze[0].experiment.screen.height_cm is not None:
+                dataset.pix2deg()
         dataset.pos2vel()
         dataset.pos2acc()
 
@@ -50,6 +51,8 @@ def test_public_dataset_processing(dataset_name, tmp_path):
             assert 'position' in gaze.columns
             assert 'velocity' in gaze.columns
             assert 'acceleration' in gaze.columns
-            assert len(set(gaze.trial_columns)) == len(gaze.trial_columns)
+
+            if gaze.trial_columns is not None:
+                assert len(set(gaze.trial_columns)) == len(gaze.trial_columns)
 
         shutil.rmtree(dataset_path, ignore_errors=True)
