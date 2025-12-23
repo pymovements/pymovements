@@ -197,8 +197,10 @@ class EventSamplesProcessor:
             )
             # Compute event measure values and include identifier columns.
             result = event_samples.select(
-                *[pl.lit(event[column_name]).alias(column_name)
-                  for column_name in event_identifiers],
+                *[
+                    pl.lit(event[column_name]).alias(column_name)
+                    for column_name in event_identifiers
+                ],
                 *[measure for measure in self.measures],
             )
             results.append(result)
