@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
   "deprecated>=1.2.18",
-  "matplotlib>=3.8.0",
+  "matplotlib>=3.9.0",
   "fastexcel>=0.13.0",
   "numpy>=1.22.4",
   "pandas>=2.1.4",
