@@ -345,7 +345,7 @@ def load_gaze_file(
                 f'Otherwise, specify load_function in the resource definition.',
             )
 
-    load_function_kwargs = resource_definition.load_kwargs
+    load_function_kwargs = deepcopy(resource_definition.load_kwargs)
     if load_function_kwargs is None:
         load_function_kwargs = {}
 
@@ -438,18 +438,19 @@ def load_precomputed_reading_measures(
     Parameters
     ----------
     definition: DatasetDefinition
-        Dataset definition to load precomputed events.
+        Dataset definition to load precomputed reading measures.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
     Returns
     -------
     list[ReadingMeasures]
-        Return list of precomputed event dataframes.
+        Return list of precomputed reading measures.
     """
     precomputed_reading_measures = []
     for file in files:
-        load_function_kwargs = file.definition.load_kwargs
+        load_function_kwargs = deepcopy(file.definition.load_kwargs)
+
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
@@ -548,7 +549,8 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        load_function_kwargs = file.definition.load_kwargs
+        load_function_kwargs = deepcopy(file.definition.load_kwargs)
+
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
