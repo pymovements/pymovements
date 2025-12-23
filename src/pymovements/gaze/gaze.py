@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import inspect
 import math
-import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
@@ -31,6 +30,7 @@ from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import overload
+from warnings import warn
 
 import numpy as np
 import polars
@@ -257,7 +257,7 @@ class Gaze:
             data: polars.DataFrame | None = None,
     ):
         if data is not None:
-            warnings.warn(
+            warn(
                 DeprecationWarning(
                     "Gaze.__init__() argument 'data' is deprecated since version v0.23.0. "
                     "Please use argument 'samples' instead. "
@@ -584,7 +584,7 @@ class Gaze:
                     kwargs['distance'] = 'distance'
 
                     if self.experiment.screen.distance_cm:
-                        warnings.warn(
+                        warn(
                             "Both a distance column and experiment's "
                             'eye-to-screen distance are specified. '
                             'Using eye-to-screen distances from column '
@@ -1124,7 +1124,7 @@ class Gaze:
             If the computed property already exists as a column in ``events``.
         """
         if len(self.events) == 0:
-            warnings.warn(
+            warn(
                 'No events available to compute event properties. '
                 'Did you forget to use detect()?',
             )
@@ -1139,9 +1139,9 @@ class Gaze:
         join_on = identifiers + ['name', 'onset', 'offset']
         column_intersection = set(self.events.columns) & set(results.columns)
         if column_intersection != set(join_on):
-            raise ValueError(
-                'The following columns already exist in event and will be overwritten: '
-                f"{list(column_intersection - join_on)}",
+            warn(
+                "The following columns already exist in event and will be overwritten: "
+                f"{list(column_intersection - set(join_on))}",
             )
 
         if results.height:
@@ -1444,7 +1444,7 @@ class Gaze:
         if flat is not None:
             mode, payload, warn_msg = flat
             if warn_msg:
-                warnings.warn(warn_msg, UserWarning)
+                warn(warn_msg, UserWarning)
             aois: list[polars.DataFrame] = []
             if mode == 'direct':
                 x_eye, y_eye = payload
@@ -2045,7 +2045,7 @@ class Gaze:
         # This can lead to failure in downstream methods that rely on those columns
         # (e.g., transformations).
         if len(self.samples) > 0 and not self.n_components:
-            warnings.warn(
+            warn(
                 'Gaze contains samples but no components could be inferred. \n'
                 'This usually happens if you did not specify any column content'
                 ' and the content could not be autodetected from the column names. \n'
