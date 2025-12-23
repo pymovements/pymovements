@@ -37,7 +37,7 @@ from pymovements.measure.samples import location
     ],
 )
 def test_location_exceptions(init_kwargs, exception, message):
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         location(**init_kwargs)
 
 

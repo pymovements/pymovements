@@ -37,7 +37,7 @@ from pymovements.measure.samples import peak_velocity
     ],
 )
 def test_peak_velocity_init_exceptions(init_kwargs, exception, message):
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         peak_velocity(**init_kwargs)
 
 
@@ -55,7 +55,7 @@ def test_peak_velocity_init_exceptions(init_kwargs, exception, message):
 )
 def test_peak_velocity_exceptions(init_kwargs, input_df, exception, message):
     expression = peak_velocity(**init_kwargs)
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         input_df.select([expression])
 
 

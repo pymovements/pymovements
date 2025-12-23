@@ -40,7 +40,7 @@ from pymovements.measure.samples import amplitude
 )
 def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
     expression = amplitude(**init_kwargs)
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         input_df.select([expression])
 
 

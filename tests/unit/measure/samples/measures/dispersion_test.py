@@ -39,7 +39,7 @@ from pymovements.measure.samples import dispersion
 )
 def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
     expression = dispersion(**init_kwargs)
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         input_df.select([expression])
 
 

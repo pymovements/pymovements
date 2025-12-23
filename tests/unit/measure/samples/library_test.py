@@ -22,19 +22,19 @@ from __future__ import annotations
 
 import pytest
 
-from pymovements import measure
 from pymovements import SampleMeasureLibrary
+from pymovements.measure import samples
 
 
 @pytest.mark.parametrize(
     ('measure', 'name'),
     [
-        pytest.param(measure.samples.amplitude, 'amplitude', id='amplitude'),
-        pytest.param(measure.samples.dispersion, 'dispersion', id='dispersion'),
-        pytest.param(measure.samples.disposition, 'disposition', id='disposition'),
-        pytest.param(measure.samples.location, 'location', id='location'),
-        pytest.param(measure.samples.null_ratio, 'null_ratio', id='null_ratio'),
-        pytest.param(measure.samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
+        pytest.param(samples.amplitude, 'amplitude', id='amplitude'),
+        pytest.param(samples.dispersion, 'dispersion', id='dispersion'),
+        pytest.param(samples.disposition, 'disposition', id='disposition'),
+        pytest.param(samples.location, 'location', id='location'),
+        pytest.param(samples.null_ratio, 'null_ratio', id='null_ratio'),
+        pytest.param(samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
     ],
 )
 def test_measure_registered(measure, name):

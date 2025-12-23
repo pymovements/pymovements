@@ -46,7 +46,7 @@ from pymovements.measure.events import duration
 )
 def test_duration_exceptions(init_kwargs, input_df, exception, message):
     expression = duration(**init_kwargs)
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         input_df.select([expression])
 
 

@@ -60,7 +60,7 @@ def test_event_processor_init(args, kwargs, expected_measures):
     ],
 )
 def test_event_processor_init_exceptions(args, kwargs, exception, message):
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         EventProcessor(*args, **kwargs)
 
 
@@ -179,7 +179,7 @@ def test_event_samples_processor_init(args, kwargs, expected_measures):
     ],
 )
 def test_event_samples_processor_init_exceptions(args, kwargs, exception, message):
-    with pytest.raises(exception, match=message) as excinfo:
+    with pytest.raises(exception, match=message):
         EventSamplesProcessor(*args, **kwargs)
 
 

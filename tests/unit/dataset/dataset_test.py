@@ -2035,7 +2035,7 @@ def test_dataset_compute_event_properties_warns(
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True, events=True)
 
-    with pytest.warns(warning, match=message) as excinfo:
+    with pytest.warns(warning, match=message):
         dataset.compute_event_properties(**property_kwargs)
 
 
