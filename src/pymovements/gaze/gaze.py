@@ -1130,21 +1130,22 @@ class Gaze:
             )
 
         identifiers = self.trial_columns if self.trial_columns is not None else []
-        processor = EventSamplesProcessor(event_properties)
 
-        event_property_names = [property[0] for property in processor.measures]
-        existing_columns = set(self.events.columns) & set(event_property_names)
-        if existing_columns:
+        processor = EventSamplesProcessor(event_properties)
+        results = processor.process(
+            self.events.frame, self.samples, identifiers=identifiers, name=name,
+        )
+
+        join_on = identifiers + ['name', 'onset', 'offset']
+        column_intersection = set(self.events.columns) & set(results.columns)
+        if column_intersection != set(join_on):
             raise ValueError(
-                f"The following event properties already exist and cannot be recomputed: "
-                f"{existing_columns}. Please remove them first.",
+                "The following columns already exist in event and will be overwritten: "
+                f"{list(column_intersection - join_on)}",
             )
 
-        new_properties = processor.process(
-            self.events, self, identifiers=identifiers, name=name,
-        )
-        join_on = identifiers + ['name', 'onset', 'offset']
-        self.events.add_event_properties(new_properties, join_on=join_on)
+        if results.height:
+            self.events.add_event_properties(results, join_on=join_on)
 
     def measure_samples(
             self,

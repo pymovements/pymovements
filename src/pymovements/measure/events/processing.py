@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
+from warnings import warn
 
 import polars as pl
 
@@ -174,9 +175,23 @@ class EventSamplesProcessor:
         if name is not None:
             events = events.filter(pl.col('name').str.contains(f'^{name}$'))
             if len(events) == 0:
-                raise RuntimeError(f'No events with name "{name}" found in data frame')
+                warn(f"No events found with name '{name}'.")
 
         results = []
+
+        if len(events) == 0:
+            measure_columns = [measure.meta.output_name() for measure in self.measures]
+            warn(
+                f"No events available for processing. Creating empty columns for {measure_columns}",
+            )
+
+            # run measures on empty samples data frame.
+            result = pl.LazyFrame(schema=samples.schema).select(
+                *[pl.repeat(None, 0).alias(column_name) for column_name in event_identifiers],
+                *[measure for measure in self.measures],
+            )
+            results.append(result)
+
         for event in events.iter_rows(named=True):
             # Find samples that belong to the current event (lazy evaluation).
             event_samples = samples.lazy().filter(
@@ -190,8 +205,7 @@ class EventSamplesProcessor:
             )
             results.append(result)
 
-        result = pl.concat(results)
-        return result.collect()
+        return pl.concat(results).collect()
 
 
 def _check_measures(

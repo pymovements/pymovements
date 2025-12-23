@@ -1102,6 +1102,7 @@ def test_gaze_drop_event_properties(make_gaze_with_events):
     assert set(gaze.events.event_property_columns) == {'test2'}
 
 
+@pytest.mark.filterwarnings('ignore:No events available for processing.*:UserWarning')
 def test_gaze_compute_event_properties_no_events():
     gaze = Gaze(
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8}),
