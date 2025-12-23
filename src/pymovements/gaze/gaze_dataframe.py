@@ -30,7 +30,6 @@ import polars as pl
 from pymovements._utils._deprecated import DeprecatedMetaClass
 from pymovements._utils._html import repr_html
 from pymovements.events import Events
-from pymovements.gaze import Gaze
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 
