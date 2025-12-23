@@ -2014,29 +2014,29 @@ def test_event_dataframe_add_property_effect_property_columns(
 
 
 @pytest.mark.parametrize(
-    ('property_kwargs', 'exception', 'exception_msg'),
+    ('property_kwargs', 'warning', 'message'),
     [
         pytest.param(
             {'event_properties': 'peak_velocity', 'name': 'taccade'},
-            RuntimeError, 'No events with name "taccade" found in data frame',
+            UserWarning, "No events found with name 'taccade'.",
+            marks=pytest.mark.filterwarnings(
+                'ignore:No events available for processing.*:UserWarning',
+            ),
             id='name_missing',
         ),
     ],
 )
-def test_event_dataframe_add_property_raises_exception(
+def test_dataset_compute_event_properties_warns(
         gaze_dataset_configuration,
         property_kwargs,
-        exception,
-        exception_msg,
+        warning,
+        message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True, events=True)
 
-    with pytest.raises(exception) as excinfo:
+    with pytest.warns(warning, match=message) as excinfo:
         dataset.compute_event_properties(**property_kwargs)
-
-    msg, = excinfo.value.args
-    assert msg == exception_msg
 
 
 @pytest.mark.parametrize(
