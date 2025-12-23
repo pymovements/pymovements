@@ -191,10 +191,7 @@ class EventSamplesProcessor:
             results.append(result)
 
         result = pl.concat(results)
-
-        # Join original events dataframe with measure results.
-        joined = events.lazy().join(result, on=event_identifiers)
-        return joined.collect()
+        return result.collect()
 
 
 def _check_measures(

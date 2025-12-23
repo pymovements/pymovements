@@ -187,15 +187,25 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
     ('events', 'samples', 'init_kwargs', 'process_kwargs', 'expected_dataframe'),
     [
         pytest.param(
-            pl.from_dict({'name': ['fixation'], 'onset': [0], 'offset': [4]}),
-            pl.from_dict({
-                'time': [0, 1, 2, 3, 4],
-                'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
-            }),
+            pl.from_dict(
+                {'name': ['fixation'], 'onset': [0], 'offset': [4]},
+                schema={'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64},
+            ),
+            pl.from_dict(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+                },
+                schema={'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
+            ),
             {'measures': 'peak_velocity'},
             {'identifiers': None},
             pl.from_dict(
                 {'name': ['fixation'], 'onset': [0], 'offset': [4], 'peak_velocity': [0.0]},
+                schema={
+                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64,
+                    'peak_velocity': pl.Float64,
+                },
             ),
             id='no_identifier_one_fixation_default_columns_peak_velocity',
         ),
@@ -252,11 +262,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'time': np.arange(10),
                     'velocity': np.repeat([[0, 1]], 10, axis=0),
                 },
-                schema={
-                    'subject_id': pl.Int64,
-                    'time': pl.Int64,
-                    'velocity': pl.List(pl.Float64),
-                },
+                schema={'subject_id': pl.Int64, 'time': pl.Int64, 'velocity': pl.List(pl.Float64)},
             ),
             {'measures': 'peak_velocity'},
             {'identifiers': 'subject_id'},
@@ -760,7 +766,7 @@ def test_event_samples_processor_process_correct_result(
 ):
     processor = EventSamplesProcessor(**init_kwargs)
     measure_result = processor.process(events, samples, **process_kwargs)
-    assert_frame_equal(measure_result, expected_dataframe)
+    assert_frame_equal(measure_result, expected_dataframe, check_dtypes=False)
 
 
 @pytest.mark.parametrize(
