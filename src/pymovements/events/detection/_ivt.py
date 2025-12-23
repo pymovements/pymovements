@@ -39,7 +39,7 @@ def ivt(
         include_nan: bool = False,
         name: str = 'fixation',
 ) -> Events:
-    """Identification of fixations based on velocity-threshold (I-VT).
+    """Identification of fixations based on a velocity-threshold (I-VT).
 
     The algorithm classifies each point as a fixation if the velocity is below
     the given velocity threshold. Consecutive fixation points are merged into

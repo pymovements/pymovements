@@ -71,7 +71,7 @@ class Gaze:
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
@@ -841,7 +841,7 @@ class Gaze:
 
         Examples
         --------
-        Lets create an example Gaze of 1000Hz with a time column and a position column.
+        Let's create an example Gaze of 1000Hz with a time column and a position column.
         Please note that time is always stored in milliseconds in the Gaze.
 
         >>> df = polars.DataFrame({
@@ -864,7 +864,7 @@ class Gaze:
         │ 4    ┆ [5, 5]    │
         └──────┴───────────┘
 
-        We can now upsample the Gaze to 2000Hz with interpolating the values in
+        We can now upsample the Gaze to 2000Hz by interpolating the values in
         the pixel column.
 
         >>> gaze.resample(
@@ -980,7 +980,7 @@ class Gaze:
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
             the available columns in :py:attr:`~.Gaze.samples`. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
             merged into the existing one. (default: False)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
@@ -1272,7 +1272,7 @@ class Gaze:
         aoi_dataframe: TextStimulus
             Area of interest dataframe.
         eye: str
-            String specificer for inferring eye components. Supported values are: ``auto``,
+            String specifier for inferring eye components. Supported values are: ``auto``,
             ``mono``, ``left``, ``right``, ``cyclops``. Default: ``auto``.
         gaze_type: str
             Whether to use ``position`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
@@ -1281,12 +1281,12 @@ class Gaze:
 
             - If True (default), ``unnest()`` is attempted so that downstream logic can rely on
               flat component columns (e.g. ``pixel_xr``/``pixel_yr``). A few common exceptions
-              from unnesting are tolerated and mapping continues without failing.
+              from unnesting are tolerated, and mapping continues without failing.
             - If False, no unnesting is attempted. Coordinates are extracted per-row from any
               list columns and passed to the AOI lookup without altering the samples' schema.
 
         verbose : bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         """
         # pylint: disable=too-many-statements
         component_suffixes = ['x', 'y', 'xl', 'yl', 'xr', 'yr', 'xa', 'ya']
@@ -1298,7 +1298,7 @@ class Gaze:
                 self.unnest()
             except (Warning, ValueError, AttributeError):  # tolerate common cases
                 # - Warning: nothing to unnest when no list columns exist
-                # - ValueError/AttributeError: shape or configuration related issues
+                # - ValueError/AttributeError: shape or configuration-related issues
                 # In all these cases: continue without failing and use fallback logic.
                 pass
 
@@ -1312,7 +1312,7 @@ class Gaze:
         ]
 
         def _select_components_from_flat_columns() -> tuple | None:
-            """Select flat component strategy.
+            """Select a flat component strategy.
 
             Returns
             -------
@@ -1719,7 +1719,7 @@ class Gaze:
         return gaze
 
     def _check_experiment(self) -> None:
-        """Check if experiment attribute has been set.
+        """Check if the experiment attribute has been set.
 
         Raises
         ------
@@ -1848,7 +1848,7 @@ class Gaze:
         Parameters
         ----------
         eye: str
-            String specificer for inferring eye components. Supported values are: auto, mono, left
+            String specifier for inferring eye components. Supported values are: auto, mono, left
             right, cyclops. Default: auto.
 
         Returns
@@ -2164,7 +2164,7 @@ class Gaze:
     ) -> Gaze:
         """Save data from the Gaze object in the provided directory.
 
-        Depending on parameters it may save three files:
+        Depending on parameters, it may save three files:
         * preprocessed gaze in samples (samples)
         * calculated gaze events (events)
         * metadatata experiment in YAML file (experiment).
@@ -2378,7 +2378,7 @@ def _replace_nones_in_split_keys(
 
 
 def _check_messages(messages: polars.DataFrame) -> None:
-    """Check that messages is a polars.DataFrame with the two columns time and content."""
+    """Check that messages is a polars.DataFrame with the two columns: time and content."""
     if messages is not None:
         if not isinstance(messages, polars.DataFrame):
             raise TypeError(
