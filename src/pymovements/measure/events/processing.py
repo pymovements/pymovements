@@ -190,7 +190,7 @@ class EventSamplesProcessor:
             results.append(result)
 
         for event in events.iter_rows(named=True):
-            event_keys = {column: event[column_name] for column in _identifiers}
+            event_keys = {column: event[column] for column in _identifiers}
 
             # Find samples that belong to the current event (lazy evaluation).
             event_samples = samples.lazy().filter(
