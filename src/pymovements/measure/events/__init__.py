@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+"""Module for event measures."""
 from pymovements.measure.events.measures import duration
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.events.measures import register_event_measure
