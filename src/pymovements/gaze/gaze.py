@@ -1140,7 +1140,7 @@ class Gaze:
         column_intersection = set(self.events.columns) & set(results.columns)
         if column_intersection != set(join_on):
             raise ValueError(
-                "The following columns already exist in event and will be overwritten: "
+                'The following columns already exist in event and will be overwritten: '
                 f"{list(column_intersection - join_on)}",
             )
 

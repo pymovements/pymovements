@@ -20,8 +20,6 @@
 """Module for event processing."""
 from __future__ import annotations
 
-from collections import defaultdict
-from collections.abc import Callable
 from typing import Any
 from warnings import warn
 
@@ -29,7 +27,6 @@ import polars as pl
 
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
-from pymovements.measure.samples.library import SampleMeasure
 from pymovements.measure.samples.library import SampleMeasureLibrary
 
 
@@ -200,7 +197,8 @@ class EventSamplesProcessor:
             )
             # Compute event measure values and include identifier columns.
             result = event_samples.select(
-                *[pl.lit(event[column_name]).alias(column_name) for column_name in event_identifiers],
+                *[pl.lit(event[column_name]).alias(column_name)
+                  for column_name in event_identifiers],
                 *[measure for measure in self.measures],
             )
             results.append(result)

@@ -25,11 +25,11 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events import duration
 from pymovements.measure.events import EventProcessor
 from pymovements.measure.events import EventSamplesProcessor
 from pymovements.measure.samples import peak_velocity
-from pymovements.exceptions import UnknownMeasure
 
 
 @pytest.mark.parametrize(
@@ -323,7 +323,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'time': np.arange(10),
                     'velocity': np.column_stack([
                         np.concatenate([np.ones(5), np.zeros(5)]), np.zeros(10),
-                    ])
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
@@ -366,7 +366,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'position': np.column_stack([
                         np.concatenate([np.ones(5), np.zeros(5)]),
                         np.concatenate([np.zeros(5), np.ones(5)]),
-                    ])
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
@@ -408,7 +408,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'time': np.arange(10),
                     'velocity': np.column_stack([
                         np.arange(0.1, 1.1, 0.1), np.arange(0.1, 1.1, 0.1),
-                    ])
+                    ]),
                 },
                 schema={
                     'subject_id': pl.Int64,
@@ -811,7 +811,7 @@ def test_event_samples_processor_process_correct_result(
             {'measures': 'amplitude'},
             {'identifiers': None},
             UserWarning,
-            "No events available for processing. Creating empty columns for.*amplitude",
+            'No events available for processing. Creating empty columns for.*amplitude',
             id='no_events_amplitude',
         ),
 

@@ -114,7 +114,7 @@ def dispersion(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    result =  x_position.max() - x_position.min() + y_position.max() - y_position.min()
+    result = x_position.max() - x_position.min() + y_position.max() - y_position.min()
 
     return result.alias('dispersion')
 

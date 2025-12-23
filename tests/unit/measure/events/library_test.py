@@ -20,7 +20,6 @@
 """Test module pymovements.events.event_properties."""
 import polars as pl
 import pytest
-from polars.testing import assert_frame_equal
 
 from pymovements.measure.events import duration
 from pymovements.measure.events import EVENT_MEASURES

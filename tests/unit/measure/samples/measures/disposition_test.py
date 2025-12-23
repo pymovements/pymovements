@@ -26,7 +26,7 @@ from polars.testing import assert_frame_equal
 from pymovements.measure.samples import disposition
 
 
-@ pytest.mark.parametrize(
+@pytest.mark.parametrize(
     ('init_kwargs', 'input_df', 'expected_df'),
     [
         pytest.param(
@@ -109,7 +109,7 @@ from pymovements.measure.samples import disposition
     ],
 )
 def test_disposition_has_expected_result(init_kwargs, input_df, expected_df):
-    expression= disposition(**init_kwargs)
-    result_df= input_df.select([expression])
+    expression = disposition(**init_kwargs)
+    result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)
