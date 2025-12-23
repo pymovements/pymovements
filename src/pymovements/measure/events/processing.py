@@ -185,26 +185,27 @@ class EventSamplesProcessor:
             # run measures on empty samples data frame.
             result = pl.LazyFrame(schema=samples.schema).select(
                 *[pl.repeat(None, 0).alias(column_name) for column_name in event_identifiers],
-                *[measure for measure in self.measures],
+                *self.measures,
             )
             results.append(result)
 
         for event in events.iter_rows(named=True):
+            event_keys = {column: event[column_name] for column in _identifiers}
+
             # Find samples that belong to the current event (lazy evaluation).
             event_samples = samples.lazy().filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
-                *[pl.col(identifier) == event[identifier] for identifier in _identifiers],
+                *[pl.col(column) == event_keys[column] for column in _identifiers],
             )
+
             # Compute event measure values and include identifier columns.
             result = event_samples.select(
-                *[
-                    pl.lit(event[column_name]).alias(column_name)
-                    for column_name in event_identifiers
-                ],
-                *[measure for measure in self.measures],
+                *[pl.lit(event_keys[column]).alias(column) for column in event_identifiers],
+                *self.measures,
             )
             results.append(result)
 
+        # Collect results from lazy frame.
         return pl.concat(results).collect()
 
 
