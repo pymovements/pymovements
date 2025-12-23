@@ -43,8 +43,8 @@ from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
-from pymovements.measure import SampleMeasureLibrary
 from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
 
