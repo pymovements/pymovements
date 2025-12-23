@@ -1172,11 +1172,10 @@ class Gaze:
         Examples
         --------
         Let's initialize an example Gaze first:
-        >>> gaze = pm.gaze.from_numpy(
-        ...     pixel=np.concatenate(
-        ...         [np.zeros((2, 40)), np.full((2, 10), np.nan), np.ones((2, 50))],
-        ...         axis=1,
-        ...     ),
+        >>> gaze = Gaze(
+        ...     samples=polars.DataFrame({
+        ...         'pixel': [[312, 448], [317, 405], [None, 399], [320, None], [None, None]],
+        ...     }),
         ... )
 
         You can calculate measures, for example the null ratio like this:
@@ -1187,7 +1186,7 @@ class Gaze:
         │ ---        │
         │ f64        │
         ╞════════════╡
-        │ 0.1        │
+        │ 0.6        │
         └────────────┘
         """
         if isinstance(method, str):
