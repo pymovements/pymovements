@@ -89,6 +89,8 @@ class EventSamplesProcessor:
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
         List of sample measures.
 
+    Raises
+    ------
     UnknownMeasure
         If ``measures`` includes an unknwon measure. See
         :py:mod:`pymovements.measure.samples` for an overview of supported measures.
