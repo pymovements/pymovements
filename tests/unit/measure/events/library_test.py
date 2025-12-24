@@ -17,26 +17,26 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Exceptions module."""
-from __future__ import annotations
+"""Test module pymovements.events.event_properties."""
+import polars as pl
+import pytest
+
+from pymovements.measure.events import duration
+from pymovements.measure.events import EVENT_MEASURES
 
 
-class UnknownMeasure(Exception):
-    """Raised if requested measure is unknown.
-
-    Parameters
-    ----------
-    measure_name: str
-        Name of the property which is invalid.
-
-    known_measures: list[str]
-        List of valid properties.
-    """
-
-    def __init__(self, measure_name: str, known_measures: list[str]):
-        message = f"Measure '{measure_name}' is unknown. Known measures are: {known_measures}"
-        super().__init__(message)
+@pytest.mark.parametrize(
+    ('measure_function', 'measure_name'),
+    [
+        pytest.param(duration, 'duration', id='duration'),
+    ],
+)
+def test_measure_registered(measure_function, measure_name):
+    assert measure_name in EVENT_MEASURES
+    assert EVENT_MEASURES[measure_name] == measure_function
+    assert EVENT_MEASURES[measure_name].__name__ == measure_name
 
 
-class UnknownFileType(RuntimeError):
-    """Raised on unknown file types."""
+@pytest.mark.parametrize('measure_function', EVENT_MEASURES.values())
+def test_measure_returns_polars_expression(measure_function):
+    assert isinstance(measure_function(), pl.Expr)

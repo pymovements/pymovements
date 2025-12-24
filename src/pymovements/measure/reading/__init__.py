@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2024-2025 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,26 +17,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Exceptions module."""
-from __future__ import annotations
+"""Provides access to reading measure classes."""
+from pymovements.measure.reading.frame import ReadingMeasures
 
 
-class UnknownMeasure(Exception):
-    """Raised if requested measure is unknown.
-
-    Parameters
-    ----------
-    measure_name: str
-        Name of the property which is invalid.
-
-    known_measures: list[str]
-        List of valid properties.
-    """
-
-    def __init__(self, measure_name: str, known_measures: list[str]):
-        message = f"Measure '{measure_name}' is unknown. Known measures are: {known_measures}"
-        super().__init__(message)
-
-
-class UnknownFileType(RuntimeError):
-    """Raised on unknown file types."""
+__all__ = [
+    'ReadingMeasures',
+]

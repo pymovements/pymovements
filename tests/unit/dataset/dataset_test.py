@@ -46,7 +46,7 @@ from pymovements.events import fill
 from pymovements.events import idt
 from pymovements.events import ivt
 from pymovements.events import microsaccades
-from pymovements.exceptions import InvalidProperty
+from pymovements.exceptions import UnknownMeasure
 
 
 # pylint: disable=too-many-lines
@@ -1876,24 +1876,26 @@ def test_velocity_columns(gaze_dataset_configuration):
         assert 'velocity' in gaze.columns
 
 
+def test_dataset_compute_event_properties_warns_existing(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(preprocessed=True, events=True)
+
+    measure = ('null_ratio', {'column': 'pixel', 'column_dtype': pl.List})
+    dataset.compute_event_properties(measure)
+
+    message = 'The following columns already exist in event and will be overwritten.*null_ratio.*'
+    with pytest.warns(UserWarning, match=message):
+        dataset.compute_event_properties(measure)
+
+
 @pytest.mark.parametrize(
-    ('property_kwargs', 'exception', 'msg_substrings'),
+    ('property_kwargs', 'exception', 'message'),
     [
         pytest.param(
             {'event_properties': 'foo'},
-            InvalidProperty,
-            ('foo', 'invalid', 'valid', 'peak_velocity'),
-            id='invalid_property',
-        ),
-
-        pytest.param(
-            {'event_properties': 'duration'},
-            ValueError,
-            (
-                'event properties already exist and cannot be recomputed',
-                'duration', 'Please remove them first',
-            ),
-            id='existing_column',
+            UnknownMeasure,
+            "Measure 'foo' is unknown. Known measures are",
+            id='unknown_measure',
         ),
     ],
 )
@@ -1901,17 +1903,13 @@ def test_event_dataframe_add_property_raises_exceptions(
         gaze_dataset_configuration,
         property_kwargs,
         exception,
-        msg_substrings,
+        message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True, events=True)
 
-    with pytest.raises(exception) as excinfo:
+    with pytest.raises(exception, match=message):
         dataset.compute_event_properties(**property_kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
 
 
 @pytest.mark.parametrize(
@@ -2016,29 +2014,29 @@ def test_event_dataframe_add_property_effect_property_columns(
 
 
 @pytest.mark.parametrize(
-    ('property_kwargs', 'exception', 'exception_msg'),
+    ('property_kwargs', 'warning', 'message'),
     [
         pytest.param(
             {'event_properties': 'peak_velocity', 'name': 'taccade'},
-            RuntimeError, 'No events with name "taccade" found in data frame',
+            UserWarning, "No events found with name 'taccade'.",
+            marks=pytest.mark.filterwarnings(
+                'ignore:No events available for processing.*:UserWarning',
+            ),
             id='name_missing',
         ),
     ],
 )
-def test_event_dataframe_add_property_raises_exception(
+def test_dataset_compute_event_properties_warns(
         gaze_dataset_configuration,
         property_kwargs,
-        exception,
-        exception_msg,
+        warning,
+        message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True, events=True)
 
-    with pytest.raises(exception) as excinfo:
+    with pytest.warns(warning, match=message):
         dataset.compute_event_properties(**property_kwargs)
-
-    msg, = excinfo.value.args
-    assert msg == exception_msg
 
 
 @pytest.mark.parametrize(

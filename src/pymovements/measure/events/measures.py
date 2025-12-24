@@ -17,26 +17,43 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Exceptions module."""
+"""Provides functions for calculating event properties."""
 from __future__ import annotations
 
+from collections.abc import Callable
 
-class UnknownMeasure(Exception):
-    """Raised if requested measure is unknown.
+import polars as pl
+
+EVENT_MEASURES: dict[str, Callable] = {}
+
+
+def register_event_measure(function: Callable) -> Callable:
+    """Register an event measure.
 
     Parameters
     ----------
-    measure_name: str
-        Name of the property which is invalid.
+    function: Callable
+        Function to be registered as a valid property.
 
-    known_measures: list[str]
-        List of valid properties.
+    Returns
+    -------
+    Callable
+        The function that was passed as an argument.
     """
-
-    def __init__(self, measure_name: str, known_measures: list[str]):
-        message = f"Measure '{measure_name}' is unknown. Known measures are: {known_measures}"
-        super().__init__(message)
+    EVENT_MEASURES[function.__name__] = function
+    return function
 
 
-class UnknownFileType(RuntimeError):
-    """Raised on unknown file types."""
+@register_event_measure
+def duration() -> pl.Expr:
+    """Duration of an event.
+
+    The duration is defined as the difference between offset time and onset time.
+
+    Returns
+    -------
+    pl.Expr
+        The duration of the event.
+    """
+    result = pl.col('offset') - pl.col('onset')
+    return result.alias('duration')

@@ -17,34 +17,15 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides functions for calculating event properties."""
+"""Provides sample measure implementations."""
 from __future__ import annotations
-
-from collections.abc import Callable
 
 import polars as pl
 
-EVENT_PROPERTIES: dict[str, Callable] = {}
+from pymovements.measure.samples.library import register_sample_measure
 
 
-def register_event_property(function: Callable) -> Callable:
-    """Register a function as a valid property.
-
-    Parameters
-    ----------
-    function: Callable
-        Function to be registered as a valid property.
-
-    Returns
-    -------
-    Callable
-        The function that was passed as an argument.
-    """
-    EVENT_PROPERTIES[function.__name__] = function
-    return function
-
-
-@register_event_property
+@register_sample_measure
 def amplitude(
         *,
         position_column: str = 'position',
@@ -85,13 +66,15 @@ def amplitude(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    return (
+    result = (
         (x_position.max() - x_position.min()).pow(2)
         + (y_position.max() - y_position.min()).pow(2)
     ).sqrt()
 
+    return result.alias('amplitude')
 
-@register_event_property
+
+@register_sample_measure
 def dispersion(
         *,
         position_column: str = 'position',
@@ -131,10 +114,12 @@ def dispersion(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    return x_position.max() - x_position.min() + y_position.max() - y_position.min()
+    result = x_position.max() - x_position.min() + y_position.max() - y_position.min()
+
+    return result.alias('dispersion')
 
 
-@register_event_property
+@register_sample_measure
 def disposition(
         *,
         position_column: str = 'position',
@@ -174,27 +159,15 @@ def disposition(
     x_position = pl.col(position_column).list.get(0)
     y_position = pl.col(position_column).list.get(1)
 
-    return (
+    result = (
         (x_position.head(n=1) - x_position.reverse().head(n=1)).pow(2)
         + (y_position.head(n=1) - y_position.reverse().head(n=1)).pow(2)
     ).sqrt()
 
-
-@register_event_property
-def duration() -> pl.Expr:
-    """Duration of an event.
-
-    The duration is defined as the difference between offset time and onset time.
-
-    Returns
-    -------
-    pl.Expr
-        The duration of the event.
-    """
-    return pl.col('offset') - pl.col('onset')
+    return result.alias('disposition')
 
 
-@register_event_property
+@register_sample_measure
 def location(
         method: str = 'mean',
         *,
@@ -258,10 +231,47 @@ def location(
         component_expressions.append(expression_component)
 
     # Not sure why first() is needed here, but an outer list is being created somehow.
-    return pl.concat_list(component_expressions).first()
+    result = pl.concat_list(component_expressions).first()
+
+    return result.alias('location')
 
 
-@register_event_property
+@register_sample_measure
+def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
+    """Ratio of null values to overall values.
+
+    In the case of list columns, a null element in the list will count as overall null for the
+    respective cell.
+
+    Parameters
+    ----------
+    column: str
+        Name of measured column.
+    column_dtype: pl.DataType
+        Data type of measured column.
+
+    Returns
+    -------
+    pl.Expr
+        Null ratio expression.
+    """
+    if column_dtype in {pl.Float64, pl.Int64}:
+        value = 1 - pl.col(column).fill_nan(pl.lit(None)).count() / pl.col(column).len()
+    elif column_dtype == pl.Utf8:
+        value = 1 - pl.col(column).count() / pl.col(column).len()
+    elif column_dtype == pl.List:
+        non_null_lengths = pl.col(column).list.drop_nulls().drop_nans().list.len()
+        value = 1 - (non_null_lengths == pl.col(column).list.len()).sum() / pl.col(column).len()
+    else:
+        raise TypeError(
+            'column_dtype must be of type {Float64, Int64, Utf8, List}'
+            f' but is of type {column_dtype}',
+        )
+
+    return value.alias('null_ratio')
+
+
+@register_sample_measure
 def peak_velocity(
         *,
         velocity_column: str = 'velocity',
@@ -300,7 +310,9 @@ def peak_velocity(
     x_velocity = pl.col(velocity_column).list.get(0)
     y_velocity = pl.col(velocity_column).list.get(1)
 
-    return (x_velocity.pow(2) + y_velocity.pow(2)).sqrt().max()
+    result = (x_velocity.pow(2) + y_velocity.pow(2)).sqrt().max()
+
+    return result.alias('peak_velocity')
 
 
 def _check_has_two_componenents(n_components: int) -> None:
