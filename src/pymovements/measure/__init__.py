@@ -20,6 +20,7 @@
 """Provides eye movement measures."""
 from pymovements.measure.library import register_sample_measure
 from pymovements.measure.library import SampleMeasureLibrary
+from pymovements.measure.measures import data_loss
 from pymovements.measure.measures import null_ratio
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     'register_sample_measure',
 
     'null_ratio',
+    'data_loss',
 ]
