@@ -498,7 +498,7 @@ def load_precomputed_reading_measure_file(
         load_kwargs = {}
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
-    r_extensions = {'.rda'}
+    r_extensions = {'.rda', '.RDA'}
     excel_extensions = {'.xlsx'}
     valid_extensions = csv_extensions | r_extensions | excel_extensions
     if data_path.suffix in csv_extensions:
@@ -598,7 +598,7 @@ def load_precomputed_event_file(
         load_kwargs = {}
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
-    r_extensions = {'.rda'}
+    r_extensions = {'.rda', '.RDA'}
     json_extensions = {'.jsonl', '.ndjson'}
     valid_extensions = csv_extensions | r_extensions | json_extensions
     if data_path.suffix in csv_extensions:
