@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,11 +34,11 @@ class MECOL1W2(DatasetDefinition):
     """MECOL1W2 dataset :cite:p:`MECOL1W2`.
 
     This dataset includes eye tracking data from several participants in a single
-    session. The participants read 12 paragraphs of texts.
+    session. The participants read several paragraphs of texts.
 
     The participant is instructed to read texts and answer questions.
 
-    Check the respective paper for details :cite:p:`MECOL1W1`.
+    Check the respective paper for details :cite:p:`MECOL1W2`.
 
     Attributes
     ----------
@@ -79,7 +79,7 @@ class MECOL1W2(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.MECOL1W1` definition:
+    :py:class:`~pymovements.datasets.MECOL1W2` definition:
 
     >>> import pymovements as pm
     >>>
