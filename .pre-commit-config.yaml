@@ -56,7 +56,7 @@ repos:
     rev: v1.5.5
     hooks:
       - id: insert-license
-        args: [ --use-current-year ]
+        args: [ --use-current-year, --allow-past-years ]
         types: [ python ]
   - repo: https://github.com/jsh9/pydoclint
     rev: 0.8.3
