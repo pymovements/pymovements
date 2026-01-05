@@ -152,6 +152,10 @@ def data_loss(
     │ 6               │
     └─────────────────┘
     """
+    if not isinstance(time_column, str):
+        raise TypeError(
+            f"invalid type for 'time_column'. Expected 'str' , got '{type(time_column).__name__}'",
+        )
     try:
         timestamps = pl.col(time_column)
     except TypeError as e:
