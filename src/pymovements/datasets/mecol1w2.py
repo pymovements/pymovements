@@ -107,7 +107,7 @@ class MECOL1W2(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/68414623bfeeeea54cd6a273/',
+                    'url': 'https://osf.io/download/4m6cr/',
                     'filename': 'joint_fix_trimmed_l1_wave2_MinusCh_version2.0.RDA',
                     'md5': 'fee2618005ba931ec656c319152f2e97',
                     'filename_pattern': 'joint_fix_trimmed_l1_wave2_MinusCh_version2.0.RDA',
