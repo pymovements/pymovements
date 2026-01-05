@@ -599,7 +599,7 @@ def load_precomputed_event_file(
         load_kwargs = {}
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
-    r_extensions = {'.rda', '.RDA'}
+    r_extensions = {'.rda'}
     json_extensions = {'.jsonl', '.ndjson'}
     valid_extensions = csv_extensions | r_extensions | json_extensions
     data_path_suffix = data_path.suffix.lower()
