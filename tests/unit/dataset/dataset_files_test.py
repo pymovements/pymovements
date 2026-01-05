@@ -883,7 +883,7 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". '\
-        'Supported formats are: .rda, .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
+        'Supported formats are: .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
 
 
 def test_load_precomputed_files_rda(make_example_file):
