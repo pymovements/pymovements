@@ -63,7 +63,7 @@ class DeprecatedMetaClass(type):
             *args: Any,
             **kwargs: Any,
     ) -> DeprecatedMetaClass:
-        """Create new deprecated class."""
+        """Create a new deprecated class."""
         alias = classdict.get('_DeprecatedMetaClass__alias')
         version_deprecated = classdict.get('_DeprecatedMetaClass__version_deprecated')
         version_removed = classdict.get('_DeprecatedMetaClass__version_removed')

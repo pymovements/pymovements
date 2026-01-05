@@ -57,7 +57,7 @@ def idt(
         include_nan: bool = False,
         name: str = 'fixation',
 ) -> Events:
-    """Fixation identification based on dispersion threshold (I-DT).
+    """Fixation identification based on a dispersion threshold (I-DT).
 
     The algorithm identifies fixations by grouping consecutive points
     within a maximum separation (dispersion) threshold and a minimum duration threshold.

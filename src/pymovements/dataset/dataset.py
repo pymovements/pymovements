@@ -323,7 +323,7 @@ class Dataset:
     def load_precomputed_reading_measures(self) -> None:
         """Load precomputed reading measures.
 
-        This method checks that the file information for precomputed reading measures are
+        This method checks that the file information for precomputed reading measures is
         available, then loads each event file listed in
         `self.fileinfo['precomputed_reading_measures']` using the dataset definition and
         path settings. The resulting list of `ReadingMeasures` objects is assigned to
@@ -377,7 +377,7 @@ class Dataset:
             self,
             by: list[str] | str,
     ) -> None:
-        """Split precomputed event data into separated PrecomputedEventDataFrame's.
+        """Split precomputed event data into separated ``PrecomputedEventDataFrame``.
 
         Parameters
         ----------
@@ -445,7 +445,7 @@ class Dataset:
         function: str
             Name of the preprocessing function to apply.
         verbose : bool
-            If True, show progress bar of computation. (default: True)
+            If True, show a progress bar of computation. (default: True)
         **kwargs: Any
             kwargs that will be forwarded when calling the preprocessing method.
 
@@ -528,7 +528,7 @@ class Dataset:
         output_column : str
             Name of the output column.
         verbose : bool
-            If True, show progress of computation. (default: True)
+            If True, show a progress of computation. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
 
@@ -541,7 +541,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply(
             'clip',
@@ -560,7 +560,7 @@ class Dataset:
             fill_null_strategy: str = 'interpolate_linear',
             verbose: bool = True,
     ) -> Dataset:
-        """Resample a DataFrame to a new sampling rate by timestamps in time column.
+        """Resample a DataFrame to a new sampling rate by timestamps in the time column.
 
         The DataFrame is resampled by upsampling or downsampling the data to the new sampling rate.
         Can also be used to achieve a constant sampling rate for inconsistent data.
@@ -578,7 +578,7 @@ class Dataset:
             are: 'forward', 'backward', 'interpolate_linear', 'interpolate_nearest'.
             (default: 'interpolate_linear')
         verbose: bool
-            If True, show progress of computation. (default: True)
+            If True, show a progress of computation. (default: True)
 
         Returns
         -------
@@ -651,7 +651,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply(
             'deg2pix',
@@ -695,7 +695,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply(
             'pos2acc',
@@ -737,7 +737,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
@@ -761,10 +761,10 @@ class Dataset:
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
             the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
 
@@ -808,10 +808,10 @@ class Dataset:
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
             the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
 
@@ -879,7 +879,7 @@ class Dataset:
         name: str | None
             Process only events that match the name. (default: None)
         verbose : bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Raises
         ------
@@ -924,7 +924,7 @@ class Dataset:
         name: str | None
             Process only events that match the name. (default: None)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Returns
         -------
@@ -990,7 +990,7 @@ class Dataset:
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
         extension: str
-            Extension specifies the fileformat to store the data. (default: 'feather')
+            Extension specifies the file format to store the data. (default: 'feather')
         """
         self.save_events(events_dirname, verbose=verbose, extension=extension)
         self.save_preprocessed(preprocessed_dirname, verbose=verbose, extension=extension)
@@ -1096,13 +1096,13 @@ class Dataset:
 
         This downloads all resources of the dataset. Per default this also extracts all archives
         into :py:meth:`Dataset.paths.raw`,
-        To save space on your device you can remove the archive files after
+        To save space on your device, you can remove the archive files after
         successful extraction with ``remove_finished=True``.
 
         If a corresponding file already exists in the local system, its checksum is calculated and
         checked against the expected checksum.
         Downloading will be evaded if the integrity of the existing file can be verified.
-        If the existing file does not match the expected checksum it is overwritten with the
+        If the existing file does not match the expected checksum, it is overwritten with the
         downloaded new file.
 
         Parameters
@@ -1113,7 +1113,7 @@ class Dataset:
             Remove archive files after extraction. (default: False)
         resume: bool
             Resume previous extraction by skipping existing files.
-            Checks for correct size of existing files but not integrity. (default: True)
+            Checks for the correct size of existing files but not integrity. (default: True)
         verbose: int
             Verbosity levels: (1) Show download progress bar and print info messages on downloading
             and extracting archive files without printing messages for recursive archive extraction.
@@ -1161,7 +1161,7 @@ class Dataset:
             If ``True``, remove the top-level directory if it has only one child. (default: True)
         resume: bool
             Resume previous extraction by skipping existing files.
-            Checks for correct size of existing files but not integrity. (default: True)
+            Checks for the correct size of existing files but not integrity. (default: True)
         verbose: int
             Verbosity levels: (1) Print messages for extracting each dataset resource without
             printing messages for recursive archives. (2) Print additional messages for each
@@ -1186,7 +1186,7 @@ class Dataset:
     def path(self) -> Path:
         """The path to the dataset directory.
 
-        The dataset path points to the dataset directory under the root path. Per default the
+        The dataset path points to the dataset directory under the root path. Per default, the
         dataset path points to the exact same directory as the root path. Add ``dataset_dirname``
         to your initialization call to specify an explicit dataset directory in your root path.
 
@@ -1197,7 +1197,7 @@ class Dataset:
 
         Example
         -------
-        By passing a `str` or a `Path` as `path` during initialization you can explicitly set the
+        By passing a `str` or a `Path` as `path` during initialization, you can explicitly set the
         directory path of the dataset:
         >>> import pymovements as pm
         >>>

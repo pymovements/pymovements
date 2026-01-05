@@ -61,7 +61,7 @@ def pix2deg(
     TypeError
         If arr is None.
     ValueError
-        If dimension screen_px or screen_cm don't match dimension of arr.
+        If dimension screen_px or screen_cm doesn't match the dimension of arr.
         If screen_px or screen_cm or one of its elements is zero.
         If distance_cm is zero.
         If origin value is not supported.
@@ -274,7 +274,7 @@ def pos2vel(
         Following methods are available:
         * *smooth*: velocity is calculated from the difference of the mean values
         of the subsequent two samples and the preceding two samples
-        * *neighbors*: velocity is calculated from difference of the subsequent
+        * *neighbors*: velocity is calculated from the difference of the subsequent
         sample and the preceding sample
         * *preceding*: velocity is calculated from the difference of the current
         sample to the preceding sample
@@ -344,11 +344,11 @@ def pos2vel(
         moving_avg = arr[4:N] + arr[3:N - 1] - arr[1:N - 3] - arr[0:N - 4]
         # mean(arr_-2, arr_-1) and mean(arr_1, arr_2) needs division by two
         # window is now 3 samples long (arr_-1.5, arr_0, arr_1+5)
-        # we therefore need a divison by three, all in all it's a division by 6
+        # we therefore need a division by three. All in all it's a division by 6
         v[2:N - 2] = moving_avg * sampling_rate / 6
 
         # for second and second last sample:
-        # calculate vocity from preceding and subsequent sample
+        # calculate velocity from preceding and subsequent sample
         v[1] = (arr[2] - arr[0]) * sampling_rate / 2
         v[N - 2] = (arr[N - 1] - arr[N - 3]) * sampling_rate / 2
 
@@ -396,7 +396,7 @@ def norm(arr: np.ndarray, axis: int | None = None) -> np.ndarray | Any:
     arr: np.ndarray
         Input velocity sequence.
     axis: int | None
-        Set axis to take norm. If None it is inferred from arr.shape. (default: None)
+        Set axis to take norm. If None, it is inferred from arr.shape. (default: None)
 
     Returns
     -------
@@ -406,7 +406,7 @@ def norm(arr: np.ndarray, axis: int | None = None) -> np.ndarray | Any:
     Raises
     ------
     ValueError
-        If no axis is given but the array dimensions are lager than 3.
+        If no axis is given but the array dimensions are larger than 3.
         In that case the axis cannot be inferred.
 
     Examples
@@ -417,7 +417,7 @@ def norm(arr: np.ndarray, axis: int | None = None) -> np.ndarray | Any:
            1.41421356])
     """
     if axis is None:
-        # for single vector and array of vectors the axis is 0
+        # for single vector and array of vectors, the axis is 0
         # shape is assumed to be either (2, ) or (2, sequence_length)
         if arr.ndim in {1, 2}:
             axis = 0

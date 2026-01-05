@@ -56,7 +56,8 @@ def download_file(
     max_redirect_hops : int
         Maximum number of redirect hops allowed. (default: 3)
     verbose : bool
-        If True, show progress bar and print info messages on downloading file. (default: True)
+        If True, show a progress bar and print info messages on the downloading file.
+        (default: True)
 
     Returns
     -------

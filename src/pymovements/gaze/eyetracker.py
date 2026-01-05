@@ -93,7 +93,7 @@ class EyeTracker:
         Returns
         -------
         dict[str, Any]
-            EyeTracker as dictionary.
+            EyeTracker as a dictionary.
         """
         _dict = asdict(self)
 

@@ -83,8 +83,8 @@ class DatasetDefinition:
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
-        If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is `.asc` the keyword arguments
+        If the file extension is `.csv`, the keyword arguments will be passed
+        to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
@@ -102,7 +102,7 @@ class DatasetDefinition:
     trial_columns: list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
 
         .. deprecated:: v0.25.0
@@ -201,7 +201,7 @@ class DatasetDefinition:
         .. deprecated:: v0.22.1
            This field will be removed in v0.27.0.
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe. (default: None)
 
         .. deprecated:: v0.24.1
@@ -215,8 +215,8 @@ class DatasetDefinition:
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
-        If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is `.asc` the keyword arguments
+        If the file extension is `.csv`, the keyword arguments will be passed
+        to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
         will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
         See Notes for more details on how to use this argument.
         (default: None)
@@ -230,7 +230,7 @@ class DatasetDefinition:
     trial_columns: list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
@@ -238,7 +238,7 @@ class DatasetDefinition:
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
@@ -269,26 +269,26 @@ class DatasetDefinition:
        Please specify :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
        This field will be removed in v0.30.0.
 
-    When working with the ``custom_read_kwargs`` attribute there are specific use cases and
+    When working with the ``custom_read_kwargs`` attribute, there are specific use cases and
     considerations to keep in mind, especially for reading csv files:
 
-    1. Custom separator
-    To read a csv file with a custom separator, you can pass the `separator` keyword argument to
-    ``custom_read_kwargs``. For example pass ``custom_read_kwargs={'separator': ';'}`` to
-    read a semicolon-separated csv file.
+    1. Custom separator:
+       To read a csv file with a custom separator, you can pass the `separator` keyword argument to
+       ``custom_read_kwargs``. For example pass ``custom_read_kwargs={'separator': ';'}`` to
+       read a semicolon-separated csv file.
 
-    2. Reading subset of columns
-    To read only specific columns, specify them in ``custom_read_kwargs``. For example:
-    ``custom_read_kwargs={'columns': ['col1', 'col2']}``
+    2. Reading subset of columns:
+       To read only specific columns, specify them in ``custom_read_kwargs``. For example:
+       ``custom_read_kwargs={'columns': ['col1', 'col2']}``
 
-    3. Specifying column datatypes
-    :py:func:`polars.read_csv` infers data types from a fixed number of rows,
-    which might not be accurate for the entire dataset.
-    To ensure correct data types, you can pass a dictionary to the
-    ``schema_overrides`` keyword argument in ``custom_read_kwargs``.
-    Use data types from the :py:mod:`polars` library.
-    For instance:
-    ``custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
+    3. Specifying column datatypes:
+       :py:func:`polars.read_csv` infers data types from a fixed number of rows,
+       which might not be accurate for the entire dataset.
+       To ensure correct data types, you can pass a dictionary to the
+       ``schema_overrides`` keyword argument in ``custom_read_kwargs``.
+       Use data types from the :py:mod:`polars` library.
+       For instance:
+       ``custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -496,7 +496,7 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format(self) -> dict[str, str]:
-        """Regular expression which will be matched before trying to load the file.
+        """Regular expression, which will be matched before trying to load the file.
 
         Namedgroups will appear in the `fileinfo` dataframe.
 

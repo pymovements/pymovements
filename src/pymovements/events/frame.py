@@ -54,7 +54,7 @@ class EventDataFrame(metaclass=DeprecatedMetaClass):
     trials: list[int | float | str] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
-        List of trial columns in passed dataframe.
+        List of trial columns in the passed dataframe.
 
     Attributes
     ----------

@@ -166,7 +166,7 @@ def load_event_files(
         extension: str = 'feather',
         verbose: bool = True,
 ) -> list[Events]:
-    """Load all event files associated to a gaze sample file.
+    """Load all event files associated with a gaze sample file.
 
     Parameters
     ----------
@@ -183,7 +183,7 @@ def load_event_files(
         `tsv`, `txt`.
         (default: 'feather')
     verbose : bool
-        If ``True``, show progress bar. (default: True)
+        If ``True``, show a progress bar. (default: True)
 
     Returns
     -------
@@ -195,7 +195,7 @@ def load_event_files(
     AttributeError
         If `fileinfo` is None or the `fileinfo` dataframe is empty.
     ValueError
-        If extension is not in list of valid extensions.
+        If the extension is not in list of valid extensions.
     """
     list_of_events: list[Events] = []
 
@@ -345,7 +345,7 @@ def load_gaze_file(
                 f'Otherwise, specify load_function in the resource definition.',
             )
 
-    load_function_kwargs = resource_definition.load_kwargs
+    load_function_kwargs = deepcopy(resource_definition.load_kwargs)
     if load_function_kwargs is None:
         load_function_kwargs = {}
 
@@ -438,18 +438,19 @@ def load_precomputed_reading_measures(
     Parameters
     ----------
     definition: DatasetDefinition
-        Dataset definition to load precomputed events.
+        Dataset definition to load precomputed reading measures.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
     Returns
     -------
     list[ReadingMeasures]
-        Return list of precomputed event dataframes.
+        Return list of precomputed reading measures.
     """
     precomputed_reading_measures = []
     for file in files:
-        load_function_kwargs = file.definition.load_kwargs
+        load_function_kwargs = deepcopy(file.definition.load_kwargs)
+
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:
@@ -548,7 +549,8 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        load_function_kwargs = file.definition.load_kwargs
+        load_function_kwargs = deepcopy(file.definition.load_kwargs)
+
         if load_function_kwargs is None:
             load_function_kwargs = {}
         if definition.custom_read_kwargs is not None:

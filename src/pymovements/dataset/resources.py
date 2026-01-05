@@ -141,7 +141,7 @@ class ResourceDefinitions(list):
     ----------
     resources: Iterable[ResourceDefinition | dict[str, Any]] | None
         An iterable of :py:class:`~.ResourceDefinition` instances or dictionaries containing
-        :py:class:`~.ResourceDefinition` parameters. In case an element is a dictionary it will be
+        :py:class:`~.ResourceDefinition` parameters. In case an element is a dictionary, it will be
         converted using :py:meth:`~.ResourceDefinition.from_dict()`.
     """
 

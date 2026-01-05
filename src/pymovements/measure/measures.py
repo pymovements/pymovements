@@ -33,8 +33,8 @@ from pymovements.measure.library import register_sample_measure
 def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     """Ratio of null values to overall values.
 
-    In case of list columns, a null element in the list will count as overall null for the
-    respective cell.
+    In the case of list columns,
+    a null element in the list will count as overall null for the respective cell.
 
     Parameters
     ----------

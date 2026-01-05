@@ -76,7 +76,7 @@ class SampleMeasureLibrary:
         Returns
         -------
         bool
-            True if MeasureLibrary contains method with given name, else False.
+            True if MeasureLibrary contains a method with a given name, else False.
         """
         return name in cls.methods
 

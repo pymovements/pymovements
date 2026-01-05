@@ -31,7 +31,7 @@ def get_filepaths(
 ) -> list[Path]:
     """Get filepaths from rootpath depending on extension or regular expression.
 
-    Passing extension and regex is mutually exclusive.
+    Passing extension and regex are mutually exclusive.
 
     Parameters
     ----------

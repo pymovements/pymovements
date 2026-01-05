@@ -117,7 +117,7 @@ def prepare_figure(
     Returns
     -------
     tuple[plt.Figure, plt.Axes, bool]
-        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes was
+        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes were
         created internally (True) or provided externally (False).
     """
     if ax is None:

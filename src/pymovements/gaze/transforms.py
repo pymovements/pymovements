@@ -85,7 +85,7 @@ class TransformLibrary:
         Returns
         -------
         bool
-            True if TransformsLibrary contains method with given name, else False.
+            True if TransformsLibrary contains a method with a given name, else False.
         """
         return name in cls.methods
 
@@ -118,14 +118,14 @@ def center_origin(
 ) -> pl.Expr:
     """Center pixel data.
 
-    Pixel data will have the coordinates ``(0, 0)`` afterwards.
+    Pixel data will have the coordinates ``(0, 0)`` afterward.
 
     Parameters
     ----------
     screen_resolution: tuple[int, int]
         Pixel screen resolution as tuple (width, height).
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     origin: str
         The location of the pixel origin. Supported values: ``center``, ``upper left``.
         (default: ``upper left``)
@@ -321,7 +321,7 @@ def deg2pix(
         Eye-to-screen distance in centimeters. If a string is passed, it is interpreted as the name
         of a column containing the Eye-to-screen distance in millimiters for each sample.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     pixel_origin: str
         The desired location of the pixel origin. Supported values: ``center``, ``upper left``.
         (default: 'upper left')
@@ -463,7 +463,7 @@ def pos2acc(
     sampling_rate: float
         Sampling rate of input time series.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     degree: int
         The degree of the polynomial to use. (default: 2)
     window_length: int
@@ -513,7 +513,7 @@ def pos2vel(
     method: str
         The method to use for velocity calculation.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     degree: int | None
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
         calculation method. (default: None)
@@ -541,7 +541,7 @@ def pos2vel(
       See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
     * ``fivepoint``: velocity is calculated from the difference of the mean values
       of the subsequent two samples and the preceding two samples
-    * ``neighbors``: velocity is calculated from difference of the subsequent
+    * ``neighbors``: velocity is calculated from the difference of the subsequent
       sample and the preceding sample
     * ``preceding``: velocity is calculated from the difference of the current
       sample to the preceding sample
@@ -776,7 +776,7 @@ def resample(
     * ``forward``: Fill null values with the previous non-null value.
     * ``backward``: Fill null values with the next non-null value.
     * ``interpolate_linear``: Fill null values by linear interpolation.
-    * ``interpolate_nearest``: Fill null values by nearest interpolation.
+    * ``interpolate_nearest``: Fill null values by the nearest interpolation.
 
     """
     if columns == 'all':
@@ -915,7 +915,7 @@ def smooth(
         samples. For ``savitzky_golay`` this is the window size to use for the polynomial fit.
         For ``exponential_moving_average`` this is the span parameter.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     degree: int | None
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
         smoothing method. `degree` must be less than `window_length`. (default: None)
@@ -937,7 +937,7 @@ def smooth(
 
     Notes
     -----
-    There following methods are available for smoothing:
+    The following methods are available for smoothing:
 
     * ``savitzky_golay``: Smooth data by applying a Savitzky-Golay filter.
     See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
