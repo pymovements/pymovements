@@ -486,7 +486,7 @@ def load_precomputed_reading_measure_file(
     ValueError
         Raises ValueError if unsupported file type is encountered.
     """
-    load_kwargs = file.definition.load_kwargs
+    load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
     if dataset_definition.custom_read_kwargs is not None:
@@ -583,7 +583,7 @@ def load_precomputed_event_file(
     ValueError
         If the file format is unsupported based on its extension.
     """
-    load_kwargs = file.definition.load_kwargs
+    load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
     if definition.custom_read_kwargs is not None:
