@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -92,7 +92,7 @@ def main_sequence_plot(
         .. deprecated:: v0.22.0
         Please use the ``events`` argument instead. This argument will be removed in v0.27.0.
     event_name: str
-        Filters events for a particular value in "name" column. (default: 'saccade')
+        Filters events for a particular value in the "name" column. (default: 'saccade')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None

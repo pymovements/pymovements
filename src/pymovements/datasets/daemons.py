@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +62,7 @@ class DAEMONS(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -113,7 +113,7 @@ class DAEMONS(DatasetDefinition):
                     'md5': '2779b4c140a0b1e3c9976488994f08f3',
                     'filename_pattern': r'SAC_{data_split:s}.csv',
                     'filename_pattern_schema_overrides': {'data_split': str},
-                    'load_kwargs': {'null_values': ['NA']},
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': ['NA']}},
                 },
             ],
         ),

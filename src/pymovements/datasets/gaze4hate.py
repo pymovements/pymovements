@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,7 @@ class Gaze4Hate(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -69,7 +69,7 @@ class Gaze4Hate(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -114,7 +114,7 @@ class Gaze4Hate(DatasetDefinition):
                     'filename_pattern': 'gaze4hate_sentence_reading_fix_report.csv',
                     'load_kwargs': {
                         'trial_columns': ['pno', 'sno'],
-                        'separator': '\t', 'null_values': '.',
+                        'read_csv_kwargs': {'separator': '\t', 'null_values': '.'},
                     },
                 },
                 {
@@ -123,7 +123,7 @@ class Gaze4Hate(DatasetDefinition):
                     'filename': 'gaze4hate_sentence_reading_IA_report.csv',
                     'md5': 'e09e791e7d31d6ac3c69cd862d139c57',
                     'filename_pattern': 'gaze4hate_sentence_reading_IA_report.csv',
-                    'load_kwargs': {'separator': '\t'},
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
             ],
         ),

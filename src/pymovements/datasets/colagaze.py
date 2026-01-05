@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,13 @@ class CoLAGaze(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`CoLAGaze`.
 
+    Warning
+    -------
+    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
+    parsing of individual files.
+
+    See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
+
     Attributes
     ----------
     name: str
@@ -59,7 +66,7 @@ class CoLAGaze(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None

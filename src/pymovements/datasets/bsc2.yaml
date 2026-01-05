@@ -12,6 +12,7 @@ resources:
       trial_columns:
         - book_name
         - screen_id
-      separator: "\t"
-      null_values:
-        - "NA"
+      read_csv_kwargs:
+        separator: "\t"
+        null_values:
+          - "NA"

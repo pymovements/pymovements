@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -76,7 +76,7 @@ class SampleMeasureLibrary:
         Returns
         -------
         bool
-            True if MeasureLibrary contains method with given name, else False.
+            True if MeasureLibrary contains a method with a given name, else False.
         """
         return name in cls.methods
 

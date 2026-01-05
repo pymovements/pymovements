@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -225,12 +225,6 @@ html_css_files = [
 html_theme_options = {
     'navigation_with_keys': False,
     'sidebar_includehidden': True,
-    'external_links': [
-        {
-            'name': 'Contributing',
-            'url': 'https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md',
-        },
-    ],
     'icon_links': [
         {
             'name': 'GitHub',

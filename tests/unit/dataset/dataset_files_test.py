@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,9 +31,12 @@ from pymovements import DatasetDefinition
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_files import load_gaze_file
 from pymovements.dataset.dataset_files import load_precomputed_event_file
+from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
+from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 
 
 ASC_TEXT = r"""\
@@ -761,7 +764,7 @@ def test_load_precomputed_rm_file(make_example_file):
 
     reading_measure = load_precomputed_reading_measure_file(
         filepath,
-        custom_read_kwargs={'separator': ','},
+        load_kwargs={'separator': ','},
     )
     expected_df = pl.read_csv(filepath)
 
@@ -779,12 +782,60 @@ def test_load_precomputed_rm_file_no_kwargs(make_example_file):
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
 
 
+def test_load_precomputed_rm_files_rda(make_example_file):
+    filepath1 = make_example_file('rda_test_file.rda', '1.rda')
+    filepath2 = make_example_file('rda_test_file.rda', '2.rda')
+
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    definition = DatasetDefinition(
+        name='rda_dataset',
+        resources=[resource_definition],
+    )
+
+    files = [
+        DatasetFile(path=filepath1, definition=resource_definition, metadata={'subject_id': '1'}),
+        DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
+    ]
+
+    precomputed_rm_list = load_precomputed_reading_measures(definition, files)
+
+    for file, measures in zip(files, precomputed_rm_list):
+        expected_df = pyreadr.read_r(file.path)
+
+        assert_frame_equal(
+            measures.frame,
+            pl.DataFrame(expected_df['joint.fix']),
+            check_column_order=False,
+        )
+
+
+def test_load_precomputed_rm_file_rda(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+
+    gaze = load_precomputed_reading_measure_file(
+        filepath,
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    expected_df = pyreadr.read_r(filepath)
+
+    assert_frame_equal(
+        gaze.frame,
+        pl.DataFrame(expected_df['joint.fix']),
+        check_column_order=False,
+    )
+
+
 def test_load_precomputed_rm_file_xlsx(make_example_file):
     filepath = make_example_file('Sentences.xlsx')
 
     reading_measure = load_precomputed_reading_measure_file(
         filepath,
-        custom_read_kwargs={'sheet_name': 'Sheet 1'},
+        load_kwargs={'sheet_name': 'Sheet 1'},
     )
 
     expected_df = pl.from_dict({'test': ['foo', 'bar'], 'id': [0, 1]})
@@ -808,7 +859,7 @@ def test_load_precomputed_file_csv(make_example_file):
 
     gaze = load_precomputed_event_file(
         filepath,
-        custom_read_kwargs={'separator': ','},
+        load_kwargs={'read_csv_kwargs': {'separator': ','}},
     )
     expected_df = pl.read_csv(filepath)
 
@@ -835,12 +886,43 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
         'Supported formats are: .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
 
 
+def test_load_precomputed_files_rda(make_example_file):
+    filepath1 = make_example_file('rda_test_file.rda', '1.rda')
+    filepath2 = make_example_file('rda_test_file.rda', '2.rda')
+
+    resource_definition = ResourceDefinition(
+        content='precomputed_events',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+
+    definition = DatasetDefinition(
+        name='rda_dataset',
+        resources=[resource_definition],
+    )
+
+    files = [
+        DatasetFile(path=filepath1, definition=resource_definition, metadata={'subject_id': '1'}),
+        DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
+    ]
+
+    precomputed_events_list = load_precomputed_event_files(definition, files)
+
+    for file, events in zip(files, precomputed_events_list):
+        expected_df = pyreadr.read_r(file.path)
+
+        assert_frame_equal(
+            events.frame,
+            pl.DataFrame(expected_df['joint.fix']),
+            check_column_order=False,
+        )
+
+
 def test_load_precomputed_file_rda(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
 
     gaze = load_precomputed_event_file(
         filepath,
-        custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
     )
 
     expected_df = pyreadr.read_r(filepath)
@@ -859,24 +941,7 @@ def test_load_precomputed_file_rda_raise_value_error(make_example_file):
         load_precomputed_event_file(filepath)
 
     msg, = exc.value.args
-    assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
-
-
-def test_load_precomputed_rm_file_rda(make_example_file):
-    filepath = make_example_file('rda_test_file.rda')
-
-    gaze = load_precomputed_reading_measure_file(
-        filepath,
-        custom_read_kwargs={'r_dataframe_key': 'joint.fix'},
-    )
-
-    expected_df = pyreadr.read_r(filepath)
-
-    assert_frame_equal(
-        gaze.frame,
-        pl.DataFrame(expected_df['joint.fix']),
-        check_column_order=False,
-    )
+    assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
 
 
 def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
@@ -886,7 +951,7 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
         load_precomputed_reading_measure_file(filepath)
 
     msg, = exc.value.args
-    assert msg == 'please specify r_dataframe_key in custom_read_kwargs'
+    assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
 
 
 @pytest.mark.parametrize(

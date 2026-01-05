@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,7 @@ from pymovements.datasets.potec import PoTeC
 from pymovements.datasets.potsdam_binge_remote_pvt import PotsdamBingeRemotePVT
 from pymovements.datasets.potsdam_binge_wearable_pvt import PotsdamBingeWearablePVT
 from pymovements.datasets.provo import Provo
+from pymovements.datasets.raccoons import RaCCooNS
 from pymovements.datasets.sb_sat import SBSAT
 from pymovements.datasets.teco import TECO
 from pymovements.datasets.toy_dataset import ToyDataset
@@ -84,6 +85,7 @@ __all__ = [
     'PotsdamBingeRemotePVT',
     'PotsdamBingeWearablePVT',
     'Provo',
+    'RaCCooNS',
     'SBSAT',
     'TECO',
     'ToyDataset',

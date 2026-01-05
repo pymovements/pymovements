@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -65,14 +65,14 @@ def from_csv(
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
@@ -126,7 +126,7 @@ def from_csv(
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
-    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    single column with the corresponding name, e.g. using `pixel_columns` will merge the
     respective columns into the column `pixel`.
 
     The supported number of component columns with the expected order are:
@@ -431,7 +431,7 @@ def from_asc(
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
         The message format is 'MSG <timestamp> <content>'.
         If True, all available messages will be parsed from the asc,
-        alternatively, a list of regular expressions can be passed and only the
+        alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
         implicitly parsing the `MSG <timestamp>` prefix.
@@ -612,7 +612,7 @@ def from_ipc(
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
@@ -913,6 +913,7 @@ def from_begaze(
         metadata_patterns=metadata_patterns,
         encoding=encoding or 'ascii',
         prefer_eye=prefer_eye,
+        harmonise_trial_header=False,
     )
 
     if add_columns is not None:
@@ -930,6 +931,16 @@ def from_begaze(
 
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_begaze_metadata(experiment, parsed_metadata)
+
+    # Ensure required trial columns exist (e.g. 'Stimulus' for DIDEC) even if missing in file
+    if trial_columns:
+        # Normalise to a list of column names to avoid iterating over characters
+        trial_cols_list = (
+            [trial_columns] if isinstance(trial_columns, str) else list(trial_columns)
+        )
+        missing = [c for c in trial_cols_list if c not in samples.columns]
+        if missing:
+            samples = samples.with_columns([pl.lit(None).alias(c) for c in set(missing)])
 
     # Detect pixel columns to pass to Gaze (monocular naming from BeGaze uses 'x_pix', 'y_pix').
     detected_pixel_columns: list[str] | None = [c for c in samples.columns if '_pix' in c]

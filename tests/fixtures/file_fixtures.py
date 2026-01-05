@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,9 @@ def fixture_testfiles_dirpath(request):
 
 
 @pytest.fixture(name='make_example_file', scope='function')
-def fixture_make_example_file(testfiles_dirpath: Path, tmp_path: Path) -> Callable[[str], Path]:
+def fixture_make_example_file(
+        testfiles_dirpath: Path, tmp_path: Path,
+) -> Callable[[str, str | None], Path]:
     """Make a temporary copy of a file from one of the example files in tests/files.
 
     This way each file can be used in tests without the risk of changing contents.
@@ -49,13 +51,33 @@ def fixture_make_example_file(testfiles_dirpath: Path, tmp_path: Path) -> Callab
 
     Returns
     -------
-    Callable[[str], Path]
-        Function that takes a filename and returns the Path to the copied file.
+    Callable[[str, str | None], Path]
+        Function that takes a example_filename and returns the Path to the copied file.
 
     """
-    def _make_example_file(filename: str) -> Path:
-        source_filepath = testfiles_dirpath / filename
-        target_filepath = tmp_path / filename
+    def _make_example_file(example_filename: str, target_filename: str | None = None) -> Path:
+        """Make a temporary copy of a file from one of the example files in tests/files.
+
+        The example file is automatically copied into a ``tmp_path``.
+
+        Parameters
+        ----------
+        example_filename : str
+            Use this file as a source to make the test file.
+        target_filename : str | None
+            Use this as the filename of the target file. If ``None``, use ``example_filename``.
+            (default: None)
+
+        Returns
+        -------
+        Path
+            Path to created example test file.
+
+        """
+        if target_filename is None:
+            target_filename = example_filename
+        source_filepath = testfiles_dirpath / example_filename
+        target_filepath = tmp_path / target_filename
         shutil.copy2(source_filepath, target_filepath)
         return target_filepath
     return _make_example_file

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -70,9 +70,9 @@ def tsplot(
     rotate_ylabels: bool
         Set whether to rotate ylabels. (default: True)
     share_y: bool
-        Set if y-axes should share common axis. (default: True)
+        Set if y-axes should share a common axis. (default: True)
     zero_centered_yaxis: bool
-        Set if y-axis should be zero centered. (default: True)
+        Set if y-axis should be zero-centered. (default: True)
     line_color: tuple[int, int, int] | str
         Set line color. (default: 'k')
     line_width: int

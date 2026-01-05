@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +57,7 @@ class UCL(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -107,7 +107,7 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_events.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.fix',
-                    'load_kwargs': {'separator': '\t', 'null_values': ['NaN']},
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t', 'null_values': ['NaN']}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -115,7 +115,7 @@ class UCL(DatasetDefinition):
                     'filename': 'UCL_measures.zip',
                     'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
                     'filename_pattern': r'eyetracking.RT',
-                    'load_kwargs': {'separator': '\t'},
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
             ],
         ),

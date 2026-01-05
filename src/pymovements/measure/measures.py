@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,8 +29,8 @@ from pymovements.measure.library import register_sample_measure
 def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     """Ratio of null values to overall values.
 
-    In case of list columns, a null element in the list will count as overall null for the
-    respective cell.
+    In the case of list columns,
+    a null element in the list will count as overall null for the respective cell.
 
     Parameters
     ----------

@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -63,6 +63,7 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
             groupdict = match.groupdict()
             # Casting and processing for known fields
             if groupdict.get('sampling_rate') is not None:
+                # Regex only matches numeric forms (optionally with dot), so float cast is safe.
                 try:
                     groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
                 except ValueError:
@@ -109,6 +110,7 @@ def parse_begaze(
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str = 'ascii',
         prefer_eye: str = 'L',
+        harmonise_trial_header: bool = True,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
     """Parse BeGaze raw data export file.
 
@@ -145,6 +147,8 @@ def parse_begaze(
         Text encoding of the file. (default: 'ascii')
     prefer_eye: str
         Preferred eye to parse when both eyes are present: 'L' or 'R'. (default: 'L')
+    harmonise_trial_header: bool
+        Whether to harmonise trial headers across multiple trials. (default: True)
 
     Returns
     -------
@@ -268,8 +272,14 @@ def parse_begaze(
                 header_cols = [c.strip() for c in normalized.split('\t')]
             else:
                 # Space-separated headers cannot reliably represent multi-word column names
-                # like "L POR X [px]". We detect tracked eye from the raw string, but we
-                # will not attempt to parse samples from such headers.
+                # like "L POR X [px]". We only accept such a line as the header marker
+                # if there are tab-separated rows following it. Otherwise, keep searching
+                # for a valid tabular header and let the generic error trigger later.
+                has_tabular_rows_ahead = any(('\t' in line)
+                                             for line in lines[idx + 1:] if line.strip())
+                if not has_tabular_rows_ahead:
+                    # Do not set header_row_index, continue scanning for a proper header
+                    continue
                 header_cols = None
             header_row_index = idx
             # Determine tracked eye from presence of L/R POR columns
@@ -295,10 +305,10 @@ def parse_begaze(
     selected_eye = prefer_eye.upper() if prefer_eye else 'L'
 
     def has_eye_columns(eye: str) -> bool:
+        # Only require X/Y columns - pupil diameter may be absent in some exports (e.g. DIDEC)
         return (
             f'{eye} POR X [px]' in header_idx and
-            f'{eye} POR Y [px]' in header_idx and
-            f'{eye} Pupil Diameter [mm]' in header_idx
+            f'{eye} POR Y [px]' in header_idx
         )
 
     if not has_eye_columns(selected_eye):
@@ -316,6 +326,38 @@ def parse_begaze(
     parse_samples = False
     if header_row_index is not None and header_cols is not None:
         parse_samples = has_eye_columns('L') or has_eye_columns('R')
+
+    # Prepare optional sample columns present in header
+    # (e.g. Stimulus required by some datasets)
+    optional_col_map: dict[str, str] = {}
+    if header_cols is not None:
+        # Build a case-insensitive view over header names for optional column harmonisation.
+        header_cols_lc = [c.lower() for c in header_cols]
+
+        # Stimulus: keep name 'Stimulus'. Map only if not already present in samples.
+        if 'stimulus' in header_cols_lc and 'Stimulus' not in samples:
+            src_name = header_cols[header_cols_lc.index('stimulus')]
+            samples['Stimulus'] = []
+            optional_col_map[src_name] = 'Stimulus'
+
+        # Optionally harmonise a header 'Trial' column into internal 'trial_id'.
+        # If patterns already define 'trial_id', do NOT create a separate 'Trial' column.
+        if harmonise_trial_header:
+            trial_src_name = None
+            for i, name_lc in enumerate(header_cols_lc):  # pragma: no cover
+                if 'trial' in name_lc:
+                    trial_src_name = header_cols[i]
+                    break
+            if trial_src_name is not None and 'trial_id' not in samples:
+                samples['trial_id'] = []
+                optional_col_map[trial_src_name] = 'trial_id'
+
+        # Task: map header 'Task' (case-insensitive) to 'task' only if not already present
+        # from patterns.
+        if 'task' in header_cols_lc and 'task' not in samples:
+            src_name = header_cols[header_cols_lc.index('task')]
+            samples['task'] = []
+            optional_col_map[src_name] = 'task'
 
     # iterate over data lines following the header row
     if header_row_index is None:
@@ -364,8 +406,8 @@ def parse_begaze(
                     compiled_metadata_patterns.remove(pattern_dict)
             continue
 
-        # skip if not a sample line
-        type_val = parts[header_idx.get('Type', 1)] if header_idx else 'SMP'
+        # skip if not a sample line. If we have no valid header, never treat as SMP.
+        type_val = parts[header_idx.get('Type', 1)] if header_idx else '-'
         if type_val != 'SMP':
             # Apply metadata_patterns to message lines as well (use prefixed patterns)
             if compiled_metadata_patterns_prefixed:
@@ -392,10 +434,12 @@ def parse_begaze(
         y_s = parts[header_idx[f'{selected_eye} POR Y [px]']]
 
         pupil_header_mm = f'{selected_eye} Pupil Diameter [mm]'
-        pupil_col_idx = header_idx[pupil_header_mm]
-        pupil_s = parts[pupil_col_idx] if pupil_col_idx is not None and pupil_col_idx < len(
-            parts,
-        ) else 'nan'
+        if pupil_header_mm in header_idx:
+            pupil_col_idx = header_idx[pupil_header_mm]
+            pupil_s = parts[pupil_col_idx] if pupil_col_idx < len(parts) else 'nan'
+        else:
+            # Some exports (e.g. DIDEC) do not include per-eye pupil diameter columns
+            pupil_s = 'nan'
 
         x_pix = check_nan(x_s)
         y_pix = check_nan(y_s)
@@ -426,6 +470,23 @@ def parse_begaze(
         samples['pupil'].append(pupil)
         for additional_column in additional_columns:
             samples[additional_column].append(current_additional[additional_column])
+        # Append optional sample columns present in header (e.g. Stimulus, Trial)
+        # Use mapping so we never create duplicate 'Trial' vs 'trial_id'
+        for src_col, dst_col in optional_col_map.items():
+            try:
+                val: str | None = parts[header_idx[src_col]]
+            except (IndexError, KeyError):
+                # Some exports may have fewer trailing columns on certain lines.
+                # As a conservative fallback for Stimulus/Task-like trailing columns,
+                # try the last field when appropriate - otherwise keep None.
+                lower_src = src_col.lower()
+                if lower_src.endswith('stimulus') or lower_src == 'stimulus':
+                    val = parts[-1] if len(parts) >= 1 else None
+                elif lower_src == 'task':
+                    val = parts[-1] if len(parts) >= 1 else None
+                else:
+                    val = None
+            samples[dst_col].append(val)
 
         # metadata counters
         if event == 'Blink':
