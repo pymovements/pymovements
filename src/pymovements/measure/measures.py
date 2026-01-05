@@ -156,12 +156,7 @@ def data_loss(
         raise TypeError(
             f"invalid type for 'time_column'. Expected 'str' , got '{type(time_column).__name__}'",
         )
-    try:
-        timestamps = pl.col(time_column)
-    except TypeError as e:
-        raise TypeError(
-            f"invalid type for 'time_column'. Expected 'str' , got '{type(time_column).__name__}'",
-        ) from e
+    timestamps = pl.col(time_column)
 
     # Validate sampling_rate
     if not isinstance(sampling_rate, (int, float)) or sampling_rate <= 0:
