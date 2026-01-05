@@ -459,7 +459,7 @@ def load_precomputed_reading_measures(
 
 
 def load_precomputed_reading_measure_file(
-        file: DatasetFile
+        file: DatasetFile,
         dataset_definition: DatasetDefinition,
 ) -> ReadingMeasures:
     """Load precomputed reading measure from file.
@@ -554,7 +554,7 @@ def load_precomputed_event_files(
 
 
 def load_precomputed_event_file(
-        file: DatasetFile
+        file: DatasetFile,
         dataset_definition: DatasetDefinition,
 ) -> PrecomputedEventDataFrame:
     """Load precomputed events from a single file.
