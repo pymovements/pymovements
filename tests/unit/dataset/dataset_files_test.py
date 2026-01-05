@@ -851,7 +851,7 @@ def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". Supported formats are: '\
-        '.RDA, .csv, .rda, .tsv, .txt, .xlsx'
+        '.csv, .rda, .tsv, .txt, .xlsx'
 
 
 def test_load_precomputed_file_csv(make_example_file):
@@ -883,7 +883,7 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". '\
-        'Supported formats are: .RDA, .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
+        'Supported formats are: .rda, .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
 
 
 def test_load_precomputed_files_rda(make_example_file):

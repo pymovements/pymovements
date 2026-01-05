@@ -498,13 +498,14 @@ def load_precomputed_reading_measure_file(
         load_kwargs = {}
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
-    r_extensions = {'.rda', '.RDA'}
+    r_extensions = {'.rda'}
     excel_extensions = {'.xlsx'}
     valid_extensions = csv_extensions | r_extensions | excel_extensions
-    if data_path.suffix in csv_extensions:
+    data_path_suffix = data_path.suffix.lower()
+    if data_path_suffix in csv_extensions:
         read_kwargs = load_kwargs.pop('read_csv_kwargs', {})
         precomputed_reading_measure_df = pl.read_csv(data_path, **read_kwargs)
-    elif data_path.suffix in r_extensions:
+    elif data_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
             precomputed_r = pyreadr.read_r(data_path)
             # convert to polars DataFrame because read_r has no .clone().
@@ -513,12 +514,12 @@ def load_precomputed_reading_measure_file(
             )
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
-    elif data_path.suffix in excel_extensions:
+    elif data_path_suffix in excel_extensions:
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
         precomputed_reading_measure_df = pl.read_excel(data_path, **read_kwargs)
     else:
         raise ValueError(
-            f'unsupported file format "{data_path.suffix}". '
+            f'unsupported file format "{data_path_suffix}". '
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
@@ -601,10 +602,11 @@ def load_precomputed_event_file(
     r_extensions = {'.rda', '.RDA'}
     json_extensions = {'.jsonl', '.ndjson'}
     valid_extensions = csv_extensions | r_extensions | json_extensions
-    if data_path.suffix in csv_extensions:
+    data_path_suffix = data_path.suffix.lower()
+    if data_path_suffix in csv_extensions:
         read_kwargs = load_kwargs.pop('read_csv_kwargs', {})
         precomputed_event_df = pl.read_csv(data_path, **read_kwargs)
-    elif data_path.suffix in r_extensions:
+    elif data_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
             precomputed_r = pyreadr.read_r(data_path)
             # convert to polars DataFrame because read_r has no .clone().
@@ -613,12 +615,12 @@ def load_precomputed_event_file(
             )
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
-    elif data_path.suffix in json_extensions:
+    elif data_path_suffix in json_extensions:
         read_kwargs = load_kwargs.pop('read_ndjson_kwargs', {})
         precomputed_event_df = pl.read_ndjson(data_path, **read_kwargs)
     else:
         raise ValueError(
-            f'unsupported file format "{data_path.suffix}". '
+            f'unsupported file format "{data_path_suffix}". '
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
