@@ -62,6 +62,8 @@ class Gaze:
         The experiment definition. (default: None)
     events: pm.Events | None
         A dataframe of events in the gaze signal. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. (default: None)
@@ -114,6 +116,10 @@ class Gaze:
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata.
+    messages: polars.DataFrame | None
+        DataFrame containing messages from the experiment session.
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
@@ -225,6 +231,8 @@ class Gaze:
     experiment: Experiment | None
 
     metadata: dict[str, Any]
+
+    messages: polars.DataFrame | None
 
     trial_columns: list[str] | None
 
