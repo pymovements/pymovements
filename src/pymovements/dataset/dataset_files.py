@@ -586,8 +586,8 @@ def load_precomputed_event_file(
     load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
-    if definition.custom_read_kwargs is not None:
-        custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
+    if dataset_definition.custom_read_kwargs is not None:
+        custom_read_kwargs = dataset_definition.custom_read_kwargs.get('precomputed_events', {})
         load_kwargs.update(custom_read_kwargs)
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
