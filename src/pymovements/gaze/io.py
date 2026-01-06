@@ -110,6 +110,8 @@ def from_csv(
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
         for columns. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     **kwargs: Any
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
@@ -436,6 +438,8 @@ def from_asc(
         Regular expressions are only applied to the message content,
         implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
     Returns
     -------
@@ -625,6 +629,8 @@ def from_ipc(
         (default: None)
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     **kwargs: Any
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`.
 
@@ -899,6 +905,8 @@ def from_begaze(
         Text encoding of the file. Defaults to ASCII, which is the common BeGaze export encoding.
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
     Returns
     -------
