@@ -188,7 +188,7 @@ nitpick_ignore_regex = [
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
-        r'DatasetDefinitionClass|measure\.library\.SampleMeasure)$',
+        r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
 
     # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
