@@ -302,8 +302,6 @@ def load_gaze_file(
     ----------
     file: DatasetFile
         Load this gaze sample dataset file.
-    resource_definition: ResourceDefinition
-        Use this ResourceDefinition to get the correct load function and keyword arguments.
     dataset_definition: DatasetDefinition
         The dataset definition.
     preprocessed: bool
@@ -471,10 +469,10 @@ def load_precomputed_reading_measure_file(
 
     Parameters
     ----------
-    data_path:  str | Path
-        Path to file to be read.
-    load_kwargs: dict[str, Any] | None
-        Custom read keyword arguments for polars. (default: None)
+    file: DatasetFile
+        Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
+    dataset_definition: DatasetDefinition
+        Use `DatasetDefinition.custom_read_kwargs` if defined there.
 
     Returns
     -------
@@ -567,11 +565,11 @@ def load_precomputed_event_file(
 
     Parameters
     ----------
-    data_path:  str | Path
-        Path to file to be read.
-
-    load_kwargs: dict[str, Any] | None
-        Custom read keyword arguments for polars. (default: None)
+    file: DatasetFile
+        Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
+        Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
+    dataset_definition: DatasetDefinition
+        Use `DatasetDefinition.custom_read_kwargs` if defined there.
 
     Returns
     -------
