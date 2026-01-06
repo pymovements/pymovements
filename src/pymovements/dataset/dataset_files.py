@@ -72,7 +72,7 @@ class DatasetFile:
 
     path: Path
     definition: ResourceDefinition
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None = None
 
 
 def scan_dataset(
