@@ -57,8 +57,9 @@ class DatasetFile:
         Absolute path of the dataset file.
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        (default: None)
 
     Parameters
     ----------
@@ -66,8 +67,9 @@ class DatasetFile:
         Absolute path of the dataset file.
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        (default: None)
     """
 
     path: Path

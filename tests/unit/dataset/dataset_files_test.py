@@ -761,7 +761,6 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
 def test_load_precomputed_rm_file(make_example_file):
     filepath = make_example_file('copco_rm_dummy.csv')
 
-
     reading_measure = load_precomputed_reading_measure_file(
         filepath,
         load_kwargs={'separator': ','},
