@@ -1725,6 +1725,18 @@ def test_gaze_init_events(events, init_kwargs):
     assert gaze.events.frame is not expected_events
 
 
+@pytest.mark.parametrize(
+    ('metadata', 'expected_metadata'),
+    [
+        pytest.param(None, {}, id='None'),
+        pytest.param({'test': 'value'}, {'test': 'value'}, id='dict'),
+    ],
+)
+def test_gaze_has_correct_metadata(metadata, expected_metadata):
+    gaze = Gaze(metadata=metadata)
+    assert gaze.metadata == expected_metadata
+
+
 def test_gaze_init_warnings():
     with pytest.warns(UserWarning) as record:
         Gaze(samples=pl.from_dict({'a': [1, 2, 3]}))

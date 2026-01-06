@@ -737,6 +737,15 @@ def test_load_correct_raw_gazes(gaze_dataset_configuration):
         )
 
 
+def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load()
+
+    expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze'].drop('filepath')
+    for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
+        assert gaze.metadata == gaze_fileinfo
+
+
 def test_loaded_gazes_do_not_share_experiment_with_definition(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load()
