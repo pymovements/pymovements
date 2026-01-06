@@ -39,6 +39,7 @@ from pymovements.datasets.iitb_hgc import IITB_HGC
 from pymovements.datasets.interead import InteRead
 from pymovements.datasets.judo1000 import JuDo1000
 from pymovements.datasets.mecol1w1 import MECOL1W1
+from pymovements.datasets.mecol1w2 import MECOL1W2
 from pymovements.datasets.mecol2w1 import MECOL2W1
 from pymovements.datasets.mecol2w2 import MECOL2W2
 from pymovements.datasets.mousecursor import MouseCursor
@@ -78,6 +79,7 @@ __all__ = [
     'JuDo1000',
     'MouseCursor',
     'MECOL1W1',
+    'MECOL1W2',
     'MECOL2W1',
     'MECOL2W2',
     'OneStop',

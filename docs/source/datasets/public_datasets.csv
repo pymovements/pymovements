@@ -21,6 +21,7 @@ Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampli
 ":py:class:`~pymovements.datasets.JuDo1000` :cite:p:`JuDo1000`",X,,,150,4,1000 Hz,Random Dots
 ":py:class:`~pymovements.datasets.MouseCursor` :cite:p:`MouseCursor`",X,,,2,1,3 Hz,Mouse Cursor
 ":py:class:`~pymovements.datasets.MECOL1W1` :cite:p:`MECOL1W1`",,X,X,580,1,Various Hz,Text (documents)
+":py:class:`~pymovements.datasets.MECOL1W2` :cite:p:`MECOL1W2`",,X,X,654,1,Various Hz,Text (documents)
 ":py:class:`~pymovements.datasets.MECOL2W1` :cite:p:`MECOL2W1`",,X,,542,1,Various Hz,Text (documents)
 ":py:class:`~pymovements.datasets.MECOL2W2` :cite:p:`MECOL2W2`",,X,,660,1,Various Hz,Text (documents)
 ":py:class:`~pymovements.datasets.OneStop` :cite:p:`OneStop`",,X,X,360,1,1000 Hz,Text (documents)

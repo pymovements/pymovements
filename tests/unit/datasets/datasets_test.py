@@ -50,6 +50,7 @@ from pymovements import DatasetLibrary
         pytest.param(pm.datasets.IITB_HGC, 'IITB_HGC', id='IITB_HGC'),
         pytest.param(pm.datasets.JuDo1000, 'JuDo1000', id='JuDo1000'),
         pytest.param(pm.datasets.MECOL1W1, 'MECOL1W1', id='MECOL1W1'),
+        pytest.param(pm.datasets.MECOL1W2, 'MECOL1W2', id='MECOL1W2'),
         pytest.param(pm.datasets.MECOL2W1, 'MECOL2W1', id='MECOL2W1'),
         pytest.param(pm.datasets.MECOL2W2, 'MECOL2W2', id='MECOL2W2'),
         pytest.param(pm.datasets.MouseCursor, 'MouseCursor', id='MouseCursor'),
