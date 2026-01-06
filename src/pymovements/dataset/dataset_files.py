@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
+from dataclasses import field
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -57,9 +58,8 @@ class DatasetFile:
         Absolute path of the dataset file.
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
-    metadata: dict[str, Any] | None
+    metadata: dict[str, Any]
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
-        (default: None)
 
     Parameters
     ----------
@@ -67,14 +67,14 @@ class DatasetFile:
         Absolute path of the dataset file.
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
-    metadata: dict[str, Any] | None
+    metadata: dict[str, Any]
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
-        (default: None)
+        (default: {})
     """
 
     path: Path
     definition: ResourceDefinition
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def scan_dataset(
