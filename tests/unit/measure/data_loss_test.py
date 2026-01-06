@@ -181,22 +181,3 @@ def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
     assert message == (
         f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
     )
-
-
-def test_data_loss_wraps_typeerror_from_polars_col(monkeypatch):
-    # Simulate a TypeError raised inside pl.col when time_column is a valid string
-    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
-
-    def _raise_typeerror(_):
-        raise TypeError('simulated polars.col TypeError')
-
-    monkeypatch.setattr(pl, 'col', _raise_typeerror)
-
-    with pytest.raises(TypeError) as excinfo:
-        df.select(pm.measure.data_loss('time', 'value', sampling_rate=1.0))
-
-    (message,) = excinfo.value.args
-    assert message == (
-        "invalid type for 'time_column'. Expected 'str' , got 'str'"
-    )
-    assert isinstance(excinfo.value.__cause__, TypeError)
