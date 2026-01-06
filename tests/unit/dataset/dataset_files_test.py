@@ -840,6 +840,26 @@ def test_load_precomputed_rm_file_rda(make_example_file):
     )
 
 
+@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning')
+def test_load_precomputed_rm_file_rda_dataset_definition_kwargs(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+    resource_definition = ResourceDefinition(content='precomputed_reading_measures')
+    file = DatasetFile(path=filepath, definition=resource_definition)
+
+    dataset_definition = DatasetDefinition(
+        custom_read_kwargs={'precomputed_reading_measures': {'r_dataframe_key': 'joint.fix'}},
+    )
+    gaze = load_precomputed_reading_measure_file(file, dataset_definition=dataset_definition)
+
+    expected_df = pyreadr.read_r(file.path)
+
+    assert_frame_equal(
+        gaze.frame,
+        pl.DataFrame(expected_df['joint.fix']),
+        check_column_order=False,
+    )
+
+
 def test_load_precomputed_rm_file_xlsx(make_example_file):
     filepath = make_example_file('Sentences.xlsx')
     resource_definition = ResourceDefinition(
@@ -947,6 +967,26 @@ def test_load_precomputed_file_rda(make_example_file):
     file = DatasetFile(path=filepath, definition=resource_definition)
 
     gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
+
+    expected_df = pyreadr.read_r(file.path)
+
+    assert_frame_equal(
+        gaze.frame,
+        pl.DataFrame(expected_df['joint.fix']),
+        check_column_order=False,
+    )
+
+
+@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning')
+def test_load_precomputed_file_rda_dataset_definition_kwargs(make_example_file):
+    filepath = make_example_file('rda_test_file.rda')
+    resource_definition = ResourceDefinition(content='precomputed_events')
+    file = DatasetFile(path=filepath, definition=resource_definition)
+
+    dataset_definition = DatasetDefinition(
+        custom_read_kwargs={'precomputed_events': {'r_dataframe_key': 'joint.fix'}},
+    )
+    gaze = load_precomputed_event_file(file, dataset_definition=dataset_definition)
 
     expected_df = pyreadr.read_r(file.path)
 
