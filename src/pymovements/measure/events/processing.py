@@ -41,8 +41,8 @@ class EventProcessor:
     Raises
     ------
     UnknownMeasure
-        If ``measures`` includes an unknwon measure. See
-        :py:mod:`pymovements.measure.events` for an overview of supported measures.
+        If ``measures`` includes an unknwon measure. See :ref:`event-measures` for an overview
+        of supported measures.
     """
 
     def __init__(self, measures: str | list[str]):
@@ -92,8 +92,8 @@ class EventSamplesProcessor:
     Raises
     ------
     UnknownMeasure
-        If ``measures`` includes an unknwon measure. See
-        :py:mod:`pymovements.measure.samples` for an overview of supported measures.
+        If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+        :ref:`event-measures` for an overview of supported measures.
     """
 
     def __init__(

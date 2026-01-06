@@ -884,9 +884,8 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See
-            :py:mod:`pymovements.measure.events` and :py:mod:`pymovements.measure.samples`
-            for an overview of supported measures.
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         ValueError
@@ -935,9 +934,8 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See
-            :py:mod:`pymovements.measure.events` and :py:mod:`pymovements.measure.samples`
-            for an overview of supported measures.
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(
             event_properties=event_properties,
