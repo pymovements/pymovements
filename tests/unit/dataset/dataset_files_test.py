@@ -881,7 +881,7 @@ def test_load_precomputed_file_csv(make_example_file):
 
     gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
 
-    expected_df = pl.read_csv(file)
+    expected_df = pl.read_csv(file.path)
     assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
 
 
@@ -948,7 +948,7 @@ def test_load_precomputed_file_rda(make_example_file):
 
     gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
 
-    expected_df = pyreadr.read_r(file)
+    expected_df = pyreadr.read_r(file.path)
 
     assert_frame_equal(
         gaze.frame,
