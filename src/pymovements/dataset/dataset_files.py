@@ -328,12 +328,13 @@ def load_gaze_file(
     else:
         load_function_name = file.definition.load_function
 
+    file_path_suffix = file.path.suffix.lower()
     if load_function_name is None:
-        if file.path.suffix in {'.csv', '.txt', '.tsv'}:
+        if file_path_suffix in {'.csv', '.txt', '.tsv'}:
             load_function_name = 'from_csv'
-        elif file.path.suffix == '.feather':
+        elif file_path_suffix == '.feather':
             load_function_name = 'from_ipc'
-        elif file.path.suffix == '.asc':
+        elif file_path_suffix == '.asc':
             load_function_name = 'from_asc'
         else:
             valid_extensions = ['csv', 'tsv', 'txt', 'feather', 'asc']
@@ -517,7 +518,7 @@ def load_precomputed_reading_measure_file(
         precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
         raise ValueError(
-            f'unsupported file format "{file_path_suffix}". '
+            f'unsupported file format "{file.path.suffix}". '
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
@@ -613,7 +614,7 @@ def load_precomputed_event_file(
         precomputed_event_df = pl.read_ndjson(file.path, **read_kwargs)
     else:
         raise ValueError(
-            f'unsupported file format "{file_path_suffix}". '
+            f'unsupported file format "{file.path.suffix}". '
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
