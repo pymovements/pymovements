@@ -315,7 +315,7 @@ def test_load_eyelink_file_has_expected_trial_columns(
     resource_definition = ResourceDefinition(
         content='gaze', load_function='from_asc', load_kwargs=load_kwargs,
     )
-    file = DatasetFile(path=filepath, deifnition=resource_definition)
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
     gaze = load_gaze_file(
         file=file,
@@ -760,10 +760,14 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
 
 def test_load_precomputed_rm_file(make_example_file):
     filepath = make_example_file('copco_rm_dummy.csv')
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'separator': ','},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
     reading_measure = load_precomputed_reading_measure_file(
-        filepath,
-        load_kwargs={'separator': ','},
+        file, dataset_definition=DatasetDefinition(),
     )
     expected_df = pl.read_csv(filepath)
 
@@ -772,9 +776,12 @@ def test_load_precomputed_rm_file(make_example_file):
 
 def test_load_precomputed_rm_file_no_kwargs(make_example_file):
     filepath = make_example_file('copco_rm_dummy.csv')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    resource_definition = ResourceDefinition(content='precomputed_reading_measures')
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
-    reading_measure = load_precomputed_reading_measure_file(file)
+    reading_measure = load_precomputed_reading_measure_file(
+        file, dataset_definition=DatasetDefinition(),
+    )
 
     expected_df = pl.read_csv(filepath)
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
@@ -813,11 +820,15 @@ def test_load_precomputed_rm_files_rda(make_example_file):
 
 def test_load_precomputed_rm_file_rda(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'r_dataframe_key': 'joint.fix'},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
     gaze = load_precomputed_reading_measure_file(
         file,
-        load_kwargs={'r_dataframe_key': 'joint.fix'},
+        dataset_definition=DatasetDefinition(),
     )
 
     expected_df = pyreadr.read_r(filepath)
@@ -831,11 +842,15 @@ def test_load_precomputed_rm_file_rda(make_example_file):
 
 def test_load_precomputed_rm_file_xlsx(make_example_file):
     filepath = make_example_file('Sentences.xlsx')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        load_kwargs={'sheet_name': 'Sheet 1'},
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
     reading_measure = load_precomputed_reading_measure_file(
         file,
-        load_kwargs={'sheet_name': 'Sheet 1'},
+        dataset_definition=DatasetDefinition(),
     )
 
     expected_df = pl.from_dict({'test': ['foo', 'bar'], 'id': [0, 1]})
@@ -845,10 +860,11 @@ def test_load_precomputed_rm_file_xlsx(make_example_file):
 
 def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
     filepath = make_example_file('binocular_example.feather')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    resource_definition = ResourceDefinition(content='precomputed_events')
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
     with pytest.raises(ValueError) as exc:
-        load_precomputed_reading_measure_file(file)
+        load_precomputed_reading_measure_file(file, dataset_definition=DatasetDefinition())
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". Supported formats are: '\
@@ -857,22 +873,23 @@ def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
 
 def test_load_precomputed_file_csv(make_example_file):
     filepath = make_example_file('18sat_fixfinal.csv')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
-
-    gaze = load_precomputed_event_file(
-        file,
+    resource_definition = ResourceDefinition(
+        content='precomputed_events',
         load_kwargs={'read_csv_kwargs': {'separator': ','}},
     )
-    expected_df = pl.read_csv(file)
+    file = DatasetFile(path=filepath, definition=resource_definition)
 
+    gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
+
+    expected_df = pl.read_csv(file)
     assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
 
 
 def test_load_precomputed_file_json(make_example_file):
     filepath = make_example_file('test.jsonl')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    file = DatasetFile(path=filepath, definition=ResourceDefinition(content='precomputed_events'))
 
-    gaze = load_precomputed_event_file(file)
+    gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
     expected_df = pl.read_ndjson(filepath)
 
     assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
@@ -880,10 +897,10 @@ def test_load_precomputed_file_json(make_example_file):
 
 def test_load_precomputed_file_unsupported_file_format(make_example_file):
     filepath = make_example_file('binocular_example.feather')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    file = DatasetFile(path=filepath, definition=ResourceDefinition(content='precomputed_events'))
 
     with pytest.raises(ValueError) as exc:
-        load_precomputed_event_file(file)
+        load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
 
     msg, = exc.value.args
     assert msg == 'unsupported file format ".feather". '\
@@ -923,12 +940,13 @@ def test_load_precomputed_files_rda(make_example_file):
 
 def test_load_precomputed_file_rda(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
-
-    gaze = load_precomputed_event_file(
-        file,
+    resource_definition = ResourceDefinition(
+        content='precomputed_events',
         load_kwargs={'r_dataframe_key': 'joint.fix'},
     )
+    file = DatasetFile(path=filepath, definition=resource_definition)
+
+    gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
 
     expected_df = pyreadr.read_r(file)
 
@@ -941,10 +959,10 @@ def test_load_precomputed_file_rda(make_example_file):
 
 def test_load_precomputed_file_rda_raise_value_error(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    file = DatasetFile(path=filepath, definition=ResourceDefinition(content='precomputed_events'))
 
     with pytest.raises(ValueError) as exc:
-        load_precomputed_event_file(file)
+        load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
 
     msg, = exc.value.args
     assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
@@ -952,10 +970,12 @@ def test_load_precomputed_file_rda_raise_value_error(make_example_file):
 
 def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
-    file = DatasetFile(path=filepath, definition=ResourceDefinition())
+    file = DatasetFile(
+        path=filepath, definition=ResourceDefinition(content='precomputed_reading_measures'),
+    )
 
     with pytest.raises(ValueError) as exc:
-        load_precomputed_reading_measure_file(file)
+        load_precomputed_reading_measure_file(file, dataset_definition=DatasetDefinition())
 
     msg, = exc.value.args
     assert msg == 'please specify r_dataframe_key in ResourceDefinition.load_kwargs'
@@ -1130,9 +1150,11 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
             **load_kwargs,
         },
     )
+
+    file = DatasetFile(path=filepath, definition=resource_definition)
+
     gaze = load_gaze_file(
-        filepath=filepath,
-        resource_definition=resource_definition,
+        file=file,
         dataset_definition=DatasetDefinition(**definition_dict),
     )
 
