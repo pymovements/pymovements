@@ -136,4 +136,3 @@ class MECOL1W1(DatasetDefinition):
     column_map: dict[str, str] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None
-
