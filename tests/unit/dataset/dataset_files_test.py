@@ -425,6 +425,59 @@ def test_load_example_gaze_file(
 
 
 @pytest.mark.parametrize(
+    ('example_filename', 'load_function', 'load_kwargs', 'metadata'),
+    [
+        pytest.param(
+            'monocular_example.csv',
+            None,
+            {'pixel_columns': ['x_left_pix', 'y_left_pix']},
+            {'key': 'value'},
+            id='csv',
+        ),
+
+        pytest.param(
+            'monocular_example.feather',
+            None,
+            None,
+            {'foo': 'bar'},
+            id='feather',
+        ),
+
+        pytest.param(
+            'eyelink_monocular_example.asc',
+            None,
+            None,
+            {'meta': 'data'},
+            id='eyelink',
+        ),
+
+        pytest.param(
+            'didec_example.txt',
+            'from_begaze',
+            None,
+            {'hello': 'there', 'how': 'are you?'},
+            id='begaze',
+        ),
+    ],
+)
+def test_load_gaze_file_has_correct_metadata(
+        example_filename, load_function, load_kwargs, metadata, make_example_file,
+):
+    filepath = make_example_file(example_filename)
+    resource_definition = ResourceDefinition(
+        content='gaze', load_function=load_function, load_kwargs=load_kwargs,
+    )
+    file = DatasetFile(path=filepath, definition=resource_definition, metadata=metadata)
+
+    gaze = load_gaze_file(
+        file,
+        dataset_definition=DatasetDefinition(),
+    )
+
+    assert gaze.metadata == metadata
+
+
+@pytest.mark.parametrize(
     (
         'make_csv_file_kwargs', 'load_function', 'load_kwargs', 'definition_dict', 'expected_gaze',
     ),
