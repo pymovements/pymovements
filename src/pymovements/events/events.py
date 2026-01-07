@@ -32,7 +32,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.events.properties import duration
+from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
 

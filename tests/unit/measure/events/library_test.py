@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2026 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,27 +17,26 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality."""
-from pymovements.events.detection import fill
-from pymovements.events.detection import idt
-from pymovements.events.detection import ivt
-from pymovements.events.detection import microsaccades
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
-from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
-from pymovements.events.precomputed import PrecomputedEventDataFrame
+"""Test module pymovements.events.event_properties."""
+import polars as pl
+import pytest
+
+from pymovements.measure.events import duration
+from pymovements.measure.events import EVENT_MEASURES
 
 
-__all__ = [
-    'EventDetectionLibrary',
-    'register_event_detection',
-    'fill',
-    'idt',
-    'ivt',
-    'microsaccades',
+@pytest.mark.parametrize(
+    ('measure_function', 'measure_name'),
+    [
+        pytest.param(duration, 'duration', id='duration'),
+    ],
+)
+def test_measure_registered(measure_function, measure_name):
+    assert measure_name in EVENT_MEASURES
+    assert EVENT_MEASURES[measure_name] == measure_function
+    assert EVENT_MEASURES[measure_name].__name__ == measure_name
 
-    'PrecomputedEventDataFrame',
-    'Events',
-    'EventDataFrame',
-]
+
+@pytest.mark.parametrize('measure_function', EVENT_MEASURES.values())
+def test_measure_returns_polars_expression(measure_function):
+    assert isinstance(measure_function(), pl.Expr)

@@ -40,7 +40,7 @@ from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
-from pymovements.reading_measures import ReadingMeasures
+from pymovements.measure.reading import ReadingMeasures
 
 
 logging.basicConfig(level=logging.INFO)
@@ -851,7 +851,7 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
+        UnknownMeasure
             If ``event_properties`` does not exist in the event dataframe
 
         Returns
@@ -883,9 +883,9 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         ValueError
@@ -933,9 +933,9 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(
             event_properties=event_properties,

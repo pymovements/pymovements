@@ -17,21 +17,43 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test measure library."""
+"""Provides functions for calculating event properties."""
 from __future__ import annotations
 
-import pytest
+from collections.abc import Callable
 
-import pymovements as pm
+import polars as pl
+
+EVENT_MEASURES: dict[str, Callable] = {}
 
 
-@pytest.mark.parametrize(
-    ('method', 'name'),
-    [
-        pytest.param(pm.measure.null_ratio, 'null_ratio', id='null_ratio'),
-    ],
-)
-def test_measure_registered(method, name):
-    assert name in pm.measure.SampleMeasureLibrary()
-    assert pm.measure.SampleMeasureLibrary.get(name) == method
-    assert pm.measure.SampleMeasureLibrary.get(name).__name__ == name
+def register_event_measure(function: Callable) -> Callable:
+    """Register an event measure.
+
+    Parameters
+    ----------
+    function: Callable
+        Function to be registered as a valid property.
+
+    Returns
+    -------
+    Callable
+        The function that was passed as an argument.
+    """
+    EVENT_MEASURES[function.__name__] = function
+    return function
+
+
+@register_event_measure
+def duration() -> pl.Expr:
+    """Duration of an event.
+
+    The duration is defined as the difference between offset time and onset time.
+
+    Returns
+    -------
+    pl.Expr
+        The duration of the event.
+    """
+    result = pl.col('offset') - pl.col('onset')
+    return result.alias('duration')
