@@ -18,12 +18,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides eye movement measures."""
-from pymovements.measure.library import register_sample_measure
-from pymovements.measure.library import SampleMeasureLibrary
-from pymovements.measure.measures import data_loss
-from pymovements.measure.measures import null_ratio
+from pymovements.measure import events
+from pymovements.measure import reading
+from pymovements.measure import samples
+from pymovements.measure.events.measures import EVENT_MEASURES
+from pymovements.measure.events.measures import register_event_measure
+from pymovements.measure.events.processing import EventProcessor
+from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.reading.frame import ReadingMeasures
+from pymovements.measure.samples import data_loss
+from pymovements.measure.samples import null_ratio
+from pymovements.measure.samples.library import register_sample_measure
+from pymovements.measure.samples.library import SampleMeasureLibrary
 
 __all__ = [
+    'events',
+    'EVENT_MEASURES',
+    'register_event_measure',
+    'EventProcessor',
+    'EventSamplesProcessor',
+
+    'reading',
+    'ReadingMeasures',
+
+    'samples',
     'SampleMeasureLibrary',
     'register_sample_measure',
 
