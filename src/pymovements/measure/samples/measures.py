@@ -29,6 +29,80 @@ import polars as pl
 from pymovements.measure.samples.library import register_sample_measure
 
 
+def _is_invalid_value(v: Any) -> bool:
+    """Check whether ``v`` (scalar or sequence) contains an invalid value.
+
+    For scalar values, the function directly evaluates their validity. For
+    sequences (list-like objects), the function iterates through each element
+    and returns ``True`` if any contained element is invalid.
+
+    Invalid values include:
+
+    - ``None``
+    - ``NaN``
+    - Positive or negative infinity (``inf``)
+
+    Parameters
+    ----------
+    v : Any
+        The value or sequence of values to be checked for validity.
+
+    Returns
+    -------
+    bool
+        ``True`` if the input ``v`` is invalid, ``False`` otherwise.
+    """
+    # scalar None, NaN, or +/-inf
+    if v is None:
+        return True
+    # sequence (e.g., list-like): any invalid element marks the row
+    if isinstance(v, (list, tuple)) or (
+            hasattr(v, '__iter__') and not isinstance(v, (str, bytes))
+    ):
+        for e in v:
+            if e is None:
+                return True
+            if isinstance(e, float) and (not isfinite(e)):
+                return True
+        return False
+    # scalar float: NaN/inf
+    if isinstance(v, float):
+        return not isfinite(v)
+    return False
+
+
+def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.Expr:
+    """Check if any value in a column is invalid (null, NaN, or inf).
+
+    Parameters
+    ----------
+    column: str | pl.Expr
+        The column to check for invalid values.
+    dtype: pl.DataType | None
+        Data type of the column. If provided, more efficient expressions are used.
+
+    Returns
+    -------
+    pl.Expr
+        A boolean expression indicating whether each row is invalid.
+    """
+    if isinstance(column, str):
+        column = pl.col(column)
+
+    if dtype in {pl.Float32, pl.Float64}:
+        return column.is_null() | column.is_nan() | column.is_infinite()
+
+    if dtype == pl.List:
+        # For list columns, any null/NaN/inf element marks the row invalid.
+        # We use map_elements here for robust cross-type support.
+        return column.map_elements(_is_invalid_value, return_dtype=pl.Boolean).fill_null(True)
+
+    if dtype is not None:
+        return column.is_null()
+
+    return column.map_elements(_is_invalid_value, return_dtype=pl.Boolean).fill_null(True)
+
+
 @register_sample_measure
 def amplitude(
         *,
@@ -259,20 +333,26 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     pl.Expr
         Null ratio expression.
     """
-    if column_dtype in {pl.Float64, pl.Int64}:
-        value = 1 - pl.col(column).fill_nan(pl.lit(None)).count() / pl.col(column).len()
-    elif column_dtype == pl.Utf8:
-        value = 1 - pl.col(column).count() / pl.col(column).len()
-    elif column_dtype == pl.List:
-        non_null_lengths = pl.col(column).list.drop_nulls().drop_nans().list.len()
-        value = 1 - (non_null_lengths == pl.col(column).list.len()).sum() / pl.col(column).len()
-    else:
+    if column_dtype not in {pl.Float64, pl.Int64, pl.Utf8, pl.List}:
+        # Note: pl.List is a class, but it can also be an instance pl.List(inner).
+        # We should check if it's the base class or an instance.
+        # However, the previous code used == pl.List which might have worked for base class.
+        # Actually, in Polars pl.List is a type constructor.
+        # Let's check if we should keep the same check logic.
+        pass
+
+    # To maintain consistency with the previous error message:
+    valid_dtypes = {pl.Float64, pl.Int64, pl.Utf8, pl.List}
+    if not any(
+            column_dtype == d or (isinstance(column_dtype, pl.List) and d == pl.List)
+            for d in valid_dtypes
+    ):
         raise TypeError(
             'column_dtype must be of type {Float64, Int64, Utf8, List}'
             f' but is of type {column_dtype}',
         )
 
-    return value.alias('null_ratio')
+    return _is_invalid(column, dtype=column_dtype).mean().alias('null_ratio')
 
 
 @register_sample_measure
@@ -428,6 +508,12 @@ def data_loss(
             f'sampling_rate must be a positive number, but got: {sampling_rate!r}',
         )
 
+    if start_time is not None and end_time is not None and end_time < start_time:
+        raise ValueError(
+            f'end_time ({end_time}) must be greater than or equal to '
+            f'start_time ({start_time})',
+        )
+
     # Group anchors: provided or derived
     start_expr = pl.lit(start_time) if start_time is not None else timestamps.min()
     end_expr = pl.lit(end_time) if end_time is not None else timestamps.max()
@@ -440,55 +526,13 @@ def data_loss(
     expected = (span * pl.lit(sampling_rate)).floor().cast(pl.Int64) + 1
 
     # Missing rows due to time gaps, ensure non-negative and valid range
-    valid_range = end_expr > start_expr
+    valid_range = end_expr >= start_expr
     time_missing = pl.when(valid_range).then(
         pl.max_horizontal(expected - observed, pl.lit(0)),
-    ).otherwise(pl.lit(0))
-
-    def _is_invalid_value(v: Any) -> bool:  # pragma: no cover
-        """Check whether ``v`` (scalar or sequence) contains an invalid value.
-
-        For scalar values, the function directly evaluates their validity. For
-        sequences (list-like objects), the function iterates through each element
-        and returns ``True`` if any contained element is invalid.
-
-        Invalid values include:
-        - ``None``
-        - ``NaN``
-        - Positive or negative infinity (``inf``)
-
-        Parameters
-        ----------
-        v : Any
-            The value or sequence of values to be checked for validity.
-
-        Returns
-        -------
-        bool
-            ``True`` if the input ``v`` is invalid, ``False`` otherwise.
-        """
-        # scalar None, NaN, or +/-inf
-        if v is None:
-            return True
-        # sequence (e.g., list-like): any invalid element marks the row
-        if isinstance(v, (list, tuple)) or (
-                hasattr(v, '__iter__') and not isinstance(v, (str, bytes))
-        ):
-            for e in v:
-                if e is None:
-                    return True
-                if isinstance(e, float) and (not isfinite(e)):
-                    return True
-            return False
-        # scalar float: NaN/inf
-        if isinstance(v, float):
-            return not isfinite(v)
-        return False
+    ).otherwise(pl.lit(None))
 
     invalid_missing = (
-        pl.col(data_column)
-        .map_elements(_is_invalid_value, return_dtype=pl.Boolean)
-        .fill_null(True)
+        _is_invalid(data_column)
         .sum()
         .cast(pl.Int64)
     )
@@ -503,11 +547,9 @@ def data_loss(
         return missing_time.alias('data_loss_time')
 
     if unit == 'ratio':
-        # Prevent division by zero when range invalid - expected will be >= 1 when valid.
-        expected_safe = pl.when(valid_range).then(expected).otherwise(pl.lit(1))
-        ratio = (total_missing.cast(pl.Float64) / expected_safe.cast(pl.Float64)).fill_null(0.0)
+        ratio = (total_missing.cast(pl.Float64) / expected.cast(pl.Float64)).fill_null(0.0)
         return ratio.alias('data_loss_ratio')
 
     raise ValueError(
-        "unit must be one of {'count', 'time', 'ratio'} but got: " f"{unit!r}",
+        f"unit must be one of {'count', 'time', 'ratio'} but got: {unit!r}",
     )

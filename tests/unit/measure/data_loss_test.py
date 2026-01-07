@@ -31,138 +31,197 @@ import pymovements as pm
 
 
 @pytest.mark.parametrize(
-    (
-        'times',
-        'values',
-        'sampling_rate',
-        'start',
-        'end',
-        'expected_count',
-        'expected_time',
-        'expected_ratio',
-    ),
+    ('unit', 'expected_col'),
     [
-        # 1 Hz with one internal time gap and one invalid value (NaN) -> missing=1
-        # (time) + 1 (invalid)
-        pytest.param(
-            [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, nan, 1.0], 1.0, None, None,
-            2, 2.0, 2 / 5,
-            id='gap_plus_nan_invalid',
-        ),
-
-        # Explicit bounds expand range (2 expected missing) and one +inf value -> total 3
-        pytest.param(
-            [10.0, 11.0, 12.0], [1.0, inf, 1.0], 1.0, 9.0, 13.0,
-            3, 3.0, 3 / 5,
-            id='explicit_bounds_with_inf',
-        ),
-
-        # Irregular times, 1/3 Hz expectation over [0,12], plus one None value
-        pytest.param(
-            [0.0, 2.0, 6.0], [1.0, None, 1.0], 1 / 3, None, 12.0,
-            3, 9.0, 3 / 5,
-            id='irregular_with_none',
-        ),
-
-        # Single sample - include invalid value to ensure invalid path is counted when expected>=1
-        pytest.param(
-            [5.0], [None], 1.0, None, None, 1, 1.0, 1.0,
-            id='single_sample_invalid_only',
-        ),
-
-        # Degenerate interval (end==start) -> no time-based missing - with all valid values -> 0
-        pytest.param(
-            [1.0, 2.0], [1.0, 1.0], 1.0, 5.0, 5.0, 0, 0.0, 0.0,
-            id='degenerate_interval_zero',
-        ),
-
-        # Clip negative: observed > expected due to narrow end - invalid present but should still be
-        # clipped by expected? No: invalid rows are counted regardless - however our function
-        # sums both. To keep observed>expected scenario only, use no invalids -> 0.
-        pytest.param(
-            [0.0, 1.0, 2.0], [1.0, 1.0, 1.0], 1.0, 0.0, 1.5, 0, 0.0, 0.0,
-            id='clip_negative_time_only',
-        ),
-
-        # Unsorted input with an invalid (-inf) value
-        pytest.param(
-            [3.0, 1.0, 0.0, 4.0], [1.0, 1.0, -inf, 1.0], 1.0, None, None,
-            2, 2.0, 2 / 5,
-            id='unsorted_with_neginf',
-        ),
-
-        # Larger internal gap and one invalid in values
-        pytest.param(
-            [0.0, 1.0, 2.0, 6.0, 7.0], [1.0, None, 1.0, 1.0, 1.0], 1.0, None, None,
-            4, 4.0, 4 / 8,
-            id='large_gap_with_invalid',
-        ),
-
-        # Perfect regular sampling at 2 Hz with all valid -> 0
-        pytest.param(
-            [0.0, 0.5, 1.0, 1.5], [1.0, 1.0, 1.0, 1.0], 2.0, None, None,
-            0, 0.0, 0.0,
-            id='no_missing_regular_all_valid',
-        ),
-
-        # List at 1 Hz with invalid values and missing samples
-        pytest.param(
-            [1, 2, 3, 4, 5, 9], [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
-            1.0, None, None,
-            6, 6.0, 6 / 9,
-            id='list_with_invalid_and_missing',
-        ),
+        pytest.param('count', 'data_loss_count'),
+        pytest.param('time', 'data_loss_time'),
+        pytest.param('ratio', 'data_loss_ratio'),
     ],
 )
-@pytest.mark.parametrize('unit', ['count', 'time', 'ratio'])
-def test_data_loss(
-        times, values, sampling_rate, start, end, expected_count, expected_time,
-        expected_ratio, unit,
-):
-    df = pl.from_dict(
-        data={'time': times, 'value': values},
-    )
+class TestDataLoss:
+    """Test data_loss sample measure."""
 
-    expr = pm.measure.data_loss(
-        'time', 'value', sampling_rate=sampling_rate, start_time=start, end_time=end, unit=unit,
-    )
-    result = df.select(expr)
+    @pytest.mark.parametrize(
+        ('times', 'values', 'sampling_rate', 'expected_vals'),
+        [
+            # 1 Hz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 4.0] (4 samples) -> 1 missing by time
+            # One NaN in values -> 1 missing by validity
+            # Total missing = 2
+            pytest.param(
+                [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, nan, 1.0], 1.0,
+                {'count': 2, 'time': 2.0, 'ratio': 2 / 5},
+                id='gap_plus_nan_invalid',
+            ),
 
-    expected_column_by_unit = {
-        'count': 'data_loss_count',
-        'time': 'data_loss_time',
-        'ratio': 'data_loss_ratio',
-    }
-    expected_value_by_unit = {
-        'count': expected_count,
-        'time': expected_time,
-        'ratio': expected_ratio,
-    }
-    expected = pl.from_dict(
-        data={expected_column_by_unit[unit]: [expected_value_by_unit[unit]]},
-    )
+            # 1 Hz: expected [0, 1, 2, 3, 4, 5, 6, 7] (8 samples)
+            # Observed: [0, 1, 2, 6, 7] (5 samples) -> 3 missing by time
+            # One None in values -> 1 missing by validity
+            # Total missing = 4
+            pytest.param(
+                [0.0, 1.0, 2.0, 6.0, 7.0], [1.0, None, 1.0, 1.0, 1.0], 1.0,
+                {'count': 4, 'time': 4.0, 'ratio': 4 / 8},
+                id='large_gap_with_invalid',
+            ),
 
-    assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+            # 2 Hz: expected [0.0, 0.5, 1.0, 1.5] (4 samples)
+            # Observed: 4 samples, all valid -> 0 missing
+            pytest.param(
+                [0.0, 0.5, 1.0, 1.5], [1.0, 1.0, 1.0, 1.0], 2.0,
+                {'count': 0, 'time': 0.0, 'ratio': 0.0},
+                id='no_missing_regular_all_valid',
+            ),
+        ],
+    )
+    def test_internal_gaps_and_invalids(
+            self, unit, expected_col, times, values, sampling_rate,
+            expected_vals,
+    ):
+        df = pl.DataFrame({'time': times, 'value': values})
+        expr = pm.measure.data_loss('time', 'value', sampling_rate=sampling_rate, unit=unit)
+        result = df.select(expr)
+        expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    @pytest.mark.parametrize(
+        ('times', 'values', 'sampling_rate', 'start', 'end', 'expected_vals'),
+        [
+            # 1 Hz, start=9, end=13: expected [9, 10, 11, 12, 13] (5 samples)
+            # Observed: [10, 11, 12] (3 samples) -> 2 missing by time
+            # One inf in values -> 1 missing by validity
+            # Total missing = 3
+            pytest.param(
+                [10.0, 11.0, 12.0], [1.0, inf, 1.0], 1.0, 9.0, 13.0,
+                {'count': 3, 'time': 3.0, 'ratio': 3 / 5},
+                id='explicit_bounds_with_inf',
+            ),
+
+            # 1/3 Hz, start=0, end=12: expected [0, 3, 6, 9, 12] (5 samples)
+            # Observed: [0, 2, 6] (3 samples) -> 2 missing by time
+            # One None in values -> 1 missing by validity
+            # Total missing = 3
+            pytest.param(
+                [0.0, 2.0, 6.0], [1.0, None, 1.0], 1 / 3, 0.0, 12.0,
+                {'count': 3, 'time': 9.0, 'ratio': 3 / 5},
+                id='irregular_with_none',
+            ),
+        ],
+    )
+    def test_bounds_missing(
+            self, unit, expected_col, times, values, sampling_rate, start, end,
+            expected_vals,
+    ):
+        df = pl.DataFrame({'time': times, 'value': values})
+        expr = pm.measure.data_loss(
+            'time', 'value', sampling_rate=sampling_rate, start_time=start, end_time=end, unit=unit,
+        )
+        result = df.select(expr)
+        expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    @pytest.mark.parametrize(
+        ('value', 'expected_vals'),
+        [
+            pytest.param(inf, {'count': 1, 'time': 1.0, 'ratio': 1.0}, id='pos_inf'),
+            pytest.param(-inf, {'count': 1, 'time': 1.0, 'ratio': 1.0}, id='neg_inf'),
+        ],
+    )
+    def test_inf_missing(self, unit, expected_col, value, expected_vals):
+        df = pl.DataFrame({'time': [0.0], 'value': [value]})
+        expr = pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=unit)
+        result = df.select(expr)
+        expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    @pytest.mark.parametrize(
+        ('times', 'values', 'expected_vals'),
+        [
+            # min=0, max=4, 1 Hz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: 4 samples -> 1 missing by time
+            # One -inf in values -> 1 missing by validity
+            # Total missing = 2
+            pytest.param(
+                [3.0, 1.0, 0.0, 4.0], [1.0, 1.0, -inf, 1.0],
+                {'count': 2, 'time': 2.0, 'ratio': 2 / 5},
+                id='unsorted_with_neginf',
+            ),
+        ],
+    )
+    def test_unsorted_input(self, unit, expected_col, times, values, expected_vals):
+        df = pl.DataFrame({'time': times, 'value': values})
+        expr = pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=unit)
+        result = df.select(expr)
+        expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    def test_single_sample_invalid(self, unit, expected_col):
+        df = pl.DataFrame({'time': [5.0], 'value': [None]})
+        expr = pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=unit)
+        result = df.select(expr)
+        expected_vals = {'count': 1, 'time': 1.0, 'ratio': 1.0}
+        expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    def test_degenerate_interval(self, unit, expected_col):
+        # end == start -> expected = (0*rate).floor() + 1 = 1 sample
+        # Observed: 2 samples (1.0, 2.0) but we requested start=5, end=5
+        # span = 0, expected = 1. observed = 2
+        # time_missing = max(1 - 2, 0) = 0
+        df = pl.DataFrame({'time': [1.0, 2.0], 'value': [1.0, 1.0]})
+        expr = pm.measure.data_loss(
+            'time', 'value', sampling_rate=1.0, start_time=5.0,
+            end_time=5.0, unit=unit,
+        )
+        result = df.select(expr)
+        expected = pl.DataFrame({expected_col: [0.0 if unit != 'count' else 0]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    def test_clip_negative(self, unit, expected_col):
+        # Observed (3) > expected (floor(1.5*1)+1 = 2)
+        # time_missing = max(2 - 3, 0) = 0
+        df = pl.DataFrame({'time': [0.0, 1.0, 2.0], 'value': [1.0, 1.0, 1.0]})
+        expr = pm.measure.data_loss(
+            'time', 'value', sampling_rate=1.0, start_time=0.0,
+            end_time=1.5, unit=unit,
+        )
+        result = df.select(expr)
+        expected = pl.DataFrame({expected_col: [0.0 if unit != 'count' else 0]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+
+    def test_list_input(self, unit, expected_col):
+        # 1 Hz, [1, 9] -> expected [1..9] (9 samples)
+        # Observed: [1, 2, 3, 4, 5, 9] (6 samples) -> 3 missing by time
+        # Invalid rows:
+        # index 2: None
+        # index 3: None
+        # index 5: [1, None] -> contains None
+        # Total invalid = 3
+        # Total missing = 3 + 3 = 6
+        df = pl.DataFrame({
+            'time': [1, 2, 3, 4, 5, 9],
+            'pixel': [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
+        })
+        expr = pm.measure.data_loss('time', 'pixel', sampling_rate=1.0, unit=unit)
+        result = df.select(expr)
+        expected_vals = {'count': 6, 'time': 6.0, 'ratio': 6 / 9}
+        expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
+        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
 
 
 @pytest.mark.parametrize('bad_unit', ['invalid', '', None, 'COUNT'])
 def test_data_loss_invalid_unit_raises(bad_unit):
     df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
-    # We purposely pass an invalid unit to exercise the error branch
     with pytest.raises(ValueError) as excinfo:
-        df.select(pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=bad_unit))
+        pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=bad_unit)
 
     (message,) = excinfo.value.args
-    assert message == "unit must be one of {'count', 'time', 'ratio'} but got: " + repr(
-        bad_unit,
-    )
+    assert message == f"unit must be one of {'count', 'time', 'ratio'} but got: {bad_unit!r}"
 
 
 @pytest.mark.parametrize('bad_time_column', [123, None, {'col': 'time'}])
 def test_data_loss_invalid_time_column_raises(bad_time_column):
-    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
     with pytest.raises(TypeError) as excinfo:
-        df.select(pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0))
+        pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0)
 
     (message,) = excinfo.value.args
     assert message == (
@@ -173,11 +232,18 @@ def test_data_loss_invalid_time_column_raises(bad_time_column):
 
 @pytest.mark.parametrize('bad_sampling_rate', [0, -1, 0.0, -10.5, '1Hz'])
 def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
-    df = pl.DataFrame({'time': [0.0, 1.0], 'value': [1.0, 1.0]})
     with pytest.raises(ValueError) as excinfo:
-        df.select(pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate))
+        pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate)
 
     (message,) = excinfo.value.args
     assert message == (
         f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
     )
+
+
+def test_data_loss_invalid_range_raises_python():
+    with pytest.raises(
+            ValueError,
+            match=r'end_time \(0.0\) must be greater than or equal to start_time \(1.0\)',
+    ):
+        pm.measure.data_loss('time', 'value', sampling_rate=1.0, start_time=1.0, end_time=0.0)
