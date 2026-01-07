@@ -25,8 +25,8 @@ import polars as pl
 import pytest
 from polars.testing import assert_series_equal
 
-from pymovements.measure.samples.measures import _is_invalid_value
 from pymovements.measure.samples.measures import _is_invalid
+from pymovements.measure.samples.measures import _is_invalid_value
 
 
 @pytest.mark.parametrize(
