@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2026 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,27 +17,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality."""
-from pymovements.events.detection import fill
-from pymovements.events.detection import idt
-from pymovements.events.detection import ivt
-from pymovements.events.detection import microsaccades
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
-from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
-from pymovements.events.precomputed import PrecomputedEventDataFrame
+"""Provides access to reading measure classes."""
+from pymovements.measure.reading.frame import ReadingMeasures
 
 
 __all__ = [
-    'EventDetectionLibrary',
-    'register_event_detection',
-    'fill',
-    'idt',
-    'ivt',
-    'microsaccades',
-
-    'PrecomputedEventDataFrame',
-    'Events',
-    'EventDataFrame',
+    'ReadingMeasures',
 ]

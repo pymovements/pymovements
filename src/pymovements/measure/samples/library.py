@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for the measure library."""
+"""Module for sample measure library."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -27,75 +27,75 @@ import polars as pl
 
 
 class SampleMeasureLibrary:
-    """Provides access by name to sample measure methods.
+    """Provides access by name to sample measures.
 
     Attributes
     ----------
-    methods: dict[str, Callable[..., pl.Expr]]
-        Dictionary of measure methods.
+    measures: dict[str, Callable[..., pl.Expr]]
+        Dictionary of measures. The key correpsonds to the name of each measure.
     """
 
-    methods: dict[str, Callable[..., pl.Expr]] = {}
+    measures: dict[str, Callable[..., pl.Expr]] = {}
 
     @classmethod
-    def add(cls, method: Callable[..., pl.Expr]) -> None:
-        """Add a measure method to the library.
+    def add(cls, measure: Callable[..., pl.Expr]) -> None:
+        """Add a measure to the library.
 
         Parameters
         ----------
-        method: Callable[..., pl.Expr]
-            The measure method to add to the library.
+        measure: Callable[..., pl.Expr]
+            The measure to add to the library.
         """
-        cls.methods[method.__name__] = method
+        cls.measures[measure.__name__] = measure
 
     @classmethod
     def get(cls, name: str) -> Callable[..., pl.Expr]:
-        """Get measure method py name.
+        """Get measure py name.
 
         Parameters
         ----------
         name: str
-            Name of the measure method in the library.
+            Name of the measure in the library.
 
         Returns
         -------
         Callable[..., pl.Expr]
-            The requested measure method.
+            The requested measure.
         """
-        return cls.methods[name]
+        return cls.measures[name]
 
     @classmethod
     def __contains__(cls, name: str) -> bool:
-        """Check if class contains method of given name.
+        """Check if class contains measure of given name.
 
         Parameters
         ----------
         name: str
-            Name of the method to check.
+            Name of the measure to check.
 
         Returns
         -------
         bool
-            True if MeasureLibrary contains a method with a given name, else False.
+            True if SampleMeasureLibrary contains measure with given name, else False.
         """
-        return name in cls.methods
+        return name in cls.measures
 
 
-SampleMeasureMethod = TypeVar('SampleMeasureMethod', bound=Callable[..., pl.Expr])
+SampleMeasure = TypeVar('SampleMeasure', bound=Callable[..., pl.Expr])
 
 
-def register_sample_measure(method: SampleMeasureMethod) -> SampleMeasureMethod:
-    """Register a sample measure method.
+def register_sample_measure(measure: SampleMeasure) -> SampleMeasure:
+    """Register a sample measure.
 
     Parameters
     ----------
-    method: SampleMeasureMethod
-        The measure method to register.
+    measure: SampleMeasure
+        The measure to register.
 
     Returns
     -------
-    SampleMeasureMethod
-        The registered sample measure method.
+    SampleMeasure
+        The registered sample measure.
     """
-    SampleMeasureLibrary.add(method)
-    return method
+    SampleMeasureLibrary.add(measure)
+    return measure

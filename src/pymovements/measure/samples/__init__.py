@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2026 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,27 +17,26 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality."""
-from pymovements.events.detection import fill
-from pymovements.events.detection import idt
-from pymovements.events.detection import ivt
-from pymovements.events.detection import microsaccades
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
-from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
-from pymovements.events.precomputed import PrecomputedEventDataFrame
-
+"""Module for sample measures."""
+from pymovements.measure.samples.library import register_sample_measure
+from pymovements.measure.samples.library import SampleMeasureLibrary
+from pymovements.measure.samples.measures import amplitude
+from pymovements.measure.samples.measures import data_loss
+from pymovements.measure.samples.measures import dispersion
+from pymovements.measure.samples.measures import disposition
+from pymovements.measure.samples.measures import location
+from pymovements.measure.samples.measures import null_ratio
+from pymovements.measure.samples.measures import peak_velocity
 
 __all__ = [
-    'EventDetectionLibrary',
-    'register_event_detection',
-    'fill',
-    'idt',
-    'ivt',
-    'microsaccades',
+    'register_sample_measure',
+    'SampleMeasureLibrary',
 
-    'PrecomputedEventDataFrame',
-    'Events',
-    'EventDataFrame',
+    'amplitude',
+    'data_loss',
+    'dispersion',
+    'disposition',
+    'location',
+    'null_ratio',
+    'peak_velocity',
 ]
