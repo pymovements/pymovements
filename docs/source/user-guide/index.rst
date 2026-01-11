@@ -15,8 +15,8 @@ see the Tutorials section.
    :maxdepth: 2
 
    getting-started/index
+   getting-started/installation
    getting-started/understanding-eye-tracking-data
 
-..    getting-started/installation
 ..    preprocessing/index
 ..    event-detection/index
