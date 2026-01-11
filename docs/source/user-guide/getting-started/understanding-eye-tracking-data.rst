@@ -7,7 +7,77 @@ what eye-tracking data look like at their most basic level and how they are stru
 section introduces the core components of eye-tracking recordings and the representations
 commonly used in analysis.
 
-Eye trackers and sampling frequency (rate)
+What is Eye-Tracking Data?
+--------------------------
+
+Eye-tracking data consists of measurements of eye position over time, typically recorded at a fixed
+sampling frequency.
+
+An eye tracker estimates the point of gaze, that is, where on a stimulus or display a participant
+is inferred to be looking, by measuring the relative position of the pupil and corneal reflections.
+During calibration, participants fixate known reference points, allowing the system to learn a
+mapping from eye position signals to gaze coordinates on the stimulus.
+Crucially, eye-tracking data are signals rather than direct measurements of perception or
+cognition. Constructs such as attention, comprehension, or cognitive processes are inferred through
+preprocessing, event detection, and analysis choices.
+
+Depending on the experimental setup, participants may be:
+
+- reading texts,
+- viewing static images,
+- watching videos,
+- or interacting with dynamic or real-world stimuli.
+
+At the most basic level, eye-tracking data consist of **time-ordered gaze samples** which typically
+include:
+
+- a timestamp,
+- horizontal and vertical gaze coordinates,
+- optional pupil size estimates,
+- and device- or vendor-specific fields.
+
+In screen-based experiments, gaze coordinates are commonly expressed in pixel units, corresponding
+to positions on the display surface.
+
+Coordinate Systems: Screen vs. Eye-Centred Coordinates
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Gaze data can be expressed in different coordinate systems, depending on the experimental setup
+and research question.
+
+Screen coordinates (allocentric coordinates) describe where gaze falls on the stimulus or display
+surface, typically in pixels or degrees of visual angle.
+
+Eye-in-head coordinates (egocentric coordinates) describe eye orientation relative to the
+participant’s head and are more common in head-mounted or mobile eye tracking.
+
+pymovements primarily works with stimulus-referenced coordinates but allows explicit
+transformations when the necessary experimental information is available.
+
+Eye-tracking Analysis as a Sequence of Transformations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Recorded data**
+    Vendor-specific files produced by the eye tracker and experiment software.
+**Raw samples**
+    Time-ordered gaze measurements extracted from the recordings.
+**Preprocessed samples**
+    Samples that have been cleaned, filtered, transformed into meaningful
+    units, or restricted to relevant time windows (e.g. trials).
+**Events**
+    Segments of the signal classified as fixations, saccades, blinks, or other
+    eye-movement events using detection algorithms.
+**Analysis measures**
+    Summary statistics, models, or visualizations derived from samples or events.
+
+It is important to keep in mind that there is no single preprocessing pipeline or eye-tracking
+measure that fits all research questions; choices depend on the research goal and data quality.
+Each data transformation introduces assumptions, and making these visible is essential for valid
+and reproducible analysis. Data quality plays a central role throughout this process. Issues such
+as calibration errors, data loss, or unstable sampling can propagate through multiple processing
+steps and substantially affect results.
+
+Eye Trackers and Sampling Frequency (Rate)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Eye trackers differ substantially in their technical characteristics, including spatial accuracy,
@@ -29,7 +99,7 @@ recorded from what the recorded samples contain. The sampling rate is used impli
 computing derived measures such as velocity, acceleration, or event durations.
 
 From Eye-Tracker Export Files to Gaze Samples in pymovements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------------------------------
 
 Eye trackers export data in a variety of proprietary and semi-standard formats, such as binary EDF
 files, ASCII or ASC exports, CSV or TSV tables, or vendor-specific text formats. These formats
@@ -49,7 +119,7 @@ screen resolution, and calibration information, are attached to the data through
 eye tracker definitions.
 
 On the Notion of Raw Data in Eye Tracking
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------------
 
 The term "raw gaze" or "raw eye-tracking data" is used inconsistently in the literature and can
 refer to different levels of data, depending on context. Common usages include:
@@ -71,30 +141,15 @@ saccades, operate on these samples and depend on the assumptions and metadata es
 loading.
 
 Inspecting Raw Gaze Samples with Time-Series Plots (tsplot)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------------------------------
 
 Time-series plots are often the first step when working with newly loaded gaze data. The `tsplot()`
 function visualizes raw gaze samples from a Gaze object as signals over time, allowing inspection
 of gaze position, velocity, or pupil size before any preprocessing or event detection is applied.
 See an example in the Plotting Gaze Data tutorial.
 
-Coordinate Systems: Screen vs. Eye-Centred Coordinates
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Gaze data can be expressed in different coordinate systems, depending on the experimental setup
-and research question.
-
-Screen coordinates (allocentric coordinates) describe where gaze falls on the stimulus or display
-surface, typically in pixels or degrees of visual angle.
-
-Eye-in-head coordinates (egocentric coordinates) describe eye orientation relative to the
-participant’s head and are more common in head-mounted or mobile eye tracking.
-
-pymovements primarily works with stimulus-referenced coordinates but allows explicit
-transformations when the necessary experimental information is available.
-
 From Pixels to Degrees of Visual Angle (pix2deg)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------------------
 
 Pixel coordinates depend on screen resolution, viewing distance, and physical screen size. To
 compare gaze behaviour across setups or participants, it is often useful to convert pixels to
@@ -102,7 +157,7 @@ degrees of visual angle (dva). This conversion requires knowledge of the experim
 is handled explicitly in pymovements by the `pix2deg()` function.
 
 From Position to Velocity (pos2vel)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------
 
 Many eye-movement measures are derived not from position directly but from its temporal
 derivatives. Velocity is computed from changes in gaze position over time and is central to event

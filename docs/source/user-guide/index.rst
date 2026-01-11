@@ -11,6 +11,11 @@ The guide focuses on *conceptual understanding* and *transparent data
 processing*, rather than step-by-step recipes. For hands-on examples,
 see the Tutorials section.
 
+Throughout this guide, we emphasize that there is no single “correct”
+eye-tracking pipeline. Processing choices depend on research goals and data
+quality, and each transformation introduces assumptions that should be made
+explicit for reproducible analysis.
+
 .. toctree::
    :maxdepth: 2
 
