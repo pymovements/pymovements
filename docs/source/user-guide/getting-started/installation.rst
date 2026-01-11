@@ -1,6 +1,6 @@
-================
- Getting started
-================
+=====================
+ Installation Options
+=====================
 
 .. grid::
     :gutter: 5

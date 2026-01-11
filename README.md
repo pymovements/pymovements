@@ -34,7 +34,16 @@ and render plots to visually analyze your results.
 
 ## Getting Started
 
-With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away
+If you are new to pymovements or to eye-tracking data analysis, we recommend starting with the **User Guide**, which introduces the concepts, data
+structures, and workflows used throughout the library:
+
+👉 **User Guide**
+https://pymovements.readthedocs.io/en/stable/user-guide/index.html
+
+
+### Quick example
+
+For a minimal example of loading and processing eye-tracking data with pymovements:
 
 ```python
 import pymovements as pm
@@ -47,28 +56,29 @@ dataset.download()  # download a public dataset from our dataset library
 dataset.load()  # load the dataset
 ```
 
-calculate velocities on the fly
+Transform coordinates and calculate velocities:
 
 ```python
 dataset.pix2deg()  # transform pixel coordinates to degrees of visual angle
 dataset.pos2vel()  # transform positional data to velocity data
 ```
 
-and extract events with different eye movements event extraction algorithms
+Detect oculomotoric events:
 
 ```python
 dataset.detect('ivt')  # detect fixation using the I-VT algorithm
 dataset.detect('microsaccades')  # detect saccades using the microsaccades algorithm
 ```
 
-Check out our guide on how to install *pymovements* and get started here:
+<!-- With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away -->
+
+### Installation
+Installation instructions are available here:
 [Installation](https://pymovements.readthedocs.io/en/stable/getting-started.html)
 
-We provide a range of tutorials aimed at beginners:
-[Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
-
-The complete reference of the package can be found here:
-[API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
+### Tutorials and reference
+- [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
+- [API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
 
 ## Contributing
 

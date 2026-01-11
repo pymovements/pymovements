@@ -77,6 +77,13 @@ In the following sections, you will learn how to:
 You can think of this guide as moving from signals → structure → interpretation → reuse.
 
 Installing pymovements
+----------------------
+
+To follow the examples in this guide, you will need a working Python environment and the
+pymovements package installed.
+
+In short, pymovements can be installed via pip: `pip install pymovements`. For more information,
+see the section on :doc:`Installation Options <installation>`.
 
 
 .. toctree::
