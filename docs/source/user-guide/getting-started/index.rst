@@ -84,9 +84,3 @@ pymovements package installed.
 
 In short, pymovements can be installed via pip: `pip install pymovements`. For more information,
 see the section on :doc:`Installation Options <installation>`.
-
-
-.. toctree::
-   :maxdepth: 1
-
-    installation

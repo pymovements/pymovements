@@ -8,7 +8,7 @@ section introduces the core components of eye-tracking recordings and the repres
 commonly used in analysis.
 
 Eye trackers and sampling frequency (rate)
-------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Eye trackers differ substantially in their technical characteristics, including spatial accuracy,
 precision, robustness to head movement, and sampling rate. The sampling rate, typically reported in
@@ -29,7 +29,7 @@ recorded from what the recorded samples contain. The sampling rate is used impli
 computing derived measures such as velocity, acceleration, or event durations.
 
 From Eye-Tracker Export Files to Gaze Samples in pymovements
-------------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Eye trackers export data in a variety of proprietary and semi-standard formats, such as binary EDF
 files, ASCII or ASC exports, CSV or TSV tables, or vendor-specific text formats. These formats
@@ -49,15 +49,17 @@ screen resolution, and calibration information, are attached to the data through
 eye tracker definitions.
 
 On the Notion of Raw Data in Eye Tracking
------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The term "raw gaze" or "raw eye-tracking data" is used inconsistently in the literature and can
 refer to different levels of data, depending on context. Common usages include:
 
-- **Raw eye-tracker files**, which may contain samples, events, messages, and metadata mixed
-    together.
-- **Raw samples**, meaning gaze coordinates over time without filtering or event classification.
-- **Vendor-labeled events**, such as fixations or saccades produced by proprietary software.
+- **Raw eye-tracker files**, which may contain samples, events, messages,
+  and metadata mixed together.
+- **Raw samples**, meaning gaze coordinates over time without filtering
+  or event classification.
+- **Vendor-labeled events**, such as fixations or saccades produced by
+  proprietary software.
 
 In pymovements, raw samples refer to the lowest-level gaze data available after import, before any
 additional preprocessing steps, such as smoothing, velocity computation, or event detection. These
@@ -67,7 +69,7 @@ saccades, operate on these samples and depend on the assumptions and metadata es
 loading.
 
 Inspecting Raw Gaze Samples with Time-Series Plots (tsplot)
------------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Time-series plots are often the first step when working with newly loaded gaze data. The `tsplot()`
 function visualizes raw gaze samples from a Gaze object as signals over time, allowing inspection
@@ -75,7 +77,7 @@ of gaze position, velocity, or pupil size before any preprocessing or event dete
 See an example in the Plotting Gaze Data tutorial.
 
 Coordinate Systems: Screen vs. Eye-Centred Coordinates
-------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Gaze data can be expressed in different coordinate systems, depending on the experimental setup
 and research question.
@@ -90,7 +92,7 @@ pymovements primarily works with stimulus-referenced coordinates but allows expl
 transformations when the necessary experimental information is available.
 
 From Pixels to Degrees of Visual Angle (pix2deg)
-------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Pixel coordinates depend on screen resolution, viewing distance, and physical screen size. To
 compare gaze behaviour across setups or participants, it is often useful to convert pixels to
@@ -98,7 +100,7 @@ degrees of visual angle (dva). This conversion requires knowledge of the experim
 is handled explicitly in pymovements by the `pix2deg()` function.
 
 From Position to Velocity (pos2vel)
------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Many eye-movement measures are derived not from position directly but from its temporal
 derivatives. Velocity is computed from changes in gaze position over time and is central to event

@@ -37,8 +37,7 @@ and render plots to visually analyze your results.
 If you are new to pymovements or to eye-tracking data analysis, we recommend starting with the **User Guide**, which introduces the concepts, data
 structures, and workflows used throughout the library:
 
-👉 **User Guide**
-https://pymovements.readthedocs.io/en/stable/user-guide/index.html
+👉 **User Guide**: :doc:`user-guide/index`
 
 
 ### Quick example
@@ -74,7 +73,7 @@ dataset.detect('microsaccades')  # detect saccades using the microsaccades algor
 
 ### Installation
 Installation instructions are available here:
-[Installation](https://pymovements.readthedocs.io/en/stable/getting-started.html)
+:doc:`Installation Options <user-guide/getting-started/installation>`
 
 ### Tutorials and reference
 - [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
