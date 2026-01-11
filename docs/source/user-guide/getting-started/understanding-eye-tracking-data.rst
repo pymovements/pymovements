@@ -54,12 +54,14 @@ On the Notion of Raw Data in Eye Tracking
 The term "raw gaze" or "raw eye-tracking data" is used inconsistently in the literature and can
 refer to different levels of data, depending on context. Common usages include:
 
-- **Raw eye-tracker files**, which may contain samples, events, messages,
-  and metadata mixed together.
-- **Raw samples**, meaning gaze coordinates over time without filtering
-  or event classification.
-- **Vendor-labeled events**, such as fixations or saccades produced by
-  proprietary software.
+**Raw eye-tracker files**
+  May contain samples, events, messages, and metadata mixed together.
+
+**Raw samples**
+  Gaze coordinates over time without filtering or event classification.
+
+**Vendor-labeled events**
+  Fixations or saccades produced by proprietary software.
 
 In pymovements, raw samples refer to the lowest-level gaze data available after import, before any
 additional preprocessing steps, such as smoothing, velocity computation, or event detection. These
