@@ -35,9 +35,7 @@ and render plots to visually analyze your results.
 ## Getting Started
 
 If you are new to pymovements or to eye-tracking data analysis, we recommend starting with the **User Guide**, which introduces the concepts, data
-structures, and workflows used throughout the library:
-
-👉 **User Guide**: :doc:`user-guide/index`
+structures, and workflows used throughout the library: 👉 :doc:`user-guide/index`
 
 
 ### Quick example
