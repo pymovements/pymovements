@@ -116,25 +116,3 @@ for all research questions. Instead, appropriate choices depend on the experimen
 properties of the recording device, and the quality of the data
 (see :doc:`Inspecting Data Quality <data-quality>`). Making these transformations explicit and
 transparent is therefore essential for valid, interpretable, and reproducible analysis.
-
-On the Notion of Raw Data in Eye Tracking
------------------------------------------
-
-The term "raw gaze" or "raw eye-tracking data" is used inconsistently in the literature and can
-refer to different levels of data, depending on context. Common usages include:
-
-**Raw eye-tracker files**
-  May contain samples, events, messages, and metadata mixed together.
-
-**Raw samples**
-  Gaze coordinates over time without filtering or event classification.
-
-**Vendor-labeled events**
-  Fixations or saccades produced by proprietary software.
-
-In pymovements, raw samples refer to the lowest-level gaze data available after import, before any
-additional preprocessing steps, such as smoothing, velocity computation, or event detection. These
-raw samples form the foundation for all subsequent analyses. Later transformations, e.g. converting
-pixel coordinates to degrees of visual angle, computing velocities, or segmenting fixations and
-saccades, operate on these samples and depend on the assumptions and metadata established during
-loading.
