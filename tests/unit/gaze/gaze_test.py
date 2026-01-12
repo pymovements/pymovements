@@ -1118,6 +1118,41 @@ def test_gaze_compute_event_properties_no_events():
 
 
 @pytest.mark.parametrize(
+    ('existing_amplitude', 'expected_amplitude'),
+    [
+        pytest.param(0.0, np.sqrt(32), id='overwrite_zero'),
+        pytest.param(123.0, np.sqrt(32), id='overwrite_nonzero'),
+    ],
+)
+def test_gaze_compute_event_properties_overwrites_column(existing_amplitude, expected_amplitude):
+    gaze = Gaze(
+        samples=pl.DataFrame({
+            'time': [0, 1, 2, 3, 4],
+            'position': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]],
+        }),
+        events=Events(
+            pl.DataFrame({
+                'name': ['fixation'],
+                'onset': [0],
+                'offset': [4],
+                'amplitude': [existing_amplitude],
+            }),
+        ),
+    )
+
+    expected_events = gaze.events.frame.with_columns(pl.lit(expected_amplitude).alias('amplitude'))
+
+    with pytest.warns(
+            UserWarning,
+            match='The following columns already exist in event and will be overwritten: '
+                  r'\[\'amplitude\'\]',
+    ):
+        gaze.compute_event_properties('amplitude')
+
+    assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.parametrize(
     ('gaze', 'attribute'),
     [
         pytest.param(

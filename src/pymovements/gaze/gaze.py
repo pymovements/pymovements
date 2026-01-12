@@ -1151,12 +1151,13 @@ class Gaze:
 
         join_on = identifiers + ['name', 'onset', 'offset']
         column_intersection = set(self.events.columns) & set(results.columns)
-        if column_intersection != set(join_on):
+        overwrite_columns = list(column_intersection - set(join_on))
+        if overwrite_columns:
             warn(
                 'The following columns already exist in event and will be overwritten: '
-                f"{list(column_intersection - set(join_on))}",
+                f"{overwrite_columns}",
             )
-
+            self.events.drop(overwrite_columns)
         if results.height:
             self.events.add_event_properties(results, join_on=join_on)
 
