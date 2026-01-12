@@ -568,7 +568,21 @@ def parse_eyelink(
                     'GAZE_COORDS encountered before any RECCFG. Skipping resolution assignment.',
                 )
             else:
-                recording_config[-1]['resolution'] = (right - left + 1, bottom - top + 1)
+                width = right - left
+                height = bottom - top
+
+                # The values in GAZE_COORDS refer to the highest pixel index (starting with 0)
+                # in standard EyeLink files, so they need to be incremented to get the resolution.
+                # In contrast, EDF/ASC files created with pygaze specify the exact resolution.
+                # All existing screen displays have an even number of pixels (1280, 1024, etc.).
+                # Therefore, we increment by 1 only if the resolution values are odd.
+                # See https://github.com/pymovements/pymovements/issues/1286
+                if width % 2 != 0:
+                    width += 1
+                if height % 2 != 0:
+                    height += 1
+
+                recording_config[-1]['resolution'] = (width, height)
 
         elif match := START_RECORDING_REGEX.match(line):
             start_recording_timestamp = match.groupdict()['timestamp']
