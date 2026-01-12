@@ -219,42 +219,34 @@ class TestDataLoss:
 @pytest.mark.parametrize('bad_unit', ['invalid', '', None, 'COUNT'])
 def test_data_loss_invalid_unit_raises(bad_unit):
     """Test that providing an invalid unit raises a ValueError."""
-    with pytest.raises(ValueError) as excinfo:
+    message = f"unit must be one of {'count', 'time', 'ratio'} but got: {bad_unit!r}"
+    with pytest.raises(ValueError, match=message):
         pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=bad_unit)
-
-    (message,) = excinfo.value.args
-    assert message == f"unit must be one of {'count', 'time', 'ratio'} but got: {bad_unit!r}"
 
 
 @pytest.mark.parametrize('bad_time_column', [123, None, {'col': 'time'}])
 def test_data_loss_invalid_time_column_raises(bad_time_column):
     """Test that providing an invalid time column type raises a TypeError."""
-    with pytest.raises(TypeError) as excinfo:
-        pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0)
-
-    (message,) = excinfo.value.args
-    assert message == (
+    message = (
         f"invalid type for 'time_column'. Expected 'str' , got "
         f"'{type(bad_time_column).__name__}'"
     )
+    with pytest.raises(TypeError, match=message):
+        pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0)
 
 
 @pytest.mark.parametrize('bad_sampling_rate', [0, -1, 0.0, -10.5, '1Hz'])
 def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
     """Test that providing an invalid sampling rate raises a ValueError."""
-    with pytest.raises(ValueError) as excinfo:
-        pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate)
-
-    (message,) = excinfo.value.args
-    assert message == (
+    message = (
         f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
     )
+    with pytest.raises(ValueError, match=message):
+        pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate)
 
 
 def test_data_loss_invalid_range_raises_python():
     """Test that providing an invalid time range raises a ValueError."""
-    with pytest.raises(
-            ValueError,
-            match=r'end_time \(0.0\) must be greater than or equal to start_time \(1.0\)',
-    ):
+    message = r'end_time \(0.0\) must be greater than or equal to start_time \(1.0\)'
+    with pytest.raises(ValueError, match=message):
         pm.measure.data_loss('time', 'value', sampling_rate=1.0, start_time=1.0, end_time=0.0)
