@@ -24,8 +24,8 @@ pixel coordinates to degrees of visual angle, computing velocities, or segmentin
 saccades, operate on these samples and depend on the assumptions and metadata established during
 loading.
 
-Time-Series Plots
------------------
+Inspecting Raw Samples with Time-Series Plots
+---------------------------------------------
 
 Time-series plots are often the first step when working with newly loaded gaze data.
 The `tsplot()` function visualizes raw gaze samples from a Gaze object as signals over time,
