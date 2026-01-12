@@ -20,6 +20,7 @@
 """Test data_loss sample measure."""
 from __future__ import annotations
 
+import re
 from math import inf
 from math import nan
 
@@ -219,7 +220,9 @@ class TestDataLoss:
 @pytest.mark.parametrize('bad_unit', ['invalid', '', None, 'COUNT'])
 def test_data_loss_invalid_unit_raises(bad_unit):
     """Test that providing an invalid unit raises a ValueError."""
-    message = f"unit must be one of {'count', 'time', 'ratio'} but got: {bad_unit!r}"
+    message = re.escape(
+        f"unit must be one of ('count', 'time', 'ratio') but got: {repr(bad_unit)}",
+    )
     with pytest.raises(ValueError, match=message):
         pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=bad_unit)
 
@@ -239,7 +242,7 @@ def test_data_loss_invalid_time_column_raises(bad_time_column):
 def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
     """Test that providing an invalid sampling rate raises a ValueError."""
     message = (
-        f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
+        f"sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}"
     )
     with pytest.raises(ValueError, match=message):
         pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate)
