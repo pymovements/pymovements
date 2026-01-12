@@ -39,6 +39,7 @@ For more information, see the next section on :doc:`Installation Options <instal
 
    installation
    understanding-data
+   inspect-raw-samples
    data-quality
    event-detection
-   standardized-datasets
+   work-with-datasets
