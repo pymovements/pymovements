@@ -75,17 +75,17 @@ computing derived measures such as velocity, acceleration, or event durations.
 From Eye-Tracker Export Files to Gaze Samples in pymovements
 ------------------------------------------------------------
 
-Eye trackers export data in a variety of proprietary and semi-standard formats, such as binary `EDF`
-files, `ASCII` or `ASC` exports, `CSV` or `TSV` tables, or vendor-specific text formats. These
-formats differ in structure, time units, coordinate conventions, and how samples, events, and
-metadata are represented, making parsing into a consistent internal representation a necessary
-first step for analysis.
+Eye trackers export data in a variety of proprietary and semi-standard formats, such as binary
+``EDF`` files, ``ASCII`` or ``ASC`` exports, ``CSV`` or ``TSV`` tables, or vendor-specific text
+formats. These formats differ in structure, time units, coordinate conventions, and how samples,
+events, and metadata are represented, making parsing into a consistent internal representation a
+necessary first step for analysis.
 
 pymovements facilitates the transformation of these heterogeneous eye-tracker exports into a
 consistent internal format by creating a :class:`~pymovements.gaze.gaze.Gaze` object that
 contains gaze samples together with their experimental context. See the
 :doc:`Parsing SR Research EyeLink Data tutorial <tutorials/parsing-dataset>` to walk through
-loading `*.asc` files, extracting gaze samples and metadata, and inspecting the resulting Gaze
+loading ``*.asc`` files, extracting gaze samples and metadata, and inspecting the resulting Gaze
 object.
 
 At this stage, the user specifies or confirms which columns represent time, gaze position, or other
