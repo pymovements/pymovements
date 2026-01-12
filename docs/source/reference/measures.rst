@@ -1,17 +1,21 @@
 Measures
 ========
 
-.. currentmodule:: pymovements.measure
+.. currentmodule:: pymovements.measure.samples
 
-.. rubric:: Measures
+.. rubric:: Sample Measures
+    :name: sample-measures
 
 .. autosummary::
     :toctree: api
     :template: function.rst
 
+    amplitude
+    dispersion
+    disposition
+    location
     null_ratio
-
-.. rubric:: Classes
+    peak_velocity
 
 .. autosummary::
     :toctree: api
@@ -19,9 +23,29 @@ Measures
 
     SampleMeasureLibrary
 
-.. currentmodule:: pymovements.reading_measures
+.. currentmodule:: pymovements.measure.events
 
-.. rubric:: Classes
+.. rubric:: Event Measures
+    :name: event-measures
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: function.rst
+
+    duration
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: class.rst
+
+    EventProcessor
+    EventSamplesProcessor
+
+.. currentmodule:: pymovements.measure.reading
+
+.. rubric:: Reading Measures
 
 .. autosummary::
     :toctree: api

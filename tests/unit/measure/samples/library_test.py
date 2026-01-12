@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2026 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,27 +17,27 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality."""
-from pymovements.events.detection import fill
-from pymovements.events.detection import idt
-from pymovements.events.detection import ivt
-from pymovements.events.detection import microsaccades
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
-from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
-from pymovements.events.precomputed import PrecomputedEventDataFrame
+"""Test measure library."""
+from __future__ import annotations
+
+import pytest
+
+from pymovements import SampleMeasureLibrary
+from pymovements.measure import samples
 
 
-__all__ = [
-    'EventDetectionLibrary',
-    'register_event_detection',
-    'fill',
-    'idt',
-    'ivt',
-    'microsaccades',
-
-    'PrecomputedEventDataFrame',
-    'Events',
-    'EventDataFrame',
-]
+@pytest.mark.parametrize(
+    ('measure', 'name'),
+    [
+        pytest.param(samples.amplitude, 'amplitude', id='amplitude'),
+        pytest.param(samples.dispersion, 'dispersion', id='dispersion'),
+        pytest.param(samples.disposition, 'disposition', id='disposition'),
+        pytest.param(samples.location, 'location', id='location'),
+        pytest.param(samples.null_ratio, 'null_ratio', id='null_ratio'),
+        pytest.param(samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
+    ],
+)
+def test_measure_registered(measure, name):
+    assert name in SampleMeasureLibrary()
+    assert SampleMeasureLibrary.get(name) == measure
+    assert SampleMeasureLibrary.get(name).__name__ == name

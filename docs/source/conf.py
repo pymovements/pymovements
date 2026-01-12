@@ -176,7 +176,7 @@ nitpick_ignore_regex = [
     (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
 
     # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^InvalidProperty$'),
+    (r'py:exc', r'^UnknownMeasure$'),
     (r'py:exc', r'^\.\.\s+deprecated:$'),
 
 
@@ -184,11 +184,11 @@ nitpick_ignore_regex = [
     (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType)$'),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasureMethod)$'),
+    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
-        r'DatasetDefinitionClass|measure\.library\.SampleMeasureMethod)$',
+        r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
 
     # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
