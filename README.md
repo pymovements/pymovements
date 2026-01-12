@@ -69,11 +69,8 @@ dataset.detect('microsaccades')  # detect saccades using the microsaccades algor
 
 <!-- With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away -->
 
-### Installation
-Installation instructions are available here:
-:doc:`Installation Options <user-guide/getting-started/installation>`
-
-### Tutorials and reference
+### Quick Links
+- :doc:`Installation Options <user-guide/getting-started/installation>`
 - [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
 - [API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
 
