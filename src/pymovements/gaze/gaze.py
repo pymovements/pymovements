@@ -65,6 +65,8 @@ class Gaze:
         The experiment definition. (default: None)
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. (default: None)
@@ -117,6 +119,10 @@ class Gaze:
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata.
+    messages: polars.DataFrame | None
+        DataFrame containing messages from the experiment session.
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
@@ -227,6 +233,10 @@ class Gaze:
 
     experiment: Experiment | None
 
+    metadata: dict[str, Any]
+
+    messages: polars.DataFrame | None
+
     trial_columns: list[str] | None
 
     n_components: int | None
@@ -244,6 +254,7 @@ class Gaze:
             experiment: Experiment | None = None,
             events: Events | None = None,
             *,
+            metadata: dict[str, Any] | None = None,
             messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
             time_column: str | None = None,
@@ -304,6 +315,11 @@ class Gaze:
                 )
         else:
             self.events = events.clone()
+
+        if metadata is None:
+            self.metadata = {}
+        else:
+            self.metadata = metadata
 
         _check_messages(messages)
         self.messages = messages
@@ -1119,8 +1135,6 @@ class Gaze:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
-        ValueError
-            If the computed property already exists as a column in ``events``.
         """
         if len(self.events) == 0:
             warn(
@@ -1137,12 +1151,13 @@ class Gaze:
 
         join_on = identifiers + ['name', 'onset', 'offset']
         column_intersection = set(self.events.columns) & set(results.columns)
-        if column_intersection != set(join_on):
+        overwrite_columns = list(column_intersection - set(join_on))
+        if overwrite_columns:
             warn(
                 'The following columns already exist in event and will be overwritten: '
-                f"{list(column_intersection - set(join_on))}",
+                f"{overwrite_columns}",
             )
-
+            self.events.drop(overwrite_columns)
         if results.height:
             self.events.add_event_properties(results, join_on=join_on)
 

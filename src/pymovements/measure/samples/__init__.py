@@ -28,6 +28,7 @@ from pymovements.measure.samples.measures import location
 from pymovements.measure.samples.measures import null_ratio
 from pymovements.measure.samples.measures import peak_velocity
 
+
 __all__ = [
     'register_sample_measure',
     'SampleMeasureLibrary',
