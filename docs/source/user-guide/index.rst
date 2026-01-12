@@ -43,3 +43,4 @@ For more information, see the next section on :doc:`Installation Options <instal
    data-quality
    event-detection
    work-with-datasets
+   ../tutorials/index
