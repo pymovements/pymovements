@@ -21,7 +21,6 @@ to one time-ordered gaze sample.
 
 +------------+--------+-----------------+
 | time (ms)  | pupil  | pixel (x, y)    |
-| i64        | f64    | list[f64]       |
 +============+========+=================+
 | 2762704    | 783.0  | [512.1, 384.8]  |
 +------------+--------+-----------------+
@@ -34,12 +33,11 @@ to one time-ordered gaze sample.
 | 2762716    | 783.0  | [513.1, 389.2]  |
 +------------+--------+-----------------+
 
-In this example:
+Column dtypes after import:
 
-- ``time`` is the timestamp of the sample, typically in milliseconds.
-- ``pupil`` is an estimate of pupil size (arbitrary units, device-dependent).
-- ``pixel`` contains the horizontal and vertical gaze coordinates on the display.
-
+- ``time`` (``i64``) is the timestamp of the sample, typically in milliseconds.
+- ``pupil`` (``f64``) is an estimate of pupil size (arbitrary units, device-dependent)
+- ``pixel`` (``list[f64]``) contains the horizontal and vertical gaze coordinates on the display.
 
 Inspecting Raw Samples with Time-Series Plots
 ---------------------------------------------
