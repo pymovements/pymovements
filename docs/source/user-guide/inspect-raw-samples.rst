@@ -19,9 +19,8 @@ loading.
 The table below shows a simplified example of raw gaze samples after import. Each row corresponds
 to one time-ordered gaze sample.
 
-+============+========+=================+
-| time (ms)  | pupil  | pixel (x, y)    |
 +------------+--------+-----------------+
+| time (ms)  | pupil  | pixel (x, y)    |
 | i64        | f64    | list[f64]       |
 +============+========+=================+
 | 2762704    | 783.0  | [512.1, 384.8]  |
