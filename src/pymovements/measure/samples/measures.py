@@ -333,15 +333,6 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     pl.Expr
         Null ratio expression.
     """
-    if column_dtype not in {pl.Float64, pl.Int64, pl.Utf8, pl.List}:
-        # Note: pl.List is a class, but it can also be an instance pl.List(inner).
-        # We should check if it's the base class or an instance.
-        # However, the previous code used == pl.List which might have worked for base class.
-        # Actually, in Polars pl.List is a type constructor.
-        # Let's check if we should keep the same check logic.
-        pass
-
-    # To maintain consistency with the previous error message:
     valid_dtypes = {pl.Float64, pl.Int64, pl.Utf8, pl.List}
     if not any(
             column_dtype == d or (isinstance(column_dtype, pl.List) and d == pl.List)
