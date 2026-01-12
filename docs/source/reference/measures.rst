@@ -15,7 +15,10 @@ Measures
     disposition
     location
     null_ratio
+    data_loss
     peak_velocity
+
+.. rubric:: Classes
 
 .. autosummary::
     :toctree: api

@@ -21,6 +21,7 @@
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.measure.samples.measures import amplitude
+from pymovements.measure.samples.measures import data_loss
 from pymovements.measure.samples.measures import dispersion
 from pymovements.measure.samples.measures import disposition
 from pymovements.measure.samples.measures import location
@@ -33,6 +34,7 @@ __all__ = [
     'SampleMeasureLibrary',
 
     'amplitude',
+    'data_loss',
     'dispersion',
     'disposition',
     'location',

@@ -26,9 +26,10 @@ from pymovements.measure.events.measures import register_event_measure
 from pymovements.measure.events.processing import EventProcessor
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.reading.frame import ReadingMeasures
+from pymovements.measure.samples import data_loss
+from pymovements.measure.samples import null_ratio
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
-
 
 __all__ = [
     'events',
@@ -43,4 +44,7 @@ __all__ = [
     'samples',
     'SampleMeasureLibrary',
     'register_sample_measure',
+
+    'null_ratio',
+    'data_loss',
 ]
