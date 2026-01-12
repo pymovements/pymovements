@@ -51,6 +51,7 @@ def from_csv(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, type] | None = None,
         read_csv_kwargs: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs: Any,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
@@ -109,6 +110,8 @@ def from_csv(
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
         for columns. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     **kwargs: Any
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
@@ -294,6 +297,7 @@ def from_csv(
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,
         auto_column_detect=auto_column_detect,
+        metadata=metadata,
     )
     return gaze
 
@@ -390,6 +394,7 @@ def from_asc(
         encoding: str | None = None,
         events: bool = False,
         messages: bool | list[str] = False,
+        metadata: dict[str, Any] | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -433,6 +438,8 @@ def from_asc(
         Regular expressions are only applied to the message content,
         implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
     Returns
     -------
@@ -521,7 +528,7 @@ def from_asc(
         _patterns = patterns
 
     # Read data.
-    samples, event_data, metadata, messages_df = parse_eyelink(
+    samples, event_data, parsed_metadata, messages_df = parse_eyelink(
         file,
         patterns=_patterns,
         schema=schema,
@@ -544,7 +551,7 @@ def from_asc(
         ])
 
     # Fill experiment with parsed metadata.
-    experiment = _fill_experiment_from_parsing_eyelink_metadata(experiment, metadata)
+    experiment = _fill_experiment_from_parsing_eyelink_metadata(experiment, parsed_metadata)
 
     # Detect pixel / position column names (monocular or binocular) and pass them to Gaze
     # Note: column detection for ASC files now uses simple substring matching
@@ -575,12 +582,13 @@ def from_asc(
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
+        metadata=metadata,
     )
     # Build cal/val frames and consume them from metadata dict
-    gaze.calibrations = metadata_to_cal_frame(metadata)
-    gaze.validations = metadata_to_val_frame(metadata)
+    gaze.calibrations = metadata_to_cal_frame(parsed_metadata)
+    gaze.validations = metadata_to_val_frame(parsed_metadata)
     # Keep remaining metadata privately on Gaze
-    gaze._metadata = dict(metadata)  # pylint: disable=protected-access
+    gaze._metadata = dict(parsed_metadata)  # pylint: disable=protected-access
     return gaze
 
 
@@ -593,6 +601,7 @@ def from_ipc(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, type] | None = None,
         read_ipc_kwargs: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs: Any,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
@@ -620,6 +629,8 @@ def from_ipc(
         (default: None)
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     **kwargs: Any
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`.
 
@@ -699,6 +710,7 @@ def from_ipc(
         samples=samples,
         experiment=experiment,
         trial_columns=trial_columns,
+        metadata=metadata,
     )
     return gaze
 
@@ -867,6 +879,7 @@ def from_begaze(
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = 'ascii',
         prefer_eye: str = 'L',
+        metadata: dict[str, Any] | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze` from a BeGaze text export.
 
@@ -892,6 +905,8 @@ def from_begaze(
         Text encoding of the file. Defaults to ASCII, which is the common BeGaze export encoding.
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
     Returns
     -------
@@ -899,7 +914,7 @@ def from_begaze(
         The initialized gaze object read from the BeGaze text file.
     """
     # Read data via BeGaze parser.
-    samples, event_data, metadata = parse_begaze(
+    samples, event_data, parsed_metadata = parse_begaze(
         file,
         patterns=patterns,
         schema=schema,
@@ -923,7 +938,7 @@ def from_begaze(
         ])
 
     # Fill experiment with parsed metadata.
-    experiment = _fill_experiment_from_parsing_begaze_metadata(experiment, metadata)
+    experiment = _fill_experiment_from_parsing_begaze_metadata(experiment, parsed_metadata)
 
     # Ensure required trial columns exist (e.g. 'Stimulus' for DIDEC) even if missing in file
     if trial_columns:
@@ -946,5 +961,6 @@ def from_begaze(
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
+        metadata=metadata,
     )
     return gaze
