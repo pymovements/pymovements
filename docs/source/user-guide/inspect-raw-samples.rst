@@ -53,7 +53,7 @@ gaze position, pupil size, or derived quantities such as velocity.
 Time-series inspection can reveal common issues such as signal loss, noise, blinks, sampling
 irregularities, or calibration problems, which may strongly influence subsequent analysis steps.
 
-See the :doc:`Plotting Gaze Data tutorial <tutorials/plotting>` for an example of time-series
+See the :doc:`Plotting Gaze Data tutorial <../tutorials/plotting>` for an example of time-series
 visualization using ``traceplot``.
 
 Converting Units to Standardized Representations

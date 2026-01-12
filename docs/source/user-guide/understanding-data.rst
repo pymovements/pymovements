@@ -84,7 +84,7 @@ necessary first step for analysis.
 pymovements facilitates the transformation of these heterogeneous eye-tracker exports into a
 consistent internal format by creating a :class:`~pymovements.gaze.gaze.Gaze` object that
 contains gaze samples together with their experimental context. See the
-:doc:`Parsing SR Research EyeLink Data tutorial <tutorials/parsing-dataset>` to walk through
+:doc:`Parsing SR Research EyeLink Data tutorial <../tutorials/parsing-dataset>` to walk through
 loading ``*.asc`` files, extracting gaze samples and metadata, and inspecting the resulting Gaze
 object.
 

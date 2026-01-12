@@ -9,13 +9,13 @@ These How-Tos provide detailed guides to implement the most important use cases 
 .. toctree::
     :maxdepth: 1
 
-    pymovements-in-10-minutes.ipynb
-    public-datasets.ipynb
-    local-dataset.ipynb
-    parsing-dataset.ipynb
-    plotting.ipynb
-    preprocessing-raw-data.ipynb
-    saving-loading-preprocessed.ipynb
-    event-handling.ipynb
-    creating-synthetic-data.ipynb
+    pymovements-in-10-minutes
+    public-datasets
+    local-dataset
+    parsing-dataset
+    plotting
+    preprocessing-raw-data
+    saving-loading-preprocessed
+    event-handling
+    creating-synthetic-data
     R-tutorial
