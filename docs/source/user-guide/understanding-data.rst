@@ -68,7 +68,7 @@ analyses focused on fixations or overall viewing patterns.
 
 In pymovements, these device-level properties are represented explicitly via an
 :class:`~pymovements.gaze.eyetracker.EyeTracker` object that is part of the experiment definition
-(class: :class:`~pymovements.experiment.Experiment`). This separates how the data were
+(class: :class:`~pymovements.gaze.experiment.Experiment`). This separates how the data were
 recorded from what the recorded samples contain. The sampling rate is used implicitly when
 computing derived measures such as velocity, acceleration, or event durations.
 
@@ -82,8 +82,8 @@ metadata are represented, making parsing into a consistent internal representati
 first step for analysis.
 
 pymovements facilitates the transformation of these heterogeneous eye-tracker exports into a
-consistent internal format by creating a :class:`~pymovements.gaze.Gaze` object that contains gaze
-samples together with their experimental context. See the
+consistent internal format by creating a :class:`~pymovements.gaze.gaze.Gaze` object that
+contains gaze samples together with their experimental context. See the
 :doc:`Parsing SR Research EyeLink Data tutorial <tutorials/parsing-dataset>` to walk through
 loading `*.asc` files, extracting gaze samples and metadata, and inspecting the resulting Gaze
 object.
@@ -102,14 +102,15 @@ samples into higher-level representations. Each step builds on the previous one 
 assumptions and analytical choices that shape the final results.
 
 Common stages in this process include:
-* **Recorded data**: Vendor-specific files produced by the eye tracker and experiment software.
-* **Raw samples**: Time-ordered gaze measurements extracted from the recordings.
-* **Preprocessed samples**: Samples that have been cleaned, filtered, transformed into meaningful
-units, or restricted to relevant time windows (e.g. trials).
-* **Events**: Segments of the signal classified as fixations, saccades, blinks, or other
-eye-movement events using detection algorithms.
-* **Analysis measures**: Summary statistics, models, or visualizations derived from samples or
-events.
+
+- **Recorded data**: Vendor-specific files produced by the eye tracker and experiment software.
+- **Raw samples**: Time-ordered gaze measurements extracted from the recordings.
+- **Preprocessed samples**: Samples that have been cleaned, filtered, transformed into meaningful
+  units, or restricted to relevant time windows (e.g. trials).
+- **Events**: Segments of the signal classified as fixations, saccades, blinks, or other
+  eye-movement events using detection algorithms.
+- **Analysis measures**: Summary statistics, models, or visualizations derived from samples or
+  events.
 
 However, there is no single preprocessing pipeline or set of eye-tracking measures that is optimal
 for all research questions. Instead, appropriate choices depend on the experimental design, the
