@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2026 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,10 +17,18 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides access to reading measure classes."""
-from pymovements.reading_measures.frame import ReadingMeasures
-
+"""Module for event measures."""
+from pymovements.measure.events.measures import duration
+from pymovements.measure.events.measures import EVENT_MEASURES
+from pymovements.measure.events.measures import register_event_measure
+from pymovements.measure.events.processing import EventProcessor
+from pymovements.measure.events.processing import EventSamplesProcessor
 
 __all__ = [
-    'ReadingMeasures',
+    'EVENT_MEASURES',
+    'register_event_measure',
+    'EventProcessor',
+    'EventSamplesProcessor',
+
+    'duration',
 ]
