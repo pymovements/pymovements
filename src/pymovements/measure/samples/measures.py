@@ -20,9 +20,87 @@
 """Provides sample measure implementations."""
 from __future__ import annotations
 
+from math import isfinite
+from typing import Any
+from typing import Literal
+
 import polars as pl
 
 from pymovements.measure.samples.library import register_sample_measure
+
+
+def _is_invalid_value(v: Any) -> bool:
+    """Check whether ``v`` (scalar or sequence) contains an invalid value.
+
+    For scalar values, the function directly evaluates their validity. For
+    sequences (list-like objects), the function iterates through each element
+    and returns ``True`` if any contained element is invalid.
+
+    Invalid values include:
+
+    - ``None``
+    - ``NaN``
+    - Positive or negative infinity (``inf``)
+
+    Parameters
+    ----------
+    v : Any
+        The value or sequence of values to be checked for validity.
+
+    Returns
+    -------
+    bool
+        ``True`` if the input ``v`` is invalid, ``False`` otherwise.
+    """
+    # scalar None, NaN, or +/-inf
+    if v is None:
+        return True
+    # sequence (e.g., list-like): any invalid element marks the row
+    if isinstance(v, (list, tuple)) or (
+            hasattr(v, '__iter__') and not isinstance(v, (str, bytes))
+    ):
+        for e in v:
+            if e is None:
+                return True
+            if isinstance(e, float) and (not isfinite(e)):
+                return True
+        return False
+    # scalar float: NaN/inf
+    if isinstance(v, float):
+        return not isfinite(v)
+    return False
+
+
+def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.Expr:
+    """Check if any value in a column is invalid (null, NaN, or inf).
+
+    Parameters
+    ----------
+    column: str | pl.Expr
+        The column to check for invalid values.
+    dtype: pl.DataType | None
+        Data type of the column. If provided, more efficient expressions are used.
+
+    Returns
+    -------
+    pl.Expr
+        A boolean expression indicating whether each row is invalid.
+    """
+    if isinstance(column, str):
+        column = pl.col(column)
+
+    if dtype in {pl.Float32, pl.Float64}:
+        return column.is_null() | column.is_nan() | column.is_infinite()
+
+    if dtype == pl.List:
+        # For list columns, any null/NaN/inf element marks the row invalid.
+        # We use map_elements here for robust cross-type support.
+        return column.map_elements(_is_invalid_value, return_dtype=pl.Boolean).fill_null(True)
+
+    if dtype is not None:
+        return column.is_null()
+
+    return column.map_elements(_is_invalid_value, return_dtype=pl.Boolean).fill_null(True)
 
 
 @register_sample_measure
@@ -255,20 +333,17 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     pl.Expr
         Null ratio expression.
     """
-    if column_dtype in {pl.Float64, pl.Int64}:
-        value = 1 - pl.col(column).fill_nan(pl.lit(None)).count() / pl.col(column).len()
-    elif column_dtype == pl.Utf8:
-        value = 1 - pl.col(column).count() / pl.col(column).len()
-    elif column_dtype == pl.List:
-        non_null_lengths = pl.col(column).list.drop_nulls().drop_nans().list.len()
-        value = 1 - (non_null_lengths == pl.col(column).list.len()).sum() / pl.col(column).len()
-    else:
+    valid_dtypes = {pl.Float64, pl.Int64, pl.Utf8, pl.List}
+    if not any(
+            column_dtype == d or (isinstance(column_dtype, pl.List) and d == pl.List)
+            for d in valid_dtypes
+    ):
         raise TypeError(
             'column_dtype must be of type {Float64, Int64, Utf8, List}'
             f' but is of type {column_dtype}',
         )
 
-    return value.alias('null_ratio')
+    return _is_invalid(column, dtype=column_dtype).mean().alias('null_ratio')
 
 
 @register_sample_measure
@@ -325,3 +400,147 @@ def _check_has_two_componenents(n_components: int) -> None:
     """
     if n_components != 2:
         raise ValueError('data must have exactly two components')
+
+
+@register_sample_measure
+def data_loss(
+        time_column: str,
+        data_column: str,
+        *,
+        sampling_rate: float,
+        start_time: float | None = None,
+        end_time: float | None = None,
+        unit: Literal['count', 'time', 'ratio'] = 'count',
+) -> pl.Expr:
+    """Measure data loss using an expected, evenly sampled time base.
+
+    The measure computes missing samples in three categories and returns either:
+
+    - "count": total number of lost samples (integer)
+    - "time": lost time in the units of ``time_column`` (``count / sampling_rate``)
+    - "ratio": fraction of lost to expected samples in [0, 1]
+
+    Lost samples are the sum of:
+
+    1. Missing rows implied by gaps in the time axis, given ``sampling_rate``.
+    2. Invalid rows in ``data_column``, where a row is invalid if it is ``null`` or
+       contains any ``null``/``NaN``/``inf`` element
+       (for list columns, any invalid element marks the row invalid).
+
+    If ``start_time``/``end_time`` are not provided, the group's first/last timestamps
+    (min/max of ``time_column``) are used as bounds.
+
+    Parameters
+    ----------
+    time_column: str
+        Name of the timestamp column.
+    data_column: str
+        Name of a data column used to count invalid samples due to null/NaN/inf values.
+        For list columns, any null/NaN/inf element marks the whole row as invalid.
+    sampling_rate: float
+        Expected sampling rate in Hz (must be > 0).
+    start_time: float | None
+        Recording start time. If ``None``, uses the group's first timestamp.
+    end_time: float | None
+        Recording end time. If ``None``, uses the group's last timestamp.
+    unit: Literal['count', 'time', 'ratio']
+        Aggregation unit for the result.
+
+    Returns
+    -------
+    pl.Expr
+        A scalar (per-group) expression with alias ``data_loss_{unit}``.
+
+    Raises
+    ------
+    ValueError
+        If ``unit`` is not one of {'count','time','ratio'} or ``sampling_rate`` <= 0.
+    TypeError
+        If ``time_column`` is not a string.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements import measure as m
+    >>> df = pl.DataFrame({'time': [0.0, 1.0, 2.0, 4.0]})
+    >>> df.select(m.data_loss('time', 'time', sampling_rate=1.0, unit='count'))
+    shape: (1, 1)
+    ┌─────────────────┐
+    │ data_loss_count │
+    │ ---             │
+    │ i64             │
+    ╞═════════════════╡
+    │ 1               │
+    └─────────────────┘
+    >>> # Include invalid rows in a data column
+    >>> df = pl.DataFrame({
+    ...     'time': [1, 2, 3, 4, 5, 9],
+    ...     'pixel':  [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
+    ... })
+    >>> df.select(m.data_loss('time', 'pixel', sampling_rate=1.0, unit='count'))
+    shape: (1, 1)
+    ┌─────────────────┐
+    │ data_loss_count │
+    │ ---             │
+    │ i64             │
+    ╞═════════════════╡
+    │ 6               │
+    └─────────────────┘
+    """
+    if not isinstance(time_column, str):
+        raise TypeError(
+            f"invalid type for 'time_column'. Expected 'str' , got '{type(time_column).__name__}'",
+        )
+    timestamps = pl.col(time_column)
+
+    # Validate sampling_rate
+    if not isinstance(sampling_rate, (int, float)) or sampling_rate <= 0:
+        raise ValueError(
+            f'sampling_rate must be a positive number, but got: {sampling_rate!r}',
+        )
+
+    if start_time is not None and end_time is not None and end_time < start_time:
+        raise ValueError(
+            f'end_time ({end_time}) must be greater than or equal to '
+            f'start_time ({start_time})',
+        )
+
+    # Group anchors: provided or derived
+    start_expr = pl.lit(start_time) if start_time is not None else timestamps.min()
+    end_expr = pl.lit(end_time) if end_time is not None else timestamps.max()
+
+    # Observed rows in the group
+    observed = pl.len()
+
+    # Expected sample count over [start, end] with inclusive endpoints for a fixed rate.
+    span = end_expr - start_expr
+    expected = (span * pl.lit(sampling_rate)).floor().cast(pl.Int64) + 1
+
+    # Missing rows due to time gaps, ensure non-negative and valid range
+    valid_range = end_expr >= start_expr
+    time_missing = pl.when(valid_range).then(
+        pl.max_horizontal(expected - observed, pl.lit(0)),
+    ).otherwise(pl.lit(None))
+
+    invalid_missing = (
+        _is_invalid(data_column)
+        .sum()
+        .cast(pl.Int64)
+    )
+
+    total_missing = (time_missing + invalid_missing).alias('data_loss_count')
+
+    if unit == 'count':
+        return total_missing
+
+    if unit == 'time':
+        missing_time = (total_missing.cast(pl.Float64) / pl.lit(float(sampling_rate)))
+        return missing_time.alias('data_loss_time')
+
+    if unit == 'ratio':
+        ratio = (total_missing.cast(pl.Float64) / expected.cast(pl.Float64)).fill_null(0.0)
+        return ratio.alias('data_loss_ratio')
+
+    raise ValueError(
+        f"unit must be one of {'count', 'time', 'ratio'} but got: {unit!r}",
+    )
