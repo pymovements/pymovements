@@ -222,13 +222,13 @@ EYELINK_PATTERNS = [
         pytest.param(
             None,
             {
-                'read_csv_kwargs': {
+                'custom_read_kwargs': {
                     'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
                 },
             },
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
             ),
             id='patterns_via_definition',
         ),
@@ -236,13 +236,13 @@ EYELINK_PATTERNS = [
         pytest.param(
             {'patterns': 'eyelink'},
             {
-                'read_csv_kwargs': {
+                'custom_read_kwargs': {
                     'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
                 },
             },
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
             ),
             id='patterns_definition_overrides_load_kwargs',
         ),
@@ -731,11 +731,11 @@ def test_load_gaze_file_has_correct_metadata(
                 'separator': '\t',
             },
             None, None,
-            {'pixel_columns': ['x', 'y'], 'read_csv_kwargs': {'gaze': {'separator': '\t'}}},
+            {'pixel_columns': ['x', 'y'], 'custom_read_kwargs': {'gaze': {'separator': '\t'}}},
             Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
             marks=[
                 pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
+                    'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
                 ),
                 pytest.mark.filterwarnings(
                     'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
@@ -899,7 +899,7 @@ def test_load_precomputed_rm_file_rda(make_example_file):
     )
 
 
-@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning')
 def test_load_precomputed_rm_file_rda_dataset_definition_kwargs(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
     resource_definition = ResourceDefinition(content='precomputed_reading_measures')
@@ -1036,7 +1036,7 @@ def test_load_precomputed_file_rda(make_example_file):
     )
 
 
-@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning')
 def test_load_precomputed_file_rda_dataset_definition_kwargs(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
     resource_definition = ResourceDefinition(content='precomputed_events')
@@ -1109,9 +1109,9 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
 
         pytest.param(
             {},
-            {'read_csv_kwargs': {'gaze': {'trial_columns': ['trial_id']}}},
+            {'custom_read_kwargs': {'gaze': {'trial_columns': ['trial_id']}}},
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
             ),
             id='trial_columns_via_custom_read_kwargs',
         ),
@@ -1120,11 +1120,11 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
             {},
             {
                 'trial_columns': ['wrong'],
-                'read_csv_kwargs': {'gaze': {'trial_columns': ['trial_id']}},
+                'custom_read_kwargs': {'gaze': {'trial_columns': ['trial_id']}},
             },
             marks=[
                 pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
+                    'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
                 ),
                 pytest.mark.filterwarnings(
                     'ignore:.*DatasetDefinition.trial_columns.*:DeprecationWarning',
