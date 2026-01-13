@@ -108,7 +108,6 @@ class Dataset:
             subset: dict[str, float | int | str | list[float | int | str]] | None = None,
             events_dirname: str | None = None,
             preprocessed_dirname: str | None = None,
-            stimuli_dirname: str | None = None,
             extension: str = 'feather',
     ) -> Dataset:
         """Parse file information and load all gaze files.
@@ -140,11 +139,6 @@ class Dataset:
             :py:meth:`pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
             :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
-        stimuli_dirname: str | None
-            One-time usage of an alternative directory name to load data relative to
-            :py:meth:`pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.stimuli_rootpath`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -187,7 +181,7 @@ class Dataset:
         # Load stimulus files if desired and if present
         if stimuli is not False:
             if stimuli is True or self.definition.resources.has_content('stimuli'):
-                self.load_stimuli(stimuli_dirname=stimuli_dirname)
+                self.load_stimuli()
 
         return self
 
@@ -449,24 +443,16 @@ class Dataset:
         self.events = events
         return self
 
-    def load_stimuli(self, stimuli_dirname: str | None = None) -> None:
+    def load_stimuli(self) -> None:
         """Load text stimuli.
 
-        This method checks that the file information for text stimuli is available,
-        then loads each text stimulus file listed in `self.fileinfo['stimuli']` using
+        This method checks that the file information for stimuli is available,
+        then loads each text stimulus file listed in ``Dataset.fileinfo['stimuli']`` using
         the dataset definition and path settings. The resulting list of
-        `TextStimulus` objects is assigned to `self.stimuli`.
+        stimulus objects is assigned to ``Dataset.stimuli``.
 
         Supported file extensions:
         - CSV-like: .csv, .tsv, .txt
-
-        Parameters
-        ----------
-        stimuli_dirname: str | None
-            One-time usage of an alternative directory name to load data relative to
-            :py:meth:`pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.stimuli_rootpath`. (default: None)
 
         Raises
         ------
@@ -474,15 +460,9 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
-
-        if stimuli_dirname:
-            dirpath = self.paths.dataset / stimuli_dirname
-        else:
-            dirpath = self.paths.stimuli
-
-        self.stimuli = dataset_files.load_stimuli_files(
-            fileinfo=self.fileinfo['stimulus'],
-            dirpath=dirpath,
+        self.gaze = dataset_files.load_stimuli_files(
+            definition=self.definition,
+            files=[file for file in self._files if file.definition.content == 'stimulus'],
         )
 
     def apply(
