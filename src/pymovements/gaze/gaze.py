@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import inspect
 import math
-import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
@@ -31,18 +30,22 @@ from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import overload
+from warnings import warn
 
 import numpy as np
 import polars
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
-import pymovements as pm  # pylint: disable=cyclic-import
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
-from pymovements.events.processing import EventGazeProcessor
+from pymovements.events import EventDetectionLibrary
+from pymovements.events import Events
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
+from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.samples.library import SampleMeasureLibrary
+from pymovements.stimulus import TextStimulus
 
 
 @repr_html(['samples', 'events', 'trial_columns', 'experiment'])
@@ -60,8 +63,10 @@ class Gaze:
         A dataframe that contains gaze samples. (default: None)
     experiment : Experiment | None
         The experiment definition. (default: None)
-    events: pm.Events | None
+    events: Events | None
         A dataframe of events in the gaze signal. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. (default: None)
@@ -110,10 +115,14 @@ class Gaze:
     ----------
     samples: polars.DataFrame
         A dataframe of recorded gaze samples.
-    events: pm.Events
+    events: Events
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata.
+    messages: polars.DataFrame | None
+        DataFrame containing messages from the experiment session.
     trial_columns: list[str] | None
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
@@ -220,9 +229,13 @@ class Gaze:
 
     samples: polars.DataFrame
 
-    events: pm.Events
+    events: Events
 
     experiment: Experiment | None
+
+    metadata: dict[str, Any]
+
+    messages: polars.DataFrame | None
 
     trial_columns: list[str] | None
 
@@ -239,8 +252,9 @@ class Gaze:
             self,
             samples: polars.DataFrame | None = None,
             experiment: Experiment | None = None,
-            events: pm.Events | None = None,
+            events: Events | None = None,
             *,
+            metadata: dict[str, Any] | None = None,
             messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
             time_column: str | None = None,
@@ -254,7 +268,7 @@ class Gaze:
             data: polars.DataFrame | None = None,
     ):
         if data is not None:
-            warnings.warn(
+            warn(
                 DeprecationWarning(
                     "Gaze.__init__() argument 'data' is deprecated since version v0.23.0. "
                     "Please use argument 'samples' instead. "
@@ -289,9 +303,9 @@ class Gaze:
 
         if events is None:
             if self.trial_columns is None:
-                self.events = pm.Events()
+                self.events = Events()
             else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = pm.Events(
+                self.events = Events(
                     data=polars.DataFrame(
                         schema={
                             column: self.samples.schema[column] for column in self.trial_columns
@@ -301,6 +315,11 @@ class Gaze:
                 )
         else:
             self.events = events.clone()
+
+        if metadata is None:
+            self.metadata = {}
+        else:
+            self.metadata = metadata
 
         _check_messages(messages)
         self.messages = messages
@@ -327,7 +346,7 @@ class Gaze:
         """
         if transforms.TransformLibrary.__contains__(function):
             self.transform(function, **kwargs)
-        elif pm.events.EventDetectionLibrary.__contains__(function):
+        elif EventDetectionLibrary.__contains__(function):
             self.detect(function, **kwargs)
         else:
             raise ValueError(f"unsupported method '{function}'")
@@ -581,7 +600,7 @@ class Gaze:
                     kwargs['distance'] = 'distance'
 
                     if self.experiment.screen.distance_cm:
-                        warnings.warn(
+                        warn(
                             "Both a distance column and experiment's "
                             'eye-to-screen distance are specified. '
                             'Using eye-to-screen distances from column '
@@ -960,7 +979,7 @@ class Gaze:
 
     def detect(
             self,
-            method: Callable[..., pm.Events] | str,
+            method: Callable[..., Events] | str,
             *,
             eye: str = 'auto',
             clear: bool = False,
@@ -970,7 +989,7 @@ class Gaze:
 
         Parameters
         ----------
-        method: Callable[..., pm.Events] | str
+        method: Callable[..., Events] | str
             The event detection method to be applied.
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
@@ -984,9 +1003,9 @@ class Gaze:
         """
         if self.events is None or clear:
             if self.trial_columns is None:
-                self.events = pm.Events()
+                self.events = Events()
             else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = pm.Events(
+                self.events = Events(
                     data=polars.DataFrame(
                         schema={
                             column: self.samples.schema[column] for column in self.trial_columns
@@ -996,7 +1015,7 @@ class Gaze:
                 )
 
         if isinstance(method, str):
-            method = pm.events.EventDetectionLibrary.get(method)
+            method = EventDetectionLibrary.get(method)
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)
@@ -1051,7 +1070,7 @@ class Gaze:
                         )
 
                 # Select group events
-                group_events = pm.Events(self.events.frame.filter(group_filter_expression))
+                group_events = Events(self.events.frame.filter(group_filter_expression))
 
                 method_kwargs = self._fill_event_detection_kwargs(
                     method,
@@ -1111,36 +1130,36 @@ class Gaze:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events.event_properties` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
-        ValueError
-            If the computed property already exists as a column in ``events``.
         """
         if len(self.events) == 0:
-            warnings.warn(
+            warn(
                 'No events available to compute event properties. '
                 'Did you forget to use detect()?',
             )
 
         identifiers = self.trial_columns if self.trial_columns is not None else []
-        processor = EventGazeProcessor(event_properties)
 
-        event_property_names = [property[0] for property in processor.event_properties]
-        existing_columns = set(self.events.columns) & set(event_property_names)
-        if existing_columns:
-            raise ValueError(
-                f"The following event properties already exist and cannot be recomputed: "
-                f"{existing_columns}. Please remove them first.",
-            )
-
-        new_properties = processor.process(
-            self.events, self, identifiers=identifiers, name=name,
+        processor = EventSamplesProcessor(event_properties)
+        results = processor.process(
+            self.events.frame, self.samples, identifiers=identifiers, name=name,
         )
+
         join_on = identifiers + ['name', 'onset', 'offset']
-        self.events.add_event_properties(new_properties, join_on=join_on)
+        column_intersection = set(self.events.columns) & set(results.columns)
+        overwrite_columns = list(column_intersection - set(join_on))
+        if overwrite_columns:
+            warn(
+                'The following columns already exist in event and will be overwritten: '
+                f"{overwrite_columns}",
+            )
+            self.events.drop(overwrite_columns)
+        if results.height:
+            self.events.add_event_properties(results, join_on=join_on)
 
     def measure_samples(
             self,
@@ -1167,11 +1186,10 @@ class Gaze:
         Examples
         --------
         Let's initialize an example Gaze first:
-        >>> gaze = pm.gaze.from_numpy(
-        ...     pixel=np.concatenate(
-        ...         [np.zeros((2, 40)), np.full((2, 10), np.nan), np.ones((2, 50))],
-        ...         axis=1,
-        ...     ),
+        >>> gaze = Gaze(
+        ...     samples=polars.DataFrame({
+        ...         'pixel': [[312, 448], [317, 405], [None, 399], [320, None], [None, None]],
+        ...     }),
         ... )
 
         You can calculate measures, for example the null ratio like this:
@@ -1182,11 +1200,11 @@ class Gaze:
         │ ---        │
         │ f64        │
         ╞════════════╡
-        │ 0.1        │
+        │ 0.6        │
         └────────────┘
         """
         if isinstance(method, str):
-            method = pm.measure.SampleMeasureLibrary.get(method)
+            method = SampleMeasureLibrary.get(method)
 
         if 'column_dtype' in inspect.getfullargspec(method).args:
             kwargs['column_dtype'] = self.samples[kwargs['column']].dtype
@@ -1250,7 +1268,7 @@ class Gaze:
 
     def map_to_aois(
             self,
-            aoi_dataframe: pm.stimulus.TextStimulus,
+            aoi_dataframe: TextStimulus,
             *,
             eye: str = 'auto',
             gaze_type: str = 'pixel',
@@ -1264,7 +1282,7 @@ class Gaze:
 
         Parameters
         ----------
-        aoi_dataframe: pm.stimulus.TextStimulus
+        aoi_dataframe: TextStimulus
             Area of interest dataframe.
         eye: str
             String specifier for inferring eye components. Supported values are: ``auto``,
@@ -1440,7 +1458,7 @@ class Gaze:
         if flat is not None:
             mode, payload, warn_msg = flat
             if warn_msg:
-                warnings.warn(warn_msg, UserWarning)
+                warn(warn_msg, UserWarning)
             aois: list[polars.DataFrame] = []
             if mode == 'direct':
                 x_eye, y_eye = payload
@@ -1890,9 +1908,9 @@ class Gaze:
 
     def _fill_event_detection_kwargs(
             self,
-            method: Callable[..., pm.Events],
+            method: Callable[..., Events],
             samples: polars.DataFrame,
-            events: pm.Events,
+            events: Events,
             eye_components: tuple[int, int] | None,
             **kwargs: Any,
     ) -> dict[str, Any]:
@@ -1900,11 +1918,11 @@ class Gaze:
 
         Parameters
         ----------
-        method: Callable[..., pm.Events]
+        method: Callable[..., Events]
             The method for which the keyword argument dictionary will be filled.
         samples: polars.DataFrame
             The samples to be used for filling event detection keyword arguments.
-        events: pm.Events
+        events: Events
             The event dataframe to be used for filling event detection keyword arguments.
         eye_components: tuple[int, int] | None
             The eye components to be used for filling event detection keyword arguments.
@@ -2041,7 +2059,7 @@ class Gaze:
         # This can lead to failure in downstream methods that rely on those columns
         # (e.g., transformations).
         if len(self.samples) > 0 and not self.n_components:
-            warnings.warn(
+            warn(
                 'Gaze contains samples but no components could be inferred. \n'
                 'This usually happens if you did not specify any column content'
                 ' and the content could not be autodetected from the column names. \n'

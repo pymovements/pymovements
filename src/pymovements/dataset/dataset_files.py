@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
+from dataclasses import field
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -44,7 +45,7 @@ from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
-from pymovements.reading_measures import ReadingMeasures
+from pymovements.measure.reading import ReadingMeasures
 
 
 @dataclass
@@ -68,11 +69,12 @@ class DatasetFile:
         Associated :py:class:`~pymovements.ResourceDefinition`.
     metadata: dict[str, Any]
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        (default: {})
     """
 
     path: Path
     definition: ResourceDefinition
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def scan_dataset(
@@ -282,8 +284,7 @@ def load_gaze_files(
             )
 
         gaze = load_gaze_file(
-            filepath=file.path,
-            resource_definition=file.definition,
+            file=file,
             dataset_definition=deepcopy(definition),
             preprocessed=preprocessed,
         )
@@ -293,8 +294,7 @@ def load_gaze_files(
 
 
 def load_gaze_file(
-        filepath: Path,
-        resource_definition: ResourceDefinition,
+        file: DatasetFile,
         dataset_definition: DatasetDefinition,
         preprocessed: bool = False,
 ) -> Gaze:
@@ -302,10 +302,8 @@ def load_gaze_file(
 
     Parameters
     ----------
-    filepath: Path
-        Path of gaze file.
-    resource_definition: ResourceDefinition
-        Use this ResourceDefinition to get the correct load function and keyword arguments.
+    file: DatasetFile
+        Load this gaze sample dataset file.
     dataset_definition: DatasetDefinition
         The dataset definition.
     preprocessed: bool
@@ -328,24 +326,25 @@ def load_gaze_file(
     if preprocessed:
         load_function_name = None
     else:
-        load_function_name = resource_definition.load_function
+        load_function_name = file.definition.load_function
 
+    file_path_suffix = file.path.suffix.lower()
     if load_function_name is None:
-        if filepath.suffix in {'.csv', '.txt', '.tsv'}:
+        if file_path_suffix in {'.csv', '.txt', '.tsv'}:
             load_function_name = 'from_csv'
-        elif filepath.suffix == '.feather':
+        elif file_path_suffix == '.feather':
             load_function_name = 'from_ipc'
-        elif filepath.suffix == '.asc':
+        elif file_path_suffix == '.asc':
             load_function_name = 'from_asc'
         else:
             valid_extensions = ['csv', 'tsv', 'txt', 'feather', 'asc']
             raise ValueError(
-                f'Unknown file extension "{filepath.suffix}". '
+                f'Unknown file extension "{file.path.suffix}". '
                 f'Known extensions are: {valid_extensions}\n'
                 f'Otherwise, specify load_function in the resource definition.',
             )
 
-    load_function_kwargs = deepcopy(resource_definition.load_kwargs)
+    load_function_kwargs = deepcopy(file.definition.load_kwargs)
     if load_function_kwargs is None:
         load_function_kwargs = {}
 
@@ -355,9 +354,10 @@ def load_gaze_file(
             time_unit = 'ms'
 
             gaze = from_csv(
-                filepath,
+                file.path,
                 time_unit=time_unit,
                 auto_column_detect=True,
+                metadata=file.metadata,
             )
         else:
             if dataset_definition.trial_columns is not None:
@@ -386,14 +386,16 @@ def load_gaze_file(
                 }
 
             gaze = from_csv(
-                filepath,
+                file.path,
                 experiment=dataset_definition.experiment,
+                metadata=file.metadata,
                 **load_function_kwargs,
             )
     elif load_function_name == 'from_ipc':
         gaze = from_ipc(
-            filepath,
+            file.path,
             experiment=dataset_definition.experiment,
+            metadata=file.metadata,
         )
     elif load_function_name == 'from_asc':
         if dataset_definition.trial_columns is not None:
@@ -403,8 +405,9 @@ def load_gaze_file(
             load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
 
         gaze = from_asc(
-            filepath,
+            file.path,
             experiment=dataset_definition.experiment,
+            metadata=file.metadata,
             **load_function_kwargs,
         )
     elif load_function_name == 'from_begaze':
@@ -415,8 +418,9 @@ def load_gaze_file(
             load_function_kwargs = {**load_function_kwargs, **custom_read_kwargs}
 
         gaze = from_begaze(
-            filepath,
+            file.path,
             experiment=dataset_definition.experiment,
+            metadata=file.metadata,
             **load_function_kwargs,
         )
     else:
@@ -449,25 +453,15 @@ def load_precomputed_reading_measures(
     """
     precomputed_reading_measures = []
     for file in files:
-        load_function_kwargs = deepcopy(file.definition.load_kwargs)
-
-        if load_function_kwargs is None:
-            load_function_kwargs = {}
-        if definition.custom_read_kwargs is not None:
-            custom_read_kwargs = definition.custom_read_kwargs.get(
-                'precomputed_reading_measures', {},
-            )
-            load_function_kwargs.update(custom_read_kwargs)
-
         precomputed_reading_measures.append(
-            load_precomputed_reading_measure_file(file.path, load_function_kwargs),
+            load_precomputed_reading_measure_file(file=file, dataset_definition=definition),
         )
     return precomputed_reading_measures
 
 
 def load_precomputed_reading_measure_file(
-        data_path: str | Path,
-        load_kwargs: dict[str, Any] | None = None,
+        file: DatasetFile,
+        dataset_definition: DatasetDefinition,
 ) -> ReadingMeasures:
     """Load precomputed reading measure from file.
 
@@ -478,10 +472,10 @@ def load_precomputed_reading_measure_file(
 
     Parameters
     ----------
-    data_path:  str | Path
-        Path to file to be read.
-    load_kwargs: dict[str, Any] | None
-        Custom read keyword arguments for polars. (default: None)
+    file: DatasetFile
+        Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
+    dataset_definition: DatasetDefinition
+        Use `DatasetDefinition.custom_read_kwargs` if defined there.
 
     Returns
     -------
@@ -493,33 +487,38 @@ def load_precomputed_reading_measure_file(
     ValueError
         Raises ValueError if unsupported file type is encountered.
     """
-    data_path = Path(data_path)
+    load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
+    if dataset_definition.custom_read_kwargs is not None:
+        custom_read_kwargs = dataset_definition.custom_read_kwargs.get(
+            'precomputed_reading_measures', {},
+        )
+        load_kwargs.update(custom_read_kwargs)
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
     r_extensions = {'.rda'}
     excel_extensions = {'.xlsx'}
     valid_extensions = csv_extensions | r_extensions | excel_extensions
-    data_path_suffix = data_path.suffix.lower()
-    if data_path_suffix in csv_extensions:
+    file_path_suffix = file.path.suffix.lower()
+    if file_path_suffix in csv_extensions:
         read_kwargs = load_kwargs.pop('read_csv_kwargs', {})
-        precomputed_reading_measure_df = pl.read_csv(data_path, **read_kwargs)
-    elif data_path_suffix in r_extensions:
+        precomputed_reading_measure_df = pl.read_csv(file.path, **read_kwargs)
+    elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
-            precomputed_r = pyreadr.read_r(data_path)
+            precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_reading_measure_df = pl.DataFrame(
                 precomputed_r[load_kwargs.pop('r_dataframe_key')],
             )
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
-    elif data_path_suffix in excel_extensions:
+    elif file_path_suffix in excel_extensions:
         read_kwargs = load_kwargs.pop('read_excel_kwargs', {})
-        precomputed_reading_measure_df = pl.read_excel(data_path, **read_kwargs)
+        precomputed_reading_measure_df = pl.read_excel(file.path, **read_kwargs)
     else:
         raise ValueError(
-            f'unsupported file format "{data_path_suffix}". '
+            f'unsupported file format "{file.path.suffix}". '
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
@@ -550,23 +549,15 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        load_function_kwargs = deepcopy(file.definition.load_kwargs)
-
-        if load_function_kwargs is None:
-            load_function_kwargs = {}
-        if definition.custom_read_kwargs is not None:
-            custom_read_kwargs = definition.custom_read_kwargs.get('precomputed_events', {})
-            load_function_kwargs.update(custom_read_kwargs)
-
         precomputed_events.append(
-            load_precomputed_event_file(file.path, load_function_kwargs),
+            load_precomputed_event_file(file=file, dataset_definition=definition),
         )
     return precomputed_events
 
 
 def load_precomputed_event_file(
-        data_path: str | Path,
-        load_kwargs: dict[str, Any] | None = None,
+        file: DatasetFile,
+        dataset_definition: DatasetDefinition,
 ) -> PrecomputedEventDataFrame:
     """Load precomputed events from a single file.
 
@@ -578,11 +569,11 @@ def load_precomputed_event_file(
 
     Parameters
     ----------
-    data_path:  str | Path
-        Path to file to be read.
-
-    load_kwargs: dict[str, Any] | None
-        Custom read keyword arguments for polars. (default: None)
+    file: DatasetFile
+        Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
+        Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
+    dataset_definition: DatasetDefinition
+        Use `DatasetDefinition.custom_read_kwargs` if defined there.
 
     Returns
     -------
@@ -594,33 +585,36 @@ def load_precomputed_event_file(
     ValueError
         If the file format is unsupported based on its extension.
     """
-    data_path = Path(data_path)
+    load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
+    if dataset_definition.custom_read_kwargs is not None:
+        custom_read_kwargs = dataset_definition.custom_read_kwargs.get('precomputed_events', {})
+        load_kwargs.update(custom_read_kwargs)
 
     csv_extensions = {'.csv', '.tsv', '.txt'}
     r_extensions = {'.rda'}
     json_extensions = {'.jsonl', '.ndjson'}
     valid_extensions = csv_extensions | r_extensions | json_extensions
-    data_path_suffix = data_path.suffix.lower()
-    if data_path_suffix in csv_extensions:
+    file_path_suffix = file.path.suffix.lower()
+    if file_path_suffix in csv_extensions:
         read_kwargs = load_kwargs.pop('read_csv_kwargs', {})
-        precomputed_event_df = pl.read_csv(data_path, **read_kwargs)
-    elif data_path_suffix in r_extensions:
+        precomputed_event_df = pl.read_csv(file.path, **read_kwargs)
+    elif file_path_suffix in r_extensions:
         if 'r_dataframe_key' in load_kwargs:
-            precomputed_r = pyreadr.read_r(data_path)
+            precomputed_r = pyreadr.read_r(file.path)
             # convert to polars DataFrame because read_r has no .clone().
             precomputed_event_df = pl.DataFrame(
                 precomputed_r[load_kwargs.pop('r_dataframe_key')],
             )
         else:
             raise ValueError('please specify r_dataframe_key in ResourceDefinition.load_kwargs')
-    elif data_path_suffix in json_extensions:
+    elif file_path_suffix in json_extensions:
         read_kwargs = load_kwargs.pop('read_ndjson_kwargs', {})
-        precomputed_event_df = pl.read_ndjson(data_path, **read_kwargs)
+        precomputed_event_df = pl.read_ndjson(file.path, **read_kwargs)
     else:
         raise ValueError(
-            f'unsupported file format "{data_path_suffix}". '
+            f'unsupported file format "{file.path.suffix}". '
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
