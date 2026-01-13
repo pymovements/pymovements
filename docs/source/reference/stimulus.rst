@@ -15,6 +15,16 @@ Stimulus
 
 .. rubric:: Input / Output
 
+.. currentmodule:: pymovements.stimulus.image
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: function.rst
+
+    from_file
+    from_files
+
 .. currentmodule:: pymovements.stimulus.text
 
 .. autosummary::
@@ -22,4 +32,4 @@ Stimulus
     :nosignatures:
     :template: function.rst
 
-    from_csv
+    from_file
