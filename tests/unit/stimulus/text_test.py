@@ -173,7 +173,7 @@ EXPECTED_DF = polars.DataFrame(
 
 
 @pytest.mark.parametrize(
-    ('filename', 'read_csv_kwargs', 'expected'),
+    ('filename', 'custom_read_kwargs', 'expected'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -189,7 +189,7 @@ EXPECTED_DF = polars.DataFrame(
         ),
     ],
 )
-def test_text_stimulus_from_file(filename, read_csv_kwargs, expected, make_example_file):
+def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file):
     aoi_file = make_example_file(filename)
     aois = text.from_file(
         aoi_file,
@@ -199,7 +199,7 @@ def test_text_stimulus_from_file(filename, read_csv_kwargs, expected, make_examp
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=read_csv_kwargs,
+        custom_read_kwargs=custom_read_kwargs,
     )
     head = aois.aois.head(12)
 
@@ -212,7 +212,7 @@ def test_text_stimulus_from_file(filename, read_csv_kwargs, expected, make_examp
 
 def test_text_stimulus_unsupported_format():
     with pytest.raises(ValueError) as excinfo:
-        text.TextStimulus.from_csv(
+        text.from_file(
             'tests/files/toy_text_1_1_aoi.pickle',
             aoi_column='char',
             start_x_column='top_left_x',
@@ -228,7 +228,7 @@ def test_text_stimulus_unsupported_format():
 
 
 @pytest.mark.parametrize(
-    ('filename', 'read_csv_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -242,7 +242,7 @@ def test_text_stimulus_unsupported_format():
         ),
     ],
 )
-def test_text_stimulus_splitting(filename, read_csv_kwargs, make_example_file):
+def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file):
     aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
@@ -252,7 +252,7 @@ def test_text_stimulus_splitting(filename, read_csv_kwargs, make_example_file):
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=read_csv_kwargs,
+        custom_read_kwargs=custom_read_kwargs,
     )
 
     aois_df = aois_df.split(by='line_idx')
@@ -260,7 +260,7 @@ def test_text_stimulus_splitting(filename, read_csv_kwargs, make_example_file):
 
 
 @pytest.mark.parametrize(
-    ('filename', 'read_csv_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -274,7 +274,7 @@ def test_text_stimulus_splitting(filename, read_csv_kwargs, make_example_file):
         ),
     ],
 )
-def test_text_stimulus_splitting_unique_within(filename, read_csv_kwargs, make_example_file):
+def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, make_example_file):
     aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
@@ -284,7 +284,7 @@ def test_text_stimulus_splitting_unique_within(filename, read_csv_kwargs, make_e
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=read_csv_kwargs,
+        custom_read_kwargs=custom_read_kwargs,
     )
 
     aois_df = aois_df.split(by='line_idx')
@@ -292,7 +292,7 @@ def test_text_stimulus_splitting_unique_within(filename, read_csv_kwargs, make_e
 
 
 @pytest.mark.parametrize(
-    ('filename', 'read_csv_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -306,7 +306,7 @@ def test_text_stimulus_splitting_unique_within(filename, read_csv_kwargs, make_e
         ),
     ],
 )
-def test_text_stimulus_splitting_different_between(filename, read_csv_kwargs, make_example_file):
+def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs, make_example_file):
     aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
@@ -316,7 +316,7 @@ def test_text_stimulus_splitting_different_between(filename, read_csv_kwargs, ma
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=read_csv_kwargs,
+        custom_read_kwargs=custom_read_kwargs,
     )
 
     aois_df = aois_df.split(by='line_idx')
