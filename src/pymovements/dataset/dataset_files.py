@@ -49,6 +49,7 @@ from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
 
+
 @dataclass
 class DatasetFile:
     """A file of a dataset.

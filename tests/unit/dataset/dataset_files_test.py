@@ -1295,7 +1295,7 @@ def test_load_stimulus_file_returns_text_stimulus():
                 'height_column': 'height',
                 'page_column': 'page',
             },
-        )
+        ),
     )
     stimulus = load_stimulus_file(file)
 
@@ -1310,7 +1310,7 @@ def test_load_stimulus_file_returns_image_stimulus():
         definition=ResourceDefinition(
             content='stimulus',
             load_function='ImageStimulus.from_file',
-        )
+        ),
     )
     stimulus = load_stimulus_file(file)
 
@@ -1324,7 +1324,7 @@ def test_load_stimulus_file_raises_unknown_load_function():
         definition=ResourceDefinition(
             content='stimulus',
             load_function='fail',
-        )
+        ),
     )
 
     message = 'Unknown load_function "fail". Known functions are:'
@@ -1338,12 +1338,12 @@ def test_load_stimulus_file_raises_missing_load_kwargs():
         definition=ResourceDefinition(
             content='stimulus',
             load_function='TextStimulus.from_csv',
-        )
+        ),
     )
 
     message = re.escape(
         'TextStimulus.from_csv() missing 3 required keyword-only arguments: '
-        "'aoi_column', 'start_x_column', and 'start_y_column'"
+        "'aoi_column', 'start_x_column', and 'start_y_column'",
     )
     with pytest.raises(TypeError, match=message):
         load_stimulus_file(file)
