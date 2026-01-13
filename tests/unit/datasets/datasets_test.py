@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -66,6 +66,7 @@ from pymovements import DatasetLibrary
             id='PotsdamBingeWearablePVT',
         ),
         pytest.param(pm.datasets.Provo, 'Provo', id='Provo'),
+        pytest.param(pm.datasets.RaCCooNS, 'RaCCooNS', id='RaCCooNS'),
         pytest.param(pm.datasets.SBSAT, 'SBSAT', id='SBSAT'),
         pytest.param(pm.datasets.TECO, 'TECO', id='TECO'),
         pytest.param(pm.datasets.ToyDataset, 'ToyDataset', id='ToyDataset'),

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ def ivt(
         include_nan: bool = False,
         name: str = 'fixation',
 ) -> Events:
-    """Identification of fixations based on velocity-threshold (I-VT).
+    """Identification of fixations based on a velocity-threshold (I-VT).
 
     The algorithm classifies each point as a fixation if the velocity is below
     the given velocity threshold. Consecutive fixation points are merged into

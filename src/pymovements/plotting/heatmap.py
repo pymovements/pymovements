@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ import numpy as np
 from matplotlib import colors
 
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
@@ -57,7 +58,7 @@ def heatmap(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot a heatmap of gaze data.
 
-    The heatmap displays the distribution of gaze positions across the experiment screen,
+    The heatmap displays the distribution of gaze positions across the experiment screen
     for a given Gaze object.
     The color values indicate the time spent at each position in seconds.
 
@@ -166,9 +167,9 @@ def heatmap(
     heatmap_value /= gaze.experiment.sampling_rate
 
     if origin == 'upper':
-        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
-    else:
         extent = [x_edges[0], x_edges[-1], y_edges[-1], y_edges[0]]
+    else:
+        extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
     fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
@@ -193,8 +194,14 @@ def heatmap(
         origin=origin,
         interpolation=interpolation,
         extent=extent,
-        alpha=alpha,
+
     )
+
+    #  make heatmap values == 0 fully transparent
+    heatmap_plot.set_alpha(np.where(heatmap_plot.get_array().data > 0, alpha, 0.0))
+
+    # Apply screen-based axis limits and aspect ratio
+    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
 
     # Set the plot title and axis labels
     if title:

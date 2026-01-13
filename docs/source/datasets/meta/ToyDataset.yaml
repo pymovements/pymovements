@@ -3,12 +3,33 @@ long_name: pymovements Toy Dataset
 resources:
 - content: gaze
   filename: pymovements-toy-dataset.zip
-  url: http://github.com/aeye-lab/pymovements-toy-dataset/zipball/6cb5d663317bf418cec0c9abe1dde5085a8a8ebd/
-  md5: 4da622457637a8181d86601fe17f3aa8
+  url: https://github.com/pymovements/pymovements-toy-dataset/archive/refs/heads/main.zip
+  md5: 256901852c1c07581d375eef705855d6
   filename_pattern: trial_{text_id:d}_{page_id:d}.csv
   filename_pattern_schema_overrides:
     text_id: '!int'
     page_id: '!int'
+  load_kwargs:
+    time_column: timestamp
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
+    read_csv_kwargs:
+      columns:
+      - timestamp
+      - x
+      - y
+      - stimuli_x
+      - stimuli_y
+      schema_overrides:
+        timestamp: '!polars.datatypes.classes.Float64'
+        x: '!polars.datatypes.classes.Float64'
+        y: '!polars.datatypes.classes.Float64'
+        stimuli_x: '!polars.datatypes.classes.Float64'
+        stimuli_y: '!polars.datatypes.classes.Float64'
+      separator: "\t"
+      null_values: '-32768.00'
 experiment:
   eyetracker:
     sampling_rate: 1000
@@ -19,24 +40,3 @@ experiment:
     height_cm: 30.2
     distance_cm: 68
     origin: upper left
-custom_read_kwargs:
-  gaze:
-    columns:
-    - timestamp
-    - x
-    - y
-    - stimuli_x
-    - stimuli_y
-    schema_overrides:
-      timestamp: '!polars.datatypes.classes.Float64'
-      x: '!polars.datatypes.classes.Float64'
-      y: '!polars.datatypes.classes.Float64'
-      stimuli_x: '!polars.datatypes.classes.Float64'
-      stimuli_y: '!polars.datatypes.classes.Float64'
-    separator: "\t"
-    null_values: '-32768.00'
-time_column: timestamp
-time_unit: ms
-pixel_columns:
-- x
-- y

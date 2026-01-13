@@ -1,28 +1,74 @@
 name: publish
 
-on: [deployment]
+on:
+  release:
+    types:
+      - published
 
 jobs:
-  build-n-publish:
-    name: publish to PyPI
+  build:
+    uses: ./.github/workflows/build.yml
+
+  publish-to-test-pypi:
+    name: Publish to Test PyPI
+
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pymovements
+
+    permissions:
+      contents: read
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download distribution packages
+      uses: actions/download-artifact@v4
+      with:
+        name: pymovements-distribution-packages-${{ github.sha }}
+        path: dist/
+
+    - name: Publish distribution to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.TEST_PYPI_TOKEN }}
+        repository-url: https://test.pypi.org/legacy/
+
+  publish-to-pypi:
+    name: Publish to PyPI
+
+    needs: publish-to-test-pypi
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pymovements
+
+    permissions:
+      contents: read
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Download distribution packages
+      uses: actions/download-artifact@v4
+      with:
+        name: pymovements-distribution-packages-${{ github.sha }}
+        path: dist/
+
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+  notify-slack:
+    name: Notify on Slack
+
+    if: ${{ !github.release.prerelease }}
+    needs: publish-to-pypi
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Setup python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.9"
-    - name: Install tox
-      run: python -m pip install tox
-    - name: Initialize tox env
-      run: tox -e build-dists --parallel auto --notest
-    - name: Build dists
-      run: tox -e build-dists --parallel 0
-    - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        password: ${{ secrets.TEST_PYPI_TOKEN }}
-        repository_url: https://test.pypi.org/legacy/
+      - name: Notify on AEye workspace
+        uses: amendx/slackbot-release@1.0.1
+        with:
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

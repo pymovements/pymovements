@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,27 +21,22 @@
 from __future__ import annotations
 
 import math
-import sys
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
+import polars as pl
 from matplotlib.patches import Circle
 
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
+from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
-
-# This is really a dirty workaround to use the Agg backend if runnning pytest.
-# This is needed as Windows workers on GitHub fail randomly with other backends.
-# Unfortunately the Agg module cannot show plots in jupyter notebooks.
-if 'pytest' in sys.modules:  # pragma: no cover
-    matplotlib.use('Agg')
 
 
 def scanpathplot(
@@ -68,6 +63,7 @@ def scanpathplot(
         stimulus_origin: str = 'upper',
         events: Events | EventDataFrame | None = None,
         *,
+        event_name: str = 'fixation',
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -93,7 +89,7 @@ def scanpathplot(
         Shows color bar if True. (default: False)
     padding: float | None
         Absolute padding value.
-        If None it is inferred from pad_factor and limits. (default: None)
+        If None, it is inferred from pad_factor and limits. (default: None)
     pad_factor: float | None
         Relative padding factor to construct padding value if not given. (default: 0.5)
     figsize: tuple[int, int]
@@ -120,6 +116,8 @@ def scanpathplot(
         Origin of stimuls to plot on the stimulus. (default: 'upper')
     events: Events | EventDataFrame | None
         The events to plot. (default: None)
+    event_name: str
+        Filters events for a particular value in the `` name `` column. (default: 'fixation')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None
@@ -154,10 +152,12 @@ def scanpathplot(
         assert gaze is not None
         assert gaze.events is not None
         events = gaze.events
+    assert isinstance(events, Events)  # otherwise mypy complains
 
-    # pylint: disable=duplicate-code
-    x_signal = events.frame[position_column].list.get(0)
-    y_signal = events.frame[position_column].list.get(1)
+    fixations = events.frame.filter(pl.col('name') == event_name)
+
+    x_signal = fixations[position_column].list.get(0)
+    y_signal = fixations[position_column].list.get(1)
 
     own_figure = ax is None
 
@@ -178,7 +178,7 @@ def scanpathplot(
         ax=ax,
     )
 
-    for row in events.frame.iter_rows(named=True):
+    for row in fixations.iter_rows(named=True):
         fixation = Circle(
             row[position_column],
             math.sqrt(row['duration']),
@@ -206,6 +206,9 @@ def scanpathplot(
             # sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=cmap_norm)
             # sm.set_array(cval)
             fig.colorbar(line, label=cbar_label, ax=ax)
+
+    if gaze is not None and gaze.experiment is not None:
+        _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
 
     if title:
         ax.set_title(title)

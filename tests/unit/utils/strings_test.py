@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,11 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.strings."""
-import re
-
 import pytest
 
-from pymovements import __version__
 from pymovements.utils.strings import curly_to_regex
 
 
@@ -31,21 +28,13 @@ def test_curly_to_regex():
     curly_to_regex('foo')
 
 
-def test_curly_to_regex_deprecated():
-    with pytest.raises(DeprecationWarning):
-        curly_to_regex('foo')
-
-
-def test_curly_to_regex_removed():
+def test_curly_to_regex_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         curly_to_regex('foo')
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='utils/strings.py',
+        warning_message=info.value.args[0],
+        scheduled_version='0.26.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'utils/strings.py was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ from pymovements.gaze.gaze_dataframe import GazeDataFrame
 from pymovements.gaze.integration import from_numpy
 from pymovements.gaze.integration import from_pandas
 from pymovements.gaze.io import from_asc
+from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.gaze.screen import Screen
@@ -43,6 +44,7 @@ __all__ = [
     'transforms_numpy',
     'transforms',
     'from_asc',
+    'from_begaze',
     'from_csv',
     'from_ipc',
 ]

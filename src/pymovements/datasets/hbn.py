@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -63,33 +64,34 @@ class HBN(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -114,22 +116,38 @@ class HBN(DatasetDefinition):
 
     name: str = 'HBN'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Healthy Brain Network dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'data.zip',
-                        'md5': '2c523e911022ffc0eab700e34e9f7f30',
-                        'filename_pattern': r'{subject_id:12}_{video_id}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': str,
-                            'video_id': str,
+                {
+                    'content': 'gaze',
+                    'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'data.zip',
+                    'md5': '2c523e911022ffc0eab700e34e9f7f30',
+                    'filename_pattern': r'{subject_id:12}_{video_id}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': str,
+                        'video_id': str,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'time',
+                        'time_unit': 'step',
+                        'pixel_columns': ['x_pix', 'y_pix'],
+                        'read_csv_kwargs': {
+                            'separator': ',',
+                            'columns': ['time', 'x_pix', 'y_pix'],
+                            'schema_overrides': {
+                                'time': pl.Int64,
+                                'x_pix': pl.Float32,
+                                'y_pix': pl.Float32,
+                            },
                         },
                     },
+                },
             ],
         ),
     )
@@ -150,24 +168,12 @@ class HBN(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'step'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_pix', 'y_pix'])
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': ',',
-                'columns': ['time', 'x_pix', 'y_pix'],
-                'schema_overrides': {
-                    'time': pl.Int64,
-                    'x_pix': pl.Float32,
-                    'y_pix': pl.Float32,
-                },
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,11 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated EventDataFrame alias for Events."""
-import re
-
 import pytest
 
-from pymovements import __version__
 from pymovements import EventDataFrame
 from pymovements import Events
 
@@ -159,18 +156,13 @@ def test_is_event_df_subsubclass_deprecated():
                 ...
 
 
-def test_is_event_df_removed():
+def test_is_event_df_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         EventDataFrame()
 
-    regex = re.compile(
-        r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*',
-    )
+    assert_deprecation_is_removed(
+        function_name='EventDataFrame',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'EventDataFrame was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

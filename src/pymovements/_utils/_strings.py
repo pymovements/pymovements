@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,9 +28,9 @@ CURLY_TO_REGEX = re.compile(
 
 
 def curly_to_regex(s: str) -> re.Pattern:
-    """Return regex pattern converted from provided python formatting style pattern.
+    """Return regex pattern converted from a provided python formatting style pattern.
 
-    By default all parameters are strings, if you want to specify number you can do: {num:d}
+    By default, all parameters are strings, if you want to specify number you can do: {num:d}
     If you want to specify parameter's length you can do: {two_symbols:2} or {four_digits:4d}
     Characters { and } can be escaped the same way as in python: {{ and }}
     For example:

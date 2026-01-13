@@ -57,7 +57,7 @@
 
                 .. code-block:: bash
 
-                    git clone https://github.com/aeye-lab/pymovements.git
+                    git clone https://github.com/pymovements/pymovements.git
                     pip install --upgrade pip
                     pip install -e .[dev]
 
@@ -72,11 +72,11 @@
 
         Get familiar with *pymovements* by working through this beginner tutorial:
 
-        .. button-link:: tutorials/pymovements-in-10-minutes.html
+        .. button-ref:: pymovements_in_10_minutes
             :color: primary
             :shadow:
 
-            pymovements-in-10-minutes
+            pymovements in 10 minutes
 
 
 .. toctree::

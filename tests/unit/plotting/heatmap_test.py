@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ import polars as pl
 import pytest
 from matplotlib import figure
 
+import pymovements as pm
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.plotting import heatmap
@@ -34,7 +35,7 @@ from pymovements.plotting import heatmap
 
 @pytest.fixture(name='experiment_fixture')
 def fixture_experiment():
-    return Experiment(1024, 768, 38, 30, 60, 'center', 1000)
+    return Experiment(1024, 768, 38, 30, 60, 'upper left', 1000)
 
 
 @pytest.fixture(name='args', params=['pix', 'pos'])
@@ -139,7 +140,7 @@ def test_heatmap_show(args, kwargs, monkeypatch):
         kwargs['position_column'] = 'position'
 
     heatmap(args[0], **kwargs)
-    plt.close()
+
     mock.assert_called_once()
 
 
@@ -153,7 +154,7 @@ def test_heatmap_noshow(args, monkeypatch):
         position_column = 'position'
 
     heatmap(args[0], position_column=position_column, show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -170,7 +171,7 @@ def test_heatmap_noshow_no_pixel_or_position_column(args, monkeypatch):
     gaze.samples = gaze.samples.rename({position_column: 'custom_column'})
 
     heatmap(gaze, position_column='custom_column', show=False)
-    plt.close()
+
     mock.assert_not_called()
 
 
@@ -186,7 +187,7 @@ def test_heatmap_save(args, monkeypatch, tmp_path):
     heatmap(
         args[0], position_column=position_column, show=False, savepath=str(tmp_path / 'test.svg'),
     )
-    plt.close()
+
     mock.assert_called_once()
 
 
@@ -212,3 +213,45 @@ def test_heatmap_no_experiment_property():
 
     with pytest.raises(ValueError):
         heatmap(gaze, show=False)
+
+
+@pytest.fixture(name='gaze')
+def gaze_fixture():
+    """Provide a minimal valid Gaze object for plotting tests."""
+    df = pl.DataFrame({
+        'x_pix': np.arange(100),
+        'y_pix': np.arange(100),
+    })
+
+    experiment = pm.Experiment(
+        screen_width_px=1024,
+        screen_height_px=768,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=60,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+
+    gaze = pm.Gaze(
+        samples=df,
+        experiment=experiment,
+        pixel_columns=['x_pix', 'y_pix'],
+    )
+
+    return gaze
+
+
+def test_heatmap_sets_screen_axes_correctly(gaze):
+    _, ax = pm.plotting.heatmap(gaze, show=False)
+    screen = gaze.experiment.screen
+    assert ax.get_xlim() == (0, screen.width_px)
+    assert ax.get_ylim() == (screen.height_px, 0)
+    assert ax.get_aspect() == 1.0
+
+
+@pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
+def test_heatmap_invalid_screen_origin_raises(origin, gaze):
+    gaze.experiment.screen.origin = origin
+    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+        pm.plotting.heatmap(gaze, show=False)

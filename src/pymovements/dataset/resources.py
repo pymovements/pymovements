@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,10 @@ class ResourceDefinition:
         The target filename of the downloadable resource. This may be an archive. (default: None)
     url: str | None
         The URL to the downloadable resource. (default: None)
+    mirrors: list[str] | None
+        An optional list of additional mirror URLs to download the resource. If downloading the
+        resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
+        used in order of appearance. (default: None)
     md5: str | None
         The MD5 checksum of the downloadable resource. (default: None)
     filename_pattern: str | None
@@ -66,6 +70,7 @@ class ResourceDefinition:
 
     filename: str | None = None
     url: str | None = None
+    mirrors: list[str] | None = None
     md5: str | None = None
 
     filename_pattern: str | None = None
@@ -120,7 +125,7 @@ class ResourceDefinition:
         """
         data = asdict(self)
 
-        # Delete fields that evaluate to False (False, None, [], {})
+        # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:
             for key, value in list(data.items()):
                 if not isinstance(value, (bool, int, float)) and not value:
@@ -130,13 +135,28 @@ class ResourceDefinition:
 
 
 class ResourceDefinitions(list):
-    """List of :py:class:`~pymovements.ResourceDefinition` instances."""
+    """List of :py:class:`~pymovements.ResourceDefinition` instances.
 
-    def __init__(self, resources: Iterable[ResourceDefinition] | None = None) -> None:
+    Parameters
+    ----------
+    resources: Iterable[ResourceDefinition | dict[str, Any]] | None
+        An iterable of :py:class:`~.ResourceDefinition` instances or dictionaries containing
+        :py:class:`~.ResourceDefinition` parameters. In case an element is a dictionary, it will be
+        converted using :py:meth:`~.ResourceDefinition.from_dict()`.
+    """
+
+    def __init__(
+            self, resources: Iterable[ResourceDefinition | dict[str, Any]] | None = None,
+    ) -> None:
         if resources is None:
-            super().__init__([])
-        else:
-            super().__init__(resources)
+            resources = []
+
+        _resources: Iterable[ResourceDefinition] = [
+            resource if isinstance(resource, ResourceDefinition)
+            else ResourceDefinition.from_dict(resource)
+            for resource in resources
+        ]
+        super().__init__(_resources)
 
     def filter(self, content: str | None = None) -> ResourceDefinitions:
         """Filter ``ResourceDefinitions`` for content type.

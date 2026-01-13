@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,9 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all functionality in pymovements.dataset.dataset."""
+from __future__ import annotations
+
 import os
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -36,11 +40,13 @@ from pymovements import DatasetPaths
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
+from pymovements import ResourceDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.events import fill
 from pymovements.events import idt
 from pymovements.events import ivt
 from pymovements.events import microsaccades
-from pymovements.exceptions import InvalidProperty
+from pymovements.exceptions import UnknownMeasure
 from pymovements.stimulus.text import TextStimulus
 
 
@@ -95,6 +101,56 @@ class _UNSET:
     ...
 
 
+@pytest.fixture(name='make_dataset', scope='function')
+def fixture_make_dataset(tmp_path: Path) -> Callable[[list[str], Path | None], Path]:
+    """Make a dataset of empty files.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where files are copied to.
+
+    Returns
+    -------
+    Callable[[list[str], Path | None], Path]
+        Function that takes a directory structure and returns the Path to the root directory.
+
+    """
+    def _make_dataset(files: list[str], root: Path | None = None) -> Path:
+        if root is None:
+            root = tmp_path
+
+        for relative_filepath in files:
+            filepath = root / relative_filepath
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            # Create new empty file.
+            with open(filepath, 'x', encoding='utf-8'):
+                pass
+        return root
+
+    return _make_dataset
+
+
+@pytest.mark.parametrize(
+    'files',
+    [
+        pytest.param([], id='no_files'),
+        pytest.param(['test.abc'], id='single_file_in_root_directory'),
+        pytest.param(['my/test.abc'], id='single_file_in_child_directory'),
+        pytest.param(['one.abc', 'two.abc'], id='two_files_in_root_directory'),
+        pytest.param(['one/test.abc', 'two/test.abc'], id='two_files_in_separate_directories'),
+    ],
+)
+def test_make_dataset_creates_correct_tree(files, make_dataset, tmp_path):
+    dataset_dirpath = make_dataset(files, tmp_path)
+
+    created_files = {path for path in Path(dataset_dirpath).rglob('*') if not path.is_dir()}
+
+    expected_files = {tmp_path / relative_filepath for relative_filepath in files}
+
+    assert created_files == expected_files
+
+
 def create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
     rootpath.mkdir(parents=True, exist_ok=True)
 
@@ -115,25 +171,17 @@ def create_preprocessed_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
         filepath = fileinfo_row['filepath']
         filepath = filepath.replace('csv', 'feather')
 
-        for key in fileinfo_row.keys():
-            if key in gaze.columns:
-                gaze = gaze.samples.drop(key)
-
-        gaze.write_ipc(rootpath / filepath)
+        gaze.samples.write_ipc(rootpath / filepath)
 
 
-def create_event_files_from_fileinfo(gazes, fileinfo, rootpath):
+def create_event_files_from_fileinfo(events_list, fileinfo, rootpath):
     rootpath.mkdir(parents=True, exist_ok=True)
 
-    for gaze, fileinfo_row in zip(gazes, fileinfo.to_dicts()):
+    for events, fileinfo_row in zip(events_list, fileinfo.to_dicts()):
         filepath = fileinfo_row['filepath']
         filepath = filepath.replace('csv', 'feather')
 
-        for key in fileinfo_row.keys():
-            if key in gaze.columns:
-                gaze = gaze.drop(key)
-
-        gaze.write_ipc(rootpath / filepath)
+        events.write_ipc(rootpath / filepath)
 
 
 def create_precomputed_files_from_fileinfo(precomputed_dfs, fileinfo, rootpath):
@@ -142,24 +190,16 @@ def create_precomputed_files_from_fileinfo(precomputed_dfs, fileinfo, rootpath):
     for precomputed_df, fileinfo_row in zip(precomputed_dfs, fileinfo.to_dicts()):
         filepath = fileinfo_row['filepath']
 
-        for key in fileinfo_row.keys():
-            if key in precomputed_df.columns:
-                precomputed_df = precomputed_df.drop(key)
-
         precomputed_df.write_csv(rootpath / filepath)
 
 
-def create_precomputed_rm_files_from_fileinfo(precomputed_rm_df, fileinfo, rootpath):
+def create_precomputed_rm_files_from_fileinfo(precomputed_rm_dfs, fileinfo, rootpath):
     rootpath.mkdir(parents=True, exist_ok=True)
 
-    for _precomputed_rm_df, fileinfo_row in zip(precomputed_rm_df, fileinfo.to_dicts()):
+    for precomputed_rm_df, fileinfo_row in zip(precomputed_rm_dfs, fileinfo.to_dicts()):
         filepath = fileinfo_row['filepath']
 
-        for key in fileinfo_row.keys():
-            if key in _precomputed_rm_df.columns:
-                _precomputed_rm_df = _precomputed_rm_df.drop(key)
-
-        _precomputed_rm_df.write_csv(rootpath / filepath)
+        precomputed_rm_df.write_csv(rootpath / filepath)
 
 
 def mock_toy(
@@ -190,40 +230,36 @@ def mock_toy(
         subject_ids = [str(idx) for idx in range(1, 21)]
         fileinfo = pl.DataFrame(
             data={'subject_id': subject_ids},
-            schema={'subject_id': pl.Utf8},
+            schema={'subject_id': pl.String},
         )
 
     fileinfo = fileinfo.with_columns([
         pl.format('{}.' + raw_fileformat, 'subject_id').alias('filepath'),
-        pl.lit(None).alias('load_function'),
-        pl.lit(None).alias('load_kwargs'),
     ])
 
     fileinfo = fileinfo.sort(by='filepath')
 
     gazes = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in range(fileinfo.height):
         if eyes == 'both':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_left_pix': np.zeros(1000),
                     'y_left_pix': np.zeros(1000),
                     'x_right_pix': np.zeros(1000),
                     'y_right_pix': np.zeros(1000),
-                    'trial_id_1': np.concatenate([np.zeros(500), np.ones(500)]),
-                    'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'task': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'trial': np.concatenate([np.zeros(500), np.ones(500)]),
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_left_pix': pl.Float64,
                     'y_left_pix': pl.Float64,
                     'x_right_pix': pl.Float64,
                     'y_right_pix': pl.Float64,
-                    'trial_id_1': pl.Float64,
-                    'trial_id_2': pl.Utf8,
+                    'task': pl.String,
+                    'trial': pl.Int64,
                 },
             )
             pixel_columns = ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix']
@@ -231,7 +267,6 @@ def mock_toy(
         elif eyes == 'both+avg':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_left_pix': np.zeros(1000),
                     'y_left_pix': np.zeros(1000),
@@ -239,11 +274,10 @@ def mock_toy(
                     'y_right_pix': np.zeros(1000),
                     'x_avg_pix': np.zeros(1000),
                     'y_avg_pix': np.zeros(1000),
-                    'trial_id_1': np.concatenate([np.zeros(500), np.ones(500)]),
-                    'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'task': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'trial': np.concatenate([np.zeros(500), np.ones(500)]),
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_left_pix': pl.Float64,
                     'y_left_pix': pl.Float64,
@@ -251,8 +285,8 @@ def mock_toy(
                     'y_right_pix': pl.Float64,
                     'x_avg_pix': pl.Float64,
                     'y_avg_pix': pl.Float64,
-                    'trial_id_1': pl.Float64,
-                    'trial_id_2': pl.Utf8,
+                    'task': pl.String,
+                    'trial': pl.Int64,
                 },
             )
             pixel_columns = [
@@ -262,60 +296,54 @@ def mock_toy(
         elif eyes == 'left':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_left_pix': np.zeros(1000),
                     'y_left_pix': np.zeros(1000),
-                    'trial_id_1': np.concatenate([np.zeros(500), np.ones(500)]),
-                    'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'task': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'trial': np.concatenate([np.zeros(500), np.ones(500)]),
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_left_pix': pl.Float64,
                     'y_left_pix': pl.Float64,
-                    'trial_id_1': pl.Float64,
-                    'trial_id_2': pl.Utf8,
+                    'task': pl.String,
+                    'trial': pl.Int64,
                 },
             )
             pixel_columns = ['x_left_pix', 'y_left_pix']
         elif eyes == 'right':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_right_pix': np.zeros(1000),
                     'y_right_pix': np.zeros(1000),
-                    'trial_id_1': np.concatenate([np.zeros(500), np.ones(500)]),
-                    'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'task': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'trial': np.concatenate([np.zeros(500), np.ones(500)]),
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_right_pix': pl.Float64,
                     'y_right_pix': pl.Float64,
-                    'trial_id_1': pl.Float64,
-                    'trial_id_2': pl.Utf8,
+                    'task': pl.String,
+                    'trial': pl.Int64,
                 },
             )
             pixel_columns = ['x_right_pix', 'y_right_pix']
         elif eyes == 'none':
             gaze = pl.from_dict(
                 {
-                    'subject_id': fileinfo_row['subject_id'],
                     'time': np.arange(1000),
                     'x_pix': np.zeros(1000),
                     'y_pix': np.zeros(1000),
-                    'trial_id_1': np.concatenate([np.zeros(500), np.ones(500)]),
-                    'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'task': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                    'trial': np.concatenate([np.zeros(500), np.ones(500)]),
                 },
                 schema={
-                    'subject_id': pl.Int64,
                     'time': pl.Int64,
                     'x_pix': pl.Float64,
                     'y_pix': pl.Float64,
-                    'trial_id_1': pl.Float64,
-                    'trial_id_2': pl.Utf8,
+                    'task': pl.String,
+                    'trial': pl.Int64,
                 },
             )
             pixel_columns = ['x_pix', 'y_pix']
@@ -337,6 +365,30 @@ def mock_toy(
 
     create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath / 'raw')
 
+    gaze_sample_resource_definition = ResourceDefinition(
+        content='gaze',
+        filename_pattern=r'{subject_id:d}.' + raw_fileformat,
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
+            'gaze', None,
+        ),
+        load_kwargs={
+            'time_column': 'time',
+            'time_unit': 'ms',
+            'distance_column': distance_column,
+            'pixel_columns': pixel_columns,
+            'trial_columns': ['task', 'trial'],
+        },
+    )
+
+    files = [
+        DatasetFile(
+            path=rootpath / 'raw' / fileinfo_row['filepath'],  # absolute path
+            definition=gaze_sample_resource_definition,
+            metadata={key: value for key, value in fileinfo_row.items() if key != 'filepath'},
+        )
+        for fileinfo_row in fileinfo.to_dicts()
+    ]
+
     # Create Gazes for passing as ground truth
     gazes = [
         Gaze(gaze, pixel_columns=pixel_columns)
@@ -344,7 +396,7 @@ def mock_toy(
     ]
 
     preprocessed_gazes = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in range(fileinfo.height):
         position_columns = [pixel_column.replace('pix', 'pos') for pixel_column in pixel_columns]
         velocity_columns = [pixel_column.replace('pix', 'vel') for pixel_column in pixel_columns]
         acceleration_columns = [
@@ -352,11 +404,9 @@ def mock_toy(
         ]
 
         gaze_data = {
-            'subject_id': fileinfo_row['subject_id'],
             'time': np.arange(1000),
         }
         gaze_schema = {
-            'subject_id': pl.Int64,
             'time': pl.Int64,
         }
 
@@ -380,18 +430,16 @@ def mock_toy(
     )
 
     events_list = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in range(fileinfo.height):
         events = pl.from_dict(
             {
-                'subject_id': fileinfo_row['subject_id'],
                 'name': ['saccade', 'fixation'] * 5,
                 'onset': np.arange(0, 100, 10),
                 'offset': np.arange(5, 105, 10),
                 'duration': np.array([5] * 10),
             },
             schema={
-                'subject_id': pl.Int64,
-                'name': pl.Utf8,
+                'name': pl.String,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
                 'duration': pl.Int64,
@@ -405,20 +453,23 @@ def mock_toy(
         {
             'content': 'gaze',
             'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-            'filename_pattern_schema_overrides':
-                filename_format_schema_overrides.get('gaze', None),
+            'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
+                'gaze', None,
+            ),
         },
         {
             'content': 'precomputed_events',
             'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-            'filename_pattern_schema_overrides':
-                filename_format_schema_overrides.get('precomputed_events', None),
+            'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
+                'precomputed_events', None,
+            ),
         },
         {
             'content': 'precomputed_reading_measures',
             'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-            'filename_pattern_schema_overrides':
-                filename_format_schema_overrides.get('precomputed_reading_measures', None),
+            'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
+                'precomputed_reading_measures', None,
+            ),
         },
     ]
 
@@ -457,23 +508,21 @@ def mock_toy(
     )
 
     precomputed_dfs = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in range(fileinfo.height):
         precomputed_events = pl.from_dict(
             {
-                'subject_id': fileinfo_row['subject_id'],
                 'CURRENT_FIXATION_DURATION': np.arange(1000),
                 'CURRENT_FIX_X': np.zeros(1000),
                 'CURRENT_FIX_Y': np.zeros(1000),
-                'trial_id_1': np.concatenate([np.zeros(500), np.ones(500)]),
-                'trial_id_2': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                'task': ['a'] * 200 + ['b'] * 200 + ['c'] * 600,
+                'trial': np.concatenate([np.zeros(500), np.ones(500)]),
             },
             schema={
-                'subject_id': pl.Int64,
                 'CURRENT_FIXATION_DURATION': pl.Float64,
                 'CURRENT_FIX_X': pl.Float64,
                 'CURRENT_FIX_Y': pl.Float64,
-                'trial_id_1': pl.Float64,
-                'trial_id_2': pl.Utf8,
+                'task': pl.String,
+                'trial': pl.Int64,
             },
         )
         precomputed_dfs.append(precomputed_events)
@@ -484,16 +533,32 @@ def mock_toy(
         rootpath / 'precomputed_events',
     )
 
+    precomputed_events_resource_definition = ResourceDefinition(
+        content='precomputed_events',
+        filename_pattern=r'{subject_id:d}.' + raw_fileformat,
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
+            'precomputed_events', None,
+        ),
+    )
+
+    precomputed_events_files = [
+        DatasetFile(
+            path=rootpath / 'precomputed_events' / fileinfo_row['filepath'],  # absolute path
+            definition=precomputed_events_resource_definition,
+            metadata={key: value for key, value in fileinfo_row.items() if key != 'filepath'},
+        )
+        for fileinfo_row in fileinfo.to_dicts()
+    ]
+    files.extend(precomputed_events_files)
+
     precomputed_rm_dfs = []
-    for fileinfo_row in fileinfo.to_dicts():
+    for _ in range(fileinfo.height):
         precomputed_rm_df = pl.from_dict(
             {
-                'subject_id': fileinfo_row['subject_id'],
                 'number_fix': np.arange(1000),
                 'mean_fix_dur': np.zeros(1000),
             },
             schema={
-                'subject_id': pl.Int64,
                 'number_fix': pl.Float64,
                 'mean_fix_dur': pl.Float64,
             },
@@ -506,6 +571,42 @@ def mock_toy(
         rootpath / 'precomputed_reading_measures',
     )
 
+    precomputed_rm_resource_definition = ResourceDefinition(
+        content='precomputed_reading_measures',
+        filename_pattern=r'{subject_id:d}.' + raw_fileformat,
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
+            'precomputed_reading_measures', None,
+        ),
+    )
+
+    precomputed_rm_files = [
+        DatasetFile(
+            path=rootpath / 'precomputed_reading_measures' / fileinfo_row['filepath'],
+            definition=precomputed_rm_resource_definition,
+            metadata={key: value for key, value in fileinfo_row.items() if key != 'filepath'},
+        )
+        for fileinfo_row in fileinfo.to_dicts()
+    ]
+    files.extend(precomputed_rm_files)
+
+    dataset_definition = DatasetDefinition(
+        experiment=Experiment(
+            screen_width_px=1280,
+            screen_height_px=1024,
+            screen_width_cm=38,
+            screen_height_cm=30.2,
+            distance_cm=distance_cm,
+            origin='upper left',
+            sampling_rate=1000,
+        ),
+        resources=[
+            gaze_sample_resource_definition,
+            precomputed_events_resource_definition,
+            precomputed_rm_resource_definition,
+        ],
+        extract=extract,
+    )
+
     return {
         'init_kwargs': {
             'definition': dataset_definition,
@@ -516,12 +617,13 @@ def mock_toy(
             'precomputed_events': fileinfo,
             'precomputed_reading_measures': fileinfo,
         },
+        'files': files,
         'raw_gazes': gazes,
         'preprocessed_gazes': preprocessed_gazes,
         'events_list': events_list,
         'precomputed_rm_dfs': precomputed_rm_dfs,
         'eyes': eyes,
-        'trial_columns': ['subject_id'],
+        'trial_columns': ['task', 'trial'],
     }
 
 
@@ -587,6 +689,154 @@ def test_init_with_definition_class():
     assert dataset.definition == CustomPublicDataset()
 
 
+def test_scan_correct_files_from_dataset_configuration(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.scan()
+
+    expected_files = gaze_dataset_configuration['files']
+    assert dataset._files == expected_files
+
+
+@pytest.mark.parametrize(
+    ('dataset_tree', 'resources', 'expected_files'),
+    [
+        pytest.param(
+            [], [], [],
+            id='no_files_no_resources',
+        ),
+
+        pytest.param(
+            ['test.csv'], [], [],
+            id='single_file_no_resources',
+        ),
+
+        pytest.param(
+            ['raw/test.csv'], [{'content': 'gaze', 'filename_pattern': 'test.csv'}],
+            [
+                {
+                    'path': 'raw/test.csv',
+                    'definition': ResourceDefinition(content='gaze', filename_pattern='test.csv'),
+                },
+            ],
+            id='single_file_matches_resource_defintion',
+        ),
+
+        pytest.param(
+            ['raw/01/test.csv', 'raw/02/test.csv'],
+            [{'content': 'gaze', 'filename_pattern': 'test.csv'}],
+            [
+                {
+                    'path': 'raw/01/test.csv',
+                    'definition': ResourceDefinition(content='gaze', filename_pattern='test.csv'),
+                },
+                {
+                    'path': 'raw/02/test.csv',
+                    'definition': ResourceDefinition(content='gaze', filename_pattern='test.csv'),
+                },
+            ],
+            id='two_files_match_single_resource_defintion',
+        ),
+
+        pytest.param(
+            ['raw/01.csv', 'raw/02.csv'],
+            [{'content': 'gaze', 'filename_pattern': '{participant_id:d}.csv'}],
+            [
+                {
+                    'path': 'raw/01.csv',
+                    'definition': ResourceDefinition(
+                        content='gaze', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '01'},
+                },
+                {
+                    'path': 'raw/02.csv',
+                    'definition': ResourceDefinition(
+                        content='gaze', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '02'},
+                },
+            ],
+            id='two_files_match_single_resource_defintion_with_metadata',
+        ),
+
+        pytest.param(
+            ['precomputed_events/fixations.csv', 'precomputed_events/saccades.csv'],
+            [
+                {'content': 'precomputed_events', 'filename_pattern': 'fixations.csv'},
+                {'content': 'precomputed_events', 'filename_pattern': 'saccades.csv'},
+            ],
+            [
+                {
+                    'path': 'precomputed_events/fixations.csv',
+                    'definition': ResourceDefinition(
+                        content='precomputed_events', filename_pattern='fixations.csv',
+                    ),
+                },
+                {
+                    'path': 'precomputed_events/saccades.csv',
+                    'definition': ResourceDefinition(
+                        content='precomputed_events', filename_pattern='saccades.csv',
+                    ),
+                },
+            ],
+            id='two_files_match_two_resource_defintions',
+        ),
+
+        pytest.param(
+            ['raw/01.csv', 'precomputed_events/01.csv'],
+            [
+                {'content': 'gaze', 'filename_pattern': '{participant_id:d}.csv'},
+                {'content': 'precomputed_events', 'filename_pattern': '{participant_id:d}.csv'},
+            ],
+            [
+                {
+                    'path': 'raw/01.csv',
+                    'definition': ResourceDefinition(
+                        content='gaze', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '01'},
+                },
+                {
+                    'path': 'precomputed_events/01.csv',
+                    'definition': ResourceDefinition(
+                        content='precomputed_events', filename_pattern='{participant_id:d}.csv',
+                    ),
+                    'metadata': {'participant_id': '01'},
+                },
+            ],
+            id='two_files_match_two_resource_defintions_with_metadata',
+        ),
+    ],
+)
+def test_dataset_scan_correct_files_from_dataset_tree(
+        dataset_tree, resources, expected_files, make_dataset,
+):
+    dirpath = make_dataset(dataset_tree)
+
+    dataset_paths = DatasetPaths(root=dirpath, dataset='.')
+    definition = DatasetDefinition(name='test', resources=resources)
+    dataset = Dataset(definition=definition, path=dataset_paths)
+
+    dataset.scan()
+    scanned_files = dataset._files
+
+    # add dataset dirpath to relative paths in specified expected files
+    expected_files = [
+        DatasetFile(
+            path=dirpath / expected_file['path'],
+            definition=expected_file['definition'],
+            metadata=expected_file.get('metadata', {}),
+        )
+        for expected_file in expected_files
+    ]
+
+    # sort lists by filepath
+    scanned_files = sorted(scanned_files, key=lambda file: file.path)
+    expected_files = sorted(expected_files, key=lambda file: file.path)
+
+    assert scanned_files == expected_files
+
+
 def test_load_correct_fileinfo(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load()
@@ -606,6 +856,15 @@ def test_load_correct_raw_gazes(gaze_dataset_configuration):
             expected_gaze.samples,
             check_column_order=False,
         )
+
+
+def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load()
+
+    expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze'].drop('filepath')
+    for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
+        assert gaze.metadata == gaze_fileinfo
 
 
 def test_stimuli_list_exists(gaze_dataset_configuration):
@@ -701,24 +960,6 @@ def test_load_correct_trial_columns(gaze_dataset_configuration):
     expected_trial_columns = gaze_dataset_configuration['trial_columns']
     for result_gaze in dataset.gaze:
         assert result_gaze.trial_columns == expected_trial_columns
-
-
-@pytest.mark.parametrize(
-    'gaze_dataset_configuration',
-    ['ToyMono'],
-    indirect=['gaze_dataset_configuration'],
-)
-def test_load_fileinfo_column_in_trial_columns_warns(gaze_dataset_configuration):
-    # add fileinfo column as trial column
-    gaze_dataset_configuration['init_kwargs']['definition'].trial_columns = ['subject_id']
-
-    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-
-    with pytest.warns(UserWarning) as record:
-        dataset.load()
-
-    expected_msg = 'removed duplicated fileinfo columns from trial_columns: subject_id'
-    assert record[0].message.args[0] == expected_msg
 
 
 def test_load_correct_events_list(gaze_dataset_configuration):
@@ -1053,8 +1294,9 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
     dataset.detect_events(**detect_event_kwargs)
 
     expected_schema = {
-        'subject_id': pl.Int64,
-        'name': pl.Utf8,
+        'task': pl.String,
+        'trial': pl.Int64,
+        'name': pl.String,
         'onset': pl.Int64,
         'offset': pl.Int64,
         'duration': pl.Int64,
@@ -1100,8 +1342,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
         dataset.detect_events(**detect_event_kwargs)
 
         expected_schema = {
-            'subject_id': pl.Int64,
-            'name': pl.Utf8,
+            'task': pl.String,
+            'trial': pl.Int64,
+            'name': pl.String,
             'onset': pl.Int64,
             'offset': pl.Int64,
             'duration': pl.Int64,
@@ -1130,8 +1373,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'eye': 'auto',
             },
             {
-                'subject_id': pl.Int64,
-                'name': pl.Utf8,
+                'task': pl.String,
+                'trial': pl.Int64,
+                'name': pl.String,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
                 'duration': pl.Int64,
@@ -1150,8 +1394,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'minimum_duration': 1,
             },
             {
-                'subject_id': pl.Int64,
-                'name': pl.Utf8,
+                'task': pl.String,
+                'trial': pl.Int64,
+                'name': pl.String,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
                 'duration': pl.Int64,
@@ -1242,8 +1487,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             },
             (
                 "Column 'position' not found. Available columns are: "
-                "['time', 'trial_id_1', 'trial_id_2', 'subject_id', "
-                "'pixel', 'custom_position', 'velocity']"
+                "['time', 'task', 'trial', 'pixel', 'custom_position', 'velocity']"
             ),
             id='no_position',
         ),
@@ -1255,8 +1499,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             },
             (
                 "Column 'velocity' not found. Available columns are: "
-                "['time', 'trial_id_1', 'trial_id_2', 'subject_id', "
-                "'pixel', 'position', 'custom_velocity']"
+                "['time', 'task', 'trial', 'pixel', 'position', 'custom_velocity']"
             ),
             id='no_velocity',
         ),
@@ -1313,15 +1556,28 @@ def test_detect_events_raises_column_not_found_error(
 )
 def test_clear_events(events_init, events_expected, tmp_path):
     dataset = Dataset('ToyDataset', path=tmp_path)
+
+    num_gazes = len(events_init)
+
+    # add dummy gazes so events and gazes stay in sync
+    for _ in range(num_gazes):
+        dummy_gaze = Gaze(
+            pl.DataFrame({
+                'time': [],
+                'pixel_x': [],
+                'pixel_y': [],
+            }),
+            pixel_columns=['pixel_x', 'pixel_y'],
+            time_column='time',
+            time_unit='ms',
+        )
+        dataset.gaze.append(dummy_gaze)
+
     dataset.events = events_init
     dataset.clear_events()
 
-    if isinstance(events_init, list) and not events_init:
-        assert dataset.events == events_expected
-
-    else:
-        for events_df_result, events_df_expected in zip(dataset.events, events_expected):
-            assert_frame_equal(events_df_result.frame, events_df_expected.frame)
+    for events_df_result, events_df_expected in zip(dataset.events, events_expected):
+        assert_frame_equal(events_df_result.frame, events_df_expected.frame)
 
 
 @pytest.mark.parametrize(
@@ -1425,7 +1681,7 @@ def test_load_previously_saved_events_gaze(
     dataset.save_events(events_dirname, **load_save_kwargs)
     dataset.save_preprocessed(**load_save_kwargs)
 
-    dataset.events = []
+    dataset.clear_events()
 
     dataset.load(events=True, preprocessed=True, events_dirname=events_dirname, **load_save_kwargs)
     assert dataset.events
@@ -1793,24 +2049,26 @@ def test_velocity_columns(gaze_dataset_configuration):
         assert 'velocity' in gaze.columns
 
 
+def test_dataset_compute_event_properties_warns_existing(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(preprocessed=True, events=True)
+
+    measure = ('null_ratio', {'column': 'pixel', 'column_dtype': pl.List})
+    dataset.compute_event_properties(measure)
+
+    message = 'The following columns already exist in event and will be overwritten.*null_ratio.*'
+    with pytest.warns(UserWarning, match=message):
+        dataset.compute_event_properties(measure)
+
+
 @pytest.mark.parametrize(
-    ('property_kwargs', 'exception', 'msg_substrings'),
+    ('property_kwargs', 'exception', 'message'),
     [
         pytest.param(
             {'event_properties': 'foo'},
-            InvalidProperty,
-            ('foo', 'invalid', 'valid', 'peak_velocity'),
-            id='invalid_property',
-        ),
-
-        pytest.param(
-            {'event_properties': 'duration'},
-            ValueError,
-            (
-                'event properties already exist and cannot be recomputed',
-                'duration', 'Please remove them first',
-            ),
-            id='existing_column',
+            UnknownMeasure,
+            "Measure 'foo' is unknown. Known measures are",
+            id='unknown_measure',
         ),
     ],
 )
@@ -1818,17 +2076,13 @@ def test_event_dataframe_add_property_raises_exceptions(
         gaze_dataset_configuration,
         property_kwargs,
         exception,
-        msg_substrings,
+        message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True, events=True)
 
-    with pytest.raises(exception) as excinfo:
+    with pytest.raises(exception, match=message):
         dataset.compute_event_properties(**property_kwargs)
-
-    msg, = excinfo.value.args
-    for msg_substring in msg_substrings:
-        assert msg_substring.lower() in msg.lower()
 
 
 @pytest.mark.parametrize(
@@ -1858,8 +2112,7 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'peak_velocity'},
             {
-                'subject_id': pl.Int64,
-                'name': pl.Utf8,
+                'name': pl.String,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
                 'duration': pl.Int64,
@@ -1870,8 +2123,7 @@ def test_event_dataframe_add_property_has_expected_height(
         pytest.param(
             {'event_properties': 'location'},
             {
-                'subject_id': pl.Int64,
-                'name': pl.Utf8,
+                'name': pl.String,
                 'onset': pl.Int64,
                 'offset': pl.Int64,
                 'duration': pl.Int64,
@@ -1935,29 +2187,29 @@ def test_event_dataframe_add_property_effect_property_columns(
 
 
 @pytest.mark.parametrize(
-    ('property_kwargs', 'exception', 'exception_msg'),
+    ('property_kwargs', 'warning', 'message'),
     [
         pytest.param(
             {'event_properties': 'peak_velocity', 'name': 'taccade'},
-            RuntimeError, 'No events with name "taccade" found in data frame',
+            UserWarning, "No events found with name 'taccade'.",
+            marks=pytest.mark.filterwarnings(
+                'ignore:No events available for processing.*:UserWarning',
+            ),
             id='name_missing',
         ),
     ],
 )
-def test_event_dataframe_add_property_raises_exception(
+def test_dataset_compute_event_properties_warns(
         gaze_dataset_configuration,
         property_kwargs,
-        exception,
-        exception_msg,
+        warning,
+        message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True, events=True)
 
-    with pytest.raises(exception) as excinfo:
+    with pytest.warns(warning, match=message):
         dataset.compute_event_properties(**property_kwargs)
-
-    msg, = excinfo.value.args
-    assert msg == exception_msg
 
 
 @pytest.mark.parametrize(
@@ -2021,6 +2273,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
         'ToyRightPrecomputedEventAndGaze',
         'ToyPrecomputedEvent',
         'ToyPrecomputedEventNoExtract',
+        'ToyPrecomputedEventLoadKwargs',
     ],
 )
 def precomputed_fixture_dataset(request, tmp_path):
@@ -2047,6 +2300,18 @@ def precomputed_fixture_dataset(request, tmp_path):
             eyes='right',
             filename_format_schema_overrides={'precomputed_events': {}},
         )
+    elif dataset_type == 'ToyPrecomputedEventLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[1],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[1] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
@@ -2078,6 +2343,7 @@ def test_load_no_files_precomputed_raises_exception(precomputed_dataset_configur
         'ToyRightPrecomputedEventAndGazeAndRM',
         'ToyPrecomputedRM',
         'ToyPrecomputedRMNoExtract',
+        'ToyPrecomputedRMLoadKwargs',
     ],
 )
 def precomputed_rm_fixture_dataset(request, tmp_path):
@@ -2106,6 +2372,18 @@ def precomputed_rm_fixture_dataset(request, tmp_path):
                 'precomputed_reading_measures': {},
             },
         )
+    elif dataset_type == 'ToyPrecomputedRMLoadKwargs':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='right',
+        )
+        new_resource = replace(
+            dataset_dict['init_kwargs']['definition'].resources[2],
+            load_kwargs={'separator': ','},
+        )
+        dataset_dict['init_kwargs']['definition'].resources[2] = new_resource
+        dataset_dict['init_kwargs']['definition'].custom_read_kwargs = None
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
@@ -2136,17 +2414,17 @@ def test_load_no_files_precomputed_rm_raises_exception(precomputed_rm_dataset_co
     ('by', 'expected_len'),
     [
         pytest.param(
-            'trial_id_1',
-            40,
-            id='subset_int',
-        ),
-        pytest.param(
-            'trial_id_2',
+            'task',
             60,
             id='subset_int',
         ),
         pytest.param(
-            ['trial_id_1', 'trial_id_2'],
+            'trial',
+            40,
+            id='subset_int',
+        ),
+        pytest.param(
+            ['task', 'trial'],
             80,
             id='subset_int',
         ),
@@ -2173,17 +2451,17 @@ def test_dataset_definition_from_yaml(tmp_path):
     ('by', 'expected_len'),
     [
         pytest.param(
-            'trial_id_1',
-            40,
-            id='subset_int',
-        ),
-        pytest.param(
-            'trial_id_2',
+            'task',
             60,
             id='subset_int',
         ),
         pytest.param(
-            ['trial_id_1', 'trial_id_2'],
+            'trial',
+            40,
+            id='subset_int',
+        ),
+        pytest.param(
+            ['task', 'trial'],
             80,
             id='subset_int',
         ),
@@ -2266,3 +2544,79 @@ def test_drop_event_property(gaze_dataset_configuration):
         dataset.drop_event_properties('onset')
     assert str(exinfo.value).startswith("The column 'onset' cannot be removed")
     assert 'onset' in dataset.gaze[0].events.columns
+
+
+def test_events_setter_raises_on_length_mismatch(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    # Add one gaze
+    dataset.gaze.append(
+        Gaze(
+            pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+            pixel_columns=['pixel_x', 'pixel_y'],
+            time_column='time', time_unit='ms',
+        ),
+    )
+    # Try to assign two events for one gaze
+    with pytest.raises(ValueError, match='Number of events'):
+        dataset.events = [Events(), Events()]
+
+
+@pytest.mark.parametrize('n_gazes', [1, 3])
+def test_events_getter_reflects_gazes(tmp_path, n_gazes):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+
+    for _ in range(n_gazes):
+        dataset.gaze.append(
+            Gaze(
+                pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+                pixel_columns=['pixel_x', 'pixel_y'],
+                time_column='time', time_unit='ms',
+            ),
+        )
+
+    assert len(dataset.events) == n_gazes
+    for i, ev in enumerate(dataset.events):
+        assert isinstance(ev, Events)
+        assert ev.frame.is_empty()
+        assert ev is dataset.gaze[i].events
+
+
+def test_events_setter_updates_gaze_events(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+
+    for _ in range(3):
+        dataset.gaze.append(
+            Gaze(
+                pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+                pixel_columns=['pixel_x', 'pixel_y'],
+                time_column='time', time_unit='ms',
+            ),
+        )
+
+    # create 3 Events objects
+    ev_list = [Events(), Events(), Events()]
+    dataset.events = ev_list
+    for i, ev in enumerate(dataset.events):
+        assert ev is ev_list[i]
+        assert ev is dataset.gaze[i].events
+
+
+def test_events_setter_identity_preserved(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    for _ in range(3):
+        dataset.gaze.append(
+            Gaze(
+                pl.DataFrame({'time': [], 'pixel_x': [], 'pixel_y': []}),
+                pixel_columns=['pixel_x', 'pixel_y'],
+                time_column='time', time_unit='ms',
+            ),
+        )
+
+    ev = Events(pl.DataFrame({'onset': [2], 'offset': [3], 'name': ['saccade']}))
+    dataset.gaze[2].events = ev
+    assert dataset.gaze[2].events is ev
+    assert dataset.events[2] is ev
+    assert dataset.gaze[0].events is not ev
+    assert dataset.events[0] is not ev
+    assert dataset.gaze[1].events is not ev
+    assert dataset.events[1] is not ev

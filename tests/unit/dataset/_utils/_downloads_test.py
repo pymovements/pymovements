@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ from pymovements.dataset._utils._downloads import _get_redirected_url
 from pymovements.dataset._utils._downloads import download_file
 
 
+@pytest.mark.network
 @pytest.mark.parametrize(
     'verbose',
     [
@@ -37,7 +38,7 @@ from pymovements.dataset._utils._downloads import download_file
     ],
 )
 def test_download_file(tmp_path, verbose):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
@@ -52,8 +53,9 @@ def test_download_file(tmp_path, verbose):
         assert hashlib.md5(file_bytes).hexdigest() == md5
 
 
+@pytest.mark.network
 def test_download_file_md5_None(tmp_path):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
 
     filepath = download_file(url, tmp_path, filename)
@@ -64,7 +66,7 @@ def test_download_file_md5_None(tmp_path):
 
 
 def test_download_file_404(tmp_path):
-    url = 'http://github.com/aeye-lab/pymovement/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'http://github.com/pymovements/pymovement/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
@@ -80,7 +82,7 @@ def test_download_file_404(tmp_path):
     ],
 )
 def test_download_file_https_failure(tmp_path, verbose):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
@@ -105,8 +107,9 @@ def test_download_file_http_failure(tmp_path):
             download_file(url, tmp_path, filename, md5)
 
 
+@pytest.mark.network
 def test_download_file_with_invalid_md5(tmp_path):
-    url = 'https://github.com/aeye-lab/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '00000000000000000000000000000000'
 
@@ -118,35 +121,38 @@ def test_download_file_with_invalid_md5(tmp_path):
         'not found or download corrupted.'
 
 
+@pytest.mark.network
 def test__get_redirected_url():
-    url = 'https://codeload.github.com/aeye-lab/pymovements/tar.gz/refs/tags/v0.4.0'
-    expected_final_url = 'https://codeload.github.com/aeye-lab/pymovements/tar.gz/refs/tags/v0.4.0'
+    url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
+    expected_url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
 
     final_url = _get_redirected_url(url)
 
-    assert final_url == expected_final_url
+    assert final_url == expected_url
 
 
+@pytest.mark.network
 def test__get_redirected_url_with_redirects():
-    url = 'https://github.com/aeye-lab/pymovements/archive/master.zip'
-    expected_final_url = 'https://codeload.github.com/aeye-lab/pymovements/zip/main'
+    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
+    expected_final_url = 'https://codeload.github.com/pymovements/pymovements/zip/main'
 
     final_url = _get_redirected_url(url)
 
     assert final_url == expected_final_url
 
 
+@pytest.mark.network
 def test__get_redirected_url_with_redirects_max_hops():
-    url = 'https://github.com/aeye-lab/pymovements/archive/master.zip'
+    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
 
     with pytest.raises(RuntimeError) as excinfo:
         _get_redirected_url(url, max_hops=0)
 
     msg, = excinfo.value.args
     assert msg == 'Request to '\
-        'https://github.com/aeye-lab/pymovements/archive/master.zip '\
+        'https://github.com/pymovements/pymovements/archive/master.zip '\
         'exceeded 0 redirects. The last redirect points to '\
-        'https://codeload.github.com/aeye-lab/pymovements/zip/main.'
+        'https://codeload.github.com/pymovements/pymovements/zip/main.'
 
 
 def test__DownloadProgressBar_tsize_not_None():

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,21 +17,27 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test measure library."""
-from __future__ import annotations
+"""Module for sample measures."""
+from pymovements.measure.samples.library import register_sample_measure
+from pymovements.measure.samples.library import SampleMeasureLibrary
+from pymovements.measure.samples.measures import amplitude
+from pymovements.measure.samples.measures import data_loss
+from pymovements.measure.samples.measures import dispersion
+from pymovements.measure.samples.measures import disposition
+from pymovements.measure.samples.measures import location
+from pymovements.measure.samples.measures import null_ratio
+from pymovements.measure.samples.measures import peak_velocity
 
-import pytest
 
-import pymovements as pm
+__all__ = [
+    'register_sample_measure',
+    'SampleMeasureLibrary',
 
-
-@pytest.mark.parametrize(
-    ('method', 'name'),
-    [
-        pytest.param(pm.measure.null_ratio, 'null_ratio', id='null_ratio'),
-    ],
-)
-def test_measure_registered(method, name):
-    assert name in pm.measure.SampleMeasureLibrary()
-    assert pm.measure.SampleMeasureLibrary.get(name) == method
-    assert pm.measure.SampleMeasureLibrary.get(name).__name__ == name
+    'amplitude',
+    'data_loss',
+    'dispersion',
+    'disposition',
+    'location',
+    'null_ratio',
+    'peak_velocity',
+]

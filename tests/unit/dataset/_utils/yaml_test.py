@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,12 @@ import yaml
 from pymovements.dataset._utils._yaml import type_constructor
 
 
-def test_type_constructor_assertion_error(tmp_path):
+def test_type_constructor_assertion_error(make_text_file):
     yaml_content = """\
     !test
     """
     yaml.add_multi_constructor('!', type_constructor, yaml.SafeLoader)
-    yaml_file = tmp_path / 'test_yaml_file'
-    yaml_file.write_text(yaml_content)
+    yaml_file = make_text_file(filename='test_yaml_file', body=yaml_content)
     with pytest.raises(ValueError) as excinfo:
         with open(yaml_file, encoding='utf-8') as f:
             yaml.safe_load(f)
@@ -38,13 +37,12 @@ def test_type_constructor_assertion_error(tmp_path):
     assert msg == "Unknown node=ScalarNode(tag='!test', value='')"
 
 
-def test_module_name_not_found_error(tmp_path):
+def test_module_name_not_found_error(make_text_file):
     yaml_content = """\
     !pm.notexisting
     """
     yaml.add_multi_constructor('!', type_constructor, yaml.SafeLoader)
-    yaml_file = tmp_path / 'test_yaml_file'
-    yaml_file.write_text(yaml_content)
+    yaml_file = make_text_file(filename='test_yaml_file', body=yaml_content)
     with pytest.raises(ModuleNotFoundError) as excinfo:
         with open(yaml_file, encoding='utf-8') as f:
             yaml.safe_load(f)
@@ -52,13 +50,12 @@ def test_module_name_not_found_error(tmp_path):
     assert msg == "No module named 'pm'"
 
 
-def test_unknown_attribute_error(tmp_path):
+def test_unknown_attribute_error(make_text_file):
     yaml_content = """\
     !yaml.notexisting
     """
     yaml.add_multi_constructor('!', type_constructor, yaml.SafeLoader)
-    yaml_file = tmp_path / 'test_yaml_file'
-    yaml_file.write_text(yaml_content)
+    yaml_file = make_text_file(filename='test_yaml_file', body=yaml_content)
     with pytest.raises(ValueError) as excinfo:
         with open(yaml_file, encoding='utf-8') as f:
             yaml.safe_load(f)

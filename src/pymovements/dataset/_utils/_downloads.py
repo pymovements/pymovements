@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -56,7 +56,8 @@ def download_file(
     max_redirect_hops : int
         Maximum number of redirect hops allowed. (default: 3)
     verbose : bool
-        If True, show progress bar and print info messages on downloading file. (default: True)
+        If True, show a progress bar and print info messages on the downloading file.
+        (default: True)
 
     Returns
     -------
@@ -148,9 +149,7 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
     )
 
 
-# have to ignore pylint since tqdm 2.45.0 broke incosistent-mro
-# https://github.com/tqdm/tqdm/blob/0bb91857eca0d4aea08f66cf1c8949abe0cd6b7a/tqdm/auto.py#L27
-class _DownloadProgressBar(tqdm):  # pylint: disable=inconsistent-mro
+class _DownloadProgressBar(tqdm):
     """Progress bar for downloads.
 
     Provides `update_to(n)` which uses `tqdm.update(delta_n)`.

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -99,14 +99,14 @@ def from_numpy(
     trial_columns: str | list[str] | None
         The name of the trial columns in the samples data frame. If the list is empty or None,
         the samples data frame is assumed to contain only one trial. If the list is not empty,
-        the samples data frame is assumed to contain multiple trials and the transformation
+        the samples data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the samples data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the samples data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
         The name of the pixel position columns in the samples data frame. (default: None)
@@ -129,7 +129,7 @@ def from_numpy(
     Returns
     -------
     Gaze
-        Returns Gaze object with data read from numpy array.
+        Returns a Gaze object with data read from numpy array.
 
     Examples
     --------
@@ -370,7 +370,7 @@ def from_pandas(
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. (default: None)

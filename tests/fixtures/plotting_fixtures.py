@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,24 +17,29 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for the Reading Measure DataFrame."""
-from __future__ import annotations
+"""Provide fixtures for non-interactive plotting tests."""
+from collections.abc import Generator
 
-import polars as pl
+import matplotlib
+import matplotlib.pyplot as plt
+import pytest
 
-from pymovements._utils._html import repr_html
+
+@pytest.fixture(name='set_non_interactive_plotting_backend', scope='session', autouse=True)
+def fixture_set_non_interactive_plotting_backend():
+    """Set the non-interactive plotting backend for Matplotlib."""
+    matplotlib.use('Agg')  # Non-interactive plotting
 
 
-@repr_html()
-class ReadingMeasures:
-    """A DataFrame for reading measures.
+@pytest.fixture(name='close_figures_after_test', autouse=True)
+def fixture_close_figures_after_test() -> Generator[None]:
+    """Automatically close all Matplotlib figures after each test."""
+    yield
+    plt.close('all')
 
-    Parameters
-    ----------
-    reading_measure_df: pl.DataFrame
-        A reading measure dataframe.
-    """
 
-    def __init__(self, reading_measure_df: pl.DataFrame) -> None:
-
-        self.frame = reading_measure_df.clone()
+@pytest.fixture(scope='session', autouse=True)
+def verify_no_figures_remain():
+    """Verify no figures remain open after all tests."""
+    yield
+    assert len(plt.get_fignums()) == 0, 'Some figures were not closed!'

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,14 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test from gaze.from_pandas."""
-import re
-
 import pandas as pd
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements import __version__
 from pymovements import Events
 from pymovements import Experiment
 from pymovements.gaze import from_pandas
@@ -175,17 +172,13 @@ def test_from_pandas_data_argument_is_deprecated():
     assert gaze.samples.shape == (4, 4)
 
 
-def test_from_pandas_data_argument_is_removed():
+def test_from_pandas_data_argument_is_removed(assert_deprecation_is_removed):
     with pytest.raises(DeprecationWarning) as info:
         from_pandas(samples=None, data=pd.DataFrame())
 
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
+    assert_deprecation_is_removed(
+        function_name='from_pandas() keyword argument data',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
 
-    msg = info.value.args[0]
-    argument_name = 'data'
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyword argument {argument_name} was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
     )

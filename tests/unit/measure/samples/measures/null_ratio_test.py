@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.measure.samples import null_ratio
 
 
 @pytest.mark.parametrize(
@@ -121,7 +121,7 @@ import pymovements as pm
     ],
 )
 def test_null_ratio_expected(df, kwargs, expected):
-    result = df.select(pm.measure.null_ratio(**kwargs))
+    result = df.select(null_ratio(**kwargs))
     assert_frame_equal(result, expected)
 
 
@@ -138,8 +138,5 @@ def test_null_ratio_expected(df, kwargs, expected):
     ],
 )
 def test_null_ratio_raises(df, kwargs, exception, message):
-    with pytest.raises(exception) as excinfo:
-        df.select(pm.measure.null_ratio(**kwargs))
-
-    exception_message, = excinfo.value.args
-    assert exception_message == message
+    with pytest.raises(exception, match=message):
+        df.select(null_ratio(**kwargs))

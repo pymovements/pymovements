@@ -1,6 +1,6 @@
 <p style="text-align:center;">
 <img width="110%" height="110%" alt="pymovements"
- src="https://raw.githubusercontent.com/aeye-lab/pymovements/main/docs/source/_static/logo.svg"
+ src="https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg"
  onerror="this.onerror=null;this.src='./docs/source/_static/logo.svg';"/>
 </p>
 
@@ -11,24 +11,24 @@
 [![PyPI status](https://img.shields.io/pypi/status/pymovements.svg)](https://pypi.python.org/pypi/pymovements/)
 [![Python version](https://img.shields.io/pypi/pyversions/pymovements.svg)](https://pypi.python.org/pypi/pymovements/)
 ![Operating System](https://img.shields.io/badge/os-linux%20%7C%20macOS%20%7C%20windows-blue)
-[![License](https://img.shields.io/pypi/l/pymovements.svg)](https://github.com/aeye-lab/pymovements/blob/master/LICENSE.txt)
-[![Test Status](https://img.shields.io/github/actions/workflow/status/aeye-lab/pymovements/tests.yml?label=tests)](https://github.com/aeye-lab/pymovements/actions/workflows/tests.yml)
+[![License](https://img.shields.io/pypi/l/pymovements.svg)](https://github.com/pymovements/pymovements/blob/master/LICENSE.txt)
+[![Test Status](https://img.shields.io/github/actions/workflow/status/pymovements/pymovements/tests.yml?label=tests)](https://github.com/pymovements/pymovements/actions/workflows/tests.yml)
 [![Documentation Status](https://readthedocs.org/projects/pymovements/badge/?version=latest)](https://pymovements.readthedocs.io/en/latest/?badge=latest)
-[![codecov](https://codecov.io/github/aeye-lab/pymovements/branch/main/graph/badge.svg?token=QY3NDHAT2C)](https://app.codecov.io/gh/aeye-lab/pymovements)
+[![codecov](https://codecov.io/github/pymovements/pymovements/branch/main/graph/badge.svg?token=QY3NDHAT2C)](https://app.codecov.io/gh/pymovements/pymovements)
 [![PyPI Downloads](https://static.pepy.tech/badge/pymovements)](https://pepy.tech/projects/pymovements)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/aeye-lab/pymovements/HEAD?labpath=docs%2Fsource%2Ftutorials)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/pymovements/pymovements/HEAD?labpath=docs%2Fsource%2Ftutorials)
 
 pymovements is an open-source python package for processing eye movement data. It provides a simple
 interface to download publicly available datasets, preprocess gaze data, detect oculomotoric events
 and render plots to visually analyze your results.
 
-- **Website:** https://github.com/aeye-lab/pymovements
+- **Website:** https://github.com/pymovements/pymovements
 - **Documentation:** https://pymovements.readthedocs.io
-- **Source code:** https://github.com/aeye-lab/pymovements
+- **Source code:** https://github.com/pymovements/pymovements
 - **PyPI package:** https://pypi.org/project/pymovements
 - **Conda package:** https://anaconda.org/conda-forge/pymovements
-- **Bug reports:** https://github.com/aeye-lab/pymovements/issues
-- **Contributing:** https://github.com/aeye-lab/pymovements/blob/main/CONTRIBUTING.md
+- **Bug reports:** https://github.com/pymovements/pymovements/issues
+- **Contributing:** https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md
 - **Mailing list:** pymovements@python.org ([subscribe](https://mail.python.org/mailman3/lists/pymovements.python.org/))
 - **Discord:** https://discord.gg/K2uS2R6PNj
 
@@ -64,7 +64,7 @@ dataset.detect('microsaccades')  # detect saccades using the microsaccades algor
 Check out our guide on how to install *pymovements* and get started here:
 [Installation](https://pymovements.readthedocs.io/en/stable/getting-started.html)
 
-We provide a range of tutorial aimed at beginners:
+We provide a range of tutorials aimed at beginners:
 [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
 
 The complete reference of the package can be found here:
@@ -74,10 +74,10 @@ The complete reference of the package can be found here:
 
 We welcome any sort of contribution to pymovements!
 
-For a detailed guide, please refer to our [CONTRIBUTING.md](CONTRIBUTING.md) first.
+For a detailed guide, please refer to our [CONTRIBUTING.md](https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md) first.
 
 If you have any questions, please [open an issue](
-https://github.com/aeye-lab/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)
 
 ## Citing

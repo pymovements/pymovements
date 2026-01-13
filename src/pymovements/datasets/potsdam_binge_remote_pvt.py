@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -63,7 +64,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -73,34 +74,34 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    distance_column: str
+    distance_column: str | None
         The name of the distance column in the input data frame. These column will be
         used to convert pixel coordinates into degrees of visual angle.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -125,47 +126,125 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
 
     name: str = 'PotsdamBingeRemotePVT'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Potsdam Binge Remote PVT dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/9vbs8/',
-                        'filename': 'a.zip',
-                        'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
-                        'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'trial_id': int,
-                            'block_id': int,
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/9vbs8/',
+                    'filename': 'a.zip',
+                    'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': ['x_pix_eyelink', 'y_pix_eyelink'],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
                         },
                     },
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/yqukn/',
-                        'filename': 'b.zip',
-                        'md5': '54038547b1a373253b38999a227dde63',
-                        'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'trial_id': int,
-                            'block_id': int,
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/yqukn/',
+                    'filename': 'b.zip',
+                    'md5': '54038547b1a373253b38999a227dde63',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
+                        ],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
                         },
                     },
-                    {
-                        'content': 'gaze',
-                        'url': 'https://osf.io/download/yf2xa/',
-                        'filename': 'e.zip',
-                        'md5': 'a0d0203cbb273f6908c1b52a42750551',
-                        'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename_pattern_schema_overrides': {
-                            'subject_id': int,
-                            'trial_id': int,
-                            'block_id': int,
+                },
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/yf2xa/',
+                    'filename': 'e.zip',
+                    'md5': 'a0d0203cbb273f6908c1b52a42750551',
+                    'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern_schema_overrides': {
+                        'subject_id': int,
+                        'trial_id': int,
+                        'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
                         },
                     },
+                },
             ],
         ),
     )
@@ -197,44 +276,16 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
 
     trial_columns: list[str] | None = None
 
-    time_column: str = 'eyelink_timestamp'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    distance_column: str = 'target_distance'
+    distance_column: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x_pix_eyelink',
-            'y_pix_eyelink',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(
+    column_map: dict[str, str] | None = field(
         default_factory=lambda: {},
     )
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trial_id': pl.Float32,
-                    'block_id': pl.Float32,
-                    'x_pix_eyelink': pl.Float32,
-                    'y_pix_eyelink': pl.Float32,
-                    'eyelink_timestamp': pl.Int64,
-                    'x_pix_pupilcore_interpolated': pl.Float32,
-                    'y_pix_pupilcore_interpolated': pl.Float32,
-                    'pupil_size_eyelink': pl.Float32,
-                    'target_distance': pl.Float32,
-                    'pupil_size_pupilcore_interpolated': pl.Float32,
-                    'pupil_confidence_interpolated': pl.Float32,
-                    'time_to_prev_bac': pl.Float32,
-                    'time_to_next_bac': pl.Float32,
-                    'prev_bac': pl.Float32,
-                    'next_bac': pl.Float32,
-                },
-                'separator': ',',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
