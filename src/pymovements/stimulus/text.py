@@ -339,7 +339,6 @@ def from_file(
     """
     return TextStimulus.from_csv(
         path=aoi_path,
-        aois=stimulus_df,
         aoi_column=aoi_column,
         start_x_column=start_x_column,
         start_y_column=start_y_column,
