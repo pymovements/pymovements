@@ -189,7 +189,7 @@ EXPECTED_DF = polars.DataFrame(
         ),
     ],
 )
-def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file):
+def test_text_stimulus_from_file(filename, read_csv_kwargs, expected, make_example_file):
     aoi_file = make_example_file(filename)
     aois = text.from_file(
         aoi_file,
@@ -199,7 +199,7 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=custom_read_kwargs,
+        custom_read_kwargs=read_csv_kwargs,
     )
     head = aois.aois.head(12)
 
@@ -242,7 +242,7 @@ def test_text_stimulus_unsupported_format():
         ),
     ],
 )
-def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file):
+def test_text_stimulus_splitting(filename, read_csv_kwargs, make_example_file):
     aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
@@ -252,7 +252,7 @@ def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=custom_read_kwargs,
+        custom_read_kwargs=read_csv_kwargs,
     )
 
     aois_df = aois_df.split(by='line_idx')
@@ -274,7 +274,7 @@ def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file
         ),
     ],
 )
-def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, make_example_file):
+def test_text_stimulus_splitting_unique_within(filename, read_csv_kwargs, make_example_file):
     aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
@@ -284,7 +284,7 @@ def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, mak
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=custom_read_kwargs,
+        custom_read_kwargs=read_csv_kwargs,
     )
 
     aois_df = aois_df.split(by='line_idx')
@@ -306,7 +306,7 @@ def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, mak
         ),
     ],
 )
-def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs, make_example_file):
+def test_text_stimulus_splitting_different_between(filename, read_csv_kwargs, make_example_file):
     aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
@@ -316,7 +316,7 @@ def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs,
         width_column='width',
         height_column='height',
         page_column='page',
-        custom_read_kwargs=custom_read_kwargs,
+        custom_read_kwargs=read_csv_kwargs,
     )
 
     aois_df = aois_df.split(by='line_idx')
