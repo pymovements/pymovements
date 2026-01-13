@@ -337,6 +337,13 @@ def test_load_eyelink_file_has_expected_trial_columns(
         ),
         pytest.param(
             'monocular_example.csv',
+            '.CSV',
+            None,
+            {'pixel_columns': ['x_left_pix', 'y_left_pix']},
+            id='load_csv_uppercase',
+        ),
+        pytest.param(
+            'monocular_example.csv',
             '.csv',
             'from_csv',
             {'pixel_columns': ['x_left_pix', 'y_left_pix']},
@@ -358,6 +365,13 @@ def test_load_eyelink_file_has_expected_trial_columns(
         ),
         pytest.param(
             'monocular_example.tsv',
+            '.TSV',
+            None,
+            {'pixel_columns': ['x_left_pix', 'y_left_pix'], 'read_csv_kwargs': {'separator': '\t'}},
+            id='load_tsv_uppercase',
+        ),
+        pytest.param(
+            'monocular_example.tsv',
             '.tsv',
             'from_csv',
             {'pixel_columns': ['x_left_pix', 'y_left_pix'], 'read_csv_kwargs': {'separator': '\t'}},
@@ -376,6 +390,13 @@ def test_load_eyelink_file_has_expected_trial_columns(
             None,
             None,
             id='load_feather_default',
+        ),
+        pytest.param(
+            'monocular_example.feather',
+            '.FEATHER',
+            None,
+            None,
+            id='load_feather_uppercase',
         ),
         pytest.param(
             'monocular_example.feather',
@@ -811,8 +832,9 @@ def test_load_gaze_file_unsupported_load_function(make_example_file):
     )
 
 
-def test_load_precomputed_rm_file(make_example_file):
-    filepath = make_example_file('copco_rm_dummy.csv')
+@pytest.mark.parametrize('target_filename', ['copco_rm_dummy.csv', 'copco_rm_dummy.CSV'])
+def test_load_precomputed_rm_file(target_filename, make_example_file):
+    filepath = make_example_file('copco_rm_dummy.csv', target_filename=target_filename)
     resource_definition = ResourceDefinition(
         content='precomputed_reading_measures',
         load_kwargs={'separator': ','},
@@ -871,8 +893,9 @@ def test_load_precomputed_rm_files_rda(make_example_file):
         )
 
 
-def test_load_precomputed_rm_file_rda(make_example_file):
-    filepath = make_example_file('rda_test_file.rda')
+@pytest.mark.parametrize('target_filename', ['rda_test_file.rda', 'rda_test_file.RDA'])
+def test_load_precomputed_rm_file_rda(target_filename, make_example_file):
+    filepath = make_example_file('rda_test_file.rda', target_filename=target_filename)
     resource_definition = ResourceDefinition(
         content='precomputed_reading_measures',
         load_kwargs={'r_dataframe_key': 'joint.fix'},
@@ -913,8 +936,9 @@ def test_load_precomputed_rm_file_rda_dataset_definition_kwargs(make_example_fil
     )
 
 
-def test_load_precomputed_rm_file_xlsx(make_example_file):
-    filepath = make_example_file('Sentences.xlsx')
+@pytest.mark.parametrize('target_filename', ['Sentences.xlsx', 'Sentences.XLSX'])
+def test_load_precomputed_rm_file_xlsx(target_filename, make_example_file):
+    filepath = make_example_file('Sentences.xlsx', target_filename=target_filename)
     resource_definition = ResourceDefinition(
         content='precomputed_reading_measures',
         load_kwargs={'sheet_name': 'Sheet 1'},
@@ -944,8 +968,9 @@ def test_load_precomputed_rm_file_unsupported_file_format(make_example_file):
         '.csv, .rda, .tsv, .txt, .xlsx'
 
 
-def test_load_precomputed_file_csv(make_example_file):
-    filepath = make_example_file('18sat_fixfinal.csv')
+@pytest.mark.parametrize('target_filename', ['18sat_fixfinal.csv', '18sat_fixfinal.CSV'])
+def test_load_precomputed_file_csv(target_filename, make_example_file):
+    filepath = make_example_file('18sat_fixfinal.csv', target_filename=target_filename)
     resource_definition = ResourceDefinition(
         content='precomputed_events',
         load_kwargs={'read_csv_kwargs': {'separator': ','}},
@@ -958,8 +983,9 @@ def test_load_precomputed_file_csv(make_example_file):
     assert_frame_equal(gaze.frame, expected_df, check_column_order=False)
 
 
-def test_load_precomputed_file_json(make_example_file):
-    filepath = make_example_file('test.jsonl')
+@pytest.mark.parametrize('target_filename', ['test.jsonl', 'test.JSONL'])
+def test_load_precomputed_file_json(target_filename, make_example_file):
+    filepath = make_example_file('test.jsonl', target_filename=target_filename)
     file = DatasetFile(path=filepath, definition=ResourceDefinition(content='precomputed_events'))
 
     gaze = load_precomputed_event_file(file, dataset_definition=DatasetDefinition())
@@ -1011,8 +1037,9 @@ def test_load_precomputed_files_rda(make_example_file):
         )
 
 
-def test_load_precomputed_file_rda(make_example_file):
-    filepath = make_example_file('rda_test_file.rda')
+@pytest.mark.parametrize('target_filename', ['rda_test_file.rda', 'rda_test_file.RDA'])
+def test_load_precomputed_file_rda(target_filename, make_example_file):
+    filepath = make_example_file('rda_test_file.rda', target_filename=target_filename)
     resource_definition = ResourceDefinition(
         content='precomputed_events',
         load_kwargs={'r_dataframe_key': 'joint.fix'},
