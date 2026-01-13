@@ -460,8 +460,7 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
-        self.gaze = dataset_files.load_stimuli_files(
-            definition=self.definition,
+        self.stimuli = dataset_files.load_stimuli_files(
             files=[file for file in self._files if file.definition.content == 'stimulus'],
         )
 
