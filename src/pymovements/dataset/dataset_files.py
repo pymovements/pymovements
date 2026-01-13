@@ -624,15 +624,12 @@ def load_precomputed_event_file(
 
 
 def load_stimuli_files(
-        definition: DatasetDefinition,
         files: list[DatasetFile],
 ) -> list[ImageStimulus | TextStimulus]:
     """Load all available text stimuli files.
 
     Parameters
     ----------
-    definition: DatasetDefinition
-        The dataset definition.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
@@ -644,7 +641,7 @@ def load_stimuli_files(
     """
     stimuli: list[ImageStimulus | TextStimulus] = []
     for file in files:
-        stimulus = load_stimulus_file(file=file, dataset_definition=definition)
+        stimulus = load_stimulus_file(file=file)
         stimuli.append(stimulus)
     return stimuli
 
