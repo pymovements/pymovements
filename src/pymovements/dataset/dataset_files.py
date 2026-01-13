@@ -670,26 +670,22 @@ def load_stimulus_file(
     ValueError
         If ``load_function`` is not in list of supported functions.
     """
-    load_function_name = file.definition.load_function
-    if load_function_name is None:
-        raise Exception()
-
-    if load_function_name == 'TextStimulus.from_csv':
-        load_function = TextStimulus.from_csv
-    elif load_function_name == 'ImageStimulus.from_file':
-        load_function = ImageStimulus.from_file
-    else:
-        valid_load_functions = ['TextStimulus.from_csv', 'ImageStimulus.from_file']
-        raise ValueError(
-            f'Unknown load_function "{load_function_name}". '
-            f'Known functions are: {valid_load_functions}',
-        )
-
     load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
 
-    return load_function(path=file.path, **load_kwargs)
+    load_function_name = file.definition.load_function
+    if load_function_name == 'TextStimulus.from_csv':
+        return TextStimulus.from_csv(path=file.path, **load_kwargs)
+    if load_function_name == 'ImageStimulus.from_file':
+        return ImageStimulus.from_file(path=file.path, **load_kwargs)
+
+    # No valid load function found.
+    valid_load_functions = ['TextStimulus.from_csv', 'ImageStimulus.from_file']
+    raise ValueError(
+        f'Unknown load_function "{load_function_name}". '
+        f'Known functions are: {valid_load_functions}',
+    )
 
 
 def save_events(
