@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -1102,6 +1102,7 @@ def test_gaze_drop_event_properties(make_gaze_with_events):
     assert set(gaze.events.event_property_columns) == {'test2'}
 
 
+@pytest.mark.filterwarnings('ignore:No events available for processing.*:UserWarning')
 def test_gaze_compute_event_properties_no_events():
     gaze = Gaze(
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8}),
@@ -1114,6 +1115,41 @@ def test_gaze_compute_event_properties_no_events():
         match='No events available to compute event properties. Did you forget to use detect()?',
     ):
         gaze.compute_event_properties('amplitude')
+
+
+@pytest.mark.parametrize(
+    ('existing_amplitude', 'expected_amplitude'),
+    [
+        pytest.param(0.0, np.sqrt(32), id='overwrite_zero'),
+        pytest.param(123.0, np.sqrt(32), id='overwrite_nonzero'),
+    ],
+)
+def test_gaze_compute_event_properties_overwrites_column(existing_amplitude, expected_amplitude):
+    gaze = Gaze(
+        samples=pl.DataFrame({
+            'time': [0, 1, 2, 3, 4],
+            'position': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]],
+        }),
+        events=Events(
+            pl.DataFrame({
+                'name': ['fixation'],
+                'onset': [0],
+                'offset': [4],
+                'amplitude': [existing_amplitude],
+            }),
+        ),
+    )
+
+    expected_events = gaze.events.frame.with_columns(pl.lit(expected_amplitude).alias('amplitude'))
+
+    with pytest.warns(
+            UserWarning,
+            match='The following columns already exist in event and will be overwritten: '
+                  r'\[\'amplitude\'\]',
+    ):
+        gaze.compute_event_properties('amplitude')
+
+    assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
 
 
 @pytest.mark.parametrize(

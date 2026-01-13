@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ class GazeOnFaces(DatasetDefinition):
     session. Eye movements are recorded at a sampling frequency of 60 Hz
     using an EyeLink 1000 video-based eye tracker and are provided as pixel coordinates.
 
-    Participants were sat 57 cm away from the screen (19inch LCD monitor,
+    Participants were sat 57 cm away from the screen (19-inch LCD monitor,
     screen res=1280×1024, 60 Hz). Recordings of the eye movements of one eye in monocular
     pupil/corneal reflection tracking mode.
 
@@ -72,7 +72,7 @@ class GazeOnFaces(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None

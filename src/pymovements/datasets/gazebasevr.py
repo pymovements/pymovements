@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ from pymovements.gaze.experiment import Experiment
 class GazeBaseVR(DatasetDefinition):
     """GazeBaseVR dataset :cite:p:`GazeBaseVR`.
 
-    This dataset includes binocular plus an additional cyclopian eye tracking data from 407
+    This dataset includes binocular plus additional cyclopian eye tracking data from 407
     participants captured over a 26-month period. Participants attended up to 3 rounds during this
     time frame, with each round consisting of two contiguous sessions.
 
@@ -70,7 +70,7 @@ class GazeBaseVR(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -432,8 +432,8 @@ def test_from_asc_example_file_raises_exception(
             {'encoding': 'latin1'},
             Experiment(
                 screen=Screen(
-                    width_px=1921,
-                    height_px=1081,
+                    width_px=1920,
+                    height_px=1080,
                 ),
                 eyetracker=EyeTracker(
                     sampling_rate=1000.0,
@@ -824,8 +824,8 @@ def test_from_asc_example_file_has_expected_events(
     ],
 )
 def test_from_asc_warns(
-    header, body, expected_warning, expected_message,
-    make_text_file, from_asc_kwargs,
+        header, body, expected_warning, expected_message,
+        make_text_file, from_asc_kwargs,
 ):
     filepath = make_text_file(filename='test.asc', header=header, body=body)
 

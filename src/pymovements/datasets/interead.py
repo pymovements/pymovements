@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,9 +35,9 @@ class InteRead(DatasetDefinition):
     """InteRead dataset :cite:p:`InteRead`.
 
     This dataset includes monocular eye tracking data in an interrupted reading task.
-    Automatic interruption occured during a reading task and participants continued
+    Automatic interruption occurred during a reading task and participants continued
     reading after the pause.
-    Eye movements are recorded at a sampling frequency of 1200Hz with video-based eye tracker.
+    Eye movements are recorded at a sampling frequency of 1200Hz with a video-based eye tracker.
     Provided data are raw gaze samples and precomputed event files both in pixel coordinates.
 
     For more details, check the paper :cite:p:`InteRead`.
@@ -61,7 +61,7 @@ class InteRead(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -71,7 +71,7 @@ class InteRead(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None

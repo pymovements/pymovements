@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ from pymovements.gaze.experiment import Experiment
 class CopCo(DatasetDefinition):
     """CopCo dataset :cite:p:`CopCoL1Hollenstein`.
 
-    This dataset includes monocular eye tracking data from a single participants in a single
+    This dataset includes monocular eye tracking data from a single participant in a single
     session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
     eye tracker and are provided as pixel coordinates.
 
@@ -64,7 +64,7 @@ class CopCo(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -74,7 +74,7 @@ class CopCo(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None

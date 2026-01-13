@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -134,8 +134,8 @@ class TextStimulus:
         """Return the AOI that contains the given gaze row.
 
         This function checks spatial bounds using the interval `start <= coord < start + size` if
-        `width`/`height` are provided, or `start <= coord < end` if `end_x_column`/`end_y_column`
-        are provided.
+        `width`/`height` is provided, or `start <= coord < end` if `end_x_column`/`end_y_column`
+        is provided.
         In both cases, the end boundary is exclusive (half-open interval `[start, end)`).
         When `trial_column` and/or `page_column` are configured,
         AOIs are first filtered to match the current row's values for these columns,

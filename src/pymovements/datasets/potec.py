@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,14 +40,14 @@ class PoTeC(DatasetDefinition):
     corpus containing data from 75 participants reading 12 scientific texts.
     PoTeC is the first naturalistic eye-tracking-while-reading corpus that contains
     eye-movements from domain-experts as well as novices in a within-participant
-    manipulation: It is based on a 2×2×2 fully-crossed factorial design which includes
+    manipulation: It is based on a 2×2×2 fully crossed factorial design which includes
     the participants' level of study and the participants' discipline of study as
     between-subject factors and the text domain as a within-subject factor. The
     participants' reading comprehension was assessed by a series of text comprehension
-    questions and their domain knowledge was tested by text-independent
+    questions, and their domain knowledge was tested by text-independent
     background questions for each of the texts. The materials are annotated for a
     variety of linguistic features at different levels. We envision PoTeC to be used
-    for a wide range of studies including but not limited to analyses of expert and
+    for a wide range of studies, including but not limited to analyses of expert and
     non-expert reading strategies.
 
     The corpus and all the accompanying data at all
@@ -73,7 +73,7 @@ class PoTeC(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None

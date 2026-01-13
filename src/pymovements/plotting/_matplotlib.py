@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -117,7 +117,7 @@ def prepare_figure(
     Returns
     -------
     tuple[plt.Figure, plt.Axes, bool]
-        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes was
+        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes were
         created internally (True) or provided externally (False).
     """
     if ax is None:
