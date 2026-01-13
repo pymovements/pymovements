@@ -144,7 +144,7 @@ def test_from_begaze_has_correct_samples(
     expect_overrides,
     make_text_file,
 ):
-    # Use DatasetDefinition to supply custom_read_kwargs['gaze'] values
+    # Use DatasetDefinition to supply read_csv_kwargs['gaze'] values
     patterns = [
         {
             'pattern': r'START_TRIAL_(?P<trial>\d+)',

@@ -478,7 +478,7 @@ def mock_toy(
             'content': 'stimulus',
             'filename_pattern': r'toy_text_{text_id:d}_{page_id:d}_aoi.' + raw_fileformat,
             'filename_pattern_schema_overrides': filename_format_schema_overrides['stimulus'],
-            'load_function': 'TextStimulus.from_file',
+            'load_function': 'TextStimulus.from_csv',
             'load_kwargs': {
                 'aoi_column': 'char',
                 'start_x_column': 'top_left_x',
@@ -659,7 +659,7 @@ def gaze_fixture_dataset(request, tmp_path):
         dataset_dict = mock_toy(rootpath, raw_fileformat='csv', eyes='both', remote=True)
     elif dataset_type == 'ToyAOI':
         stimuli_path = tmp_path / 'stimuli'
-        shutil.copytree('tests/files/aoi_multipleye_stimuli_toy_x_1', stimuli_path)
+        shutil.copytree('tests/files/stimuli', stimuli_path)
         filename_format_schema_overrides = {
             'gaze': {'subject_id': pl.Int64},
             'precomputed_events': {'subject_id': pl.Int64},

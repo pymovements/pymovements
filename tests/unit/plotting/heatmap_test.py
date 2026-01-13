@@ -121,7 +121,7 @@ def args_fixture(experiment_fixture, request):
         pytest.param(
             {
                 'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
                 'stimulus_origin': 'lower',
             }, id='add_stimulus_true',
         ),

@@ -265,30 +265,30 @@ class DatasetDefinition:
     Notes
     -----
     .. deprecated:: v0.25.0
-       The ``custom_read_kwargs`` attribute is deprecated.
+       The ``read_csv_kwargs`` attribute is deprecated.
        Please specify :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
        This field will be removed in v0.30.0.
 
-    When working with the ``custom_read_kwargs`` attribute, there are specific use cases and
+    When working with the ``read_csv_kwargs`` attribute, there are specific use cases and
     considerations to keep in mind, especially for reading csv files:
 
     1. Custom separator:
        To read a csv file with a custom separator, you can pass the `separator` keyword argument to
-       ``custom_read_kwargs``. For example pass ``custom_read_kwargs={'separator': ';'}`` to
+       ``read_csv_kwargs``. For example pass ``read_csv_kwargs={'separator': ';'}`` to
        read a semicolon-separated csv file.
 
     2. Reading subset of columns:
-       To read only specific columns, specify them in ``custom_read_kwargs``. For example:
-       ``custom_read_kwargs={'columns': ['col1', 'col2']}``
+       To read only specific columns, specify them in ``read_csv_kwargs``. For example:
+       ``read_csv_kwargs={'columns': ['col1', 'col2']}``
 
     3. Specifying column datatypes:
        :py:func:`polars.read_csv` infers data types from a fixed number of rows,
        which might not be accurate for the entire dataset.
        To ensure correct data types, you can pass a dictionary to the
-       ``schema_overrides`` keyword argument in ``custom_read_kwargs``.
+       ``schema_overrides`` keyword argument in ``read_csv_kwargs``.
        Use data types from the :py:mod:`polars` library.
        For instance:
-       ``custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
+       ``read_csv_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -457,7 +457,7 @@ class DatasetDefinition:
         if custom_read_kwargs is not None:
             warn(
                 DeprecationWarning(
-                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.25.0. '
+                    'DatasetDefinition.read_csv_kwargs is deprecated since version v0.25.0. '
                     'Please specify ResourceDefinition.load_kwargs instead. '
                     'This field will be removed in v0.30.0.',
                 ),

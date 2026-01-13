@@ -173,7 +173,7 @@ EXPECTED_DF = polars.DataFrame(
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs', 'expected'),
+    ('filename', 'read_csv_kwargs', 'expected'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -212,7 +212,7 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
 
 def test_text_stimulus_unsupported_format():
     with pytest.raises(ValueError) as excinfo:
-        text.TextStimulus.from_file(
+        text.TextStimulus.from_csv(
             'tests/files/toy_text_1_1_aoi.pickle',
             aoi_column='char',
             start_x_column='top_left_x',
@@ -228,7 +228,7 @@ def test_text_stimulus_unsupported_format():
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs'),
+    ('filename', 'read_csv_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -260,7 +260,7 @@ def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs'),
+    ('filename', 'read_csv_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',
@@ -292,7 +292,7 @@ def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, mak
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs'),
+    ('filename', 'read_csv_kwargs'),
     [
         pytest.param(
             'toy_text_1_1_aoi.csv',

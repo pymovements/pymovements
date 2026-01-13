@@ -22,6 +22,9 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import polars as pl
 import pyreadr
 import pytest
@@ -37,6 +40,9 @@ from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
+from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.stimulus import ImageStimulus
+from pymovements.stimulus import TextStimulus
 
 
 ASC_TEXT = r"""\
@@ -216,13 +222,13 @@ EYELINK_PATTERNS = [
         pytest.param(
             None,
             {
-                'custom_read_kwargs': {
+                'read_csv_kwargs': {
                     'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
                 },
             },
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
             ),
             id='patterns_via_definition',
         ),
@@ -230,13 +236,13 @@ EYELINK_PATTERNS = [
         pytest.param(
             {'patterns': 'eyelink'},
             {
-                'custom_read_kwargs': {
+                'read_csv_kwargs': {
                     'gaze': {'patterns': EYELINK_PATTERNS, 'schema': {'trial_id': pl.Int64}},
                 },
             },
             EXPECTED_EYELINK_SAMPLES_PATTERNS,
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
             ),
             id='patterns_definition_overrides_load_kwargs',
         ),
@@ -725,11 +731,11 @@ def test_load_gaze_file_has_correct_metadata(
                 'separator': '\t',
             },
             None, None,
-            {'pixel_columns': ['x', 'y'], 'custom_read_kwargs': {'gaze': {'separator': '\t'}}},
+            {'pixel_columns': ['x', 'y'], 'read_csv_kwargs': {'gaze': {'separator': '\t'}}},
             Gaze(samples=pl.DataFrame({'time': [0], 'pixel': [[1.2, 3.4]]})),
             marks=[
                 pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                    'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
                 ),
                 pytest.mark.filterwarnings(
                     'ignore:.*DatasetDefinition.pixel_columns.*:DeprecationWarning',
@@ -893,7 +899,7 @@ def test_load_precomputed_rm_file_rda(make_example_file):
     )
 
 
-@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning')
 def test_load_precomputed_rm_file_rda_dataset_definition_kwargs(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
     resource_definition = ResourceDefinition(content='precomputed_reading_measures')
@@ -1030,7 +1036,7 @@ def test_load_precomputed_file_rda(make_example_file):
     )
 
 
-@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning')
 def test_load_precomputed_file_rda_dataset_definition_kwargs(make_example_file):
     filepath = make_example_file('rda_test_file.rda')
     resource_definition = ResourceDefinition(content='precomputed_events')
@@ -1103,9 +1109,9 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
 
         pytest.param(
             {},
-            {'custom_read_kwargs': {'gaze': {'trial_columns': ['trial_id']}}},
+            {'read_csv_kwargs': {'gaze': {'trial_columns': ['trial_id']}}},
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
             ),
             id='trial_columns_via_custom_read_kwargs',
         ),
@@ -1114,11 +1120,11 @@ def test_load_precomputed_rm_file_rda_raise_value_error(make_example_file):
             {},
             {
                 'trial_columns': ['wrong'],
-                'custom_read_kwargs': {'gaze': {'trial_columns': ['trial_id']}},
+                'read_csv_kwargs': {'gaze': {'trial_columns': ['trial_id']}},
             },
             marks=[
                 pytest.mark.filterwarnings(
-                    'ignore:.*DatasetDefinition.custom_read_kwargs.*:DeprecationWarning',
+                    'ignore:.*DatasetDefinition.read_csv_kwargs.*:DeprecationWarning',
                 ),
                 pytest.mark.filterwarnings(
                     'ignore:.*DatasetDefinition.trial_columns.*:DeprecationWarning',
@@ -1275,36 +1281,69 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     assert gaze.trial_columns == ['trial_id']
 
 
-def test_load_stimuli_unknown_load_function():
-    filepath = 'tests/files/aoi_multipleye_stimuli_toy_x_1/toy_text_1_1_aoi.csv'
-
-    with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_stimulus_file(
-            filepath,
-            definition=DatasetDefinition(
-                aoi_content_column='char',
-                aoi_start_x_column='top_left_x',
-            ),
+def test_load_stimulus_file_returns_text_stimulus():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='TextStimulus.from_csv',
+            load_kwargs={
+                'aoi_column': 'char',
+                'start_x_column': 'top_left_x',
+                'start_y_column': 'top_left_y',
+                'width_column': 'width',
+                'height_column': 'height',
+                'page_column': 'page',
+            },
         )
+    )
+    stimulus = load_stimulus_file(file)
 
-    msg, = exc.value.args
-    assert msg == (
-        'Please specify the following in DatasetDefinition for loading text stimuli:'
-        ' aoi_start_y_column'
+    assert isinstance(stimulus, TextStimulus)
+    assert stimulus.aois.shape == (20, 13)
+
+
+def test_load_stimulus_file_returns_image_stimulus():
+    filepath = Path('tests/files/stimuli/pexels-zoorg-1000498.jpg')
+    file = DatasetFile(
+        path=filepath,
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='ImageStimulus.from_file',
+        )
+    )
+    stimulus = load_stimulus_file(file)
+
+    assert isinstance(stimulus, ImageStimulus)
+    assert stimulus.images == [filepath]
+
+
+def test_load_stimulus_file_raises_unknown_load_function():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='fail',
+        )
     )
 
+    message = 'Unknown load_function "fail". Known functions are:'
+    with pytest.raises(ValueError, match=message):
+        load_stimulus_file(file)
 
-def test_load_stimuli_file_missing_all_column_names():
-    filepath = 'tests/files/aoi_multipleye_stimuli_toy_x_1/toy_text_1_1_aoi.csv'
 
-    with pytest.raises(ValueError) as exc:
-        pm.dataset.dataset_files.load_stimulus_file(
-            filepath,
-            definition=DatasetDefinition(),
+def test_load_stimulus_file_raises_missing_load_kwargs():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='TextStimulus.from_csv',
         )
-
-    msg, = exc.value.args
-    assert msg == (
-        'Please specify the following in DatasetDefinition for loading text stimuli:'
-        ' aoi_content_column, aoi_start_x_column, aoi_start_y_column'
     )
+
+    message = re.escape(
+        'TextStimulus.from_csv() missing 3 required keyword-only arguments: '
+        "'aoi_column', 'start_x_column', and 'start_y_column'"
+    )
+    with pytest.raises(TypeError, match=message):
+        load_stimulus_file(file)

@@ -478,7 +478,7 @@ def load_precomputed_reading_measure_file(
     file: DatasetFile
         Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
     dataset_definition: DatasetDefinition
-        Use `DatasetDefinition.custom_read_kwargs` if defined there.
+        Use `DatasetDefinition.read_csv_kwargs` if defined there.
 
     Returns
     -------
@@ -575,7 +575,7 @@ def load_precomputed_event_file(
         Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
     dataset_definition: DatasetDefinition
-        Use `DatasetDefinition.custom_read_kwargs` if defined there.
+        Use `DatasetDefinition.read_csv_kwargs` if defined there.
 
     Returns
     -------
@@ -623,8 +623,8 @@ def load_precomputed_event_file(
 
 
 def load_stimuli_files(
-        fileinfo: pl.DataFrame,
-        dirpath: Path,
+        definition: DatasetDefinition,
+        files: list[DatasetFile],
 ) -> list[ImageStimulus | TextStimulus]:
     """Load all available text stimuli files.
 
@@ -641,18 +641,15 @@ def load_stimuli_files(
         List of loaded text stimuli objects.
 
     """
-    stimuli: list[TextStimulus] = []
-    for fileinfo_row in fileinfo.to_dicts():
-        filepath = dirpath / Path(fileinfo_row['filepath'])
-        stimulus = load_stimulus_file(filepath=filepath, fileinfo_row=fileinfo_row)
+    stimuli: list[ImageStimulus | TextStimulus] = []
+    for file in files:
+        stimulus = load_stimulus_file(file=file, dataset_definition=definition)
         stimuli.append(stimulus)
-
     return stimuli
 
 
 def load_stimulus_file(
-        filepath: Path,
-        fileinfo_row: dict[str, Any],
+        file: DatasetFile,
 ) -> ImageStimulus | TextStimulus:
     """Load stimuli from a single file.
 
@@ -677,23 +674,26 @@ def load_stimulus_file(
     ValueError
         If ``load_function`` is not in list of supported functions.
     """
-    load_function_name = fileinfo_row['load_function']
-    if load_function_name == 'TextStimulus.from_file':
-        load_function = TextStimulus.from_file
+    load_function_name = file.definition.load_function
+    if load_function_name is None:
+        raise Exception()
+
+    if load_function_name == 'TextStimulus.from_csv':
+        load_function = TextStimulus.from_csv
     elif load_function_name == 'ImageStimulus.from_file':
         load_function = ImageStimulus.from_file
     else:
-        valid_load_functions = ['TextStimulus.from_file', 'ImageStimulus.from_file']
+        valid_load_functions = ['TextStimulus.from_csv', 'ImageStimulus.from_file']
         raise ValueError(
             f'Unknown load_function "{load_function_name}". '
             f'Known functions are: {valid_load_functions}',
         )
 
-    load_function_kwargs = fileinfo_row['load_kwargs']
-    if load_function_kwargs is None:
-        load_function_kwargs = {}
+    load_kwargs = deepcopy(file.definition.load_kwargs)
+    if load_kwargs is None:
+        load_kwargs = {}
 
-    return load_function(path=filepath, **load_function_kwargs)
+    return load_function(path=file.path, **load_kwargs)
 
 
 def save_events(

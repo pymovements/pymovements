@@ -22,4 +22,4 @@ Stimulus
     :nosignatures:
     :template: function.rst
 
-    from_file
+    from_csv
