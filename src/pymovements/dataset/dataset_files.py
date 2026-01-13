@@ -631,15 +631,15 @@ def load_stimuli_files(
 
     Parameters
     ----------
-    fileinfo: pl.DataFrame
-        A dataframe holding file information.
-    dirpath: Path
-        Path of directory containing stimuli files.
+    definition: DatasetDefinition
+        The dataset definition.
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
 
     Returns
     -------
     list[ImageStimulus | TextStimulus]
-        List of loaded text stimuli objects.
+        List of loaded stimulus objects.
 
     """
     stimuli: list[ImageStimulus | TextStimulus] = []
@@ -660,10 +660,8 @@ def load_stimulus_file(
 
     Parameters
     ----------
-    filepath: Path
-        Path of gaze file.
-    fileinfo_row: dict[str, Any]
-        A dictionary holding file information.
+    file: DatasetFile
+        Load this stimulus dataset file.
 
     Returns
     -------
