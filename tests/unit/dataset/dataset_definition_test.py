@@ -264,7 +264,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'long_name': 'Example',
                 'acceleration_columns': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
@@ -298,7 +298,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'long_name': 'Example',
                 'acceleration_columns': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -347,7 +347,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'long_name': None,
                 'acceleration_columns': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -389,7 +389,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 '_foobar': 'test',
                 'acceleration_columns': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -716,7 +716,7 @@ def test_dataset_definition_has_resources_not_equal():
                 'experiment': None,
                 'extract': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -740,7 +740,7 @@ def test_dataset_definition_has_resources_not_equal():
                 'experiment': None,
                 'extract': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -782,7 +782,7 @@ def test_dataset_definition_has_resources_not_equal():
                 },
                 'extract': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -839,7 +839,7 @@ def test_dataset_definition_has_resources_not_equal():
             {
                 'acceleration_columns': None,
                 'column_map': None,
-                'read_csv_kwargs': None,
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
@@ -973,9 +973,9 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             id='column_map',
         ),
         pytest.param(
-            {'read_csv_kwargs': {'gaze': {'asd': 'def'}}},
+            {'custom_read_kwargs': {'gaze': {'asd': 'def'}}},
             '0.30.0',
-            id='read_csv_kwargs',
+            id='custom_read_kwargs',
         ),
     ],
 )

@@ -479,7 +479,7 @@ def load_precomputed_reading_measure_file(
     file: DatasetFile
         Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
     dataset_definition: DatasetDefinition
-        Use `DatasetDefinition.read_csv_kwargs` if defined there.
+        Use `DatasetDefinition.custom_read_kwargs` if defined there.
 
     Returns
     -------
@@ -576,7 +576,7 @@ def load_precomputed_event_file(
         Load this file using the associated :py:class:`pymovements.ResourceDefinition`.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
     dataset_definition: DatasetDefinition
-        Use `DatasetDefinition.read_csv_kwargs` if defined there.
+        Use `DatasetDefinition.custom_read_kwargs` if defined there.
 
     Returns
     -------
