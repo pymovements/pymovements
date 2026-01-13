@@ -40,7 +40,6 @@ from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
-from pymovements.gaze.gaze import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_begaze
