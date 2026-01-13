@@ -44,7 +44,6 @@ from pymovements.datasets.mecol2w2 import MECOL2W2
 from pymovements.datasets.mousecursor import MouseCursor
 from pymovements.datasets.onestop import OneStop
 from pymovements.datasets.potec import PoTeC
-from pymovements.datasets.potsdam_binge_pvt import PotsdamBingePVT
 from pymovements.datasets.potsdam_binge_remote_pvt import PotsdamBingeRemotePVT
 from pymovements.datasets.potsdam_binge_wearable_pvt import PotsdamBingeWearablePVT
 from pymovements.datasets.provo import Provo
@@ -83,7 +82,6 @@ __all__ = [
     'MECOL2W2',
     'OneStop',
     'PoTeC',
-    'PotsdamBingePVT',
     'PotsdamBingeRemotePVT',
     'PotsdamBingeWearablePVT',
     'Provo',

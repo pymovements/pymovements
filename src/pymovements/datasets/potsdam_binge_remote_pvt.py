@@ -136,7 +136,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                 {
                     'content': 'gaze',
                     'url': 'https://osf.io/download/9vbs8/',
-                    'filename': 'a.zip',
+                    'filename': 'alcohol.zip',
                     'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
                     'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
@@ -174,7 +174,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                 {
                     'content': 'gaze',
                     'url': 'https://osf.io/download/yqukn/',
-                    'filename': 'b.zip',
+                    'filename': 'baseline.zip',
                     'md5': '54038547b1a373253b38999a227dde63',
                     'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
@@ -212,7 +212,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
                 {
                     'content': 'gaze',
                     'url': 'https://osf.io/download/yf2xa/',
-                    'filename': 'e.zip',
+                    'filename': 'enrollment.zip',
                     'md5': 'a0d0203cbb273f6908c1b52a42750551',
                     'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
