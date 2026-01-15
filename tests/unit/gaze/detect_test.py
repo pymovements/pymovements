@@ -928,7 +928,21 @@ from pymovements.synthetic import step_function
     ],
 )
 def test_gaze_detect(method, kwargs, gaze, expected):
-    gaze.detect(method, **kwargs)
+    initial_len = len(gaze.events) if gaze.events is not None else 0
+    clear = kwargs.get('clear', False)
+
+    expect_warning = False
+    if clear:
+        if len(expected) == 0:
+            expect_warning = True
+    elif len(expected) == initial_len:
+        expect_warning = True
+
+    if expect_warning:
+        with pytest.warns(UserWarning, match='No events were detected'):
+            gaze.detect(method, **kwargs)
+    else:
+        gaze.detect(method, **kwargs)
     assert_frame_equal(gaze.events.frame, expected.frame, check_row_order=False)
 
 
@@ -940,7 +954,8 @@ def test_gaze_detect_custom_method_no_arguments():
 
     expected = pm.Events()
 
-    gaze.detect(custom_method)
+    with pytest.warns(UserWarning, match='No events were detected'):
+        gaze.detect(custom_method)
     assert_frame_equal(gaze.events.frame, expected.frame)
 
 

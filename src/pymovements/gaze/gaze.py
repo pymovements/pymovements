@@ -1033,6 +1033,13 @@ class Gaze:
 
             new_events = method(**method_kwargs)
 
+            if len(new_events) == 0:
+                warn(
+                    f"{getattr(method, '__name__', method)}: No events were detected.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
             self.events.frame = polars.concat(
                 [self.events.frame, new_events.frame],
                 how='diagonal_relaxed',
@@ -1085,6 +1092,13 @@ class Gaze:
                 new_events.add_trial_column(self.trial_columns, group_identifier)
 
                 new_events_grouped.append(new_events.frame)
+
+            if not new_events_grouped or all(len(df) == 0 for df in new_events_grouped):
+                warn(
+                    f"{getattr(method, '__name__', method)}: No events were detected.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
             self.events.frame = polars.concat(
                 [self.events.frame, *new_events_grouped],
@@ -1155,7 +1169,7 @@ class Gaze:
         if overwrite_columns:
             warn(
                 'The following columns already exist in event and will be overwritten: '
-                f"{overwrite_columns}",
+                f'{overwrite_columns}',
             )
             self.events.drop(overwrite_columns)
         if results.height:
@@ -2230,7 +2244,7 @@ class Gaze:
             if verbose >= 2:
                 print('Saving experiment file to', dirpath)
             if self.experiment is not None:
-                self.experiment.to_yaml(Path(f"{dirpath}/experiment.yaml"))
+                self.experiment.to_yaml(Path(f'{dirpath}/experiment.yaml'))
             elif save_experiment is not None:
                 raise ValueError('no experiment data in the Gaze object')
         return self
@@ -2396,7 +2410,7 @@ def _check_messages(messages: polars.DataFrame) -> None:
         if not isinstance(messages, polars.DataFrame):
             raise TypeError(
                 "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-                f"not {type(messages)}.",
+                f'not {type(messages)}.',
             )
         required_cols = {'time', 'content'}
         if not required_cols.issubset(set(messages.columns)):
