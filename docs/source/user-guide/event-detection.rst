@@ -2,9 +2,11 @@
 Detecting Occumotoric Events
 ============================
 
-Work in progress ...
+.. attention::
 
-event types (mention all possible events, but focus on the ones we can detect)
+    Work in progress ...
+
+We mention all possible events, but focus on the ones we can detect:
 - fixations, saccades, blinks
 - event detection can show the described events
 - plots: scanpathplot for fixations, main sequence saccades
