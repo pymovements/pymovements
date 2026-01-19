@@ -891,6 +891,10 @@ def take_subset(
 
         for file in files:
             if metadata_key not in file.metadata:  # pragma: no cover
+                # stimulus files may not contain metadata.
+                if file.definition.content == 'stimulus':
+                    continue
+
                 # This code is currently unreachable via public interfaces.
                 # The pragma directive should be removed after the removal of fileinfo from Dataset.
                 raise ValueError(
@@ -909,6 +913,11 @@ def take_subset(
                 f'{type(metadata_value)}',
             )
 
+        # iteratively reduce fileinfo & files.
         fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(metadata_key).is_in(metadata_values))
-        files = [file for file in files if file.metadata[metadata_key] in metadata_values]
+        files = [
+            file for file in files
+            if file.metadata.get(metadata_key) in metadata_values
+            or file.definition.content == 'stimulus'  # subset is only applied on gaze data.
+        ]
     return fileinfo, files

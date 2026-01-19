@@ -207,8 +207,10 @@ def mock_toy(
         raw_fileformat,
         eyes,
         remote=False,
+        stimulus=False,
         extract=_UNSET,
         filename_format_schema_overrides=_UNSET,
+        testfiles_dirpath=None,
 ):
     if extract is _UNSET:
         extract = None
@@ -379,6 +381,7 @@ def mock_toy(
             'trial_columns': ['task', 'trial'],
         },
     )
+    resource_definitions = [gaze_sample_resource_definition]
 
     files = [
         DatasetFile(
@@ -449,64 +452,6 @@ def mock_toy(
 
     create_event_files_from_fileinfo(events_list, fileinfo, rootpath / 'events')
 
-    resources = [
-        {
-            'content': 'gaze',
-            'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-            'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
-                'gaze', None,
-            ),
-        },
-        {
-            'content': 'precomputed_events',
-            'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-            'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
-                'precomputed_events', None,
-            ),
-        },
-        {
-            'content': 'precomputed_reading_measures',
-            'filename_pattern': r'{subject_id:d}.' + raw_fileformat,
-            'filename_pattern_schema_overrides': filename_format_schema_overrides.get(
-                'precomputed_reading_measures', None,
-            ),
-        },
-    ]
-
-    if 'stimulus' in filename_format_schema_overrides:
-        resources.append({
-            'content': 'stimulus',
-            'filename_pattern': r'toy_text_{text_id:d}_{page_id:d}_aoi.' + raw_fileformat,
-            'filename_pattern_schema_overrides': filename_format_schema_overrides['stimulus'],
-            'load_function': 'TextStimulus.from_csv',
-            'load_kwargs': {
-                'aoi_column': 'char',
-                'start_x_column': 'top_left_x',
-                'start_y_column': 'top_left_y',
-                'width_column': 'width',
-                'height_column': 'height',
-                'page_column': 'page',
-            },
-        })
-
-    dataset_definition = DatasetDefinition(
-        experiment=Experiment(
-            screen_width_px=1280,
-            screen_height_px=1024,
-            screen_width_cm=38,
-            screen_height_cm=30.2,
-            distance_cm=distance_cm,
-            origin='upper left',
-            sampling_rate=1000,
-        ),
-        resources=resources,
-        time_column='time',
-        time_unit='ms',
-        distance_column=distance_column,
-        pixel_columns=pixel_columns,
-        extract=extract,
-    )
-
     precomputed_dfs = []
     for _ in range(fileinfo.height):
         precomputed_events = pl.from_dict(
@@ -540,6 +485,7 @@ def mock_toy(
             'precomputed_events', None,
         ),
     )
+    resource_definitions.append(precomputed_events_resource_definition)
 
     precomputed_events_files = [
         DatasetFile(
@@ -578,6 +524,7 @@ def mock_toy(
             'precomputed_reading_measures', None,
         ),
     )
+    resource_definitions.append(precomputed_rm_resource_definition)
 
     precomputed_rm_files = [
         DatasetFile(
@@ -589,6 +536,46 @@ def mock_toy(
     ]
     files.extend(precomputed_rm_files)
 
+    if stimulus:
+        stimulus_definition = ResourceDefinition(
+            content='stimulus',
+            filename_pattern=r'toy_text_{text_id:d}_{page_id:d}_aoi.' + raw_fileformat,
+            filename_pattern_schema_overrides={'text_id': pl.Int64, 'page_id': pl.Int64},
+            load_function='TextStimulus.from_csv',
+            load_kwargs={
+                'aoi_column': 'char',
+                'start_x_column': 'top_left_x',
+                'start_y_column': 'top_left_y',
+                'width_column': 'width',
+                'height_column': 'height',
+                'page_column': 'page',
+            },
+        )
+        resource_definitions.append(stimulus_definition)
+
+        stimulus_filenames = {
+            'toy_text_1_1_aoi.csv': {'text_id': 1, 'page_id': 1},
+            'toy_text_2_5_aoi.csv': {'text_id': 2, 'page_id': 5},
+            'toy_text_3_8_aoi.csv': {'text_id': 3, 'page_id': 8},
+        }
+
+        source_dirpath = testfiles_dirpath / 'stimuli'
+        target_dirpath = rootpath / 'stimuli'
+        target_dirpath.mkdir(parents=True, exist_ok=True)
+
+        stimulus_files = []
+        for stimulus_filename, stimulus_metadata in stimulus_filenames.items():
+            source_filepath = source_dirpath / stimulus_filename
+            target_filepath = target_dirpath / stimulus_filename
+            shutil.copy2(source_filepath, target_filepath)
+            stimulus_file = DatasetFile(
+                path=target_filepath,
+                definition=stimulus_definition,
+                metadata=stimulus_metadata,
+            )
+            stimulus_files.append(stimulus_file)
+        files.extend(stimulus_files)
+
     dataset_definition = DatasetDefinition(
         experiment=Experiment(
             screen_width_px=1280,
@@ -599,11 +586,7 @@ def mock_toy(
             origin='upper left',
             sampling_rate=1000,
         ),
-        resources=[
-            gaze_sample_resource_definition,
-            precomputed_events_resource_definition,
-            precomputed_rm_resource_definition,
-        ],
+        resources=resource_definitions,
         extract=extract,
     )
 
@@ -639,7 +622,7 @@ def mock_toy(
         'ToyAOI',
     ],
 )
-def gaze_fixture_dataset(request, tmp_path):
+def gaze_fixture_dataset(request, tmp_path, testfiles_dirpath):
     rootpath = tmp_path
 
     dataset_type = request.param
@@ -658,20 +641,12 @@ def gaze_fixture_dataset(request, tmp_path):
     elif dataset_type == 'ToyRemote':
         dataset_dict = mock_toy(rootpath, raw_fileformat='csv', eyes='both', remote=True)
     elif dataset_type == 'ToyAOI':
-        stimuli_path = tmp_path / 'stimuli'
-        shutil.copytree('tests/files/stimuli', stimuli_path)
-        filename_format_schema_overrides = {
-            'gaze': {'subject_id': pl.Int64},
-            'precomputed_events': {'subject_id': pl.Int64},
-            'precomputed_reading_measures': {'subject_id': pl.Int64},
-            'stimulus': {'text_id': pl.Int64, 'page_id': pl.Int64},
-        }
-
         dataset_dict = mock_toy(
             rootpath,
             raw_fileformat='csv',
             eyes='both',
-            filename_format_schema_overrides=filename_format_schema_overrides,
+            stimulus=True,
+            testfiles_dirpath=testfiles_dirpath,
         )
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
@@ -881,7 +856,8 @@ def test_stimuli_list_exists(gaze_dataset_configuration):
 def test_text_stimuli_list_not_empty(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load()
-    assert dataset.stimuli and all(isinstance(stim, TextStimulus) for stim in dataset.stimuli)
+    assert dataset.stimuli
+    assert all(isinstance(stim, TextStimulus) for stim in dataset.stimuli)
 
 
 @pytest.mark.parametrize(
