@@ -2,10 +2,10 @@
 User Guide
 ==========
 
-This user guide introduces the concepts, data structures, and workflows
-used in pymovements. It is intended for students, researchers, and
-practitioners who work with eye-tracking data and want to understand how
-to move from raw recordings to analysis-ready and reusable datasets.
+This user guide introduces the core concepts, data structures, and workflows
+used in pymovements for processing and analyzing eye-tracking data.
+It is intended for students, researchers, and practitioners who want to move
+from raw recordings to analysis-ready and reusable datasets.
 
 The guide focuses on *conceptual understanding* and *transparent data
 processing*, rather than step-by-step recipes.

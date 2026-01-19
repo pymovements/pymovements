@@ -14,4 +14,19 @@ For more information, see the next section on :doc:`Installation Options <instal
    :maxdepth: 1
 
    installation
-   ../tutorials/pymovements-in-10-minutes
+
+.. grid::
+    :gutter: 5
+
+    .. grid-item-card::
+
+        **Already installed?**
+        ^^^^^^^^^^^^^^^^^^^^^^
+
+        Get familiar with *pymovements* by working through this beginner tutorial:
+
+        .. button-ref:: pymovements_in_10_minutes
+            :color: primary
+            :shadow:
+
+            pymovements in 10 minutes

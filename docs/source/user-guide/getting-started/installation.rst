@@ -60,20 +60,3 @@
                     git clone https://github.com/pymovements/pymovements.git
                     pip install --upgrade pip
                     pip install -e .[dev]
-
-
-.. grid::
-    :gutter: 5
-
-    .. grid-item-card::
-
-        **Already installed?**
-        ^^^^^^^^^^^^^^^^^^^^^^
-
-        Get familiar with *pymovements* by working through this beginner tutorial:
-
-        .. button-ref:: pymovements_in_10_minutes
-            :color: primary
-            :shadow:
-
-            pymovements in 10 minutes
