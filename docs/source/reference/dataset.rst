@@ -53,6 +53,7 @@ in different formats.
     InteRead
     JuDo1000
     MECOL1W1
+    MECOL1W2
     MECOL2W1
     MECOL2W2
     MouseCursor
