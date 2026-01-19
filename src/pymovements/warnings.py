@@ -17,14 +17,22 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+"""Warnings module."""
 from __future__ import annotations
 
 
 class ExperimentalWarning(Warning):
+    """Raised if experimental functionality is used.
 
-    def __init__(self, message):
+    Parameters
+    ----------
+    message: str
+        Warning message string.
+    """
+
+    def __init__(self, message: str):
         self.message = message
 
     def __str__(self) -> str:
+        """Warning message string."""
         return self.message
