@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements import __version__
 from pymovements import Dataset
 from pymovements import DatasetDefinition
 from pymovements import DatasetLibrary
@@ -48,7 +50,7 @@ from pymovements.events import ivt
 from pymovements.events import microsaccades
 from pymovements.exceptions import UnknownMeasure
 from pymovements.stimulus.text import TextStimulus
-
+from pymovements.warnings import ExperimentalWarning
 
 # pylint: disable=too-many-lines
 
@@ -848,6 +850,13 @@ def test_stimuli_list_exists(gaze_dataset_configuration):
     assert isinstance(dataset.stimuli, list)
 
 
+def test_stimuli_not_loaded(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(stimuli=False)
+
+    assert dataset.stimuli == []
+
+
 @pytest.mark.parametrize(
     'gaze_dataset_configuration',
     ['ToyAOI'],
@@ -855,7 +864,11 @@ def test_stimuli_list_exists(gaze_dataset_configuration):
 )
 def test_text_stimuli_list_not_empty(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+
+    message = f'.*Stimulus support is experimental.*pymovements version.*{re.escape(__version__)}'
+    with pytest.warns(ExperimentalWarning, match=message):
+        dataset.load()
+
     assert dataset.stimuli
     assert all(isinstance(stim, TextStimulus) for stim in dataset.stimuli)
 

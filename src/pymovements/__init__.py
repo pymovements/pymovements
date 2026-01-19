@@ -28,6 +28,7 @@ from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
 from pymovements import utils
+from pymovements import warnings
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
 from pymovements.dataset import DatasetLibrary
@@ -75,8 +76,6 @@ __all__ = [
     'Gaze',
     'GazeDataFrame',
 
-    'exceptions',
-
     'measure',
     'EVENT_MEASURES',
     'register_event_measure',
@@ -89,6 +88,10 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
+
+    'exceptions',
+    'warnings'
+
     'utils',
 
     'text',
