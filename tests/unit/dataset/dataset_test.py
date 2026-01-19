@@ -854,7 +854,7 @@ def test_stimuli_not_loaded(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(stimuli=False)
 
-    assert dataset.stimuli == []
+    assert not dataset.stimuli
 
 
 @pytest.mark.parametrize(
