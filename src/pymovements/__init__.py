@@ -90,7 +90,7 @@ __all__ = [
     'synthetic',
 
     'exceptions',
-    'warnings'
+    'warnings',
 
     'utils',
 
