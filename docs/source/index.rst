@@ -11,7 +11,6 @@ Welcome to the pymovements documentation!
    :maxdepth: 2
 
    user-guide/index
-   tutorials/index
    datasets/index
    reference/index
    contributing/index
