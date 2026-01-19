@@ -511,9 +511,7 @@ def split(
     idx = 0
     for arr_instance in arr:
         # Create an array of indicies where sequence will be split.
-        split_indices = np.arange(
-            start=window_size, stop=(int(n) + 1) * window_size, step=window_size,
-        )
+        split_indices = np.arange(start=window_size, stop=(n + 1) * window_size, step=window_size)
 
         # The length of the last element in list will be equal to rest.
         arr_split_list = np.split(arr_instance, split_indices)
