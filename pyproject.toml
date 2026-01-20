@@ -158,8 +158,7 @@ filterwarnings = [
   "ignore:Deprecated call to `pkg_resources.declare_namespace.*:DeprecationWarning",
   "ignore:distutils Version classes are deprecated. Use packaging.version instead.:DeprecationWarning",
   "ignore:FigureCanvasAgg is non-interactive, and thus cannot be shown:UserWarning",
-  "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning",
-  "ignore:Stimulus support is experimental.*:pymovements.warnings.ExperimentalWarning"
+  "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning"
 ]
 markers = ["network: mark a test as requiring network access"]
 testpaths = ['tests', 'src']
