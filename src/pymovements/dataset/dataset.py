@@ -465,7 +465,8 @@ class Dataset:
         warn(
             'Stimulus support is experimental. '
             'Names and behavior may change without being considered a breaking change. '
-            f'Please set the used pymovements version explicitly ({get_versions()["version"]})',
+            'Please set the used pymovements version explicitly to prevent unexptected changes. '
+            f'The used pymovements version is v{get_versions()["version"]}.',
             ExperimentalWarning,
         )
 
