@@ -33,4 +33,3 @@ explicit for reproducible analysis.
    data-quality
    event-detection
    work-with-datasets
-   ../tutorials/index
