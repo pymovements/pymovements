@@ -26,13 +26,11 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
-from warnings import warn
 
 import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._html import repr_html
-from pymovements._version import get_versions
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -45,7 +43,6 @@ from pymovements.gaze import Gaze
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
-from pymovements.warnings import ExperimentalWarning
 
 
 logging.basicConfig(level=logging.INFO)
@@ -462,14 +459,6 @@ class Dataset:
         ValueError
             If the file info is missing or improperly formatted.
         """
-        warn(
-            'Stimulus support is experimental. '
-            'Names and behavior may change without being considered a breaking change. '
-            'Please set the used pymovements version explicitly to prevent unexptected changes. '
-            f'The used pymovements version is v{get_versions()["version"]}.',
-            ExperimentalWarning,
-        )
-
         self._check_fileinfo()
         self.stimuli = dataset_files.load_stimuli_files(
             files=[file for file in self._files if file.definition.content == 'stimulus'],
