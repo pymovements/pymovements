@@ -28,7 +28,6 @@ explicit for reproducible analysis.
    :maxdepth: 2
 
    getting-started/index
-   understanding-data
    inspect-raw-samples
    data-quality
    event-detection

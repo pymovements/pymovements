@@ -14,6 +14,7 @@ For more information, see the next section on :doc:`Installation Options <instal
    :maxdepth: 1
 
    installation
+   understanding-data
 
 .. grid::
     :gutter: 5
