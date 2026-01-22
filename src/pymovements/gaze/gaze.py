@@ -1093,7 +1093,7 @@ class Gaze:
 
                 new_events_grouped.append(new_events.frame)
 
-            if not new_events_grouped or all(len(df) == 0 for df in new_events_grouped):
+            if not new_events_grouped or any(len(df) == 0 for df in new_events_grouped):
                 warn(
                     f"{getattr(method, '__name__', method)}: No events were detected.",
                     UserWarning,
