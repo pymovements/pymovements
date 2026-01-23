@@ -37,9 +37,12 @@ def events2segmentation(
     """Convert a list of events to a binary segmentation map.
 
     This function creates a binary array of length num_samples where each
-    time point is marked as 1 if it falls within any event interval and 0 otherwise.
+    time point is marked as ``1`` if it falls within any event interval and ``0`` otherwise.
     Events are defined with inclusive onset and exclusive offset, matching the
-    convention used by the segmentation2events function.
+    convention used by the :py:func:`segmentation2events` function.
+
+    This implementation uses vectorised operations with :py:func:`numpy.bincount` for optimal
+    performance.
 
     Parameters
     ----------
@@ -47,33 +50,39 @@ def events2segmentation(
         Event data. Must have onset and offset columns.
     num_samples : int
         The total number of samples in the segmentation map.
-    onset_column : str | None, optional
+    onset_column : str | None
         The name of the column containing the onset of the event (inclusive).
         If None, uses 'onset' column. Default is None.
-    offset_column : str | None, optional
+    offset_column : str | None
         The name of the column containing the offset of the event (exclusive).
         If None, uses 'offset' column. Default is None.
 
     Returns
     -------
     np.ndarray
-        A binary array with dtype=np.int32 where 1 indicates an event and 0 indicates no event.
+        A binary array with ``dtype=np.int32`` where ``1`` indicates an event and
+        ``0`` indicates no event.
 
     Raises
     ------
     ValueError
-        If num_samples is negative.
-        If onset_column or offset_column is missing from the events.
+        If ``num_samples`` is negative.
+        If ``onset_column`` or ``offset_column`` is missing from the events.
         If any onset or offset is negative.
         If any onset is greater than or equal to its offset.
-        If any offset exceeds num_samples.
+        If any offset exceeds ``num_samples``.
+        If events overlap, i.e. multiple onsets without corresponding offsets.
 
     Examples
     --------
     >>> import polars as pl
     >>> from pymovements.events import events2segmentation
-    >>> events = pl.DataFrame({'onset': [2, 7], 'offset': [5, 9]})
-    >>> events2segmentation(events, num_samples=10)
+    >>> events_df = pl.DataFrame({'onset': [2, 7], 'offset': [5, 9]})
+    >>> events2segmentation(events_df, num_samples=10)
+    array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0], dtype=int32)
+
+    >>> from pymovements.events.events import Events
+    >>> events2segmentation(Events(events_df), 10)
     array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0], dtype=int32)
     """
     if num_samples < 0:
@@ -92,30 +101,52 @@ def events2segmentation(
     if offset_column not in events_df.columns:
         raise ValueError(f"Offset column '{offset_column}' not found in events.")
 
-    segmentation = np.zeros(num_samples, dtype=np.int32)
-    for onset, offset in events_df.select([onset_column, offset_column]).iter_rows():
-        if onset < 0:
-            raise ValueError(f"Onset must be non-negative, but is {onset}")
-        if offset < 0:
-            raise ValueError(f"Offset must be non-negative, but is {offset}")
-        if onset >= offset:
-            raise ValueError(
-                f"Onset must be less than offset, but got onset={onset} and offset={offset}",
-            )
-        if offset > num_samples:
-            raise ValueError(
-                f"Offset {offset} exceeds num_samples {num_samples}",
-            )
+    # Extract event data as numpy arrays
+    onsets = events_df[onset_column].to_numpy()
+    offsets = events_df[offset_column].to_numpy()
 
-        if np.any(segmentation[onset:offset] == 1):
-            warnings.warn(
-                f"Overlapping events detected between {onset} and {offset}.",
-                UserWarning,
-                stacklevel=2,
-            )
+    # Validation of constraints
+    if np.any(onsets < 0):
+        raise ValueError('Onset must be non-negative, but found negative values')
+    if np.any(offsets < 0):
+        raise ValueError('Offset must be non-negative, but found negative values')
+    if np.any(onsets >= offsets):
+        raise ValueError(
+            'Onset must be less than offset, but found invalid event(s)',
+        )
+    if np.any(offsets > num_samples):
+        raise ValueError(
+            f"Offset exceeds num_samples {num_samples}, but found out-of-bounds values",
+        )
 
-        segmentation[onset:offset] = 1
-    return segmentation
+    # Empty events case
+    if len(onsets) == 0:
+        return np.zeros(num_samples, dtype=np.int32)
+
+    # Create indices for all event positions with explicit int32 dtype
+    indices_list = [
+        np.arange(onset, offset, dtype=np.int32)
+        for onset, offset in zip(onsets, offsets)
+    ]
+    all_indices = np.concatenate(indices_list)
+
+    # Check for overlaps: total index count vs unique count
+    if len(indices_list) > 1:
+        total_indices = sum(len(indices) for indices in indices_list)
+        unique_indices = len(np.unique(all_indices))
+        if total_indices > unique_indices:
+            raise ValueError('Overlapping events detected')
+
+    # Binary segmentation using bincount
+    segmentation = np.bincount(
+        all_indices,
+        minlength=num_samples,
+        weights=np.ones_like(all_indices, dtype=np.int32),
+    )
+    # Convert counts to binary (handle overlaps by clipping to 1)
+    segmentation = np.clip(segmentation, 0, 1)
+
+    return segmentation.astype(dtype=np.int32)
 
 
 def segmentation2events(
@@ -123,15 +154,15 @@ def segmentation2events(
 ) -> Events:
     """Convert a binary segmentation map to a list of events.
 
-    This function identifies continuous regions of 1s in the segmentation array
+    This function identifies continuous regions of ``1``'s in the segmentation array
     and converts them to event onset and offset pairs. The onset is inclusive
-    and the offset is exclusive, matching the convention used in events2segmentation.
+    and the offset is exclusive, matching the convention used in :py:func:`events2segmentation`.
 
     Parameters
     ----------
     segmentation : np.ndarray
-        A 1D binary array where 1 indicates an event and 0 indicates no event.
-        Must contain only values 0 and 1 and have dtype compatible with integers.
+        A 1D binary array where ``1`` indicates an event and ``0`` indicates no event.
+        Must contain only values ``0`` and ``1`` and have dtype compatible with integers.
 
     Returns
     -------
@@ -143,7 +174,7 @@ def segmentation2events(
     ------
     ValueError
         If segmentation is not a 1D array.
-        If segmentation contains values other than 0 and 1.
+        If segmentation contains values other than ``0`` and ``1``.
     TypeError
         If segmentation is not a numpy.ndarray.
 

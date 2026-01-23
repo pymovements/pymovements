@@ -109,6 +109,39 @@ from pymovements.events.segmentation import segmentation2events
             'bar',
             id='custom_column_names_events',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {'onset': [2], 'offset': [5]},
+                schema={'onset': pl.Int8, 'offset': pl.Int8},
+            ),
+            10,
+            np.array([0, 0, 1, 1, 1, 0, 0, 0, 0, 0], dtype=np.int32),
+            None,
+            None,
+            id='int8_dtype',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'onset': [2], 'offset': [5]},
+                schema={'onset': pl.Int16, 'offset': pl.Int16},
+            ),
+            10,
+            np.array([0, 0, 1, 1, 1, 0, 0, 0, 0, 0], dtype=np.int32),
+            None,
+            None,
+            id='int16_dtype',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'onset': [2], 'offset': [5]},
+                schema={'onset': pl.Int64, 'offset': pl.Int64},
+            ),
+            10,
+            np.array([0, 0, 1, 1, 1, 0, 0, 0, 0, 0], dtype=np.int32),
+            None,
+            None,
+            id='int64_dtype',
+        ),
     ],
 )
 def test_events2segmentation(events, num_samples, expected, onset_col, offset_col):
@@ -119,6 +152,7 @@ def test_events2segmentation(events, num_samples, expected, onset_col, offset_co
             events, num_samples, onset_column=onset_col, offset_column=offset_col,
         )
     np.testing.assert_array_equal(result, expected)
+    assert result.dtype == np.int32
 
 
 @pytest.mark.parametrize(
@@ -218,14 +252,13 @@ def test_roundtrip(segmentation):
 
 
 @pytest.mark.parametrize(
-    'events, num_samples, expected_exception, expected_match, expected_warning',
+    'events, num_samples, expected_exception, expected_match',
     [
         pytest.param(
             pl.DataFrame({'onset': [2, 7], 'offset': [5, 9]}),
             -1,
             ValueError,
             'num_samples must be non-negative',
-            None,
             id='negative_num_samples',
         ),
         pytest.param(
@@ -233,7 +266,6 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'not found in events',
-            None,
             id='missing_onset_column',
         ),
         pytest.param(
@@ -241,7 +273,6 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'not found in events',
-            None,
             id='missing_offset_column',
         ),
         pytest.param(
@@ -249,7 +280,6 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'must be non-negative',
-            None,
             id='negative_onset',
         ),
         pytest.param(
@@ -257,7 +287,6 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'must be non-negative',
-            None,
             id='negative_offset',
         ),
         pytest.param(
@@ -265,7 +294,6 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'Onset must be less than offset',
-            None,
             id='onset_equal_offset',
         ),
         pytest.param(
@@ -273,7 +301,6 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'Onset must be less than offset',
-            None,
             id='onset_greater_offset',
         ),
         pytest.param(
@@ -281,66 +308,24 @@ def test_roundtrip(segmentation):
             10,
             ValueError,
             'exceeds num_samples',
-            None,
             id='offset_out_of_bounds',
         ),
         pytest.param(
             pl.DataFrame({'onset': [2, 4], 'offset': [5, 7]}),
             10,
-            None,
-            None,
-            UserWarning,
+            ValueError,
+            'Overlapping events detected',
             id='overlapping_events',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                {'onset': [2], 'offset': [5]},
-                schema={'onset': pl.Int8, 'offset': pl.Int8},
-            ),
-            10,
-            None,
-            None,
-            None,
-            id='int8_dtype',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                {'onset': [2], 'offset': [5]},
-                schema={'onset': pl.Int16, 'offset': pl.Int16},
-            ),
-            10,
-            None,
-            None,
-            None,
-            id='int16_dtype',
-        ),
-        pytest.param(
-            pl.DataFrame(
-                {'onset': [2], 'offset': [5]},
-                schema={'onset': pl.Int64, 'offset': pl.Int64},
-            ),
-            10,
-            None,
-            None,
-            None,
-            id='int64_dtype',
         ),
     ],
 )
-def test_events2segmentation_errors_and_warnings(
+def test_events2segmentation_errors(
     events,
     num_samples,
     expected_exception,
     expected_match,
-    expected_warning,
 ):
-    if expected_exception:
-        with pytest.raises(expected_exception, match=expected_match):
-            events2segmentation(events, num_samples)
-    elif expected_warning:
-        with pytest.warns(expected_warning, match='Overlapping events detected'):
-            events2segmentation(events, num_samples)
-    else:
+    with pytest.raises(expected_exception, match=expected_match):
         events2segmentation(events, num_samples)
 
 
