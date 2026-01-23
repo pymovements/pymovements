@@ -184,7 +184,7 @@ def segmentation2events(
     >>> segmentation = np.array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0])
     >>> events = segmentation2events(segmentation)
     >>> events.frame
-    shape: (2, 2)
+    shape: (2, 4)
     ┌──────┬───────┬────────┬──────────┐
     │ name ┆ onset ┆ offset ┆ duration │
     │ ---  ┆ ---   ┆ ---    ┆ ---      │
