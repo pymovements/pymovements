@@ -8,27 +8,30 @@ ci:
   skip: [ pylint ]
 
 repos:
-  - repo: https://github.com/asottile/add-trailing-comma
-    rev: v4.0.0
+  # Ruff + Ty integration
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.0
     hooks:
-      - id: add-trailing-comma
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
-        args: [ --py310-plus ]
-  - repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.16.0
-    hooks:
-      - id: reorder-python-imports
-        args: [ --application-directories=src, --py310-plus ]
-  - repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.16.0
-    hooks:
-      - id: reorder-python-imports
-        files: ^src/
-        exclude: __init__.py
-        args: [ --application-directories=src, --add-import, 'from __future__ import annotations' ]
+      # Lint and fix
+      - id: ruff
+        args: [ --fix, --show-fixes ]
+      # Format
+      - id: ruff-format
+      # Import sorting (separate hook until unified)
+      - id: ruff
+        name: ruff-sort-imports
+        args: [ --select, I, --fix ]
+
+  # Type checking
+  - repo: local
+    hooks: # https://github.com/astral-sh/ty/issues/269 TODO: choose hook working on pre-commit.com
+      - id: ty
+        name: ty
+        entry: uvx ty check
+        language: system
+        types: [ python ]
+        args: [ --output-format=concise ]
+        pass_filenames: false
   - repo: https://github.com/citation-file-format/cffconvert
     rev: 054bda51dbe278b3e86f27c890e3f3ac877d616c
     hooks:
@@ -58,26 +61,16 @@ repos:
       - id: insert-license
         args: [ --use-current-year ]
         types: [ python ]
-  - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.3
-    hooks:
-      - id: pydoclint
-        args: [ "--config=pyproject.toml" ]
+
+  # notebook support
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
-      - id: nbqa-autopep8
-      - id: nbqa-flake8
-        args: [ '--builtins=display' ]
-      - id: nbqa-isort
-        args: [ "--float-to-top" ]
-      - id: nbqa-pyupgrade
-        args: [ "--py310-plus" ]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
-    hooks:
-      - id: mypy
-        additional_dependencies: [ pandas-stubs, types-tqdm, types-PyYAML ]
+      - id: nbqa-ruff
+        args: [ --fix ]
+      - id: nbqa-ruff-format
+
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -97,37 +90,10 @@ repos:
       - id: no-commit-to-branch
       - id: requirements-txt-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.2
-    hooks:
-      - id: autopep8
-  - repo: https://github.com/PyCQA/autoflake
-    rev: v2.3.1
-    hooks:
-      - id: autoflake
   - repo: https://github.com/PyCQA/doc8
     rev: v2.0.0
     hooks:
       - id: doc8
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        files: ^src/
-        args:
-          [
-            '--ignore=D107,D203,D213,D413',
-          ]
-      - id: pydocstyle
-        files: ^tests/
-        args:
-          [
-            '--ignore=D103,D107,D203,D213',
-          ]
   - repo: https://github.com/PyCQA/pylint
     rev: v4.0.4
     hooks:

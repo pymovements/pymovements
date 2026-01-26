@@ -76,7 +76,9 @@ dev = [
   "setuptools>=61.0.0",
   "types-tqdm>=4.67.0",
   "pre-commit>=3.0.0",
-  "pylint>=4.0.0"
+  "pylint>=4.0.0",
+  "ruff>=0.11.0",
+  "ty>=0.0.13"
 ]
 
 [project.urls]
@@ -85,17 +87,6 @@ Homepage = "https://github.com/pymovements/pymovements"
 Documentation = "https://pymovements.readthedocs.io/en/stable"
 "Bug Tracker" = "https://github.com/pymovements/pymovements/issues"
 Changelog = "https://github.com/pymovements/pymovements/releases"
-
-[tool.autoflake]
-in-place = true
-remove-all-unused-imports = true
-ignore-init-module-imports = true
-
-[tool.autopep8]
-max_line_length = 100
-in-place = true
-recursive = true
-aggressive = 1
 
 [tool.coverage.paths]
 source = [
@@ -120,34 +111,6 @@ omit = [
 [tool.doc8]
 max-line-length = 100
 
-[tool.mypy]
-check_untyped_defs = true
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-warn_redundant_casts = true
-disable_error_code = ["override"]
-
-[[tool.mypy.overrides]]
-module = "scipy.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "deprecated.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-check_untyped_defs = false
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "docs.*"
-check_untyped_defs = false
-disallow_untyped_defs = false
-
-[tool.pydoclint]
-skip-checking-raises = true
-
 [tool.pytest.ini_options]
 addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
@@ -163,6 +126,62 @@ filterwarnings = [
 markers = ["network: mark a test as requiring network access"]
 testpaths = ['tests', 'src']
 
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+  ".venv",
+  ".git",
+  ".tox",
+  "build",
+  "dist",
+  "docs",
+  "*egg",
+  "*.ini",
+  "src/pymovements/_version.py"
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+# Core rules + replacements
+select = [
+  # See https://docs.astral.sh/ruff/linter/#rule-selection, and https://docs.astral.sh/ruff/rules/
+  "E4", # pycodestyle errors
+  "E7", # pycodestyle errors
+  "E9", # pycodestyle errors
+  "F", # pyflakes
+  "W", # pycodestyle warnings
+  "I", # isort (replaces reorder-python-imports)
+  "UP", # pyupgrade (Python 3.10+)
+  "D", # pydocstyle (replaces pydocstyle/pydoclint)
+  "ANN", # flake8-annotations
+  "B", # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "T20", # flake8-print (replaces nbqa-flake8 parts)
+  "SIM" # flake8-simplify
+]
+# Preserve current ignore patterns from pydocstyle
+ignore = [  # See https://docs.astral.sh/ruff/rules/#pydocstyle-d
+  "D107", # Missing docstring in __init__
+  "D203", # One blank line before class
+  "D213", # Multi-line summary second line
+  "D413" # Missing blank line after last section
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true # Matches current reorder-python-imports
+order-by-type = false # Matches current behavior
+required-imports = ["from __future__ import annotations"] # Auto-add future imports TODO: needed?
+known-first-party = ["pymovements"] # Application directories
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]  # https://docs.astral.sh/ruff/rules/#pyflakes-f
+"tests/*" = ["D103"]  # https://docs.astral.sh/ruff/rules/undocumented-public-function/
+"tests/*_fixtures.py" = ["ALL"]  # https://docs.astral.sh/ruff/linter/#ruff-check
+
 [tool.setuptools.package-data]
 pymovements = ["datasets/*.yaml"]
 
@@ -171,6 +190,32 @@ where = ["src"]
 
 [tool.setuptools-git-versioning]
 enabled = true
+
+# ty configuration
+[tool.ty.environment]
+python = ".venv"  # TODO: discuss .venv usage vs tox
+
+# Per-module overrides
+[[tool.ty.overrides]]
+include = ["tests/**"]
+rules = { "unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore" }
+
+[[tool.ty.overrides]]
+include = ["docs/**"]
+rules = { "unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore" }
+
+[[tool.ty.overrides]]
+include = ["scipy/**"]
+rules = { "unresolved-import" = "ignore" }
+
+[tool.ty.rules]
+# Import resolution (matches mypy ignore_missing_imports)
+unresolved-import = "ignore"
+invalid-assignment = "ignore"
+unresolved-attribute = "ignore"
+
+[tool.ty.src]
+exclude = ["**/tests/**", "**/docs/**"]
 
 [tool.versioneer]
 VCS = "git"
