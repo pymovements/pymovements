@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the traceplot plotting function."""
+
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -33,26 +34,26 @@ from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 
 def traceplot(
-        gaze: Gaze,
-        position_column: str = 'pixel',
-        cval: np.ndarray | None = None,
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
-        cmap_segmentdata: LinearSegmentedColormapType | None = None,
-        cbar_label: str | None = None,
-        show_cbar: bool = False,
-        padding: float | None = None,
-        pad_factor: float | None = 0.05,
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        add_stimulus: bool = False,
-        path_to_image_stimulus: str | None = None,
-        stimulus_origin: str = 'upper',
-        *,
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
+    gaze: Gaze,
+    position_column: str = 'pixel',
+    cval: np.ndarray | None = None,
+    cmap: matplotlib.colors.Colormap | None = None,
+    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap_segmentdata: LinearSegmentedColormapType | None = None,
+    cbar_label: str | None = None,
+    show_cbar: bool = False,
+    padding: float | None = None,
+    pad_factor: float | None = 0.05,
+    figsize: tuple[int, int] = (15, 5),
+    title: str | None = None,
+    savepath: str | None = None,
+    show: bool = True,
+    add_stimulus: bool = False,
+    path_to_image_stimulus: str | None = None,
+    stimulus_origin: str = 'upper',
+    *,
+    ax: plt.Axes | None = None,
+    closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot eye gaze trace from positional data.
 

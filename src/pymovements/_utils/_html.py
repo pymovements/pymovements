@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides functions for generating HTML representations of objects for Jupyter notebooks."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -27,7 +28,6 @@ from typing import TypeVar
 from uuid import uuid4
 
 import polars as pl
-
 
 STYLE = """
 <style>
@@ -94,7 +94,7 @@ def repr_html(attrs: list[str] | None = None) -> Callable[[T], T]:
     """
 
     def decorator(cls: T) -> T:
-        setattr(cls, '_repr_html_', lambda self: _obj_html(self, attrs))
+        cls._repr_html_ = lambda self: _obj_html(self, attrs)
         return cls
 
     return decorator
@@ -178,9 +178,9 @@ def _attr_details_html(obj: object, depth: int = 0, max_depth: int = 3) -> str:
     if isinstance(obj, list) and depth < max_depth:
         details = '<ul>'
         for item in obj[:max_items]:
-            details += f'<li>{_attr_details_html(item, depth + 1)}</li>'
+            details += f"<li>{_attr_details_html(item, depth + 1)}</li>"
         if len(obj) > max_items:
-            details += f'<li>({len(obj) - 2} more)</li>'
+            details += f"<li>({len(obj) - 2} more)</li>"
         details += '</ul>'
 
     elif isinstance(obj, dict) and depth < max_depth:
@@ -189,7 +189,7 @@ def _attr_details_html(obj: object, depth: int = 0, max_depth: int = 3) -> str:
             value = obj[key]
             details += _attr_html(key, value, depth + 1)
         if len(obj) > max_items:
-            details += f'<li>({len(obj) - 2} more)</li>'
+            details += f"<li>({len(obj) - 2} more)</li>"
         details += '</ul>'
 
     elif hasattr(obj, '_repr_html_'):

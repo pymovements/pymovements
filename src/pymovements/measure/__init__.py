@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides eye movement measures."""
+
+from __future__ import annotations
+
 from pymovements.measure import events
 from pymovements.measure import reading
 from pymovements.measure import samples
@@ -37,14 +40,11 @@ __all__ = [
     'register_event_measure',
     'EventProcessor',
     'EventSamplesProcessor',
-
     'reading',
     'ReadingMeasures',
-
     'samples',
     'SampleMeasureLibrary',
     'register_sample_measure',
-
     'null_ratio',
     'data_loss',
 ]

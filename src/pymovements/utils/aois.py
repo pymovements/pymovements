@@ -23,6 +23,7 @@
    Please use :py:meth:`~pymovements.TextStimulus.get_aoi()` instead.
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 import polars as pl
@@ -32,15 +33,14 @@ import pymovements as pm
 
 
 @deprecated(
-    reason='Please use TextStimulus.get_aoi() instead. '
-           'This function will be removed in v0.26.0.',
+    reason='Please use TextStimulus.get_aoi() instead. This function will be removed in v0.26.0.',
     version='v0.21.1',
 )
 def get_aoi(
-        aoi_dataframe: pm.stimulus.TextStimulus,
-        row: pl.DataFrame.row,
-        x_eye: str,
-        y_eye: str,
+    aoi_dataframe: pm.stimulus.TextStimulus,
+    row: pl.DataFrame.row,
+    x_eye: str,
+    y_eye: str,
 ) -> str:
     """Given eye movement and aoi dataframe, return aoi.
 

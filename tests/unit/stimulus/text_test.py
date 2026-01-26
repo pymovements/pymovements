@@ -18,12 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
+
+from __future__ import annotations
+
 import polars
 import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements.stimulus import text
-
 
 EXPECTED_DF = polars.DataFrame(
     {
@@ -221,9 +223,11 @@ def test_text_stimulus_unsupported_format():
             height_column='height',
             page_column='page',
         )
-    msg, = excinfo.value.args
-    expected = 'unsupported file format ".pickle".Supported formats are: '\
-        '[\'.csv\', \'.ias\', \'.tsv\', \'.txt\']'
+    (msg,) = excinfo.value.args
+    expected = (
+        'unsupported file format ".pickle".Supported formats are: '
+        "['.csv', '.ias', '.tsv', '.txt']"
+    )
     assert msg == expected
 
 

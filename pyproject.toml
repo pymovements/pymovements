@@ -163,7 +163,8 @@ select = [
   "SIM" # flake8-simplify
 ]
 # Preserve current ignore patterns from pydocstyle
-ignore = [  # See https://docs.astral.sh/ruff/rules/#pydocstyle-d
+ignore = [
+    # See https://docs.astral.sh/ruff/rules/#pydocstyle-d
   "D107", # Missing docstring in __init__
   "D203", # One blank line before class
   "D213", # Multi-line summary second line
@@ -177,9 +178,9 @@ required-imports = ["from __future__ import annotations"] # Auto-add future impo
 known-first-party = ["pymovements"] # Application directories
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401", "F403"]  # https://docs.astral.sh/ruff/rules/#pyflakes-f
-"tests/*" = ["D103"]  # https://docs.astral.sh/ruff/rules/undocumented-public-function/
-"tests/*_fixtures.py" = ["ALL"]  # https://docs.astral.sh/ruff/linter/#ruff-check
+"__init__.py" = ["F401", "F403"] # https://docs.astral.sh/ruff/rules/#pyflakes-f
+"tests/*" = ["D103"] # https://docs.astral.sh/ruff/rules/undocumented-public-function/
+"tests/*_fixtures.py" = ["ALL"] # https://docs.astral.sh/ruff/linter/#ruff-check
 
 [tool.setuptools.package-data]
 pymovements = ["datasets/*.yaml"]
@@ -192,20 +193,20 @@ enabled = true
 
 # ty configuration
 [tool.ty.environment]
-python = ".venv"  # TODO: discuss .venv usage vs tox
+python = ".venv" # TODO: discuss .venv usage vs tox
 
 # Per-module overrides
 [[tool.ty.overrides]]
 include = ["tests/**"]
-rules = { "unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore" }
+rules = {"unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore"}
 
 [[tool.ty.overrides]]
 include = ["docs/**"]
-rules = { "unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore" }
+rules = {"unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore"}
 
 [[tool.ty.overrides]]
 include = ["scipy/**"]
-rules = { "unresolved-import" = "ignore" }
+rules = {"unresolved-import" = "ignore"}
 
 [tool.ty.rules]
 # Import resolution (matches mypy ignore_missing_imports)

@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the SB-SAT dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -143,8 +144,12 @@ class SBSAT(DatasetDefinition):
                         'read_csv_kwargs': {
                             'separator': '\t',
                             'columns': [
-                                'time', 'book_name', 'screen_id',
-                                'x_left', 'y_left', 'pupil_left',
+                                'time',
+                                'book_name',
+                                'screen_id',
+                                'x_left',
+                                'y_left',
+                                'pupil_left',
                             ],
                             'schema_overrides': {
                                 'time': pl.Int64,

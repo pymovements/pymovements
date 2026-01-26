@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """DatasetLibrary module."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -137,7 +138,7 @@ def _add_shipped_datasets() -> None:
         datasets_list = yaml.safe_load(f)
 
     for definition_basename in datasets_list:
-        yaml_file_name = dataset_definition_files / f'{definition_basename}.yaml'
+        yaml_file_name = dataset_definition_files / f"{definition_basename}.yaml"
         # https://github.com/pymovements/pymovements/pull/952#issuecomment-2690742187
         assert isinstance(yaml_file_name, Path)
         DatasetLibrary.add(yaml_file_name)

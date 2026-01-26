@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides event related functionality."""
+
+from __future__ import annotations
+
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
 from pymovements.events.detection import ivt
@@ -28,7 +31,6 @@ from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 
-
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',
@@ -36,7 +38,6 @@ __all__ = [
     'idt',
     'ivt',
     'microsaccades',
-
     'PrecomputedEventDataFrame',
     'Events',
     'EventDataFrame',

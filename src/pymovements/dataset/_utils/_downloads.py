@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Utils module for downloading files."""
+
 from __future__ import annotations
 
 import hashlib
@@ -33,13 +34,13 @@ USER_AGENT: str = f"pymovements/{get_versions()['version']}"
 
 
 def download_file(
-        url: str,
-        dirpath: Path,
-        filename: str,
-        md5: str | None = None,
-        *,
-        max_redirect_hops: int = 3,
-        verbose: bool = True,
+    url: str,
+    dirpath: Path,
+    filename: str,
+    md5: str | None = None,
+    *,
+    max_redirect_hops: int = 3,
+    verbose: bool = True,
 ) -> Path:
     """Download a file from a URL and place it in root.
 
@@ -82,7 +83,7 @@ def download_file(
         return filepath
 
     if verbose:
-        print(f'Downloading {url} to {filepath}')
+        print(f"Downloading {url} to {filepath}")
 
     # expand redirect chain if needed
     url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
@@ -97,16 +98,16 @@ def download_file(
             url = url.replace('https:', 'http:')
 
             if verbose:
-                print(f'Downloading {url} to {filepath}')
+                print(f"Downloading {url} to {filepath}")
             _download_url(url=url, destination=filepath, verbose=verbose)
         else:
             raise e
 
     # check integrity of downloaded file
     if verbose:
-        print(f'Checking integrity of {filepath.name}')
+        print(f"Checking integrity of {filepath.name}")
     if not _check_integrity(filepath=filepath, md5=md5):
-        raise RuntimeError(f'File {filepath} not found or download corrupted.')
+        raise RuntimeError(f"File {filepath} not found or download corrupted.")
 
     return filepath
 
@@ -144,8 +145,8 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
             url = response.url
 
     raise RuntimeError(
-        f'Request to {initial_url} exceeded {max_hops} redirects.'
-        f' The last redirect points to {url}.',
+        f"Request to {initial_url} exceeded {max_hops} redirects."
+        f" The last redirect points to {url}.",
     )
 
 

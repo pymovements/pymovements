@@ -22,6 +22,7 @@
 .. deprecated:: v0.21.1
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 import re
@@ -38,9 +39,9 @@ from pymovements._utils._paths import match_filepaths as _match_filepaths
     version='v0.21.1',
 )
 def get_filepaths(
-        path: str | Path,
-        extension: str | list[str] | None = None,
-        regex: re.Pattern | None = None,
+    path: str | Path,
+    extension: str | list[str] | None = None,
+    regex: re.Pattern | None = None,
 ) -> list[Path]:
     """Get filepaths from rootpath depending on extension or regular expression.
 
@@ -79,10 +80,10 @@ def get_filepaths(
     version='v0.21.1',
 )
 def match_filepaths(
-        path: str | Path,
-        regex: re.Pattern,
-        relative: bool = True,
-        relative_anchor: Path | None = None,
+    path: str | Path,
+    regex: re.Pattern,
+    relative: bool = True,
+    relative_anchor: Path | None = None,
 ) -> list[dict[str, str]]:
     """Traverse path and match regular expression.
 

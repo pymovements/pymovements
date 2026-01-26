@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Benchmark import times."""
+
+from __future__ import annotations
+
 import subprocess
 import sys
 
@@ -30,5 +33,6 @@ def import_pymovements_subprocess():
 def test_import_pymovements_subprocess(benchmark):
     benchmark.pedantic(
         import_pymovements_subprocess,
-        iterations=1, rounds=10,
+        iterations=1,
+        rounds=10,
     )

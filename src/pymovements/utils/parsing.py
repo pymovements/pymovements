@@ -23,6 +23,7 @@
    Please use :py:func:`~pymovements.gaze.from_asc()` instead.
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,16 +36,15 @@ from pymovements.gaze._utils._parsing_eyelink import parse_eyelink as _parse_eye
 
 
 @deprecated(
-    reason='Please use gaze.from_asc() instead. '
-           'This module will be removed in v0.26.0.',
+    reason='Please use gaze.from_asc() instead. This module will be removed in v0.26.0.',
     version='v0.21.0',
 )
 def parse_eyelink(
-        filepath: Path | str,
-        patterns: list[dict[str, Any] | str] | None = None,
-        schema: dict[str, Any] | None = None,
-        metadata_patterns: list[dict[str, Any] | str] | None = None,
-        encoding: str = 'ascii',
+    filepath: Path | str,
+    patterns: list[dict[str, Any] | str] | None = None,
+    schema: dict[str, Any] | None = None,
+    metadata_patterns: list[dict[str, Any] | str] | None = None,
+    encoding: str = 'ascii',
 ) -> tuple[pl.DataFrame, dict[str, Any]]:
     """Parse EyeLink asc file.
 

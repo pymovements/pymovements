@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests functionality of the synthetic eye gaze step function."""
+
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -65,10 +68,12 @@ from pymovements.synthetic import step_function
         pytest.param(
             {'length': 10, 'steps': [5], 'values': [(1, 2, 3, 4)], 'start_value': (11, 12, 13, 14)},
             {
-                'value': np.concatenate([
-                    np.tile((11.0, 12, 13, 14), (5, 1)),
-                    np.tile((1, 2, 3, 4), (5, 1)),
-                ]),
+                'value': np.concatenate(
+                    [
+                        np.tile((11.0, 12, 13, 14), (5, 1)),
+                        np.tile((1, 2, 3, 4), (5, 1)),
+                    ]
+                ),
             },
             id='length_10_4_channel_single_step_with_start_value',
         ),
@@ -155,7 +160,7 @@ def test_step_function_with_noise(params):
 
     # First assert that arr is not exactly as the non-noisy output.
     assert not np.array_equal(arr_clean, arr_noise), (
-        f'arr_clean = {arr_clean} must not be equal to arr_noise = {arr_noise}'
+        f"arr_clean = {arr_clean} must not be equal to arr_noise = {arr_noise}"
     )
 
     # Next check that all noisy values are still close to the clean equivalent.

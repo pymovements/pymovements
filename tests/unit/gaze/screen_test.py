@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Screen class."""
+
+from __future__ import annotations
+
 import pytest
 
 import pymovements as pm
@@ -96,7 +99,7 @@ def test_pix2deg_without_attributes(missing_attribute, exception, exception_msg)
     with pytest.raises(exception) as excinfo:
         screen.pix2deg([[0, 0]])
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == exception_msg
 
 

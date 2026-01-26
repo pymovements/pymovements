@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Gaze implementation."""
+
 # pylint: disable=too-many-lines
 from __future__ import annotations
 
@@ -249,23 +250,23 @@ class Gaze:
     _metadata: dict[str, Any] | None
 
     def __init__(
-            self,
-            samples: polars.DataFrame | None = None,
-            experiment: Experiment | None = None,
-            events: Events | None = None,
-            *,
-            metadata: dict[str, Any] | None = None,
-            messages: polars.DataFrame | None = None,
-            trial_columns: str | list[str] | None = None,
-            time_column: str | None = None,
-            time_unit: str | None = None,
-            pixel_columns: list[str] | None = None,
-            position_columns: list[str] | None = None,
-            velocity_columns: list[str] | None = None,
-            acceleration_columns: list[str] | None = None,
-            distance_column: str | None = None,
-            auto_column_detect: bool = False,
-            data: polars.DataFrame | None = None,
+        self,
+        samples: polars.DataFrame | None = None,
+        experiment: Experiment | None = None,
+        events: Events | None = None,
+        *,
+        metadata: dict[str, Any] | None = None,
+        messages: polars.DataFrame | None = None,
+        trial_columns: str | list[str] | None = None,
+        time_column: str | None = None,
+        time_unit: str | None = None,
+        pixel_columns: list[str] | None = None,
+        position_columns: list[str] | None = None,
+        velocity_columns: list[str] | None = None,
+        acceleration_columns: list[str] | None = None,
+        distance_column: str | None = None,
+        auto_column_detect: bool = False,
+        data: polars.DataFrame | None = None,
     ):
         if data is not None:
             warn(
@@ -331,9 +332,9 @@ class Gaze:
         self._metadata = None
 
     def apply(
-            self,
-            function: str,
-            **kwargs: Any,
+        self,
+        function: str,
+        **kwargs: Any,
     ) -> None:
         """Apply preprocessing method to Gaze.
 
@@ -353,21 +354,25 @@ class Gaze:
 
     @overload
     def split(
-            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
-    ) -> list[Gaze]:
-        ...
+        self,
+        by: str | Sequence[str] | None = None,
+        *,
+        as_dict: Literal[False],
+    ) -> list[Gaze]: ...
 
     @overload
     def split(
-            self, by: Sequence[str] | None = None, *, as_dict: Literal[True],
-    ) -> dict[tuple[Any, ...], Gaze]:
-        ...
+        self,
+        by: Sequence[str] | None = None,
+        *,
+        as_dict: Literal[True],
+    ) -> dict[tuple[Any, ...], Gaze]: ...
 
     def split(
-            self,
-            by: str | Sequence[str] | None = None,
-            *,
-            as_dict: bool = False,
+        self,
+        by: str | Sequence[str] | None = None,
+        *,
+        as_dict: bool = False,
     ) -> list[Gaze] | dict[tuple[Any, ...], Gaze]:
         """Split a single Gaze object into multiple Gaze objects based on specified column(s).
 
@@ -497,9 +502,9 @@ class Gaze:
         return list(gazes.values())
 
     def transform(
-            self,
-            transform_method: str | Callable[..., polars.Expr],
-            **kwargs: Any,
+        self,
+        transform_method: str | Callable[..., polars.Expr],
+        **kwargs: Any,
     ) -> None:
         """Apply transformation method.
 
@@ -518,7 +523,8 @@ class Gaze:
             downsample_factor = kwargs.pop('factor')
             self.samples = self.samples.select(
                 transforms.downsample(
-                    factor=downsample_factor, **kwargs,
+                    factor=downsample_factor,
+                    **kwargs,
                 ),
             )
 
@@ -556,8 +562,9 @@ class Gaze:
                             columns=resample_columns,
                             **kwargs,
                         )
-                        for group, df in
-                        self.samples.group_by(self.trial_columns, maintain_order=True)
+                        for group, df in self.samples.group_by(
+                            self.trial_columns, maintain_order=True
+                        )
                     ],
                 )
 
@@ -582,14 +589,16 @@ class Gaze:
                 self._check_experiment()
                 assert self.experiment is not None
                 kwargs['screen_resolution'] = (
-                    self.experiment.screen.width_px, self.experiment.screen.height_px,
+                    self.experiment.screen.width_px,
+                    self.experiment.screen.height_px,
                 )
 
             if 'screen_size' in method_kwargs and 'screen_size' not in kwargs:
                 self._check_experiment()
                 assert self.experiment is not None
                 kwargs['screen_size'] = (
-                    self.experiment.screen.width_cm, self.experiment.screen.height_cm,
+                    self.experiment.screen.width_cm,
+                    self.experiment.screen.height_cm,
                 )
 
             if 'distance' in method_kwargs and 'distance' not in kwargs:
@@ -634,17 +643,17 @@ class Gaze:
                             "Neither is 'position' in the samples dataframe columns, "
                             'nor is a position column explicitly specified. '
                             "Since the samples dataframe has a 'pixel' column, consider running "
-                            f'pix2deg() before {transform_method.__name__}(). If you want '
+                            f"pix2deg() before {transform_method.__name__}(). If you want "
                             'to run transformations in pixel units, you can do so by using '
                             f"{transform_method.__name__}(position_column='pixel'). "
-                            f'Available columns in samples dataframe are: {self.samples.columns}',
+                            f"Available columns in samples dataframe are: {self.samples.columns}",
                         )
                     raise polars.exceptions.ColumnNotFoundError(
                         "Neither is 'position' in the samples dataframe columns, "
                         'nor is a position column explicitly specified. '
                         'You can specify the position column via: '
                         f'{transform_method.__name__}(position_column="your_position_column"). '
-                        f'Available columns in samples dataframe are: {self.samples.columns}',
+                        f"Available columns in samples dataframe are: {self.samples.columns}",
                     )
 
             if transform_method.__name__ in {'pix2deg'}:
@@ -654,21 +663,21 @@ class Gaze:
                         'nor is a pixel column explicitly specified. '
                         'You can specify the pixel column via: '
                         f'{transform_method.__name__}(pixel_column="name_of_your_pixel_column"). '
-                        f'Available columns in samples dataframe are: {self.samples.columns}',
+                        f"Available columns in samples dataframe are: {self.samples.columns}",
                     )
 
             if transform_method.__name__ in {'deg2pix'}:
                 if (
-                    'position_column' in kwargs and
-                    kwargs.get('position_column') not in self.samples.columns
+                    'position_column' in kwargs
+                    and kwargs.get('position_column') not in self.samples.columns
                 ):
                     raise polars.exceptions.ColumnNotFoundError(
                         f"The specified 'position_column' ({kwargs.get('position_column')}) "
                         'is not found in the samples dataframe columns. '
                         'You can specify the position column via: '
-                        f'{transform_method.__name__}'
+                        f"{transform_method.__name__}"
                         f'(position_column="name_of_your_position_column"). '
-                        f'Available columns in samples dataframe are: {self.samples.columns}',
+                        f"Available columns in samples dataframe are: {self.samples.columns}",
                     )
 
             if self.trial_columns is None:
@@ -687,13 +696,13 @@ class Gaze:
                 self.samples = polars.concat(grouped_frames)
 
     def clip(
-            self,
-            lower_bound: int | float | None,
-            upper_bound: int | float | None,
-            *,
-            input_column: str,
-            output_column: str,
-            **kwargs: Any,
+        self,
+        lower_bound: int | float | None,
+        upper_bound: int | float | None,
+        *,
+        input_column: str,
+        output_column: str,
+        **kwargs: Any,
     ) -> None:
         """Clip gaze signal values.
 
@@ -743,10 +752,10 @@ class Gaze:
         self.transform('pix2deg')
 
     def deg2pix(
-            self,
-            pixel_origin: str = 'upper left',
-            position_column: str = 'position',
-            pixel_column: str = 'pixel',
+        self,
+        pixel_origin: str = 'upper left',
+        position_column: str = 'position',
+        pixel_column: str = 'pixel',
     ) -> None:
         """Compute gaze positions in pixel position coordinates from degrees of visual angle.
 
@@ -777,11 +786,11 @@ class Gaze:
         )
 
     def pos2acc(
-            self,
-            *,
-            degree: int = 2,
-            window_length: int = 7,
-            padding: str | float | int | None = 'nearest',
+        self,
+        *,
+        degree: int = 2,
+        window_length: int = 7,
+        padding: str | float | int | None = 'nearest',
     ) -> None:
         """Compute gaze acceleration in dva/s^2 from dva position coordinates.
 
@@ -806,9 +815,9 @@ class Gaze:
         self.transform('pos2acc', window_length=window_length, degree=degree, padding=padding)
 
     def pos2vel(
-            self,
-            method: str = 'fivepoint',
-            **kwargs: int | float | str,
+        self,
+        method: str = 'fivepoint',
+        **kwargs: int | float | str,
     ) -> None:
         """Compute gaze velocity in dva/s from dva position coordinates.
 
@@ -832,10 +841,10 @@ class Gaze:
         self.transform('pos2vel', method=method, **kwargs)
 
     def resample(
-            self,
-            resampling_rate: float,
-            columns: str | list[str] = 'all',
-            fill_null_strategy: str = 'interpolate_linear',
+        self,
+        resampling_rate: float,
+        columns: str | list[str] = 'all',
+        fill_null_strategy: str = 'interpolate_linear',
     ) -> None:
         """Resample :py:attr:`~.Gaze.samples` to a new sampling rate by timestamps in time column.
 
@@ -929,13 +938,13 @@ class Gaze:
         )
 
     def smooth(
-            self,
-            method: str = 'savitzky_golay',
-            window_length: int = 7,
-            degree: int = 2,
-            column: str = 'position',
-            padding: str | float | int | None = 'nearest',
-            **kwargs: int | float | str,
+        self,
+        method: str = 'savitzky_golay',
+        window_length: int = 7,
+        degree: int = 2,
+        column: str = 'position',
+        padding: str | float | int | None = 'nearest',
+        **kwargs: int | float | str,
     ) -> None:
         """Smooth column values in :py:attr:`~.Gaze.samples`.
 
@@ -978,12 +987,12 @@ class Gaze:
         )
 
     def detect(
-            self,
-            method: Callable[..., Events] | str,
-            *,
-            eye: str = 'auto',
-            clear: bool = False,
-            **kwargs: Any,
+        self,
+        method: Callable[..., Events] | str,
+        *,
+        eye: str = 'auto',
+        clear: bool = False,
+        **kwargs: Any,
     ) -> None:
         """Detect events by applying a specific event detection method.
 
@@ -1039,17 +1048,21 @@ class Gaze:
             )
         else:
             grouped_samples = self.samples.partition_by(
-                self.trial_columns, maintain_order=True, include_key=True, as_dict=True,
+                self.trial_columns,
+                maintain_order=True,
+                include_key=True,
+                as_dict=True,
             )
 
             missing_trial_columns = [
-                trial_column for trial_column in self.trial_columns
+                trial_column
+                for trial_column in self.trial_columns
                 if trial_column not in self.events.frame.columns
             ]
             if missing_trial_columns:
                 raise polars.exceptions.ColumnNotFoundError(
-                    f'trial columns {missing_trial_columns} missing from events, '
-                    f'available columns: {self.events.frame.columns}',
+                    f"trial columns {missing_trial_columns} missing from events, "
+                    f"available columns: {self.events.frame.columns}",
                 )
 
             new_events_grouped: list[polars.DataFrame] = []
@@ -1057,14 +1070,22 @@ class Gaze:
             for group_identifier, group_gaze in grouped_samples.items():
                 # Create filter expression for selecting respective group rows.
                 if len(self.trial_columns) == 1:
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
+                    group_filter_expression = (
+                        polars.col(
+                            self.trial_columns[0],
+                        )
+                        == group_identifier[0]
+                    )
                 else:
-                    group_filter_expression = polars.col(
-                        self.trial_columns[0],
-                    ) == group_identifier[0]
-                    for name, value in zip(self.trial_columns[1:], group_identifier[1:]):
+                    group_filter_expression = (
+                        polars.col(
+                            self.trial_columns[0],
+                        )
+                        == group_identifier[0]
+                    )
+                    for name, value in zip(
+                        self.trial_columns[1:], group_identifier[1:], strict=False
+                    ):
                         group_filter_expression = group_filter_expression & (
                             polars.col(name) == value
                         )
@@ -1092,8 +1113,8 @@ class Gaze:
             )
 
     def drop_event_properties(
-            self,
-            event_properties: str | list[str],
+        self,
+        event_properties: str | list[str],
     ) -> None:
         """Remove event properties from the event dataframe.
 
@@ -1111,10 +1132,9 @@ class Gaze:
         self.events.drop(event_properties)
 
     def compute_event_properties(
-            self,
-            event_properties: str | tuple[str, dict[str, Any]]
-            | list[str | tuple[str, dict[str, Any]]],
-            name: str | None = None,
+        self,
+        event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]],
+        name: str | None = None,
     ) -> None:
         """Calculate event properties for given events.
 
@@ -1138,15 +1158,17 @@ class Gaze:
         """
         if len(self.events) == 0:
             warn(
-                'No events available to compute event properties. '
-                'Did you forget to use detect()?',
+                'No events available to compute event properties. Did you forget to use detect()?',
             )
 
         identifiers = self.trial_columns if self.trial_columns is not None else []
 
         processor = EventSamplesProcessor(event_properties)
         results = processor.process(
-            self.events.frame, self.samples, identifiers=identifiers, name=name,
+            self.events.frame,
+            self.samples,
+            identifiers=identifiers,
+            name=name,
         )
 
         join_on = identifiers + ['name', 'onset', 'offset']
@@ -1162,9 +1184,9 @@ class Gaze:
             self.events.add_event_properties(results, join_on=join_on)
 
     def measure_samples(
-            self,
-            method: str | Callable[..., polars.Expr],
-            **kwargs: Any,
+        self,
+        method: str | Callable[..., polars.Expr],
+        **kwargs: Any,
     ) -> polars.DataFrame:
         """Calculate eye movement measure on :py:attr:`~.Gaze.samples`.
 
@@ -1218,11 +1240,13 @@ class Gaze:
                 df.select(
                     [  # add trial columns first, then add column for measure.
                         polars.lit(value).cast(self.samples.schema[name]).alias(name)
-                        for name, value in zip(self.trial_columns, trial_values)
-                    ] + [method(**kwargs)],
+                        for name, value in zip(self.trial_columns, trial_values, strict=False)
+                    ]
+                    + [method(**kwargs)],
                 )
-                for trial_values, df in
-                self.samples.group_by(self.trial_columns, maintain_order=True)
+                for trial_values, df in self.samples.group_by(
+                    self.trial_columns, maintain_order=True
+                )
             ],
         )
 
@@ -1238,8 +1262,7 @@ class Gaze:
 
     @property
     @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
+        reason='Please use Gaze.samples instead. This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def frame(self) -> polars.DataFrame:
@@ -1259,21 +1282,20 @@ class Gaze:
 
     @frame.setter
     @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
+        reason='Please use Gaze.samples instead. This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def frame(self, data: polars.DataFrame) -> None:
         self.samples = data
 
     def map_to_aois(
-            self,
-            aoi_dataframe: TextStimulus,
-            *,
-            eye: str = 'auto',
-            gaze_type: str = 'pixel',
-            preserve_structure: bool = True,
-            verbose: bool = True,
+        self,
+        aoi_dataframe: TextStimulus,
+        *,
+        eye: str = 'auto',
+        gaze_type: str = 'pixel',
+        preserve_structure: bool = True,
+        verbose: bool = True,
     ) -> None:
         """Map gaze samples to AOIs.
 
@@ -1318,11 +1340,7 @@ class Gaze:
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
         pos_column_canditates = ['position_' + suffix for suffix in component_suffixes]
-        position_columns = [
-            c
-            for c in pos_column_canditates
-            if c in self.samples.columns
-        ]
+        position_columns = [c for c in pos_column_canditates if c in self.samples.columns]
 
         def _select_components_from_flat_columns() -> tuple | None:
             """Select a flat component strategy.
@@ -1337,6 +1355,7 @@ class Gaze:
                 - warn_msg: optional string to warn the user about fallbacks
                 or None if no flat columns fit the selection and we should fallback to list logic.
             """
+
             # pylint: disable=too-many-return-statements
             def pick(cols: list[str], suffix: str) -> str | None:
                 for c in cols:
@@ -1373,18 +1392,23 @@ class Gaze:
 
             # AUTO preference: cyclops -> mono -> right -> left
             if req_eye == 'auto':
-                pair = direct_pair(
-                    cx,
-                    cy,
-                ) or direct_pair(
-                    mono_x,
-                    mono_y,
-                ) or direct_pair(
-                    rx,
-                    ry,
-                ) or direct_pair(
-                    lx,
-                    ly,
+                pair = (
+                    direct_pair(
+                        cx,
+                        cy,
+                    )
+                    or direct_pair(
+                        mono_x,
+                        mono_y,
+                    )
+                    or direct_pair(
+                        rx,
+                        ry,
+                    )
+                    or direct_pair(
+                        lx,
+                        ly,
+                    )
                 )
                 if pair is not None:
                     return 'direct', pair, None
@@ -1495,12 +1519,13 @@ class Gaze:
                 )
         else:
             # Fallback: extract coordinates from list columns per-row without unnesting
-            source_col = 'pixel' if (
-                gaze_type == 'pixel' and 'pixel' in self.samples.columns
-            ) else None
+            source_col = (
+                'pixel' if (gaze_type == 'pixel' and 'pixel' in self.samples.columns) else None
+            )
             if (
-                source_col is None and gaze_type == 'position' and
-                'position' in self.samples.columns
+                source_col is None
+                and gaze_type == 'position'
+                and 'position' in self.samples.columns
             ):
                 source_col = 'position'
             if source_col is None:
@@ -1548,16 +1573,24 @@ class Gaze:
                     if xa is not None and ya is not None:
                         return xa, ya
                     # Else average L/R if both available
-                    if isinstance(xl, (int, float)) and isinstance(xr, (int, float)) and \
-                       isinstance(yl, (int, float)) and isinstance(yr, (int, float)):
+                    if (
+                        isinstance(xl, (int, float))
+                        and isinstance(xr, (int, float))
+                        and isinstance(yl, (int, float))
+                        and isinstance(yr, (int, float))
+                    ):
                         return (xl + xr) / 2.0, (yl + yr) / 2.0
                     # Else fall back to whichever is available (R preferred)
                     return (xr, yr) if (xr is not None and yr is not None) else (xl, yl)
                 # auto preference: cyclops -> mono -> right -> left
                 if xa is not None and ya is not None:
                     return xa, ya
-                if isinstance(xl, (int, float)) and isinstance(xr, (int, float)) and \
-                   isinstance(yl, (int, float)) and isinstance(yr, (int, float)):
+                if (
+                    isinstance(xl, (int, float))
+                    and isinstance(xr, (int, float))
+                    and isinstance(yl, (int, float))
+                    and isinstance(yr, (int, float))
+                ):
                     return (xl + xr) / 2.0, (yl + yr) / 2.0
                 if xr is not None and yr is not None:
                     return xr, yr
@@ -1575,13 +1608,13 @@ class Gaze:
                 vals = row.get(source_col)
                 if not isinstance(vals, (list, tuple)):
                     # create empty AOI row (all None)
-                    aois.append(polars.from_dict({col: None for col in aoi_dataframe.aois.columns}))
+                    aois.append(polars.from_dict(dict.fromkeys(aoi_dataframe.aois.columns)))
                     continue
                 # Delegate handling of n==0 / insufficient length to _xy_from_list to
                 # exercise all paths
                 x, y = _xy_from_list(vals)
                 if x is None or y is None:
-                    aois.append(polars.from_dict({col: None for col in aoi_dataframe.aois.columns}))
+                    aois.append(polars.from_dict(dict.fromkeys(aoi_dataframe.aois.columns)))
                     continue
                 tmp_row = dict(row)
                 tmp_row['__x'] = x
@@ -1592,9 +1625,9 @@ class Gaze:
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
 
     def nest(
-            self,
-            input_columns: list[str],
-            output_column: str,
+        self,
+        input_columns: list[str],
+        output_column: str,
     ) -> None:
         """Nest component columns into a single tuple column.
 
@@ -1610,16 +1643,17 @@ class Gaze:
         self._check_component_columns(**{output_column: input_columns})
 
         self.samples = self.samples.with_columns(
-            polars.concat_list([polars.col(component) for component in input_columns])
-            .alias(output_column),
+            polars.concat_list([polars.col(component) for component in input_columns]).alias(
+                output_column
+            ),
         ).drop(input_columns)
 
     def unnest(
-            self,
-            input_columns: list[str] | str | None = None,
-            output_suffixes: list[str] | None = None,
-            *,
-            output_columns: list[str] | None = None,
+        self,
+        input_columns: list[str] | str | None = None,
+        output_suffixes: list[str] | None = None,
+        *,
+        output_columns: list[str] | None = None,
     ) -> None:
         """Explode a column of type ``polars.List`` into one column for each list component.
 
@@ -1690,24 +1724,24 @@ class Gaze:
 
         if output_suffixes:
             col_names = [
-                [f'{input_col}{suffix}' for suffix in output_suffixes]
+                [f"{input_col}{suffix}" for suffix in output_suffixes]
                 for input_col in input_columns
             ]
 
-        if len([
-            name for name_list in col_names for name in name_list
-        ]) != self.n_components * len(input_columns):
+        if len([name for name_list in col_names for name in name_list]) != self.n_components * len(
+            input_columns
+        ):
             raise ValueError(
-                f'Number of output columns / suffixes ({len(col_names[0])}) '
-                f'must match number of components ({self.n_components})',
+                f"Number of output columns / suffixes ({len(col_names[0])}) "
+                f"must match number of components ({self.n_components})",
             )
 
         if len({name for name_list in col_names for name in name_list}) != len(
-                [name for name_list in col_names for name in name_list],
+            [name for name_list in col_names for name in name_list],
         ):
             raise ValueError('Output columns / suffixes must be unique')
 
-        for input_col, column_names in zip(input_columns, col_names):
+        for input_col, column_names in zip(input_columns, col_names, strict=False):
             self.samples = self.samples.with_columns(
                 [
                     polars.col(input_col).list.get(component_id).alias(names)
@@ -1780,35 +1814,35 @@ class Gaze:
         for component_type, columns in kwargs.items():
             if not isinstance(columns, list):
                 raise TypeError(
-                    f'{component_type} must be of type list, '
-                    f'but is of type {type(columns).__name__}',
+                    f"{component_type} must be of type list, "
+                    f"but is of type {type(columns).__name__}",
                 )
 
             for column in columns:
                 if not isinstance(column, str):
                     raise TypeError(
-                        f'all elements in {component_type} must be of type str, '
-                        f'but one of the elements is of type {type(column).__name__}',
+                        f"all elements in {component_type} must be of type str, "
+                        f"but one of the elements is of type {type(column).__name__}",
                     )
 
             if len(columns) not in [2, 4, 6]:
                 raise ValueError(
-                    f'{component_type} must contain either 2, 4 or 6 columns, '
-                    f'but has {len(columns)}',
+                    f"{component_type} must contain either 2, 4 or 6 columns, "
+                    f"but has {len(columns)}",
                 )
 
             for column in columns:
                 if column not in self.samples.columns:
                     raise polars.exceptions.ColumnNotFoundError(
-                        f'column {column} from {component_type}'
+                        f"column {column} from {component_type}"
                         ' is not available in samples dataframe',
                     )
 
             if len(set(self.samples[columns].dtypes)) != 1:
                 types_list = sorted([str(t) for t in set(self.samples[columns].dtypes)])
                 raise ValueError(
-                    f'all columns in {component_type} must be of same type, '
-                    f'but types are {types_list}',
+                    f"all columns in {component_type} must be of same type, "
+                    f"but types are {types_list}",
                 )
 
     def _infer_n_components(self, column_specifiers: list[list[str]]) -> int | None:
@@ -1848,7 +1882,7 @@ class Gaze:
             list_lengths.add(len(column_specifier_list))
 
         if len(list_lengths) > 1:
-            raise ValueError(f'inconsistent number of components inferred: {list_lengths}')
+            raise ValueError(f"inconsistent number of components inferred: {list_lengths}")
 
         if len(list_lengths) == 0:
             return None
@@ -1907,12 +1941,12 @@ class Gaze:
         return eye_components
 
     def _fill_event_detection_kwargs(
-            self,
-            method: Callable[..., Events],
-            samples: polars.DataFrame,
-            events: Events,
-            eye_components: tuple[int, int] | None,
-            **kwargs: Any,
+        self,
+        method: Callable[..., Events],
+        samples: polars.DataFrame,
+        events: Events,
+        eye_components: tuple[int, int] | None,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Fill event detection method kwargs with gaze attributes.
 
@@ -1940,8 +1974,7 @@ class Gaze:
         if 'positions' in method_args:
             if 'position' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
-                    f'Column \'position\' not found.'
-                    f' Available columns are: {samples.columns}',
+                    f"Column 'position' not found. Available columns are: {samples.columns}",
                 )
 
             if eye_components is None:
@@ -1959,8 +1992,7 @@ class Gaze:
         if 'velocities' in method_args:
             if 'velocity' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
-                    f'Column \'velocity\' not found.'
-                    f' Available columns are: {samples.columns}',
+                    f"Column 'velocity' not found. Available columns are: {samples.columns}",
                 )
 
             if eye_components is None:
@@ -1984,16 +2016,16 @@ class Gaze:
         return kwargs
 
     def _init_columns(
-            self,
-            trial_columns: str | list[str] | None = None,
-            time_column: str | None = None,
-            time_unit: str | None = None,
-            pixel_columns: list[str] | None = None,
-            position_columns: list[str] | None = None,
-            velocity_columns: list[str] | None = None,
-            acceleration_columns: list[str] | None = None,
-            distance_column: str | None = None,
-            auto_column_detect: bool = False,
+        self,
+        trial_columns: str | list[str] | None = None,
+        time_column: str | None = None,
+        time_unit: str | None = None,
+        pixel_columns: list[str] | None = None,
+        position_columns: list[str] | None = None,
+        velocity_columns: list[str] | None = None,
+        acceleration_columns: list[str] | None = None,
+        distance_column: str | None = None,
+        auto_column_detect: bool = False,
     ) -> None:
         """Initialize columns of :py:attr:`~.Gaze.samples`."""
         # Initialize trial_columns.
@@ -2069,9 +2101,9 @@ class Gaze:
             )
 
     def _init_time_column(
-            self,
-            time_column: str | None = None,
-            time_unit: str | None = None,
+        self,
+        time_column: str | None = None,
+        time_unit: str | None = None,
     ) -> None:
         """Initialize time column."""
         # If no time column exists, create a new one starting with zero and set time unit to steps.
@@ -2153,7 +2185,7 @@ class Gaze:
             fields.append(self.samples.__str__())
 
         if self.messages is not None:
-            fields.append(f'messages={self.messages.height} rows')
+            fields.append(f"messages={self.messages.height} rows")
 
         return '\n'.join(fields)
 
@@ -2166,14 +2198,14 @@ class Gaze:
         return self.__str__()
 
     def save(
-            self,
-            dirpath: str | Path,
-            *,
-            save_events: bool | None = None,
-            save_samples: bool | None = None,
-            save_experiment: bool | None = None,
-            verbose: int = 1,
-            extension: str = 'feather',
+        self,
+        dirpath: str | Path,
+        *,
+        save_events: bool | None = None,
+        save_samples: bool | None = None,
+        save_experiment: bool | None = None,
+        verbose: int = 1,
+        extension: str = 'feather',
     ) -> Gaze:
         """Save data from the Gaze object in the provided directory.
 
@@ -2221,10 +2253,10 @@ class Gaze:
         if save_events is None or save_events:
             if save_events and (self.events is None or len(self.events) == 0):
                 raise ValueError('there are no events in the Gaze object')
-            self.save_events(Path(f'{dirpath}/events.{extension}'), verbose=verbose)
+            self.save_events(Path(f"{dirpath}/events.{extension}"), verbose=verbose)
 
         if save_samples is None or save_samples:
-            self.save_samples(Path(f'{dirpath}/samples.{extension}'), verbose=verbose)
+            self.save_samples(Path(f"{dirpath}/samples.{extension}"), verbose=verbose)
 
         if save_experiment is None or save_experiment:
             if verbose >= 2:
@@ -2236,11 +2268,10 @@ class Gaze:
         return self
 
     def save_events(
-            self,
-            path: Path,
-            *,
-            verbose: int = 1,
-
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
     ) -> None:
         """Save gaze events to file.
 
@@ -2272,15 +2303,14 @@ class Gaze:
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
-                f'Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
             )
 
     def save_samples(
-            self,
-            path: Path,
-            *,
-            verbose: int = 1,
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
     ) -> None:
         """Save preprocessed gaze files.
 
@@ -2315,8 +2345,7 @@ class Gaze:
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
-                f'Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
             )
 
 
@@ -2341,18 +2370,20 @@ def _check_trial_columns(trial_columns: list[str] | None, samples: polars.DataFr
                 else:
                     seen.add(column)
 
-            raise ValueError(f'duplicates in trial_columns: {", ".join(dupes)}')
+            raise ValueError(f"duplicates in trial_columns: {', '.join(dupes)}")
 
         # Make sure all trial_columns exist in samples.
         if len(set(trial_columns).intersection(samples.columns)) != len(trial_columns):
             missing = set(trial_columns) - set(samples.columns)
-            raise KeyError(f'trial_columns missing in samples: {", ".join(missing)}')
+            raise KeyError(f"trial_columns missing in samples: {', '.join(missing)}")
 
 
 def _replace_nones_in_split_keys(
-        sample_key_dtypes: list[type], events_key_dtypes: list[type],
+    sample_key_dtypes: list[type],
+    events_key_dtypes: list[type],
 ) -> Callable[[tuple[Any, ...]], tuple[Any, ...]]:
     """Replace None values with comparable surrogates according to specified datatypes."""
+
     def _surrogate_none(dtype: type) -> float | str:
         """Return a comparable surrogate value for a particular datatype."""
         if dtype in {float, int, bool}:
@@ -2361,7 +2392,7 @@ def _replace_nones_in_split_keys(
             return ''
         raise TypeError(
             f'dtype {dtype.__name__} not supported as "by" column dtype in split(). '
-            f'supported dtypes are str, float, int and bool',
+            f"supported dtypes are str, float, int and bool",
         )
 
     def _replace_nones_in_key(key: tuple[Any, ...]) -> tuple[Any, ...]:
@@ -2369,7 +2400,7 @@ def _replace_nones_in_split_keys(
         if None in key:
             return tuple(
                 element if element is not None else _surrogate_none(dtype)
-                for element, dtype in zip(key, key_dtypes)
+                for element, dtype in zip(key, key_dtypes, strict=False)
             )
         return key
 
@@ -2378,8 +2409,8 @@ def _replace_nones_in_split_keys(
         if sample_key_dtypes != events_key_dtypes:
             raise TypeError(
                 '"by" column dtypes do not match between samples and events:'
-                f'{[c.__name__ for c in sample_key_dtypes]}'
-                f' != {[c.__name__ for c in events_key_dtypes]}',
+                f"{[c.__name__ for c in sample_key_dtypes]}"
+                f" != {[c.__name__ for c in events_key_dtypes]}",
             )
         key_dtypes = sample_key_dtypes
     elif sample_key_dtypes and not events_key_dtypes:

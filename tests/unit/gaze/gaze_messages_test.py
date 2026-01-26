@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Experiment class."""
+
+from __future__ import annotations
+
 from re import escape
 
 import polars as pl
@@ -74,9 +77,7 @@ def test_gaze_messages_accepts_none_or_polars_dataframe(good_messages):
 )
 def test_gaze_messages_dataframe_must_have_time_and_content_columns(bad_df):
     """Ensure that a polars DataFrame missing required columns raises a TypeError."""
-    expected = (
-        "The `messages` polars DataFrame must contain the columns ['time', 'content']."
-    )
+    expected = "The `messages` polars DataFrame must contain the columns ['time', 'content']."
     with pytest.raises(TypeError, match=escape(expected)):
         Gaze(messages=bad_df)
 
