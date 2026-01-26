@@ -2,12 +2,12 @@
 Getting Started
 ===============
 
-This section helps you get pymovements installed and run your first
+This section helps you get ``pymovements`` installed and run your first
 analysis.
 
 To follow the examples in this guide, you will need a working Python
-environment and the pymovements package installed.
-pymovements can be installed via pip: ``pip install pymovements``
+environment and the ``pymovements`` package installed.
+``pymovements`` can be installed via pip: ``pip install pymovements``
 For more information, see the next section on :doc:`Installation Options <installation>`.
 
 .. toctree::
@@ -24,7 +24,7 @@ For more information, see the next section on :doc:`Installation Options <instal
         **Already installed?**
         ^^^^^^^^^^^^^^^^^^^^^^
 
-        Get familiar with *pymovements* by working through this beginner tutorial:
+        Get familiar with ``pymovements`` by working through this beginner tutorial:
 
         .. button-ref:: pymovements_in_10_minutes
             :color: primary

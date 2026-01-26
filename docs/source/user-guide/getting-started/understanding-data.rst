@@ -34,7 +34,7 @@ stimulus or display surface, typically in pixels or degrees of visual angle. **E
 coordinates** describe eye orientation relative to the head, often in degrees of rotation.
 These coordinates are more common in head-mounted or mobile eye tracking.
 
-pymovements primarily works with stimulus-referenced coordinates but allows explicit
+``pymovements`` primarily works with stimulus-referenced coordinates but allows explicit
 transformations when the necessary experimental information is available.
 
 At the most basic level, eye-tracking data consist of time-ordered **gaze samples** which typically
@@ -49,50 +49,6 @@ Crucially, eye-tracking data are signals rather than direct measurements of perc
 cognition. Constructs such as attention, comprehension, or cognitive processes are inferred through
 preprocessing, event detection, and analysis choices.
 
-Eye Trackers and Sampling Frequency (Rate)
-------------------------------------------
-
-Eye trackers differ substantially in their technical characteristics, including spatial accuracy,
-precision, robustness to head movement, and **sampling rate**. The sampling rate, typically
-reported in hertz (Hz), specifies how many gaze samples are recorded per second. Values range
-from around 30 Hz for low-cost or webcam-based systems to 500 Hz or 2000 Hz for high-end
-research-grade eye trackers.
-
-The sampling rate determines the temporal resolution of the gaze signal and constrains which
-eye-movement phenomena can be reliably analysed. In general, higher sampling rates allow finer
-temporal detail to be captured. From a signal-processing perspective, the Nyquist–Shannon sampling
-theorem states that a signal must be sampled at least twice as fast as its highest frequency
-component to avoid aliasing. In practice, this means that high sampling rates are required to
-capture rapid eye movements such as saccades, while lower sampling rates may be sufficient for
-analyses focused on fixations or overall viewing patterns.
-
-In pymovements, these device-level properties are represented explicitly via an
-:class:`~pymovements.gaze.eyetracker.EyeTracker` object that is part of the experiment definition
-(class: :class:`~pymovements.gaze.experiment.Experiment`). This separates how the data were
-recorded from what the recorded samples contain. The sampling rate is used implicitly when
-computing derived measures such as velocity, acceleration, or event durations.
-
-From Eye-Tracker Export Files to Gaze Samples in pymovements
-------------------------------------------------------------
-
-Eye trackers export data in a variety of proprietary and semi-standard formats, such as binary
-``EDF`` files, ``ASCII`` or ``ASC`` exports, ``CSV`` or ``TSV`` tables, or vendor-specific text
-formats. These formats differ in structure, time units, coordinate conventions, and how samples,
-events, and metadata are represented, making parsing into a consistent internal representation a
-necessary first step for analysis.
-
-pymovements facilitates the transformation of these heterogeneous eye-tracker exports into a
-consistent internal format by creating a :class:`~pymovements.gaze.gaze.Gaze` object that
-contains gaze samples together with their experimental context. See the
-:doc:`Parsing SR Research EyeLink Data tutorial <../tutorials/parsing-dataset>` to walk through
-loading ``*.asc`` files, extracting gaze samples and metadata, and inspecting the resulting Gaze
-object.
-
-At this stage, the user specifies or confirms which columns represent time, gaze position, or other
-quantities. Monocular and binocular recordings are detected and harmonised. Timestamps are
-converted into a common unit. Device and recording metadata, such as sampling rate, tracked eye,
-screen resolution, and calibration information, are attached to the data through the experiment and
-eye tracker definitions.
 
 Eye-tracking Analysis as a Sequence of Transformations
 ------------------------------------------------------
@@ -115,5 +71,5 @@ Common stages in this process include:
 However, there is no single preprocessing pipeline or set of eye-tracking measures that is optimal
 for all research questions. Instead, appropriate choices depend on the experimental design, the
 properties of the recording device, and the quality of the data
-(see :doc:`Inspecting Data Quality <data-quality>`). Making these transformations explicit and
+(see :doc:`Inspecting Data Quality <../data-quality>`). Making these transformations explicit and
 transparent is therefore essential for valid, interpretable, and reproducible analysis.
