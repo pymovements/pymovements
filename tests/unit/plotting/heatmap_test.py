@@ -68,33 +68,28 @@ def args_fixture(experiment_fixture, request):
     return gaze, request.param
 
 
+@pytest.fixture(name='position_column_mapping')
+def position_column_mapping_fixture():
+    return {
+        'pix': 'pixel',
+        'pos': 'position',
+    }
+
+
 @pytest.mark.parametrize(
     'kwargs',
     [
+        pytest.param({'cmap': 'jet'}, id='str_cmap'),
         pytest.param(
-            {'cmap': 'jet'}, id='str_cmap',
+            {'cmap': matplotlib.colors.ListedColormap(['red', 'blue', 'green'])},
+            id='custom_cmap',
         ),
-        pytest.param(
-            {'cmap': matplotlib.colors.ListedColormap(['red', 'blue', 'green'])}, id='custom_cmap',
-        ),
-        pytest.param(
-            {'gridsize': (10, 10)}, id='default_gridsize',
-        ),
-        pytest.param(
-            {'gridsize': (15, 20)}, id='custom_gridsize',
-        ),
-        pytest.param(
-            {'interpolation': 'gaussian'}, id='default_interpolation',
-        ),
-        pytest.param(
-            {'interpolation': 'bilinear'}, id='custom_interpolation',
-        ),
-        pytest.param(
-            {'origin': 'lower'}, id='default_origin',
-        ),
-        pytest.param(
-            {'origin': 'upper'}, id='custom_origin',
-        ),
+        pytest.param({'gridsize': (10, 10)}, id='default_gridsize'),
+        pytest.param({'gridsize': (15, 20)}, id='custom_gridsize'),
+        pytest.param({'interpolation': 'gaussian'}, id='default_interpolation'),
+        pytest.param({'interpolation': 'bilinear'}, id='custom_interpolation'),
+        pytest.param({'origin': 'lower'}, id='default_origin'),
+        pytest.param({'origin': 'upper'}, id='custom_origin'),
         pytest.param(
             {
                 'title': None,
@@ -130,43 +125,34 @@ def args_fixture(experiment_fixture, request):
         ),
     ],
 )
-def test_heatmap_show(args, kwargs, monkeypatch):
+def test_heatmap_show(args, kwargs, position_column_mapping, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    if args[1] == 'pix':
-        kwargs['position_column'] = 'pixel'
-    else:
-        kwargs['position_column'] = 'position'
-
+    position_column = position_column_mapping[args[1]]
+    kwargs['position_column'] = position_column
     heatmap(args[0], **kwargs)
 
     mock.assert_called_once()
 
 
-def test_heatmap_noshow(args, monkeypatch):
+def test_heatmap_noshow(args, position_column_mapping, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    if args[1] == 'pix':
-        position_column = 'pixel'
-    else:
-        position_column = 'position'
-
+    position_column = position_column_mapping[args[1]]
     heatmap(args[0], position_column=position_column, show=False)
 
     mock.assert_not_called()
 
 
-def test_heatmap_noshow_no_pixel_or_position_column(args, monkeypatch):
+def test_heatmap_noshow_no_pixel_or_position_column(
+    args, position_column_mapping, monkeypatch,
+):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    if args[1] == 'pix':
-        position_column = 'pixel'
-    else:
-        position_column = 'position'
-
+    position_column = position_column_mapping[args[1]]
     gaze = args[0]
     gaze.samples = gaze.samples.rename({position_column: 'custom_column'})
 
@@ -175,30 +161,28 @@ def test_heatmap_noshow_no_pixel_or_position_column(args, monkeypatch):
     mock.assert_not_called()
 
 
-def test_heatmap_save(args, monkeypatch, tmp_path):
+def test_heatmap_save(args, position_column_mapping, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
 
-    if args[1] == 'pix':
-        position_column = 'pixel'
-    else:
-        position_column = 'position'
-
+    position_column = position_column_mapping[args[1]]
     heatmap(
-        args[0], position_column=position_column, show=False, savepath=str(tmp_path / 'test.svg'),
+        args[0],
+        position_column=position_column,
+        show=False,
+        savepath=str(tmp_path / 'test.svg'),
     )
 
     mock.assert_called_once()
 
 
-def test_heatmap_invalid_position_columns(args):
-    if args[1] == 'pix':
-        position_column = 'position'
-    else:
-        position_column = 'pixel'
+def test_heatmap_invalid_position_columns(args, position_column_mapping):
+    position_column = position_column_mapping[args[1]]
+    # Use the opposite column to trigger ColumnNotFoundError
+    invalid_column = 'position' if position_column == 'pixel' else 'pixel'
 
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
-        heatmap(gaze=args[0], position_column=position_column, show=False)
+        heatmap(gaze=args[0], position_column=invalid_column, show=False)
 
 
 def test_heatmap_no_experiment_property():
