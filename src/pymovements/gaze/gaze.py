@@ -1292,13 +1292,13 @@ class Gaze:
         >>> # Calculate blink ratio:
         >>> gaze.measure_events_ratio('blink', sampling_rate=1.0)
         shape: (1, 1)
-        ┌──────────────────┐
+        ┌───────────────────┐
         │ event_ratio_blink │
-        │ ---              │
-        │ f64              │
-        ╞══════════════════╡
-        │ 0.25             │
-        └──────────────────┘
+        │ ---               │
+        │ f64               │
+        ╞═══════════════════╡
+        │ 0.25              │
+        └───────────────────┘
         >>> # Example with multiple trials and events:
         >>> samples = pl.DataFrame(
         ...     {
