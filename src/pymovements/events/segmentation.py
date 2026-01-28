@@ -92,18 +92,17 @@ def events2segmentation(
     Examples
     --------
     >>> import polars as pl
-    ... from pymovements.events import events2segmentation
-    ...
-    ... events_df = events_df = pl.DataFrame(
+    >>> from pymovements.events import events2segmentation
+    >>>
+    >>> events_df = pl.DataFrame(
     ...     {'name': ['blink', 'blink', 'not_blink'], 'onset': [2, 7, 3], 'offset': [5, 9, 6]}
     ... )
-    ... gaze_df = pl.DataFrame({'time': range(10)})
-    ...
-    ... # Create a boolean indicator column for blinks using a Polars expression
-    ... gaze_df.with_columns(
+    >>> gaze_df = pl.DataFrame({'time': range(10)})
+    >>>
+    >>> # Create a boolean indicator column for blinks using a Polars expression
+    >>> gaze_df.with_columns(
     ...     events2segmentation(events_df, name='blink')
     ... )
-    ...
     shape: (10, 2)
     ┌──────┬───────┐
     │ time ┆ blink │
@@ -128,14 +127,13 @@ def events2segmentation(
     ...     'offset': [3, 3],
     ...     'trial': [1, 2],
     ... })
-    ... gaze_df = pl.DataFrame({
+    >>> gaze_df = pl.DataFrame({
     ...     'time': pl.Series([0, 1, 2, 0, 1, 2, 3], dtype=pl.Int64),
     ...     'trial': [1, 1, 1, 2, 2, 2, 2],
     ... })
-    ... gaze_df.with_columns(
+    >>> gaze_df.with_columns(
     ...     events2segmentation(events_df, name='blink', trial_columns=['trial'])
     ... )
-    ...
     shape: (7, 3)
     ┌──────┬───────┬───────┐
     │ time ┆ trial ┆ blink │
@@ -280,10 +278,9 @@ def segmentation2events(
     Examples
     --------
     >>> import numpy as np
-    ... from pymovements.events import segmentation2events
-    ... segmentation = np.array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0])
-    ... segmentation2events(segmentation, name='blink')
-    ...
+    >>> from pymovements.events import segmentation2events
+    >>> segmentation = np.array([0, 0, 1, 1, 1, 0, 0, 1, 1, 0])
+    >>> segmentation2events(segmentation, name='blink')
     shape: (2, 3)
     ┌───────┬───────┬────────┐
     │ name  ┆ onset ┆ offset │
@@ -294,9 +291,8 @@ def segmentation2events(
     │ blink ┆ 7     ┆ 9      │
     └───────┴───────┴────────┘
     >>> # Using a time column:
-    ... time = np.linspace(0.1, 1.0, 10)
-    ... segmentation2events(segmentation, name='blink', time_column=time)
-    ...
+    >>> time = np.linspace(0.1, 1.0, 10)
+    >>> segmentation2events(segmentation, name='blink', time_column=time)
     shape: (2, 3)
     ┌───────┬───────┬────────┐
     │ name  ┆ onset ┆ offset │
