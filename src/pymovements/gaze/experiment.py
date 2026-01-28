@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -244,7 +244,7 @@ class Experiment:
         Raises
         ------
         ValueError
-            If selected method is invalid, input array is too short for the
+            If the selected method is invalid, the input array is too short for the
             selected method or the sampling rate is below zero
 
         Examples
@@ -294,7 +294,7 @@ class Experiment:
         Returns
         -------
         dict[str, Any | dict[str, str | float | None]]
-            Experiment as dictionary.
+            Experiment as a dictionary.
         """
         data: dict[str, dict[str, str | float | None]] = {}
 

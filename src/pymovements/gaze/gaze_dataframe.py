@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,9 @@ from __future__ import annotations
 
 import polars as pl
 
-import pymovements as pm  # pylint: disable=cyclic-import
 from pymovements._utils._deprecated import DeprecatedMetaClass
 from pymovements._utils._html import repr_html
+from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 
@@ -53,20 +53,20 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         A dataframe that contains gaze samples. (default: None)
     experiment : Experiment | None
         The experiment definition. (default: None)
-    events: pm.Events | None
+    events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns:list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
@@ -91,7 +91,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         from the experiment definition. This column will be renamed to ``distance``. (default: None)
     auto_column_detect: bool
         Flag indicating if the column names should be inferred automatically. (default: False)
-    definition: pm.DatasetDefinition | None
+    definition: DatasetDefinition | None
         A dataset definition. Explicitly passed arguments take precedence over definition.
         (default: None)
     data: pl.DataFrame | None
@@ -101,7 +101,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     ----------
     samples: pl.DataFrame
         A dataframe to be transformed to a polars dataframe.
-    events: pm.Events
+    events: Events
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
@@ -117,7 +117,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
-    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    single column with the corresponding name, e.g. using `pixel_columns` will merge the
     respective columns into the column `pixel`.
 
     The supported number of component columns with the expected order are:
@@ -133,7 +133,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
 
     Examples
     --------
-    First let's create an example `DataFrame` with three columns:
+    First, let's create an example `DataFrame` with three columns:
     the timestamp ``t`` and ``x`` and ``y`` for the pixel position.
 
     >>> df = pl.from_dict(
@@ -208,7 +208,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
 
     samples: pl.DataFrame
 
-    events: pm.Events
+    events: Events
 
     experiment: Experiment | None
 

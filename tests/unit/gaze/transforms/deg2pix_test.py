@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -518,7 +518,7 @@ def test_deg2pix_returns(kwargs, series, expected_df, distance_as_column):
     result_df = df.select(
         pm.gaze.transforms.deg2pix(**kwargs),
     )
-    assert_frame_equal(result_df, expected_df.to_frame(), atol=1e-4)
+    assert_frame_equal(result_df, expected_df.to_frame(), abs_tol=1e-4)
 
 
 @pytest.mark.parametrize(

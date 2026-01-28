@@ -79,8 +79,8 @@ jobs:
       - name: Upload coverage reports to Codecov
         if: success() || failure()
         uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   pylint:
     name: pylint

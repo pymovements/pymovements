@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +27,6 @@ from pymovements.events.detection._library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
-from pymovements.events.processing import EventGazeProcessor
-from pymovements.events.processing import EventProcessor
-from pymovements.events.properties import amplitude
-from pymovements.events.properties import dispersion
-from pymovements.events.properties import disposition
-from pymovements.events.properties import duration
-from pymovements.events.properties import EVENT_PROPERTIES
-from pymovements.events.properties import location
-from pymovements.events.properties import peak_velocity
-from pymovements.events.properties import register_event_property
 
 
 __all__ = [
@@ -50,16 +40,4 @@ __all__ = [
     'PrecomputedEventDataFrame',
     'Events',
     'EventDataFrame',
-
-    'EventGazeProcessor',
-    'EventProcessor',
-
-    'EVENT_PROPERTIES',
-    'register_event_property',
-    'amplitude',
-    'dispersion',
-    'disposition',
-    'duration',
-    'location',
-    'peak_velocity',
 ]

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ class Provo(DatasetDefinition):
     The predictability norms for the Provo Corpus differ from those of other corpora.
     In addition to traditional cloze scores that estimate the predictability of the full
     orthographic form of each word, the Provo Corpus also includes measures of the
-    predictability of the morpho-syntactic and semantic information for each word.
+    predictability of the morphosyntactic and semantic information for each word.
     This makes the Provo Corpus ideal for studying predictive processes in reading.
 
     Check the respective paper for details :cite:p:`Provo`.
@@ -60,7 +60,7 @@ class Provo(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -70,8 +70,9 @@ class Provo(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -109,7 +110,14 @@ class Provo(DatasetDefinition):
                     'filename': 'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
                     'md5': '7aa239e51e5d78528e2430f84a23da3f',
                     'filename_pattern':
-                    'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
+                        'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
+                    'load_kwargs': {
+                        'read_csv_kwargs': {
+                            'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
+                            'encoding': 'macroman',
+                            'null_values': ['.'],
+                        },
+                    },
                 },
             ],
         ),
@@ -121,13 +129,4 @@ class Provo(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-        {
-            'precomputed_events': {
-                'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},
-                'encoding': 'macroman',
-                'null_values': ['.'],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

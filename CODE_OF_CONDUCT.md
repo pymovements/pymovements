@@ -1,14 +1,17 @@
 # Code of Conduct
 
-At **pymovements**, we are commited to providing a welcoming, inclusive, and harassment-free experience for everyone.
+At **pymovements**, we are committed to providing a welcoming, inclusive, and harassment-free experience for everyone.
 
-It is important to us that all participants treat one another’s person and contributions with respect and dignity, regardless of race, ethnicity, caste, color, age, physical appearance, neurodiversity, disability, sex, gender, gender identity or expression, sexual orientation, language, religion or philosophical belief, national or social origin, socio-economic background, education level, or any other characteristic.
+It is important to us that all participants treat one another’s person and contributions with respect and dignity, regardless of race, ethnicity, caste, color, age, physical appearance,
+neurodiversity, disability, sex, gender, gender identity or expression, sexual orientation, language, religion or philosophical belief, national or social origin, socio-economic background, education
+level, or any other characteristic.
 
 All who participate in good faith and in accordance with this Code of Conduct are entitled to the same privileges of participation, whether as contributors, maintainers, users, or collaborators.
 
 ## Encouraged Behaviors
 
-We recognize that we all come from different cultures, languages, and communication styles, and that misunderstandings can easily arise in large collaborative projects. We therefore strive for patience, mindfulness, and generosity toward each other, centering our shared values:
+We recognize that we all come from different cultures, languages, and communication styles, and that misunderstandings can easily arise in large collaborative projects. We therefore strive for
+patience, mindfulness, and generosity toward each other, centering our shared values:
 
 - Showing empathy and kindness toward others
 - Being respectful of differing opinions and experiences
@@ -40,7 +43,8 @@ This Code of Conduct applies to all **pymovements** community spaces, including 
 ## Attribution
 
 This Code of Conduct is adapted from the
-[Python Community Code of Conduct](https://www.python.org/psf/conduct/), the [NumPy Code of Conduct](https://numpy.org/code-of-conduct/), and the [Contributor Covenant, version&nbsp;3.0](https://www.contributor-covenant.org/version/3/0/code_of_conduct/).
+[Python Community Code of Conduct](https://www.python.org/psf/conduct/), the [NumPy Code of Conduct](https://numpy.org/code-of-conduct/), and
+the [Contributor Covenant, version&nbsp;3.0](https://www.contributor-covenant.org/version/3/0/code_of_conduct/).
 
 ---
 

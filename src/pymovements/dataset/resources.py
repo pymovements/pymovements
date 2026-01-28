@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -141,7 +141,7 @@ class ResourceDefinitions(list):
     ----------
     resources: Iterable[ResourceDefinition | dict[str, Any]] | None
         An iterable of :py:class:`~.ResourceDefinition` instances or dictionaries containing
-        :py:class:`~.ResourceDefinition` parameters. In case an element is a dictionary it will be
+        :py:class:`~.ResourceDefinition` parameters. In case an element is a dictionary, it will be
         converted using :py:meth:`~.ResourceDefinition.from_dict()`.
     """
 

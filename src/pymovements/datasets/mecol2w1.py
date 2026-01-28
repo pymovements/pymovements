@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -56,7 +56,7 @@ class MECOL2W1(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -66,14 +66,15 @@ class MECOL2W1(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -112,6 +113,7 @@ class MECOL2W1(DatasetDefinition):
                     'filename_pattern': 'joint_l2_fixation_trimmed_report_2.0.rda',
                     'load_kwargs': {
                         'trial_columns': ['uniform_id', 'itemid'],
+                        'r_dataframe_key': 'joint.fix.l2',
                     },
                 },
                 {
@@ -120,6 +122,7 @@ class MECOL2W1(DatasetDefinition):
                     'filename': 'joint_data_l2_trimmed_version2.0.rda',
                     'md5': '3d10225781faf413467104dcc4e071e0',
                     'filename_pattern': 'joint_data_l2_trimmed_version2.0.rda',
+                    'load_kwargs': {'r_dataframe_key': 'joint.data'},
                 },
             ],
         ),
@@ -133,9 +136,4 @@ class MECOL2W1(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'r_dataframe_key': 'joint.fix.l2'},
-            'precomputed_reading_measures': {'r_dataframe_key': 'joint.data'},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

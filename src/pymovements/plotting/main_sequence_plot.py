@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,7 @@ def main_sequence_plot(
         savepath: str | None = None,
         show: bool = True,
         event_df: Events | EventDataFrame | None = None,
+        event_name: str = 'saccade',
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
         **kwargs: Collection,
@@ -73,7 +74,6 @@ def main_sequence_plot(
         Draw a linear fit line if True. If False, no line is drawn.
     fit_measure: bool | Literal['r2', 's']
         Annotate a goodness-of-fit statistic:
-
         - ``True`` or ``'r2'``: coefficient of determination (R²)
         - ``'s'``: standard error of the regression (S)
         - ``False``: no annotation
@@ -91,6 +91,8 @@ def main_sequence_plot(
         It must contain columns "peak_velocity" and "amplitude". (default: None)
         .. deprecated:: v0.22.0
         Please use the ``events`` argument instead. This argument will be removed in v0.27.0.
+    event_name: str
+        Filters events for a particular value in the "name" column. (default: 'saccade')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None
@@ -130,7 +132,7 @@ def main_sequence_plot(
             f'The event name should be stored in a colum called "{event_col_name}".',
         )
 
-    saccades = events.frame.filter(pl.col(event_col_name) == 'saccade')
+    saccades = events.frame.filter(pl.col(event_col_name) == event_name)
 
     if saccades.is_empty():
         raise ValueError(
@@ -168,7 +170,7 @@ def main_sequence_plot(
             alpha=marker_alpha,
             s=marker_size,
             marker=marker,
-            label='saccades',
+            label=event_name,
             **kwargs,
         )
         plt.legend()
@@ -180,7 +182,7 @@ def main_sequence_plot(
             alpha=marker_alpha,
             s=marker_size,
             marker=marker,
-            label='saccades',
+            label=event_name,
             **kwargs,
         )
         ax.legend()

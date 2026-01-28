@@ -9,39 +9,6 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
-  publish-to-github:
-    name: Attach distribution packages to GitHub release
-
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Download distribution packages
-      uses: actions/download-artifact@v4
-      with:
-        name: pymovements-distribution-packages-${{ github.sha }}
-        path: dist/
-
-    - name: Upload wheel
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/
-        asset_name: pymovements-${{ github.event.release.tag_name }}-py3-none-any.whl
-        asset_content_type: application/x-wheel+zip
-
-    - name: Upload source
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/
-        asset_name: pymovements-${{ github.event.release.tag_name }}.tar.gz
-        asset_content_type: application/gzip
-
   publish-to-test-pypi:
     name: Publish to Test PyPI
 
@@ -67,7 +34,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.TEST_PYPI_TOKEN }}
-        repository_url: https://test.pypi.org/legacy/
+        repository-url: https://test.pypi.org/legacy/
 
   publish-to-pypi:
     name: Publish to PyPI
@@ -92,3 +59,16 @@ jobs:
 
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+
+  notify-slack:
+    name: Notify on Slack
+
+    if: ${{ !github.release.prerelease }}
+    needs: publish-to-pypi
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify on AEye workspace
+        uses: amendx/slackbot-release@1.0.1
+        with:
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

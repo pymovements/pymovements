@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,24 +17,43 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for the Reading Measure DataFrame."""
+"""Provides functions for calculating event properties."""
 from __future__ import annotations
+
+from collections.abc import Callable
 
 import polars as pl
 
-from pymovements._utils._html import repr_html
+EVENT_MEASURES: dict[str, Callable] = {}
 
 
-@repr_html()
-class ReadingMeasures:
-    """A DataFrame for reading measures.
+def register_event_measure(function: Callable) -> Callable:
+    """Register an event measure.
 
     Parameters
     ----------
-    reading_measure_df: pl.DataFrame
-        A reading measure dataframe.
+    function: Callable
+        Function to be registered as a valid property.
+
+    Returns
+    -------
+    Callable
+        The function that was passed as an argument.
     """
+    EVENT_MEASURES[function.__name__] = function
+    return function
 
-    def __init__(self, reading_measure_df: pl.DataFrame) -> None:
 
-        self.frame = reading_measure_df.clone()
+@register_event_measure
+def duration() -> pl.Expr:
+    """Duration of an event.
+
+    The duration is defined as the difference between offset time and onset time.
+
+    Returns
+    -------
+    pl.Expr
+        The duration of the event.
+    """
+    result = pl.col('offset') - pl.col('onset')
+    return result.alias('duration')

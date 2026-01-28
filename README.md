@@ -64,7 +64,7 @@ dataset.detect('microsaccades')  # detect saccades using the microsaccades algor
 Check out our guide on how to install *pymovements* and get started here:
 [Installation](https://pymovements.readthedocs.io/en/stable/getting-started.html)
 
-We provide a range of tutorial aimed at beginners:
+We provide a range of tutorials aimed at beginners:
 [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
 
 The complete reference of the package can be found here:
@@ -77,7 +77,7 @@ We welcome any sort of contribution to pymovements!
 For a detailed guide, please refer to our [CONTRIBUTING.md](https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md) first.
 
 If you have any questions, please [open an issue](
-https://github.com/pymovements/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)
 
 ## Citing
