@@ -133,6 +133,11 @@ def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
             id='list',
         ),
         pytest.param(
+            (1, 2, 3),
+            'tuple (3 items)',
+            id='tuple',
+        ),
+        pytest.param(
             {'a': 1, 'b': 2},
             'dict (2 items)',
             id='dict',
