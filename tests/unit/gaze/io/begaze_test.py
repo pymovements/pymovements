@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,77 @@ BEGAZE_MINI = (
     # One more SMP row (after messages) so additional columns are propagated
     '10000003123\tSMP\t1\t850.71\t717.53\t714.00\t0\t1\t1\tFixation\ttest.bmp\n'
 )
+
+
+@pytest.mark.parametrize(
+    'trial_columns',
+    [
+        pytest.param('Stimulus', id='single_missing_trial_column'),
+        pytest.param(['Stimulus', 'trial_id'], id='multiple_missing_trial_columns'),
+    ],
+)
+def test_from_begaze_adds_missing_trial_columns_with_none(make_text_file, trial_columns):
+    # Create a minimal BeGaze file WITHOUT a Stimulus column
+    text = (
+        '## [BeGaze]\n'
+        '## Date:\t08.03.2023 09:25:20\n'
+        '## Sample Rate:\t1000\n'
+        '##\n'
+        'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tInfo\n'
+        '10000000123\tSMP\t1\t10\t20\t3.0\tFixation\n'
+    )
+
+    filepath = make_text_file('mini_begaze_no_stimulus.txt', header='', body=text, encoding='ascii')
+
+    gaze = from_begaze(filepath, trial_columns=trial_columns)
+
+    cols = gaze.samples.columns
+    for col in ([trial_columns] if isinstance(trial_columns, str) else trial_columns):
+        assert col in cols
+        # Entire column should be None because it was missing in the file
+        assert gaze.samples[col].to_list() == [None]
+
+
+@pytest.mark.parametrize(
+    'trial_columns, header_cols, row_vals',
+    [
+        pytest.param(
+            'Stimulus',
+            # Include Stimulus in the file so there are no missing trial columns
+            [
+                'Time', 'Type', 'Trial', 'L POR X [px]', 'L POR Y [px]',
+                'L Pupil Diameter [mm]', 'Pupil Confidence', 'L Event Info', 'Stimulus',
+            ],
+            ['10000000100', 'SMP', '1', '10', '20', '3.0', '1', 'Fixation', 'img.bmp'],
+            id='no_missing_single_trial_column',
+        ),
+    ],
+)
+def test_from_begaze_does_not_add_trial_columns_when_present(
+    make_text_file, trial_columns, header_cols, row_vals,
+):
+    # Build a minimal BeGaze file where requested trial columns are already present
+    header = '## [BeGaze]\n## Date:\t08.03.2023 09:25:20\n## Sample Rate:\t1000\n'
+    body = '\t'.join(header_cols) + '\n' + '\t'.join(row_vals) + '\n'
+    filepath = make_text_file(
+        'mini_begaze_with_trials.txt',
+        header='',
+        body=header + body,
+        encoding='ascii',
+    )
+
+    gaze = from_begaze(filepath, trial_columns=trial_columns)
+
+    cols = gaze.samples.columns
+    requested = [trial_columns] if isinstance(trial_columns, str) else list(trial_columns)
+    for col in requested:
+        assert col in cols
+    # Ensure original values are preserved (no None backfill took place)
+    if 'Stimulus' in requested:
+        assert gaze.samples['Stimulus'].to_list() == [row_vals[-1]]
+    if 'trial_id' in requested and 'trial_id' in header_cols:
+        idx = header_cols.index('trial_id')
+        assert gaze.samples['trial_id'].to_list() == [row_vals[idx]]
 
 
 @pytest.mark.parametrize(

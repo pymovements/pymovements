@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -82,6 +82,12 @@ def test_dataset_definition_is_equal(init_kwargs):
             {'resources': ResourceDefinitions([ResourceDefinition(content='gaze')])},
             ResourceDefinitions([ResourceDefinition(content='gaze')]),
             id='resource_definitions',
+        ),
+
+        pytest.param(
+            {'resources': [ResourceDefinition(content='gaze')]},
+            ResourceDefinitions([ResourceDefinition(content='gaze')]),
+            id='resource_definitions_list',
         ),
 
         pytest.param(
@@ -258,7 +264,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'long_name': 'Example',
                 'acceleration_columns': None,
                 'column_map': None,
-                'custom_read_kwargs': {},
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
@@ -292,7 +298,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'long_name': 'Example',
                 'acceleration_columns': None,
                 'column_map': None,
-                'custom_read_kwargs': {},
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -341,7 +347,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'long_name': None,
                 'acceleration_columns': None,
                 'column_map': None,
-                'custom_read_kwargs': {},
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -383,7 +389,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 '_foobar': 'test',
                 'acceleration_columns': None,
                 'column_map': None,
-                'custom_read_kwargs': {},
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -709,8 +715,8 @@ def test_dataset_definition_has_resources_not_equal():
                 'resources': [],
                 'experiment': None,
                 'extract': None,
-                'custom_read_kwargs': {},
                 'column_map': None,
+                'custom_read_kwargs': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -733,8 +739,8 @@ def test_dataset_definition_has_resources_not_equal():
                 'resources': [],
                 'experiment': None,
                 'extract': None,
-                'custom_read_kwargs': {},
                 'column_map': None,
+                'custom_read_kwargs': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -775,8 +781,8 @@ def test_dataset_definition_has_resources_not_equal():
                     },
                 },
                 'extract': None,
-                'custom_read_kwargs': {},
                 'column_map': None,
+                'custom_read_kwargs': None,
                 'trial_columns': None,
                 'time_column': None,
                 'time_unit': None,
@@ -833,7 +839,7 @@ def test_dataset_definition_has_resources_not_equal():
             {
                 'acceleration_columns': None,
                 'column_map': None,
-                'custom_read_kwargs': {},
+                'custom_read_kwargs': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
@@ -876,7 +882,7 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
 
 
 @pytest.mark.parametrize(
-    ('attribute_kwarg', 'scheduled_version'),
+    ('init_kwargs', 'scheduled_version'),
     [
         pytest.param(
             {'extract': True},
@@ -966,16 +972,21 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             '0.30.0',
             id='column_map',
         ),
+        pytest.param(
+            {'custom_read_kwargs': {'gaze': {'asd': 'def'}}},
+            '0.30.0',
+            id='custom_read_kwargs',
+        ),
     ],
 )
 def test_dataset_definition_init_parameter_is_deprecated_or_removed(
-        attribute_kwarg, scheduled_version, assert_deprecation_is_removed,
+        init_kwargs, scheduled_version, assert_deprecation_is_removed,
 ):
     with pytest.raises(DeprecationWarning) as info:
-        DatasetDefinition(**attribute_kwarg)
+        DatasetDefinition(**init_kwargs)
 
     assert_deprecation_is_removed(
-        function_name=f'keyword argument {list(attribute_kwarg.keys())[0]}',
+        function_name=f'DatasetDefinition init keyword argument {list(init_kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version=scheduled_version,
 

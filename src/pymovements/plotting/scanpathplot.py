@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -89,7 +89,7 @@ def scanpathplot(
         Shows color bar if True. (default: False)
     padding: float | None
         Absolute padding value.
-        If None it is inferred from pad_factor and limits. (default: None)
+        If None, it is inferred from pad_factor and limits. (default: None)
     pad_factor: float | None
         Relative padding factor to construct padding value if not given. (default: 0.5)
     figsize: tuple[int, int]
@@ -117,7 +117,7 @@ def scanpathplot(
     events: Events | EventDataFrame | None
         The events to plot. (default: None)
     event_name: str
-        Filters events for a particular value in ``name`` column. (default: 'fixation')
+        Filters events for a particular value in the `` name `` column. (default: 'fixation')
     ax: plt.Axes | None
         External axes to draw into. If provided, the function will not show or close the figure.
     closefig: bool | None

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +62,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -72,7 +72,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None
@@ -93,8 +93,9 @@ class ToyDatasetEyeLink(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -136,7 +137,54 @@ class ToyDatasetEyeLink(DatasetDefinition):
                         'subject_id': int,
                         'session_id': int,
                     },
-                    'load_kwargs': {'trial_columns': ['task', 'trial_id']},
+                    'load_kwargs': {
+                        'trial_columns': ['task', 'trial_id'],
+                        'patterns': [
+                            {
+                                'pattern': 'SYNCTIME_READING_SCREEN',
+                                'column': 'task',
+                                'value': 'reading',
+                            },
+                            {
+                                'pattern': 'SYNCTIME_JUDO',
+                                'column': 'task',
+                                'value': 'judo',
+                            },
+                            {
+                                'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
+                                'column': 'task',
+                                'value': None,
+                            },
+
+                            r'TRIALID (?P<trial_id>\d+)',
+                            {
+                                'pattern': 'TRIAL_RESULT',
+                                'column': 'trial_id',
+                                'value': None,
+                            },
+
+                            r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
+                            {
+                                'pattern': 'READING[.]STOP',
+                                'column': 'screen_id',
+                                'value': None,
+                            },
+
+                            r'SYNCTIME.P(?P<point_id>\d+)',
+                            {
+                                'pattern': r'P\d[.]STOP',
+                                'column': 'point_id',
+                                'value': None,
+                            },
+                        ],
+                        'schema': {
+                            'trial_id': pl.Int64,
+                            'screen_id': pl.Int64,
+                            'point_id': pl.Int64,
+                            'task': pl.Utf8,
+                        },
+                        'encoding': 'ascii',
+                    },
                 },
             ],
         ),
@@ -174,54 +222,4 @@ class ToyDatasetEyeLink(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'patterns': [
-                    {
-                        'pattern': 'SYNCTIME_READING_SCREEN',
-                        'column': 'task',
-                        'value': 'reading',
-                    },
-                    {
-                        'pattern': 'SYNCTIME_JUDO',
-                        'column': 'task',
-                        'value': 'judo',
-                    },
-                    {
-                        'pattern': ['READING[.]STOP', 'JUDO[.]STOP'],
-                        'column': 'task',
-                        'value': None,
-                    },
-
-                    r'TRIALID (?P<trial_id>\d+)',
-                    {
-                        'pattern': 'TRIAL_RESULT',
-                        'column': 'trial_id',
-                        'value': None,
-                    },
-
-                    r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
-                    {
-                        'pattern': 'READING[.]STOP',
-                        'column': 'screen_id',
-                        'value': None,
-                    },
-
-                    r'SYNCTIME.P(?P<point_id>\d+)',
-                    {
-                        'pattern': r'P\d[.]STOP',
-                        'column': 'point_id',
-                        'value': None,
-                    },
-                ],
-                'schema': {
-                    'trial_id': pl.Int64,
-                    'screen_id': pl.Int64,
-                    'point_id': pl.Int64,
-                    'task': pl.Utf8,
-                },
-                'encoding': 'ascii',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

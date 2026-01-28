@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ class JuDo1000(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -73,7 +73,7 @@ class JuDo1000(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None
@@ -94,9 +94,9 @@ class JuDo1000(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -147,6 +147,18 @@ class JuDo1000(DatasetDefinition):
                             'trialId': 'trial_id',
                             'pointId': 'point_id',
                         },
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trialId': pl.Int64,
+                                'pointId': pl.Int64,
+                                'time': pl.Int64,
+                                'x_left': pl.Float32,
+                                'y_left': pl.Float32,
+                                'x_right': pl.Float32,
+                                'y_right': pl.Float32,
+                            },
+                            'separator': '\t',
+                        },
                     },
                 },
             ],
@@ -179,19 +191,4 @@ class JuDo1000(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trialId': pl.Int64,
-                    'pointId': pl.Int64,
-                    'time': pl.Int64,
-                    'x_left': pl.Float32,
-                    'y_left': pl.Float32,
-                    'x_right': pl.Float32,
-                    'y_right': pl.Float32,
-                },
-                'separator': '\t',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

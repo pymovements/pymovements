@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -65,7 +65,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -75,7 +75,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None
@@ -100,9 +100,9 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -137,7 +137,7 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                 {
                     'content': 'gaze',
                     'url': 'https://osf.io/download/9vbs8/',
-                    'filename': 'a.zip',
+                    'filename': 'alcohol.zip',
                     'md5': '87c6c74a9a17cbd093b91f9415e8dd9d',
                     'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
@@ -145,11 +145,39 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'trial_id': int,
                         'block_id': int,
                     },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
+                        ],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
+                    },
                 },
                 {
                     'content': 'gaze',
                     'url': 'https://osf.io/download/yqukn/',
-                    'filename': 'b.zip',
+                    'filename': 'baseline.zip',
                     'md5': '54038547b1a373253b38999a227dde63',
                     'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
@@ -164,18 +192,66 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
                         'pixel_columns': [
                             'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
                         ],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
                     },
                 },
                 {
                     'content': 'gaze',
                     'url': 'https://osf.io/download/yf2xa/',
-                    'filename': 'e.zip',
+                    'filename': 'enrollment.zip',
                     'md5': 'a0d0203cbb273f6908c1b52a42750551',
                     'filename_pattern': r'{subject_id:d}_{session_id:d}_{condition:s}_{trial_id:d}_{block_id:d}.csv',  # noqa: E501 # pylint: disable=line-too-long
                     'filename_pattern_schema_overrides': {
                         'subject_id': int,
                         'trial_id': int,
                         'block_id': int,
+                    },
+                    'load_kwargs': {
+                        'time_column': 'eyelink_timestamp',
+                        'time_unit': 'ms',
+                        'distance_column': 'target_distance',
+                        'pixel_columns': [
+                            'x_pix_pupilcore_interpolated', 'y_pix_pupilcore_interpolated',
+                        ],
+                        'read_csv_kwargs': {
+                            'schema_overrides': {
+                                'trial_id': pl.Float32,
+                                'block_id': pl.Float32,
+                                'x_pix_eyelink': pl.Float32,
+                                'y_pix_eyelink': pl.Float32,
+                                'eyelink_timestamp': pl.Int64,
+                                'x_pix_pupilcore_interpolated': pl.Float32,
+                                'y_pix_pupilcore_interpolated': pl.Float32,
+                                'pupil_size_eyelink': pl.Float32,
+                                'target_distance': pl.Float32,
+                                'pupil_size_pupilcore_interpolated': pl.Float32,
+                                'pupil_confidence_interpolated': pl.Float32,
+                                'time_to_prev_bac': pl.Float32,
+                                'time_to_next_bac': pl.Float32,
+                                'prev_bac': pl.Float32,
+                                'next_bac': pl.Float32,
+                            },
+                            'separator': ',',
+                        },
                     },
                 },
             ],
@@ -218,27 +294,4 @@ class PotsdamBingeWearablePVT(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'schema_overrides': {
-                    'trial_id': pl.Float32,
-                    'block_id': pl.Float32,
-                    'x_pix_eyelink': pl.Float32,
-                    'y_pix_eyelink': pl.Float32,
-                    'eyelink_timestamp': pl.Int64,
-                    'x_pix_pupilcore_interpolated': pl.Float32,
-                    'y_pix_pupilcore_interpolated': pl.Float32,
-                    'pupil_size_eyelink': pl.Float32,
-                    'target_distance': pl.Float32,
-                    'pupil_size_pupilcore_interpolated': pl.Float32,
-                    'pupil_confidence_interpolated': pl.Float32,
-                    'time_to_prev_bac': pl.Float32,
-                    'time_to_next_bac': pl.Float32,
-                    'prev_bac': pl.Float32,
-                    'next_bac': pl.Float32,
-                },
-                'separator': ',',
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

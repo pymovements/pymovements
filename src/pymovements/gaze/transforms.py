@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ from typing import TypeVar
 import numpy as np
 import polars as pl
 import scipy
+from polars.datatypes.classes import NumericType
 
 from pymovements._utils import _checks
 
@@ -84,7 +85,7 @@ class TransformLibrary:
         Returns
         -------
         bool
-            True if TransformsLibrary contains method with given name, else False.
+            True if TransformsLibrary contains a method with a given name, else False.
         """
         return name in cls.methods
 
@@ -117,14 +118,14 @@ def center_origin(
 ) -> pl.Expr:
     """Center pixel data.
 
-    Pixel data will have the coordinates ``(0, 0)`` afterwards.
+    Pixel data will have the coordinates ``(0, 0)`` afterward.
 
     Parameters
     ----------
     screen_resolution: tuple[int, int]
         Pixel screen resolution as tuple (width, height).
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     origin: str
         The location of the pixel origin. Supported values: ``center``, ``upper left``.
         (default: ``upper left``)
@@ -257,6 +258,11 @@ def pix2deg(
     _check_screen_resolution(screen_resolution)
     _check_screen_size(screen_size)
 
+    # Defensive guard: some loaders may not infer components before calling pix2deg.
+    # Default to 2 components to represent x/y if an invalid value is passed.
+    if not isinstance(n_components, int) or n_components < 1:
+        n_components = 2
+
     centered_pixels = center_origin(
         screen_resolution=screen_resolution,
         origin=origin,
@@ -315,7 +321,7 @@ def deg2pix(
         Eye-to-screen distance in centimeters. If a string is passed, it is interpreted as the name
         of a column containing the Eye-to-screen distance in millimiters for each sample.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     pixel_origin: str
         The desired location of the pixel origin. Supported values: ``center``, ``upper left``.
         (default: 'upper left')
@@ -457,7 +463,7 @@ def pos2acc(
     sampling_rate: float
         Sampling rate of input time series.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     degree: int
         The degree of the polynomial to use. (default: 2)
     window_length: int
@@ -507,7 +513,7 @@ def pos2vel(
     method: str
         The method to use for velocity calculation.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     degree: int | None
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
         calculation method. (default: None)
@@ -535,7 +541,7 @@ def pos2vel(
       See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
     * ``fivepoint``: velocity is calculated from the difference of the mean values
       of the subsequent two samples and the preceding two samples
-    * ``neighbors``: velocity is calculated from difference of the subsequent
+    * ``neighbors``: velocity is calculated from the difference of the subsequent
       sample and the preceding sample
     * ``preceding``: velocity is calculated from the difference of the current
       sample to the preceding sample
@@ -713,7 +719,10 @@ def savitzky_golay(
 
     return pl.concat_list(
         [
-            pl.col(input_column).list.get(component).map_batches(func).list.explode()
+            pl.col(input_column)
+            .list.get(component)
+            .map_batches(func, return_dtype=pl.Float64)
+            .list.explode()
             for component in range(n_components)
         ],
     ).alias(output_column)
@@ -767,7 +776,7 @@ def resample(
     * ``forward``: Fill null values with the previous non-null value.
     * ``backward``: Fill null values with the next non-null value.
     * ``interpolate_linear``: Fill null values by linear interpolation.
-    * ``interpolate_nearest``: Fill null values by nearest interpolation.
+    * ``interpolate_nearest``: Fill null values by the nearest interpolation.
 
     """
     if columns == 'all':
@@ -803,13 +812,31 @@ def resample(
     # Sort columns by datetime
     samples = samples.sort('datetime')
 
-    # Replace pre-existing null values with NaN as they should not be interpolated
+    numeric_columns: list[str] | None = None
     if columns is not None:
+        def _base_dtype(dt: pl.DataType) -> pl.DataType:
+            # Follow nested dtypes (e.g., List(inner=...)) until reaching the base type
+            while hasattr(dt, 'inner'):
+                dt = dt.inner
+            return dt
+
+        numeric_columns = [
+            c for c in columns
+            if issubclass(
+                (bd if isinstance(bd := _base_dtype(samples.schema[c]), type) else type(bd)),
+                NumericType,
+            )
+        ]
+
+    # Replace pre-existing null values with NaN only for numeric columns, as they should not be
+    # interpolated. Ensure we cast to Float64 so the UDF output dtype matches the declaration.
+    if numeric_columns:
         samples = _apply_on_columns(
             samples,
-            columns=columns,
-            transformation=lambda series: series.fill_null(np.nan),
+            columns=numeric_columns,
+            transformation=lambda series: series.cast(pl.Float64).fill_null(np.nan),
             n_components=n_components,
+            return_dtype=pl.Float64,
         )
 
     # Resample data by datetime column, create milliseconds time column and drop datetime column
@@ -841,11 +868,13 @@ def resample(
 
             samples = _apply_on_columns(
                 frame=samples,
-                columns=columns,
-                transformation=lambda series: series.interpolate(
+                columns=numeric_columns,
+                transformation=lambda series: series.cast(pl.Float64).interpolate(
                     method=interpolate_method,
                 ),
                 n_components=n_components,
+                # Interpolation yields floats - ensure dtype is Float64.
+                return_dtype=pl.Float64,
             )
         else:
             raise ValueError(
@@ -886,7 +915,7 @@ def smooth(
         samples. For ``savitzky_golay`` this is the window size to use for the polynomial fit.
         For ``exponential_moving_average`` this is the span parameter.
     n_components: int
-        Number of components in input column.
+        Number of components in the input column.
     degree: int | None
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
         smoothing method. `degree` must be less than `window_length`. (default: None)
@@ -908,7 +937,7 @@ def smooth(
 
     Notes
     -----
-    There following methods are available for smoothing:
+    The following methods are available for smoothing:
 
     * ``savitzky_golay``: Smooth data by applying a Savitzky-Golay filter.
     See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
@@ -966,17 +995,25 @@ def smooth(
         if padding is not None:
             pad_kwargs['mode'] = padding
             pad_kwargs['pad_width'] = int(np.ceil(window_length / 2))
+            # Create a callable that applies numpy padding and ignores any extra kwargs
 
-            pad_func = partial(
-                np.pad,
-                **pad_kwargs,
-            )
+            def pad_callable(x: np.ndarray, **_: Any) -> np.ndarray:
+                return np.pad(x, **pad_kwargs)  # pragma: no cover
+            pad_func = pad_callable
+        else:
+            # No padding: identity callable that ignores any extra kwargs
+            def identity_callable(x: np.ndarray, **_: Any) -> np.ndarray:
+                return x  # pragma: no cover
+            pad_func = identity_callable
 
         if method == 'moving_average':
 
             return pl.concat_list(
                 [
-                    pl.col(column).list.get(component).map_batches(pad_func).list.explode()
+                    pl.col(column)
+                    .list.get(component)
+                    .map_batches(pad_func, return_dtype=pl.Float64)
+                    .list.explode()
                     .rolling_mean(window_size=window_length, center=True)
                     .shift(n=pad_kwargs['pad_width'])
                     .slice(pad_kwargs['pad_width'] * 2)
@@ -986,7 +1023,10 @@ def smooth(
 
         return pl.concat_list(
             [
-                pl.col(column).list.get(component).map_batches(pad_func).list.explode()
+                pl.col(column)
+                .list.get(component)
+                .map_batches(pad_func, return_dtype=pl.Float64)
+                .list.explode()
                 .ewm_mean(
                     span=window_length,
                     adjust=False,
@@ -1061,6 +1101,7 @@ def _apply_on_columns(
         columns: list[str],
         transformation: Callable,
         n_components: int | None = None,
+        return_dtype: pl.DataType | None = None,
 ) -> pl.DataFrame:
     """Apply a function on nested and normal columns of a DataFrame.
 
@@ -1074,6 +1115,8 @@ def _apply_on_columns(
         The function to apply on the specified columns.
     n_components: int | None
         Number of components of nested columns in columns. (default: None)
+    return_dtype: pl.DataType | None
+        The data type to return for the transformed columns. (default: None)
 
     Returns
     -------
@@ -1087,7 +1130,7 @@ def _apply_on_columns(
     """
     for column in columns:
         # Determine if the column is nested based on its data type
-        if frame.schema[column] == pl.List:
+        if isinstance(frame.schema[column], pl.List):
 
             # Raise an error if n_components is not specified for nested columns
             if n_components is None:
@@ -1099,14 +1142,32 @@ def _apply_on_columns(
             frame = frame.with_columns(
                 pl.concat_list(
                     [
-                        pl.col(column).list.get(component).map_batches(transformation)
+                        pl.col(column)
+                        .list.get(component)
+                        .map_batches(
+                            transformation,
+                            # If an override is provided, prefer it. For a list column we expect
+                            # the override to describe the inner element type.
+                            return_dtype=(
+                                return_dtype
+                                if return_dtype is not None
+                                else (
+                                    frame.schema[column].inner
+                                    if hasattr(frame.schema[column], 'inner')
+                                    else pl.Float64
+                                )
+                            ),
+                        )
                         for component in range(n_components)
                     ],
                 ).alias(column),
             )
         else:
             frame = frame.with_columns(
-                pl.col(column).map_batches(transformation).alias(column),
+                pl.col(column).map_batches(
+                    transformation,
+                    return_dtype=(return_dtype or frame.schema[column]),
+                ).alias(column),
             )
 
     return frame

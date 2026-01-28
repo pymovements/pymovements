@@ -8,17 +8,17 @@ resources:
     filename: "UCL_events.zip"
     md5: "77e3c0cacccb0a074a55d23aa8531ca5"
     filename_pattern: "eyetracking.fix"
+    load_kwargs:
+      read_csv_kwargs:
+        separator: "\t"
+        null_values:
+          - "NaN"
 
   - content: precomputed_reading_measures
     url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
     filename: "UCL_measures.zip"
     md5: "77e3c0cacccb0a074a55d23aa8531ca5"
     filename_pattern: "eyetracking.RT"
-
-custom_read_kwargs:
-  precomputed_events:
-    separator: "\t"
-    null_values:
-      - "NaN"
-  precomputed_reading_measures:
-    separator: "\t"
+    load_kwargs:
+      read_csv_kwargs:
+        separator: "\t"

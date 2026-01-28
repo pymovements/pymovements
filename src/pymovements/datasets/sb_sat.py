@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ from pymovements.gaze.experiment import Experiment
 class SBSAT(DatasetDefinition):
     """SB-SAT dataset :cite:p:`SB-SAT`.
 
-    This dataset includes monocular eye tracking data from a single participants in a single
+    This dataset includes monocular eye tracking data from a single participant in a single
     session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
     eye tracker and are provided as pixel coordinates.
 
@@ -63,7 +63,7 @@ class SBSAT(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -73,7 +73,7 @@ class SBSAT(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None
@@ -94,8 +94,9 @@ class SBSAT(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -139,6 +140,21 @@ class SBSAT(DatasetDefinition):
                         'time_column': 'time',
                         'time_unit': 'ms',
                         'pixel_columns': ['x_left', 'y_left'],
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'columns': [
+                                'time', 'book_name', 'screen_id',
+                                'x_left', 'y_left', 'pupil_left',
+                            ],
+                            'schema_overrides': {
+                                'time': pl.Int64,
+                                'book_name': pl.Utf8,
+                                'screen_id': pl.Int64,
+                                'x_left': pl.Float32,
+                                'y_left': pl.Float32,
+                                'pupil_left': pl.Float32,
+                            },
+                        },
                     },
                 },
                 {
@@ -147,6 +163,7 @@ class SBSAT(DatasetDefinition):
                     'filename': '18sat_fixfinal.csv',
                     'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
                     'filename_pattern': '18sat_fixfinal.csv',
+                    'load_kwargs': {'read_csv_kwargs': {'separator': ','}},
                 },
             ],
         ),
@@ -178,21 +195,4 @@ class SBSAT(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'gaze': {
-                    'separator': '\t',
-                    'columns': ['time', 'book_name', 'screen_id', 'x_left', 'y_left', 'pupil_left'],
-                    'schema_overrides': {
-                        'time': pl.Int64,
-                        'book_name': pl.Utf8,
-                        'screen_id': pl.Int64,
-                        'x_left': pl.Float32,
-                        'y_left': pl.Float32,
-                        'pupil_left': pl.Float32,
-                    },
-                },
-                'precomputed_events': {'separator': ','},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

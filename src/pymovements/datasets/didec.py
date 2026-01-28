@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ class DIDEC(DatasetDefinition):
     """DIDEC dataset :cite:p:`DIDEC`.
 
     The DIDEC eye-tracking data has two different data collections, (1) for the
-    description viewing task is more coherent than for the free-viewing task;
+    description viewing task it is more coherent than for the free-viewing task;
     (2) variation in image descriptions. The data was collected using BeGaze eye-tracker
     with a sampling rate of 250 Hz. The data collection contains 112 Dutch students,
     54 students completed the free viewing task, while 58 completed the image description task.
@@ -60,7 +60,7 @@ class DIDEC(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -70,7 +70,7 @@ class DIDEC(DatasetDefinition):
     trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
     time_column: str | None
@@ -91,8 +91,9 @@ class DIDEC(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -143,14 +144,11 @@ class DIDEC(DatasetDefinition):
                         'session': int,
                         'trial': int,
                     },
+                    'load_function': 'from_begaze',
                     'load_kwargs': {
                         'trial_columns': ['Stimulus'],
-                        'time_column': 'Time',
-                        'time_unit': 'ms',
-                        'pixel_columns': [
-                            'L POR X [px]', 'L POR Y [px]',
-                            'R POR X [px]', 'R POR Y [px]',
-                        ],
+                        'encoding': 'ascii',
+                        'prefer_eye': 'L',
                     },
                 },
             ],
@@ -165,7 +163,7 @@ class DIDEC(DatasetDefinition):
             screen_height_cm=29.7,
             distance_cm=70,
             origin='upper left',
-            sampling_rate=1000,
+            sampling_rate=250,
         ),
     )
 
@@ -183,29 +181,4 @@ class DIDEC(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': '\t',
-                # skip begaze tracker data
-                'skip_rows': 43,
-                'has_header': False,
-                'new_columns': [
-                    'Time',
-                    'Type',
-                    'Trial',
-                    'L POR X [px]',
-                    'L POR Y [px]',
-                    'R POR X [px]',
-                    'R POR Y [px]',
-                    'Timing',
-                    'Pupil Confidence',
-                    'L Plane',
-                    'R Plane',
-                    'L Event Info',
-                    'R Event Info',
-                    'Stimulus',
-                ],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

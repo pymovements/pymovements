@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@ from pymovements import exceptions
 from pymovements import gaze
 from pymovements import measure
 from pymovements import plotting
-from pymovements import reading_measures
 from pymovements import stimulus
 from pymovements import synthetic
 from pymovements import utils
@@ -37,14 +36,17 @@ from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
 from pymovements.events import EventDataFrame
-from pymovements.events import EventGazeProcessor
-from pymovements.events import EventProcessor
 from pymovements.events import Events
 from pymovements.gaze import Experiment
 from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
 from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
+from pymovements.measure import EVENT_MEASURES
+from pymovements.measure import EventProcessor
+from pymovements.measure import EventSamplesProcessor
+from pymovements.measure import ReadingMeasures
+from pymovements.measure import register_event_measure
 from pymovements.measure import register_sample_measure
 from pymovements.measure import SampleMeasureLibrary
 from pymovements.stimulus import text
@@ -63,7 +65,7 @@ __all__ = [
     'events',
     'Events',
     'EventDataFrame',
-    'EventGazeProcessor',
+    'EventSamplesProcessor',
     'EventProcessor',
 
     'gaze',
@@ -76,11 +78,15 @@ __all__ = [
     'exceptions',
 
     'measure',
+    'EVENT_MEASURES',
+    'register_event_measure',
+    'EventProcessor',
+    'EventSamplesProcessor',
+    'ReadingMeasures',
     'SampleMeasureLibrary',
     'register_sample_measure',
 
     'plotting',
-    'reading_measures',
     'stimulus',
     'synthetic',
     'utils',

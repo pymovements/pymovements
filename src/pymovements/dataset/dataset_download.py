@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -48,13 +48,13 @@ def download_dataset(
 
     This downloads all resources of the dataset. Per default this also extracts all archives
     into :py:meth:`Dataset.paths.raw`,
-    To save space on your device you can remove the archive files after
+    To save space on your device, you can remove the archive files after
     successful extraction with ``remove_finished=True``.
 
     If a corresponding file already exists in the local system, its checksum is calculated and
     checked against the expected checksum.
     Downloading will be evaded if the integrity of the existing file can be verified.
-    If the existing file does not match the expected checksum it is overwritten with the
+    If the existing file does not match the expected checksum, it is overwritten with the
     downloaded new file.
 
     Parameters

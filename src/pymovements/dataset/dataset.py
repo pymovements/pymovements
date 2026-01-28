@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,12 +34,13 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
-from pymovements.reading_measures import ReadingMeasures
+from pymovements.measure.reading import ReadingMeasures
 
 
 logging.basicConfig(level=logging.INFO)
@@ -67,6 +68,7 @@ class Dataset:
             path: str | Path | DatasetPaths,
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self._files: list[DatasetFile] = []
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
@@ -141,7 +143,11 @@ class Dataset:
             Returns self, useful for method cascading.
         """
         self.scan()
-        self.fileinfo = dataset_files.take_subset(fileinfo=self.fileinfo, subset=subset)
+        self.fileinfo, self._files = dataset_files.take_subset(
+            fileinfo=self.fileinfo,
+            files=self._files,
+            subset=subset,
+        )
 
         if self.definition.resources.has_content('gaze'):
             self.load_gaze_files(
@@ -234,7 +240,9 @@ class Dataset:
         RuntimeError
             If an error occurred during matching filenames or no files have been found.
         """
-        self.fileinfo = dataset_files.scan_dataset(definition=self.definition, paths=self.paths)
+        self.fileinfo, self._files = dataset_files.scan_dataset(
+            definition=self.definition, paths=self.paths,
+        )
         return self
 
     def load_gaze_files(
@@ -275,7 +283,7 @@ class Dataset:
         self._check_fileinfo()
         self.gaze = dataset_files.load_gaze_files(
             definition=self.definition,
-            fileinfo=self.fileinfo['gaze'],
+            files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             preprocessed=preprocessed,
             preprocessed_dirname=preprocessed_dirname,
@@ -303,16 +311,19 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
+        precomputed_event_files = [
+            file for file in self._files
+            if file.definition.content == 'precomputed_events'
+        ]
         self.precomputed_events = dataset_files.load_precomputed_event_files(
-            self.definition,
-            self.fileinfo['precomputed_events'],
-            self.paths,
+            definition=self.definition,
+            files=precomputed_event_files,
         )
 
     def load_precomputed_reading_measures(self) -> None:
         """Load precomputed reading measures.
 
-        This method checks that the file information for precomputed reading measures are
+        This method checks that the file information for precomputed reading measures is
         available, then loads each event file listed in
         `self.fileinfo['precomputed_reading_measures']` using the dataset definition and
         path settings. The resulting list of `ReadingMeasures` objects is assigned to
@@ -329,10 +340,13 @@ class Dataset:
             If the file info is missing or improperly formatted.
         """
         self._check_fileinfo()
+        reading_measure_files = [
+            file for file in self._files
+            if file.definition.content == 'precomputed_reading_measures'
+        ]
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
-            self.definition,
-            self.fileinfo['precomputed_reading_measures'],
-            self.paths,
+            definition=self.definition,
+            files=reading_measure_files,
         )
 
     def split_gaze_data(
@@ -363,7 +377,7 @@ class Dataset:
             self,
             by: list[str] | str,
     ) -> None:
-        """Split precomputed event data into separated PrecomputedEventDataFrame's.
+        """Split precomputed event data into separated ``PrecomputedEventDataFrame``.
 
         Parameters
         ----------
@@ -409,7 +423,7 @@ class Dataset:
         """
         self._check_fileinfo()
         events = dataset_files.load_event_files(
-            fileinfo=self.fileinfo['gaze'],
+            files=[file for file in self._files if file.definition.content == 'gaze'],
             paths=self.paths,
             events_dirname=events_dirname,
             extension=extension,
@@ -431,7 +445,7 @@ class Dataset:
         function: str
             Name of the preprocessing function to apply.
         verbose : bool
-            If True, show progress bar of computation. (default: True)
+            If True, show a progress bar of computation. (default: True)
         **kwargs: Any
             kwargs that will be forwarded when calling the preprocessing method.
 
@@ -514,7 +528,7 @@ class Dataset:
         output_column : str
             Name of the output column.
         verbose : bool
-            If True, show progress of computation. (default: True)
+            If True, show a progress of computation. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
 
@@ -527,7 +541,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply(
             'clip',
@@ -546,7 +560,7 @@ class Dataset:
             fill_null_strategy: str = 'interpolate_linear',
             verbose: bool = True,
     ) -> Dataset:
-        """Resample a DataFrame to a new sampling rate by timestamps in time column.
+        """Resample a DataFrame to a new sampling rate by timestamps in the time column.
 
         The DataFrame is resampled by upsampling or downsampling the data to the new sampling rate.
         Can also be used to achieve a constant sampling rate for inconsistent data.
@@ -564,7 +578,7 @@ class Dataset:
             are: 'forward', 'backward', 'interpolate_linear', 'interpolate_nearest'.
             (default: 'interpolate_linear')
         verbose: bool
-            If True, show progress of computation. (default: True)
+            If True, show a progress of computation. (default: True)
 
         Returns
         -------
@@ -637,7 +651,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply(
             'deg2pix',
@@ -681,7 +695,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply(
             'pos2acc',
@@ -723,7 +737,7 @@ class Dataset:
         ------
         AttributeError
             If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            if the experiment is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
@@ -747,10 +761,10 @@ class Dataset:
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
             the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
 
@@ -794,10 +808,10 @@ class Dataset:
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
             the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
-            If ``True``, event DataFrame will be overwritten with new DataFrame instead of being
+            If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
         **kwargs: Any
             Additional keyword arguments to be passed to the event detection method.
 
@@ -837,7 +851,7 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
+        UnknownMeasure
             If ``event_properties`` does not exist in the event dataframe
 
         Returns
@@ -865,13 +879,13 @@ class Dataset:
         name: str | None
             Process only events that match the name. (default: None)
         verbose : bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
         ValueError
@@ -910,7 +924,7 @@ class Dataset:
         name: str | None
             Process only events that match the name. (default: None)
         verbose: bool
-            If ``True``, show progress bar. (default: True)
+            If ``True``, show a progress bar. (default: True)
 
         Returns
         -------
@@ -919,9 +933,9 @@ class Dataset:
 
         Raises
         ------
-        InvalidProperty
-            If ``property_name`` is not a valid property. See
-            :py:mod:`pymovements.events` for an overview of supported properties.
+        UnknownMeasure
+            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(
             event_properties=event_properties,
@@ -976,7 +990,7 @@ class Dataset:
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
         extension: str
-            Extension specifies the fileformat to store the data. (default: 'feather')
+            Extension specifies the file format to store the data. (default: 'feather')
         """
         self.save_events(events_dirname, verbose=verbose, extension=extension)
         self.save_preprocessed(preprocessed_dirname, verbose=verbose, extension=extension)
@@ -1082,13 +1096,13 @@ class Dataset:
 
         This downloads all resources of the dataset. Per default this also extracts all archives
         into :py:meth:`Dataset.paths.raw`,
-        To save space on your device you can remove the archive files after
+        To save space on your device, you can remove the archive files after
         successful extraction with ``remove_finished=True``.
 
         If a corresponding file already exists in the local system, its checksum is calculated and
         checked against the expected checksum.
         Downloading will be evaded if the integrity of the existing file can be verified.
-        If the existing file does not match the expected checksum it is overwritten with the
+        If the existing file does not match the expected checksum, it is overwritten with the
         downloaded new file.
 
         Parameters
@@ -1099,7 +1113,7 @@ class Dataset:
             Remove archive files after extraction. (default: False)
         resume: bool
             Resume previous extraction by skipping existing files.
-            Checks for correct size of existing files but not integrity. (default: True)
+            Checks for the correct size of existing files but not integrity. (default: True)
         verbose: int
             Verbosity levels: (1) Show download progress bar and print info messages on downloading
             and extracting archive files without printing messages for recursive archive extraction.
@@ -1147,7 +1161,7 @@ class Dataset:
             If ``True``, remove the top-level directory if it has only one child. (default: True)
         resume: bool
             Resume previous extraction by skipping existing files.
-            Checks for correct size of existing files but not integrity. (default: True)
+            Checks for the correct size of existing files but not integrity. (default: True)
         verbose: int
             Verbosity levels: (1) Print messages for extracting each dataset resource without
             printing messages for recursive archives. (2) Print additional messages for each
@@ -1172,7 +1186,7 @@ class Dataset:
     def path(self) -> Path:
         """The path to the dataset directory.
 
-        The dataset path points to the dataset directory under the root path. Per default the
+        The dataset path points to the dataset directory under the root path. Per default, the
         dataset path points to the exact same directory as the root path. Add ``dataset_dirname``
         to your initialization call to specify an explicit dataset directory in your root path.
 
@@ -1183,7 +1197,7 @@ class Dataset:
 
         Example
         -------
-        By passing a `str` or a `Path` as `path` during initialization you can explicitly set the
+        By passing a `str` or a `Path` as `path` during initialization, you can explicitly set the
         directory path of the dataset:
         >>> import pymovements as pm
         >>>

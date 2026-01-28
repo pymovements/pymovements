@@ -10,6 +10,10 @@ resources:
     subject_id: '!int'
     session_id: '!int'
     truth_value: '!str'
+  load_kwargs:
+    read_csv_kwargs:
+      null_values: NA
+      quote_char: '"'
 experiment:
   eyetracker:
     sampling_rate: 600
@@ -18,7 +22,3 @@ experiment:
     height_px: 1080
     width_cm: 52.7
     height_cm: 29.6
-custom_read_kwargs:
-  precomputed_events:
-    null_values: NA
-    quote_char: '"'

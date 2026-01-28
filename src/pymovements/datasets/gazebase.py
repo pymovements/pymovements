@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ class GazeBase(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -94,9 +94,9 @@ class GazeBase(DatasetDefinition):
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -151,6 +151,19 @@ class GazeBase(DatasetDefinition):
                             'xT': 'x_target_pos',
                             'yT': 'y_target_pos',
                         },
+                        'read_csv_kwargs': {
+                            'null_values': 'NaN',
+                            'schema_overrides': {
+                                'n': pl.Int64,
+                                'x': pl.Float32,
+                                'y': pl.Float32,
+                                'val': pl.Int64,
+                                'dP': pl.Float32,
+                                'lab': pl.Int64,
+                                'xT': pl.Float32,
+                                'yT': pl.Float32,
+                            },
+                        },
                     },
                 },
             ],
@@ -181,20 +194,4 @@ class GazeBase(DatasetDefinition):
 
     column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'null_values': 'NaN',
-                'schema_overrides': {
-                    'n': pl.Int64,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'val': pl.Int64,
-                    'dP': pl.Float32,
-                    'lab': pl.Int64,
-                    'xT': pl.Float32,
-                    'yT': pl.Float32,
-                },
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

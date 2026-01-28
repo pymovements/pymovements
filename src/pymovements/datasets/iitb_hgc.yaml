@@ -12,6 +12,3 @@ resources:
       trial_columns:
         - participant_id
         - trial_id
-
-custom_read_kwargs:
-  precomputed_events: {}
