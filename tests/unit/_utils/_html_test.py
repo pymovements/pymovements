@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -131,6 +131,11 @@ def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
             [1, 2, 3],
             'list (3 items)',
             id='list',
+        ),
+        pytest.param(
+            (1, 2, 3),
+            'tuple (3 items)',
+            id='tuple',
         ),
         pytest.param(
             {'a': 1, 'b': 2},
