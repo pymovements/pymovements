@@ -121,6 +121,35 @@ def events2segmentation(
     │ 8    ┆ true  │
     │ 9    ┆ false │
     └──────┴───────┘
+    >>> # With trial columns
+    >>> events_df = pl.DataFrame({
+    ...     'name': ['blink', 'blink'],
+    ...     'onset': [2, 1],
+    ...     'offset': [3, 3],
+    ...     'trial': [1, 2],
+    ... })
+    ... gaze_df = pl.DataFrame({
+    ...     'time': pl.Series([0, 1, 2, 0, 1, 2, 3], dtype=pl.Int64),
+    ...     'trial': [1, 1, 1, 2, 2, 2, 2],
+    ... })
+    ... gaze_df.with_columns(
+    ...     events2segmentation(events_df, name='blink', trial_columns=['trial'])
+    ... )
+    ...
+    shape: (7, 3)
+    ┌──────┬───────┬───────┐
+    │ time ┆ trial ┆ blink │
+    │ ---  ┆ ---   ┆ ---   │
+    │ i64  ┆ i64   ┆ bool  │
+    ╞══════╪═══════╪═══════╡
+    │ 0    ┆ 1     ┆ false │
+    │ 1    ┆ 1     ┆ false │
+    │ 2    ┆ 1     ┆ true  │
+    │ 0    ┆ 2     ┆ false │
+    │ 1    ┆ 2     ┆ true  │
+    │ 2    ┆ 2     ┆ true  │
+    │ 3    ┆ 2     ┆ false │
+    └──────┴───────┴───────┘
     """
     if onset_column not in events.columns:
         raise ValueError(f"Onset column '{onset_column}' not found in events.")
@@ -147,16 +176,31 @@ def events2segmentation(
 
     # Check for overlaps
     if len(onsets) > 1:
+        # Check for overlaps within each trial
         if trial_columns:
-            # Check for overlaps within each trial
             for trial_group in relevant_events.group_by(trial_columns):
                 trial_onsets = trial_group[1][onset_column].to_numpy()
                 trial_offsets = trial_group[1][offset_column].to_numpy()
                 if _has_overlap(trial_onsets, trial_offsets):
-                    warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
+                    warnings.warn(
+                        f"Overlapping events detected for trial {trial_group[0]}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                     break
+
+        # Check for overlaps if no trialised check has been performed
         elif _has_overlap(onsets, offsets):
-            warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
+            # If trial column is present, mention that it might be needed
+            if 'trial' in events.columns:
+                warnings.warn(
+                    'Overlapping events detected. '
+                    'Consider providing trial_columns if events are trialized.',
+                    UserWarning,
+                    stacklevel=2,
+                )
+            else:
+                warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
 
     is_event = pl.repeat(False, pl.len())
     for event in relevant_events.to_dicts():

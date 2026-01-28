@@ -149,6 +149,17 @@ def test_events2segmentation_overlap_warning():
     assert result_df['blink'].to_list() == expected
 
 
+def test_events2segmentation_overlap_warning_trial_hint():
+    events_df = pl.DataFrame({
+        'name': ['blink', 'blink'],
+        'onset': [2, 1],
+        'offset': [4, 5],
+        'trial': [1, 2],
+    })
+    with pytest.warns(UserWarning, match='Consider providing trial_columns'):
+        events2segmentation(events_df, name='blink')
+
+
 @pytest.mark.parametrize(
     'segmentation, name, expected_dict',
     [
@@ -367,7 +378,7 @@ def test_events2segmentation_trialized_overlap_warning():
         'trial': [1] * 10,
     })
 
-    with pytest.warns(UserWarning, match='Overlapping events detected'):
+    with pytest.warns(UserWarning, match='Overlapping events detected for trial'):
         result_expr = events2segmentation(events_df, name='blink', trial_columns=['trial'])
 
     result_df = gaze_df.select(result_expr)
