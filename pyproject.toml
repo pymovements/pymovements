@@ -170,3 +170,5 @@ where = ["src"]
 
 [tool.setuptools-git-versioning]
 enabled = true
+dev_template = "{tag}+post{ccount}.{sha}"
+dirty_template = "{tag}+post{ccount}.{sha}.dirty"
