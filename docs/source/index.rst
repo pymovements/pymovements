@@ -10,7 +10,7 @@ Welcome to the pymovements documentation!
    :hidden:
    :maxdepth: 2
 
-   getting-started
+   user-guide/index
    tutorials/index
    datasets/index
    reference/index
