@@ -4,7 +4,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 try:
     __version__ = version("pymovements")
-except PackageNotFoundError as exception:
+except PackageNotFoundError as exception:  # pragma: no cover
     exception.add_note(
         'Inferring pymovements version failed. '
         'Please install pymovements with your package manager.',
