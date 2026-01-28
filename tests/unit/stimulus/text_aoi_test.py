@@ -30,24 +30,51 @@ from pymovements.stimulus.text import TextStimulus
 
 
 @pytest.mark.parametrize(
-    ('x', 'y', 'expected', 'expected_len'),
+    ('x', 'y', 'expected', 'expect_len', 'expect_warning'),
     [
-        pytest.param(5, 5, 'L1', 2, id='inside_overlap_picks_first'),
-        pytest.param(15, 5, None, 1, id='outside_none'),
+        pytest.param(5, 5, 'W1', 2, True, id='inside_overlap_warns_and_picks_first'),
+        pytest.param(15, 5, None, 1, False, id='outside_no_warning'),
     ],
 )
 def test_get_aoi_overlap_warns(
-    stimulus_overlap: TextStimulus, x: int, y: int, expected: str | None, expected_len: int,
+    x: int,
+    y: int,
+    expected: str | None,
+    expect_len: int,
+    expect_warning: bool,
 ) -> None:
-    row = {'__x': x, '__y': y}
-    if expected is not None:
-        with pytest.warns(UserWarning, match='Multiple AOIs matched'):
-            out = stimulus_overlap.get_aoi(row=row, x_eye='__x', y_eye='__y')
+    """Overlap handling for width/height-configured stimulus."""
+    df = pl.DataFrame(
+        {
+            'label': ['W1', 'W2'],
+            'sx': [0, 0],
+            'sy': [0, 0],
+            # Two AOIs of identical size/position -> complete overlap
+            'width': [10, 10],
+            'height': [10, 10],
+        },
+    )
+    stim = TextStimulus(
+        aois=df,
+        aoi_column='label',
+        start_x_column='sx',
+        start_y_column='sy',
+        width_column='width',
+        height_column='height',
+    )
+
+    row = {'x': x, 'y': y}
+    if expect_warning:
+        with pytest.warns(
+            UserWarning,
+            match=r'Multiple AOIs matched this point \(x=',
+        ):
+            out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
     else:
-        out = stimulus_overlap.get_aoi(row=row, x_eye='__x', y_eye='__y')
+        out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
 
     labels = out.get_column('label').to_list()
-    assert len(labels) == expected_len
+    assert len(labels) == expect_len
     assert labels[0] == expected
 
 

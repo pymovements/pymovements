@@ -216,16 +216,9 @@ def test_events_map_to_aois_grouped_by_trial_page(stimulus_with_trial_page: Text
 
 # Test for Events.map_to_aois preserve_structure flag
 
-@pytest.mark.parametrize(
-    'preserve_structure,expect_drop_location', [
-        (True, True),
-        (False, False),
-    ],
-)
-def test_events_map_to_aois_preserve_structure_flag(
+
+def test_events_map_to_aois_preserve_structure_true(
     simple_stimulus: TextStimulus,
-    preserve_structure: bool,
-    expect_drop_location: bool,
 ) -> None:
     # Frame contains only list column 'location'
     df = pl.DataFrame(
@@ -238,30 +231,50 @@ def test_events_map_to_aois_preserve_structure_flag(
     )
     events = Events(data=df)
 
-    events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure)
+    events.map_to_aois(simple_stimulus, preserve_structure=True)
 
     cols = set(events.frame.columns)
-    if expect_drop_location:
-        assert 'location' not in cols
-        # Derived component columns must exist when dropping took place
-        assert {'location_x', 'location_y'}.issubset(cols)
-    else:
-        assert 'location' in cols
-        assert 'location_x' not in cols and 'location_y' not in cols
+    assert 'location' not in cols
+    # Derived component columns must exist when dropping took place
+    assert {'location_x', 'location_y'}.issubset(cols)
 
     # AOI labels should still be mapped correctly for fixation and None for saccade
     labels = events.frame.get_column('label').to_list()
     assert labels == ['A', None]
+
+
+def test_events_map_to_aois_preserve_structure_false(
+    simple_stimulus: TextStimulus,
+) -> None:
+    # Frame contains only list column 'location'
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'saccade'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[5, 5], [5, 5]],
+        },
+    )
+    events = Events(data=df)
+
+    events.map_to_aois(simple_stimulus, preserve_structure=False)
+
+    cols = set(events.frame.columns)
+    assert 'location' in cols
+    assert 'location_x' not in cols and 'location_y' not in cols
+
+    # AOI labels should still be mapped correctly for fixation and None for saccade
+    labels = events.frame.get_column('label').to_list()
+    assert labels == ['A', None]
+
 
 # Specifically tests the backward-compatibility block that drops the original
 # 'location' list column at the end of Events.map_to_aois when component columns
 # already exist. The block should only apply if preserve_structure=True.
 
 
-@pytest.mark.parametrize('preserve', [True, False])
-def test_end_drop_location_when_components_exist(
+def test_end_drop_location_when_components_exist_preserve_true(
     simple_stimulus: TextStimulus,
-    preserve: bool,
 ) -> None:
     # Prepare events with BOTH 'location' list and component columns present from the start.
     # This skips the early derive-and-drop path (since components exist), exercising the
@@ -280,8 +293,8 @@ def test_end_drop_location_when_components_exist(
     )
     events = Events(df)
 
-    # Map to AOIs with parameterized preserve_structure
-    events.map_to_aois(simple_stimulus, preserve_structure=preserve)
+    # Map to AOIs with preserve_structure=True
+    events.map_to_aois(simple_stimulus, preserve_structure=True)
 
     cols = set(events.frame.columns)
     labels = events.frame.get_column(simple_stimulus.aoi_column).to_list()
@@ -289,16 +302,45 @@ def test_end_drop_location_when_components_exist(
     # AOI labels: first inside [0,10)x[0,10) -> 'A' - second outside -> None
     assert labels == ['A', None]
 
-    if preserve:
-        # When preserving legacy structure, we drop the original list column at the end
-        # if component columns are present.
-        assert 'location' not in cols
-        assert 'location_x' in cols and 'location_y' in cols
-    else:
-        # When not preserving structure, we do not drop the list column at the end.
-        assert 'location' in cols
-        # Component columns should remain untouched
-        assert 'location_x' in cols and 'location_y' in cols
+    # When preserving legacy structure, we drop the original list column at the end
+    # if component columns are present.
+    assert 'location' not in cols
+    assert 'location_x' in cols and 'location_y' in cols
+
+
+def test_end_drop_location_when_components_exist_preserve_false(
+    simple_stimulus: TextStimulus,
+) -> None:
+    # Prepare events with BOTH 'location' list and component columns present from the start.
+    # This skips the early derive-and-drop path (since components exist), exercising the
+    # end-of-function drop guarded by preserve_structure.
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            # list column (legacy pipelines might keep it around)
+            'location': [[5.0, 5.0], [15.0, 5.0]],
+            # pre-existing component columns
+            'location_x': [5.0, 15.0],
+            'location_y': [5.0, 5.0],
+        },
+    )
+    events = Events(df)
+
+    # Map to AOIs with preserve_structure=False
+    events.map_to_aois(simple_stimulus, preserve_structure=False)
+
+    cols = set(events.frame.columns)
+    labels = events.frame.get_column(simple_stimulus.aoi_column).to_list()
+
+    # AOI labels: first inside [0,10)x[0,10) -> 'A' - second outside -> None
+    assert labels == ['A', None]
+
+    # When not preserving structure, we do not drop the list column at the end.
+    assert 'location' in cols
+    # Component columns should remain untouched
+    assert 'location_x' in cols and 'location_y' in cols
 
 
 @pytest.mark.parametrize('preserve_structure', [True, False])
@@ -338,16 +380,15 @@ def test_events_map_to_aois_no_new_columns_when_all_aoi_columns_present(
     assert ev.frame.select('label').item() == 'pre'
 
 
-@pytest.mark.parametrize('preserve_structure', [True, False])
-def test_previous_saccades_untouched_after_map_to_aois(
+def test_map_to_aois_preserves_saccades_with_structure(
     simple_stimulus: TextStimulus,
-    preserve_structure: bool,
 ) -> None:
-    """Events with preceding saccades remain unchanged by map_to_aois.
+    """Events with preceding saccades remain unchanged by map_to_aois with preserve_structure=True.
 
     - AOIs are only mapped for fixation rows.
     - Saccade rows keep their original fields (name/onset/offset and location or its components),
       and receive only None values in the appended AOI columns.
+    - location list is dropped and components are derived.
     """
     # Build a frame where a saccade precedes a fixation (and another saccade follows).
     base = pl.DataFrame(
@@ -362,38 +403,68 @@ def test_previous_saccades_untouched_after_map_to_aois(
     original = base.clone()
 
     events = Events(data=base)
-    events.map_to_aois(simple_stimulus, preserve_structure=preserve_structure)
+    events.map_to_aois(simple_stimulus, preserve_structure=True)
 
     # only middle fixation is inside AOI 'A'
     labels = events.frame.get_column('label').to_list()
     assert labels == [None, 'A', None]
 
     # Verify saccade rows are unchanged (except for expected structural handling)
-    if preserve_structure:
-        # location list is dropped and components are derived
-        assert 'location' not in events.frame.columns
-        assert {'location_x', 'location_y'}.issubset(set(events.frame.columns))
-        # Check each saccade's fields
-        for idx in (0, 2):
-            row_after = events.frame.row(idx, named=True)
-            row_before = original.row(idx, named=True)
-            assert row_after['name'] == row_before['name'] == 'saccade'
-            assert row_after['onset'] == row_before['onset']
-            assert row_after['offset'] == row_before['offset']
-            # Components equal original list components
-            assert row_after['location_x'] == row_before['location'][0]
-            assert row_after['location_y'] == row_before['location'][1]
-            # AOI label None for saccades
-            assert row_after['label'] is None
-    else:
-        # location list is preserved and there are no derived components
-        assert 'location' in events.frame.columns
-        assert 'location_x' not in events.frame.columns and 'location_y' not in events.frame.columns
-        for idx in (0, 2):
-            row_after = events.frame.row(idx, named=True)
-            row_before = original.row(idx, named=True)
-            assert row_after['name'] == row_before['name'] == 'saccade'
-            assert row_after['onset'] == row_before['onset']
-            assert row_after['offset'] == row_before['offset']
-            assert row_after['location'] == row_before['location']
-            assert row_after['label'] is None
+    # location list is dropped and components are derived
+    assert 'location' not in events.frame.columns
+    assert {'location_x', 'location_y'}.issubset(set(events.frame.columns))
+    # Check each saccade's fields
+    for idx in (0, 2):
+        row_after = events.frame.row(idx, named=True)
+        row_before = original.row(idx, named=True)
+        assert row_after['name'] == row_before['name'] == 'saccade'
+        assert row_after['onset'] == row_before['onset']
+        assert row_after['offset'] == row_before['offset']
+        # Components equal original list components
+        assert row_after['location_x'] == row_before['location'][0]
+        assert row_after['location_y'] == row_before['location'][1]
+        # AOI label None for saccades
+        assert row_after['label'] is None
+
+
+def test_map_to_aois_preserves_saccades_without_structure(
+    simple_stimulus: TextStimulus,
+) -> None:
+    """Events with preceding saccades remain unchanged by map_to_aois with preserve_structure=False.
+
+    - AOIs are only mapped for fixation rows.
+    - Saccade rows keep their original fields (name/onset/offset and location or its components),
+      and receive only None values in the appended AOI columns.
+    - location list is preserved and there are no derived components.
+    """
+    # Build a frame where a saccade precedes a fixation (and another saccade follows).
+    base = pl.DataFrame(
+        {
+            'name': ['saccade', 'fixation', 'saccade'],
+            'onset': [0, 1, 2],
+            'offset': [1, 2, 3],
+            'location': [[5.0, 5.0], [5.0, 5.0], [15.0, 5.0]],
+        },
+    )
+
+    original = base.clone()
+
+    events = Events(data=base)
+    events.map_to_aois(simple_stimulus, preserve_structure=False)
+
+    # only middle fixation is inside AOI 'A'
+    labels = events.frame.get_column('label').to_list()
+    assert labels == [None, 'A', None]
+
+    # Verify saccade rows are unchanged (except for expected structural handling)
+    # location list is preserved and there are no derived components
+    assert 'location' in events.frame.columns
+    assert 'location_x' not in events.frame.columns and 'location_y' not in events.frame.columns
+    for idx in (0, 2):
+        row_after = events.frame.row(idx, named=True)
+        row_before = original.row(idx, named=True)
+        assert row_after['name'] == row_before['name'] == 'saccade'
+        assert row_after['onset'] == row_before['onset']
+        assert row_after['offset'] == row_before['offset']
+        assert row_after['location'] == row_before['location']
+        assert row_after['label'] is None
