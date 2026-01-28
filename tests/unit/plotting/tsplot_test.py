@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test tsplot."""
+
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import matplotlib.pyplot as plt
@@ -50,7 +53,7 @@ def gaze_fixture(request):
         x = np.empty((1,))
         y = np.empty((1,))
     else:
-        raise ValueError(f'{request.param} not supported as gaze fixture param')
+        raise ValueError(f"{request.param} not supported as gaze fixture param")
 
     arr = np.column_stack((x, y)).transpose()
 
@@ -88,7 +91,8 @@ def gaze_fixture(request):
             {
                 'zero_centered_yaxis': False,
                 'share_y': False,
-            }, id='zero_centered_yaxis_false_share_y_false',
+            },
+            id='zero_centered_yaxis_false_share_y_false',
         ),
         pytest.param({'show_yticks': False}, id='show_yticks_false'),
         pytest.param({'channels': ['x_pix']}, id='single_channel'),
@@ -96,7 +100,9 @@ def gaze_fixture(request):
         pytest.param({'channels': ['x_pix', 'y_pix']}, id='two_channels'),
         pytest.param(
             {
-                'channels': ['x_pix', 'y_pix'], 'n_rows': 1, 'n_cols': 2,
+                'channels': ['x_pix', 'y_pix'],
+                'n_rows': 1,
+                'n_cols': 2,
             },
             id='two_channels_explicit_rows_cols',
         ),
@@ -139,7 +145,8 @@ def test_tsplot_sets_title(gaze):
 
 
 @pytest.mark.parametrize(
-    'bad_x, bad_y', [
+    'bad_x, bad_y',
+    [
         (np.inf, 0.0),
         (np.nan, 0.0),
         (np.inf, np.nan),
@@ -152,7 +159,8 @@ def test_tsplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
         'position',
         [
             [bad_x, bad_y],
-        ] + gaze.samples['position'].to_list()[1:],
+        ]
+        + gaze.samples['position'].to_list()[1:],
     )
     # get index of 'position' column
     pos_index = gaze.samples.get_column_index('position')

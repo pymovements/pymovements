@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides private functions for downloading and extracting datasets."""
+
 from __future__ import annotations
 
 import shutil
@@ -36,13 +37,13 @@ from pymovements.exceptions import UnknownFileType
 
 
 def download_dataset(
-        definition: DatasetDefinition,
-        paths: DatasetPaths,
-        *,
-        extract: bool = True,
-        remove_finished: bool = False,
-        resume: bool = True,
-        verbose: bool = True,
+    definition: DatasetDefinition,
+    paths: DatasetPaths,
+    *,
+    extract: bool = True,
+    remove_finished: bool = False,
+    resume: bool = True,
+    verbose: bool = True,
 ) -> None:
     """Download dataset resources.
 
@@ -109,13 +110,13 @@ def download_dataset(
 
 
 def extract_dataset(
-        definition: DatasetDefinition,
-        paths: DatasetPaths,
-        *,
-        remove_finished: bool = False,
-        remove_top_level: bool = True,
-        resume: bool = True,
-        verbose: int = 1,
+    definition: DatasetDefinition,
+    paths: DatasetPaths,
+    *,
+    remove_finished: bool = False,
+    remove_top_level: bool = True,
+    resume: bool = True,
+    verbose: int = 1,
 ) -> None:
     """Extract downloaded dataset archive files.
 
@@ -165,10 +166,10 @@ def extract_dataset(
 
 
 def _download_resources(
-        mirrors: Sequence[str] | None,
-        resources: ResourceDefinitions,
-        target_dirpath: Path,
-        verbose: bool,
+    mirrors: Sequence[str] | None,
+    resources: ResourceDefinitions,
+    target_dirpath: Path,
+    verbose: bool,
 ) -> None:
     """Download resources."""
     for resource in resources:
@@ -179,9 +180,9 @@ def _download_resources(
 
 
 def _download_resource(
-        resource: ResourceDefinition,
-        target_dirpath: Path,
-        verbose: bool,
+    resource: ResourceDefinition,
+    target_dirpath: Path,
+    verbose: bool,
 ) -> None:
     """Download resource without mirrors."""
     if resource.url is None:
@@ -203,7 +204,7 @@ def _download_resource(
         if not resource.mirrors:
             raise RuntimeError(f"Downloading resource {resource.url} failed.") from error
 
-        warn(UserWarning(f'Downloading resource {resource.url} failed. Trying mirror.'))
+        warn(UserWarning(f"Downloading resource {resource.url} failed. Trying mirror."))
 
         success = _download_resource_from_mirrors(
             mirrors=resource.mirrors,
@@ -220,11 +221,11 @@ def _download_resource(
 
 
 def _download_resource_from_mirrors(
-        mirrors: list[str],
-        filename: str,
-        md5: str | None,
-        target_dirpath: Path,
-        verbose: bool,
+    mirrors: list[str],
+    filename: str,
+    md5: str | None,
+    target_dirpath: Path,
+    verbose: bool,
 ) -> bool:
     """Download resource from mirrors."""
     for mirror_idx, mirror_url in enumerate(mirrors, start=1):
@@ -239,9 +240,9 @@ def _download_resource_from_mirrors(
             return True  # Download successful, exit loop
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as error:
-            msg = f'Downloading resource from mirror {mirror_url} failed.'
+            msg = f"Downloading resource from mirror {mirror_url} failed."
             if mirror_idx < len(mirrors):
-                msg = msg + f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).'
+                msg = msg + f" Trying next mirror ({len(mirrors) - mirror_idx} remaining)."
             warning = UserWarning(msg)
             warning.__cause__ = error
             warn(warning)
@@ -250,10 +251,10 @@ def _download_resource_from_mirrors(
 
 
 def _download_resource_with_legacy_mirrors(
-        mirrors: Sequence[str],
-        resource: ResourceDefinition,
-        target_dirpath: Path,
-        verbose: bool,
+    mirrors: Sequence[str],
+    resource: ResourceDefinition,
+    target_dirpath: Path,
+    verbose: bool,
 ) -> None:
     """Download resource with mirrors."""
     if resource.url is None:
@@ -262,7 +263,7 @@ def _download_resource_with_legacy_mirrors(
         raise AttributeError('Resource.filename must not be None')
 
     for mirror_idx, mirror in enumerate(mirrors, start=1):
-        mirror_url = f'{mirror}{resource.url}'
+        mirror_url = f"{mirror}{resource.url}"
         try:
             download_file(
                 url=mirror_url,
@@ -277,8 +278,8 @@ def _download_resource_with_legacy_mirrors(
             # Error downloading the resource, try next mirror
             if mirror_idx < len(mirrors):
                 warning = UserWarning(
-                    f'Downloading resource from mirror {mirror_url} failed.'
-                    f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
+                    f"Downloading resource from mirror {mirror_url} failed."
+                    f" Trying next mirror ({len(mirrors) - mirror_idx} remaining).",
                 )
                 warning.__cause__ = error
                 warn(warning)

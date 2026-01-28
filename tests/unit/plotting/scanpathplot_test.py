@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test scanpathplot."""
+
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import matplotlib.colors
@@ -82,7 +85,7 @@ def make_events_fixture():
                 },
             )
         else:
-            raise ValueError(f'{name} not supported as events fixture name')
+            raise ValueError(f"{name} not supported as events fixture name")
 
         return Events(events)
 
@@ -253,7 +256,10 @@ def test_scanpathplot_noshow(gaze, monkeypatch):
     ],
 )
 def test_scanpathplot_filter_events_plots_expected_circles(
-        make_gaze_param, event_name, expected_n_circles, make_gaze,
+    make_gaze_param,
+    event_name,
+    expected_n_circles,
+    make_gaze,
 ):
     gaze = make_gaze(make_gaze_param)
     _, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
@@ -269,8 +275,7 @@ def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
         gaze=gaze,
         show=False,
         savepath=str(
-            tmp_path /
-            'test.svg',
+            tmp_path / 'test.svg',
         ),
     )
 
@@ -323,7 +328,6 @@ def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
         function_name='scanpathplot() argument events',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )
 
 

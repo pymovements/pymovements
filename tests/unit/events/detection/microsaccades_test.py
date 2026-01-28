@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all functions in pymovements.events.microsaccades."""
+
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from polars.testing import assert_frame_equal
@@ -225,12 +228,12 @@ def test_microsaccades_detects_saccades(kwargs, expected):
         ),
         pytest.param(
             {'method': 'engbert2003'},
-            {'value': np.array((1., 1.))},
+            {'value': np.array((1.0, 1.0))},
             id='engbert2003',
         ),
         pytest.param(
             {'method': 'engbert2015'},
-            {'value': np.array((1., 1.))},
+            {'value': np.array((1.0, 1.0))},
             id='engbert2015',
         ),
     ],

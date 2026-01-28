@@ -22,6 +22,7 @@
 .. deprecated:: v0.21.1
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 import re

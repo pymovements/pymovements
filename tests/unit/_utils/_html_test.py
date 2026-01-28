@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements HTML representations."""
+
+from __future__ import annotations
+
 import re
 
 import polars as pl
@@ -39,7 +42,7 @@ class Foo:
     @property
     def working_property(self) -> str:
         """Properties should be included in the HTML representation."""
-        return f'{self.a} {self.b}'
+        return f"{self.a} {self.b}"
 
     @property
     def failing_property(self) -> None:

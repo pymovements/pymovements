@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides top-level access to submodules."""
+
+from __future__ import annotations
+
 from pymovements import _version
 from pymovements import datasets
 from pymovements import events
@@ -51,7 +54,6 @@ from pymovements.measure import register_sample_measure
 from pymovements.measure import SampleMeasureLibrary
 from pymovements.stimulus import text
 
-
 __all__ = [
     'Dataset',
     'DatasetDefinition',
@@ -61,22 +63,18 @@ __all__ = [
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
-
     'events',
     'Events',
     'EventDataFrame',
     'EventSamplesProcessor',
     'EventProcessor',
-
     'gaze',
     'Experiment',
     'EyeTracker',
     'Screen',
     'Gaze',
     'GazeDataFrame',
-
     'exceptions',
-
     'measure',
     'EVENT_MEASURES',
     'register_event_measure',
@@ -85,12 +83,10 @@ __all__ = [
     'ReadingMeasures',
     'SampleMeasureLibrary',
     'register_sample_measure',
-
     'plotting',
     'stimulus',
     'synthetic',
     'utils',
-
     'text',
 ]
 

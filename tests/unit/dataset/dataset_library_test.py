@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test dataset library."""
+
+from __future__ import annotations
+
 import glob
 from pathlib import Path
 from unittest import mock
@@ -62,7 +65,7 @@ def test_raise_value_error_get_non_existent_dataset():
     with pytest.raises(KeyError) as exc_info:
         DatasetLibrary.get('NonExistent')
 
-    msg, = exc_info.value.args
+    (msg,) = exc_info.value.args
     error_msg_snippets = [
         'NonExistent',
         'not found in DatasetLibrary',
@@ -114,7 +117,7 @@ def test_dataset_library_contains_all_public_datasets_files():
         with open(filename, encoding='ascii') as f:
             dataset_file = yaml.safe_load(f)
         dataset_name = dataset_file['name']
-        assert dataset_name in library, f'please add {dataset_name} to `datasets.yaml`'
+        assert dataset_name in library, f"please add {dataset_name} to `datasets.yaml`"
 
 
 def test__add_shipped_datasets():

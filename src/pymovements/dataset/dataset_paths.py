@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """DatasetPaths module."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -62,16 +63,16 @@ class DatasetPaths:
     """
 
     def __init__(
-            self,
-            *,
-            root: str | Path = 'data',
-            dataset: str | None = None,
-            raw: str = 'raw',
-            events: str = 'events',
-            precomputed_events: str = 'precomputed_events',
-            precomputed_reading_measures: str = 'precomputed_reading_measures',
-            preprocessed: str = 'preprocessed',
-            downloads: str = 'downloads',
+        self,
+        *,
+        root: str | Path = 'data',
+        dataset: str | None = None,
+        raw: str = 'raw',
+        events: str = 'events',
+        precomputed_events: str = 'precomputed_events',
+        precomputed_reading_measures: str = 'precomputed_reading_measures',
+        preprocessed: str = 'preprocessed',
+        downloads: str = 'downloads',
     ):
         self._root = Path(root)
         self._dataset = dataset
@@ -83,11 +84,11 @@ class DatasetPaths:
         self._downloads = downloads
 
     def get_preprocessed_filepath(
-            self,
-            raw_filepath: Path,
-            *,
-            preprocessed_dirname: str | None = None,
-            extension: str = 'feather',
+        self,
+        raw_filepath: Path,
+        *,
+        preprocessed_dirname: str | None = None,
+        extension: str = 'feather',
     ) -> Path:
         """Get preprocessed filepath in accordance to filepath of the raw file.
 
@@ -126,11 +127,11 @@ class DatasetPaths:
         return preprocessed_file_dirpath / preprocessed_filename
 
     def raw_to_event_filepath(
-            self,
-            raw_filepath: Path,
-            *,
-            events_dirname: str | None = None,
-            extension: str = 'feather',
+        self,
+        raw_filepath: Path,
+        *,
+        events_dirname: str | None = None,
+        extension: str = 'feather',
     ) -> Path:
         """Get event filepath in accordance to filepath of the raw file.
 
@@ -173,12 +174,12 @@ class DatasetPaths:
     def root(self) -> Path:
         """The root path to your dataset.
 
-        Returns
+        Returns:
         -------
         Path
             The root path to your dataset.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>
@@ -204,12 +205,12 @@ class DatasetPaths:
     def dataset(self) -> Path:
         """The path to the dataset directory.
 
-        Returns
+        Returns:
         -------
         Path
             The path to the dataset directory.
 
-        Example
+        Example:
         -------
         By passing a `str` or a `Path` as `path` during initialization you can explicitly set the
         directory path of the dataset:
@@ -266,12 +267,12 @@ class DatasetPaths:
 
         The path points to the events directory under the dataset path.
 
-        Returns
+        Returns:
         -------
         Path
             The path to the events directory.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>
@@ -301,12 +302,12 @@ class DatasetPaths:
 
         The path points to the preprocessed data directory under the dataset path.
 
-        Returns
+        Returns:
         -------
         Path
             The path to the preprocessed data directory.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>
@@ -338,12 +339,12 @@ class DatasetPaths:
 
         The path points to the raw data directory under the dataset path.
 
-        Returns
+        Returns:
         -------
         Path
             Path to the raw data directory.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>
@@ -380,12 +381,12 @@ class DatasetPaths:
 
         The path points to the precomputed event data directory under the dataset path.
 
-        Returns
+        Returns:
         -------
         Path
             Path to the precomputed event data directory.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>
@@ -423,12 +424,12 @@ class DatasetPaths:
 
         The path points to the precomputed reading measure data directory under the dataset path.
 
-        Returns
+        Returns:
         -------
         Path
             Path to the precomputed reading measure data directory.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>
@@ -466,12 +467,12 @@ class DatasetPaths:
 
         The download path points to the download directory under the root path.
 
-        Returns
+        Returns:
         -------
         Path
             The path to the download directory under the root path.
 
-        Example
+        Example:
         -------
         >>> import pymovements as pm
         >>>

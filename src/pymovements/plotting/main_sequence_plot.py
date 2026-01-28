@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the main sequence plotting function."""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -37,24 +38,24 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 
 def main_sequence_plot(
-        events: Events | EventDataFrame | None = None,
-        *,
-        marker: str = 'o',
-        marker_size: float = 25,
-        marker_color: str = 'purple',
-        marker_alpha: float = 0.5,
-        fit: bool = True,
-        fit_measure: bool | Literal['r2', 's'] = True,
-        fit_color: str = 'red',
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        event_df: Events | EventDataFrame | None = None,
-        event_name: str = 'saccade',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-        **kwargs: Collection,
+    events: Events | EventDataFrame | None = None,
+    *,
+    marker: str = 'o',
+    marker_size: float = 25,
+    marker_color: str = 'purple',
+    marker_alpha: float = 0.5,
+    fit: bool = True,
+    fit_measure: bool | Literal['r2', 's'] = True,
+    fit_color: str = 'red',
+    figsize: tuple[int, int] = (15, 5),
+    title: str | None = None,
+    savepath: str | None = None,
+    show: bool = True,
+    event_df: Events | EventDataFrame | None = None,
+    event_name: str = 'saccade',
+    ax: plt.Axes | None = None,
+    closefig: bool | None = None,
+    **kwargs: Collection,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the saccade main sequence.
 

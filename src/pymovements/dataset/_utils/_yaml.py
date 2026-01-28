@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Yaml utilities."""
+
 from __future__ import annotations
 
 import builtins
@@ -29,9 +30,9 @@ import yaml
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,
-        prefix: str,
-        node: yaml.Node,
+    loader: yaml.SafeLoader,
+    prefix: str,
+    node: yaml.Node,
 ) -> type:
     """Resolve a YAML tag to a corresponding Python type.
 
@@ -92,10 +93,10 @@ def type_constructor(
     # module does not have this file type
     except AttributeError as exc:
         raise ValueError(
-            f'Unknown type: {type_attr} for module {module_name}',
+            f"Unknown type: {type_attr} for module {module_name}",
         ) from exc
     except ValueError as exc:
-        raise ValueError(f'Unknown {node=}') from exc
+        raise ValueError(f"Unknown {node=}") from exc
 
 
 def substitute_types(data: Any) -> Any:
@@ -106,8 +107,8 @@ def substitute_types(data: Any) -> Any:
         return [substitute_types(v) for v in data]
     if isinstance(data, type):
         if data.__module__ == 'builtins':
-            return f'!{data.__name__}'
-        return f'!{data.__module__}.{data.__name__}'
+            return f"!{data.__name__}"
+        return f"!{data.__module__}.{data.__name__}"
     return data
 
 

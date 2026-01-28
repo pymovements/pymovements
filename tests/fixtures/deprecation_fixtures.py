@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provide fixtures to assert deprecations."""
+
 from __future__ import annotations
 
 import re
@@ -33,11 +34,11 @@ def fixture_assert_deprecation_is_removed():
     regex = re.compile(r'.*will be removed in v(?P<version>[0-9]+[.][0-9]+[.][0-9]+)[.)].*')
 
     def _assert_deprecation_is_removed(
-            *,
-            function_name: str,
-            warning_message: str,
-            scheduled_version: str,
-            current_version: str | None = None,
+        *,
+        function_name: str,
+        warning_message: str,
+        scheduled_version: str,
+        current_version: str | None = None,
     ) -> None:
         """Assert that function deprecation is removed as scheduled.
 
@@ -70,8 +71,8 @@ def fixture_assert_deprecation_is_removed():
         if not match:
             raise AssertionError(
                 'DeprecationWarning message does not match regex.\n'
-                f'message: {warning_message}\n'
-                f'regex: {regex.pattern}',
+                f"message: {warning_message}\n"
+                f"regex: {regex.pattern}",
             )
 
         parsed_scheduled_version = match.groupdict()['version']
@@ -79,14 +80,15 @@ def fixture_assert_deprecation_is_removed():
         if parsed_scheduled_version != scheduled_version:
             raise AssertionError(
                 'scheduled version from warning message does not match expected version.\n'
-                f'parsed scheduled version: {parsed_scheduled_version}\n'
-                f'expected scheduled version: {scheduled_version}\n',
+                f"parsed scheduled version: {parsed_scheduled_version}\n"
+                f"expected scheduled version: {scheduled_version}\n",
             )
 
         current_version_stem = current_version.split('+')[0].split('-')[0]
 
         assert current_version_stem < scheduled_version, (
-            f'{function_name} was scheduled to be removed in v{scheduled_version}. '
-            f'Current version is v{current_version}.'
+            f"{function_name} was scheduled to be removed in v{scheduled_version}. "
+            f"Current version is v{current_version}."
         )
+
     return _assert_deprecation_is_removed

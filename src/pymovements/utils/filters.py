@@ -22,14 +22,16 @@
 .. deprecated:: v0.21.1
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 import numpy as np
 from deprecated.sphinx import deprecated
 
 from pymovements.events._utils._filters import events_split_nans as _events_split_nans
-from pymovements.events._utils._filters import filter_candidates_remove_nans \
-    as _filter_candidates_remove_nans
+from pymovements.events._utils._filters import (
+    filter_candidates_remove_nans as _filter_candidates_remove_nans,
+)
 
 
 @deprecated(
@@ -37,8 +39,8 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans \
     version='v0.21.1',
 )
 def filter_candidates_remove_nans(
-        candidates: list[np.ndarray],
-        values: np.ndarray,
+    candidates: list[np.ndarray],
+    values: np.ndarray,
 ) -> list[np.ndarray]:
     """Filter a list of candidates for an event-detection algorithm.
 
@@ -71,8 +73,8 @@ def filter_candidates_remove_nans(
     version='v0.21.1',
 )
 def events_split_nans(
-        candidates: list[np.ndarray],
-        values: np.ndarray,
+    candidates: list[np.ndarray],
+    values: np.ndarray,
 ) -> list[np.ndarray]:
     """Filter a list of candidates for an event-detection algorithm.
 
