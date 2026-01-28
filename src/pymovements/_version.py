@@ -1,5 +1,5 @@
 """Module for inferring pymovements version."""
-import warning
+import warnings
 from importlib.metadata import version, PackageNotFoundError
 
 try:
@@ -11,4 +11,5 @@ except PackageNotFoundError as exception:
     )
     warning = RuntimeWarning(*exception.args)
     warning.with_traceback(exception.__traceback__)
+    warnings.warn(warning)
     __version__ = 'unknown'
