@@ -15,6 +15,7 @@ Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampli
 ":py:class:`~pymovements.datasets.GazeOnFaces` :cite:p:`GazeOnFaces`",X,,,405,1,250 Hz,Video
 ":py:class:`~pymovements.datasets.GazeBase` :cite:p:`GazeBase`",X,,,322,1-9,1000 Hz,"Random Dots, Text (documents), Video, Game"
 ":py:class:`~pymovements.datasets.GazeBaseVR` :cite:p:`GazeBaseVR`",X,,,407,1-6,250 Hz,"Random Dots, Text (documents), Video, Game"
+":py:class:`~pymovements.datasets.GGTG` :cite:p:`GGTG`",X,X,X,24,1,1000 Hz,"Text (documents)"
 ":py:class:`~pymovements.datasets.HBN` :cite:p:`HBN`",X,,,1246,1,120 Hz,Video
 ":py:class:`~pymovements.datasets.InteRead` :cite:p:`InteRead`",X,X,,50,1,1200 Hz,Text (documents)
 ":py:class:`~pymovements.datasets.IITB_HGC` :cite:p:`IITB_HGC`",,X,,5,1,2000 Hz,Text (documents)

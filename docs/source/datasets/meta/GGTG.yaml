@@ -1,0 +1,43 @@
+name: GGTG
+long_name: Gaze-Guided Text Generation
+resources:
+- content: gaze
+  filename: samples.zip
+  url: https://osf.io/download/wdeq7/
+  md5: e26d81a46b7ffcdc3d0e8a0f069020c3
+  filename_pattern: '{subject_id}.csv'
+  load_kwargs:
+    trial_columns:
+    - stimulus
+    pixel_columns:
+    - pixel_x
+    - pixel_y
+- content: precomputed_events
+  filename: fixations.zip
+  url: https://osf.io/download/dvkwg/
+  md5: 9d8c7f84442671876c2190958c8bd0dc
+  filename_pattern: '{subject_id}.csv'
+  load_kwargs:
+    trial_columns:
+    - stimulus
+- content: precomputed_reading_measures
+  filename: measures.zip
+  url: https://osf.io/download/udmrk/
+  md5: 63d33923d04f56c95a3d52e5b89a4ebd
+  filename_pattern: '{subject_id}.csv'
+  load_kwargs:
+    trial_columns:
+    - stimulus
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+    model: EyeLink 1000 Plus
+    vendor: EyeLink
+    mount: desktop
+  screen:
+    width_px: 1100
+    height_px: 900
+    width_cm: 31.2
+    height_cm: 25.2
+    distance_cm: 66
+    origin: upper left
