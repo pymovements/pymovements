@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ from pymovements.datasets.gaze_graph import GazeGraph
 from pymovements.datasets.gaze_on_faces import GazeOnFaces
 from pymovements.datasets.gazebase import GazeBase
 from pymovements.datasets.gazebasevr import GazeBaseVR
+from pymovements.datasets.ggtg import GGTG
 from pymovements.datasets.hbn import HBN
 from pymovements.datasets.iitb_hgc import IITB_HGC
 from pymovements.datasets.interead import InteRead
@@ -71,6 +72,7 @@ __all__ = [
     'GazeBaseVR',
     'GazeGraph',
     'GazeOnFaces',
+    'GGTG',
     'HBN',
     'IITB_HGC',
     'InteRead',
