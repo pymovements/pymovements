@@ -78,6 +78,8 @@ def fixture_make_example_file(
             target_filename = example_filename
         source_filepath = testfiles_dirpath / example_filename
         target_filepath = tmp_path / target_filename
+        # assure parent directory exists
+        target_filepath.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_filepath, target_filepath)
         return target_filepath
     return _make_example_file

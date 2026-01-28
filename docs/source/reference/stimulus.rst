@@ -12,14 +12,3 @@ Stimulus
 
     ImageStimulus
     TextStimulus
-
-.. rubric:: Input / Output
-
-.. currentmodule:: pymovements.stimulus.text
-
-.. autosummary::
-    :toctree: api
-    :nosignatures:
-    :template: function.rst
-
-    from_file

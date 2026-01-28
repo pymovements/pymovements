@@ -22,6 +22,9 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import polars as pl
 import pyreadr
 import pytest
@@ -37,6 +40,9 @@ from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
+from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.stimulus import ImageStimulus
+from pymovements.stimulus import TextStimulus
 
 
 ASC_TEXT = r"""\
@@ -1300,3 +1306,71 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
         'fixation_begaze', 'saccade_begaze', 'blink_begaze',
     }
     assert gaze.trial_columns == ['trial_id']
+
+
+def test_load_stimulus_file_returns_text_stimulus():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='TextStimulus.from_csv',
+            load_kwargs={
+                'aoi_column': 'char',
+                'start_x_column': 'top_left_x',
+                'start_y_column': 'top_left_y',
+                'width_column': 'width',
+                'height_column': 'height',
+                'page_column': 'page',
+            },
+        ),
+    )
+    stimulus = load_stimulus_file(file)
+
+    assert isinstance(stimulus, TextStimulus)
+    assert stimulus.aois.shape == (20, 13)
+
+
+def test_load_stimulus_file_returns_image_stimulus():
+    filepath = Path('tests/files/stimuli/pexels-zoorg-1000498.jpg')
+    file = DatasetFile(
+        path=filepath,
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='ImageStimulus.from_file',
+        ),
+    )
+    stimulus = load_stimulus_file(file)
+
+    assert isinstance(stimulus, ImageStimulus)
+    assert stimulus.images == [filepath]
+
+
+def test_load_stimulus_file_raises_unknown_load_function():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='fail',
+        ),
+    )
+
+    message = 'Unknown load_function "fail". Known functions are:'
+    with pytest.raises(ValueError, match=message):
+        load_stimulus_file(file)
+
+
+def test_load_stimulus_file_raises_missing_load_kwargs():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(
+            content='stimulus',
+            load_function='TextStimulus.from_csv',
+        ),
+    )
+
+    message = re.escape(
+        'TextStimulus.from_csv() missing 3 required keyword-only arguments: '
+        "'aoi_column', 'start_x_column', and 'start_y_column'",
+    )
+    with pytest.raises(TypeError, match=message):
+        load_stimulus_file(file)

@@ -55,6 +55,45 @@ class ImageStimulus:
         """
         _draw_image_stimulus(self.images[stimulus_id], origin=origin, show=True)
 
+    @staticmethod
+    def from_file(path: str | Path) -> ImageStimulus:
+        """Load image stimulus from file.
+
+        Parameters
+        ----------
+        path:  str | Path
+            Path to image file to be read.
+
+        Returns
+        -------
+        ImageStimulus
+            Returns an ImageStimulus initialized with the image stimulus file.
+        """
+        return ImageStimulus(images=[Path(path)])
+
+    @staticmethod
+    def from_files(path: str | Path, filename_pattern: str) -> ImageStimulus:
+        """Load image stimulus from file.
+
+        Parameters
+        ----------
+        path:  str | Path
+            Path to directory with image stimulus files.
+        filename_pattern:  str
+            Pattern of the image stimulus file names.
+
+        Returns
+        -------
+        ImageStimulus
+            Returns an ImmageStimulus initialized with all matched image stimulus files.
+        """
+        filenames = get_filepaths(path, regex=curly_to_regex(filename_pattern))
+        image_stimuli = []
+        for filename in filenames:
+            image_stimuli.append(filename)
+
+        return ImageStimulus(image_stimuli)
+
 
 def from_file(image_path: str | Path) -> ImageStimulus:
     """Load image stimulus from file.
@@ -69,10 +108,7 @@ def from_file(image_path: str | Path) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    if isinstance(image_path, str):
-        image_path = Path(image_path)
-
-    return ImageStimulus(images=[image_path])
+    return ImageStimulus.from_file(path=image_path)
 
 
 def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
@@ -90,15 +126,7 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    filenames = get_filepaths(
-        path,
-        regex=curly_to_regex(filename_format),
-    )
-    image_stimuli = []
-    for filename in filenames:
-        image_stimuli.append(filename)
-
-    return ImageStimulus(image_stimuli)
+    return ImageStimulus.from_files(path, filename_format)
 
 
 def _draw_image_stimulus(
