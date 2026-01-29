@@ -83,7 +83,7 @@ jobs:
         if: success() || failure()
         uses: codecov/codecov-action@v5
         env:
-          CODECOV_TOKEN: ${{ inputs.codecov_token || secrets.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   pylint:
     name: pylint
