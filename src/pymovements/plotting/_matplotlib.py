@@ -320,6 +320,7 @@ def _setup_axes_and_colormap(
 
     return fig, ax, cmap, cmap_norm, cval, show_cbar
 
+
 def _draw_arrow_data(
     fixation_x: np.ndarray,
     fixation_y: np.ndarray,
@@ -332,15 +333,18 @@ def _draw_arrow_data(
     """Draw arrow data as arrows and return the collection."""
     arrows = []
     for i in range(len(fixation_x) - 1):
-        arrow = FancyArrowPatch((fixation_x[i], fixation_y[i]), (fixation_x[i+1], fixation_y[i+1]),
-                                arrowstyle=arrowstyle,
-                                connectionstyle='arc3,rad=' + str(rad),
-                                color=color,
-                                mutation_scale=mutation_scale)
+        arrow = FancyArrowPatch(
+            (fixation_x[i], fixation_y[i]), (fixation_x[i + 1], fixation_y[i + 1]),
+            arrowstyle=arrowstyle,
+            connectionstyle='arc3,rad=' + str(rad),
+            color=color,
+            mutation_scale=mutation_scale,
+        )
         arrows.append(arrow)
     arrow_collection = PatchCollection(arrows)
     collection = ax.add_collection(arrow_collection)
     return collection
+
 
 def _draw_line_data(
     x_signal: np.ndarray,
