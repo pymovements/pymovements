@@ -20,6 +20,8 @@
 """Test public dataset definitions."""
 from __future__ import annotations
 
+import string
+
 import pytest
 
 import pymovements as pm
@@ -56,8 +58,7 @@ from pymovements import DatasetLibrary
         pytest.param(pm.datasets.MouseCursor, 'MouseCursor', id='MouseCursor'),
         pytest.param(pm.datasets.OneStop, 'OneStop', id='OneStop'),
         pytest.param(pm.datasets.PoTeC, 'PoTeC', id='PoTeC'),
-        pytest.param(
-            pm.datasets.PotsdamBingeRemotePVT,
+        pytest.param(pm.datasets.PotsdamBingeRemotePVT,
             'PotsdamBingeRemotePVT',
             id='PotsdamBingeRemotePVT',
         ),
@@ -79,5 +80,16 @@ def test_public_dataset_registered(definition, dataset_name):
     assert dataset_name in DatasetLibrary.names()
     definition_from_library = DatasetLibrary.get(dataset_name)
 
-    # simple equal between objects does not work as classes have different names.
-    assert definition().to_dict() == definition_from_library.to_dict()
+    # simple equal between objects does not work as inheriting classes have different names.
+    # Don't include description in equality check. We will get rid of the python class soon anyway.
+    yaml_dict = {k: v for k, v in definition_from_library.to_dict().items() if k != 'description'}
+    assert definition().to_dict() == yaml_dict
+
+    assert isinstance(definition_from_library.description, str)
+
+    # ignore whitespace differences
+    whitespace = {ord(c): None for c in string.whitespace}
+    yaml_description = definition_from_library.description.translate(whitespace)
+    class_docstring = definition.__doc__.split('Attributes')[0].translate(whitespace)
+
+    assert yaml_description == class_docstring
