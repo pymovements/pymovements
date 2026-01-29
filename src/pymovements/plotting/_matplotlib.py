@@ -34,6 +34,8 @@ import numpy as np
 import PIL.Image
 from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import FancyArrowPatch
 
 from pymovements.gaze.experiment import Screen
 
@@ -318,6 +320,27 @@ def _setup_axes_and_colormap(
 
     return fig, ax, cmap, cmap_norm, cval, show_cbar
 
+def _draw_arrow_data(
+    fixation_x: np.ndarray,
+    fixation_y: np.ndarray,
+    ax: plt.Axes,
+    rad: float = 0.25,
+    color: str = 'black',
+    arrowstyle: str = 'simple',
+    mutation_scale: float = 40.,
+) -> PatchCollection:
+    """Draw arrow data as arrows and return the collection."""
+    arrows = []
+    for i in range(len(fixation_x) - 1):
+        arrow = FancyArrowPatch((fixation_x[i], fixation_y[i]), (fixation_x[i+1], fixation_y[i+1]),
+                                arrowstyle=arrowstyle,
+                                connectionstyle='arc3,rad=' + str(rad),
+                                color=color,
+                                mutation_scale=mutation_scale)
+        arrows.append(arrow)
+    arrow_collection = PatchCollection(arrows)
+    collection = ax.add_collection(arrow_collection)
+    return collection
 
 def _draw_line_data(
     x_signal: np.ndarray,
