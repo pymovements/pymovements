@@ -27,9 +27,9 @@ from typing import Any
 
 from tqdm.auto import tqdm
 
-from pymovements._version import get_versions
+from pymovements._version import __version__
 
-USER_AGENT: str = f"pymovements/{get_versions()['version']}"
+USER_AGENT: str = f"pymovements/{__version__}"
 
 
 def download_file(
