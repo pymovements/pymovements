@@ -207,11 +207,19 @@ def gaze_fixture(request, make_gaze):
             id='set_title',
         ),
         pytest.param(
-            {'add_traceplot': True},
+            {
+                'add_traceplot': True,
+                'add_arrows': False,
+            },
             id='set_traceplot',
         ),
         pytest.param(
-            {'add_traceplot': True, 'cval': np.arange(0, 200), 'show_cbar': True},
+            {
+                'add_traceplot': True,
+                'add_arrows': False,
+                'cval': np.arange(0, 200),
+                'show_cbar': True,
+            },
             id='set_traceplot_and_cbar',
         ),
         pytest.param(

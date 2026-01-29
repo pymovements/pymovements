@@ -117,7 +117,8 @@ def scanpathplot(
     add_stimulus: bool
         Boolean value indicating whether to plot the scanpath on the stimuls. (default: False)
     add_arrows: bool
-        Boolean value indicating whether to plot the scanpath with arrows connecting events. (default: True)
+        Boolean value indicating whether to plot the scanpath with arrows
+        connecting events. (default: True)
     arrow_color: str
         Color of arrows. (default: 'black')
     arrow_rad: float
@@ -228,6 +229,10 @@ def scanpathplot(
             x_signal,
             y_signal,
             ax,
+            color=arrow_color,
+            rad=arrow_rad,
+            arrowstyle=arrowstyle,
+            mutation_scale=mutation_scale,
         )
 
     if gaze is not None and gaze.experiment is not None:
