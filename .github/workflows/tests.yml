@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       codecov_token:
-        required: true
+        required: false
   workflow_dispatch:
 
 concurrency:
