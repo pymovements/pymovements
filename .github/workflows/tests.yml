@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
   workflow_call:
+    inputs:
+      codecov_token:
+        required: true
   workflow_dispatch:
 
 concurrency:
@@ -80,7 +83,7 @@ jobs:
         if: success() || failure()
         uses: codecov/codecov-action@v5
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ inputs.codecov_token || secrets.CODECOV_TOKEN }}
 
   pylint:
     name: pylint
