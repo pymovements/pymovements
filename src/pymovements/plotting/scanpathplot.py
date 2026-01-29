@@ -225,7 +225,7 @@ def scanpathplot(
             fig.colorbar(line, label=cbar_label, ax=ax)
 
     if add_arrows:
-        arrows = _draw_arrow_data(
+        _draw_arrow_data(
             x_signal,
             y_signal,
             ax,
