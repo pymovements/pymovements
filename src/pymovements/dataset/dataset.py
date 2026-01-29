@@ -452,6 +452,7 @@ class Dataset:
         stimulus objects is assigned to ``Dataset.stimuli``.
 
         Supported file extensions:
+
         - CSV-like: .csv, .tsv, .txt
 
         Raises
