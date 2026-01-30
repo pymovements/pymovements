@@ -901,3 +901,27 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
     # utilities.
     assert 'data_loss_ratio' in gaze._metadata
     assert 'data_loss_ratio_blinks' in gaze._metadata
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_keyerror(
+        make_text_file,
+):
+    """Orphaned event end markers with custom patterns should not raise KeyError, but should warn.
+
+    This test reproduces a scenario where an event end marker appears before the
+    associated context dictionary has been populated with keys from custom patterns.
+    """
+    body = (
+        'EFIX R 1000 1100 100 500.0 500.0 1000\n'
+        'MSG 1200 START_TRIAL_1\n'
+    )
+    patterns = [r'START_TRIAL_(?P<trial_id>\d+)']
+    filepath = make_text_file(filename='orphaned_event.asc', body=body)
+
+    with pytest.warns(UserWarning, match='Missing start marker before end for event'):
+        from_asc(filepath, patterns=patterns)
