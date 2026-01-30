@@ -546,7 +546,7 @@ def parse_eyelink(
 
             for additional_column in additional_columns:
                 events[additional_column].append(
-                    current_event_additional[event_name][eye][additional_column],
+                    current_event_additional[event_name][eye].get(additional_column),
                 )
             current_event_additional[event_name][eye] = {}
 
