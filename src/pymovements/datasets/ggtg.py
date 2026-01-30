@@ -43,13 +43,6 @@ class GGTG(DatasetDefinition):
     Check the respective paper :cite:p:`GGTG` and the `OSF repository <https://osf.io/rhgbk/>`__
     for details.
 
-    Warning
-    -------
-    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
-    parsing of individual files.
-
-    See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
-
     Attributes
     ----------
     name: str
@@ -104,7 +97,7 @@ class GGTG(DatasetDefinition):
 
     _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
-    long_name: str = 'Corpus of Eye Movements for Linguistic Acceptability'
+    long_name: str = 'Gaze-Guided Text Generation'
 
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
