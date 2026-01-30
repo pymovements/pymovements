@@ -1,9 +1,8 @@
 [build-system]
 requires = [
   "setuptools>=61.0.0",
-  "setuptools-git-versioning",
-  "versioneer[toml]>=0.29",
-  "wheel"
+  "wheel",
+  "setuptools-git-versioning>=3.0"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -171,11 +170,5 @@ where = ["src"]
 
 [tool.setuptools-git-versioning]
 enabled = true
-
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "src/pymovements/_version.py"
-versionfile_build = "src/pymovements/_version.py"
-tag_prefix = "v"
-parentdir_prefix = "pymovements-"
+dev_template = "{tag}+post{ccount}.{sha}"
+dirty_template = "{tag}+post{ccount}.{sha}.dirty"
