@@ -27,6 +27,8 @@ from pymovements.events.detection._library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
+from pymovements.events.segmentation import events2segmentation
+from pymovements.events.segmentation import segmentation2events
 
 
 __all__ = [
@@ -36,6 +38,8 @@ __all__ = [
     'idt',
     'ivt',
     'microsaccades',
+    'events2segmentation',
+    'segmentation2events',
 
     'PrecomputedEventDataFrame',
     'Events',

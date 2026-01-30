@@ -41,6 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events import events2segmentation
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
@@ -1224,6 +1225,119 @@ class Gaze:
                 for trial_values, df in
                 self.samples.group_by(self.trial_columns, maintain_order=True)
             ],
+        )
+
+    def measure_events_ratio(
+        self,
+        name: str,
+        time_column: str = 'time',
+        *,
+        onset_column: str = 'onset',
+        offset_column: str = 'offset',
+    ) -> polars.Expr:
+        r"""Calculate ratio of samples associated with specific events.
+
+        This method computes the ratio of samples that are associated with events
+        having a specific name.
+        It uses the :py:func:`~pymovements.events.segmentation.events2segmentation` function to
+        create a binary segmentation map and then calculates the ratio as:
+
+        .. math::
+            \frac{\sum_{i=1}^{n} \mathrm{segmentation}_i}{\mathrm{num\_samples}}
+
+        Parameters
+        ----------
+        name: str
+            Name of events to include in the ratio calculation.
+        time_column: str
+            Name of the timestamp column in the samples data. (default: 'time')
+        onset_column: str
+            Name of the column containing event onset times (default: 'onset').
+        offset_column: str
+            Name of the column containing event offset times (default: 'offset').
+
+        Returns
+        -------
+        polars.Expr
+            An expression that calculates the event ratio.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     samples=pl.DataFrame({
+        ...         'time': [0, 1, 2, 3],
+        ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+        ...     }),
+        ...     events=pm.Events(
+        ...         name=['blink'],
+        ...         onsets=[1],
+        ...         offsets=[3],
+        ...     ),
+        ... )
+        >>> gaze.samples.select(gaze.measure_events_ratio('blink'))
+        shape: (1, 1)
+        ┌───────────────────┐
+        │ event_ratio_blink │
+        │ ---               │
+        │ f64               │
+        ╞═══════════════════╡
+        │ 0.5               │
+        └───────────────────┘
+
+        Raises
+        ------
+        ValueError
+            If `name` is not a non-empty string.
+        TypeError
+            If `time_column` is not a string.
+        KeyError
+            If `time_column` is not present in the samples DataFrame.
+        """
+        if not isinstance(name, str) or not name:
+            raise ValueError(
+                f"name must be a non-empty string, but got: {name!r}",
+            )
+
+        if not isinstance(time_column, str):
+            raise TypeError(
+                f"invalid type for 'time_column'. "
+                f"Expected 'str' , got '{type(time_column).__name__}'",
+            )
+
+        if time_column not in self.samples.columns:
+            raise ValueError(
+                f"time_column '{time_column}' not found in samples. "
+                f"Available columns: {self.samples.columns}",
+            )
+
+        if self.events is not None and not self.events.frame.is_empty():
+            events_df = self.events.frame
+        else:
+            events_df = polars.DataFrame(
+                schema={
+                    'name': polars.String,
+                    onset_column: self.samples.schema[time_column],
+                    offset_column: self.samples.schema[time_column],
+                    **(
+                        {col: self.samples.schema[col] for col in self.trial_columns}
+                        if self.trial_columns else {}
+                    ),
+                },
+            )
+
+        return (
+            events2segmentation(
+                events=events_df,
+                name=name,
+                time_column=time_column,
+                trial_columns=self.trial_columns,
+                onset_column=onset_column,
+                offset_column=offset_column,
+            )
+            .mean()
+            .alias(f"event_ratio_{name}")
         )
 
     @property
