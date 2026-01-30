@@ -337,7 +337,8 @@ def segmentation2events(
         if isinstance(time_column, np.ndarray):
             time_column = pl.Series('__time__', time_column)
 
-        time_column = time_column.alias('__time__')
+        if isinstance(time_column, pl.Series):
+            time_column = time_column.alias('__time__')
         df_dict['__time__'] = time_column
     else:
         df_dict['__time__'] = pl.int_range(0, len(segmentation), dtype=pl.Int64, eager=True)
