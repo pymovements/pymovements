@@ -400,15 +400,28 @@ def test_events2segmentation_trialized_overlap_warning():
             np.array([0.0, 1.0, 0.5]), ValueError,
             'binary values', id='not_binary_float_array',
         ),
-        pytest.param([0, 1, 0], TypeError, 'must be a polars.Series or numpy.ndarray', id='list_input'),
-        pytest.param(np.array([[0, 1], [1, 0]]), ValueError, 'must be a 1D array', id='2d_array'),
+        pytest.param(
+            [0, 1, 0], TypeError,
+            'must be a polars.Series or numpy.ndarray', id='list_input',
+        ),
+        pytest.param(
+            np.array([[0, 1], [1, 0]]), ValueError, 'must be a 1D array', id='2d_array',
+        ),
+        pytest.param(
+            pl.Series([0, 1, 0]), ValueError, 'trial_columns length .* must match',
+            id='invalid_trial_length',
+        ),
     ],
 )
 def test_segmentation2events_invalid_values(
-        faulty_segmentation, expected_exception, expected_match,
+    faulty_segmentation, expected_exception, expected_match,
 ):
+    kwargs = {}
+    if expected_match == 'trial_columns length .* must match':
+        kwargs['trial_columns'] = pl.DataFrame({'trial': [1, 1]})
+
     with pytest.raises(expected_exception, match=expected_match):
-        segmentation2events(faulty_segmentation, name='blink')
+        segmentation2events(faulty_segmentation, name='blink', **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -428,3 +441,48 @@ def test_segmentation2events_invalid_values(
 )
 def test_has_overlap(onsets, offsets, expected):
     assert _has_overlap(onsets, offsets) == expected
+
+
+@pytest.mark.parametrize(
+    'segmentation, name, trial_columns, expected_dict',
+    [
+        pytest.param(
+            pl.Series([0, 1, 1, 0, 1, 1]),
+            'blink',
+            pl.DataFrame({'trial': [1, 1, 1, 2, 2, 2]}),
+            {
+                'name': ['blink', 'blink'],
+                'onset': [1, 4],
+                'offset': [2, 5],
+                'trial': [1, 2],
+            },
+            id='basic',
+        ),
+        pytest.param(
+            pl.Series([0, 0, 0]),
+            'blink',
+            pl.DataFrame({'trial': [1, 1, 1]}),
+            {
+                'name': [],
+                'onset': [],
+                'offset': [],
+                'trial': [],
+            },
+            id='empty',
+        ),
+    ],
+)
+def test_segmentation2events_trialized(segmentation, name, trial_columns, expected_dict):
+    result_df = segmentation2events(segmentation, name=name, trial_columns=trial_columns)
+
+    expected_df = pl.DataFrame(
+        expected_dict,
+        schema={
+            'name': pl.String,
+            'onset': pl.Int64,
+            'offset': pl.Int64,
+            **trial_columns.schema,
+        },
+    )
+
+    assert_frame_equal(result_df, expected_df)
