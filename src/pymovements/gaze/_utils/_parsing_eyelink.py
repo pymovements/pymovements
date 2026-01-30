@@ -543,11 +543,10 @@ def parse_eyelink(
                     'Using current context to fill additional columns.',
                 )
                 current_event_additional[event_name][eye] = {**current_additional}
-                # TODO: Does setting `current_event_started[event_name][eye]` to False fix?
 
             for additional_column in additional_columns:
                 events[additional_column].append(
-                    current_event_additional[event_name][eye][additional_column],
+                    current_event_additional[event_name][eye].get(additional_column),
                 )
             current_event_additional[event_name][eye] = {}
 
