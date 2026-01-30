@@ -44,135 +44,164 @@ class TestEventRatio:
 
     @pytest.mark.parametrize(
         (
-            'event_name_prefix',
+            'event_name',
             'event_names',
             'event_onsets',
             'event_offsets',
-            'sampling_rate',
             'expected_ratio',
         ),
         [
-            # Single blink event covering 2 out of 8 samples
-            pytest.param('blink', ['blink'], [1.5], [2.5], 1.0, 0.25, id='single_blink'),
+            # Single blink event covering 3 out of 8 samples (1, 2, 3)
+            pytest.param('blink', ['blink'], [1.0], [4.0], 0.375, id='single_blink'),
             # Two blink events covering 4 out of 8 samples
             pytest.param(
                 'blink',
                 ['blink', 'blink'],
-                [1.5, 4.5],
-                [2.5, 5.5],
-                1.0,
+                [1.0, 5.0],
+                [3.0, 7.0],
                 0.5,
                 id='multiple_blinks',
             ),
             # No matching events
-            pytest.param('blink', ['saccade'], [1.5], [2.5], 1.0, 0.0, id='no_matching_events'),
-            # Different sampling rate - 3 out of 15 samples
-            pytest.param(
-                'blink',
-                ['blink'],
-                [0.75],
-                [1.75],
-                2.0,
-                0.2,
-                id='different_sampling_rate',
-            ),
-            # Event type prefix matching
-            pytest.param(
-                'blink',
-                ['blink', 'blink_custom'],
-                [0.5, 2.5],
-                [1.5, 3.5],
-                1.0,
-                0.5,
-                id='prefix_matching',
-            ),
+            pytest.param('blink', ['saccade'], [1.0], [3.0], 0.0, id='no_matching_events'),
             # Event covering single sample
-            pytest.param('blink', ['blink'], [1.0], [2.0], 1.0, 0.125, id='single_sample'),
+            pytest.param('blink', ['blink'], [1.0], [2.0], 0.125, id='single_sample'),
         ],
     )
     def test_event_ratio(
         self,
         fixture_gaze_data,
-        event_name_prefix,
+        event_name,
         event_names,
         event_onsets,
         event_offsets,
-        sampling_rate,
         expected_ratio,
     ):
         """Test event ratio calculation with various configurations."""
         events = pm.Events(name=event_names, onsets=event_onsets, offsets=event_offsets)
         gaze = pm.Gaze(samples=fixture_gaze_data.samples, events=events)
-        result = gaze.measure_events_ratio(
-            event_name_prefix,
-            sampling_rate=sampling_rate,
-        )
 
-        expected = pl.DataFrame({f"event_ratio_{event_name_prefix}": [expected_ratio]})
-        assert_frame_equal(
-            result,
-            expected,
-            check_exact=False,
-            rel_tol=1e-12,
-            abs_tol=1e-12,
-        )
+        result = gaze.samples.select(gaze.measure_events_ratio(event_name))
+
+        expected = pl.DataFrame({f"event_ratio_{event_name}": [expected_ratio]})
+        assert_frame_equal(result, expected)
 
     @pytest.mark.parametrize(
-        ('trial_columns', 'event_trials', 'expected_ratios'),
+        ('samples', 'trial_columns', 'events_data', 'expected_ratios'),
         [
-            pytest.param(['trial'], [1], {1: 0.5, 2: 0.0}, id='single_trial_col'),
-            pytest.param(['trial'], [1, 2], {1: 0.5, 2: 0.5}, id='multiple_trials_single_col'),
             pytest.param(
-                ['trial', 'condition'], [(1, 'A')], {
-                    (1, 'A'): 0.5, (2, 'B'): 0.0,
-                }, id='multi_trial_cols',
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 0.0, 1.0],
+                    'trial': [1, 1, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
+                {1: 0.5, 2: 0.0},
+                id='single_trial_with_event',
             ),
             pytest.param(
-                ['trial', 'extra_col'],
-                [1],
-                {(1, 'X'): 0.5, (2, 'Y'): 0.0},
-                id='missing_trial_col_in_events',
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 0.0, 1.0],
+                    'trial': [1, 1, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [
+                    {'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 2},
+                ],
+                {1: 0.5, 2: 0.5},
+                id='both_trials_with_event',
+            ),
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                    'trial': [1, 1, 1, 2, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5]],
+                }),
+                ['trial'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
+                ],
+                {1: 2 / 3, 2: 0.0},
+                id='event_partial_trial',
+            ),
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 0.0, 1.0],
+                    'trial': [1, 1, 2, 2],
+                    'session': [1, 1, 1, 1],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial', 'session'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1, 'session': 1},
+                ],
+                {(1, 1): 0.5, (2, 1): 0.0},
+                id='multiple_trial_columns',
+            ),
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 3.0],
+                    'trial': [1, 1, 1, 1],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'offset': 4.0, 'trial': 1},
+                ],
+                {1: 1.0},
+                id='adjacent_events',
+            ),
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 3.0],
+                    'trial': [1, 1, 1, 1],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 3.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'offset': 4.0, 'trial': 1},
+                ],
+                {1: 1.0},
+                id='overlapping_events',
+                marks=pytest.mark.filterwarnings('ignore:Overlapping events detected'),
+            ),
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 3.0],
+                    'trial': [1, 1, 1, 1],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [],
+                {1: 0.0},
+                id='no_events_trial',
             ),
         ],
     )
-    def test_event_ratio_with_trials(self, request, trial_columns, event_trials, expected_ratios):
+    def test_event_ratio_with_trials(self, samples, trial_columns, events_data, expected_ratios):
         """Test event ratio calculation with trial columns."""
-        samples = pl.DataFrame(
-            {
-                'time': [0.0, 1.0, 0.0, 1.0],
-                'trial': [1, 1, 2, 2],
-                'condition': ['A', 'A', 'B', 'B'],
-                'extra_col': ['X', 'X', 'Y', 'Y'],
-                'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-            },
-        )
-        # 1.0, 2.0 covers exactly 1 sample in a 2-sample trial (time 0, 1) -> ratio 0.5
-        events_data = []
-        for trial_val in event_trials:
-            row = {'name': 'blink', 'onset': 1.0, 'offset': 2.0}
-            if (
-                    'extra_col' in trial_columns and
-                    'missing_trial_col_in_events' in request.node.callspec.id
-            ):
-                # For this specific case, we don't add extra_col to events
-                row['trial'] = trial_val
-            elif isinstance(trial_val, tuple):
-                for col, val in zip(trial_columns, trial_val):
-                    row[col] = val
-            else:
-                row[trial_columns[0]] = trial_val
-            events_data.append(row)
-
-        events = pm.Events(pl.DataFrame(events_data))
-        events.trial_columns = [c for c in trial_columns if c in events.frame.columns]
+        if events_data:
+            events = pm.Events(pl.DataFrame(events_data))
+            events.trial_columns = trial_columns
+        else:
+            events = None
 
         gaze = pm.Gaze(samples=samples, events=events, trial_columns=trial_columns)
-        result = gaze.measure_events_ratio('blink', sampling_rate=1.0)
 
-        # expected dataframe
+        result = (
+            gaze.samples
+            .group_by(trial_columns, maintain_order=True)
+            .agg(gaze.measure_events_ratio('blink'))
+        )
+
         expected_data = []
         unique_trials = samples.select(trial_columns).unique().sort(trial_columns)
-        for trial in unique_trials.iter_rows(named=True):
+        for trial in unique_trials.to_dicts():
             if len(trial_columns) == 1:
                 key = trial[trial_columns[0]]
             else:
@@ -182,130 +211,53 @@ class TestEventRatio:
             )
 
         expected = pl.DataFrame(expected_data)
-
-        # column order by select
-        result = result.select(sorted(result.columns)).sort(trial_columns)
-        expected = expected.select(sorted(expected.columns)).sort(trial_columns)
-        assert_frame_equal(result, expected, check_exact=False)
-
-    @pytest.mark.parametrize(
-        ('start_time', 'end_time', 'sampling_rate', 'expected_ratio'),
-        [
-            pytest.param(1.0, 4.0, 10.0, 11 / 31, id='window_1_4'),
-            pytest.param(0.0, 1.0, 10.0, 1 / 11, id='window_0_1'),
-            pytest.param(2.5, 3.5, 10.0, 0.0, id='between_events'),
-            pytest.param(None, None, 1.0, 4 / 8, id='none_bounds'),
-            pytest.param(None, 3.0, 1.0, 1 / 4, id='start_none'),
-            pytest.param(1.0, 3.0, 10.0, 10 / 21, id='time_window_including_first_event_1'),
-            pytest.param(0.0, 3.0, 10.0, 10 / 31, id='time_window_including_first_event_2'),
-            pytest.param(2.5, 3.5, 100.0, 0.0, id='time_window_between_100'),
-            pytest.param(
-                1.5, 3.5, 10.0, 5 /
-                21, id='time_window_partially_overlapping_first_event',
-            ),
-            pytest.param(0.0, 0.9, 10.0, 0.0, id='time_window_before_first_event'),
-            pytest.param(7.0, 10.0, 10.0, 0.0, id='time_window_after_last_event'),
-            pytest.param(1.0, 7.0, 10.0, 40 / 61, id='time_window_both_events_10'),
-            pytest.param(1.0, 7.0, 1.0, 4 / 7, id='time_window_both_events_1'),
-            pytest.param(0.5, 8.5, 10.0, 40 / 81, id='time_window_both_events_with_buffer_10'),
-            pytest.param(0.5, 8.5, 1.0, 6 / 9, id='time_window_both_events_with_buffer_1'),
-        ],
-    )
-    def test_event_ratio_time_bounds(
-            self, fixture_gaze_data, start_time, end_time, sampling_rate, expected_ratio,
-    ):
-        """Test event ratio calculation with various time bounds."""
-        events = pm.Events(name=['blink', 'blink'], onsets=[1, 4], offsets=[2, 7])
-        gaze = pm.Gaze(samples=fixture_gaze_data.samples, events=events)
-        result = gaze.measure_events_ratio(
-            'blink',
-            sampling_rate=sampling_rate,
-            start_time=start_time,
-            end_time=end_time,
-        )
-        expected = pl.DataFrame({'event_ratio_blink': [expected_ratio]})
-        assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
+        assert_frame_equal(result, expected)
 
     @pytest.mark.parametrize(
         ('setup_fn', 'expected_data'),
         [
-            # gaze.events is None, no trials
+            # gaze.events is None
             pytest.param(
-                lambda g: setattr(g, 'events', None),  # type: ignore[func-returns-value]
+                lambda g: setattr(g, 'events', None),
                 {'event_ratio_blink': [0.0]},
-                id='events_none_no_trials',
+                id='events_none',
             ),
-            # gaze.events is None, with trials
-            pytest.param(
-                lambda g: (
-                    setattr(  # type: ignore[func-returns-value]
-                        g, 'samples', pl.DataFrame({
-                            'time': [0.0, 1.0, 0.0, 1.0],
-                            'trial': [1, 1, 2, 2],
-                            'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                        }),
-                    ),
-                    setattr(g, 'trial_columns', ['trial']),  # type: ignore[func-returns-value]
-                    setattr(g, 'events', None),  # type: ignore[func-returns-value]
-                ),
-                [{'trial': 1, 'event_ratio_blink': 0.0}, {'trial': 2, 'event_ratio_blink': 0.0}],
-                id='events_none_with_trials',
-            ),
-            # empty events frame
-            pytest.param(
-                lambda g: setattr(g, 'events', pm.Events()),  # type: ignore[func-returns-value]
-                {'event_ratio_blink': [0.0]},
-                id='empty_events_frame',
-            ),
-            # empty samples
+            # events exist but none match name
             pytest.param(
                 lambda g: setattr(
-                    g,
-                    'samples',
-                    pl.DataFrame(
-                        schema=g.samples.schema,
-                    ),
+                    g, 'events', pm.Events(name=['saccade'], onsets=[1.0], offsets=[2.0]),
                 ),
-                # type: ignore[func-returns-value]
                 {'event_ratio_blink': [0.0]},
-                id='empty_samples',
+                id='no_matching_name',
+            ),
+            # events is an empty Events object
+            pytest.param(
+                lambda g: setattr(g, 'events', pm.Events()),
+                {'event_ratio_blink': [0.0]},
+                id='empty_events',
             ),
         ],
     )
     def test_event_ratio_edge_cases(self, fixture_gaze_data, setup_fn, expected_data):
-        """Test edge cases for event ratio, including those for coverage."""
+        """Test edge cases for event ratio."""
         setup_fn(fixture_gaze_data)
-        result = fixture_gaze_data.measure_events_ratio('blink', sampling_rate=1.0)
+        result = fixture_gaze_data.samples.select(fixture_gaze_data.measure_events_ratio('blink'))
 
         expected = pl.DataFrame(expected_data)
-        # potential sorting for trial results
-        if 'trial' in result.columns:
-            result = result.sort('trial')
-            expected = expected.sort('trial')
-
-        assert_frame_equal(result, expected, check_exact=False)
+        assert_frame_equal(result, expected)
 
     @pytest.mark.parametrize(
         ('kwargs', 'error_type', 'match'),
         [
-            ({'event_name_prefix': ''}, ValueError, 'non-empty string'),
-            ({'event_name_prefix': None}, ValueError, 'non-empty string'),
-            ({'sampling_rate': 0}, ValueError, 'positive number'),
-            ({'sampling_rate': -1}, ValueError, 'positive number'),
+            ({'name': ''}, ValueError, 'non-empty string'),
+            ({'name': None}, ValueError, 'non-empty string'),
             ({'time_column': 'missing'}, ValueError, 'not found'),
             ({'time_column': 123}, TypeError, 'invalid type'),
         ],
     )
     def test_event_ratio_validation(self, fixture_gaze_data, kwargs, error_type, match):
         """Test input validation for measure_events_ratio."""
-        base_kwargs = {'event_name_prefix': 'blink', 'sampling_rate': 1.0}
+        base_kwargs = {'name': 'blink'}
         base_kwargs.update(kwargs)
         with pytest.raises(error_type, match=match):
             fixture_gaze_data.measure_events_ratio(**base_kwargs)
-
-    def test_event_ratio_overlapping_events(self, fixture_gaze_data):
-        """Test that overlapping events raise a ValueError."""
-        events = pm.Events(name=['blink', 'blink'], onsets=[1.5, 2.5], offsets=[3.5, 4.5])
-        gaze = pm.Gaze(samples=fixture_gaze_data.samples, events=events)
-        with pytest.raises(ValueError, match='Overlapping events detected'):
-            gaze.measure_events_ratio('blink', sampling_rate=1.0)

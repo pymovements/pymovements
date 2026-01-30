@@ -1229,41 +1229,28 @@ class Gaze:
 
     def measure_events_ratio(
         self,
-        event_name_prefix: str,
+        name: str,
         time_column: str = 'time',
         *,
-        sampling_rate: float,
-        start_time: float | None = None,
-        end_time: float | None = None,
         onset_column: str = 'onset',
         offset_column: str = 'offset',
-    ) -> polars.DataFrame:
+    ) -> polars.Expr:
         r"""Calculate ratio of samples associated with specific events.
 
         This method computes the ratio of samples that are associated with events
-        having a specific name prefix.
+        having a specific name.
         It uses the :py:func:`~pymovements.events.segmentation.events2segmentation` function to
         create a binary segmentation map and then calculates the ratio as:
 
         .. math::
             \frac{\sum_{i=1}^{n} \mathrm{segmentation}_i}{\mathrm{num\_samples}}
 
-        If :py:class:`Gaze` has :py:attr:`~Gaze.trial_columns`, measures will be grouped by
-        trials.
-
         Parameters
         ----------
-        event_name_prefix: str
-            Prefix of event names to include in the ratio calculation
-            (e.g. 'blink' for blink events).
+        name: str
+            Name of events to include in the ratio calculation.
         time_column: str
             Name of the timestamp column in the samples data. (default: 'time')
-        sampling_rate: float
-            Expected sampling rate in Hz (must be > 0).
-        start_time: float | None
-            Recording start time. If ``None``, uses the first timestamp.
-        end_time: float | None
-            Recording end time. If ``None``, uses the last timestamp.
         onset_column: str
             Name of the column containing event onset times (default: 'onset').
         offset_column: str
@@ -1271,77 +1258,46 @@ class Gaze:
 
         Returns
         -------
-        polars.DataFrame
-            Event ratio results per trial.
+        polars.Expr
+            An expression that calculates the event ratio.
 
         Examples
         --------
-        >>> # Let's initialise an example Gaze with samples and blink events:
         >>> import polars as pl
-        >>> gaze = Gaze(
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
         ...     samples=pl.DataFrame({
-        ...         'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
-        ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7]],
+        ...         'time': [0, 1, 2, 3],
+        ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
         ...     }),
-        ...     events=Events(
-        ...         name=['blink', 'saccade'],
-        ...         onsets=[1.5, 3.0],
-        ...         offsets=[2.5, 4.0],
+        ...     events=pm.Events(
+        ...         name=['blink'],
+        ...         onsets=[1],
+        ...         offsets=[3],
         ...     ),
         ... )
-        >>> # Calculate blink ratio:
-        >>> gaze.measure_events_ratio('blink', sampling_rate=1.0)
+        >>> gaze.samples.select(gaze.measure_events_ratio('blink'))
         shape: (1, 1)
         ┌───────────────────┐
         │ event_ratio_blink │
         │ ---               │
         │ f64               │
         ╞═══════════════════╡
-        │ 0.25              │
+        │ 0.5               │
         └───────────────────┘
-        >>> # Example with multiple trials and events:
-        >>> samples = pl.DataFrame(
-        ...     {
-        ...         'time': [0.0, 1.0, 2.0, 3.0, 0.0, 1.0, 2.0, 3.0],
-        ...         'pixel': [[i, i] for i in range(8)],
-        ...         'trial': [1, 1, 1, 1, 2, 2, 2, 2],
-        ...     },
-        ... )
-        ... events = pm.Events(
-        ...     name=['blink', 'saccade', 'blink', 'blink'],
-        ...     onsets=[1.5, 3.0, 1.5, 0.1],
-        ...     offsets=[2.5, 4.0, 2.5, 0.4],
-        ...     trials=[1, 1, 2, 2],
-        ... )
-        ... events.trial_columns = ['trial']
-        ... gaze = pm.Gaze(samples=samples, events=events, trial_columns='trial')
-        ... gaze.measure_events_ratio('blink', sampling_rate=10.0)
-        ...
-        shape: (2, 2)
-        ┌───────────────────┬───────┐
-        │ event_ratio_blink ┆ trial │
-        │ ---               ┆ ---   │
-        │ f64               ┆ i64   │
-        ╞═══════════════════╪═══════╡
-        │ 0.322581          ┆ 1     │
-        │ 0.419355          ┆ 2     │
-        └───────────────────┴───────┘
 
         Raises
         ------
         ValueError
-            If `event_name_prefix` is not a non-empty string.
+            If `name` is not a non-empty string.
         TypeError
             If `time_column` is not a string.
-        ValueError
-            If `sampling_rate` is not a positive number.
         KeyError
             If `time_column` is not present in the samples DataFrame.
         """
-        # Validate inputs
-        if not isinstance(event_name_prefix, str) or not event_name_prefix:
+        if not isinstance(name, str) or not name:
             raise ValueError(
-                f"event_name_prefix must be a non-empty string, but got: {event_name_prefix!r}",
+                f"name must be a non-empty string, but got: {name!r}",
             )
 
         if not isinstance(time_column, str):
@@ -1350,158 +1306,39 @@ class Gaze:
                 f"Expected 'str' , got '{type(time_column).__name__}'",
             )
 
-        # Validate sampling_rate
-        if not isinstance(sampling_rate, (int, float)) or sampling_rate <= 0:
-            raise ValueError(
-                f"sampling_rate must be a positive number, but got: {sampling_rate!r}",
-            )
-
         if time_column not in self.samples.columns:
             raise ValueError(
                 f"time_column '{time_column}' not found in samples. "
                 f"Available columns: {self.samples.columns}",
             )
 
-        # Filter events by name prefix
-        if self.events is None:
-            filtered_events = polars.DataFrame()
-        else:
+        if self.events is not None and not self.events.frame.is_empty():
             events_df = self.events.frame
-
-            filtered_events = events_df.filter(
-                polars.col('name').str.starts_with(event_name_prefix),
+        else:
+            events_df = polars.DataFrame(
+                schema={
+                    'name': polars.String,
+                    onset_column: self.samples.schema[time_column],
+                    offset_column: self.samples.schema[time_column],
+                    **(
+                        {col: self.samples.schema[col] for col in self.trial_columns}
+                        if self.trial_columns else {}
+                    ),
+                },
             )
 
-        def calculate_event_ratio(
-            samples_df: polars.DataFrame,
-            events_df: polars.DataFrame,
-        ) -> dict:
-            """Calculate event ratio for a group."""
-            # Get time bounds
-            if start_time is not None:
-                start = start_time
-            else:
-                start = samples_df[time_column].min()
-
-            if end_time is not None:
-                end = end_time
-            else:
-                end = samples_df[time_column].max()
-
-            if start is None or end is None:
-                return {f"event_ratio_{event_name_prefix}": 0.0}
-
-            # Calculate number of expected samples
-            span = end - start
-            num_samples = int((span * sampling_rate) + 1)
-
-            # Create segmentation from events
-            if len(events_df) <= 0:
-                ratio = 0.0
-            else:
-                # Convert event times to sample indices relative to start time
-                start_float = float(start)
-                # Shift event times relative to start time
-                shifted_events = events_df.with_columns(
-                    [
-                        (
-                            (polars.col(onset_column) - start_float) * sampling_rate
-                        ).alias(onset_column),
-                        (
-                            (polars.col(offset_column) - start_float) * sampling_rate
-                        ).alias(offset_column),
-                    ],
-                )
-
-                # Convert to integer sample indices
-                shifted_events = shifted_events.with_columns(
-                    [
-                        polars.col(onset_column)
-                        .floor()
-                        .cast(polars.Int32)
-                        .alias(onset_column),
-                        polars.col(offset_column)
-                        .ceil()
-                        .cast(polars.Int32)
-                        .alias(offset_column),
-                    ],
-                )
-
-                # Filter events to only those within the time bounds
-                valid_events = shifted_events.filter(
-                    (polars.col(offset_column) > 0)
-                    & (polars.col(onset_column) < num_samples),
-                )
-
-                # For events that are on the bounds, clip the onset to 0 and the offset to
-                # num_samples
-                valid_events = valid_events.with_columns(
-                    polars.col(onset_column)
-                    .clip(0, num_samples - 1)
-                    .alias(onset_column),
-                    polars.col(offset_column).clip(0, num_samples).alias(offset_column),
-                )
-
-                segmentation = events2segmentation(
-                    Events(valid_events),
-                    num_samples=num_samples,
-                    onset_column=onset_column,
-                    offset_column=offset_column,
-                )
-                ratio = segmentation.sum() / num_samples
-
-            return {f"event_ratio_{event_name_prefix}": ratio}
-
-        if self.trial_columns is None:
-            # Calculate for all data at once
-            result_dict = calculate_event_ratio(self.samples, filtered_events)
-            return polars.DataFrame([result_dict])
-
-        # Group by trial columns and calculate for each trial
-        if self.events is None:
-            # No events data, return zeros for each trial
-            trials = self.samples.select(self.trial_columns).unique()
-            result_data = [
-                {
-                    **{col: trial[col] for col in self.trial_columns},
-                    f"event_ratio_{event_name_prefix}": 0.0,
-                }
-                for trial in trials.iter_rows(named=True)
-            ]
-            return polars.DataFrame(result_data)
-
-        # Split events by trial columns if they exist
-        events_df = self.events.frame
-
-        trial_results = []
-
-        for trial_values, samples_df in self.samples.group_by(
-            self.trial_columns,
-            maintain_order=True,
-        ):
-            # Filter events for this trial
-            event_filters = [True]
-            for col, value in zip(self.trial_columns, trial_values):
-                if col in events_df.columns:
-                    event_filters.append(events_df[col] == value)
-
-            trial_events = events_df.filter(polars.all_horizontal(event_filters))
-
-            # Filter events by name prefix
-            trial_events = trial_events.filter(
-                polars.col('name').str.starts_with(event_name_prefix),
+        return (
+            events2segmentation(
+                events=events_df,
+                name=name,
+                time_column=time_column,
+                trial_columns=self.trial_columns,
+                onset_column=onset_column,
+                offset_column=offset_column,
             )
-
-            # Calculate ratio for this trial
-            result_dict = calculate_event_ratio(samples_df, trial_events)
-
-            # Add trial column values
-            for col, value in zip(self.trial_columns, trial_values):
-                result_dict[col] = value
-
-            trial_results.append(result_dict)
-
-        return polars.DataFrame(trial_results)
+            .mean()
+            .alias(f"event_ratio_{name}")
+        )
 
     @property
     def schema(self) -> polars.type_aliases.SchemaDict:
