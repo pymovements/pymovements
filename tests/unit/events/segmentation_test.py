@@ -371,38 +371,48 @@ def test_events2segmentation_trialized_overlap_warning():
 
 
 @pytest.mark.parametrize(
-    'faulty_segmentation, expected_exception, expected_match',
+    'faulty_segmentation, expected_exception, expected_match, kwargs',
     [
-        pytest.param(np.array([0, 1, 2]), ValueError, 'binary values', id='int_values_not_binary'),
         pytest.param(
-            np.array([6.0, 7.0]), ValueError,
-            'binary values', id='float_values_not_binary',
-        ),
-        pytest.param(np.array([1.1, 2.2]), ValueError, 'binary values', id='float_non_binary'),
-        pytest.param(
-            np.array([0.0, 1.0, 0.5]), ValueError,
-            'binary values', id='not_binary_float_array',
+            np.array([0, 1, 2]), ValueError, 'binary values', {},
+            id='int_values_not_binary',
         ),
         pytest.param(
-            [0, 1, 0], TypeError,
-            'must be a polars.Series or numpy.ndarray', id='list_input',
+            np.array([6.0, 7.0]), ValueError, 'binary values', {},
+            id='float_values_not_binary',
         ),
         pytest.param(
-            np.array([[0, 1], [1, 0]]), ValueError, 'must be a 1D array', id='2d_array',
+            np.array([1.1, 2.2]), ValueError, 'binary values', {},
+            id='float_non_binary',
+        ),
+        pytest.param(
+            np.array([0.0, 1.0, 0.5]), ValueError, 'binary values', {},
+            id='not_binary_float_array',
+        ),
+        pytest.param(
+            [0, 1, 0], TypeError, 'must be a polars.Series or numpy.ndarray', {},
+            id='list_input',
+        ),
+        pytest.param(
+            np.array([[0, 1], [1, 0]]), ValueError, 'must be a 1D array', {},
+            id='2d_array',
         ),
         pytest.param(
             pl.Series([0, 1, 0]), ValueError, 'trial_columns length .* must match',
+            {'trial_columns': pl.DataFrame({'trial': [1, 1]})},
             id='invalid_trial_length',
+        ),
+        pytest.param(
+            np.array([0, 1, 0]), TypeError,
+            'time_column must be a polars.Series or numpy.ndarray, but is <class \'list\'>',
+            {'time_column': [1, 2, 3]},
+            id='invalid_time_column_type',
         ),
     ],
 )
 def test_segmentation2events_invalid_values(
-    faulty_segmentation, expected_exception, expected_match,
+    faulty_segmentation, expected_exception, expected_match, kwargs,
 ):
-    kwargs = {}
-    if expected_match == 'trial_columns length .* must match':
-        kwargs['trial_columns'] = pl.DataFrame({'trial': [1, 1]})
-
     with pytest.raises(expected_exception, match=expected_match):
         segmentation2events(faulty_segmentation, name='blink', **kwargs)
 

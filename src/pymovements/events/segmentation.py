@@ -336,9 +336,13 @@ def segmentation2events(
             )
         if isinstance(time_column, np.ndarray):
             time_column = pl.Series('__time__', time_column)
-
-        if isinstance(time_column, pl.Series):
+        elif isinstance(time_column, pl.Series):
             time_column = time_column.alias('__time__')
+        else:
+            raise TypeError(
+                f"time_column must be a polars.Series or numpy.ndarray, but is {type(time_column)},"
+                f" alternatively leave it at None to use indices instead of timestamps.",
+            )
         df_dict['__time__'] = time_column
     else:
         df_dict['__time__'] = pl.int_range(0, len(segmentation), dtype=pl.Int64, eager=True)
