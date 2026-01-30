@@ -35,6 +35,11 @@ from pymovements.gaze._utils import _parsing
         pytest.param(0, 10, 5, 0.0, 0.0, id='zero_expected_samples'),
         pytest.param(0, 0, 0, 0.0, 0.0, id='all_zero'),
         pytest.param(100, 90, 5, 0.1, 0.05, id='normal_case'),
+        pytest.param(100, 100, 0, 0.0, 0.0, id='no_loss'),
+        pytest.param(100, 0, 100, 1.0, 1.0, id='full_loss_all_blinks'),
+        pytest.param(100, 0, 0, 1.0, 0.0, id='full_loss_no_blinks'),
+        pytest.param(100, 50, 25, 0.5, 0.25, id='half_loss_quarter_blinks'),
+        pytest.param(1000, 999, 1, 0.001, 0.001, id='large_expected_small_loss'),
     ],
 )
 def test_calculate_data_loss_ratio(
