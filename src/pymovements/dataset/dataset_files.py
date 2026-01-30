@@ -46,6 +46,8 @@ from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.measure.reading import ReadingMeasures
+from pymovements.stimulus.image import ImageStimulus
+from pymovements.stimulus.text import TextStimulus
 
 
 @dataclass
@@ -116,10 +118,13 @@ def scan_dataset(
             resource_dirpath = paths.precomputed_events
         elif content_type == 'precomputed_reading_measures':
             resource_dirpath = paths.precomputed_reading_measures
+        elif content_type == 'stimulus':
+            resource_dirpath = paths.stimuli
         else:
             warn(
                 f'content type {content_type} is not supported. '
-                'supported contents are: gaze, precomputed_events, precomputed_reading_measures. '
+                'supported contents are: gaze, precomputed_events, '
+                'precomputed_reading_measures, stimulus. '
                 'skipping this resource definition during scan.',
             )
             continue
@@ -621,6 +626,71 @@ def load_precomputed_event_file(
     return PrecomputedEventDataFrame(data=precomputed_event_df)
 
 
+def load_stimuli_files(
+        files: list[DatasetFile],
+) -> list[ImageStimulus | TextStimulus]:
+    """Load all available text stimuli files.
+
+    Parameters
+    ----------
+    files: list[DatasetFile]
+        Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
+
+    Returns
+    -------
+    list[ImageStimulus | TextStimulus]
+        List of loaded stimulus objects.
+
+    """
+    stimuli: list[ImageStimulus | TextStimulus] = []
+    for file in files:
+        stimulus = load_stimulus_file(file=file)
+        stimuli.append(stimulus)
+    return stimuli
+
+
+def load_stimulus_file(
+        file: DatasetFile,
+) -> ImageStimulus | TextStimulus:
+    """Load stimuli from a single file.
+
+    File format is inferred from the extension:
+        - CSV-like: .csv
+    Raises a ValueError for unsupported formats.
+
+    Parameters
+    ----------
+    file: DatasetFile
+        Load this stimulus dataset file.
+
+    Returns
+    -------
+    ImageStimulus | TextStimulus
+        A stimulus object initialized with data from the loaded file.
+
+    Raises
+    ------
+    ValueError
+        If ``load_function`` is not in list of supported functions.
+    """
+    load_kwargs = deepcopy(file.definition.load_kwargs)
+    if load_kwargs is None:
+        load_kwargs = {}
+
+    load_function_name = file.definition.load_function
+    if load_function_name == 'TextStimulus.from_csv':
+        return TextStimulus.from_csv(path=file.path, **load_kwargs)
+    if load_function_name == 'ImageStimulus.from_file':
+        return ImageStimulus.from_file(path=file.path, **load_kwargs)
+
+    # No valid load function found.
+    valid_load_functions = ['TextStimulus.from_csv', 'ImageStimulus.from_file']
+    raise ValueError(
+        f'Unknown load_function "{load_function_name}". '
+        f'Known functions are: {valid_load_functions}',
+    )
+
+
 def save_events(
         events: Sequence[Events],
         fileinfo: pl.DataFrame,
@@ -821,6 +891,10 @@ def take_subset(
 
         for file in files:
             if metadata_key not in file.metadata:  # pragma: no cover
+                # stimulus files may not contain metadata.
+                if file.definition.content == 'stimulus':
+                    continue
+
                 # This code is currently unreachable via public interfaces.
                 # The pragma directive should be removed after the removal of fileinfo from Dataset.
                 raise ValueError(
@@ -839,6 +913,11 @@ def take_subset(
                 f'{type(metadata_value)}',
             )
 
+        # iteratively reduce fileinfo & files.
         fileinfo['gaze'] = fileinfo['gaze'].filter(pl.col(metadata_key).is_in(metadata_values))
-        files = [file for file in files if file.metadata[metadata_key] in metadata_values]
+        files = [
+            file for file in files
+            if file.metadata.get(metadata_key) in metadata_values
+            or file.definition.content == 'stimulus'  # subset is only applied on gaze data.
+        ]
     return fileinfo, files

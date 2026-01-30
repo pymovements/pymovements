@@ -1099,7 +1099,7 @@ EXPECTED_DF = {
     ],
 )
 def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_example_file):
-    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
     gaze_filepath = make_example_file('judo1000_example.csv')
 
     aoi_df = pm.stimulus.text.from_file(
@@ -1157,7 +1157,7 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
     ],
 )
 def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_file):
-    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
     gaze_filepath = make_example_file('judo1000_example.csv')
 
     aoi_df = pm.stimulus.text.from_file(
@@ -1189,7 +1189,7 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
 
 
 def test_map_to_aois_raises_value_error(make_example_file):
-    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
     gaze_filepath = make_example_file('judo1000_example.csv')
 
     aoi_df = pm.stimulus.text.from_file(

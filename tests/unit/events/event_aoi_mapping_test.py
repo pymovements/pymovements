@@ -691,7 +691,7 @@ def dataset_fixture(tmp_path):
     ],
 )
 def test_event_to_aoi_mapping_char_width_height(aoi_column, dataset, make_example_file):
-    filepath = make_example_file('toy_text_1_1_aoi.csv')
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
 
     aoi_df = pm.stimulus.text.from_file(
         filepath,
@@ -716,7 +716,7 @@ def test_event_to_aoi_mapping_char_width_height(aoi_column, dataset, make_exampl
     ],
 )
 def test_event_to_aoi_mapping_char_end(aoi_column, dataset, make_example_file):
-    filepath = make_example_file('toy_text_1_1_aoi.csv')
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
 
     aoi_df = pm.stimulus.text.from_file(
         filepath,
@@ -733,7 +733,7 @@ def test_event_to_aoi_mapping_char_end(aoi_column, dataset, make_example_file):
 
 
 def test_map_to_aois_raises_value_error(make_example_file):
-    aoi_filepath = make_example_file('toy_text_1_1_aoi.csv')
+    aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
     gaze_filepath = make_example_file('judo1000_example.csv')
 
     aoi_df = pm.stimulus.text.from_file(
@@ -759,7 +759,7 @@ def test_map_to_aois_raises_value_error(make_example_file):
 
 @pytest.mark.network
 def test_map_to_aois_raises_value_error_missing_width_height(dataset, make_example_file):
-    filepath = make_example_file('toy_text_1_1_aoi.csv')
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
 
     aoi_df = pm.stimulus.text.from_file(
         filepath,

@@ -176,13 +176,13 @@ EXPECTED_DF = polars.DataFrame(
     ('filename', 'custom_read_kwargs', 'expected'),
     [
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             EXPECTED_DF,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             EXPECTED_DF,
             id='toy_text_1_1_aoi_sep',
@@ -231,12 +231,12 @@ def test_text_stimulus_unsupported_format():
     ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
@@ -263,12 +263,12 @@ def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file
     ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
@@ -295,12 +295,12 @@ def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, mak
     ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            'toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
@@ -330,7 +330,7 @@ def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs,
 
 @pytest.fixture(name='text_stimulus')
 def fixture_text_stimulus(make_example_file):
-    filepath = make_example_file('toy_text_1_1_aoi.csv')
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
     yield text.from_file(
         filepath,
         aoi_column='word',
