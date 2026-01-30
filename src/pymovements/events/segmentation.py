@@ -114,11 +114,11 @@ def events2segmentation(
     │ 2    ┆ true  │
     │ 3    ┆ true  │
     │ 4    ┆ true  │
-    │ 5    ┆ true │
+    │ 5    ┆ true  │
     │ 6    ┆ false │
     │ 7    ┆ true  │
     │ 8    ┆ true  │
-    │ 9    ┆ true │
+    │ 9    ┆ true  │
     └──────┴───────┘
     >>> # With trial columns
     >>> events_df = pl.DataFrame({
@@ -146,7 +146,7 @@ def events2segmentation(
     │ 0    ┆ 2     ┆ false │
     │ 1    ┆ 2     ┆ true  │
     │ 2    ┆ 2     ┆ true  │
-    │ 3    ┆ 2     ┆ true │
+    │ 3    ┆ 2     ┆ true  │
     └──────┴───────┴───────┘
     """
     if onset_column not in events.columns:
