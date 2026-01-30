@@ -116,15 +116,18 @@ def test_events2segmentation_basic(events_df, name, time_column, expected):
             id='empty',
         ),
         pytest.param(
-            pl.DataFrame({
-                'name': ['saccade'],
-                'onset': pl.Series([2], dtype=pl.Int64),
-                'offset': pl.Series([5], dtype=pl.Int64),
-            }),
+            pl.DataFrame({'name': ['saccade'], 'onset': [2], 'offset': [5]}),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             {'name': 'blink'},
             [False] * 10,
             id='mismatched_name',
+        ),
+        pytest.param(
+            pl.DataFrame({'onset': [2], 'offset': [5]}),
+            pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
+            {'name': 'blink'},
+            [False, False, True, True, True, True, False, False, False, False],
+            id='no_name_column',
         ),
     ],
 )
@@ -328,17 +331,10 @@ def test_roundtrip_time(segmentation, time):
             id='missing_offset_column',
         ),
         pytest.param(
-            pl.DataFrame({'name': ['blink'], 'onset': [5], 'offset': [5]}),
-            'blink',
-            ValueError,
-            'Onset must be less than offset',
-            id='onset_equal_offset',
-        ),
-        pytest.param(
             pl.DataFrame({'name': ['blink'], 'onset': [6], 'offset': [5]}),
             'blink',
             ValueError,
-            'Onset must be less than offset',
+            'Onset must be less than or equal to offset',
             id='onset_greater_offset',
         ),
     ],
@@ -351,19 +347,6 @@ def test_events2segmentation_errors(
 ):
     with pytest.raises(expected_exception, match=expected_match):
         events2segmentation(events, name=name)
-
-
-def test_events2segmentation_no_name_column():
-    # If no name column, assume all events are relevant
-    events_df = pl.DataFrame({'onset': [2], 'offset': [5]})
-    gaze_df = pl.DataFrame({'time': np.arange(10, dtype=np.int64)})
-    result_expr = events2segmentation(events_df, name='blink')
-    result_df = gaze_df.select(result_expr)
-
-    assert result_df['blink'].to_list() == [
-        False, False, True, True, True,
-        False, False, False, False, False,
-    ]
 
 
 def test_events2segmentation_trialized_overlap_warning():
