@@ -18,18 +18,32 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - shared functionality."""
+import pytest
+
 from pymovements.gaze._utils import _parsing
 
 
-def test_data_loss_zero_expected_samples_via_parsing_module():
-    """When num_expected_samples == 0 the function must return (0.0, 0.0)."""
-    total, blink = _parsing._calculate_data_loss_ratio(0, 10, 5)
-    assert total == 0.0
-    assert blink == 0.0
-
-
-def test_data_loss_zero_expected_all_zero_via_parsing_module():
-    """Sanity: zero inputs produce zero outputs."""
-    total, blink = _parsing._calculate_data_loss_ratio(0, 0, 0)
-    assert total == 0.0
-    assert blink == 0.0
+@pytest.mark.parametrize(
+    (
+        'num_expected_samples',
+        'num_actual_samples',
+        'num_blink_samples',
+        'expected_total',
+        'expected_blink',
+    ),
+    [
+        pytest.param(0, 10, 5, 0.0, 0.0, id='zero_expected_samples'),
+        pytest.param(0, 0, 0, 0.0, 0.0, id='all_zero'),
+        pytest.param(100, 90, 5, 0.1, 0.05, id='normal_case'),
+    ],
+)
+def test_calculate_data_loss_ratio(
+        num_expected_samples, num_actual_samples, num_blink_samples,
+        expected_total, expected_blink,
+):
+    """Test data loss ratio calculation."""
+    total, blink = _parsing._calculate_data_loss_ratio(
+        num_expected_samples, num_actual_samples, num_blink_samples,
+    )
+    assert total == expected_total
+    assert blink == expected_blink
