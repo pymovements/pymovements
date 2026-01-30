@@ -141,7 +141,7 @@ exclude = [
 ]
 
 [tool.ruff.format]
-quote-style = "double"
+quote-style = "single"
 indent-style = "space"
 
 [tool.ruff.lint]
