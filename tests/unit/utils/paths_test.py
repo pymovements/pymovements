@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.paths."""
+
+from __future__ import annotations
+
 import re
 
 import pytest
@@ -41,5 +44,4 @@ def test_parse_eyelink_removed(path_function, tmp_path, assert_deprecation_is_re
         function_name='utils/paths.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-
     )

@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - shared functionality."""
+
+from __future__ import annotations
+
 from pymovements.gaze._utils import _parsing
 
 

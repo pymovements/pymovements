@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test module pymovements.events.event_properties."""
+
+from __future__ import annotations
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -56,7 +59,6 @@ def test_location_exceptions(init_kwargs, exception, message):
             ),
             id='position_two_samples_mean',
         ),
-
         pytest.param(
             {'method': 'mean'},
             pl.DataFrame(
@@ -69,7 +71,6 @@ def test_location_exceptions(init_kwargs, exception, message):
             ),
             id='position_three_samples_mean',
         ),
-
         pytest.param(
             {'method': 'median'},
             pl.DataFrame(

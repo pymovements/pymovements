@@ -19,6 +19,8 @@
 # SOFTWARE.
 """Fixtures for datasets."""
 
+from __future__ import annotations
+
 pytest_plugins = [
     'tests.fixtures.deprecation_fixtures',
     'tests.fixtures.file_fixtures',

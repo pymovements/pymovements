@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for event processing."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -54,7 +55,8 @@ class EventProcessor:
         for measure_name in measures:
             if measure_name not in EVENT_MEASURES:
                 raise UnknownMeasure(
-                    measure_name=measure_name, known_measures=list(EVENT_MEASURES.keys()),
+                    measure_name=measure_name,
+                    known_measures=list(EVENT_MEASURES.keys()),
                 )
 
         self.measures = [
@@ -97,9 +99,8 @@ class EventSamplesProcessor:
     """
 
     def __init__(
-            self,
-            measures: str | tuple[str, dict[str, Any]]
-            | list[str | tuple[str, dict[str, Any]]],
+        self,
+        measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]],
     ):
         _check_measures(measures)
 
@@ -110,15 +111,15 @@ class EventSamplesProcessor:
             measures_with_kwargs = [measures]
         else:  # we already validated above, it must be a list of strings and tuples
             measures_with_kwargs = [
-                (measure, {}) if isinstance(measure, str) else measure
-                for measure in measures
+                (measure, {}) if isinstance(measure, str) else measure for measure in measures
             ]
 
         for measure_name, _ in measures_with_kwargs:
             if measure_name not in SampleMeasureLibrary.measures:
                 known_measures = list(SampleMeasureLibrary.measures.keys())
                 raise UnknownMeasure(
-                    measure_name=measure_name, known_measures=known_measures,
+                    measure_name=measure_name,
+                    known_measures=known_measures,
                 )
 
         self.measures: list[pl.Expr] = [
@@ -128,11 +129,11 @@ class EventSamplesProcessor:
         ]
 
     def process(
-            self,
-            events: pl.DataFrame,
-            samples: pl.DataFrame,
-            identifiers: str | list[str] | None = None,
-            name: str | None = None,
+        self,
+        events: pl.DataFrame,
+        samples: pl.DataFrame,
+        identifiers: str | list[str] | None = None,
+        name: str | None = None,
     ) -> pl.DataFrame:
         """Process event and gaze dataframe.
 
@@ -181,7 +182,7 @@ class EventSamplesProcessor:
         if len(events) == 0:
             measure_columns = [measure.meta.output_name() for measure in self.measures]
             warn(
-                f"No events available for processing. Creating empty columns for {measure_columns}",
+                f'No events available for processing. Creating empty columns for {measure_columns}',
             )
 
             # run measures on empty samples data frame.
@@ -212,8 +213,7 @@ class EventSamplesProcessor:
 
 
 def _check_measures(
-        measures: str | tuple[str, dict[str, Any]] | list[str]
-        | list[str | tuple[str, dict[str, Any]]],
+    measures: str | tuple[str, dict[str, Any]] | list[str] | list[str | tuple[str, dict[str, Any]]],
 ) -> None:
     """Validate event properties."""
     if isinstance(measures, str):
@@ -223,28 +223,25 @@ def _check_measures(
             raise ValueError('Tuple must have a length of 2.')
         if not isinstance(measures[0], str):
             raise TypeError(
-                f'First item of tuple must be a string, '
-                f"but received {type(measures[0])}.",
+                f'First item of tuple must be a string, but received {type(measures[0])}.',
             )
         if not isinstance(measures[1], dict):
             raise TypeError(
-                'Second item of tuple must be a dictionary, '
-                f"but received {type(measures[1])}.",
+                f'Second item of tuple must be a dictionary, but received {type(measures[1])}.',
             )
     elif isinstance(measures, list):
         for measure in measures:
             if not isinstance(measure, (str, tuple)):
                 raise TypeError(
                     'Each item in the list must be either a string or a tuple, '
-                    f"but received {type(measure)}.",
+                    f'but received {type(measure)}.',
                 )
             if isinstance(measure, tuple):
                 if len(measure) != 2:
                     raise ValueError('Tuple must have a length of 2.')
                 if not isinstance(measure[0], str):
                     raise TypeError(
-                        'First item of tuple must be a string, '
-                        f'but received {type(measure[0])}.',
+                        f'First item of tuple must be a string, but received {type(measure[0])}.',
                     )
                 if not isinstance(measure[1], dict):
                     raise TypeError(
@@ -253,6 +250,5 @@ def _check_measures(
                     )
     else:
         raise TypeError(
-            'measures must be of type str, tuple, or list, '
-            f"but received {type(measures)}.",
+            f'measures must be of type str, tuple, or list, but received {type(measures)}.',
         )

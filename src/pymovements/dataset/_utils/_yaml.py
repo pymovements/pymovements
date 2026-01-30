@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Yaml utilities."""
+
 from __future__ import annotations
 
 import builtins
@@ -29,9 +30,9 @@ import yaml
 
 # generalized constructor for !* tags
 def type_constructor(
-        loader: yaml.SafeLoader,
-        prefix: str,
-        node: yaml.Node,
+    loader: yaml.SafeLoader,
+    prefix: str,
+    node: yaml.Node,
 ) -> type:
     """Resolve a YAML tag to a corresponding Python type.
 
