@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the time series plotting function."""
+
 from __future__ import annotations
 
 import math
@@ -33,25 +34,25 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 
 def tsplot(
-        gaze: Gaze,
-        channels: list[str] | None = None,
-        xlabel: str | None = None,
-        n_cols: int | None = None,
-        n_rows: int | None = None,
-        rotate_ylabels: bool = True,
-        share_y: bool = True,
-        zero_centered_yaxis: bool = True,
-        line_color: tuple[int, int, int] | str = 'k',
-        line_width: int = 1,
-        show_grid: bool = True,
-        show_yticks: bool = True,
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        *,
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
+    gaze: Gaze,
+    channels: list[str] | None = None,
+    xlabel: str | None = None,
+    n_cols: int | None = None,
+    n_rows: int | None = None,
+    rotate_ylabels: bool = True,
+    share_y: bool = True,
+    zero_centered_yaxis: bool = True,
+    line_color: tuple[int, int, int] | str = 'k',
+    line_width: int = 1,
+    show_grid: bool = True,
+    show_yticks: bool = True,
+    figsize: tuple[int, int] = (15, 5),
+    title: str | None = None,
+    savepath: str | None = None,
+    show: bool = True,
+    *,
+    ax: plt.Axes | None = None,
+    closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
 
@@ -198,9 +199,13 @@ def tsplot(
         ax.grid(show_grid, which='minor')
 
         ax.tick_params(
-            which='both', direction='out',
-            length=4, width=1, colors='k',
-            grid_color='#999999', grid_alpha=0.5,
+            which='both',
+            direction='out',
+            length=4,
+            width=1,
+            colors='k',
+            grid_color='#999999',
+            grid_alpha=0.5,
         )
 
         if show_yticks:
@@ -219,7 +224,8 @@ def tsplot(
             ax.set_ylabel(
                 channels[channel_id],
                 rotation='horizontal',
-                ha='right', va='center',
+                ha='right',
+                va='center',
             )
         else:
             ax.set_ylabel(channels[channel_id])

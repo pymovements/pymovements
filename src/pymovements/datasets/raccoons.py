@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the RaCCooNS dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,14 +46,14 @@ class RaCCooNS(DatasetDefinition):
 
     Check the respective paper :cite:p:`RaCCooNS` for details.
 
-    Warning
+    Warning:
     -------
     This dataset currently cannot be fully processed by ``pymovements`` due to an error during
     parsing of individual files.
 
     See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
 
-    Attributes
+    Attributes:
     ----------
     name: str
         The name of the dataset.
@@ -70,7 +71,7 @@ class RaCCooNS(DatasetDefinition):
     experiment: Experiment
         The experiment definition.
 
-    Examples
+    Examples:
     --------
     Initialize your :py:class:`~pymovements.Dataset` object with the
     :py:class:`~pymovements.datasets.RaCCooNS` definition:

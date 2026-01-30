@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the ETDD70 dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -131,7 +132,10 @@ class ETDD70(DatasetDefinition):
                         'time_column': 'time',
                         'time_unit': 'ms',
                         'pixel_columns': [
-                            'gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right',
+                            'gaze_x_left',
+                            'gaze_y_left',
+                            'gaze_x_right',
+                            'gaze_y_right',
                         ],
                     },
                 },

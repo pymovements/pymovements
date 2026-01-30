@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the GazeBase dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -139,7 +140,8 @@ class GazeBase(DatasetDefinition):
                         r'_{task_name}.csv'
                     ),
                     'filename_pattern_schema_overrides': {
-                        'round_id': int, 'subject_id': int,
+                        'round_id': int,
+                        'subject_id': int,
                         'session_id': int,
                     },
                     'load_kwargs': {

@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for event measures."""
+
+from __future__ import annotations
+
 from pymovements.measure.events.measures import duration
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.events.measures import register_event_measure
@@ -29,6 +32,5 @@ __all__ = [
     'register_event_measure',
     'EventProcessor',
     'EventSamplesProcessor',
-
     'duration',
 ]

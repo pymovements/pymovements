@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Functionality to scan, load and save dataset files."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -78,7 +79,8 @@ class DatasetFile:
 
 
 def scan_dataset(
-        definition: DatasetDefinition, paths: DatasetPaths,
+    definition: DatasetDefinition,
+    paths: DatasetPaths,
 ) -> tuple[dict[str, pl.DataFrame], list[DatasetFile]]:
     """Infer information from filepaths and filenames.
 
@@ -138,10 +140,12 @@ def scan_dataset(
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()
-            fileinfo_df = fileinfo_df.with_columns([
-                pl.col(fileinfo_key).cast(fileinfo_dtype)
-                for fileinfo_key, fileinfo_dtype in items
-            ])
+            fileinfo_df = fileinfo_df.with_columns(
+                [
+                    pl.col(fileinfo_key).cast(fileinfo_dtype)
+                    for fileinfo_key, fileinfo_dtype in items
+                ]
+            )
 
         if resource_definition.content in _fileinfo_dicts:
             _fileinfo_dicts[content_type] = pl.concat([_fileinfo_dicts[content_type], fileinfo_df])
@@ -162,11 +166,11 @@ def scan_dataset(
 
 
 def load_event_files(
-        files: list[DatasetFile],
-        paths: DatasetPaths,
-        events_dirname: str | None = None,
-        extension: str = 'feather',
-        verbose: bool = True,
+    files: list[DatasetFile],
+    paths: DatasetPaths,
+    events_dirname: str | None = None,
+    extension: str = 'feather',
+    verbose: bool = True,
 ) -> list[Events]:
     """Load all event files associated with a gaze sample file.
 
@@ -203,7 +207,11 @@ def load_event_files(
 
     # read and preprocess input files
     for file in tqdm(
-            files, total=len(files), desc='Loading event files', unit='file', disable=not verbose,
+        files,
+        total=len(files),
+        desc='Loading event files',
+        unit='file',
+        disable=not verbose,
     ):
         filepath = paths.raw_to_event_filepath(
             file.path,
@@ -218,8 +226,7 @@ def load_event_files(
         else:
             valid_extensions = ['csv', 'txt', 'tsv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
-                f'Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
             )
 
         list_of_events.append(Events(events))
@@ -228,12 +235,12 @@ def load_event_files(
 
 
 def load_gaze_files(
-        definition: DatasetDefinition,
-        files: list[DatasetFile],
-        paths: DatasetPaths,
-        preprocessed: bool = False,
-        preprocessed_dirname: str | None = None,
-        extension: str = 'feather',
+    definition: DatasetDefinition,
+    files: list[DatasetFile],
+    paths: DatasetPaths,
+    preprocessed: bool = False,
+    preprocessed_dirname: str | None = None,
+    extension: str = 'feather',
 ) -> list[Gaze]:
     """Load all available gaze data files.
 
@@ -278,7 +285,8 @@ def load_gaze_files(
             file = replace(
                 file,
                 path=paths.get_preprocessed_filepath(
-                    file.path, preprocessed_dirname=preprocessed_dirname,
+                    file.path,
+                    preprocessed_dirname=preprocessed_dirname,
                     extension=extension,
                 ),
             )
@@ -294,9 +302,9 @@ def load_gaze_files(
 
 
 def load_gaze_file(
-        file: DatasetFile,
-        dataset_definition: DatasetDefinition,
-        preprocessed: bool = False,
+    file: DatasetFile,
+    dataset_definition: DatasetDefinition,
+    preprocessed: bool = False,
 ) -> Gaze:
     """Load a gaze data file as Gaze.
 
@@ -382,7 +390,8 @@ def load_gaze_file(
             if dataset_definition.custom_read_kwargs:
                 read_csv_kwargs = dataset_definition.custom_read_kwargs.get('gaze', {})
                 load_function_kwargs['read_csv_kwargs'] = {
-                    **load_function_kwargs.get('read_csv_kwargs', {}), **read_csv_kwargs,
+                    **load_function_kwargs.get('read_csv_kwargs', {}),
+                    **read_csv_kwargs,
                 }
 
             gaze = from_csv(
@@ -434,8 +443,8 @@ def load_gaze_file(
 
 
 def load_precomputed_reading_measures(
-        definition: DatasetDefinition,
-        files: list[DatasetFile],
+    definition: DatasetDefinition,
+    files: list[DatasetFile],
 ) -> list[ReadingMeasures]:
     """Load reading measures files.
 
@@ -460,8 +469,8 @@ def load_precomputed_reading_measures(
 
 
 def load_precomputed_reading_measure_file(
-        file: DatasetFile,
-        dataset_definition: DatasetDefinition,
+    file: DatasetFile,
+    dataset_definition: DatasetDefinition,
 ) -> ReadingMeasures:
     """Load precomputed reading measure from file.
 
@@ -492,7 +501,8 @@ def load_precomputed_reading_measure_file(
         load_kwargs = {}
     if dataset_definition.custom_read_kwargs is not None:
         custom_read_kwargs = dataset_definition.custom_read_kwargs.get(
-            'precomputed_reading_measures', {},
+            'precomputed_reading_measures',
+            {},
         )
         load_kwargs.update(custom_read_kwargs)
 
@@ -526,8 +536,8 @@ def load_precomputed_reading_measure_file(
 
 
 def load_precomputed_event_files(
-        definition: DatasetDefinition,
-        files: list[DatasetFile],
+    definition: DatasetDefinition,
+    files: list[DatasetFile],
 ) -> list[PrecomputedEventDataFrame]:
     """Load precomputed event dataframes from files.
 
@@ -556,8 +566,8 @@ def load_precomputed_event_files(
 
 
 def load_precomputed_event_file(
-        file: DatasetFile,
-        dataset_definition: DatasetDefinition,
+    file: DatasetFile,
+    dataset_definition: DatasetDefinition,
 ) -> PrecomputedEventDataFrame:
     """Load precomputed events from a single file.
 
@@ -622,12 +632,12 @@ def load_precomputed_event_file(
 
 
 def save_events(
-        events: Sequence[Events],
-        fileinfo: pl.DataFrame,
-        paths: DatasetPaths,
-        events_dirname: str | None = None,
-        verbose: int = 1,
-        extension: str = 'feather',
+    events: Sequence[Events],
+    fileinfo: pl.DataFrame,
+    paths: DatasetPaths,
+    events_dirname: str | None = None,
+    verbose: int = 1,
+    extension: str = 'feather',
 ) -> None:
     """Save events to files.
 
@@ -671,7 +681,8 @@ def save_events(
     ):
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         events_filepath = paths.raw_to_event_filepath(
-            raw_filepath, events_dirname=events_dirname,
+            raw_filepath,
+            events_dirname=events_dirname,
             extension=extension,
         )
 
@@ -686,18 +697,17 @@ def save_events(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
-                f'Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
             )
 
 
 def save_preprocessed(
-        gazes: list[Gaze],
-        fileinfo: pl.DataFrame,
-        paths: DatasetPaths,
-        preprocessed_dirname: str | None = None,
-        verbose: int = 1,
-        extension: str = 'feather',
+    gazes: list[Gaze],
+    fileinfo: pl.DataFrame,
+    paths: DatasetPaths,
+    preprocessed_dirname: str | None = None,
+    verbose: int = 1,
+    extension: str = 'feather',
 ) -> None:
     """Save preprocessed gaze files.
 
@@ -743,7 +753,8 @@ def save_preprocessed(
 
         raw_filepath = paths.raw / Path(fileinfo[file_id, 'filepath'])
         preprocessed_filepath = paths.get_preprocessed_filepath(
-            raw_filepath, preprocessed_dirname=preprocessed_dirname,
+            raw_filepath,
+            preprocessed_dirname=preprocessed_dirname,
             extension=extension,
         )
 
@@ -761,17 +772,18 @@ def save_preprocessed(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".'
-                f'Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
             )
 
 
 def take_subset(
-        fileinfo: pl.DataFrame,
-        files: list[DatasetFile],
-        subset: dict[
-            str, bool | float | int | str | list[bool | float | int | str],
-        ] | None = None,
+    fileinfo: pl.DataFrame,
+    files: list[DatasetFile],
+    subset: dict[
+        str,
+        bool | float | int | str | list[bool | float | int | str],
+    ]
+    | None = None,
 ) -> tuple[pl.DataFrame, list[DatasetFile]]:
     """Take a subset of the fileinfo dataframe and dataset file list.
 
@@ -816,7 +828,7 @@ def take_subset(
         if metadata_key not in fileinfo['gaze'].columns:
             raise ValueError(
                 f'subset key {metadata_key} must be a column in the fileinfo attribute.'
-                f" Available columns are: {fileinfo['gaze'].columns}",
+                f' Available columns are: {fileinfo["gaze"].columns}',
             )
 
         for file in files:
@@ -825,7 +837,7 @@ def take_subset(
                 # The pragma directive should be removed after the removal of fileinfo from Dataset.
                 raise ValueError(
                     f'subset key {metadata_key} must exist as metadata key in DatasetFile. '
-                    f"Available metadata: {file.metadata}",
+                    f'Available metadata: {file.metadata}',
                 )
 
         if isinstance(metadata_value, (bool, float, int, str)):

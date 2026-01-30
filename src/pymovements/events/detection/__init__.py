@@ -31,6 +31,9 @@
     pymovements.events.microsaccades
 
 """
+
+from __future__ import annotations
+
 from pymovements.events.detection._fill import fill
 from pymovements.events.detection._idt import idt
 from pymovements.events.detection._ivt import ivt
@@ -41,7 +44,6 @@ from pymovements.events.detection._microsaccades import microsaccades
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',
-
     'fill',
     'idt',
     'ivt',

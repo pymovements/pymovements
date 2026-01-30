@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test AOI functionality."""
+
 from __future__ import annotations
 
 from math import nan
@@ -37,7 +38,11 @@ from pymovements.stimulus.text import TextStimulus
     ],
 )
 def test_get_aoi_overlap_warns(
-    stimulus_overlap: TextStimulus, x: int, y: int, expected: str | None, expected_len: int,
+    stimulus_overlap: TextStimulus,
+    x: int,
+    y: int,
+    expected: str | None,
+    expected_len: int,
 ) -> None:
     row = {'__x': x, '__y': y}
     if expected is not None:
@@ -59,7 +64,10 @@ def test_get_aoi_overlap_warns(
     ],
 )
 def test_get_aoi_overlap_warns_width_height(
-    x: int, y: int, expected: str | None, expect_len: int,
+    x: int,
+    y: int,
+    expected: str | None,
+    expect_len: int,
 ) -> None:
     """Overlap handling for width/height-configured stimulus."""
     df = pl.DataFrame(
@@ -84,7 +92,8 @@ def test_get_aoi_overlap_warns_width_height(
     row = {'x': x, 'y': y}
     if expect_len > 1:
         with pytest.warns(
-                UserWarning, match=r'Multiple AOIs matched this point \(x=',
+            UserWarning,
+            match=r'Multiple AOIs matched this point \(x=',
         ):
             out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
     else:
@@ -125,8 +134,8 @@ def test_get_aoi_raises_value_error_when_no_size_columns(row: dict[str, int]) ->
     )
 
     with pytest.raises(
-            ValueError,
-            match='either TextStimulus.width or TextStimulus.end_x_column must be defined',
+        ValueError,
+        match='either TextStimulus.width or TextStimulus.end_x_column must be defined',
     ):
         _ = stim.get_aoi(row=row, x_eye='x', y_eye='y')
 
@@ -199,7 +208,9 @@ def test_get_aoi_invalid_coordinates_warns_and_returns_none(mode: str, x: Any, y
 
 @pytest.mark.parametrize('row_has_trial_key,trial_value', [(False, None), (True, None)])
 def test_get_aoi_skips_trial_filter_when_row_trial_missing_or_none(
-    stimulus_with_trials: TextStimulus, row_has_trial_key: bool, trial_value: float,
+    stimulus_with_trials: TextStimulus,
+    row_has_trial_key: bool,
+    trial_value: float,
 ) -> None:
     # Row targets coordinates inside AOI 'A'. We either omit the 'trial' key or set it to None.
     row = {'__x': 5.0, '__y': 5.0}

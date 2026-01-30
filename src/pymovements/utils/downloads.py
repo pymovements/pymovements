@@ -23,6 +23,7 @@
    Please use :py:meth:`~pymovements.Dataset.download()` instead.
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,20 +35,19 @@ from pymovements.dataset._utils._downloads import download_file as _download_fil
 
 
 @deprecated(
-    reason='Please use Dataset.download() instead. '
-           'This function will be removed in v0.26.0.',
+    reason='Please use Dataset.download() instead. This function will be removed in v0.26.0.',
     version='v0.21.1',
 )
 def download_and_extract_archive(
-        url: str,
-        download_dirpath: Path,
-        download_filename: str,
-        extract_dirpath: Path | None = None,
-        md5: str | None = None,
-        recursive: bool = True,
-        remove_finished: bool = False,
-        remove_top_level: bool = True,
-        verbose: int = 1,
+    url: str,
+    download_dirpath: Path,
+    download_filename: str,
+    extract_dirpath: Path | None = None,
+    md5: str | None = None,
+    recursive: bool = True,
+    remove_finished: bool = False,
+    remove_top_level: bool = True,
+    verbose: int = 1,
 ) -> None:
     """Download and extract archive file.
 
@@ -106,17 +106,16 @@ def download_and_extract_archive(
 
 
 @deprecated(
-    reason='Please use Dataset.download() instead. '
-           'This function will be removed in v0.26.0.',
+    reason='Please use Dataset.download() instead. This function will be removed in v0.26.0.',
     version='v0.21.1',
 )
 def download_file(
-        url: str,
-        dirpath: Path,
-        filename: str,
-        md5: str | None = None,
-        max_redirect_hops: int = 3,
-        verbose: bool = True,
+    url: str,
+    dirpath: Path,
+    filename: str,
+    md5: str | None = None,
+    max_redirect_hops: int = 3,
+    verbose: bool = True,
 ) -> Path:
     """Download a file from a URL and place it in root.
 

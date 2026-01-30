@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Shared TextStimulus test fixtures."""
+
 from __future__ import annotations
 
 import polars as pl
@@ -27,7 +28,9 @@ from pymovements.stimulus.text import TextStimulus
 
 
 def _make_text_stimulus(
-    df: pl.DataFrame, *, trial_col: str | None = None,
+    df: pl.DataFrame,
+    *,
+    trial_col: str | None = None,
     page_col: str | None = None,
 ) -> TextStimulus:
     """Help to construct a TextStimulus from a minimal AOI dataframe.
@@ -118,13 +121,15 @@ def _simple_stimulus() -> TextStimulus:
 @pytest.fixture(name='simple_stimulus_w_h')
 def _simple_stimulus_w_h() -> TextStimulus:
     """Minimal AOI table: one rectangle from (0,0) with size 100x100. Using width and height."""
-    aois = pl.DataFrame({
-        'aoi': ['A'],
-        'x': [0.0],
-        'y': [0.0],
-        'width': [100.0],
-        'height': [100.0],
-    })
+    aois = pl.DataFrame(
+        {
+            'aoi': ['A'],
+            'x': [0.0],
+            'y': [0.0],
+            'width': [100.0],
+            'height': [100.0],
+        }
+    )
     return TextStimulus(
         aois=aois,
         aoi_column='aoi',
@@ -174,10 +179,10 @@ def _stimulus_with_trials() -> TextStimulus:
     df = pl.DataFrame(
         {
             'label': ['A', 'B', 'C', 'D'],
-            'sx': [0.0, 20.0, -20., -20.],
-            'sy': [0.0, 20.0, -20., -20.],
-            'w': [10.0, 10.0, 2., 4.],
-            'h': [10.0, 10.0, 2., 4.],
+            'sx': [0.0, 20.0, -20.0, -20.0],
+            'sy': [0.0, 20.0, -20.0, -20.0],
+            'w': [10.0, 10.0, 2.0, 4.0],
+            'h': [10.0, 10.0, 2.0, 4.0],
             'trial': [1, 2, 1, 1],
         },
     )

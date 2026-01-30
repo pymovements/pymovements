@@ -24,6 +24,7 @@ These focus on covering specific branches that were previously missed:
 - finalize_figure with own_figure=False and closefig=True (ignored + warns)
 - _setup_axes_and_colormap warning when external ax is provided together with a non-None figsize
 """
+
 from __future__ import annotations
 
 import warnings

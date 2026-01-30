@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the Provo dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -109,8 +110,7 @@ class Provo(DatasetDefinition):
                     'url': 'https://osf.io/download/z3eh6/',
                     'filename': 'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
                     'md5': '7aa239e51e5d78528e2430f84a23da3f',
-                    'filename_pattern':
-                        'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
+                    'filename_pattern': 'Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv',
                     'load_kwargs': {
                         'read_csv_kwargs': {
                             'schema_overrides': {'RECORDING_SESSION_LABEL': pl.Utf8},

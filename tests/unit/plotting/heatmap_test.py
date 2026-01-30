@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test heatmap."""
+
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import matplotlib.colors
@@ -72,28 +75,36 @@ def args_fixture(experiment_fixture, request):
     'kwargs',
     [
         pytest.param(
-            {'cmap': 'jet'}, id='str_cmap',
+            {'cmap': 'jet'},
+            id='str_cmap',
         ),
         pytest.param(
-            {'cmap': matplotlib.colors.ListedColormap(['red', 'blue', 'green'])}, id='custom_cmap',
+            {'cmap': matplotlib.colors.ListedColormap(['red', 'blue', 'green'])},
+            id='custom_cmap',
         ),
         pytest.param(
-            {'gridsize': (10, 10)}, id='default_gridsize',
+            {'gridsize': (10, 10)},
+            id='default_gridsize',
         ),
         pytest.param(
-            {'gridsize': (15, 20)}, id='custom_gridsize',
+            {'gridsize': (15, 20)},
+            id='custom_gridsize',
         ),
         pytest.param(
-            {'interpolation': 'gaussian'}, id='default_interpolation',
+            {'interpolation': 'gaussian'},
+            id='default_interpolation',
         ),
         pytest.param(
-            {'interpolation': 'bilinear'}, id='custom_interpolation',
+            {'interpolation': 'bilinear'},
+            id='custom_interpolation',
         ),
         pytest.param(
-            {'origin': 'lower'}, id='default_origin',
+            {'origin': 'lower'},
+            id='default_origin',
         ),
         pytest.param(
-            {'origin': 'upper'}, id='custom_origin',
+            {'origin': 'upper'},
+            id='custom_origin',
         ),
         pytest.param(
             {
@@ -101,7 +112,8 @@ def args_fixture(experiment_fixture, request):
                 'xlabel': None,
                 'ylabel': None,
                 'cbar_label': None,
-            }, id='default_labels',
+            },
+            id='default_labels',
         ),
         pytest.param(
             {
@@ -113,20 +125,24 @@ def args_fixture(experiment_fixture, request):
             id='custom_labels',
         ),
         pytest.param(
-            {'show_cbar': True}, id='show_cbar_true',
+            {'show_cbar': True},
+            id='show_cbar_true',
         ),
         pytest.param(
-            {'show_cbar': False}, id='show_cbar_false',
+            {'show_cbar': False},
+            id='show_cbar_false',
         ),
         pytest.param(
             {
                 'add_stimulus': True,
                 'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
                 'stimulus_origin': 'lower',
-            }, id='add_stimulus_true',
+            },
+            id='add_stimulus_true',
         ),
         pytest.param(
-            {'add_stimulus': False}, id='add_stimulus_false',
+            {'add_stimulus': False},
+            id='add_stimulus_false',
         ),
     ],
 )
@@ -185,7 +201,10 @@ def test_heatmap_save(args, monkeypatch, tmp_path):
         position_column = 'position'
 
     heatmap(
-        args[0], position_column=position_column, show=False, savepath=str(tmp_path / 'test.svg'),
+        args[0],
+        position_column=position_column,
+        show=False,
+        savepath=str(tmp_path / 'test.svg'),
     )
 
     mock.assert_called_once()
@@ -218,10 +237,12 @@ def test_heatmap_no_experiment_property():
 @pytest.fixture(name='gaze')
 def gaze_fixture():
     """Provide a minimal valid Gaze object for plotting tests."""
-    df = pl.DataFrame({
-        'x_pix': np.arange(100),
-        'y_pix': np.arange(100),
-    })
+    df = pl.DataFrame(
+        {
+            'x_pix': np.arange(100),
+            'y_pix': np.arange(100),
+        }
+    )
 
     experiment = pm.Experiment(
         screen_width_px=1024,

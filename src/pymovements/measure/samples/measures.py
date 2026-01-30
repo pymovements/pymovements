@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides sample measure implementations."""
+
 from __future__ import annotations
 
 from math import isfinite
@@ -56,9 +57,7 @@ def _is_invalid_value(v: Any) -> bool:
     if v is None:
         return True
     # sequence (e.g., list-like): any invalid element marks the row
-    if isinstance(v, (list, tuple)) or (
-            hasattr(v, '__iter__') and not isinstance(v, (str, bytes))
-    ):
+    if isinstance(v, (list, tuple)) or (hasattr(v, '__iter__') and not isinstance(v, (str, bytes))):
         for e in v:
             if e is None:
                 return True
@@ -105,9 +104,9 @@ def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.E
 
 @register_sample_measure
 def amplitude(
-        *,
-        position_column: str = 'position',
-        n_components: int = 2,
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
 ) -> pl.Expr:
     r"""Amplitude of an event.
 
@@ -145,8 +144,7 @@ def amplitude(
     y_position = pl.col(position_column).list.get(1)
 
     result = (
-        (x_position.max() - x_position.min()).pow(2)
-        + (y_position.max() - y_position.min()).pow(2)
+        (x_position.max() - x_position.min()).pow(2) + (y_position.max() - y_position.min()).pow(2)
     ).sqrt()
 
     return result.alias('amplitude')
@@ -154,9 +152,9 @@ def amplitude(
 
 @register_sample_measure
 def dispersion(
-        *,
-        position_column: str = 'position',
-        n_components: int = 2,
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
 ) -> pl.Expr:
     r"""Dispersion of an event.
 
@@ -199,9 +197,9 @@ def dispersion(
 
 @register_sample_measure
 def disposition(
-        *,
-        position_column: str = 'position',
-        n_components: int = 2,
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
 ) -> pl.Expr:
     r"""Disposition of an event.
 
@@ -247,10 +245,10 @@ def disposition(
 
 @register_sample_measure
 def location(
-        method: str = 'mean',
-        *,
-        position_column: str = 'position',
-        n_components: int = 2,
+    method: str = 'mean',
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
 ) -> pl.Expr:
     r"""Location of an event.
 
@@ -295,11 +293,7 @@ def location(
 
     component_expressions = []
     for component in range(n_components):
-        position_component = (
-            pl.col(position_column)
-            .list.slice(0, None)
-            .list.get(component)
-        )
+        position_component = pl.col(position_column).list.slice(0, None).list.get(component)
 
         if method == 'mean':
             expression_component = position_component.mean()
@@ -335,8 +329,8 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
     """
     valid_dtypes = {pl.Float64, pl.Int64, pl.Utf8, pl.List}
     if not any(
-            column_dtype == d or (isinstance(column_dtype, pl.List) and d == pl.List)
-            for d in valid_dtypes
+        column_dtype == d or (isinstance(column_dtype, pl.List) and d == pl.List)
+        for d in valid_dtypes
     ):
         raise TypeError(
             'column_dtype must be of type {Float64, Int64, Utf8, List}'
@@ -348,9 +342,9 @@ def null_ratio(column: str, column_dtype: pl.DataType) -> pl.Expr:
 
 @register_sample_measure
 def peak_velocity(
-        *,
-        velocity_column: str = 'velocity',
-        n_components: int = 2,
+    *,
+    velocity_column: str = 'velocity',
+    n_components: int = 2,
 ) -> pl.Expr:
     r"""Peak velocity of an event.
 
@@ -404,13 +398,13 @@ def _check_has_two_componenents(n_components: int) -> None:
 
 @register_sample_measure
 def data_loss(
-        time_column: str,
-        data_column: str,
-        *,
-        sampling_rate: float,
-        start_time: float | None = None,
-        end_time: float | None = None,
-        unit: Literal['count', 'time', 'ratio'] = 'count',
+    time_column: str,
+    data_column: str,
+    *,
+    sampling_rate: float,
+    start_time: float | None = None,
+    end_time: float | None = None,
+    unit: Literal['count', 'time', 'ratio'] = 'count',
 ) -> pl.Expr:
     """Measure data loss using an expected, evenly sampled time base.
 
@@ -501,8 +495,7 @@ def data_loss(
 
     if start_time is not None and end_time is not None and end_time < start_time:
         raise ValueError(
-            f'end_time ({end_time}) must be greater than or equal to '
-            f'start_time ({start_time})',
+            f'end_time ({end_time}) must be greater than or equal to start_time ({start_time})',
         )
 
     # Group anchors: provided or derived
@@ -518,15 +511,15 @@ def data_loss(
 
     # Missing rows due to time gaps, ensure non-negative and valid range
     valid_range = end_expr >= start_expr
-    time_missing = pl.when(valid_range).then(
-        pl.max_horizontal(expected - observed, pl.lit(0)),
-    ).otherwise(pl.lit(None))
-
-    invalid_missing = (
-        _is_invalid(data_column)
-        .sum()
-        .cast(pl.Int64)
+    time_missing = (
+        pl.when(valid_range)
+        .then(
+            pl.max_horizontal(expected - observed, pl.lit(0)),
+        )
+        .otherwise(pl.lit(None))
     )
+
+    invalid_missing = _is_invalid(data_column).sum().cast(pl.Int64)
 
     total_missing = (time_missing + invalid_missing).alias('data_loss_count')
 
@@ -534,7 +527,7 @@ def data_loss(
         return total_missing
 
     if unit == 'time':
-        missing_time = (total_missing.cast(pl.Float64) / pl.lit(float(sampling_rate)))
+        missing_time = total_missing.cast(pl.Float64) / pl.lit(float(sampling_rate))
         return missing_time.alias('data_loss_time')
 
     if unit == 'ratio':
@@ -542,5 +535,5 @@ def data_loss(
         return ratio.alias('data_loss_ratio')
 
     raise ValueError(
-        f"unit must be one of {'count', 'time', 'ratio'} but got: {unit!r}",
+        f'unit must be one of {"count", "time", "ratio"} but got: {unit!r}',
     )

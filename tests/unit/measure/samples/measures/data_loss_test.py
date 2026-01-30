@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test data_loss sample measure."""
+
 from __future__ import annotations
 
 import re
@@ -50,33 +51,42 @@ class TestDataLoss:
             # One NaN in values -> 1 missing by validity
             # Total missing = 2
             pytest.param(
-                [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, nan, 1.0], 1.0,
+                [0.0, 1.0, 2.0, 4.0],
+                [1.0, 1.0, nan, 1.0],
+                1.0,
                 {'count': 2, 'time': 2.0, 'ratio': 2 / 5},
                 id='gap_plus_nan_invalid',
             ),
-
             # 1 Hz: expected [0, 1, 2, 3, 4, 5, 6, 7] (8 samples)
             # Observed: [0, 1, 2, 6, 7] (5 samples) -> 3 missing by time
             # One None in values -> 1 missing by validity
             # Total missing = 4
             pytest.param(
-                [0.0, 1.0, 2.0, 6.0, 7.0], [1.0, None, 1.0, 1.0, 1.0], 1.0,
+                [0.0, 1.0, 2.0, 6.0, 7.0],
+                [1.0, None, 1.0, 1.0, 1.0],
+                1.0,
                 {'count': 4, 'time': 4.0, 'ratio': 4 / 8},
                 id='large_gap_with_invalid',
             ),
-
             # 2 Hz: expected [0.0, 0.5, 1.0, 1.5] (4 samples)
             # Observed: 4 samples, all valid -> 0 missing
             pytest.param(
-                [0.0, 0.5, 1.0, 1.5], [1.0, 1.0, 1.0, 1.0], 2.0,
+                [0.0, 0.5, 1.0, 1.5],
+                [1.0, 1.0, 1.0, 1.0],
+                2.0,
                 {'count': 0, 'time': 0.0, 'ratio': 0.0},
                 id='no_missing_regular_all_valid',
             ),
         ],
     )
     def test_internal_gaps_and_invalids(
-            self, unit, expected_col, times, values, sampling_rate,
-            expected_vals,
+        self,
+        unit,
+        expected_col,
+        times,
+        values,
+        sampling_rate,
+        expected_vals,
     ):
         """Test data loss with internal time gaps and invalid values."""
         df = pl.DataFrame({'time': times, 'value': values})
@@ -93,30 +103,49 @@ class TestDataLoss:
             # One inf in values -> 1 missing by validity
             # Total missing = 3
             pytest.param(
-                [10.0, 11.0, 12.0], [1.0, inf, 1.0], 1.0, 9.0, 13.0,
+                [10.0, 11.0, 12.0],
+                [1.0, inf, 1.0],
+                1.0,
+                9.0,
+                13.0,
                 {'count': 3, 'time': 3.0, 'ratio': 3 / 5},
                 id='explicit_bounds_with_inf',
             ),
-
             # 1/3 Hz, start=0, end=12: expected [0, 3, 6, 9, 12] (5 samples)
             # Observed: [0, 2, 6] (3 samples) -> 2 missing by time
             # One None in values -> 1 missing by validity
             # Total missing = 3
             pytest.param(
-                [0.0, 2.0, 6.0], [1.0, None, 1.0], 1 / 3, 0.0, 12.0,
+                [0.0, 2.0, 6.0],
+                [1.0, None, 1.0],
+                1 / 3,
+                0.0,
+                12.0,
                 {'count': 3, 'time': 9.0, 'ratio': 3 / 5},
                 id='irregular_with_none',
             ),
         ],
     )
     def test_bounds_missing(
-            self, unit, expected_col, times, values, sampling_rate, start, end,
-            expected_vals,
+        self,
+        unit,
+        expected_col,
+        times,
+        values,
+        sampling_rate,
+        start,
+        end,
+        expected_vals,
     ):
         """Test data loss with explicit start and end bounds."""
         df = pl.DataFrame({'time': times, 'value': values})
         expr = pm.measure.data_loss(
-            'time', 'value', sampling_rate=sampling_rate, start_time=start, end_time=end, unit=unit,
+            'time',
+            'value',
+            sampling_rate=sampling_rate,
+            start_time=start,
+            end_time=end,
+            unit=unit,
         )
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
@@ -145,7 +174,8 @@ class TestDataLoss:
             # One -inf in values -> 1 missing by validity
             # Total missing = 2
             pytest.param(
-                [3.0, 1.0, 0.0, 4.0], [1.0, 1.0, -inf, 1.0],
+                [3.0, 1.0, 0.0, 4.0],
+                [1.0, 1.0, -inf, 1.0],
                 {'count': 2, 'time': 2.0, 'ratio': 2 / 5},
                 id='unsorted_with_neginf',
             ),
@@ -176,8 +206,12 @@ class TestDataLoss:
         # time_missing = max(1 - 2, 0) = 0
         df = pl.DataFrame({'time': [1.0, 2.0], 'value': [1.0, 1.0]})
         expr = pm.measure.data_loss(
-            'time', 'value', sampling_rate=1.0, start_time=5.0,
-            end_time=5.0, unit=unit,
+            'time',
+            'value',
+            sampling_rate=1.0,
+            start_time=5.0,
+            end_time=5.0,
+            unit=unit,
         )
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [0.0 if unit != 'count' else 0]})
@@ -189,8 +223,12 @@ class TestDataLoss:
         # time_missing = max(2 - 3, 0) = 0
         df = pl.DataFrame({'time': [0.0, 1.0, 2.0], 'value': [1.0, 1.0, 1.0]})
         expr = pm.measure.data_loss(
-            'time', 'value', sampling_rate=1.0, start_time=0.0,
-            end_time=1.5, unit=unit,
+            'time',
+            'value',
+            sampling_rate=1.0,
+            start_time=0.0,
+            end_time=1.5,
+            unit=unit,
         )
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [0.0 if unit != 'count' else 0]})
@@ -206,10 +244,12 @@ class TestDataLoss:
         # index 5: [1, None] -> contains None
         # Total invalid = 3
         # Total missing = 3 + 3 = 6
-        df = pl.DataFrame({
-            'time': [1, 2, 3, 4, 5, 9],
-            'pixel': [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
-        })
+        df = pl.DataFrame(
+            {
+                'time': [1, 2, 3, 4, 5, 9],
+                'pixel': [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
+            }
+        )
         expr = pm.measure.data_loss('time', 'pixel', sampling_rate=1.0, unit=unit)
         result = df.select(expr)
         expected_vals = {'count': 6, 'time': 6.0, 'ratio': 6 / 9}
@@ -231,8 +271,7 @@ def test_data_loss_invalid_unit_raises(bad_unit):
 def test_data_loss_invalid_time_column_raises(bad_time_column):
     """Test that providing an invalid time column type raises a TypeError."""
     message = (
-        f"invalid type for 'time_column'. Expected 'str' , got "
-        f"'{type(bad_time_column).__name__}'"
+        f"invalid type for 'time_column'. Expected 'str' , got '{type(bad_time_column).__name__}'"
     )
     with pytest.raises(TypeError, match=message):
         pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0)
@@ -241,9 +280,7 @@ def test_data_loss_invalid_time_column_raises(bad_time_column):
 @pytest.mark.parametrize('bad_sampling_rate', [0, -1, 0.0, -10.5, '1Hz'])
 def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
     """Test that providing an invalid sampling rate raises a ValueError."""
-    message = (
-        f"sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}"
-    )
+    message = f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
     with pytest.raises(ValueError, match=message):
         pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate)
 

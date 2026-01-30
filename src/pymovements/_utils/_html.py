@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides functions for generating HTML representations of objects for Jupyter notebooks."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -27,7 +28,6 @@ from typing import TypeVar
 from uuid import uuid4
 
 import polars as pl
-
 
 STYLE = """
 <style>
@@ -94,7 +94,7 @@ def repr_html(attrs: list[str] | None = None) -> Callable[[T], T]:
     """
 
     def decorator(cls: T) -> T:
-        setattr(cls, '_repr_html_', lambda self: _obj_html(self, attrs))
+        cls._repr_html_ = lambda self: _obj_html(self, attrs)
         return cls
 
     return decorator
@@ -128,7 +128,7 @@ def _obj_html(obj: object, attrs: list[str] | None = None) -> str:
     {STYLE}
     <span class="pymovements-section-title">{title}</span>
     <ul class="pymovements-section-list">
-        {"".join(sections)}
+        {''.join(sections)}
     </ul>
     """
 
@@ -154,16 +154,16 @@ def _attr_html(name: str, obj: object, depth: int = 0) -> str:
 def _attr_inline_details_html(obj: object) -> str:
     """Generate inline (collapsed) details for HTML representation."""
     if isinstance(obj, pl.DataFrame):
-        inline_details = f"DataFrame ({len(obj.columns)} columns, {len(obj)} rows)"
+        inline_details = f'DataFrame ({len(obj.columns)} columns, {len(obj)} rows)'
 
     elif isinstance(obj, list):
-        inline_details = f"list ({len(obj)} items)"
+        inline_details = f'list ({len(obj)} items)'
 
     elif isinstance(obj, tuple):
-        inline_details = f"tuple ({len(obj)} items)"
+        inline_details = f'tuple ({len(obj)} items)'
 
     elif isinstance(obj, dict):
-        inline_details = f"dict ({len(obj)} items)"
+        inline_details = f'dict ({len(obj)} items)'
 
     elif len(repr(obj)) < 50:
         inline_details = repr(obj).replace('\n', ' ')
