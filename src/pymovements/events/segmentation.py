@@ -38,7 +38,7 @@ def events2segmentation(
 
     This function creates a boolean expression that evaluates to ``True`` if a sample
     falls within any event interval and ``False`` otherwise.
-    Events are defined with inclusive onset and exclusive offset, matching the
+    Events are defined with inclusive onset and inclusive offset, matching the
     convention used by the :py:func:`segmentation2events` function.
 
     Parameters
@@ -58,7 +58,7 @@ def events2segmentation(
         The values must correspond to the values in ``time_column``.
         Default is 'onset'.
     offset_column : str
-        The name of the column containing the offset of the event (exclusive).
+        The name of the column containing the offset of the event (inclusive).
         The values must correspond to the values in ``time_column``.
         Default is 'offset'.
 
@@ -71,13 +71,13 @@ def events2segmentation(
     ------
     ValueError
         If ``onset_column`` or ``offset_column`` is missing from the events.
-        If any onset is greater than or equal to its offset.
+        If any onset is greater than its offset.
 
     Notes
     -----
-    Events are defined with inclusive onset and exclusive offset.
-    For example, an event with onset 2 and offset 5 includes samples where the
-    ``time_column`` has values 2, 3, and 4, but excludes the sample where it has value 5.
+    Events are defined with inclusive onset and inclusive offset.
+    For example, an event with onset 2 and offset 4 includes samples where the
+    ``time_column`` has values 2, 3, and 4.
 
     The onset and offset values in the ``events`` DataFrame are compared directly
     against the values in the ``time_column`` of the samples DataFrame. If the
@@ -85,9 +85,9 @@ def events2segmentation(
     ``time_column`` contains timestamps, then onsets and offsets are timestamps.
 
     .. warning::
-        The offset is considered exclusive.
+        The offset is considered inclusive.
         This means that the sample with the offset value in the ``time_column``
-        is NOT part of the event.
+        is part of the event.
 
     Examples
     --------
@@ -114,11 +114,11 @@ def events2segmentation(
     │ 2    ┆ true  │
     │ 3    ┆ true  │
     │ 4    ┆ true  │
-    │ 5    ┆ false │
+    │ 5    ┆ true │
     │ 6    ┆ false │
     │ 7    ┆ true  │
     │ 8    ┆ true  │
-    │ 9    ┆ false │
+    │ 9    ┆ true │
     └──────┴───────┘
     >>> # With trial columns
     >>> events_df = pl.DataFrame({
@@ -146,7 +146,7 @@ def events2segmentation(
     │ 0    ┆ 2     ┆ false │
     │ 1    ┆ 2     ┆ true  │
     │ 2    ┆ 2     ┆ true  │
-    │ 3    ┆ 2     ┆ false │
+    │ 3    ┆ 2     ┆ true │
     └──────┴───────┴───────┘
     """
     if onset_column not in events.columns:
@@ -167,9 +167,9 @@ def events2segmentation(
     onsets = relevant_events[onset_column].to_numpy()
     offsets = relevant_events[offset_column].to_numpy()
 
-    if np.any(onsets >= offsets):
+    if np.any(onsets > offsets):
         raise ValueError(
-            'Onset must be less than offset, but found invalid event(s)',
+            'Onset must be less than or equal to offset, but found invalid event(s)',
         )
 
     # Check for overlaps
@@ -204,7 +204,7 @@ def events2segmentation(
     for event in relevant_events.to_dicts():
         is_in_time_range = (
             pl.col(time_column).ge(event[onset_column])
-            & pl.col(time_column).lt(event[offset_column])
+            & pl.col(time_column).le(event[offset_column])
         )
 
         # Select events matching time and trial criteria
@@ -379,4 +379,4 @@ def _has_overlap(onsets: np.ndarray, offsets: np.ndarray) -> bool:
     sorted_onsets = onsets[sorted_indices]
     sorted_offsets = offsets[sorted_indices]
 
-    return bool(np.any(sorted_onsets[1:] < sorted_offsets[:-1]))
+    return bool(np.any(sorted_onsets[1:] <= sorted_offsets[:-1]))
