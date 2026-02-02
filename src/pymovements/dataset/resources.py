@@ -300,5 +300,5 @@ class _HasResourcesIndexer:
         return super().__eq__(other)
 
     def __repr__(self) -> str:
-        """Return string with boolean value wheter any resources are set."""
+        """Return string with boolean value whether any resources are set."""
         return str(self.__bool__())

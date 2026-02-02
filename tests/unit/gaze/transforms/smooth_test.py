@@ -379,7 +379,7 @@ def test_smooth_returns(kwargs, series, expected_df):
                 'window_length': 3,
             },
             ValueError,
-            "Unkown method 'invalid_method'. Supported methods are: ",
+            "Unknown method 'invalid_method'. Supported methods are: ",
             id='invalid_method_raises_value_error',
         ),
         pytest.param(

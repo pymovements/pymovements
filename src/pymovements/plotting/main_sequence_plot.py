@@ -129,7 +129,7 @@ def main_sequence_plot(
         raise ValueError(
             'Events object is empty. '
             'Please make sure you ran a saccade detection algorithm. '
-            f'The event name should be stored in a colum called "{event_col_name}".',
+            f'The event name should be stored in a column called "{event_col_name}".',
         )
 
     saccades = events.frame.filter(pl.col(event_col_name) == event_name)
@@ -138,7 +138,7 @@ def main_sequence_plot(
         raise ValueError(
             'There are no saccades in the event dataframe. '
             'Please make sure you ran a saccade detection algorithm. '
-            f'The event name should be stored in a colum called "{event_col_name}".',
+            f'The event name should be stored in a column called "{event_col_name}".',
         )
 
     try:

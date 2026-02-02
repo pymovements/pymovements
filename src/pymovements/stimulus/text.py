@@ -244,7 +244,7 @@ def from_file(
         Name of the column which contains the page information of the area of interest.
         (default: None)
     trial_column: str | None
-        Name fo the column that specifies the unique trial id.
+        Name for the column that specifies the unique trial id.
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)

@@ -176,7 +176,7 @@ class Gaze:
     │ 1002 ┆ 0.3 ┆ 0.3 │
     └──────┴─────┴─────┘
 
-    We can now initialize our ``Gaze`` by specyfing the names of the pixel position
+    We can now initialize our ``Gaze`` by specifying the names of the pixel position
     columns, the timestamp column and the unit of the timestamps.
 
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')
@@ -1131,7 +1131,7 @@ class Gaze:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -1815,7 +1815,7 @@ class Gaze:
         """Infer number of components from DataFrame.
 
         Method checks nested columns `pixel`, `position`, `velocity` and `acceleration` for number
-        of components by getting their list lenghts, which must be equal for all else a ValueError
+        of components by getting their list lengths, which must be equal for all else a ValueError
         is raised. Additionally, a list of list of column specifiers is checked for consistency.
 
         Parameters
@@ -2192,7 +2192,7 @@ class Gaze:
         Parameters
         ----------
         dirpath: str | Path
-            Absloute directory name to save data.
+            Absolute directory name to save data.
             This argument is used only for this single call and does not alter
             :py:meth:`pymovements.Dataset.events_rootpath`.
         save_events: bool | None

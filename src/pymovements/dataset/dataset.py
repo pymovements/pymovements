@@ -884,7 +884,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -934,7 +934,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(
