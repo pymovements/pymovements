@@ -75,6 +75,8 @@ __all__ = [
     'Gaze',
     'GazeDataFrame',
 
+    'exceptions',
+
     'measure',
     'EVENT_MEASURES',
     'register_event_measure',
@@ -87,9 +89,6 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
-
-    'exceptions',
-
     'utils',
 
     'text',
