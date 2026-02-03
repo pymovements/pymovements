@@ -1308,12 +1308,24 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     assert gaze.trial_columns == ['trial_id']
 
 
-def test_load_stimulus_file_returns_text_stimulus():
+@pytest.mark.parametrize(
+    ('example_filename', 'expected_shape'),
+    [
+        pytest.param('toy_text_aoi.csv', (81, 11), id='toy_text_aoi'),
+        pytest.param('toy_text_1_1_aoi.csv', (20, 13), id='toy_text_1_1_aoi'),
+        pytest.param('toy_text_2_5_aoi.csv', (19, 13), id='toy_text_2_5_aoi'),
+        pytest.param('toy_text_3_8_aoi.csv', (19, 13), id='toy_text_3_8_aoi'),
+    ],
+)
+def test_load_stimulus_file_returns_text_stimulus(
+        example_filename, expected_shape, make_example_file,
+):
+    example_filepath = make_example_file('stimuli/' + example_filename)
+
     file = DatasetFile(
-        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        path=example_filepath,
         definition=ResourceDefinition(
             content='TextStimulus',
-            # load_function='TextStimulus.from_csv',
             load_kwargs={
                 'aoi_column': 'char',
                 'start_x_column': 'top_left_x',
@@ -1327,7 +1339,7 @@ def test_load_stimulus_file_returns_text_stimulus():
     stimulus = load_stimulus_file(file)
 
     assert isinstance(stimulus, TextStimulus)
-    assert stimulus.aois.shape == (20, 13)
+    assert stimulus.aois.shape == expected_shape
 
 
 def test_load_stimulus_file_returns_image_stimulus():
@@ -1336,7 +1348,6 @@ def test_load_stimulus_file_returns_image_stimulus():
         path=filepath,
         definition=ResourceDefinition(
             content='ImageStimulus',
-            # load_function='ImageStimulus.from_file',
         ),
     )
     stimulus = load_stimulus_file(file)
