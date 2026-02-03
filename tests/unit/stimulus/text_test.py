@@ -211,7 +211,8 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
 
 
 def test_text_stimulus_unsupported_format():
-    with pytest.raises(ValueError) as excinfo:
+    message = "Unsupported filename extension '.pickle'. Supported formats are"
+    with pytest.raises(ValueError, match=message):
         text.from_file(
             'tests/files/toy_text_1_1_aoi.pickle',
             aoi_column='char',
@@ -221,10 +222,20 @@ def test_text_stimulus_unsupported_format():
             height_column='height',
             page_column='page',
         )
-    msg, = excinfo.value.args
-    expected = 'unsupported file format ".pickle".Supported formats are: '\
-        '[\'.csv\', \'.ias\', \'.tsv\', \'.txt\']'
-    assert msg == expected
+
+
+def test_text_stimulus_file_not_found_raises():
+    message = 'Stimulus file not found.*nonexistingfile[.]csv'
+    with pytest.raises(FileNotFoundError, match=message):
+        text.from_file(
+            'nonexistingfile.csv',
+            aoi_column='char',
+            start_x_column='top_left_x',
+            start_y_column='top_left_y',
+            width_column='width',
+            height_column='height',
+            page_column='page',
+        )
 
 
 @pytest.mark.parametrize(
