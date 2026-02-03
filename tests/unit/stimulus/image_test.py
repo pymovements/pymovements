@@ -24,7 +24,9 @@ from unittest.mock import Mock
 import pytest
 from matplotlib import pyplot
 
-import pymovements as pm
+from pymovements.stimulus.image import ImageStimulus
+from pymovements.stimulus.image import from_file
+from pymovements.stimulus.image import from_files
 
 
 @pytest.mark.parametrize(
@@ -35,7 +37,7 @@ import pymovements as pm
     ),
 )
 def test_image_stimulus_from_file(image_path):
-    image_stimulus = pm.stimulus.image.from_file(image_path)
+    image_stimulus = from_file(image_path)
     assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
 
 
@@ -47,7 +49,7 @@ def test_image_stimulus_from_file(image_path):
     ),
 )
 def test_image_stimulus_from_files(path):
-    image_stimulus = pm.stimulus.image.from_files(path, r'{book_name}-{page_num}-{line_num}.jpg')
+    image_stimulus = from_files(path, r'{book_name}-{page_num}-{line_num}.jpg')
     assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
 
 
@@ -74,7 +76,7 @@ def test_image_stimulus_from_files(path):
 def test_not_showing_image_stimulus_from_file(image_path, stimulus_id, origin, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(pyplot, 'show', mock)
-    image_stimulus = pm.stimulus.image.from_file(image_path)
+    image_stimulus = from_file(image_path)
     assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus.show(stimulus_id, origin)
     pyplot.close()
