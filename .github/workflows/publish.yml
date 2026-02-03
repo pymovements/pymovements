@@ -63,7 +63,7 @@ jobs:
   notify-slack:
     name: Notify on Slack
 
-    if: ${{ !github.release.prerelease }}
+    if: ${{ !github.event.release.prerelease }}
     needs: publish-to-pypi
     runs-on: ubuntu-latest
 
