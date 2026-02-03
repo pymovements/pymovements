@@ -40,6 +40,7 @@ from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
+from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
@@ -1306,6 +1307,42 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
         'fixation_begaze', 'saccade_begaze', 'blink_begaze',
     }
     assert gaze.trial_columns == ['trial_id']
+
+
+def test_load_stimuli_files_empty():
+    result = load_stimuli_files([])
+    assert isinstance(result, list)
+    assert not result
+
+
+def test_load_stimuli_files_returns_text_stimulus_list(make_example_file):
+    example_filenames = [
+        'toy_text_aoi.csv', 'toy_text_1_1_aoi.csv', 'toy_text_2_5_aoi.csv', 'toy_text_3_8_aoi.csv',
+    ]
+
+    files = []
+    for example_filename in example_filenames:
+        example_filepath = make_example_file('stimuli/' + example_filename)
+        file = DatasetFile(
+            path=example_filepath,
+            definition=ResourceDefinition(
+                content='TextStimulus',
+                load_kwargs={
+                    'aoi_column': 'char',
+                    'start_x_column': 'top_left_x',
+                    'start_y_column': 'top_left_y',
+                    'width_column': 'width',
+                    'height_column': 'height',
+                    'page_column': 'page',
+                },
+            ),
+        )
+        files.append(file)
+
+    stimuli = load_stimuli_files(files)
+
+    assert all(isinstance(stimulus, TextStimulus) for stimulus in stimuli)
+    assert len(stimuli) == len(example_filenames)
 
 
 @pytest.mark.parametrize(
