@@ -924,4 +924,25 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     filepath = make_text_file(filename='orphaned_event.asc', body=body)
 
     with pytest.warns(UserWarning, match='Missing start marker before end for event'):
-        from_asc(filepath, patterns=patterns)
+        gaze = from_asc(filepath, patterns=patterns, events=True)
+
+    expected_events = pl.from_dict(
+        data={
+            'name': ['fixation_eyelink'],
+            'eye': ['right'],
+            'onset': [1000],
+            'offset': [1100],
+            'duration': [100],
+            'trial_id': [None],
+        },
+        schema={
+            'name': pl.Utf8,
+            'eye': pl.Utf8,
+            'onset': pl.Int64,
+            'offset': pl.Int64,
+            'duration': pl.Int64,
+            'trial_id': pl.Null,
+        },
+    )
+
+    assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
