@@ -24,7 +24,6 @@ from unittest.mock import Mock
 import pytest
 from matplotlib import pyplot
 
-from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.image import from_file
 from pymovements.stimulus.image import from_files
 

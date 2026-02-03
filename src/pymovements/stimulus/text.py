@@ -229,18 +229,14 @@ class TextStimulus:
         if read_csv_kwargs is None:
             read_csv_kwargs = {}
 
-        valid_extensions = {'.csv', '.tsv', '.txt', '.ias'}
-        if path.suffix in valid_extensions:
-            try:
-                stimulus_df = pl.read_csv(path, **read_csv_kwargs)
-            except FileNotFoundError as exception:
-                raise FileNotFoundError(f'Stimulus file not found: {path}') from exception
-            stimulus_df = stimulus_df.fill_null(' ')
-        else:
-            raise ValueError(
-                f"Unsupported filename extension '{path.suffix}'. "
-                f"Supported formats are: {sorted(valid_extensions)}",
-            )
+        try:
+            stimulus_df = pl.read_csv(path, **read_csv_kwargs)
+        except FileNotFoundError as exception:
+            raise FileNotFoundError(f'Stimulus file not found: {path}') from exception
+        except pl.exceptions.ComputeError as exception:
+            raise ValueError(f'Stimulus file is not a valid CSV file: {path}') from exception
+
+        stimulus_df = stimulus_df.fill_null(' ')
 
         return TextStimulus(
             aois=stimulus_df,

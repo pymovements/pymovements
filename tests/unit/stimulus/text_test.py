@@ -210,11 +210,13 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
     assert len(aois.aois.columns) == len(expected.columns)
 
 
-def test_text_stimulus_unsupported_format():
-    message = "Unsupported filename extension '.pickle'. Supported formats are"
+def test_text_stimulus_unsupported_format(make_example_file):
+    image_filepath = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
+
+    message = 'Stimulus file is not a valid CSV file: .*pexels-zoorg-1000498.jpg'
     with pytest.raises(ValueError, match=message):
         text.from_file(
-            'tests/files/toy_text_1_1_aoi.pickle',
+            image_filepath,
             aoi_column='char',
             start_x_column='top_left_x',
             start_y_column='top_left_y',

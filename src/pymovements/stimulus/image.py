@@ -143,10 +143,10 @@ def _draw_image_stimulus(
     try:
         img = PIL.Image.open(image_stimulus)
     except PIL.UnidentifiedImageError as exception:
-        raise  ValueError(
+        raise ValueError(
             f"Unsupported image file '{image_stimulus}'. "
-            "Use 'PIL.features.pilinfo()' to get an overview of supported types."
-        )
+            "Use 'PIL.features.pilinfo()' to get an overview of supported types.",
+        ) from exception
 
     if not fig:
         fig, ax = matplotlib.pyplot.subplots(figsize=figsize)

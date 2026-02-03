@@ -139,6 +139,6 @@ def test_image_stimulus_fig_not_None(image_stimulus, origin, monkeypatch):
 def test_image_stimulus_show_unknown_extension(make_example_file):
     image_path = make_example_file('monocular_example.csv')
 
-    message = "Unsupported image file.*monocular_example.csv.*PIL.features.pilinfo"
+    message = 'Unsupported image file.*monocular_example.csv.*PIL.features.pilinfo'
     with pytest.raises(ValueError, match=message):
         _draw_image_stimulus(image_path)
