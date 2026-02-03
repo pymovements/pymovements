@@ -540,7 +540,7 @@ def mock_toy(
             content='TextStimulus',
             filename_pattern=r'toy_text_{text_id:d}_{page_id:d}_aoi.' + raw_fileformat,
             filename_pattern_schema_overrides={'text_id': pl.Int64, 'page_id': pl.Int64},
-            #load_function='TextStimulus.from_csv',
+            # load_function='TextStimulus.from_csv',
             load_kwargs={
                 'aoi_column': 'char',
                 'start_x_column': 'top_left_x',

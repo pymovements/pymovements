@@ -1313,7 +1313,7 @@ def test_load_stimulus_file_returns_text_stimulus():
         path='tests/files/stimuli/toy_text_1_1_aoi.csv',
         definition=ResourceDefinition(
             content='TextStimulus',
-            #load_function='TextStimulus.from_csv',
+            # load_function='TextStimulus.from_csv',
             load_kwargs={
                 'aoi_column': 'char',
                 'start_x_column': 'top_left_x',
@@ -1336,7 +1336,7 @@ def test_load_stimulus_file_returns_image_stimulus():
         path=filepath,
         definition=ResourceDefinition(
             content='ImageStimulus',
-            #load_function='ImageStimulus.from_file',
+            # load_function='ImageStimulus.from_file',
         ),
     )
     stimulus = load_stimulus_file(file)

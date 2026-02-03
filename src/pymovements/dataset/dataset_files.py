@@ -675,17 +675,16 @@ def load_stimulus_file(
     """
     if file.definition.load_function is not None:
         load_function_name = file.definition.load_function
-    else:  # infer load function name from file content type.
-        if file.definition.content.lower() == 'imagestimulus':
-            load_function_name = 'ImageStimulus.from_file'
-        elif file.definition.content.lower() == 'textstimulus':
-            load_function_name = 'TextStimulus.from_csv'
-        else:
-            valid_content_types = ['ImageStimulus', 'TextStimulus']
-            raise ValueError(
-                f"Could not infer load function from content type '{file.definition.content}'. "
-                f"Supported content types are: {valid_content_types}.",
-            )
+    elif file.definition.content.lower() == 'imagestimulus':
+        load_function_name = 'ImageStimulus.from_file'
+    elif file.definition.content.lower() == 'textstimulus':
+        load_function_name = 'TextStimulus.from_csv'
+    else:
+        valid_content_types = ['ImageStimulus', 'TextStimulus']
+        raise ValueError(
+            f"Could not infer load function from content type '{file.definition.content}'. "
+            f"Supported content types are: {valid_content_types}.",
+        )
 
     load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
