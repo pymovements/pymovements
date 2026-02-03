@@ -1312,8 +1312,8 @@ def test_load_stimulus_file_returns_text_stimulus():
     file = DatasetFile(
         path='tests/files/stimuli/toy_text_1_1_aoi.csv',
         definition=ResourceDefinition(
-            content='stimulus',
-            load_function='TextStimulus.from_csv',
+            content='TextStimulus',
+            #load_function='TextStimulus.from_csv',
             load_kwargs={
                 'aoi_column': 'char',
                 'start_x_column': 'top_left_x',
@@ -1335,8 +1335,8 @@ def test_load_stimulus_file_returns_image_stimulus():
     file = DatasetFile(
         path=filepath,
         definition=ResourceDefinition(
-            content='stimulus',
-            load_function='ImageStimulus.from_file',
+            content='ImageStimulus',
+            #load_function='ImageStimulus.from_file',
         ),
     )
     stimulus = load_stimulus_file(file)
@@ -1349,7 +1349,7 @@ def test_load_stimulus_file_raises_unknown_load_function():
     file = DatasetFile(
         path='tests/files/stimuli/toy_text_1_1_aoi.csv',
         definition=ResourceDefinition(
-            content='stimulus',
+            content='TextStimulus',
             load_function='fail',
         ),
     )
@@ -1363,7 +1363,7 @@ def test_load_stimulus_file_raises_missing_load_kwargs():
     file = DatasetFile(
         path='tests/files/stimuli/toy_text_1_1_aoi.csv',
         definition=ResourceDefinition(
-            content='stimulus',
+            content='TextStimulus',
             load_function='TextStimulus.from_csv',
         ),
     )

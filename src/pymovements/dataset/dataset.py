@@ -180,7 +180,10 @@ class Dataset:
 
         # Load stimulus files if desired and if present
         if stimuli is not False:
-            if stimuli is True or self.definition.resources.has_content('stimulus'):
+            has_stimuli = any(
+                'stimulus' in file.content.lower() for file in self.definition.resources
+            )
+            if stimuli is True or has_stimuli:
                 self.load_stimuli()
 
         return self
@@ -462,7 +465,7 @@ class Dataset:
         """
         self._check_fileinfo()
         self.stimuli = dataset_files.load_stimuli_files(
-            files=[file for file in self._files if file.definition.content == 'stimulus'],
+            files=[file for file in self._files if 'stimulus' in file.definition.content.lower()],
         )
 
     def apply(
