@@ -1362,10 +1362,7 @@ def test_load_stimulus_file_raises_unknown_load_function():
 def test_load_stimulus_file_raises_missing_load_kwargs():
     file = DatasetFile(
         path='tests/files/stimuli/toy_text_1_1_aoi.csv',
-        definition=ResourceDefinition(
-            content='TextStimulus',
-            load_function='TextStimulus.from_csv',
-        ),
+        definition=ResourceDefinition(content='TextStimulus'),
     )
 
     message = re.escape(
@@ -1373,4 +1370,18 @@ def test_load_stimulus_file_raises_missing_load_kwargs():
         "'aoi_column', 'start_x_column', and 'start_y_column'",
     )
     with pytest.raises(TypeError, match=message):
+        load_stimulus_file(file)
+
+
+def test_load_stimulus_file_raises_unknown_stimulus_content_type():
+    file = DatasetFile(
+        path='tests/files/stimuli/toy_text_1_1_aoi.csv',
+        definition=ResourceDefinition(content='UnknownStimulus'),
+    )
+
+    message = re.escape(
+        "Could not infer load function from content type 'UnknownStimulus'. "
+        "Supported stimulus content types are: ['ImageStimulus', 'TextStimulus']",
+    )
+    with pytest.raises(ValueError, match=message):
         load_stimulus_file(file)

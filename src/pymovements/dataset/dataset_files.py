@@ -683,7 +683,7 @@ def load_stimulus_file(
         valid_content_types = ['ImageStimulus', 'TextStimulus']
         raise ValueError(
             f"Could not infer load function from content type '{file.definition.content}'. "
-            f"Supported content types are: {valid_content_types}.",
+            f"Supported stimulus content types are: {valid_content_types}.",
         )
 
     load_kwargs = deepcopy(file.definition.load_kwargs)
