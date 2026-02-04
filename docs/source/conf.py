@@ -70,7 +70,7 @@ extensions = [
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'myst_nb',  # load after `sphinx_mdinclude` to supress extension error ('.md' registration)
+    'myst_nb',  # load after `sphinx_mdinclude` to suppress extension error ('.md' registration)
 ]
 source_suffix = {
     '.rst': 'restructuredtext',

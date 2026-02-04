@@ -238,7 +238,7 @@ def pix2deg(
     distance: float | str
         Must be either a scalar or a string. If a scalar is passed, it is interpreted as the
         Eye-to-screen distance in centimeters. If a string is passed, it is interpreted as the name
-        of a column containing the Eye-to-screen distance in millimiters for each sample.
+        of a column containing the Eye-to-screen distance in millimeters for each sample.
     n_components: int
         Number of components in input column.
     origin: str
@@ -319,7 +319,7 @@ def deg2pix(
     distance: float | str
         Must be either a scalar or a string. If a scalar is passed, it is interpreted as the
         Eye-to-screen distance in centimeters. If a string is passed, it is interpreted as the name
-        of a column containing the Eye-to-screen distance in millimiters for each sample.
+        of a column containing the Eye-to-screen distance in millimeters for each sample.
     n_components: int
         Number of components in the input column.
     pixel_origin: str
@@ -382,7 +382,7 @@ def deg2pix(
 
 
 def _check_distance(distance: float) -> None:
-    """Check if all screen values are scalars and are greather than zero.
+    """Check if all screen values are scalars and are greater than zero.
 
     Parameters
     ----------
@@ -570,7 +570,7 @@ def pos2vel(
         # Center of window is period 0 and will be filled.
         # mean(arr_-2, arr_-1) and mean(arr_1, arr_2) needs division by two
         # window is now 3 samples long (arr_-1.5, arr_0, arr_1+5)
-        # we therefore need a divison by three, all in all it's a division by 6
+        # we therefore need a division by three, all in all it's a division by 6
         return pl.concat_list(
             [
                 (
