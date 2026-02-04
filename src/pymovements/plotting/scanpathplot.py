@@ -32,6 +32,7 @@ from matplotlib.patches import Circle
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
@@ -59,6 +60,11 @@ def scanpathplot(
         add_traceplot: bool = False,
         gaze_position_column: str = 'pixel',
         add_stimulus: bool = False,
+        add_arrows: bool = True,
+        arrow_color: str = 'black',
+        arrow_rad: float = 0.25,
+        arrowstyle: str = 'simple',
+        mutation_scale: float = 40.,
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
         events: Events | EventDataFrame | None = None,
@@ -109,7 +115,18 @@ def scanpathplot(
     gaze_position_column: str
         Position column in the gaze dataframe. (default: 'pixel')
     add_stimulus: bool
-        Boolean value indicationg whether to plot the scanpath on the stimuls. (default: False)
+        Boolean value indicating whether to plot the scanpath on the stimuls. (default: False)
+    add_arrows: bool
+        Boolean value indicating whether to plot the scanpath with arrows
+        connecting events. (default: True)
+    arrow_color: str
+        Color of arrows. (default: 'black')
+    arrow_rad: float
+        Controlling the curvature of the arrows. (default: 0.25)
+    arrowstyle: str
+        The styling of arrow head, tail and shaft. (default: 'simple')
+    mutation_scale: float
+        Value with which attributes of arrowstyle will be scaled. (default: 40.)
     path_to_image_stimulus: str | None
         Path of the stimulus to be shown. (default: None)
     stimulus_origin: str
@@ -206,6 +223,17 @@ def scanpathplot(
             # sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=cmap_norm)
             # sm.set_array(cval)
             fig.colorbar(line, label=cbar_label, ax=ax)
+
+    if add_arrows:
+        _draw_arrow_data(
+            x_signal,
+            y_signal,
+            ax,
+            color=arrow_color,
+            rad=arrow_rad,
+            arrowstyle=arrowstyle,
+            mutation_scale=mutation_scale,
+        )
 
     if gaze is not None and gaze.experiment is not None:
         _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
