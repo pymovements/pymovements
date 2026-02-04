@@ -159,6 +159,9 @@ def _attr_inline_details_html(obj: object) -> str:
     elif isinstance(obj, list):
         inline_details = f"list ({len(obj)} items)"
 
+    elif isinstance(obj, tuple):
+        inline_details = f"tuple ({len(obj)} items)"
+
     elif isinstance(obj, dict):
         inline_details = f"dict ({len(obj)} items)"
 
@@ -175,7 +178,7 @@ def _attr_details_html(obj: object, depth: int = 0, max_depth: int = 3) -> str:
     """Generate expanded details for HTML representation."""
     max_items = 2
 
-    if isinstance(obj, list) and depth < max_depth:
+    if isinstance(obj, (list, tuple)) and depth < max_depth:
         details = '<ul>'
         for item in obj[:max_items]:
             details += f'<li>{_attr_details_html(item, depth + 1)}</li>'

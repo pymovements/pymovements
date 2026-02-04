@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides top-level access to submodules."""
-from pymovements import _version
 from pymovements import datasets
 from pymovements import events
 from pymovements import exceptions
@@ -29,6 +28,7 @@ from pymovements import stimulus
 from pymovements import synthetic
 from pymovements import utils
 from pymovements import warnings
+from pymovements._version import __version__
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
 from pymovements.dataset import DatasetLibrary
@@ -95,6 +95,6 @@ __all__ = [
     'utils',
 
     'text',
-]
 
-__version__ = _version.get_versions()['version']
+    '__version__',
+]

@@ -71,29 +71,6 @@ class ImageStimulus:
         """
         return ImageStimulus(images=[Path(path)])
 
-    @staticmethod
-    def from_files(path: str | Path, filename_pattern: str) -> ImageStimulus:
-        """Load image stimulus from file.
-
-        Parameters
-        ----------
-        path:  str | Path
-            Path to directory with image stimulus files.
-        filename_pattern:  str
-            Pattern of the image stimulus file names.
-
-        Returns
-        -------
-        ImageStimulus
-            Returns an ImmageStimulus initialized with all matched image stimulus files.
-        """
-        filenames = get_filepaths(path, regex=curly_to_regex(filename_pattern))
-        image_stimuli = []
-        for filename in filenames:
-            image_stimuli.append(filename)
-
-        return ImageStimulus(image_stimuli)
-
 
 def from_file(image_path: str | Path) -> ImageStimulus:
     """Load image stimulus from file.
@@ -126,7 +103,8 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    return ImageStimulus.from_files(path, filename_format)
+    filenames = get_filepaths(path, regex=curly_to_regex(filename_format))
+    return ImageStimulus(list(filenames))
 
 
 def _draw_image_stimulus(
@@ -162,7 +140,14 @@ def _draw_image_stimulus(
     fig: matplotlib.pyplot.figure
     ax: matplotlib.pyplot.Axes
     """
-    img = PIL.Image.open(image_stimulus)
+    try:
+        img = PIL.Image.open(image_stimulus)
+    except PIL.UnidentifiedImageError as exception:
+        raise ValueError(
+            f"Unsupported image file '{image_stimulus}'. "
+            "Use 'PIL.features.pilinfo()' to get an overview of supported types.",
+        ) from exception
+
     if not fig:
         fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
     assert ax

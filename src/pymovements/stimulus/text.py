@@ -229,15 +229,14 @@ class TextStimulus:
         if read_csv_kwargs is None:
             read_csv_kwargs = {}
 
-        valid_extensions = {'.csv', '.tsv', '.txt', '.ias'}
-        if path.suffix in valid_extensions:
+        try:
             stimulus_df = pl.read_csv(path, **read_csv_kwargs)
-            stimulus_df = stimulus_df.fill_null(' ')
-        else:
-            raise ValueError(
-                f'unsupported file format "{path.suffix}".'
-                f'Supported formats are: {sorted(valid_extensions)}',
-            )
+        except FileNotFoundError as exception:
+            raise FileNotFoundError(f'Stimulus file not found: {path}') from exception
+        except pl.exceptions.ComputeError as exception:
+            raise ValueError(f'Stimulus file is not a valid CSV file: {path}') from exception
+
+        stimulus_df = stimulus_df.fill_null(' ')
 
         return TextStimulus(
             aois=stimulus_df,
@@ -326,7 +325,7 @@ def from_file(
         Name of the column which contains the page information of the area of interest.
         (default: None)
     trial_column: str | None
-        Name fo the column that specifies the unique trial id.
+        Name for the column that specifies the unique trial id.
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)

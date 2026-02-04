@@ -118,13 +118,13 @@ def scan_dataset(
             resource_dirpath = paths.precomputed_events
         elif content_type == 'precomputed_reading_measures':
             resource_dirpath = paths.precomputed_reading_measures
-        elif content_type == 'stimulus':
+        elif content_type.lower() in {'imagestimulus', 'textstimulus'}:
             resource_dirpath = paths.stimuli
         else:
             warn(
                 f'content type {content_type} is not supported. '
                 'supported contents are: gaze, precomputed_events, '
-                'precomputed_reading_measures, stimulus. '
+                'precomputed_reading_measures, TextStimulus, ImageStimulus. '
                 'skipping this resource definition during scan.',
             )
             continue
@@ -485,7 +485,7 @@ def load_precomputed_reading_measure_file(
     Returns
     -------
     ReadingMeasures
-        Returns the text stimulus file.
+        Instantiated ReadingMeasures with data read from   file  .
 
     Raises
     ------
@@ -673,11 +673,23 @@ def load_stimulus_file(
     ValueError
         If ``load_function`` is not in list of supported functions.
     """
+    if file.definition.load_function is not None:
+        load_function_name = file.definition.load_function
+    elif file.definition.content.lower() == 'imagestimulus':
+        load_function_name = 'ImageStimulus.from_file'
+    elif file.definition.content.lower() == 'textstimulus':
+        load_function_name = 'TextStimulus.from_csv'
+    else:
+        valid_content_types = ['ImageStimulus', 'TextStimulus']
+        raise ValueError(
+            f"Could not infer load function from content type '{file.definition.content}'. "
+            f"Supported stimulus content types are: {valid_content_types}.",
+        )
+
     load_kwargs = deepcopy(file.definition.load_kwargs)
     if load_kwargs is None:
         load_kwargs = {}
 
-    load_function_name = file.definition.load_function
     if load_function_name == 'TextStimulus.from_csv':
         return TextStimulus.from_csv(path=file.path, **load_kwargs)
     if load_function_name == 'ImageStimulus.from_file':
@@ -892,7 +904,7 @@ def take_subset(
         for file in files:
             if metadata_key not in file.metadata:  # pragma: no cover
                 # stimulus files may not contain metadata.
-                if file.definition.content == 'stimulus':
+                if 'stimulus' in file.definition.content.lower():
                     continue
 
                 # This code is currently unreachable via public interfaces.

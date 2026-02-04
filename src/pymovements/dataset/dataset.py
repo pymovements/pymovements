@@ -32,7 +32,7 @@ import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._html import repr_html
-from pymovements._version import get_versions
+from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -183,7 +183,10 @@ class Dataset:
 
         # Load stimulus files if desired and if present
         if stimuli is not False:
-            if stimuli is True or self.definition.resources.has_content('stimulus'):
+            has_stimuli = any(
+                'stimulus' in file.content.lower() for file in self.definition.resources
+            )
+            if stimuli is True or has_stimuli:
                 self.load_stimuli()
 
         return self
@@ -455,7 +458,8 @@ class Dataset:
         stimulus objects is assigned to ``Dataset.stimuli``.
 
         Supported file extensions:
-        - CSV-like: .csv, .tsv, .txt
+
+        - CSV-like: .csv, .tsv, .txt, .ias
 
         Raises
         ------
@@ -466,13 +470,13 @@ class Dataset:
             'Stimulus support is experimental. '
             'Names and behavior may change without being considered a breaking change. '
             'Please set the used pymovements version explicitly to prevent unexptected changes. '
-            f'The used pymovements version is v{get_versions()["version"]}.',
+            f'The used pymovements version is v{__version__}.',
             ExperimentalWarning,
         )
 
         self._check_fileinfo()
         self.stimuli = dataset_files.load_stimuli_files(
-            files=[file for file in self._files if file.definition.content == 'stimulus'],
+            files=[file for file in self._files if 'stimulus' in file.definition.content.lower()],
         )
 
     def apply(
@@ -928,7 +932,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -978,7 +982,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(
