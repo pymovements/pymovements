@@ -98,11 +98,9 @@ recursive = true
 aggressive = 1
 
 [tool.codespell]
-skip = "./src/pymovements/_version.py,./.git/*,./.pytest_cache/*,tests/files/*"
+skip = "./src/pymovements/_version.py,./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
 count = true
 quiet-level = 3
-# Example of ignoring specific words:
-# ignore-words-list = "Bui,Hart,Usal"
 
 [tool.coverage.paths]
 source = [
