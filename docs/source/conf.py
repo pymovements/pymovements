@@ -181,7 +181,7 @@ nitpick_ignore_regex = [
 
 
     # Matplotlib color types referenced in plotting API
-    (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType)$'),
+    (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType|Normalize)$'),
 
     # Project-internal typing aliases used only in docs
     (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
