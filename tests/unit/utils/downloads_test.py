@@ -20,6 +20,7 @@
 """Tests deprecated utils.downloads."""
 import hashlib
 import os.path
+import re
 
 import pytest
 
@@ -57,46 +58,88 @@ def test_download_and_extract_archive(tmp_path):
 
 @pytest.mark.network
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
-@pytest.mark.parametrize(
-    'verbose',
-    [
-        pytest.param(False, id='verbose_false'),
-        pytest.param(True, id='verbose_true'),
-    ],
-)
-def test_download_and_extract_archive_extract_dirpath_None(tmp_path, capsys, verbose):
+def test_download_and_extract_archive_extract_dirpath_None_verbose_true(
+    tmp_path, capsys,
+):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     _download_filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
     extract_dirpath = None
+    verbose = True
 
     # extract first time
     download_and_extract_archive(
-        url, tmp_path, _download_filename, extract_dirpath, md5, verbose=verbose,
+        url,
+        tmp_path,
+        _download_filename,
+        extract_dirpath,
+        md5,
+        verbose=verbose,
     )
     out, _ = capsys.readouterr()
 
-    if verbose:
-        assert out == 'Downloading '\
-            'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'\
-            f" to {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')}\n" \
-            f'Checking integrity of pymovements-0.4.0.tar.gz\n'\
-            f'Extracting pymovements-0.4.0.tar.gz to {tmp_path}\n'
-    else:
-        assert out == ''
+    assert (
+        out == 'Downloading '
+        'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+        f" to {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')}\n"
+        f"Checking integrity of pymovements-0.4.0.tar.gz\n"
+        f"Extracting pymovements-0.4.0.tar.gz to {tmp_path}\n"
+    )
 
     # extract second time to test already downloaded and verified file
     download_and_extract_archive(
-        url, tmp_path, _download_filename, extract_dirpath, md5, verbose=verbose,
+        url,
+        tmp_path,
+        _download_filename,
+        extract_dirpath,
+        md5,
+        verbose=verbose,
     )
     out, _ = capsys.readouterr()
 
-    if verbose:
-        assert out == f'Using already downloaded and verified file: '\
-            f"{os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')}"\
-            f'\nExtracting pymovements-0.4.0.tar.gz to {tmp_path}\n'
-    else:
-        assert out == ''
+    assert (
+        out == f"Using already downloaded and verified file: "
+        f"{os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')}"
+        f"\nExtracting pymovements-0.4.0.tar.gz to {tmp_path}\n"
+    )
+
+
+@pytest.mark.network
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+def test_download_and_extract_archive_extract_dirpath_None_verbose_false(
+    tmp_path, capsys,
+):
+    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
+    _download_filename = 'pymovements-0.4.0.tar.gz'
+    md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
+    extract_dirpath = None
+    verbose = False
+
+    # extract first time
+    download_and_extract_archive(
+        url,
+        tmp_path,
+        _download_filename,
+        extract_dirpath,
+        md5,
+        verbose=verbose,
+    )
+    out, _ = capsys.readouterr()
+
+    assert out == ''
+
+    # extract second time to test already downloaded and verified file
+    download_and_extract_archive(
+        url,
+        tmp_path,
+        _download_filename,
+        extract_dirpath,
+        md5,
+        verbose=verbose,
+    )
+    out, _ = capsys.readouterr()
+
+    assert out == ''
 
 
 @pytest.mark.network
@@ -107,12 +150,12 @@ def test_download_and_extract_archive_invalid_md5(tmp_path):
     md5 = '00000000000000000000000000000000'
     extract_dirpath = tmp_path / 'extracted'
 
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(
+        RuntimeError,
+        match=f"File {re.escape(os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz'))} "
+        'not found or download corrupted.',
+    ):
         download_and_extract_archive(url, tmp_path, _download_filename, extract_dirpath, md5)
-
-    msg, = excinfo.value.args
-    assert msg == f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "\
-        'not found or download corrupted.'
 
 
 @pytest.mark.network
@@ -146,5 +189,4 @@ def test_is_download_function_removed(download_function, tmp_path, assert_deprec
         function_name='utils/downloads.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-
     )
