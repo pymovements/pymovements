@@ -26,7 +26,7 @@ For more information on installation options and on the concepts, structure, and
 interpretation of eye-tracking data, see the sections below.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
 
    installation
    understanding-data

@@ -16,11 +16,11 @@ explicit for reproducible analysis.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    getting-started/index
    experiment
-   loading-gaze-data
+   loading-gaze-data/index
    inspect-raw-samples
    data-quality
    event-detection
