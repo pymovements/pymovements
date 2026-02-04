@@ -85,7 +85,7 @@ class DatasetDefinition:
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv`, the keyword arguments will be passed
         to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        will be passed to :py:func:`pymovements.gaze.from_asc`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
 
@@ -217,7 +217,7 @@ class DatasetDefinition:
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv`, the keyword arguments will be passed
         to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        will be passed to :py:func:`pymovements.gaze.from_asc`.
         See Notes for more details on how to use this argument.
         (default: None)
 
