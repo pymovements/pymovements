@@ -176,7 +176,7 @@ class Gaze:
     │ 1002 ┆ 0.3 ┆ 0.3 │
     └──────┴─────┴─────┘
 
-    We can now initialize our ``Gaze`` by specyfing the names of the pixel position
+    We can now initialize our ``Gaze`` by specifying the names of the pixel position
     columns, the timestamp column and the unit of the timestamps.
 
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')
@@ -1033,6 +1033,13 @@ class Gaze:
 
             new_events = method(**method_kwargs)
 
+            if len(new_events) == 0:
+                warn(
+                    f"{getattr(method, '__name__', method)}: No events were detected.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
             self.events.frame = polars.concat(
                 [self.events.frame, new_events.frame],
                 how='diagonal_relaxed',
@@ -1086,6 +1093,13 @@ class Gaze:
 
                 new_events_grouped.append(new_events.frame)
 
+            if not new_events_grouped or any(len(df) == 0 for df in new_events_grouped):
+                warn(
+                    f"{getattr(method, '__name__', method)}: No events were detected.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
             self.events.frame = polars.concat(
                 [self.events.frame, *new_events_grouped],
                 how='diagonal',
@@ -1131,7 +1145,7 @@ class Gaze:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -1155,7 +1169,7 @@ class Gaze:
         if overwrite_columns:
             warn(
                 'The following columns already exist in event and will be overwritten: '
-                f"{overwrite_columns}",
+                f'{overwrite_columns}',
             )
             self.events.drop(overwrite_columns)
         if results.height:
@@ -1815,7 +1829,7 @@ class Gaze:
         """Infer number of components from DataFrame.
 
         Method checks nested columns `pixel`, `position`, `velocity` and `acceleration` for number
-        of components by getting their list lenghts, which must be equal for all else a ValueError
+        of components by getting their list lengths, which must be equal for all else a ValueError
         is raised. Additionally, a list of list of column specifiers is checked for consistency.
 
         Parameters
@@ -2192,7 +2206,7 @@ class Gaze:
         Parameters
         ----------
         dirpath: str | Path
-            Absloute directory name to save data.
+            Absolute directory name to save data.
             This argument is used only for this single call and does not alter
             :py:meth:`pymovements.Dataset.events_rootpath`.
         save_events: bool | None
@@ -2230,7 +2244,7 @@ class Gaze:
             if verbose >= 2:
                 print('Saving experiment file to', dirpath)
             if self.experiment is not None:
-                self.experiment.to_yaml(Path(f"{dirpath}/experiment.yaml"))
+                self.experiment.to_yaml(Path(f'{dirpath}/experiment.yaml'))
             elif save_experiment is not None:
                 raise ValueError('no experiment data in the Gaze object')
         return self
@@ -2396,7 +2410,7 @@ def _check_messages(messages: polars.DataFrame) -> None:
         if not isinstance(messages, polars.DataFrame):
             raise TypeError(
                 "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-                f"not {type(messages)}.",
+                f'not {type(messages)}.',
             )
         required_cols = {'time', 'content'}
         if not required_cols.issubset(set(messages.columns)):

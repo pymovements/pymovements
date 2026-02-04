@@ -41,7 +41,7 @@ class EventProcessor:
     Raises
     ------
     UnknownMeasure
-        If ``measures`` includes an unknwon measure. See :ref:`event-measures` for an overview
+        If ``measures`` includes an unknown measure. See :ref:`event-measures` for an overview
         of supported measures.
     """
 
@@ -74,8 +74,8 @@ class EventProcessor:
         Returns
         -------
         pl.DataFrame
-            :py:class:`polars.DataFrame` with properties as columns and rows refering to the rows in
-            the source dataframe.
+            :py:class:`polars.DataFrame` with properties as columns and rows referring to the rows
+            in the source dataframe.
         """
         result = events.select(self.measures)
         return result
@@ -92,7 +92,7 @@ class EventSamplesProcessor:
     Raises
     ------
     UnknownMeasure
-        If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+        If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
         :ref:`event-measures` for an overview of supported measures.
     """
 
@@ -150,8 +150,8 @@ class EventSamplesProcessor:
         Returns
         -------
         pl.DataFrame
-            :py:class:`polars.DataFrame` with properties as columns and rows refering to the rows in
-            the source dataframe.
+            :py:class:`polars.DataFrame` with properties as columns and rows referring to the rows
+            in the source dataframe.
 
         Raises
         ------
