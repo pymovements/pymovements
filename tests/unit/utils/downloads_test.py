@@ -20,6 +20,7 @@
 """Tests deprecated utils.downloads."""
 import hashlib
 import os.path
+import re
 
 import pytest
 
@@ -151,7 +152,7 @@ def test_download_and_extract_archive_invalid_md5(tmp_path):
 
     with pytest.raises(
         RuntimeError,
-        match=f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "
+        match=f"File {re.escape(os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz'))} "
         'not found or download corrupted.',
     ):
         download_and_extract_archive(url, tmp_path, _download_filename, extract_dirpath, md5)
