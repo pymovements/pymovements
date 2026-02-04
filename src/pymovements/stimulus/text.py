@@ -213,7 +213,7 @@ class TextStimulus:
             Name of column which contains the page information of the area of interest.
             (default: None)
         trial_column: str | None
-            Name fo column that specifies the unique trial id.
+            Name of column that specifies the unique trial id.
             (default: None)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
