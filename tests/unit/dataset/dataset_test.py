@@ -1202,6 +1202,7 @@ def test_clip(gaze_dataset_configuration):
         assert result_gaze.schema == expected_schema
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     'detect_event_kwargs',
     [
@@ -1288,6 +1289,7 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
         assert result_events.schema == expected_schema
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     'detect_event_kwargs',
     [
@@ -1341,6 +1343,7 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             dataset.detect_events(**detect_event_kwargs)
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('detect_event_kwargs_1', 'detect_event_kwargs_2', 'expected_schema'),
     [
@@ -1563,6 +1566,7 @@ def test_clear_events(events_init, events_expected, tmp_path):
         assert_frame_equal(events_df_result.frame, events_df_expected.frame)
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('detect_event_kwargs', 'events_dirname', 'expected_save_dirpath', 'save_kwargs'),
     [
@@ -1613,6 +1617,7 @@ def test_save_events(
     )
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('detect_event_kwargs', 'events_dirname', 'expected_save_dirpath', 'load_save_kwargs'),
     [
@@ -1768,6 +1773,7 @@ def test_save_preprocessed_has_no_side_effect(gaze_dataset_configuration, drop_c
     assert_frame_equal(old_frame, new_frame)
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('expected_save_preprocessed_path', 'expected_save_events_path', 'save_kwargs'),
     [
@@ -1834,6 +1840,7 @@ def test_save_creates_correct_directory(
     )
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('expected_save_preprocessed_path', 'expected_save_events_path', 'save_kwargs'),
     [
