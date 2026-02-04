@@ -299,10 +299,6 @@ def _get_aoi(
     If `end_x_column` is used, calculation: start_x_column <= x_eye < end_x_column.
     Analog for y coordinate and height.
 
-    .. deprecated:: v0.21.1
-       Please use :py:meth:`~pymovements.TextStimulus.get_aoi()` instead.
-       This function will be removed in v0.26.0.
-
     Parameters
     ----------
     aoi_dataframe: TextStimulus
