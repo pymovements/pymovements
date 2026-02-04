@@ -90,7 +90,7 @@ def from_numpy(
     acceleration: np.ndarray | None
         Array of gaze accelerations in degrees of visual angle per square second. (default: None)
     distance: np.ndarray | None
-        Array of eye-to-screen distances in millimiters. (default: None)
+        Array of eye-to-screen distances in millimeters. (default: None)
     schema: list[str] | None
         A list of column names. (default: None)
     orient: Literal['col', 'row']
@@ -117,7 +117,7 @@ def from_numpy(
     acceleration_columns: list[str] | None
         The name of the dva acceleration columns in the samples data frame. (default: None)
     distance_column: str | None
-        The name of the column containing eye-to-screen distance in millimiters for each sample
+        The name of the column containing eye-to-screen distance in millimeters for each sample
         in the samples data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
