@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides basic checks to be reused in other modules."""
+
 from __future__ import annotations
 
 from collections.abc import Sized
@@ -115,7 +116,7 @@ def check_is_mutual_exclusive(**kwargs: Any) -> None:
     """
     check_two_kwargs(**kwargs)
 
-    key_1, key_2 = (key for _, key in zip(range(2), kwargs.keys()))
+    key_1, key_2 = (key for _, key in zip(range(2), kwargs.keys(), strict=False))
     value_1 = kwargs[key_1]
     value_2 = kwargs[key_2]
 
@@ -142,7 +143,7 @@ def check_is_none_is_mutual(**kwargs: Any) -> None:
     """
     check_two_kwargs(**kwargs)
 
-    key_1, key_2 = (key for _, key in zip(range(2), kwargs.keys()))
+    key_1, key_2 = (key for _, key in zip(range(2), kwargs.keys(), strict=False))
     value_1 = kwargs[key_1]
     value_2 = kwargs[key_2]
 
@@ -167,7 +168,7 @@ def check_is_length_matching(**kwargs: Sized) -> None:
     """
     check_two_kwargs(**kwargs)
 
-    key_1, key_2 = (key for _, key in zip(range(2), kwargs.keys()))
+    key_1, key_2 = (key for _, key in zip(range(2), kwargs.keys(), strict=False))
     value_1 = kwargs[key_1]
     value_2 = kwargs[key_2]
 

@@ -23,6 +23,7 @@
    Please use :py:meth:`~pymovements.Dataset.extract()` instead.
    This module will be removed in v0.26.0.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -33,19 +34,18 @@ from pymovements.dataset._utils._archives import extract_archive as _extract_arc
 
 
 @deprecated(
-    reason='Please use Dataset.extract() instead. '
-           'This function will be removed in v0.26.0.',
+    reason='Please use Dataset.extract() instead. This function will be removed in v0.26.0.',
     version='v0.21.1',
 )
 def extract_archive(
-        source_path: Path,
-        destination_path: Path | None = None,
-        *,
-        recursive: bool = True,
-        remove_finished: bool = False,
-        remove_top_level: bool = True,
-        resume: bool = True,
-        verbose: int = 1,
+    source_path: Path,
+    destination_path: Path | None = None,
+    *,
+    recursive: bool = True,
+    remove_finished: bool = False,
+    remove_top_level: bool = True,
+    resume: bool = True,
+    verbose: int = 1,
 ) -> Path:
     """Extract an archive.
 

@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the CoLAGaze dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,14 +41,14 @@ class CoLAGaze(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`CoLAGaze`.
 
-    Warning
+    Warning:
     -------
     This dataset currently cannot be fully processed by ``pymovements`` due to an error during
     parsing of individual files.
 
     See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
 
-    Attributes
+    Attributes:
     ----------
     name: str
         The name of the dataset.
@@ -77,7 +78,7 @@ class CoLAGaze(DatasetDefinition):
         If specified, these keyword arguments will be passed to the file reading function.
         (default: None)
 
-    Examples
+    Examples:
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
     :py:class:`~pymovements.datasets.CoLAGaze` definition:
@@ -107,30 +108,30 @@ class CoLAGaze(DatasetDefinition):
     resources: ResourceDefinitions = field(
         default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215/?zip=',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'raw_data.zip',
-                        'md5': None,  # type: ignore
-                        'filename_pattern': '{subject_id:d}.asc',
-                        'filename_pattern_schema_overrides': {'subject_id': int},
-                    },
-                    {
-                        'content': 'precomputed_events',
-                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e0b41987c157db5204d3b/?zip=',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'fixations.zip',
-                        'md5': None,  # type: ignore
-                        'filename_pattern': 'fixations_report_{subject_id:d}.csv',
-                        'filename_pattern_schema_overrides': {'subject_id': int},
-                    },
-                    {
-                        'content': 'precomputed_reading_measures',
-                        'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e045672fc74248add6338/?zip=',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'measures.zip',
-                        'md5': None,  # type: ignore
-                        'filename_pattern': 'raw_measures_for_features{subject_id:d}.csv',
-                        'filename_pattern_schema_overrides': {'subject_id': int},
-                    },
+                {
+                    'content': 'gaze',
+                    'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215/?zip=',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'raw_data.zip',
+                    'md5': None,  # type: ignore
+                    'filename_pattern': '{subject_id:d}.asc',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
+                },
+                {
+                    'content': 'precomputed_events',
+                    'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e0b41987c157db5204d3b/?zip=',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'fixations.zip',
+                    'md5': None,  # type: ignore
+                    'filename_pattern': 'fixations_report_{subject_id:d}.csv',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
+                },
+                {
+                    'content': 'precomputed_reading_measures',
+                    'url': 'https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e045672fc74248add6338/?zip=',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': 'measures.zip',
+                    'md5': None,  # type: ignore
+                    'filename_pattern': 'raw_measures_for_features{subject_id:d}.csv',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
+                },
             ],
         ),
     )

@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated utils.archives."""
+
+from __future__ import annotations
+
 import gzip
 
 import pytest
@@ -55,5 +58,4 @@ def test_archive_extract_removed(compressed_file, assert_deprecation_is_removed)
         function_name='utils/archives.py',
         warning_message=info.value.args[0],
         scheduled_version='0.26.0',
-
     )

@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """ResourceDefinitions and ResourceDefinition module."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -146,13 +147,15 @@ class ResourceDefinitions(list):
     """
 
     def __init__(
-            self, resources: Iterable[ResourceDefinition | dict[str, Any]] | None = None,
+        self,
+        resources: Iterable[ResourceDefinition | dict[str, Any]] | None = None,
     ) -> None:
         if resources is None:
             resources = []
 
         _resources: Iterable[ResourceDefinition] = [
-            resource if isinstance(resource, ResourceDefinition)
+            resource
+            if isinstance(resource, ResourceDefinition)
             else ResourceDefinition.from_dict(resource)
             for resource in resources
         ]
@@ -181,7 +184,7 @@ class ResourceDefinitions(list):
     @staticmethod
     @deprecated(
         reason='Please use ResourceDefinitions.from_dicts() instead. '
-               'This property will be removed in v0.28.0.',
+        'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def from_dict(

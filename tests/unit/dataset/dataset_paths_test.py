@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test DatasetPaths."""
+
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
@@ -63,8 +66,9 @@ import pymovements as pm
                 'dataset': Path('/data/set/path/dataset'),
                 'raw': Path('/data/set/path/dataset/raw'),
                 'precomputed_events': Path('/data/set/path/dataset/precomputed_events'),
-                'precomputed_reading_measures':
-                Path('/data/set/path/dataset/precomputed_reading_measures'),
+                'precomputed_reading_measures': Path(
+                    '/data/set/path/dataset/precomputed_reading_measures'
+                ),
                 'preprocessed': Path('/data/set/path/dataset/preprocessed'),
                 'events': Path('/data/set/path/dataset/events'),
                 'downloads': Path('/data/set/path/dataset/downloads'),
@@ -78,8 +82,9 @@ import pymovements as pm
                 'dataset': Path('/data/set/path/dataset'),
                 'raw': Path('/data/set/path/dataset/raw'),
                 'precomputed_events': Path('/data/set/path/dataset/precomputed_events'),
-                'precomputed_reading_measures':
-                Path('/data/set/path/dataset/precomputed_reading_measures'),
+                'precomputed_reading_measures': Path(
+                    '/data/set/path/dataset/precomputed_reading_measures'
+                ),
                 'preprocessed': Path('/data/set/path/dataset/preprocessed'),
                 'events': Path('/data/set/path/dataset/custom_events'),
                 'downloads': Path('/data/set/path/dataset/downloads'),
@@ -93,8 +98,9 @@ import pymovements as pm
                 'dataset': Path('/data/set/path/dataset'),
                 'raw': Path('/data/set/path/dataset/raw'),
                 'precomputed_events': Path('/data/set/path/dataset/precomputed_events'),
-                'precomputed_reading_measures':
-                Path('/data/set/path/dataset/precomputed_reading_measures'),
+                'precomputed_reading_measures': Path(
+                    '/data/set/path/dataset/precomputed_reading_measures'
+                ),
                 'preprocessed': Path('/data/set/path/dataset/custom_preprocessed'),
                 'events': Path('/data/set/path/dataset/events'),
                 'downloads': Path('/data/set/path/dataset/downloads'),
@@ -108,8 +114,9 @@ import pymovements as pm
                 'dataset': Path('/data/set/path/dataset'),
                 'raw': Path('/data/set/path/dataset/custom_raw'),
                 'precomputed_events': Path('/data/set/path/dataset/precomputed_events'),
-                'precomputed_reading_measures':
-                Path('/data/set/path/dataset/precomputed_reading_measures'),
+                'precomputed_reading_measures': Path(
+                    '/data/set/path/dataset/precomputed_reading_measures'
+                ),
                 'preprocessed': Path('/data/set/path/dataset/preprocessed'),
                 'events': Path('/data/set/path/dataset/events'),
                 'downloads': Path('/data/set/path/dataset/downloads'),
@@ -122,8 +129,9 @@ import pymovements as pm
                 'root': Path('/data/set/path/'),
                 'dataset': Path('/data/set/path/dataset'),
                 'precomputed_events': Path('/data/set/path/dataset/precomputed_events'),
-                'precomputed_reading_measures':
-                Path('/data/set/path/dataset/precomputed_reading_measures'),
+                'precomputed_reading_measures': Path(
+                    '/data/set/path/dataset/precomputed_reading_measures'
+                ),
                 'raw': Path('/data/set/path/dataset/raw'),
                 'preprocessed': Path('/data/set/path/dataset/preprocessed'),
                 'events': Path('/data/set/path/dataset/events'),
@@ -141,8 +149,9 @@ import pymovements as pm
                 'root': Path('/data/set/path/'),
                 'dataset': Path('/data/set/path/dataset'),
                 'precomputed_events': Path('/data/set/path/dataset/custom_precomputed_events'),
-                'precomputed_reading_measures':
-                Path('/data/set/path/dataset/precomputed_reading_measures'),
+                'precomputed_reading_measures': Path(
+                    '/data/set/path/dataset/precomputed_reading_measures'
+                ),
                 'raw': Path('/data/set/path/dataset/raw'),
                 'preprocessed': Path('/data/set/path/dataset/preprocessed'),
                 'events': Path('/data/set/path/dataset/events'),

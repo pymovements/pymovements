@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Eye selection behaviour tests for Gaze.map_to_aois()."""
+
 from __future__ import annotations
 
 import warnings
@@ -31,51 +32,90 @@ from pymovements.stimulus.text import TextStimulus
 
 @pytest.mark.parametrize(
     (
-        'columns', 'eye', 'gaze_type', 'expected_labels', 'expect_warn', 'warn_match',
+        'columns',
+        'eye',
+        'gaze_type',
+        'expected_labels',
+        'expect_warn',
+        'warn_match',
     ),
     [
         # mono-only flat pixel components
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'mono', 'pixel', ['A', None], False, None,
+            'mono',
+            'pixel',
+            ['A', None],
+            False,
+            None,
             id='flat-mono-exact',
         ),
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'left', 'pixel', ['A', None], True, 'Left eye requested .* Using mono',
+            'left',
+            'pixel',
+            ['A', None],
+            True,
+            'Left eye requested .* Using mono',
             id='flat-mono-fallback-left',
         ),
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'right', 'pixel', ['A', None], True, 'Right eye requested .* Using mono',
+            'right',
+            'pixel',
+            ['A', None],
+            True,
+            'Right eye requested .* Using mono',
             id='flat-mono-fallback-right',
         ),
         pytest.param(
             {'pixel_x': [5.0, 15.0], 'pixel_y': [5.0, 5.0]},
-            'cyclops', 'pixel', ['A', None], True, 'Cyclops requested .* Using mono',
+            'cyclops',
+            'pixel',
+            ['A', None],
+            True,
+            'Cyclops requested .* Using mono',
             id='flat-mono-fallback-cyclops',
         ),
         pytest.param(
             {'pixel_xr': [5.0, 15.0], 'pixel_yr': [5.0, 5.0]},
-            'auto', 'pixel', ['A', None], False, None,
+            'auto',
+            'pixel',
+            ['A', None],
+            False,
+            None,
             id='flat-right-auto-prefers-right',
         ),
         pytest.param(
             {'position_xl': [5.0, 15.0], 'position_yl': [5.0, 5.0]},
-            'left', 'position', ['A', None], False, None,
+            'left',
+            'position',
+            ['A', None],
+            False,
+            None,
             id='flat-left-position',
         ),
         pytest.param(
             {'pixel_xa': [5.0, 15.0], 'pixel_ya': [5.0, 5.0]},
-            'cyclops', 'pixel', ['A', None], False, None,
+            'cyclops',
+            'pixel',
+            ['A', None],
+            False,
+            None,
             id='flat-cyclops-components',
         ),
         pytest.param(
             {
-                'pixel_xl': [5.0, 15.0], 'pixel_yl': [5.0, 5.0],
-                'pixel_xr': [6.0, 16.0], 'pixel_yr': [6.0, 6.0],
+                'pixel_xl': [5.0, 15.0],
+                'pixel_yl': [5.0, 5.0],
+                'pixel_xr': [6.0, 16.0],
+                'pixel_yr': [6.0, 6.0],
             },
-            'cyclops', 'pixel', ['A', None], True, 'Cyclops requested .* Averaging left/right',
+            'cyclops',
+            'pixel',
+            ['A', None],
+            True,
+            'Cyclops requested .* Averaging left/right',
             id='flat-cyclops-average-lr',
         ),
     ],
@@ -108,39 +148,61 @@ def test_eye_selection_flat_components(
         # length-2 list -> mono
         pytest.param([[5.0, 5.0], [15.0, 5.0]], 'mono', ['A', None], id='list-2-mono'),
         pytest.param(
-            [[5.0, 5.0], [15.0, 5.0]], 'left', ['A', None],
+            [[5.0, 5.0], [15.0, 5.0]],
+            'left',
+            ['A', None],
             id='list-2-left-fallbacks-to-mono',
         ),
         pytest.param(
-            [[5.0, 5.0], [15.0, 5.0]], 'cyclops', ['A', None],
+            [[5.0, 5.0], [15.0, 5.0]],
+            'cyclops',
+            ['A', None],
             id='list-2-cyclops-fallbacks-to-mono',
         ),
         # length-4 list -> [xl, yl, xr, yr]
         pytest.param(
             [[5.0, 5.0, 50.0, 50.0], [15.0, 5.0, 50.0, 50.0]],
-            'left', ['A', None], id='list-4-left',
+            'left',
+            ['A', None],
+            id='list-4-left',
         ),
         pytest.param(
             [[50.0, 50.0, 5.0, 5.0], [50.0, 50.0, 15.0, 5.0]],
-            'right', ['A', None], id='list-4-right',
+            'right',
+            ['A', None],
+            id='list-4-right',
         ),
         pytest.param(
             [[5.0, 5.0, 5.0, 5.0], [15.0, 5.0, 15.0, 5.0]],
-            'cyclops', ['A', None], id='list-4-cyclops-avg-lr',
+            'cyclops',
+            ['A', None],
+            id='list-4-cyclops-avg-lr',
         ),
         # length-6 list -> [xl, yl, xr, yr, xa, ya]
         pytest.param(
             [
-                [50.0, 50.0, 50.0, 50.0, 5.0, 5.0], [
-                    50.0, 50.0, 50.0, 50.0,
-                    15.0, 5.0,
+                [50.0, 50.0, 50.0, 50.0, 5.0, 5.0],
+                [
+                    50.0,
+                    50.0,
+                    50.0,
+                    50.0,
+                    15.0,
+                    5.0,
                 ],
-            ], 'cyclops', ['A', None], id='list-6-cyclops-direct',
+            ],
+            'cyclops',
+            ['A', None],
+            id='list-6-cyclops-direct',
         ),
         pytest.param(
-            [[50.0, 50.0, 5.0, 5.0, None, None], [50.0, 50.0, 15.0, 5.0, None, None]], 'mono', [
-                'A', None,
-            ], id='list-6-mono-fallback-right',
+            [[50.0, 50.0, 5.0, 5.0, None, None], [50.0, 50.0, 15.0, 5.0, None, None]],
+            'mono',
+            [
+                'A',
+                None,
+            ],
+            id='list-6-mono-fallback-right',
         ),
     ],
 )
@@ -170,7 +232,11 @@ def test_eye_selection_list_columns(
 
 @pytest.mark.parametrize(
     (
-        'flat_columns', 'list_source', 'eye', 'gaze_type', 'expected_labels',
+        'flat_columns',
+        'list_source',
+        'eye',
+        'gaze_type',
+        'expected_labels',
     ),
     [
         # auto with flat pixel columns present but no valid component pairs ->
@@ -179,7 +245,9 @@ def test_eye_selection_list_columns(
         pytest.param(
             {'pixel_x': [999.0], 'pixel_xl': [999.0]},  # no matching y components
             {'position': [[5.0, 5.0]]},
-            'auto', 'position', ['A'],
+            'auto',
+            'position',
+            ['A'],
             id='auto-no-pair-falls-back-to-list',
         ),
     ],
@@ -252,29 +320,42 @@ def test_flat_fallbacks_to_cyclops_or_other_eye(
     ('values', 'eye', 'expected'),
     [
         pytest.param(
-            [[5.0, 5.0, None, None], [15.0, 5.0, None, None]], 'auto',
-            ['A', None], id='list-4-auto-right-missing-prefers-left',
+            [[5.0, 5.0, None, None], [15.0, 5.0, None, None]],
+            'auto',
+            ['A', None],
+            id='list-4-auto-right-missing-prefers-left',
         ),
         pytest.param(
             [[None, None, 5.0, 5.0], [None, None, 15.0, 5.0]],
-            'auto', ['A', None], id='list-4-auto-right-only',
+            'auto',
+            ['A', None],
+            id='list-4-auto-right-only',
         ),
         pytest.param(
             [[5.0, 5.0, 5.0, 5.0], [15.0, 5.0, 15.0, 5.0]],
-            'auto', ['A', None], id='list-4-auto-average-lr',
+            'auto',
+            ['A', None],
+            id='list-4-auto-average-lr',
         ),
         pytest.param(
-            [[5.0, 5.0, None, None, None, None]], 'mono', ['A'],
+            [[5.0, 5.0, None, None, None, None]],
+            'mono',
+            ['A'],
             id='list-6-mono-prefers-mono-slot-if-present',
         ),
         pytest.param(
-            [[5.0, 5.0, None, None, None, None]], 'cyclops', ['A'],
+            [[5.0, 5.0, None, None, None, None]],
+            'cyclops',
+            ['A'],
             id='list-6-cyclops-fallback-to-left-when-right-missing',
         ),
         pytest.param(
-            [[None, None, 5.0, 5.0, None, None]], 'cyclops', [
+            [[None, None, 5.0, 5.0, None, None]],
+            'cyclops',
+            [
                 'A',
-            ], id='list-6-cyclops-fallback-to-right-only',
+            ],
+            id='list-6-cyclops-fallback-to-right-only',
         ),
     ],
 )
@@ -293,7 +374,9 @@ def test_list_selection_edge_cases(
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=UserWarning)
         gaze.map_to_aois(
-            simple_stimulus, eye=eye, gaze_type=src,
+            simple_stimulus,
+            eye=eye,
+            gaze_type=src,
             preserve_structure=preserve_structure,
         )
     assert gaze.samples.get_column('label').to_list() == expected
@@ -304,7 +387,9 @@ def test_list_selection_edge_cases(
     'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
 )
 def test_preserve_structure_true_tolerates_unnest_exceptions(
-    simple_stimulus: TextStimulus, exc: type[BaseException], monkeypatch: pytest.MonkeyPatch,
+    simple_stimulus: TextStimulus,
+    exc: type[BaseException],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Build flat pixel columns so that, after unnest fails, flat-path selection still works.
     df = pl.DataFrame({'pixel_xr': [5.0], 'pixel_yr': [5.0]})
@@ -324,7 +409,9 @@ def test_preserve_structure_true_tolerates_unnest_exceptions(
     [
         pytest.param(
             {'pixel_xa': [5.0], 'pixel_ya': [5.0]},
-            'auto', 'pixel', id='auto-direct-cyclops',
+            'auto',
+            'pixel',
+            id='auto-direct-cyclops',
         ),
     ],
 )
@@ -333,7 +420,9 @@ def test_preserve_structure_true_tolerates_unnest_exceptions(
 )
 def test_auto_direct_via_cyclops(
     simple_stimulus: TextStimulus,
-    columns: dict[str, list[float]], eye: str, gaze_type: str,
+    columns: dict[str, list[float]],
+    eye: str,
+    gaze_type: str,
 ) -> None:
     gaze = pm.Gaze(samples=pl.DataFrame(columns))
     # No warning expected - direct cyclops chosen under AUTO
@@ -365,8 +454,11 @@ def test_auto_direct_via_cyclops(
             id='right-fallback-cyclops-position',
         ),
         pytest.param(
-            {'pixel_x': [5.0], 'pixel_y': [5.0]}, 'cyclops', 'pixel',
-            'Cyclops requested .* Using mono', id='cyclops-fallback-mono',
+            {'pixel_x': [5.0], 'pixel_y': [5.0]},
+            'cyclops',
+            'pixel',
+            'Cyclops requested .* Using mono',
+            id='cyclops-fallback-mono',
         ),
         pytest.param(
             {
@@ -401,12 +493,14 @@ def test_additional_flat_fallbacks(
 )
 def test_average_lr_partial_data(simple_stimulus: TextStimulus) -> None:
     # Left missing X - right present -> average uses only present values, still inside AOI
-    df = pl.DataFrame({
-        'pixel_xl': [None, None],
-        'pixel_yl': [5.0, 5.0],
-        'pixel_xr': [5.0, 15.0],
-        'pixel_yr': [5.0, 5.0],
-    })
+    df = pl.DataFrame(
+        {
+            'pixel_xl': [None, None],
+            'pixel_yl': [5.0, 5.0],
+            'pixel_xr': [5.0, 15.0],
+            'pixel_yr': [5.0, 5.0],
+        }
+    )
     gaze = pm.Gaze(samples=df)
     with pytest.warns(UserWarning, match='Cyclops requested .* Averaging left/right'):
         gaze.map_to_aois(simple_stimulus, eye='cyclops', gaze_type='pixel', preserve_structure=True)
@@ -429,14 +523,20 @@ def test_list_fallback_raises_when_no_matching_source(simple_stimulus: TextStimu
 
 @pytest.mark.parametrize(
     (
-        'flat_cols', 'list_source', 'eye', 'gaze_type', 'expected',
+        'flat_cols',
+        'list_source',
+        'eye',
+        'gaze_type',
+        'expected',
     ),
     [
         # req_eye == 'auto' returns None from flat selection (no valid pair) -> fallback to list
         pytest.param(
             {'pixel_x': [999.0], 'pixel_xl': [999.0]},  # no matching y columns
             {'pixel': [[5.0, 5.0]]},
-            'auto', 'pixel', ['A'],
+            'auto',
+            'pixel',
+            ['A'],
             id='flat-auto-none-then-list',
         ),
         # req_eye == 'mono' returns None from flat selection (no mono, no fallbacks) -> list
@@ -444,28 +544,36 @@ def test_list_fallback_raises_when_no_matching_source(simple_stimulus: TextStimu
         pytest.param(
             {'pixel_xl': [999.0]},  # missing y for left, nothing else
             {'pixel': [[5.0, 5.0]]},
-            'mono', 'pixel', ['A'],
+            'mono',
+            'pixel',
+            ['A'],
             id='flat-mono-none-then-list',
         ),
         # req_eye == 'left' returns None from flat selection (no left, no fallbacks) -> list
         pytest.param(
             {'pixel_x': [999.0]},  # mono x only, no usable pairs and no fallbacks
             {'pixel': [[5.0, 5.0]]},
-            'left', 'pixel', ['A'],
+            'left',
+            'pixel',
+            ['A'],
             id='flat-left-none-then-list',
         ),
         # req_eye == 'right' returns None from flat selection (no right, no fallbacks) -> list
         pytest.param(
             {'pixel_x': [999.0]},  # mono x only, no usable pairs and no fallbacks
             {'pixel': [[5.0, 5.0]]},
-            'right', 'pixel', ['A'],
+            'right',
+            'pixel',
+            ['A'],
             id='flat-right-none-then-list',
         ),
         # req_eye == 'cyclops' returns None from flat selection (no cx/cy and no fallbacks) -> list
         pytest.param(
             {'pixel_x': [999.0]},
             {'pixel': [[5.0, 5.0]]},
-            'cyclops', 'pixel', ['A'],
+            'cyclops',
+            'pixel',
+            ['A'],
             id='flat-cyclops-none-then-list',
         ),
     ],
@@ -519,12 +627,14 @@ def test_list_values_empty_returns_none_row(simple_stimulus: TextStimulus, src_c
 @pytest.mark.parametrize('eye', ['mono', 'cyclops', 'auto'])
 def test_list_six_prefers_xa_ya(simple_stimulus: TextStimulus, src_col: str, eye: str) -> None:
     # 6-component list with explicit cyclops/mono at positions 4/5 should be chosen directly
-    df = pl.DataFrame({
-        src_col: [
-            [50.0, 50.0, 50.0, 50.0, 5.0, 5.0],
-            [50.0, 50.0, 50.0, 50.0, 15.0, 5.0],
-        ],
-    })
+    df = pl.DataFrame(
+        {
+            src_col: [
+                [50.0, 50.0, 50.0, 50.0, 5.0, 5.0],
+                [50.0, 50.0, 50.0, 50.0, 15.0, 5.0],
+            ],
+        }
+    )
     gaze = pm.Gaze(samples=df)
     gaze.map_to_aois(simple_stimulus, eye=eye, gaze_type=src_col, preserve_structure=False)
     assert gaze.samples.get_column('label').to_list() == ['A', None]

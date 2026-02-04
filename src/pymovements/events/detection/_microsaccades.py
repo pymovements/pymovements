@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the implementation for the Engbert microsaccades algorithm."""
+
 from __future__ import annotations
 
 from collections.abc import Sized
@@ -33,14 +34,14 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def microsaccades(
-        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        timesteps: list[int] | np.ndarray | None = None,
-        minimum_duration: int = 6,
-        threshold: np.ndarray | tuple[float, float] | str = 'engbert2015',
-        threshold_factor: float = 6,
-        minimum_threshold: float = 1e-10,
-        include_nan: bool = False,
-        name: str = 'saccade',
+    velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+    timesteps: list[int] | np.ndarray | None = None,
+    minimum_duration: int = 6,
+    threshold: np.ndarray | tuple[float, float] | str = 'engbert2015',
+    threshold_factor: float = 6,
+    minimum_threshold: float = 1e-10,
+    include_nan: bool = False,
+    name: str = 'saccade',
 ) -> Events:
     """Detect micro-saccades from velocity gaze sequence.
 
@@ -132,7 +133,8 @@ def microsaccades(
 
     # Filter all candidates by minimum duration.
     candidates = [
-        candidate for candidate in candidates
+        candidate
+        for candidate in candidates
         if len(candidate) > 0
         and timesteps[candidate[-1]] - timesteps[candidate[0]] >= minimum_duration
     ]

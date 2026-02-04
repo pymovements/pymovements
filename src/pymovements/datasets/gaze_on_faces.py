@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the GazeOnFaces dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -46,14 +47,14 @@ class GazeOnFaces(DatasetDefinition):
 
     Check the respective paper for details :cite:p:`GazeOnFaces`.
 
-    Warning
+    Warning:
     -------
     This dataset currently cannot be fully processed by ``pymovements`` due to an error during
     archive extraction.
 
     See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
 
-    Attributes
+    Attributes:
     ----------
     name: str
         The name of the dataset.
@@ -101,7 +102,7 @@ class GazeOnFaces(DatasetDefinition):
         If specified, these keyword arguments will be passed to the file reading function.
         (default: None)
 
-    Examples
+    Examples:
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
     :py:class:`~pymovements.datasets.GazeOnFaces` definition:

@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all Gaze functionality."""
+
 from __future__ import annotations
 
 import os
@@ -50,7 +51,8 @@ def fixture_make_gaze_with_events():
         # adding columns afterward to not count them as non-property additional_columns
         if properties is not None:
             gaze.events.frame = gaze.events.frame.select(
-                [pl.all()] + [
+                [pl.all()]
+                + [
                     pl.int_ranges(0, 100 * len(names), 100).alias(property)
                     for property in properties
                 ],
@@ -104,8 +106,10 @@ def test_gaze_init(init_arg):
         pytest.param(
             pl.DataFrame(
                 schema={
-                    'x_left_vel': pl.Float64, 'y_left_vel': pl.Float64,
-                    'x_right_vel': pl.Float64, 'y_right_vel': pl.Float64,
+                    'x_left_vel': pl.Float64,
+                    'y_left_vel': pl.Float64,
+                    'x_right_vel': pl.Float64,
+                    'y_right_vel': pl.Float64,
                 },
             ),
             ['x_left_vel', 'y_left_vel', 'x_right_vel', 'y_right_vel'],
@@ -145,8 +149,10 @@ def test_gaze_velocity_columns(init_df, velocity_columns):
         pytest.param(
             pl.DataFrame(
                 schema={
-                    'x_left_pix': pl.Float64, 'y_left_pix': pl.Float64,
-                    'x_right_pix': pl.Float64, 'y_right_pix': pl.Float64,
+                    'x_left_pix': pl.Float64,
+                    'y_left_pix': pl.Float64,
+                    'x_right_pix': pl.Float64,
+                    'y_right_pix': pl.Float64,
                 },
             ),
             ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
@@ -186,8 +192,10 @@ def test_gaze_pixel_position_columns(init_df, pixel_columns):
         pytest.param(
             pl.DataFrame(
                 schema={
-                    'x_left_pos': pl.Float64, 'y_left_pos': pl.Float64,
-                    'x_right_pos': pl.Float64, 'y_right_pos': pl.Float64,
+                    'x_left_pos': pl.Float64,
+                    'y_left_pos': pl.Float64,
+                    'x_right_pos': pl.Float64,
+                    'y_right_pos': pl.Float64,
                 },
             ),
             ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
@@ -466,18 +474,17 @@ def test_gaze_split_example():
             {},
             id='empty_gaze',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.DataFrame(schema={'x': pl.Int64, 'y': pl.Int64, 'trial': pl.Int64}),
                 events=None,
-                pixel_columns=['x', 'y'], trial_columns='trial',
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
             ),
             'trial',
             {},
             id='empty_samples_no_events_none_with_trial_columns_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
@@ -492,37 +499,38 @@ def test_gaze_split_example():
             },
             id='one_sample_no_events_one_trial_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                pixel_columns=['x', 'y'], experiment=Experiment(1024, 768, 30, 31, 1000),
+                pixel_columns=['x', 'y'],
+                experiment=Experiment(1024, 768, 30, 31, 1000),
             ),
             'trial',
             {
                 (1,): Gaze(
                     samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                    pixel_columns=['x', 'y'], experiment=Experiment(1024, 768, 30, 31, 1000),
+                    pixel_columns=['x', 'y'],
+                    experiment=Experiment(1024, 768, 30, 31, 1000),
                 ),
             },
             id='one_sample_no_events_with_experiment_one_trial_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                pixel_columns=['x', 'y'], trial_columns='trial',
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
             ),
             None,
             {
                 (1,): Gaze(
                     samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
             },
             id='one_sample_no_events_one_trial_by_none',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1], 'task': ['A']}),
@@ -537,7 +545,6 @@ def test_gaze_split_example():
             },
             id='one_sample_no_events_one_trial_by_two_columns',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
@@ -556,7 +563,6 @@ def test_gaze_split_example():
             },
             id='two_samples_no_events_two_trials_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, None]}),
@@ -575,7 +581,6 @@ def test_gaze_split_example():
             },
             id='two_samples_no_events_one_trial_int_one_none_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': ['A', None]}),
@@ -594,76 +599,84 @@ def test_gaze_split_example():
             },
             id='two_samples_no_events_one_trial_str_one_none_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
-                pixel_columns=['x', 'y'], experiment=Experiment(1024, 768, 30, 31, 1000),
+                pixel_columns=['x', 'y'],
+                experiment=Experiment(1024, 768, 30, 31, 1000),
             ),
             'trial',
             {
                 (1,): Gaze(
                     samples=pl.from_dict({'x': [0], 'y': [2], 'trial': [1]}),
-                    pixel_columns=['x', 'y'], experiment=Experiment(1024, 768, 30, 31, 1000),
+                    pixel_columns=['x', 'y'],
+                    experiment=Experiment(1024, 768, 30, 31, 1000),
                 ),
                 (2,): Gaze(
                     samples=pl.from_dict({'x': [1], 'y': [3], 'trial': [2]}),
-                    pixel_columns=['x', 'y'], experiment=Experiment(1024, 768, 30, 31, 1000),
+                    pixel_columns=['x', 'y'],
+                    experiment=Experiment(1024, 768, 30, 31, 1000),
                 ),
             },
             id='two_samples_no_events_with_experiment_two_trials_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
-                pixel_columns=['x', 'y'], trial_columns='trial',
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
             ),
             None,
             {
                 (1,): Gaze(
                     samples=pl.from_dict({'x': [0], 'y': [2], 'trial': [1]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
                 (2,): Gaze(
                     samples=pl.from_dict({'x': [1], 'y': [3], 'trial': [2]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
             },
             id='two_samples_no_events_with_experiment_two_trials_by_default',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': range(5, 10), 'y': range(5), 'trial': [8, 5, 3, 4, 1]}),
-                pixel_columns=['x', 'y'], trial_columns='trial',
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
             ),
             'trial',
             {
                 (8,): Gaze(
                     samples=pl.from_dict({'x': [5], 'y': [0], 'trial': [8]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
                 (5,): Gaze(
                     samples=pl.from_dict({'x': [6], 'y': [1], 'trial': [5]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
                 (3,): Gaze(
                     samples=pl.from_dict({'x': [7], 'y': [2], 'trial': [3]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
                 (4,): Gaze(
                     samples=pl.from_dict({'x': [8], 'y': [3], 'trial': [4]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
                 (1,): Gaze(
                     samples=pl.from_dict({'x': [9], 'y': [4], 'trial': [1]}),
-                    pixel_columns=['x', 'y'], trial_columns='trial',
+                    pixel_columns=['x', 'y'],
+                    trial_columns='trial',
                 ),
             },
             id='five_samples_no_events_five_trials_single_column_trials',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
@@ -682,7 +695,6 @@ def test_gaze_split_example():
             },
             id='one_sample_one_event_same_trial_by_default',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
@@ -707,7 +719,6 @@ def test_gaze_split_example():
             },
             id='one_sample_one_event_different_trial_by_default',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
@@ -734,15 +745,16 @@ def test_gaze_split_example():
             },
             id='two_samples_one_event_two_trials_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, 2]}),
                 events=Events(
                     pl.DataFrame(
                         {
-                            'trial': [1, 2], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'trial': [1, 2],
+                            'name': ['fixation', 'saccade'],
+                            'onset': [0, 100],
+                            'offset': [1, 200],
                         },
                     ),
                 ),
@@ -771,15 +783,16 @@ def test_gaze_split_example():
             },
             id='two_samples_two_events_two_trials_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0, 1], 'y': [2, 3], 'trial': [1, None]}),
                 events=Events(
                     pl.DataFrame(
                         {
-                            'trial': [1, None], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'trial': [1, None],
+                            'name': ['fixation', 'saccade'],
+                            'onset': [0, 100],
+                            'offset': [1, 200],
                         },
                     ),
                 ),
@@ -808,7 +821,6 @@ def test_gaze_split_example():
             },
             id='two_samples_two_events_one_trial_one_none_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 events=Events(
@@ -827,14 +839,15 @@ def test_gaze_split_example():
             },
             id='no_samples_one_event_one_trial_by_single_column',
         ),
-
         pytest.param(
             Gaze(
                 events=Events(
                     pl.DataFrame(
                         {
-                            'trial': [1, 2], 'name': ['fixation', 'saccade'],
-                            'onset': [0, 100], 'offset': [1, 200],
+                            'trial': [1, 2],
+                            'name': ['fixation', 'saccade'],
+                            'onset': [0, 100],
+                            'offset': [1, 200],
                         },
                     ),
                 ),
@@ -875,7 +888,6 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
             "Either 'by' or 'Gaze.trial_columns' must be specified",
             id='empty_gaze_by_none',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'trial': [1]}),
@@ -886,7 +898,6 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
             '"task" not found',
             id='columns_missing_from_samples',
         ),
-
         pytest.param(
             Gaze(
                 events=Events(
@@ -898,7 +909,6 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
             '"task" not found',
             id='columns_missing_from_events_no_samples',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'task': ['A']}),
@@ -912,7 +922,6 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
             '"task" not found',
             id='columns_missing_from_events_has_samples',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict(
@@ -925,7 +934,6 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
             'dtype bytes not supported .* in split.* supported dtypes are',
             id='none_trial_values_with_unsupported_split_column_dtype',
         ),
-
         pytest.param(
             Gaze(
                 samples=pl.from_dict({'x': [0], 'y': [1], 'task': ['A']}),
@@ -939,7 +947,6 @@ def test_gaze_split_as_dict(gaze, by, expected_splits):
             '"by" column dtypes do not match between samples and events.*str.*!=.*int',
             id='by_column_dtypes_do_not_match',
         ),
-
     ],
 )
 def test_gaze_split_as_dict_raises_exception(gaze, by, expected_exception, expected_message):
@@ -1126,26 +1133,30 @@ def test_gaze_compute_event_properties_no_events():
 )
 def test_gaze_compute_event_properties_overwrites_column(existing_amplitude, expected_amplitude):
     gaze = Gaze(
-        samples=pl.DataFrame({
-            'time': [0, 1, 2, 3, 4],
-            'position': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]],
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': [0, 1, 2, 3, 4],
+                'position': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]],
+            }
+        ),
         events=Events(
-            pl.DataFrame({
-                'name': ['fixation'],
-                'onset': [0],
-                'offset': [4],
-                'amplitude': [existing_amplitude],
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [4],
+                    'amplitude': [existing_amplitude],
+                }
+            ),
         ),
     )
 
     expected_events = gaze.events.frame.with_columns(pl.lit(expected_amplitude).alias('amplitude'))
 
     with pytest.warns(
-            UserWarning,
-            match='The following columns already exist in event and will be overwritten: '
-                  r'\[\'amplitude\'\]',
+        UserWarning,
+        match='The following columns already exist in event and will be overwritten: '
+        r'\[\'amplitude\'\]',
     ):
         gaze.compute_event_properties('amplitude')
 
@@ -1198,7 +1209,6 @@ def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed)
         function_name=f'Gaze.{attribute}',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )
 
 
@@ -1216,11 +1226,21 @@ def _create_gaze():
         ),
         experiment=Experiment(
             screen=Screen(
-                width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-                distance_cm=68.0, origin='upper left',
-            ), eyetracker=EyeTracker(
-                sampling_rate=1000.0, left=None,
-                right=None, model='MyModel', version=None, vendor=None, mount=None,
+                width_px=1280,
+                height_px=1024,
+                width_cm=38.0,
+                height_cm=30.0,
+                distance_cm=68.0,
+                origin='upper left',
+            ),
+            eyetracker=EyeTracker(
+                sampling_rate=1000.0,
+                left=None,
+                right=None,
+                model='MyModel',
+                version=None,
+                vendor=None,
+                mount=None,
             ),
         ),
         position_columns=['x', 'y'],
@@ -1238,7 +1258,6 @@ def _create_gaze():
 
 
 def test_gaze_save_csv(tmp_path):
-
     gaze = _create_gaze()
     # Saving Gaze to tmp_path
     gaze.save(
@@ -1265,7 +1284,6 @@ def test_gaze_save_feather(tmp_path):
 
 
 def test_gaze_save_without_events(tmp_path):
-
     gaze = _create_gaze()
 
     # Saving Gaze to tmp_path
@@ -1281,7 +1299,6 @@ def test_gaze_save_without_events(tmp_path):
 
 
 def test_gaze_save_without_samples(tmp_path):
-
     gaze = _create_gaze()
 
     # Saving Gaze to tmp_path
@@ -1297,7 +1314,6 @@ def test_gaze_save_without_samples(tmp_path):
 
 
 def test_gaze_save_without_experiment(tmp_path):
-
     gaze = _create_gaze()
 
     # Saving Gaze to tmp_path
@@ -1313,7 +1329,6 @@ def test_gaze_save_without_experiment(tmp_path):
 
 
 def test_gaze_save_with_empty_events(tmp_path):
-
     gaze = _create_gaze()
     gaze.events = None
 

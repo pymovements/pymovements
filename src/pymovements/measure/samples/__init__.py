@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for sample measures."""
+
+from __future__ import annotations
+
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.measure.samples.measures import amplitude
@@ -28,11 +31,9 @@ from pymovements.measure.samples.measures import location
 from pymovements.measure.samples.measures import null_ratio
 from pymovements.measure.samples.measures import peak_velocity
 
-
 __all__ = [
     'register_sample_measure',
     'SampleMeasureLibrary',
-
     'amplitude',
     'data_loss',
     'dispersion',
