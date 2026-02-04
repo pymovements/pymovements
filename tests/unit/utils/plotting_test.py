@@ -59,7 +59,7 @@ def test_setup_matplotlib(kwargs):
 
 @pytest.mark.filterwarnings('ignore::DeprecationWarning')
 def test_draw_image_stimulus(axes, make_example_file):
-    filepath = make_example_file('pexels-zoorg-1000498.jpg')
+    filepath = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
     draw_image_stimulus(image_stimulus=filepath, ax=axes)
 
 
