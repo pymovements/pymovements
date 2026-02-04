@@ -149,14 +149,12 @@ def test_download_and_extract_archive_invalid_md5(tmp_path):
     md5 = '00000000000000000000000000000000'
     extract_dirpath = tmp_path / 'extracted'
 
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(
+        RuntimeError,
+        match=f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "
+        'not found or download corrupted.',
+    ):
         download_and_extract_archive(url, tmp_path, _download_filename, extract_dirpath, md5)
-
-    (msg,) = excinfo.value.args
-    assert (
-        msg == f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "
-        'not found or download corrupted.'
-    )
 
 
 @pytest.mark.network
