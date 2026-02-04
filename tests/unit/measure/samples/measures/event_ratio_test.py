@@ -52,20 +52,20 @@ class TestEventRatio:
         ),
         [
             # Single blink event covering 3 out of 8 samples (1, 2, 3)
-            pytest.param('blink', ['blink'], [1.0], [4.0], 0.375, id='single_blink'),
-            # Two blink events covering 4 out of 8 samples
+            pytest.param('blink', ['blink'], [1.0], [3.0], 0.375, id='single_blink'),
+            # Two blink events covering 4 out of 8 samples (1, 2) and (5, 6)
             pytest.param(
                 'blink',
                 ['blink', 'blink'],
                 [1.0, 5.0],
-                [3.0, 7.0],
+                [2.0, 6.0],
                 0.5,
                 id='multiple_blinks',
             ),
             # No matching events
             pytest.param('blink', ['saccade'], [1.0], [3.0], 0.0, id='no_matching_events'),
             # Event covering single sample
-            pytest.param('blink', ['blink'], [1.0], [2.0], 0.125, id='single_sample'),
+            pytest.param('blink', ['blink'], [1.0], [1.0], 0.125, id='single_sample'),
         ],
     )
     def test_event_ratio(
@@ -108,8 +108,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 2},
+                    {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 2},
                 ],
                 {1: 0.5, 2: 0.5},
                 id='both_trials_with_event',
@@ -122,7 +122,7 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
                 ],
                 {1: 2 / 3, 2: 0.0},
                 id='event_partial_trial',
@@ -136,7 +136,7 @@ class TestEventRatio:
                 }),
                 ['trial', 'session'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1, 'session': 1},
+                    {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
                 ],
                 {(1, 1): 0.5, (2, 1): 0.0},
                 id='multiple_trial_columns',
@@ -149,8 +149,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 2.0, 'offset': 4.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
                 ],
                 {1: 1.0},
                 id='adjacent_events',
@@ -163,8 +163,8 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [
-                    {'name': 'blink', 'onset': 0.0, 'offset': 3.0, 'trial': 1},
-                    {'name': 'blink', 'onset': 2.0, 'offset': 4.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
                 ],
                 {1: 1.0},
                 id='overlapping_events',
