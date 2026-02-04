@@ -813,6 +813,7 @@ def test_dataset_scan_correct_files_from_dataset_tree(
     assert scanned_files == expected_files
 
 
+@pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
 def test_load_correct_fileinfo(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load()
@@ -823,7 +824,7 @@ def test_load_correct_fileinfo(gaze_dataset_configuration):
 
 def test_load_correct_raw_gazes(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     expected_gazes = gaze_dataset_configuration['raw_gazes']
     for result_gaze, expected_gaze in zip(dataset.gaze, expected_gazes):
@@ -836,7 +837,7 @@ def test_load_correct_raw_gazes(gaze_dataset_configuration):
 
 def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze'].drop('filepath')
     for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
@@ -886,7 +887,11 @@ def test_text_stimuli_list_not_empty(gaze_dataset_configuration):
 def test_loaded_text_stimuli_list_correct(gaze_dataset_configuration, expected):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.scan()
-    dataset.load_stimuli()
+
+    message = f'.*Stimulus support is experimental.*pymovements version.*{re.escape(__version__)}'
+    with pytest.warns(ExperimentalWarning, match=message):
+        dataset.load_stimuli()
+
     aois_list = dataset.stimuli
     assert len(aois_list) == 3
     head = aois_list[0].aois.head(10)
@@ -900,7 +905,7 @@ def test_loaded_text_stimuli_list_correct(gaze_dataset_configuration, expected):
 
 def test_loaded_gazes_do_not_share_experiment_with_definition(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     definition = gaze_dataset_configuration['init_kwargs']['definition']
 
@@ -910,7 +915,7 @@ def test_loaded_gazes_do_not_share_experiment_with_definition(gaze_dataset_confi
 
 def test_loaded_gazes_do_not_share_experiment_with_other(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     for gaze1 in dataset.gaze:
         for gaze2 in dataset.gaze:
@@ -922,7 +927,7 @@ def test_loaded_gazes_do_not_share_experiment_with_other(gaze_dataset_configurat
 
 def test_load_gaze_has_position_columns(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True)
+    dataset.load(preprocessed=True, stimuli=False)
 
     for result_gaze in dataset.gaze:
         assert 'position' in result_gaze.columns
@@ -930,7 +935,7 @@ def test_load_gaze_has_position_columns(gaze_dataset_configuration):
 
 def test_load_correct_preprocessed_gazes(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True)
+    dataset.load(preprocessed=True, stimuli=False)
 
     expected_gazes = gaze_dataset_configuration['preprocessed_gazes']
     for result_gaze, expected_gaze in zip(dataset.gaze, expected_gazes):
@@ -943,7 +948,7 @@ def test_load_correct_preprocessed_gazes(gaze_dataset_configuration):
 
 def test_load_correct_trial_columns(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     expected_trial_columns = gaze_dataset_configuration['trial_columns']
     for result_gaze in dataset.gaze:
@@ -952,13 +957,14 @@ def test_load_correct_trial_columns(gaze_dataset_configuration):
 
 def test_load_correct_events_list(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(events=True)
+    dataset.load(events=True, stimuli=False)
 
     expected_events_list = gaze_dataset_configuration['events_list']
     for result_events, expected_events in zip(dataset.events, expected_events_list):
         assert_frame_equal(result_events.frame, expected_events)
 
 
+@pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
 @pytest.mark.parametrize(
     ('subset', 'fileinfo_idx'),
     [
@@ -1023,7 +1029,7 @@ def test_load_exceptions(init_kwargs, load_kwargs, exception, gaze_dataset_confi
     dataset = Dataset(**init_kwargs)
 
     with pytest.raises(exception):
-        dataset.load(**load_kwargs)
+        dataset.load(stimuli=False, **load_kwargs)
 
 
 @pytest.mark.parametrize(
@@ -1042,7 +1048,7 @@ def test_save_gaze_exceptions(init_kwargs, save_kwargs, exception, gaze_dataset_
     dataset = Dataset(**init_kwargs)
 
     with pytest.raises(exception):
-        dataset.load()
+        dataset.load(stimuli=False)
         dataset.pix2deg()
         dataset.pos2vel()
         dataset.pos2acc()
@@ -1068,7 +1074,7 @@ def test_load_events_exceptions(
     dataset = Dataset(**init_kwargs)
 
     with pytest.raises(exception) as excinfo:
-        dataset.load()
+        dataset.load(stimuli=False)
         dataset.pix2deg()
         dataset.pos2vel()
         dataset.detect_events(
@@ -1101,7 +1107,7 @@ def test_save_events_exceptions(init_kwargs, save_kwargs, exception, gaze_datase
     dataset = Dataset(**init_kwargs)
 
     with pytest.raises(exception):
-        dataset.load()
+        dataset.load(stimuli=False)
         dataset.pix2deg()
         dataset.pos2vel()
         dataset.detect_events(
@@ -1137,7 +1143,7 @@ def test_load_mat_file_exception(gaze_dataset_configuration):
 
 def test_pix2deg(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     original_schema = dataset.gaze[0].schema
 
@@ -1150,7 +1156,7 @@ def test_pix2deg(gaze_dataset_configuration):
 
 def test_deg2pix(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     original_schema = dataset.gaze[0].schema
 
@@ -1167,7 +1173,7 @@ def test_deg2pix(gaze_dataset_configuration):
 
 def test_pos2acc(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
 
     original_schema = dataset.gaze[0].schema
@@ -1181,7 +1187,7 @@ def test_pos2acc(gaze_dataset_configuration):
 
 def test_pos2vel(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
 
     original_schema = dataset.gaze[0].schema
@@ -1195,7 +1201,7 @@ def test_pos2vel(gaze_dataset_configuration):
 
 def test_clip(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
 
     original_schema = dataset.gaze[0].schema
@@ -1277,7 +1283,7 @@ def test_clip(gaze_dataset_configuration):
 )
 def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.detect_events(**detect_event_kwargs)
@@ -1318,7 +1324,7 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
 )
 def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
 
@@ -1403,7 +1409,7 @@ def test_detect_events_multiple_calls(
         gaze_dataset_configuration,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.detect_events(**detect_event_kwargs_1)
@@ -1430,7 +1436,7 @@ def test_detect_events_multiple_calls(
 )
 def test_detect_events_alias(gaze_dataset_configuration, detect_kwargs, monkeypatch):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
 
@@ -1606,7 +1612,7 @@ def test_save_events(
         gaze_dataset_configuration,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.detect_events(**detect_event_kwargs)
@@ -1657,7 +1663,7 @@ def test_load_previously_saved_events_gaze(
         gaze_dataset_configuration,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.pos2acc()
@@ -1701,7 +1707,7 @@ def test_save_preprocessed_directory_exists(
         gaze_dataset_configuration,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.pos2acc()
@@ -1729,7 +1735,7 @@ def test_save_preprocessed_directory_exists(
 )
 def test_save_preprocessed(gaze_dataset_configuration, drop_column):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.pos2acc()
@@ -1759,7 +1765,7 @@ def test_save_preprocessed(gaze_dataset_configuration, drop_column):
 )
 def test_save_preprocessed_has_no_side_effect(gaze_dataset_configuration, drop_column):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.pos2acc()
@@ -1821,7 +1827,7 @@ def test_save_creates_correct_directory(
         gaze_dataset_configuration,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
 
@@ -1870,7 +1876,7 @@ def test_save_files_have_correct_extension(
         gaze_dataset_configuration,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.pos2acc()
@@ -2046,7 +2052,7 @@ def test_velocity_columns(gaze_dataset_configuration):
 
 def test_dataset_compute_event_properties_warns_existing(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     measure = ('null_ratio', {'column': 'pixel', 'column_dtype': pl.List})
     dataset.compute_event_properties(measure)
@@ -2074,7 +2080,7 @@ def test_event_dataframe_add_property_raises_exceptions(
         message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     with pytest.raises(exception, match=message):
         dataset.compute_event_properties(**property_kwargs)
@@ -2091,7 +2097,7 @@ def test_event_dataframe_add_property_has_expected_height(
         property_kwargs,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     expected_heights = [len(events) for events in dataset.events]
 
@@ -2134,7 +2140,7 @@ def test_event_dataframe_add_property_has_expected_schema(
         expected_schema,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     dataset.compute_event_properties(**property_kwargs)
 
@@ -2173,7 +2179,7 @@ def test_event_dataframe_add_property_effect_property_columns(
         expected_property_columns,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     dataset.compute_event_properties(**property_kwargs)
 
@@ -2201,7 +2207,7 @@ def test_dataset_compute_event_properties_warns(
         message,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     with pytest.warns(warning, match=message):
         dataset.compute_event_properties(**property_kwargs)
@@ -2229,7 +2235,7 @@ def test_event_dataframe_add_property_does_not_change_length(
         property_kwargs,
 ):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     lengths_pre = [len(events_df.frame) for events_df in dataset.events]
     dataset.compute_event_properties(**property_kwargs)
@@ -2253,7 +2259,7 @@ def test_event_dataframe_add_property_does_not_change_length(
 )
 def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwargs, monkeypatch):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load(preprocessed=True, events=True)
+    dataset.load(preprocessed=True, events=True, stimuli=False)
 
     mock = Mock()
     monkeypatch.setattr(dataset, 'compute_event_properties', mock)
@@ -2315,7 +2321,7 @@ def precomputed_fixture_dataset(request, tmp_path):
 
 def test_load_correct_fileinfo_precomputed(precomputed_dataset_configuration):
     dataset = Dataset(**precomputed_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     expected_fileinfo = precomputed_dataset_configuration['fileinfo']['precomputed_events']
     assert_frame_equal(dataset.fileinfo['precomputed_events'], expected_fileinfo)
@@ -2387,7 +2393,7 @@ def precomputed_rm_fixture_dataset(request, tmp_path):
 
 def test_load_correct_fileinfo_precomputed_rm(precomputed_rm_dataset_configuration):
     dataset = Dataset(**precomputed_rm_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
 
     all_fileinfo = precomputed_rm_dataset_configuration['fileinfo']
     expected_fileinfo = all_fileinfo['precomputed_reading_measures']
@@ -2427,7 +2433,7 @@ def test_load_no_files_precomputed_rm_raises_exception(precomputed_rm_dataset_co
 )
 def test_load_split_precomputed_events(precomputed_dataset_configuration, by, expected_len):
     dataset = Dataset(**precomputed_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.split_precomputed_events(by)
     assert len(dataset.precomputed_events) == expected_len
 
@@ -2464,7 +2470,7 @@ def test_dataset_definition_from_yaml(tmp_path):
 )
 def test_load_split_gaze(gaze_dataset_configuration, by, expected_len):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.split_gaze_data(by)
     assert len(dataset.gaze) == expected_len
 
@@ -2509,7 +2515,7 @@ def test_unsupported_content_type(tmp_path):
 def test_drop_event_property(gaze_dataset_configuration):
 
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
-    dataset.load()
+    dataset.load(stimuli=False)
     dataset.pix2deg()
     dataset.detect_events('idt', dispersion_threshold=2.7, name='fixation.idt')
     dataset.pos2vel()
