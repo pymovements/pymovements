@@ -29,21 +29,9 @@ import pytest
 from pymovements.stimulus.text import TextStimulus
 
 
-@pytest.mark.parametrize(
-    ('x', 'y', 'expected', 'expect_len', 'expect_warning'),
-    [
-        pytest.param(5, 5, 'W1', 2, True, id='inside_overlap_warns_and_picks_first'),
-        pytest.param(15, 5, None, 1, False, id='outside_no_warning'),
-    ],
-)
-def test_get_aoi_overlap_warns(
-    x: int,
-    y: int,
-    expected: str | None,
-    expect_len: int,
-    expect_warning: bool,
-) -> None:
-    """Overlap handling for width/height-configured stimulus."""
+@pytest.fixture(name='text_stimulus_overlap')
+def fixture_text_stimulus_overlap() -> TextStimulus:
+    """Text stimulus with overlapping AOIs."""
     df = pl.DataFrame(
         {
             'label': ['W1', 'W2'],
@@ -54,7 +42,7 @@ def test_get_aoi_overlap_warns(
             'height': [10, 10],
         },
     )
-    stim = TextStimulus(
+    return TextStimulus(
         aois=df,
         aoi_column='label',
         start_x_column='sx',
@@ -63,64 +51,29 @@ def test_get_aoi_overlap_warns(
         height_column='height',
     )
 
-    row = {'x': x, 'y': y}
-    if expect_warning:
-        with pytest.warns(
+
+def test_get_aoi_overlap_warns(text_stimulus_overlap: TextStimulus) -> None:
+    """Overlap handling for width/height-configured stimulus warns."""
+    row = {'x': 5, 'y': 5}
+    with pytest.warns(
             UserWarning,
             match=r'Multiple AOIs matched this point \(x=',
-        ):
-            out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
-    else:
-        out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
+    ):
+        out = text_stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
 
     labels = out.get_column('label').to_list()
-    assert len(labels) == expect_len
-    assert labels[0] == expected
+    assert len(labels) == 2
+    assert labels[0] == 'W1'
 
 
-@pytest.mark.parametrize(
-    ('x', 'y', 'expected', 'expect_len'),
-    [
-        pytest.param(5, 5, 'W1', 2, id='inside_overlap_warns_and_picks_first'),
-        pytest.param(15, 5, None, 1, id='outside_no_warning'),
-    ],
-)
-def test_get_aoi_overlap_warns_width_height(
-    x: int, y: int, expected: str | None, expect_len: int,
-) -> None:
-    """Overlap handling for width/height-configured stimulus."""
-    df = pl.DataFrame(
-        {
-            'label': ['W1', 'W2'],
-            'sx': [0, 0],
-            'sy': [0, 0],
-            # Two AOIs of identical size/position -> complete overlap
-            'width': [10, 10],
-            'height': [10, 10],
-        },
-    )
-    stim = TextStimulus(
-        aois=df,
-        aoi_column='label',
-        start_x_column='sx',
-        start_y_column='sy',
-        width_column='width',
-        height_column='height',
-    )
+def test_get_aoi_overlap_no_warning(text_stimulus_overlap: TextStimulus) -> None:
+    """Overlap handling for width/height-configured stimulus without overlap."""
+    row = {'x': 15, 'y': 5}
+    out = text_stimulus_overlap.get_aoi(row=row, x_eye='x', y_eye='y')
 
-    row = {'x': x, 'y': y}
-    if expect_len > 1:
-        with pytest.warns(
-                UserWarning, match=r'Multiple AOIs matched this point \(x=',
-        ):
-            out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
-    else:
-        out = stim.get_aoi(row=row, x_eye='x', y_eye='y')
-
-    # Always exactly one output row
     labels = out.get_column('label').to_list()
-    assert len(labels) == expect_len
-    assert labels[0] == expected
+    assert len(labels) == 1
+    assert labels[0] is None
 
 
 @pytest.mark.parametrize(
