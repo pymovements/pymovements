@@ -291,7 +291,7 @@ class DatasetPaths:
         >>> dataset.paths.events# doctest: +SKIP
         Path('/path/to/your/common/root/ToyDataset/events')
 
-        This way you can also explicitely specify the events directory name. The default is
+        This way you can also explicitly specify the events directory name. The default is
         `events`.
         >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', events='my_events')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
@@ -326,7 +326,7 @@ class DatasetPaths:
         >>> dataset.paths.preprocessed# doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/preprocessed')
 
-        This way you can also explicitely specify the events directory name. The default is
+        This way you can also explicitly specify the events directory name. The default is
         `preprocessed`.
         >>> paths = pm.DatasetPaths(
         ...     root='/path/to/your/datasets/', preprocessed='my_preprocessed_data',
@@ -363,7 +363,7 @@ class DatasetPaths:
         >>> dataset.paths.raw# doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/raw')
 
-        This way you can also explicitely specify the raw directory name. The default is `raw`.
+        This way you can also explicitly specify the raw directory name. The default is `raw`.
         >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', raw='my_raw')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
         >>> dataset.paths.raw# doctest: +SKIP
@@ -405,7 +405,7 @@ class DatasetPaths:
         >>> dataset.paths.precomputed_events# doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/precomputed_events')
 
-        This way you can also explicitely specify the precomputed directory name.
+        This way you can also explicitly specify the precomputed directory name.
         The default is `precomputed_events`.
         >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', precomputed_events='my_pe')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
@@ -448,7 +448,7 @@ class DatasetPaths:
         >>> dataset.paths.precomputed_reading_measures# doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/precomputed_reading_measures')
 
-        This way you can also explicitely specify the raw directory name. The default is
+        This way you can also explicitly specify the raw directory name. The default is
         `precomputed_rm`.
         >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', raw='my_precomputed_rm')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
@@ -491,7 +491,7 @@ class DatasetPaths:
         >>> dataset.paths.downloads# doctest: +SKIP
         Path('path/to/your/common/root/ToyDataset/downloads')
 
-        This way you can also explicitely specify the download directory name. The default is
+        This way you can also explicitly specify the download directory name. The default is
         `downloads`.
         >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', downloads='my_downloads')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)

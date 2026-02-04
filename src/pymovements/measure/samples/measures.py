@@ -391,7 +391,7 @@ def peak_velocity(
 
 
 def _check_has_two_componenents(n_components: int) -> None:
-    """Check that number of componenents is two.
+    """Check that number of components is two.
 
     Parameters
     ----------
