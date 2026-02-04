@@ -28,10 +28,10 @@ from typing import Literal
 from typing import TypeAlias
 from warnings import warn
 
-import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL.Image
+from matplotlib import colors
 from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
 from matplotlib.collections import PatchCollection
@@ -85,13 +85,13 @@ DEFAULT_SEGMENTDATA_TWOSLOPE: LinearSegmentedColormapType = {
 }
 
 CmapNormType: TypeAlias = (
-    matplotlib.colors.TwoSlopeNorm | matplotlib.colors.Normalize | matplotlib.colors.NoNorm
+    colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
 )
 
 MatplotlibSetupType: TypeAlias = tuple[
     plt.figure,
     plt.Axes,
-    matplotlib.colors.Colormap,
+    colors.Colormap,
     CmapNormType,
     np.ndarray,
     bool,
@@ -203,8 +203,8 @@ def _setup_axes_and_colormap(
     x_signal: np.ndarray,
     y_signal: np.ndarray,
     figsize: tuple[int, int] | tuple[float, float],
-    cmap: matplotlib.colors.Colormap | None = None,
-    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap: colors.Colormap | None = None,
+    cmap_norm: colors.Normalize | str | None = None,
     cmap_segmentdata: LinearSegmentedColormapType | None = None,
     cval: np.ndarray | None = None,
     show_cbar: bool = False,
@@ -293,20 +293,20 @@ def _setup_axes_and_colormap(
             else:
                 cmap_segmentdata = DEFAULT_SEGMENTDATA
 
-        cmap = matplotlib.colors.LinearSegmentedColormap(
+        cmap = colors.LinearSegmentedColormap(
             'line_cmap', segmentdata=cmap_segmentdata, N=512,
         )
 
     if cmap_norm == 'twoslope':
-        cmap_norm = matplotlib.colors.TwoSlopeNorm(
+        cmap_norm = colors.TwoSlopeNorm(
             vcenter=0, vmin=-cval_max, vmax=cval_max,
         )
     elif cmap_norm == 'normalize':
-        cmap_norm = matplotlib.colors.Normalize(
+        cmap_norm = colors.Normalize(
             vmin=cval_min, vmax=cval_max,
         )
     elif cmap_norm == 'nonorm':
-        cmap_norm = matplotlib.colors.NoNorm()
+        cmap_norm = colors.NoNorm()
 
     elif isinstance(cmap_norm, str):
         # pylint: disable=protected-access
@@ -315,8 +315,8 @@ def _setup_axes_and_colormap(
         ) is None:
             raise ValueError(f'cmap_norm string {cmap_norm} is not supported')
 
-        norm_class = matplotlib.colors.make_norm_from_scale(scale_class)
-        cmap_norm = norm_class(matplotlib.colors.Normalize)()
+        norm_class = colors.make_norm_from_scale(scale_class)
+        cmap_norm = norm_class(colors.Normalize)()
 
     return fig, ax, cmap, cmap_norm, cval, show_cbar
 
@@ -350,8 +350,8 @@ def _draw_line_data(
     x_signal: np.ndarray,
     y_signal: np.ndarray,
     ax: plt.Axes,
-    cmap: matplotlib.colors.Colormap | None = None,
-    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap: colors.Colormap | None = None,
+    cmap_norm: colors.Normalize | str | None = None,
     cval: np.ndarray | None = None,
 ) -> LineCollection:
     """Draw line data as a colored LineCollection and return the collection."""
