@@ -59,6 +59,9 @@ class DatasetPaths:
         (default: 'preprocessed')
     downloads: str
         Name of directory to store downloaded data. (default: 'downloads')
+    stimuli: str
+        Name of directory under dataset path that will be used to store stimuli data.
+        Can be `.` if stimuli data is located in dataset path.
     """
 
     def __init__(
@@ -72,6 +75,7 @@ class DatasetPaths:
             precomputed_reading_measures: str = 'precomputed_reading_measures',
             preprocessed: str = 'preprocessed',
             downloads: str = 'downloads',
+            stimuli: str = 'stimuli',
     ):
         self._root = Path(root)
         self._dataset = dataset
@@ -81,6 +85,7 @@ class DatasetPaths:
         self._precomputed_reading_measures = precomputed_reading_measures
         self._preprocessed = preprocessed
         self._downloads = downloads
+        self._stimuli = stimuli
 
     def get_preprocessed_filepath(
             self,
@@ -494,3 +499,31 @@ class DatasetPaths:
         Path('/path/to/your/datasets/ToyDataset/my_downloads')
         """
         return self.dataset / self._downloads
+
+    @property
+    def stimuli(self) -> Path:
+        """Return the path to the stimuli directory.
+
+        Example:
+        -------
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='/path/to/your/dataset/')
+        >>> dataset.paths.stimuli  # doctest: +SKIP
+        Path('/path/to/your/dataset/stimuli')
+
+        If you want to specify the root directory path which holds all your local datasets, you
+        can create pass a :py:class:`~pymovements.dataset.DatasetPaths` object and set the `root`:
+        >>> paths = pm.DatasetPaths(root='path/to/your/common/root/')
+        >>> dataset = pm.Dataset("ToyDataset", path=paths)
+        >>> dataset.paths.stimuli  # doctest: +SKIP
+        Path('path/to/your/common/root/ToyDataset/stimuli')
+
+        You can also explicitly specify the stimuli directory name. The default is
+        `stimuli`.
+        >>> paths = pm.DatasetPaths(root='/path/to/your/datasets/', stimuli='my_stimuli')
+        >>> dataset = pm.Dataset("ToyDataset", path=paths)
+        >>> dataset.paths.stimuli  # doctest: +SKIP
+        Path('/path/to/your/datasets/ToyDataset/my_stimuli')
+        """
+        return self.dataset / self._stimuli

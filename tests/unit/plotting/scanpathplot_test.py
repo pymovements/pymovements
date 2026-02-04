@@ -207,19 +207,36 @@ def gaze_fixture(request, make_gaze):
             id='set_title',
         ),
         pytest.param(
-            {'add_traceplot': True},
+            {
+                'add_traceplot': True,
+                'add_arrows': False,
+            },
             id='set_traceplot',
         ),
         pytest.param(
-            {'add_traceplot': True, 'cval': np.arange(0, 200), 'show_cbar': True},
+            {
+                'add_traceplot': True,
+                'add_arrows': False,
+                'cval': np.arange(0, 200),
+                'show_cbar': True,
+            },
             id='set_traceplot_and_cbar',
         ),
         pytest.param(
             {
                 'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             },
             id='set_stimulus',
+        ),
+        pytest.param(
+            {
+                'add_arrows': True,
+                'arrow_color': 'blue',
+                'arrow_rad': 0.0,
+                'arrowstyle': '->',
+            },
+            id='param_arrows',
         ),
     ],
 )
