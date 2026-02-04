@@ -1682,7 +1682,10 @@ def test_load_previously_saved_events_gaze(
 
     dataset.clear_events()
 
-    dataset.load(events=True, preprocessed=True, events_dirname=events_dirname, **load_save_kwargs)
+    dataset.load(
+        events=True, preprocessed=True, stimuli=False,
+        events_dirname=events_dirname, **load_save_kwargs,
+    )
     assert dataset.events
 
 
