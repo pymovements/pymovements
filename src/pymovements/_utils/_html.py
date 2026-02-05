@@ -50,10 +50,24 @@ STYLE = """
     .pymovements-section-label {
         cursor: pointer;
         font-weight: bold;
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        transition: background-color 0.1s, border-color 0.1s;
+    }
+    .pymovements-section-label:hover {
+        background-color: rgba(0, 120, 215, 0.1);
+        border-color: #0078d7;
+        text-decoration: none;
     }
     .pymovements-section-label:before {
         display: inline-block;
         content: "►";
+        margin-right: 6px;
+        color: green;
+        font-size: 0.8em;
     }
     .pymovements-section-toggle:checked + .pymovements-section-label:before {
         content: "▼";
