@@ -463,7 +463,7 @@ def data_loss(
     >>> import polars as pl
     >>> from pymovements.measure import data_loss
     >>> df = pl.DataFrame({'time': [0.0, 1.0, 2.0, 4.0]})
-    >>> df.select(data_loss('time', 'time', sampling_rate=1.0, unit='count'))
+    >>> df.select(data_loss('time', sampling_rate=1.0, unit='count'))
     shape: (1, 1)
     ┌─────────────────┐
     │ data_loss_count │
@@ -478,7 +478,7 @@ def data_loss(
     ...     'time': [1, 2, 3, 4, 5, 9],
     ...     'pixel':  [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
     ... })
-    >>> df.select(data_loss('time', 'pixel', sampling_rate=1.0, unit='count'))
+    >>> df.select(data_loss('pixel', sampling_rate=1.0, unit='count'))
     shape: (1, 1)
     ┌─────────────────┐
     │ data_loss_count │
