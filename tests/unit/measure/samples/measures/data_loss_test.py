@@ -28,7 +28,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.measure import data_loss
 
 
 @pytest.mark.parametrize(
@@ -80,7 +80,7 @@ class TestDataLoss:
     ):
         """Test data loss with internal time gaps and invalid values."""
         df = pl.DataFrame({'time': times, 'value': values})
-        expr = pm.measure.data_loss('time', 'value', sampling_rate=sampling_rate, unit=unit)
+        expr = data_loss('value', sampling_rate=sampling_rate, unit=unit)
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
         assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
@@ -115,8 +115,8 @@ class TestDataLoss:
     ):
         """Test data loss with explicit start and end bounds."""
         df = pl.DataFrame({'time': times, 'value': values})
-        expr = pm.measure.data_loss(
-            'time', 'value', sampling_rate=sampling_rate, start_time=start, end_time=end, unit=unit,
+        expr = data_loss(
+            'value', sampling_rate=sampling_rate, start_time=start, end_time=end, unit=unit,
         )
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
@@ -132,7 +132,7 @@ class TestDataLoss:
     def test_inf_missing(self, unit, expected_col, value, expected_vals):
         """Test data loss when input contains infinite values."""
         df = pl.DataFrame({'time': [0.0], 'value': [value]})
-        expr = pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=unit)
+        expr = data_loss('value', sampling_rate=1.0, unit=unit)
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
         assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
@@ -154,7 +154,7 @@ class TestDataLoss:
     def test_unsorted_input(self, unit, expected_col, times, values, expected_vals):
         """Test data loss with unsorted input timestamps."""
         df = pl.DataFrame({'time': times, 'value': values})
-        expr = pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=unit)
+        expr = data_loss('value', sampling_rate=1.0, unit=unit)
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
         assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)
@@ -162,7 +162,7 @@ class TestDataLoss:
     def test_single_sample_invalid(self, unit, expected_col):
         """Test data loss with a single sample that is invalid."""
         df = pl.DataFrame({'time': [5.0], 'value': [None]})
-        expr = pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=unit)
+        expr = data_loss('value', sampling_rate=1.0, unit=unit)
         result = df.select(expr)
         expected_vals = {'count': 1, 'time': 1.0, 'ratio': 1.0}
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
@@ -175,8 +175,8 @@ class TestDataLoss:
         # span = 0, expected = 1. observed = 2
         # time_missing = max(1 - 2, 0) = 0
         df = pl.DataFrame({'time': [1.0, 2.0], 'value': [1.0, 1.0]})
-        expr = pm.measure.data_loss(
-            'time', 'value', sampling_rate=1.0, start_time=5.0,
+        expr = data_loss(
+            'value', sampling_rate=1.0, start_time=5.0,
             end_time=5.0, unit=unit,
         )
         result = df.select(expr)
@@ -188,8 +188,8 @@ class TestDataLoss:
         # Observed (3) > expected (floor(1.5*1)+1 = 2)
         # time_missing = max(2 - 3, 0) = 0
         df = pl.DataFrame({'time': [0.0, 1.0, 2.0], 'value': [1.0, 1.0, 1.0]})
-        expr = pm.measure.data_loss(
-            'time', 'value', sampling_rate=1.0, start_time=0.0,
+        expr = data_loss(
+            'value', sampling_rate=1.0, start_time=0.0,
             end_time=1.5, unit=unit,
         )
         result = df.select(expr)
@@ -210,7 +210,7 @@ class TestDataLoss:
             'time': [1, 2, 3, 4, 5, 9],
             'pixel': [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
         })
-        expr = pm.measure.data_loss('time', 'pixel', sampling_rate=1.0, unit=unit)
+        expr = data_loss('pixel', sampling_rate=1.0, unit=unit)
         result = df.select(expr)
         expected_vals = {'count': 6, 'time': 6.0, 'ratio': 6 / 9}
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
@@ -224,7 +224,7 @@ def test_data_loss_invalid_unit_raises(bad_unit):
         f"unit must be one of ('count', 'time', 'ratio') but got: {repr(bad_unit)}",
     )
     with pytest.raises(ValueError, match=message):
-        pm.measure.data_loss('time', 'value', sampling_rate=1.0, unit=bad_unit)
+        data_loss('value', sampling_rate=1.0, unit=bad_unit)
 
 
 @pytest.mark.parametrize('bad_time_column', [123, None, {'col': 'time'}])
@@ -235,7 +235,7 @@ def test_data_loss_invalid_time_column_raises(bad_time_column):
         f"'{type(bad_time_column).__name__}'"
     )
     with pytest.raises(TypeError, match=message):
-        pm.measure.data_loss(bad_time_column, 'value', sampling_rate=1.0)
+        data_loss('value', time_column=bad_time_column, sampling_rate=1.0)
 
 
 @pytest.mark.parametrize('bad_sampling_rate', [0, -1, 0.0, -10.5, '1Hz'])
@@ -245,11 +245,19 @@ def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
         f"sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}"
     )
     with pytest.raises(ValueError, match=message):
-        pm.measure.data_loss('time', 'value', sampling_rate=bad_sampling_rate)
+        data_loss('value', sampling_rate=bad_sampling_rate)
 
 
 def test_data_loss_invalid_range_raises_python():
     """Test that providing an invalid time range raises a ValueError."""
     message = r'end_time \(0.0\) must be greater than or equal to start_time \(1.0\)'
     with pytest.raises(ValueError, match=message):
-        pm.measure.data_loss('time', 'value', sampling_rate=1.0, start_time=1.0, end_time=0.0)
+        data_loss('value', sampling_rate=1.0, start_time=1.0, end_time=0.0)
+
+
+def test_data_loss_time_column_not_found():
+    """Test that exception is raised if time column is not found."""
+    df = pl.DataFrame({'time': [1, 2, 3], 'value': [0, 1, 2]})
+    expr = data_loss('value', time_column='t', sampling_rate=1000)
+    with pytest.raises(pl.exceptions.ColumnNotFoundError, match='t'):
+        df.select(expr)
