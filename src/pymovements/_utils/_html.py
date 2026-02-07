@@ -62,6 +62,14 @@ STYLE = """
         border-color: #0078d7;
         text-decoration: none;
     }
+    .pymovements-section-label-empty {
+        font-weight: bold;
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+    }
     .pymovements-section-label:before {
         display: inline-block;
         content: "►";
@@ -153,14 +161,32 @@ def _attr_html(name: str, obj: object, depth: int = 0) -> str:
     name = escape(name)
 
     inline_details = _attr_inline_details_html(obj)
-    details = _attr_details_html(obj, depth=depth)
+
+    is_expandable = True
+    if obj is None:
+        is_expandable = False
+    elif isinstance(obj, (int, float)):
+        is_expandable = False
+    elif isinstance(obj, (list, tuple, dict)) and len(obj) == 0:
+        is_expandable = False
+    elif isinstance(obj, str) and len(repr(obj)) < 50:
+        is_expandable = False
+
+    if is_expandable:
+        details = _attr_details_html(obj, depth=depth)
+        return f"""
+        <li class="pymovements-section">
+            <input id="pymovements-{section_id}" class="pymovements-section-toggle" type="checkbox">
+            <label for="pymovements-{section_id}" class="pymovements-section-label">{name}:</label>
+            <div class="pymovements-section-inline-details">{inline_details}</div>
+            <div class="pymovements-section-details">{details}</div>
+        </li>
+        """
 
     return f"""
     <li class="pymovements-section">
-        <input id="pymovements-{section_id}" class="pymovements-section-toggle" type="checkbox">
-        <label for="pymovements-{section_id}" class="pymovements-section-label">{name}:</label>
+        <span class="pymovements-section-label-empty">{name}:</span>
         <div class="pymovements-section-inline-details">{inline_details}</div>
-        <div class="pymovements-section-details">{details}</div>
     </li>
     """
 
