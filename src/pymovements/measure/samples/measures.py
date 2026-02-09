@@ -584,9 +584,9 @@ def bcea(
     chi-square distribution with 2 degrees of freedom (i.e., :math:`k = \chi^2_2(P/100)`).
     Common confidence levels and their corresponding :math:`k` values are:
 
-    - 68.27%: $k \approx 2.30$
-    - 95.45%: $k \approx 6.18$
-    - 99.73%: $k \approx 9.21$
+    - 68.27%: :math:`k \approx 2.30`
+    - 95.45%: :math:`k \approx 6.18`
+    - 99.73%: :math:`k \approx 9.21`
 
     The confidence level of 68.27% is the default as it corresponds to
     the same probability mass as a ±1σ interval in 1D.
