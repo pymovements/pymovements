@@ -216,3 +216,99 @@ def test_attr_details_html(obj, expected_html, regex):
         assert re.search(expected_html, html, re.MULTILINE)
     else:
         assert html == expected_html
+
+
+@pytest.mark.parametrize(
+    ('name', 'obj', 'expected_html'),
+    [
+        pytest.param(
+            'none_attr',
+            None,
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">none_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">None</div>\s*'
+            r'</li>',
+            id='none',
+        ),
+        pytest.param(
+            'int_attr',
+            123,
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">int_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">123</div>\s*'
+            r'</li>',
+            id='int',
+        ),
+        pytest.param(
+            'float_attr',
+            1.23,
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">float_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">1.23</div>\s*'
+            r'</li>',
+            id='float',
+        ),
+        pytest.param(
+            'empty_list_attr',
+            [],
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">empty_list_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">list \(0 items\)</div>\s*'
+            r'</li>',
+            id='empty_list',
+        ),
+        pytest.param(
+            'empty_tuple_attr',
+            (),
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">empty_tuple_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">tuple \(0 items\)</div>\s*'
+            r'</li>',
+            id='empty_tuple',
+        ),
+        pytest.param(
+            'empty_dict_attr',
+            {},
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">empty_dict_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">dict \(0 items\)</div>\s*'
+            r'</li>',
+            id='empty_dict',
+        ),
+        pytest.param(
+            'short_str_attr',
+            'abc',
+            r'<li class="pymovements-section">\s*'
+            r'<span class="pymovements-section-label-empty">short_str_attr:</span>\s*'
+            r'<div class="pymovements-section-inline-details">&#x27;abc&#x27;</div>\s*'
+            r'</li>',
+            id='short_str',
+        ),
+        pytest.param(
+            'long_str_attr',
+            'x' * 100,
+            r'<li class="pymovements-section">\s*'
+            r'<input id="pymovements-.*" class="pymovements-section-toggle" type="checkbox">\s*'
+            r'<label for="pymovements-.*" class="pymovements-section-label">long_str_attr:'
+            r'</label>\s*'
+            r'<div class="pymovements-section-inline-details">str</div>\s*'
+            r'<div class="pymovements-section-details">.*</div>\s*'
+            r'</li>',
+            id='long_str',
+        ),
+        pytest.param(
+            'list_attr',
+            [1, 2, 3],
+            r'<li class="pymovements-section">\s*'
+            r'<input id="pymovements-.*" class="pymovements-section-toggle" type="checkbox">\s*'
+            r'<label for="pymovements-.*" class="pymovements-section-label">list_attr:</label>\s*'
+            r'<div class="pymovements-section-inline-details">list \(3 items\)</div>\s*'
+            r'<div class="pymovements-section-details">.*</div>\s*'
+            r'</li>',
+            id='list',
+        ),
+    ],
+)
+def test_attr_html(name, obj, expected_html):
+    html = _html._attr_html(name, obj)
+    assert re.search(expected_html, html, re.MULTILINE)
