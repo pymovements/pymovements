@@ -438,13 +438,13 @@ def data_loss(
     sampling_rate: float
         Expected sampling rate in Hz (must be > 0).
     time_column: str
-        Name of the timestamp column. (default:   'time'  )
+        Name of the timestamp column. (default: 'time')
     start_time: float | None
-        Recording start time. If ``None``, uses the group's first timestamp. (default:   None  )
+        Recording start time. If ``None``, uses the group's first timestamp. (default: ``None``)
     end_time: float | None
-        Recording end time. If ``None``, uses the group's last timestamp. (default:   None  )
+        Recording end time. If ``None``, uses the group's last timestamp. (default: ``None``)
     unit: Literal['count', 'time', 'ratio']
-        Aggregation unit for the result. (default:   'ratio'  )
+        Aggregation unit for the result. (default: ``'ratio'``)
 
     Returns
     -------
