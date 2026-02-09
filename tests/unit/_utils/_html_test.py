@@ -19,7 +19,7 @@
 # SOFTWARE.
 """Test pymovements HTML representations."""
 import re
-from pathlib import PosixPath
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -310,11 +310,11 @@ def test_attr_details_html(obj, expected_html, regex):
         ),
         pytest.param(
             'path_attr',
-            PosixPath('data/ToyDataset'),
+            Path('data/ToyDataset'),
             r'<li class="pymovements-section">\s*'
             r'<span class="pymovements-section-label-empty">path_attr:</span>\s*'
             r'<div class="pymovements-section-inline-details">'
-            r'PosixPath\(&#x27;data/ToyDataset&#x27;\)</div>\s*'
+            r'(PosixPath|WindowsPath)\(&#x27;data/ToyDataset&#x27;\)</div>\s*'
             r'</li>',
             id='path',
         ),
