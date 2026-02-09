@@ -18,6 +18,7 @@ Measures
     location
     null_ratio
     peak_velocity
+    std_dev
 
 .. rubric:: Classes
 

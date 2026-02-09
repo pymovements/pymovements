@@ -404,6 +404,73 @@ def _check_has_two_componenents(n_components: int) -> None:
 
 
 @register_sample_measure
+def std_dev(
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
+) -> pl.Expr:  # noqa: D401 - imperative mood
+    r"""Standard deviation of gaze positions during a fixation.
+
+    The standard deviation (STD) measures the spatial spread of gaze positions
+    around their centroid. It is computed as the root mean square of the
+    squared standard deviations along the horizontal and vertical directions:
+
+    .. math::
+        \text{STD}_x = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2},\quad
+        \text{STD}_y = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (y_i - \bar{y})^2},\quad
+        \text{STD} = \sqrt{\text{STD}_x^2 + \text{STD}_y^2}
+
+    where :math:`x_i` and :math:`y_i` are the gaze positions for the
+    :math:`i`-th sample, and :math:`\bar{x}` and :math:`\bar{y}` are their
+    respective means. The STD is a radial measure representing the overall
+    spatial extent of the gaze positions around their centroid.
+
+    STD is relatively insensitive compared to RMS-S2S to displacement between
+    successive gaze positions, making it a good measure of spatial spread
+    rather than signal velocity. This makes STD particularly suitable for
+    quantifying the precision of eye trackers as it reflects the area over
+    which gaze positions are distributed during fixations.
+
+    Parameters
+    ----------
+    position_column: str
+        The column name of the position tuples. (default: 'position')
+    n_components: int
+        Number of positional components. Usually these are the two components yaw and pitch.
+        (default: 2)
+
+    Returns
+    -------
+    pl.Expr
+        The radial standard deviation of the gaze positions.
+
+    Raises
+    ------
+    ValueError
+        If number of components is not 2.
+
+    Notes
+    -----
+    This implementation uses sample standard deviation (dividing by :math:`n-1`).
+    This is implemented using ``ddof=1`` in the standard deviation calculation.
+
+    For sequences with a single sample, this measure returns ``None`` since there
+    is no variance to measure.
+    """
+    _check_has_two_componenents(n_components)
+
+    x_position = pl.col(position_column).list.get(0)
+    y_position = pl.col(position_column).list.get(1)
+
+    std_x_sq = x_position.std(ddof=1).pow(2)
+    std_y_sq = y_position.std(ddof=1).pow(2)
+
+    result = (std_x_sq + std_y_sq).sqrt()
+
+    return result.alias('std_dev')
+
+
+@register_sample_measure
 def bcea(
     *,
     position_column: str = 'position',
