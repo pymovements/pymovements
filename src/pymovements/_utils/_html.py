@@ -20,6 +20,7 @@
 """Provides functions for generating HTML representations of objects for Jupyter notebooks."""
 from __future__ import annotations
 
+import pathlib
 from collections.abc import Callable
 from html import escape
 from itertools import islice
@@ -66,7 +67,7 @@ STYLE = """
         font-weight: bold;
         background-color: rgba(0, 0, 0, 0.03);
         border: 1px solid rgba(0, 0, 0, 0.1);
-        padding: 2px 8px;
+        padding: 0px 6px;
         border-radius: 4px;
         display: inline-block;
     }
@@ -160,17 +161,7 @@ def _attr_html(name: str, obj: object, depth: int = 0) -> str:
     section_id = uuid4()
     name = escape(name)
 
-    inline_details = _attr_inline_details_html(obj)
-
-    is_expandable = True
-    if obj is None:
-        is_expandable = False
-    elif isinstance(obj, (int, float)):
-        is_expandable = False
-    elif isinstance(obj, (list, tuple, dict)) and len(obj) == 0:
-        is_expandable = False
-    elif isinstance(obj, str) and len(repr(obj)) < 50:
-        is_expandable = False
+    inline_details, is_expandable = _attr_inline_details_html(obj)
 
     if is_expandable:
         details = _attr_details_html(obj, depth=depth)
@@ -191,19 +182,47 @@ def _attr_html(name: str, obj: object, depth: int = 0) -> str:
     """
 
 
-def _attr_inline_details_html(obj: object) -> str:
+def _attr_inline_details_html(obj: object) -> tuple[str, bool]:
     """Generate inline (collapsed) details for HTML representation."""
-    if isinstance(obj, pl.DataFrame):
+    is_expandable = True
+
+    if obj is None:
+        inline_details = 'None'
+        is_expandable = False
+
+    elif isinstance(obj, pl.DataFrame):
         inline_details = f"DataFrame ({len(obj.columns)} columns, {len(obj)} rows)"
 
     elif isinstance(obj, list):
         inline_details = f"list ({len(obj)} items)"
+        if len(obj) == 0:
+            is_expandable = False
 
     elif isinstance(obj, tuple):
         inline_details = f"tuple ({len(obj)} items)"
+        if len(obj) == 0:
+            is_expandable = False
 
     elif isinstance(obj, dict):
         inline_details = f"dict ({len(obj)} items)"
+        if len(obj) == 0:
+            is_expandable = False
+
+    elif isinstance(obj, str):
+        if len(obj) < 50:
+            inline_details = f'str ("{obj}")'
+            is_expandable = False
+        else:
+            inline_details = f'str ("{obj[:50]}...")'
+
+    elif isinstance(obj, (int, float, bool, pathlib.Path, type)):
+        inline_details = repr(obj).replace('\n', ' ')
+        is_expandable = False
+
+    # boolean-like objects like `_HasResourcesIndexer`
+    elif repr(obj) in {'True', 'False'}:
+        inline_details = repr(obj)
+        is_expandable = False
 
     elif len(repr(obj)) < 50:
         inline_details = repr(obj).replace('\n', ' ')
@@ -211,7 +230,7 @@ def _attr_inline_details_html(obj: object) -> str:
     else:
         inline_details = type(obj).__name__
 
-    return escape(inline_details)
+    return escape(str(inline_details)), is_expandable
 
 
 def _attr_details_html(obj: object, depth: int = 0, max_depth: int = 3) -> str:
