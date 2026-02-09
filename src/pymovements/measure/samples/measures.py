@@ -471,6 +471,77 @@ def std_dev(
 
 
 @register_sample_measure
+def s2s_rms(
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
+) -> pl.Expr:
+    r"""Root-mean-square of sample-to-sample displacements during a fixation.
+
+    The RMS-S2S (Root Mean Square - Sample to Sample) measures the magnitude
+    of displacements between successive gaze position samples. It is computed
+    as the square root of the mean squared Euclidean distance between all
+    adjacent sample pairs:
+
+    .. math::
+        \begin{align}
+        \text{RMS-S2S} &= \sqrt{\frac{1}{n-1} \sum_{i=1}^{n-1} \theta_i^2},\quad
+        \theta_i = \sqrt{(x_{i+1} - x_i)^2 + (y_{i+1} - y_i)^2}\\
+        \text{RMS-S2S} &= \sqrt{\frac{1}{n-1} \sum_{i=1}^{n-1}
+        \left[ (x_{i+1} - x_i)^2 + (y_{i+1} - y_i)^2 \right]}
+        \end{align}
+
+    where :math:`x_i` and :math:`y_i` are the gaze positions for the
+    :math:`i`-th sample, :math:`x_{i+1}` and :math:`y_{i+1}` are the positions
+    for the next sample, :math:`\theta_i` is the Euclidean distance between
+    successive samples, and :math:`n` is the total number of samples.
+
+    RMS-S2S is closely proportional to the average velocity of the signal
+    during fixations, making it a good indicator of slowest detectable eye
+    movements. Unlike STD, which measures spatial spread, RMS-S2S captures
+    the velocity aspect of signal variability. This makes RMS-S2S particularly
+    useful for assessing what threshold might differentiate eye movements
+    from measurement noise :cite:p:`Niehorster2020`.
+
+    Parameters
+    ----------
+    position_column: str
+        The column name of the position tuples. (default: 'position')
+    n_components: int
+        Number of positional components. Usually these are the two components yaw and pitch.
+        (default: 2)
+
+    Returns
+    -------
+    pl.Expr
+        The root mean square of sample-to-sample displacements.
+
+    Raises
+    ------
+    ValueError
+        If number of components is not 2.
+
+    Notes
+    -----
+    For a single sample (n=1), there are no successive sample pairs, and
+    this measure returns ``None`` since displacements cannot be computed.
+    """
+    _check_has_two_componenents(n_components)
+
+    x_position = pl.col(position_column).list.get(0)
+    y_position = pl.col(position_column).list.get(1)
+
+    x_diff = x_position.diff()
+    y_diff = y_position.diff()
+
+    squared_distances = x_diff.pow(2) + y_diff.pow(2)
+
+    result = squared_distances.mean().sqrt()
+
+    return result.alias('s2s_rms')
+
+
+@register_sample_measure
 def bcea(
     *,
     position_column: str = 'position',
