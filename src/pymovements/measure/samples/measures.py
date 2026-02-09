@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from math import isfinite
+from math import pi
 from typing import Any
 from typing import Literal
 
@@ -400,6 +401,163 @@ def _check_has_two_componenents(n_components: int) -> None:
     """
     if n_components != 2:
         raise ValueError('data must have exactly two components')
+
+
+@register_sample_measure
+def bcea(
+    *,
+    position_column: str = 'position',
+    n_components: int = 2,
+    confidence: float = 68.27,
+) -> pl.Expr:
+    r"""Bivariate contour ellipse area (BCEA) of gaze positions during a fixation.
+
+    The Bivariate Contour Ellipse Area (BCEA) :cite:p:`Crossland2002`
+    quantifies the area covered by gaze positions during a fixation.
+    It represents the area of an ellipse that encompasses
+    a specified proportion of all gaze position samples.
+    BCEA accounts for both the spread of gaze positions and their correlation between the horizontal
+    and vertical axes:
+
+    .. math::
+        \begin{equation}
+        \sigma_x = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2},\quad
+        \sigma_y = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (y_i - \bar{y})^2}\\
+        \rho = \frac{\sum_{i=1}^{n} (x_i - \bar{x})(y_i - \bar{y})}
+        {\sqrt{\sum_{i=1}^{n} (x_i - \bar{x})^2}
+        \sqrt{\sum_{i=1}^{n} (y_i - \bar{y})^2}}\\
+        k = -2 \ln(1 - P/100),\quad
+        \text{BCEA} = k \pi \sigma_x \sigma_y \sqrt{1 - \rho^2}
+        \end{equation}
+
+    where :math:`x_i` and :math:`y_i` are the gaze positions, :math:`\bar{x}`
+    and :math:`\bar{y}` are their respective means, :math:`\sigma_x` and
+    :math:`\sigma_y` are the standard deviations, :math:`\rho` is the Pearson
+    correlation coefficient between the horizontal and vertical components,
+    :math:`P` is the desired confidence level (as a percentage), and :math:`k`
+    is the scaling factor derived from the chi-square distribution with 2
+    degrees of freedom :cite:p:`Niehorster2020`.
+
+    The relationship between confidence level :math:`P` and scaling factor
+    :math:`k` comes from the chi-square distribution. For a bivariate normal
+    distribution, the contours of constant Mahalanobis distance form ellipses.
+    The value of squared Mahalanobis distance corresponding to confidence :math:`P`
+    is :math:`k = -2 \ln(1-P/100)`, which is the :math:`P/100` quantile of the
+    chi-square distribution with 2 degrees of freedom (i.e., :math:`k = \chi^2_2(P/100)`).
+    Common confidence levels and their corresponding :math:`k` values are:
+
+    - 68.27%: $k \approx 2.30$
+    - 95.45%: $k \approx 6.18$
+    - 99.73%: $k \approx 9.21$
+
+    The confidence level of 68.27% is the default as it corresponds to
+    the same probability mass as a ±1σ interval in 1D.
+    To choose the ``confidence`` :math:`P` based on the familiar 1D “±σ” coverage, first compute
+    :math:`P = \Pr(|Z| \le \sigma) = \chi^2_1(\sigma^2)` (since :math:`Z^2 \sim \chi^2_1`),
+    then use the same probability mass to get :math:`k = \chi^2_2(P)`.
+
+    >>> from scipy.stats import chi2
+    >>> sigma = 1.0
+    >>> confidence = chi2.cdf(sigma*sigma, df=1)
+    >>> k = chi2.ppf(confidence, df=2)
+    >>> confidence, k
+    (np.float64(0.6826894921370859), np.float64(2.295748928898636))
+
+    BCEA provides a more comprehensive measure of fixation stability than :py:func:`std_dev`
+    or :py:func:`s2s_rms` alone because it accounts for potential correlation between
+    horizontal and vertical eye movements.
+    When gaze positions are correlated, the effective spread is reduced compared to an uncorrelated
+    distribution with the same component-wise variances.
+
+    Parameters
+    ----------
+    position_column: str
+        The column name of the position tuples. (default: 'position')
+    n_components: int
+        Number of positional components. Usually these are the two components yaw and pitch.
+        (default: 2)
+    confidence: float
+        The confidence level as a percentage (0-100). This is the proportion
+        of gaze position samples that should fall within the ellipse contour.
+        Most commonly used values are 68.27 (±1σ), 95.45 (±2σ), and 99.73 (±3σ).
+        (default: 68.27)
+
+    Returns
+    -------
+    pl.Expr
+        The bivariate contour ellipse area.
+
+    Raises
+    ------
+    ValueError
+        If number of components is not 2.
+    ValueError
+        If confidence is not between 0 and 100.
+
+    Notes
+    -----
+    This implementation uses sample variance (dividing by :math:`n-1`) for
+    computing the variances and correlation coefficient.
+
+    For sequences with fewer than 2 samples, or when the variance of either
+    component is zero, this measure returns ``None`` since statistics
+    (variance, correlation) cannot be meaningfully computed.
+    """
+    _check_has_two_componenents(n_components)
+
+    if confidence < 0 or confidence >= 100:
+        raise ValueError(
+            f"confidence must be between 0 and 100 (exclusive of 100), "
+            f"but got: {confidence}",
+        )
+
+    x_position = pl.col(position_column).list.get(0)
+    y_position = pl.col(position_column).list.get(1)
+
+    x_mean = x_position.mean()
+    y_mean = y_position.mean()
+
+    n_minus_one = pl.len() - 1
+
+    x_centered = x_position - x_mean
+    y_centered = y_position - y_mean
+
+    variance_x = pl.when(n_minus_one <= 0).then(pl.lit(None)).otherwise(
+        x_centered.pow(2).sum() / n_minus_one,
+    )
+    variance_y = pl.when(n_minus_one <= 0).then(pl.lit(None)).otherwise(
+        y_centered.pow(2).sum() / n_minus_one,
+    )
+
+    sigma_x = variance_x.sqrt()
+    sigma_y = variance_y.sqrt()
+
+    covariance = pl.when(n_minus_one <= 0).then(pl.lit(None)).otherwise(
+        (x_centered * y_centered).sum() / n_minus_one,
+    )
+
+    invalid_variance = (
+        variance_x.is_null()
+        | variance_y.is_null()
+        | (variance_x <= 0)
+        | (variance_y <= 0)
+    )
+
+    rho_sq = pl.when(invalid_variance).then(pl.lit(None)).otherwise(
+        covariance.pow(2) / (variance_x * variance_y),
+    )
+
+    factor_k = pl.lit(-2.0) * (1.0 - pl.lit(confidence) / 100.0).log()  # default is base e -> ln
+
+    result = pl.when(invalid_variance).then(pl.lit(None)).otherwise(
+        factor_k
+        * pl.lit(pi)
+        * sigma_x
+        * sigma_y
+        * (1.0 - rho_sq).sqrt(),
+    )
+
+    return result.alias('bcea')
 
 
 @register_sample_measure
