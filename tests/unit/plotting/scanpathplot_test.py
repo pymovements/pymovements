@@ -234,7 +234,7 @@ def gaze_fixture(request, make_gaze):
                 'add_arrows': True,
                 'arrow_color': 'blue',
                 'arrow_rad': 0.0,
-                'arrowstyle': '->',
+                'arrow_style': '->',
             },
             id='param_arrows',
         ),
