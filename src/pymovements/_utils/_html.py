@@ -210,10 +210,10 @@ def _attr_inline_details_html(obj: object) -> tuple[str, bool]:
 
     elif isinstance(obj, str):
         if len(obj) < 50:
-            inline_details = f'str ("{obj}")'
+            inline_details = f"str ('{obj}')"
             is_expandable = False
         else:
-            inline_details = f'str ("{obj[:50]}...")'
+            inline_details = f"str ('{obj[:50]}...')"
 
     elif isinstance(obj, (int, float, bool, pathlib.Path, type)):
         inline_details = repr(obj).replace('\n', ' ')
