@@ -404,13 +404,13 @@ def _check_has_two_componenents(n_components: int) -> None:
 
 @register_sample_measure
 def data_loss(
-        time_column: str,
-        data_column: str,
+        column: str,
         *,
         sampling_rate: float,
+        time_column: str = 'time',
         start_time: float | None = None,
         end_time: float | None = None,
-        unit: Literal['count', 'time', 'ratio'] = 'count',
+        unit: Literal['count', 'time', 'ratio'] = 'ratio',
 ) -> pl.Expr:
     """Measure data loss using an expected, evenly sampled time base.
 
@@ -432,19 +432,19 @@ def data_loss(
 
     Parameters
     ----------
-    time_column: str
-        Name of the timestamp column.
-    data_column: str
+    column: str
         Name of a data column used to count invalid samples due to null/NaN/inf values.
         For list columns, any null/NaN/inf element marks the whole row as invalid.
     sampling_rate: float
         Expected sampling rate in Hz (must be > 0).
+    time_column: str
+        Name of the timestamp column. (default: 'time')
     start_time: float | None
-        Recording start time. If ``None``, uses the group's first timestamp.
+        Recording start time. If ``None``, uses the group's first timestamp. (default: ``None``)
     end_time: float | None
-        Recording end time. If ``None``, uses the group's last timestamp.
+        Recording end time. If ``None``, uses the group's last timestamp. (default: ``None``)
     unit: Literal['count', 'time', 'ratio']
-        Aggregation unit for the result.
+        Aggregation unit for the result. (default: ``'ratio'``)
 
     Returns
     -------
@@ -461,9 +461,9 @@ def data_loss(
     Examples
     --------
     >>> import polars as pl
-    >>> from pymovements import measure as m
+    >>> from pymovements.measure import data_loss
     >>> df = pl.DataFrame({'time': [0.0, 1.0, 2.0, 4.0]})
-    >>> df.select(m.data_loss('time', 'time', sampling_rate=1.0, unit='count'))
+    >>> df.select(data_loss('time', sampling_rate=1.0, unit='count'))
     shape: (1, 1)
     ┌─────────────────┐
     │ data_loss_count │
@@ -472,12 +472,13 @@ def data_loss(
     ╞═════════════════╡
     │ 1               │
     └─────────────────┘
+
     >>> # Include invalid rows in a data column
     >>> df = pl.DataFrame({
     ...     'time': [1, 2, 3, 4, 5, 9],
     ...     'pixel':  [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
     ... })
-    >>> df.select(m.data_loss('time', 'pixel', sampling_rate=1.0, unit='count'))
+    >>> df.select(data_loss('pixel', sampling_rate=1.0, unit='count'))
     shape: (1, 1)
     ┌─────────────────┐
     │ data_loss_count │
@@ -523,7 +524,7 @@ def data_loss(
     ).otherwise(pl.lit(None))
 
     invalid_missing = (
-        _is_invalid(data_column)
+        _is_invalid(column)
         .sum()
         .cast(pl.Int64)
     )
