@@ -83,11 +83,11 @@ class LongRepr:
             r'</li>\s*'
             r'<li class="pymovements-section">\s*'
             r'<span class="pymovements-section-label-empty">b:</span>\s*'
-            r'<div class="pymovements-section-inline-details">str \(&#x27;test&#x27;\)</div>\s*'
+            r'<div class="pymovements-section-inline-details">&#x27;test&#x27;</div>\s*'
             r'</li>\s*'
             r'<li class="pymovements-section">\s*'
             r'<span class="pymovements-section-label-empty">working_property:</span>\s*'
-            r'<div class="pymovements-section-inline-details">str \(&#x27;123 test&#x27;\)</div>\s*'
+            r'<div class="pymovements-section-inline-details">&#x27;123 test&#x27;</div>\s*'
             r'</li>\s*'
             r'</ul>\s*',
             id='all_attrs',
@@ -123,13 +123,13 @@ def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
     [
         pytest.param(
             'abc\ndef',
-            'str (&#x27;abc\ndef&#x27;)',
+            '&#x27;abc\ndef&#x27;',
             False,
             id='string_short',
         ),
         pytest.param(
             'x' * 100,
-            'str (&#x27;' + 'x' * 50 + '...&#x27;)',
+            '&#x27;' + 'x' * 50 + '...&#x27;',
             True,
             id='long_short',
         ),
@@ -360,7 +360,7 @@ def test_attr_details_html(obj, expected_html, regex):
             'abc',
             r'<li class="pymovements-section">\s*'
             r'<span class="pymovements-section-label-empty">short_str_attr:</span>\s*'
-            r'<div class="pymovements-section-inline-details">str \(&#x27;abc&#x27;\)</div>\s*'
+            r'<div class="pymovements-section-inline-details">&#x27;abc&#x27;</div>\s*'
             r'</li>',
             id='short_str',
         ),
@@ -371,8 +371,8 @@ def test_attr_details_html(obj, expected_html, regex):
             r'<input id="pymovements-.*" class="pymovements-section-toggle" type="checkbox">\s*'
             r'<label for="pymovements-.*" class="pymovements-section-label">long_str_attr:'
             r'</label>\s*'
-            r'<div class="pymovements-section-inline-details">str \(&#x27;' + 'x' * 50
-            + r'\.\.\.&#x27;\)</div>\s*'
+            r'<div class="pymovements-section-inline-details">&#x27;' + 'x' * 50
+            + r'\.\.\.&#x27;</div>\s*'
             r'<div class="pymovements-section-details">&#x27;' + 'x' * 100 + r'&#x27;</div>\s*'
             r'</li>',
             id='long_str',
