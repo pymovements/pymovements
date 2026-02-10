@@ -63,8 +63,8 @@ def scanpathplot(
         add_arrows: bool = True,
         arrow_color: str = 'black',
         arrow_rad: float = 0.25,
-        arrowstyle: str = 'simple',
-        mutation_scale: float = 40.,
+        arrow_style: str = 'simple',
+        arrow_scale: float = 40.,
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
         events: Events | EventDataFrame | None = None,
@@ -123,9 +123,9 @@ def scanpathplot(
         Color of arrows. (default: 'black')
     arrow_rad: float
         Controlling the curvature of the arrows. (default: 0.25)
-    arrowstyle: str
+    arrow_style: str
         The styling of arrow head, tail and shaft. (default: 'simple')
-    mutation_scale: float
+    arrow_scale: float
         Value with which attributes of arrowstyle will be scaled. (default: 40.)
     path_to_image_stimulus: str | None
         Path of the stimulus to be shown. (default: None)
@@ -231,8 +231,8 @@ def scanpathplot(
             ax,
             color=arrow_color,
             rad=arrow_rad,
-            arrowstyle=arrowstyle,
-            mutation_scale=mutation_scale,
+            arrowstyle=arrow_style,
+            mutation_scale=arrow_scale,
         )
 
     if gaze is not None and gaze.experiment is not None:
