@@ -222,7 +222,7 @@ class Experiment:
             method: str = 'smooth',
             **kwargs: int | float | str,
     ) -> np.ndarray:
-        """Compute velocity time series from 2-dimensional position time series.
+        """Compute velocity time series from 2-dimensional degree time series.
 
         Methods 'smooth', 'neighbors' and 'preceding' are adapted from
             Engbert et al.: Microsaccade Toolbox 0.9.
@@ -230,7 +230,7 @@ class Experiment:
         Parameters
         ----------
         arr: list[float] | list[list[float]] | np.ndarray
-            Continuous 2D position time series.
+            Continuous 2D degree time series.
         method: str
             Computation method. See :func:`~transforms.pos2vel` for details. (default: 'smooth')
         **kwargs: int | float | str

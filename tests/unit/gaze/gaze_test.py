@@ -154,14 +154,14 @@ def test_gaze_velocity_columns(init_df, velocity_columns):
         ),
     ],
 )
-def test_gaze_pixel_position_columns(init_df, pixel_columns):
+def test_gaze_pixel_degree_columns(init_df, pixel_columns):
     gaze = Gaze(init_df, pixel_columns=pixel_columns)
 
     assert 'pixel' in gaze.columns
 
 
 @pytest.mark.parametrize(
-    ('init_df', 'position_columns'),
+    ('init_df', 'degree_columns'),
     [
         pytest.param(
             pl.DataFrame(schema={'x_pos': pl.Float64, 'y_pos': pl.Float64}),
@@ -195,10 +195,10 @@ def test_gaze_pixel_position_columns(init_df, pixel_columns):
         ),
     ],
 )
-def test_gaze_position_columns(init_df, position_columns):
-    gaze = Gaze(init_df, position_columns=position_columns)
+def test_gaze_degree_columns(init_df, degree_columns):
+    gaze = Gaze(init_df, degree_columns=degree_columns)
 
-    assert 'position' in gaze.columns
+    assert 'degree' in gaze.columns
 
 
 @pytest.mark.parametrize(
@@ -337,7 +337,7 @@ def test_gaze_copy_with_experiment():
     gaze = Gaze(
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
         experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
     )
 
     gaze_copy = gaze.clone()
@@ -355,7 +355,7 @@ def test_gaze_copy_no_experiment():
     gaze = Gaze(
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
     )
 
     gaze_copy = gaze.clone()
@@ -372,7 +372,7 @@ def test_gaze_is_copy():
     gaze = Gaze(
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
     )
 
     gaze_copy = gaze.clone()
@@ -388,7 +388,7 @@ def test_gaze_is_copy():
             Gaze(
                 pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 experiment=None,
-                position_columns=['x', 'y'],
+                degree_columns=['x', 'y'],
                 events=Events(
                     name='saccade',
                     onsets=[0],
@@ -401,7 +401,7 @@ def test_gaze_is_copy():
             Gaze(
                 pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 experiment=None,
-                position_columns=['x', 'y'],
+                degree_columns=['x', 'y'],
                 events=Events(
                     data=pl.from_dict(
                         {
@@ -437,7 +437,7 @@ def test_gaze_split_by_str():
             schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8},
         ),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
     )
 
     split_gaze = gaze.split('trial_id')
@@ -964,7 +964,7 @@ def test_gaze_split_by_list():
             },
         ),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
     )
 
     split_gaze = gaze.split(['trial_ida', 'trial_idb'])
@@ -983,7 +983,7 @@ def test_gaze_split_events_by_str():
             schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8},
         ),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
         events=Events(
             pl.DataFrame(
                 {
@@ -1015,7 +1015,7 @@ def test_gaze_dataframe_split_events_by_list():
             },
         ),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
         events=Events(
             pl.DataFrame(
                 {
@@ -1046,7 +1046,7 @@ def test_gaze_dataframe_split_default():
             schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8},
         ),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
         events=Events(
             pl.DataFrame(
                 {
@@ -1079,7 +1079,7 @@ def test_gaze_dataframe_split_default_no_trial_columns():
             schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8},
         ),
         experiment=None,
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
         events=Events(
             pl.DataFrame(
                 {
@@ -1106,7 +1106,7 @@ def test_gaze_drop_event_properties(make_gaze_with_events):
 def test_gaze_compute_event_properties_no_events():
     gaze = Gaze(
         pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64, 'trial_id': pl.Int8}),
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
         trial_columns=['trial_id'],
     )
 
@@ -1128,7 +1128,7 @@ def test_gaze_compute_event_properties_overwrites_column(existing_amplitude, exp
     gaze = Gaze(
         samples=pl.DataFrame({
             'time': [0, 1, 2, 3, 4],
-            'position': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]],
+            'degree': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]],
         }),
         events=Events(
             pl.DataFrame({
@@ -1223,7 +1223,7 @@ def _create_gaze():
                 right=None, model='MyModel', version=None, vendor=None, mount=None,
             ),
         ),
-        position_columns=['x', 'y'],
+        degree_columns=['x', 'y'],
         events=Events(
             pl.DataFrame(
                 {
@@ -1384,7 +1384,7 @@ def test_transform_early_return_on_empty_grouped_frames():
     # Calling a transform that would normally require an input column should do nothing
     # because grouped_frames will be empty and the method returns early.
     before = gaze.samples.clone()
-    gaze.clip(lower_bound=None, upper_bound=None, input_column='position', output_column='clipped')
+    gaze.clip(lower_bound=None, upper_bound=None, input_column='degree', output_column='clipped')
     after = gaze.samples
 
     # Ensure samples are unchanged (no new columns, still empty)

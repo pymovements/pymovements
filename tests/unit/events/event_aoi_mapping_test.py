@@ -678,7 +678,7 @@ def dataset_fixture(tmp_path):
     dataset.pix2deg()
     dataset.pos2vel()
     dataset.detect_events('ivt')
-    dataset.compute_event_properties(('location', {'position_column': 'pixel'}))
+    dataset.compute_event_properties(('location', {'degree_column': 'pixel'}))
     yield dataset
 
 
@@ -748,7 +748,7 @@ def test_map_to_aois_raises_value_error(make_example_file):
     gaze = pm.gaze.io.from_csv(
         gaze_filepath,
         read_csv_kwargs={'separator': '\t'},
-        position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
+        degree_columns=['x_left', 'y_left', 'x_right', 'y_right'],
     )
 
     with pytest.raises(ValueError) as excinfo:

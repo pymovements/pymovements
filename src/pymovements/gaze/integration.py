@@ -41,7 +41,7 @@ def from_numpy(
         trial: np.ndarray | None = None,
         time: np.ndarray | None = None,
         pixel: np.ndarray | None = None,
-        position: np.ndarray | None = None,
+        degree: np.ndarray | None = None,
         velocity: np.ndarray | None = None,
         acceleration: np.ndarray | None = None,
         distance: np.ndarray | None = None,
@@ -51,7 +51,7 @@ def from_numpy(
         time_column: str | None = None,
         time_unit: str | None = None,
         pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
+        degree_columns: list[str] | None = None,
         velocity_columns: list[str] | None = None,
         acceleration_columns: list[str] | None = None,
         distance_column: str | None = None,
@@ -63,10 +63,10 @@ def from_numpy(
 
     **Single data array**: Pass a single numpy array via `data` and specify its schema and
     orientation. You can then additionally pass column specifiers, e.g. `time_column` and
-    `position_columns`.
+    `degree_columns`.
 
     **Column specific arrays**: For each type of signal, you can pass the numpy array explicitly,
-    e.g. `position` or `velocity`. You must not pass `samples` or any column list specifiers using
+    e.g. `degree` or `velocity`. You must not pass `samples` or any column list specifiers using
     this method.
 
     Parameters
@@ -82,9 +82,9 @@ def from_numpy(
     time: np.ndarray | None
         Array of timestamps. (default: None)
     pixel: np.ndarray | None
-        Array of gaze pixel positions. (default: None)
-    position: np.ndarray | None
-        Array of gaze positions in degrees of visual angle. (default: None)
+        Array of gaze pixel degrees. (default: None)
+    degree: np.ndarray | None
+        Array of gaze degrees in degrees of visual angle. (default: None)
     velocity: np.ndarray | None
         Array of gaze velocities in degrees of visual angle per second. (default: None)
     acceleration: np.ndarray | None
@@ -109,9 +109,9 @@ def from_numpy(
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the samples data frame. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the samples data frame. (default: None)
+        The name of the pixel degree columns in the samples data frame. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the samples data frame. (default: None)
     velocity_columns: list[str] | None
         The name of the dva velocity columns in the samples data frame. (default: None)
     acceleration_columns: list[str] | None
@@ -151,13 +151,13 @@ def from_numpy(
     ...     schema=schema,
     ...     time_column='t',
     ...     time_unit='ms',
-    ...     position_columns=['x', 'y'],
+    ...     degree_columns=['x', 'y'],
     ...     orient='col',
     ... )
     >>> gaze.samples
     shape: (100, 2)
     ┌──────┬────────────┐
-    │ time ┆ position   │
+    │ time ┆ degree   │
     │ ---  ┆ ---        │
     │ i64  ┆ list[f64]  │
     ╞══════╪════════════╡
@@ -183,13 +183,13 @@ def from_numpy(
     ...     schema=schema,
     ...     time_column='t',
     ...     time_unit='ms',
-    ...     position_columns=['x', 'y'],
+    ...     degree_columns=['x', 'y'],
     ...     orient='row',
     ... )
     >>> gaze.samples
     shape: (100, 2)
     ┌──────┬────────────┐
-    │ time ┆ position   │
+    │ time ┆ degree   │
     │ ---  ┆ ---        │
     │ i64  ┆ list[f64]  │
     ╞══════╪════════════╡
@@ -211,13 +211,13 @@ def from_numpy(
     >>> gaze = pm.gaze.from_numpy(
     ...     time=arr[0],
     ...     time_unit='ms',
-    ...     position=arr[[1, 2]],
+    ...     degree=arr[[1, 2]],
     ...     orient='col',
     ... )
     >>> gaze.samples
     shape: (100, 2)
     ┌──────┬────────────┐
-    │ time ┆ position   │
+    │ time ┆ degree   │
     │ ---  ┆ ---        │
     │ i64  ┆ list[f64]  │
     ╞══════╪════════════╡
@@ -245,10 +245,10 @@ def from_numpy(
         _checks.check_is_mutual_exclusive(samples=samples, data=data)
         samples = data
 
-    # Either samples or {time, pixel, position, velocity, acceleration} must be None.
+    # Either samples or {time, pixel, degree, velocity, acceleration} must be None.
     _checks.check_is_mutual_exclusive(samples=samples, time=time)
     _checks.check_is_mutual_exclusive(samples=samples, pixel=pixel)
-    _checks.check_is_mutual_exclusive(samples=samples, position=position)
+    _checks.check_is_mutual_exclusive(samples=samples, degree=degree)
     _checks.check_is_mutual_exclusive(samples=samples, velocity=velocity)
     _checks.check_is_mutual_exclusive(samples=samples, acceleration=acceleration)
     _checks.check_is_mutual_exclusive(samples=samples, distance=distance)
@@ -262,7 +262,7 @@ def from_numpy(
             time_column=time_column,
             time_unit=time_unit,
             pixel_columns=pixel_columns,
-            position_columns=position_columns,
+            degree_columns=degree_columns,
             velocity_columns=velocity_columns,
             acceleration_columns=acceleration_columns,
             distance_column=distance_column,
@@ -293,15 +293,15 @@ def from_numpy(
         sample_components.append(sample_component)
         pixel_columns = sample_component.columns
 
-    position_columns = None
-    if position is not None:
+    degree_columns = None
+    if degree is not None:
         sample_component = pl.from_numpy(
-            data=position, orient=orient,
+            data=degree, orient=orient,
         ).select(
-            pl.all().name.prefix('position_'),
+            pl.all().name.prefix('degree_'),
         )
         sample_components.append(sample_component)
-        position_columns = sample_component.columns
+        degree_columns = sample_component.columns
 
     velocity_columns = None
     if velocity is not None:
@@ -335,7 +335,7 @@ def from_numpy(
         time_unit=time_unit,
         trial_columns=trial_columns,
         pixel_columns=pixel_columns,
-        position_columns=position_columns,
+        degree_columns=degree_columns,
         velocity_columns=velocity_columns,
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,
@@ -351,7 +351,7 @@ def from_pandas(
         time_column: str | None = None,
         time_unit: str | None = None,
         pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
+        degree_columns: list[str] | None = None,
         velocity_columns: list[str] | None = None,
         acceleration_columns: list[str] | None = None,
         distance_column: str | None = None,
@@ -380,9 +380,9 @@ def from_pandas(
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. (default: None)
+        The name of the pixel degree columns in the input data frame. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. (default: None)
     velocity_columns: list[str] | None
         The name of the dva velocity columns in the input data frame. (default: None)
     acceleration_columns: list[str] | None
@@ -421,7 +421,7 @@ def from_pandas(
         time_column=time_column,
         time_unit=time_unit,
         pixel_columns=pixel_columns,
-        position_columns=position_columns,
+        degree_columns=degree_columns,
         velocity_columns=velocity_columns,
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,

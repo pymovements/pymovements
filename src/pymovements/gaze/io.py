@@ -42,7 +42,7 @@ def from_csv(
         time_column: str | None = None,
         time_unit: str | None = None,
         pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
+        degree_columns: list[str] | None = None,
         velocity_columns: list[str] | None = None,
         acceleration_columns: list[str] | None = None,
         distance_column: str | None = None,
@@ -75,13 +75,13 @@ def from_csv(
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created. (default: None)
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
@@ -124,7 +124,7 @@ def from_csv(
 
     Notes
     -----
-    About using the arguments ``pixel_columns``, ``position_columns``, ``velocity_columns``,
+    About using the arguments ``pixel_columns``, ``degree_columns``, ``velocity_columns``,
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
@@ -165,7 +165,7 @@ def from_csv(
     └──────┴────────────┴────────────┘
 
     We can now load the data into a ``Gaze`` by specifying the experimental setting
-    and the names of the pixel position columns. We can specify a custom separator for the csv
+    and the names of the pixel degree columns. We can specify a custom separator for the csv
     file by passing it as a keyword argument to :py:func:`polars.read_csv`:
 
     >>> from pymovements.gaze.io import from_csv
@@ -266,7 +266,7 @@ def from_csv(
     # This can happen if the column only has missing values in the top 100 rows.
     numerical_columns = (
         (pixel_columns or [])
-        + (position_columns or [])
+        + (degree_columns or [])
         + (velocity_columns or [])
         + (acceleration_columns or [])
         + ([distance_column] if distance_column else [])
@@ -292,7 +292,7 @@ def from_csv(
         time_column=time_column,
         time_unit=time_unit,
         pixel_columns=pixel_columns,
-        position_columns=position_columns,
+        degree_columns=degree_columns,
         velocity_columns=velocity_columns,
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,
@@ -553,7 +553,7 @@ def from_asc(
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_eyelink_metadata(experiment, parsed_metadata)
 
-    # Detect pixel / position column names (monocular or binocular) and pass them to Gaze
+    # Detect pixel / degree column names (monocular or binocular) and pass them to Gaze
     # Note: column detection for ASC files now uses simple substring matching
     # for 'pix' and 'pos' further down in `from_asc`. The older helper-based
     # detection was removed to avoid duplication and simplify the logic.

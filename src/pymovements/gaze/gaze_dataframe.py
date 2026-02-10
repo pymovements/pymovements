@@ -69,13 +69,13 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns:list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created. (default: None)
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
@@ -109,11 +109,11 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
         The name of the trial columns in the data frame. If not None, the transformation methods
         will be applied to each trial separately.
     n_components: int | None
-        The number of components in the pixel, position, velocity and acceleration columns.
+        The number of components in the pixel, degree, velocity and acceleration columns.
 
     Notes
     -----
-    About using the arguments ``pixel_columns``, ``position_columns``, ``velocity_columns``,
+    About using the arguments ``pixel_columns``, ``degree_columns``, ``velocity_columns``,
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
@@ -134,7 +134,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     Examples
     --------
     First, let's create an example `DataFrame` with three columns:
-    the timestamp ``t`` and ``x`` and ``y`` for the pixel position.
+    the timestamp ``t`` and ``x`` and ``y`` for the pixel degree.
 
     >>> df = pl.from_dict(
     ...     data={'t': [1000, 1001, 1002], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]},
@@ -151,7 +151,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     │ 1002 ┆ 0.3 ┆ 0.3 │
     └──────┴─────┴─────┘
 
-    We can now initialize our ``Gaze`` by specifying the names of the pixel position
+    We can now initialize our ``Gaze`` by specifying the names of the pixel degree
     columns, the timestamp column and the unit of the timestamps.
 
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')

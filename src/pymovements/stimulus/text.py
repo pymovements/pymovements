@@ -43,20 +43,20 @@ class TextStimulus:
     aoi_column: str
         Name of the column that contains the content of the aois.
     start_x_column: str
-        Name of the column which contains the x coordinate's start position of the
+        Name of the column which contains the x coordinate's start degree of the
         areas of interest.
     start_y_column: str
-        Name of the column which contains the y coordinate's start position of the
+        Name of the column which contains the y coordinate's start degree of the
         areas of interest.
     width_column: str | None
         Name of the column which contains the width of the area of interest. (default: None)
     height_column: str | None
         Name of the column which contains the height of the area of interest. (default: None)
     end_x_column: str | None
-        Name of the column which contains the x coordinate's end position of the areas of interest.
+        Name of the column which contains the x coordinate's end degree of the areas of interest.
         (default: None)
     end_y_column: str | None
-        Name of the column which contains the y coordinate's end position of the areas of interest.
+        Name of the column which contains the y coordinate's end degree of the areas of interest.
         (default: None)
     page_column: str | None
         Name of the column which contains the page information of the area of interest.
@@ -194,20 +194,20 @@ class TextStimulus:
         aoi_column: str
             Name of column that contains the content of the aois.
         start_x_column: str
-            Name of column which contains the x coordinate's start position of the
+            Name of column which contains the x coordinate's start degree of the
             areas of interest.
         start_y_column: str
-            Name of column which contains the y coordinate's start position of the
+            Name of column which contains the y coordinate's start degree of the
             areas of interest.
         width_column: str | None
             Name of the column which contains the width of the area of interest. (default: None)
         height_column: str | None
             Name of column which contains the height of the area of interest. (default: None)
         end_x_column: str | None
-            Name of column which contains the x coordinate's end position of the areas of interest.
+            Name of column which contains the x coordinate's end degree of the areas of interest.
             (default: None)
         end_y_column: str | None
-            Name of column which contains the y coordinate's end position of the areas of interest.
+            Name of column which contains the y coordinate's end degree of the areas of interest.
             (default: None)
         page_column: str | None
             Name of column which contains the page information of the area of interest.
@@ -306,20 +306,20 @@ def from_file(
     aoi_column: str
         Name of the column that contains the content of the aois.
     start_x_column: str
-        Name of the column which contains the x coordinate's start position of the
+        Name of the column which contains the x coordinate's start degree of the
         areas of interest.
     start_y_column: str
-        Name of the column which contains the y coordinate's start position of the
+        Name of the column which contains the y coordinate's start degree of the
         areas of interest.
     width_column: str | None
         Name of the column which contains the width of the area of interest. (default: None)
     height_column: str | None
         Name of the column which contains the height of the area of interest. (default: None)
     end_x_column: str | None
-        Name of the column which contains the x coordinate's end position of the areas of interest.
+        Name of the column which contains the x coordinate's end degree of the areas of interest.
         (default: None)
     end_y_column: str | None
-        Name of the column which contains the y coordinate's end position of the areas of interest.
+        Name of the column which contains the y coordinate's end degree of the areas of interest.
         (default: None)
     page_column: str | None
         Name of the column which contains the page information of the area of interest.

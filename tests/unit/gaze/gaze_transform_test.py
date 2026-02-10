@@ -208,7 +208,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pix2deg_origin_center',
         ),
@@ -245,7 +245,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pix2deg_origin_center_explicit_n_components',
         ),
@@ -282,7 +282,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pix2deg_origin_upper_left',
         ),
@@ -322,7 +322,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pix2deg_origin_center_distance_column',
         ),
@@ -362,7 +362,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 distance_column='distance',
             ),
             id='pix2deg_origin_center_explicit_n_components_distance_column',
@@ -402,7 +402,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pix2deg_origin_center_explicit_distance_column',
         ),
@@ -441,7 +441,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 distance_column='distance',
             ),
             id='pix2deg_origin_upper_left_default_distance_column',
@@ -482,7 +482,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 distance_column='distance',
             ),
             id='pix2deg_origin_upper_left_from_experiment_distance_column',
@@ -506,7 +506,7 @@ def fixture_experiment():
                     distance_cm=100,
                     origin='center',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'deg2pix', {'pixel_origin': 'center'},
             pm.Gaze(
@@ -520,7 +520,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='deg2pix_origin_center',
         ),
@@ -542,7 +542,7 @@ def fixture_experiment():
                     screen_height_cm=100,
                     distance_cm=100,
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'deg2pix', {},
             pm.Gaze(
@@ -556,7 +556,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='deg2pix_origin_upper_left_default',
         ),
@@ -579,7 +579,7 @@ def fixture_experiment():
                     distance_cm=100,
                     origin='upper left',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'deg2pix', {},
             pm.Gaze(
@@ -593,7 +593,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='deg2pix_origin_upper_left_from_experiment',
         ),
@@ -617,7 +617,7 @@ def fixture_experiment():
                     distance_cm=None,
                     origin='center',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
                 'distance_column': 'distance',
             },
             'deg2pix', {'pixel_origin': 'center'},
@@ -633,7 +633,7 @@ def fixture_experiment():
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='deg2pix_origin_center_distance_column',
         ),
@@ -657,7 +657,7 @@ def fixture_experiment():
                     distance_cm=100,
                     origin='upper left',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'pos2vel', {'method': 'preceding'},
             pm.Gaze(
@@ -671,7 +671,7 @@ def fixture_experiment():
                         'y_vel': [None, 100.0, 100.0, -200.0, 100.0, 100.0],
                     },
                 ),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 velocity_columns=['x_vel', 'y_vel'],
             ),
             id='pos2vel_preceding',
@@ -695,7 +695,7 @@ def fixture_experiment():
                     distance_cm=100,
                     origin='upper left',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'pos2vel', {'method': 'neighbors'},
             pm.Gaze(
@@ -708,7 +708,7 @@ def fixture_experiment():
                         'y_vel': [None, 100.0, None],
                     },
                 ),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 velocity_columns=['x_vel', 'y_vel'],
             ),
             id='pos2vel_neighbors',
@@ -732,7 +732,7 @@ def fixture_experiment():
                     distance_cm=100,
                     origin='upper left',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'pos2vel', {'method': 'fivepoint'},
             pm.Gaze(
@@ -745,7 +745,7 @@ def fixture_experiment():
                         'y_vel': [None, None, 100.0, None, None],
                     },
                 ),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 velocity_columns=['x_vel', 'y_vel'],
             ),
             id='pos2vel_fivepoint',
@@ -770,7 +770,7 @@ def fixture_experiment():
                     distance_cm=100,
                     origin='upper left',
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
                 'trial_columns': 'trial_id',
             },
             'pos2vel', {'method': 'preceding'},
@@ -785,7 +785,7 @@ def fixture_experiment():
                         'y_vel': [None, 100.0, 100.0, None, 100.0, 100.0],
                     },
                 ),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 velocity_columns=['x_vel', 'y_vel'],
             ),
             id='pos2vel_preceding_trialize_single_column_str',
@@ -799,7 +799,7 @@ def fixture_experiment():
                         'y_dva': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
                     },
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             'smooth', {'method': 'moving_average', 'window_length': 3},
             pm.Gaze(
@@ -810,7 +810,7 @@ def fixture_experiment():
                         'y_dva': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
                     },
                 ),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='smooth',
         ),
@@ -823,7 +823,7 @@ def fixture_experiment():
                         'y_dva': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
                     },
                 ),
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             pm.gaze.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
             pm.Gaze(
@@ -834,7 +834,7 @@ def fixture_experiment():
                         'y_dva': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
                     },
                 ),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='smooth_method_pass',
         ),
@@ -925,7 +925,7 @@ def test_gaze_transform_expected_frame(
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 distance_column='distance',
             ),
             UserWarning,
@@ -990,14 +990,14 @@ def test_gaze_transform_raises_exception(init_kwargs, exception, exception_msg):
         ),
     ],
 )
-def test_gaze_pix2deg_creates_position_column(samples, experiment, pixel_columns):
+def test_gaze_pix2deg_creates_degree_column(samples, experiment, pixel_columns):
     gaze = pm.Gaze(
         samples=pl.from_dict(samples),
         experiment=experiment,
         pixel_columns=pixel_columns,
     )
     gaze.pix2deg()
-    assert 'position' in gaze.columns
+    assert 'degree' in gaze.columns
 
 
 @pytest.mark.parametrize(
@@ -1120,13 +1120,13 @@ def test_gaze_pix2deg_warnings(init_kwargs, warning, expected_msg):
                 'acceleration_columns': ['x', 'y'],
             },
             pl.exceptions.ColumnNotFoundError,
-            "The specified 'position_column' (position) "
+            "The specified 'degree_column' (degree) "
             'is not found in the samples dataframe columns. '
-            'You can specify the position column via: '
+            'You can specify the degree column via: '
             'deg2pix'
-            '(position_column="name_of_your_position_column"). '
+            '(degree_column="name_of_your_degree_column"). '
             "Available columns in samples dataframe are: ['time', 'acceleration']",
-            id='no_position_column',
+            id='no_degree_column',
         ),
         pytest.param(
             {
@@ -1141,7 +1141,7 @@ def test_gaze_pix2deg_warnings(init_kwargs, warning, expected_msg):
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'experiment': pm.Experiment(1024, 768, 38, 30, None, 'center', 1000),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             AttributeError,
             'Neither eye-to-screen distance is in the columns of the samples dataframe '
@@ -1152,7 +1152,7 @@ def test_gaze_pix2deg_warnings(init_kwargs, warning, expected_msg):
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'experiment': pm.Experiment(1024, 768, 38, 30, None, 'center', 1000),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
                 'distance_column': 'distance',
             },
             AttributeError,
@@ -1173,7 +1173,7 @@ def test_gaze_deg2pix_exceptions(init_kwargs, exception, expected_msg):
 
 
 @pytest.mark.parametrize(
-    ('samples', 'position_columns'),
+    ('samples', 'degree_columns'),
     [
         pytest.param(
             {'x': [0.0], 'y': [0.0]},
@@ -1197,11 +1197,11 @@ def test_gaze_deg2pix_exceptions(init_kwargs, exception, expected_msg):
         ),
     ],
 )
-def test_gaze_pos2acc_creates_acceleration_column(samples, experiment, position_columns):
+def test_gaze_pos2acc_creates_acceleration_column(samples, experiment, degree_columns):
     gaze = pm.Gaze(
         samples=pl.from_dict(samples),
         experiment=experiment,
-        position_columns=position_columns,
+        degree_columns=degree_columns,
     )
     gaze.pos2acc()
     assert 'acceleration' in gaze.columns
@@ -1227,14 +1227,14 @@ def test_gaze_pos2acc_creates_acceleration_column(samples, experiment, position_
             },
             pl.exceptions.ColumnNotFoundError,
             (
-                "Neither is 'position' in the samples dataframe columns, "
-                'nor is a position column explicitly specified. '
+                "Neither is 'degree' in the samples dataframe columns, "
+                'nor is a degree column explicitly specified. '
                 "Since the samples dataframe has a 'pixel' column, "
                 'consider running pix2deg() before pos2acc(). If you want to run transformations '
-                "in pixel units, you can do so by using pos2acc(position_column='pixel'). "
+                "in pixel units, you can do so by using pos2acc(degree_column='pixel'). "
                 "Available columns in samples dataframe are: ['time', 'pixel']"
             ),
-            id='no_position_column_but_has_pixel_column',
+            id='no_degree_column_but_has_pixel_column',
         ),
         pytest.param(
             {
@@ -1244,18 +1244,18 @@ def test_gaze_pos2acc_creates_acceleration_column(samples, experiment, position_
             },
             pl.exceptions.ColumnNotFoundError,
             (
-                "Neither is 'position' in the samples dataframe columns, "
-                'nor is a position column explicitly specified. '
-                'You can specify the position column via: '
-                'pos2acc(position_column="your_position_column"). '
+                "Neither is 'degree' in the samples dataframe columns, "
+                'nor is a degree column explicitly specified. '
+                'You can specify the degree column via: '
+                'pos2acc(degree_column="your_degree_column"). '
                 "Available columns in samples dataframe are: ['time', 'acceleration']"
             ),
-            id='no_position_column',
+            id='no_degree_column',
         ),
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             AttributeError,
             'experiment must not be None for this method to work',
@@ -1274,7 +1274,7 @@ def test_gaze_pos2acc_exceptions(init_kwargs, exception, expected_msg):
 
 
 @pytest.mark.parametrize(
-    ('samples', 'position_columns'),
+    ('samples', 'degree_columns'),
     [
         pytest.param(
             {'x': [0.0], 'y': [0.0]},
@@ -1298,11 +1298,11 @@ def test_gaze_pos2acc_exceptions(init_kwargs, exception, expected_msg):
         ),
     ],
 )
-def test_gaze_pos2vel_creates_velocity_column(samples, experiment, position_columns):
+def test_gaze_pos2vel_creates_velocity_column(samples, experiment, degree_columns):
     gaze = pm.Gaze(
         samples=pl.from_dict(samples),
         experiment=experiment,
-        position_columns=position_columns,
+        degree_columns=degree_columns,
     )
     gaze.pos2vel(method='savitzky_golay', window_length=7, degree=2)
     assert 'velocity' in gaze.columns
@@ -1350,14 +1350,14 @@ def test_gaze_clip_creates_new_column(experiment):
             },
             pl.exceptions.ColumnNotFoundError,
             (
-                "Neither is 'position' in the samples dataframe columns, "
-                'nor is a position column explicitly specified. '
+                "Neither is 'degree' in the samples dataframe columns, "
+                'nor is a degree column explicitly specified. '
                 "Since the samples dataframe has a 'pixel' column, "
                 'consider running pix2deg() before pos2vel(). If you want to run transformations '
-                "in pixel units, you can do so by using pos2vel(position_column='pixel'). "
+                "in pixel units, you can do so by using pos2vel(degree_column='pixel'). "
                 "Available columns in samples dataframe are: ['time', 'pixel']"
             ),
-            id='no_position_column_but_has_pixel_column',
+            id='no_degree_column_but_has_pixel_column',
         ),
         pytest.param(
             {
@@ -1367,18 +1367,18 @@ def test_gaze_clip_creates_new_column(experiment):
             },
             pl.exceptions.ColumnNotFoundError,
             (
-                "Neither is 'position' in the samples dataframe columns, "
-                'nor is a position column explicitly specified. '
-                'You can specify the position column via: '
-                'pos2vel(position_column="your_position_column"). '
+                "Neither is 'degree' in the samples dataframe columns, "
+                'nor is a degree column explicitly specified. '
+                'You can specify the degree column via: '
+                'pos2vel(degree_column="your_degree_column"). '
                 "Available columns in samples dataframe are: ['time', 'acceleration']"
             ),
-            id='no_position_column',
+            id='no_degree_column',
         ),
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             AttributeError,
             'experiment must not be None for this method to work',
@@ -1411,7 +1411,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                     },
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
             {'method': 'moving_average', 'column': 'pixel', 'window_length': 3},
             pm.Gaze(
@@ -1425,7 +1425,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pixel',
         ),
@@ -1441,9 +1441,9 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                     },
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
             },
-            {'method': 'moving_average', 'column': 'position', 'window_length': 3},
+            {'method': 'moving_average', 'column': 'degree', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -1455,9 +1455,9 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
-            id='position',
+            id='degree',
         ),
     ],
 )

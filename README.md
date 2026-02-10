@@ -51,7 +51,7 @@ calculate velocities on the fly
 
 ```python
 dataset.pix2deg()  # transform pixel coordinates to degrees of visual angle
-dataset.pos2vel()  # transform positional data to velocity data
+dataset.pos2vel()  # transform positional degree data to velocity data
 ```
 
 and extract events with different eye movements event extraction algorithms

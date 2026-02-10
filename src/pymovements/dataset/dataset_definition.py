@@ -125,17 +125,17 @@ class DatasetDefinition:
            Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
            This field will be removed in v0.30.0.
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
 
         .. deprecated:: v0.25.0
            Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
            This field will be removed in v0.30.0.
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created. (default: None)
 
         .. deprecated:: v0.25.0
            Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
@@ -241,13 +241,13 @@ class DatasetDefinition:
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created. (default: None)
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
@@ -314,7 +314,7 @@ class DatasetDefinition:
     time_column: str | None = None
     time_unit: str | None = None
     pixel_columns: list[str] | None = None
-    position_columns: list[str] | None = None
+    degree_columns: list[str] | None = None
     velocity_columns: list[str] | None = None
     acceleration_columns: list[str] | None = None
     distance_column: str | None = None
@@ -337,7 +337,7 @@ class DatasetDefinition:
             time_column: str | None = None,
             time_unit: str | None = None,
             pixel_columns: list[str] | None = None,
-            position_columns: list[str] | None = None,
+            degree_columns: list[str] | None = None,
             velocity_columns: list[str] | None = None,
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
@@ -404,15 +404,15 @@ class DatasetDefinition:
             )
             self.pixel_columns = pixel_columns
 
-        if position_columns is not None:
+        if degree_columns is not None:
             warn(
                 DeprecationWarning(
-                    'DatasetDefinition.position_columns is deprecated since version v0.25.0. '
+                    'DatasetDefinition.degree_columns is deprecated since version v0.25.0. '
                     'Please specify ResourceDefinition.load_kwargs instead. '
                     'This field will be removed in v0.30.0.',
                 ),
             )
-            self.position_columns = position_columns
+            self.degree_columns = degree_columns
 
         if velocity_columns is not None:
             warn(

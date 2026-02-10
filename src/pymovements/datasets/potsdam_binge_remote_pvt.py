@@ -92,7 +92,7 @@ class PotsdamBingeRemotePVT(DatasetDefinition):
         used to convert pixel coordinates into degrees of visual angle.
 
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 

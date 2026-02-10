@@ -287,7 +287,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'char_left_position': pl.DataFrame(
+    'char_left_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -334,10 +334,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -352,7 +352,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'char_right_position': pl.DataFrame(
+    'char_right_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -399,10 +399,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -418,7 +418,7 @@ EXPECTED_DF = {
         orient='row',
     ),
 
-    'word_left_position': pl.DataFrame(
+    'word_left_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -465,10 +465,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -483,7 +483,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'word_right_position': pl.DataFrame(
+    'word_right_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -530,10 +530,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -613,7 +613,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'char_auto_position': pl.DataFrame(
+    'char_auto_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -660,10 +660,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -744,7 +744,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'word_auto_position': pl.DataFrame(
+    'word_auto_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -791,10 +791,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -874,7 +874,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'char_else_position': pl.DataFrame(
+    'char_else_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -921,10 +921,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -1004,7 +1004,7 @@ EXPECTED_DF = {
         },
         orient='row',
     ),
-    'word_else_position': pl.DataFrame(
+    'word_else_degree': pl.DataFrame(
         [
             (
                 1, 1, 8005274, 649.5, 531.1, 640.6, 529.1, None, None,
@@ -1051,10 +1051,10 @@ EXPECTED_DF = {
             'trialId': pl.Int64,
             'pointId': pl.Int64,
             'time': pl.Int64,
-            'position_xl': pl.Float64,
-            'position_yl': pl.Float64,
-            'position_xr': pl.Float64,
-            'position_yr': pl.Float64,
+            'degree_xl': pl.Float64,
+            'degree_yl': pl.Float64,
+            'degree_xr': pl.Float64,
+            'degree_yr': pl.Float64,
             'char': pl.String,
             'top_left_x': pl.Float64,
             'top_left_y': pl.Float64,
@@ -1095,7 +1095,7 @@ EXPECTED_DF = {
     ('gaze_type'),
     [
         'pixel',
-        'position',
+        'degree',
     ],
 )
 def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_example_file):
@@ -1117,11 +1117,11 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
             read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
-    elif gaze_type == 'position':
+    elif gaze_type == 'degree':
         gaze = pm.gaze.io.from_csv(
             gaze_filepath,
             read_csv_kwargs={'separator': '\t'},
-            position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
+            degree_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
         assert False, 'unknown gaze_type'
@@ -1153,7 +1153,7 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
     ('gaze_type'),
     [
         'pixel',
-        'position',
+        'degree',
     ],
 )
 def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_file):
@@ -1175,11 +1175,11 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
             read_csv_kwargs={'separator': '\t'},
             pixel_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
-    elif gaze_type == 'position':
+    elif gaze_type == 'degree':
         gaze = pm.gaze.io.from_csv(
             gaze_filepath,
             read_csv_kwargs={'separator': '\t'},
-            position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
+            degree_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
         assert False, 'unknown gaze_type'
@@ -1204,13 +1204,13 @@ def test_map_to_aois_raises_value_error(make_example_file):
     gaze = pm.gaze.io.from_csv(
         gaze_filepath,
         read_csv_kwargs={'separator': '\t'},
-        position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
+        degree_columns=['x_left', 'y_left', 'x_right', 'y_right'],
     )
 
     with pytest.raises(ValueError) as excinfo:
         gaze.map_to_aois(aoi_df, eye='right', gaze_type='')
     msg, = excinfo.value.args
-    assert msg.startswith('neither position nor pixel column in samples dataframe')
+    assert msg.startswith('neither degree nor pixel column in samples dataframe')
 
 
 # Tests for Gaze.map_to_aois preserve_structure flag
@@ -1227,10 +1227,10 @@ def _flat_pixel_samples() -> pl.DataFrame:
     )
 
 
-@pytest.fixture(name='list_position_samples')
-def _list_position_samples() -> pl.DataFrame:
+@pytest.fixture(name='list_degree_samples')
+def _list_degree_samples() -> pl.DataFrame:
     # Position as a list column [xl, yl, xr, yr]
-    return pl.DataFrame({'position': [[0.0, 0.0, 5.0, 5.0], [0.0, 0.0, 15.0, 15.0]]})
+    return pl.DataFrame({'degree': [[0.0, 0.0, 5.0, 5.0], [0.0, 0.0, 15.0, 15.0]]})
 
 
 @pytest.mark.filterwarnings(
@@ -1250,14 +1250,14 @@ def test_gaze_map_to_aois_preserve_structure_true_flat_columns(
 
 
 def test_gaze_map_to_aois_preserve_structure_false_list_column(
-    simple_stimulus: pm.stimulus.TextStimulus, list_position_samples: pl.DataFrame,
+    simple_stimulus: pm.stimulus.TextStimulus, list_degree_samples: pl.DataFrame,
 ) -> None:
-    # No schema change expected - 'position' list column remains.
-    gaze = pm.Gaze(samples=list_position_samples)
-    gaze.map_to_aois(simple_stimulus, eye='right', gaze_type='position', preserve_structure=False)
+    # No schema change expected - 'degree' list column remains.
+    gaze = pm.Gaze(samples=list_degree_samples)
+    gaze.map_to_aois(simple_stimulus, eye='right', gaze_type='degree', preserve_structure=False)
 
     cols = set(gaze.samples.columns)
-    assert 'position' in cols  # schema preserved
+    assert 'degree' in cols  # schema preserved
     labels = gaze.samples.get_column('label').to_list()
     assert labels == ['A', None]
 
@@ -1276,14 +1276,14 @@ def test_flat_selector_returns_none_for_incomplete_flat_columns_triggers_fallbac
     # Create samples with a single flat pixel component so that the flat selection logic runs
     # but cannot find a valid (x,y) pair for any eye setting. This makes the selector return None
     # at the eye-specific branch, then the method falls back to list logic and raises because no
-    # 'pixel'/'position' list column exists.
+    # 'pixel'/'degree' list column exists.
     samples = pl.DataFrame({
         'pixel_x': [1.0, 2.0],  # only X present, no matching Y nor other pairs
     })
 
     gaze = pm.Gaze(samples=samples)
 
-    with pytest.raises(ValueError, match='neither position nor pixel column'):
+    with pytest.raises(ValueError, match='neither degree nor pixel column'):
         gaze.map_to_aois(
             aoi_dataframe=simple_stimulus_w_h,
             eye=eye,

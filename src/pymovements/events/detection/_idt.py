@@ -29,28 +29,28 @@ from pymovements.events.detection._library import register_event_detection
 from pymovements.events.events import Events
 
 
-def dispersion(positions: list[list[float]] | np.ndarray) -> float:
-    """Compute the dispersion of a group of consecutive points in a 2D position time series.
+def dispersion(degrees: list[list[float]] | np.ndarray) -> float:
+    """Compute the dispersion of a group of consecutive points in a 2D degree time series.
 
     The dispersion is defined as the sum of the differences between
     the points' maximum and minimum x and y values
 
     Parameters
     ----------
-    positions: list[list[float]] | np.ndarray
-        Continuous 2D position time series.
+    degrees: list[list[float]] | np.ndarray
+        Continuous 2D degree time series.
 
     Returns
     -------
     float
         Dispersion of the group of points.
     """
-    return sum(np.nanmax(positions, axis=0) - np.nanmin(positions, axis=0))
+    return sum(np.nanmax(degrees, axis=0) - np.nanmin(degrees, axis=0))
 
 
 @register_event_detection
 def idt(
-        positions: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+        degrees: list[list[float]] | list[tuple[float, float]] | np.ndarray,
         timesteps: list[int] | np.ndarray | None = None,
         minimum_duration: int = 100,
         dispersion_threshold: float = 1.0,
@@ -70,9 +70,9 @@ def idt(
 
     Parameters
     ----------
-    positions: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    degrees: list[list[float]] | list[tuple[float, float]] | np.ndarray
         shape (N, 2)
-        Continuous 2D position time series
+        Continuous 2D degree time series
     timesteps: list[int] | np.ndarray | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
@@ -100,16 +100,16 @@ def idt(
     TypeError
         If minimum_duration is not of type ``int`` or timesteps
     ValueError
-        If positions is not shaped (N, 2)
+        If degrees is not shaped (N, 2)
         If dispersion_threshold is not greater than 0
         If duration_threshold is not greater than 0
     """
-    positions = np.array(positions)
+    degrees = np.array(degrees)
 
-    _checks.check_shapes(positions=positions)
+    _checks.check_shapes(degrees=degrees)
 
     if timesteps is None:
-        timesteps = np.arange(len(positions), dtype=np.int64)
+        timesteps = np.arange(len(degrees), dtype=np.int64)
     timesteps = np.array(timesteps).flatten()
 
     # Check that timesteps are integers or are floats without a fractional part.
@@ -118,7 +118,7 @@ def idt(
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
 
-    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
+    _checks.check_is_length_matching(degrees=degrees, timesteps=timesteps)
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
@@ -160,9 +160,9 @@ def idt(
         if win_end - win_start < minimum_sample_duration:
             break
 
-        if dispersion(positions[win_start:win_end]) <= dispersion_threshold:
+        if dispersion(degrees[win_start:win_end]) <= dispersion_threshold:
             # Add additional points to the window until dispersion > threshold.
-            while dispersion(positions[win_start:win_end]) < dispersion_threshold:
+            while dispersion(degrees[win_start:win_end]) < dispersion_threshold:
                 # break if we reach end of input data
                 if win_end == len(timesteps):
                     break
@@ -170,17 +170,17 @@ def idt(
                 win_end += 1
 
             # check for np.nan values
-            if np.sum(np.isnan(positions[win_start:win_end - 1])) > 0:
+            if np.sum(np.isnan(degrees[win_start:win_end - 1])) > 0:
                 tmp_candidates = [np.arange(win_start, win_end - 1, 1)]
                 tmp_candidates = filter_candidates_remove_nans(
                     candidates=tmp_candidates,
-                    values=positions,
+                    values=degrees,
                 )
                 # split events if include_nan == False
                 if not include_nan:
                     tmp_candidates = events_split_nans(
                         candidates=tmp_candidates,
-                        values=positions,
+                        values=degrees,
                     )
 
                 # Filter all candidates by minimum duration.

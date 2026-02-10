@@ -147,18 +147,18 @@ def test_tsplot_sets_title(gaze):
     ],
 )
 def test_tsplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
-    # create a polars series with the length of samples["position"]
-    replacement_position = pl.Series(
-        'position',
+    # create a polars series with the length of samples["degree"]
+    replacement_degree = pl.Series(
+        'degree',
         [
             [bad_x, bad_y],
-        ] + gaze.samples['position'].to_list()[1:],
+        ] + gaze.samples['degree'].to_list()[1:],
     )
-    # get index of 'position' column
-    pos_index = gaze.samples.get_column_index('position')
-    # replace the 'position' column in gaze.samples with the new series
+    # get index of 'degree' column
+    pos_index = gaze.samples.get_column_index('degree')
+    # replace the 'degree' column in gaze.samples with the new series
     gaze.samples = gaze.samples.with_columns(
-        replacement_position,
+        replacement_degree,
         at_index=pos_index,
     )
 

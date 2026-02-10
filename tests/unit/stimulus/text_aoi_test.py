@@ -37,7 +37,7 @@ def fixture_text_stimulus_overlap() -> TextStimulus:
             'label': ['W1', 'W2'],
             'sx': [0, 0],
             'sy': [0, 0],
-            # Two AOIs of identical size/position -> complete overlap
+            # Two AOIs of identical size/degree -> complete overlap
             'width': [10, 10],
             'height': [10, 10],
         },

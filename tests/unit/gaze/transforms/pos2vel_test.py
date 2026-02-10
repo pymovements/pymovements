@@ -135,7 +135,7 @@ def test_pos2vel_init_raises_error(kwargs, exception, msg_substrings):
                 'method': 'savitzky_golay', 'window_length': 3,
                 'degree': 1, 'padding': None, 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1]], pl.List(pl.Float64)),
             ValueError,
             ('If mode is \'interp\', window_length must be less than or equal to the size of x',),
             id='no_padding_input_shorter_than_window_length_raises_valueerror',
@@ -162,7 +162,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'method': 'savitzky_golay', 'window_length': 3, 'degree': 1,
                 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [], pl.List(pl.Float64)),
+            pl.Series('degree', [], pl.List(pl.Float64)),
             pl.Series('velocity', [], pl.List(pl.Float64)),
             id='empty_series_raises_compute_error',
         ),
@@ -175,7 +175,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'padding': 'nearest',
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0]], pl.List(pl.Float64)),
             id='single_element_nearest_padding_results_zero',
         ),
@@ -188,7 +188,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0]], pl.List(pl.Float64)),
             id='single_element_results_zero_mirror_padding',
         ),
@@ -201,7 +201,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0]], pl.List(pl.Float64)),
             id='single_element_results_zero_wrap_padding',
         ),
@@ -214,7 +214,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0]], pl.List(pl.Float64)),
             id='single_element_results_zero_wrap_padding',
         ),
@@ -227,7 +227,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0]], pl.List(pl.Float64)),
             id='single_element_results_zero_equal_scalar_padding',
         ),
@@ -240,7 +240,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0], [0, 0]], pl.List(pl.Float64)),
             id='two_equal_elements_results_zero_nearest_padding',
         ),
@@ -253,7 +253,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[0, 0], [0, 0], [0, 0]], pl.List(pl.Float64)),
             id='two_equal_elements_differentation_none_padding_result_zero',
         ),
@@ -263,7 +263,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'degree': 1, 'padding': None, 'sampling_rate': 1,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             id='two_elements_1_2_differentation_none_padding_result_one',
         ),
@@ -273,7 +273,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
                 'degree': 1, 'padding': None, 'sampling_rate': 1000,
                 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[1000, 1000], [1000, 1000], [1000, 1000]], pl.List(pl.Float64)),
             id='three_elements_1_2_3_differentation_sampling_rate_1000_none_padding_result_1000',
         ),
@@ -281,7 +281,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'preceding', 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [0, 0], [0, 0]], pl.List(pl.Float64)),
             id='three_equal_elements_method_preceding_results_zero',
         ),
@@ -289,7 +289,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'preceding', 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1, 1], [1, 1]], pl.List(pl.Float64)),
             id='three_rising_elements_method_preceding_results_one',
         ),
@@ -297,7 +297,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'preceding', 'sampling_rate': 1000, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1000, 1000], [1000, 1000]], pl.List(pl.Float64)),
             id='three_rising_elements_method_preceding_sampling_rate_1000_results_1000',
         ),
@@ -305,7 +305,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'neighbors', 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [0, 0], [None, None]], pl.List(pl.Float64)),
             id='three_equal_elements_method_neighbors_results_zero',
         ),
@@ -313,7 +313,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'neighbors', 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1, 1], [None, None]], pl.List(pl.Float64)),
             id='three_rising_elements_method_neighbors_results_one',
         ),
@@ -321,7 +321,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'neighbors', 'sampling_rate': 1000, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3]], pl.List(pl.Float64)),
             pl.Series('velocity', [[None, None], [1000, 1000], [None, None]], pl.List(pl.Float64)),
             id='three_rising_elements_method_neighbors_sampling_rate_1000_results_1000',
         ),
@@ -329,7 +329,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'smooth', 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1]], pl.List(pl.Float64)),
             pl.Series(
                 'velocity', [
                     [None, None], [None, None], [0, 0], [
@@ -343,7 +343,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'smooth', 'sampling_rate': 1, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]], pl.List(pl.Float64)),
             pl.Series(
                 'velocity', [
                     [None, None], [None, None], [1, 1], [
@@ -357,7 +357,7 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             {
                 'method': 'smooth', 'sampling_rate': 1000, 'n_components': 2,
             },
-            pl.Series('position', [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]], pl.List(pl.Float64)),
+            pl.Series('degree', [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]], pl.List(pl.Float64)),
             pl.Series(
                 'velocity', [
                     [None, None], [None, None], [1000, 1000],

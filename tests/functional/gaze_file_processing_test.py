@@ -72,7 +72,7 @@ def fixture_init_kwargs(request, make_example_file):
                     'time_column': 'time',
                     'time_unit': 'ms',
                     'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
-                    'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
+                    'degree_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
                 },
             ),
         },
@@ -219,6 +219,6 @@ def test_gaze_file_processing(init_kwargs):
     gaze.pos2acc()
     gaze.resample(resampling_rate=2000)
 
-    assert 'position' in gaze.columns
+    assert 'degree' in gaze.columns
     assert 'velocity' in gaze.columns
     assert 'acceleration' in gaze.columns

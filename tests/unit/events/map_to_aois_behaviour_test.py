@@ -349,7 +349,7 @@ def test_events_map_to_aois_no_new_columns_when_all_aoi_columns_present(
     preserve_structure: bool,
 ) -> None:
     # Events already contains ALL AOI columns from the stimulus.
-    # One row is a fixation positioned inside the AOI.
+    # One row is a fixation degreeed inside the AOI.
     events_df = pl.DataFrame(
         {
             'name': ['fixation'],

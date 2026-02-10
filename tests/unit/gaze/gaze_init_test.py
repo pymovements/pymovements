@@ -53,7 +53,7 @@ from pymovements import Gaze
             {
                 'samples': pl.DataFrame(schema={'abc': pl.Int64}),
                 'pixel_columns': [],
-                'position_columns': [],
+                'degree_columns': [],
                 'velocity_columns': [],
                 'acceleration_columns': [],
             },
@@ -209,25 +209,25 @@ from pymovements import Gaze
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
-            pl.DataFrame(schema={'position': pl.List(pl.Float64)}),
+            pl.DataFrame(schema={'degree': pl.List(pl.Float64)}),
             2,
-            id='empty_df_with_schema_two_position_columns',
+            id='empty_df_with_schema_two_degree_columns',
         ),
 
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             pl.DataFrame(
                 schema={
-                    'abc': pl.Int64, 'position': pl.List(pl.Float64),
+                    'abc': pl.Int64, 'degree': pl.List(pl.Float64),
                 },
             ),
             2,
-            id='empty_df_with_three_column_schema_two_position_columns',
+            id='empty_df_with_three_column_schema_two_degree_columns',
         ),
 
         pytest.param(
@@ -237,11 +237,11 @@ from pymovements import Gaze
                         'xr': pl.Float64, 'yr': pl.Float64, 'xl': pl.Float64, 'yl': pl.Float64,
                     },
                 ),
-                'position_columns': ['xr', 'yr', 'xl', 'yl'],
+                'degree_columns': ['xr', 'yr', 'xl', 'yl'],
             },
-            pl.DataFrame(schema={'position': pl.List(pl.Float64)}),
+            pl.DataFrame(schema={'degree': pl.List(pl.Float64)}),
             4,
-            id='empty_df_with_schema_four_position_columns',
+            id='empty_df_with_schema_four_degree_columns',
         ),
 
         pytest.param(
@@ -253,13 +253,13 @@ from pymovements import Gaze
                         'x_avg': pl.Float64, 'y_avg': pl.Float64,
                     },
                 ),
-                'position_columns': [
+                'degree_columns': [
                     'x_right', 'y_right', 'x_left', 'y_left', 'x_avg', 'y_avg',
                 ],
             },
-            pl.DataFrame(schema={'position': pl.List(pl.Float64)}),
+            pl.DataFrame(schema={'degree': pl.List(pl.Float64)}),
             6,
-            id='empty_df_with_schema_six_position_columns',
+            id='empty_df_with_schema_six_degree_columns',
         ),
 
         pytest.param(
@@ -267,14 +267,14 @@ from pymovements import Gaze
                 'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             pl.from_dict(
-                {'position': [[1.23, 4.56]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[1.23, 4.56]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             2,
-            id='df_single_row_two_position_columns',
+            id='df_single_row_two_degree_columns',
         ),
 
         pytest.param(
@@ -283,14 +283,14 @@ from pymovements import Gaze
                     {'abc': [1], 'x': [1.23], 'y': [4.56]},
                     schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             pl.from_dict(
-                {'abc': [1], 'position': [[1.23, 4.56]]},
-                schema={'abc': pl.Int64, 'position': pl.List(pl.Float64)},
+                {'abc': [1], 'degree': [[1.23, 4.56]]},
+                schema={'abc': pl.Int64, 'degree': pl.List(pl.Float64)},
             ),
             2,
-            id='df_single_row_three_columns_two_position_columns',
+            id='df_single_row_three_columns_two_degree_columns',
         ),
 
         pytest.param(
@@ -299,14 +299,14 @@ from pymovements import Gaze
                     {'xl': [1.2], 'yl': [3.4], 'xr': [5.6], 'yr': [7.8]},
                     schema={'xl': pl.Float64, 'yl': pl.Float64, 'xr': pl.Float64, 'yr': pl.Float64},
                 ),
-                'position_columns': ['xl', 'yl', 'xr', 'yr'],
+                'degree_columns': ['xl', 'yl', 'xr', 'yr'],
             },
             pl.from_dict(
-                {'position': [[1.2, 3.4, 5.6, 7.8]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[1.2, 3.4, 5.6, 7.8]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             4,
-            id='df_single_row_four_position_columns',
+            id='df_single_row_four_degree_columns',
         ),
 
         pytest.param(
@@ -323,16 +323,16 @@ from pymovements import Gaze
                         'x_avg': pl.Float64, 'y_avg': pl.Float64,
                     },
                 ),
-                'position_columns': [
+                'degree_columns': [
                     'x_right', 'y_right', 'x_left', 'y_left', 'x_avg', 'y_avg',
                 ],
             },
             pl.from_dict(
-                {'position': [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             6,
-            id='df_single_row_six_position_columns',
+            id='df_single_row_six_degree_columns',
         ),
 
         pytest.param(
@@ -642,20 +642,20 @@ from pymovements import Gaze
                     },
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
-                'position_columns': ['x_dva', 'y_dva'],
+                'degree_columns': ['x_dva', 'y_dva'],
                 'velocity_columns': ['x_vel', 'y_vel'],
                 'acceleration_columns': ['x_acc', 'y_acc'],
             },
             pl.from_dict(
                 {
                     'pixel': [[0.1, 0.2]],
-                    'position': [[1.1, 1.2]],
+                    'degree': [[1.1, 1.2]],
                     'velocity': [[3.1, 3.2]],
                     'acceleration': [[5.1, 5.2]],
                 },
                 schema={
                     'pixel': pl.List(pl.Float64),
-                    'position': pl.List(pl.Float64),
+                    'degree': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64),
                     'acceleration': pl.List(pl.Float64),
                 },
@@ -701,7 +701,7 @@ from pymovements import Gaze
                     'x_left_pos_pix', 'y_left_pos_pix',
                     'x_avg_pos_pix', 'y_avg_pos_pix',
                 ],
-                'position_columns': [
+                'degree_columns': [
                     'x_right_pos_dva', 'y_right_pos_dva',
                     'x_left_pos_dva', 'y_left_pos_dva',
                     'x_avg_pos_dva', 'y_avg_pos_dva',
@@ -720,13 +720,13 @@ from pymovements import Gaze
             pl.from_dict(
                 {
                     'pixel': [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]],
-                    'position': [[1.1, 1.2, 1.3, 1.4, 1.5, 1.6]],
+                    'degree': [[1.1, 1.2, 1.3, 1.4, 1.5, 1.6]],
                     'velocity': [[3.1, 3.2, 3.3, 3.4, 3.5, 3.6]],
                     'acceleration': [[5.1, 5.2, 5.3, 5.4, 5.5, 5.6]],
                 },
                 schema={
                     'pixel': pl.List(pl.Float64),
-                    'position': pl.List(pl.Float64),
+                    'degree': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64),
                     'acceleration': pl.List(pl.Float64),
                 },
@@ -757,7 +757,7 @@ from pymovements import Gaze
                 schema={'time': pl.Float64, 'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_float_millis_time_no_conversion',
+            id='df_three_rows_two_degree_float_millis_time_no_conversion',
         ),
 
         pytest.param(
@@ -782,7 +782,7 @@ from pymovements import Gaze
                 schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_int_millis_time_no_conversion',
+            id='df_three_rows_two_degree_int_millis_time_no_conversion',
         ),
 
         pytest.param(
@@ -807,7 +807,7 @@ from pymovements import Gaze
                 schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_float_seconds_time_converts_to_int_millis',
+            id='df_three_rows_two_degree_float_seconds_time_converts_to_int_millis',
         ),
 
         pytest.param(
@@ -832,7 +832,7 @@ from pymovements import Gaze
                 schema={'time': pl.Float64, 'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_float_seconds_time_converts_to_float_millis',
+            id='df_three_rows_two_degree_float_seconds_time_converts_to_float_millis',
         ),
 
         pytest.param(
@@ -864,7 +864,7 @@ from pymovements import Gaze
                 schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_float_step_time_converts_to_int_millis',
+            id='df_three_rows_two_degree_float_step_time_converts_to_int_millis',
         ),
 
 
@@ -874,14 +874,14 @@ from pymovements import Gaze
                     {'x': [1.23, 2.34, 3.45], 'y': [4.56, 5.67, 6.78]},
                     schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             pl.from_dict(
-                {'position': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_columns_no_time_no_experiment',
+            id='df_three_rows_two_degree_columns_no_time_no_experiment',
         ),
 
         pytest.param(
@@ -890,15 +890,15 @@ from pymovements import Gaze
                     {'x': [1.23, 2.34, 3.45], 'y': [4.56, 5.67, 6.78]},
                     schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
                 'experiment': Experiment(1024, 768, 38, 30, None, 'center', 100),
             },
             pl.from_dict(
-                {'time': [0, 10, 20], 'position': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
-                schema={'time': pl.Int64, 'position': pl.List(pl.Float64)},
+                {'time': [0, 10, 20], 'degree': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
+                schema={'time': pl.Int64, 'degree': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_columns_no_time_100_hz',
+            id='df_three_rows_two_degree_columns_no_time_100_hz',
         ),
 
         pytest.param(
@@ -907,15 +907,15 @@ from pymovements import Gaze
                     {'x': [1.23, 2.34, 3.45], 'y': [4.56, 5.67, 6.78]},
                     schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
                 'experiment': Experiment(1024, 768, 38, 30, None, 'center', 1000),
             },
             pl.from_dict(
-                {'time': [0, 1, 2], 'position': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
-                schema={'time': pl.Int64, 'position': pl.List(pl.Float64)},
+                {'time': [0, 1, 2], 'degree': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
+                schema={'time': pl.Int64, 'degree': pl.List(pl.Float64)},
             ),
             2,
-            id='df_three_rows_two_position_columns_no_time_1000_hz',
+            id='df_three_rows_two_degree_columns_no_time_1000_hz',
         ),
 
         pytest.param(
@@ -946,22 +946,22 @@ from pymovements import Gaze
                 'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
-                        'position_x': [0., 1., 2.],
-                        'position_y': [3., 4., 5.],
+                        'degree_x': [0., 1., 2.],
+                        'degree_y': [3., 4., 5.],
                     },
-                    schema={'time': pl.Int64, 'position_x': pl.Float64, 'position_y': pl.Float64},
+                    schema={'time': pl.Int64, 'degree_x': pl.Float64, 'degree_y': pl.Float64},
                 ),
                 'auto_column_detect': True,
             },
             pl.from_dict(
                 {
                     'time': [1, 2, 3],
-                    'position': [[0., 3.], [1., 4.], [2., 5.]],
+                    'degree': [[0., 3.], [1., 4.], [2., 5.]],
                 },
-                schema={'time': pl.Int64, 'position': pl.List(pl.Float64)},
+                schema={'time': pl.Int64, 'degree': pl.List(pl.Float64)},
             ),
             2,
-            id='df_auto_columns_position',
+            id='df_auto_columns_degree',
         ),
 
         pytest.param(
@@ -1213,42 +1213,42 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': 1,
+                'degree_columns': 1,
             },
             TypeError,
-            'position_columns must be of type list, but is of type int',
-            id='position_columns_int',
+            'degree_columns must be of type list, but is of type int',
+            id='degree_columns_int',
         ),
 
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': 'x',
+                'degree_columns': 'x',
             },
             TypeError,
-            'position_columns must be of type list, but is of type str',
-            id='position_columns_str',
+            'degree_columns must be of type list, but is of type str',
+            id='degree_columns_str',
         ),
 
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': [0, 1],
+                'degree_columns': [0, 1],
             },
             TypeError,
-            'all elements in position_columns must be of type str,'
+            'all elements in degree_columns must be of type str,'
             ' but one of the elements is of type int',
-            id='position_columns_list_elements_not_string',
+            id='degree_columns_list_elements_not_string',
         ),
 
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                'position_columns': ['x'],
+                'degree_columns': ['x'],
             },
             ValueError,
-            'position_columns must contain either 2, 4 or 6 columns, but has 1',
-            id='position_columns_list_of_one',
+            'degree_columns must contain either 2, 4 or 6 columns, but has 1',
+            id='degree_columns_list_of_one',
         ),
 
         pytest.param(
@@ -1258,11 +1258,11 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
                         'xr': pl.Float64, 'yr': pl.Float64, 'xl': pl.Float64, 'yl': pl.Float64,
                     },
                 ),
-                'position_columns': ['xr', 'xl', 'yl'],
+                'degree_columns': ['xr', 'xl', 'yl'],
             },
             ValueError,
-            'position_columns must contain either 2, 4 or 6 columns, but has 3',
-            id='position_columns_list_of_three',
+            'degree_columns must contain either 2, 4 or 6 columns, but has 3',
+            id='degree_columns_list_of_three',
         ),
 
         pytest.param(
@@ -1274,11 +1274,11 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
                         'xa': pl.Float64, 'ya': pl.Float64,
                     },
                 ),
-                'position_columns': ['xr', 'yr', 'xl', 'yl', 'xa'],
+                'degree_columns': ['xr', 'yr', 'xl', 'yl', 'xa'],
             },
             ValueError,
-            'position_columns must contain either 2, 4 or 6 columns, but has 5',
-            id='position_columns_list_of_five',
+            'degree_columns must contain either 2, 4 or 6 columns, but has 5',
+            id='degree_columns_list_of_five',
         ),
 
         pytest.param(
@@ -1291,32 +1291,32 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
                         'xa': pl.Float64, 'ya': pl.Float64,
                     },
                 ),
-                'position_columns': ['xr', 'yr', 'xl', 'yl', 'xa', 'ya', 'abc'],
+                'degree_columns': ['xr', 'yr', 'xl', 'yl', 'xa', 'ya', 'abc'],
             },
             ValueError,
-            'position_columns must contain either 2, 4 or 6 columns, but has 7',
-            id='position_columns_list_of_seven',
+            'degree_columns must contain either 2, 4 or 6 columns, but has 7',
+            id='degree_columns_list_of_seven',
         ),
 
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Int64}),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             ValueError,
-            'all columns in position_columns must be of same type, but types are'
+            'all columns in degree_columns must be of same type, but types are'
             " ['Float64', 'Int64']",
-            id='position_columns_different_type',
+            id='degree_columns_different_type',
         ),
 
         pytest.param(
             {
                 'samples': pl.DataFrame(schema={'x': pl.Float64}),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             pl.exceptions.ColumnNotFoundError,
-            'column y from position_columns is not available in samples dataframe',
-            id='position_columns_missing_column',
+            'column y from degree_columns is not available in samples dataframe',
+            id='degree_columns_missing_column',
         ),
 
         pytest.param(
@@ -1553,7 +1553,7 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
                     },
                 ),
                 'pixel_columns': ['x', 'y'],
-                'position_columns': ['xl', 'yl', 'xr', 'yr'],
+                'degree_columns': ['xl', 'yl', 'xr', 'yr'],
             },
             ValueError,
             'inconsistent number of components inferred: {2, 4}',
@@ -1655,7 +1655,7 @@ def test_gaze_copy_init_has_same_n_components():
     Refers to issue #514.
     """
     df_orig = pl.from_numpy(np.zeros((3, 1000)), orient='col', schema=['t', 'x', 'y'])
-    gaze = Gaze(df_orig, position_columns=['x', 'y'], time_column='t')
+    gaze = Gaze(df_orig, degree_columns=['x', 'y'], time_column='t')
 
     df_copy = gaze.samples.clone()
     gaze_copy = Gaze(df_copy)
@@ -1672,7 +1672,7 @@ def test_gaze_copy_init_has_same_n_components():
                 'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             id='samples_with_no_events',
         ),
@@ -1683,7 +1683,7 @@ def test_gaze_copy_init_has_same_n_components():
                 'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             id='samples_empty_events',
         ),
@@ -1706,7 +1706,7 @@ def test_gaze_copy_init_has_same_n_components():
                 'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             id='samples_with_fixations',
         ),

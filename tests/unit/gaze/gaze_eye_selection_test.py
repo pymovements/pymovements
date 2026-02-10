@@ -61,9 +61,9 @@ from pymovements.stimulus.text import TextStimulus
             id='flat-right-auto-prefers-right',
         ),
         pytest.param(
-            {'position_xl': [5.0, 15.0], 'position_yl': [5.0, 5.0]},
-            'left', 'position', ['A', None], False, None,
-            id='flat-left-position',
+            {'degree_xl': [5.0, 15.0], 'degree_yl': [5.0, 5.0]},
+            'left', 'degree', ['A', None], False, None,
+            id='flat-left-degree',
         ),
         pytest.param(
             {'pixel_xa': [5.0, 15.0], 'pixel_ya': [5.0, 5.0]},
@@ -144,7 +144,7 @@ def test_eye_selection_flat_components(
         ),
     ],
 )
-@pytest.mark.parametrize('source_col, gaze_type', [('position', 'position'), ('pixel', 'pixel')])
+@pytest.mark.parametrize('source_col, gaze_type', [('degree', 'degree'), ('pixel', 'pixel')])
 @pytest.mark.parametrize('preserve_structure', [True, False])
 @pytest.mark.filterwarnings('ignore:.*requested .* Using .*:UserWarning')
 @pytest.mark.filterwarnings('ignore:Cyclops requested .* Averaging left/right.*:UserWarning')
@@ -178,8 +178,8 @@ def test_eye_selection_list_columns(
         # and mapping falls back to list-column extraction path.
         pytest.param(
             {'pixel_x': [999.0], 'pixel_xl': [999.0]},  # no matching y components
-            {'position': [[5.0, 5.0]]},
-            'auto', 'position', ['A'],
+            {'degree': [[5.0, 5.0]]},
+            'auto', 'degree', ['A'],
             id='auto-no-pair-falls-back-to-list',
         ),
     ],
@@ -278,7 +278,7 @@ def test_flat_fallbacks_to_cyclops_or_other_eye(
         ),
     ],
 )
-@pytest.mark.parametrize('src', ['position'])
+@pytest.mark.parametrize('src', ['degree'])
 @pytest.mark.parametrize('preserve_structure', [False])
 def test_list_selection_edge_cases(
     simple_stimulus: TextStimulus,
@@ -346,23 +346,23 @@ def test_auto_direct_via_cyclops(
     [
         pytest.param(
             {
-                'position_xl': [5.0],
-                'position_yl': [5.0],
+                'degree_xl': [5.0],
+                'degree_yl': [5.0],
             },
             'mono',
-            'position',
+            'degree',
             'Mono eye requested .* Using left eye',
             id='mono-fallback-left',
         ),
         pytest.param(
             {
-                'position_xa': [5.0],
-                'position_ya': [5.0],
+                'degree_xa': [5.0],
+                'degree_ya': [5.0],
             },
             'right',
-            'position',
+            'degree',
             'Right eye requested .* Using cyclops',
-            id='right-fallback-cyclops-position',
+            id='right-fallback-cyclops-degree',
         ),
         pytest.param(
             {'pixel_x': [5.0], 'pixel_y': [5.0]}, 'cyclops', 'pixel',
@@ -370,11 +370,11 @@ def test_auto_direct_via_cyclops(
         ),
         pytest.param(
             {
-                'position_xl': [5.0],
-                'position_yl': [5.0],
+                'degree_xl': [5.0],
+                'degree_yl': [5.0],
             },
             'cyclops',
-            'position',
+            'degree',
             'Cyclops requested .* Using left eye',
             id='cyclops-fallback-left',
         ),
@@ -414,15 +414,15 @@ def test_average_lr_partial_data(simple_stimulus: TextStimulus) -> None:
 
 
 def test_list_fallback_raises_when_no_matching_source(simple_stimulus: TextStimulus) -> None:
-    # Only pixel list present, but gaze_type requests position
+    # Only pixel list present, but gaze_type requests degree
     # -> should raise ValueError in list-fallback
     df = pl.DataFrame({'pixel': [[5.0, 5.0]]})
     gaze = pm.Gaze(samples=df)
-    with pytest.raises(ValueError, match='neither position nor pixel column'):
+    with pytest.raises(ValueError, match='neither degree nor pixel column'):
         gaze.map_to_aois(
             simple_stimulus,
             eye='auto',
-            gaze_type='position',
+            gaze_type='degree',
             preserve_structure=False,
         )
 
@@ -503,7 +503,7 @@ def test_cyclops_fallback_to_right_warning(simple_stimulus: TextStimulus) -> Non
     assert gaze.samples.get_column('label').to_list() == ['A', None]
 
 
-@pytest.mark.parametrize('src_col', ['position', 'pixel'])
+@pytest.mark.parametrize('src_col', ['degree', 'pixel'])
 @pytest.mark.filterwarnings(
     'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
 )
@@ -515,10 +515,10 @@ def test_list_values_empty_returns_none_row(simple_stimulus: TextStimulus, src_c
     assert gaze.samples.get_column('label').to_list() == [None, None]
 
 
-@pytest.mark.parametrize('src_col', ['position', 'pixel'])
+@pytest.mark.parametrize('src_col', ['degree', 'pixel'])
 @pytest.mark.parametrize('eye', ['mono', 'cyclops', 'auto'])
 def test_list_six_prefers_xa_ya(simple_stimulus: TextStimulus, src_col: str, eye: str) -> None:
-    # 6-component list with explicit cyclops/mono at positions 4/5 should be chosen directly
+    # 6-component list with explicit cyclops/mono at degrees 4/5 should be chosen directly
     df = pl.DataFrame({
         src_col: [
             [50.0, 50.0, 50.0, 50.0, 5.0, 5.0],
@@ -530,7 +530,7 @@ def test_list_six_prefers_xa_ya(simple_stimulus: TextStimulus, src_col: str, eye
     assert gaze.samples.get_column('label').to_list() == ['A', None]
 
 
-@pytest.mark.parametrize('src_col', ['position', 'pixel'])
+@pytest.mark.parametrize('src_col', ['degree', 'pixel'])
 def test_list_four_right_pair(simple_stimulus: TextStimulus, src_col: str) -> None:
     # 4-component list: [xl, yl, xr, yr] request right
     df = pl.DataFrame({src_col: [[50.0, 50.0, 5.0, 5.0], [50.0, 50.0, 15.0, 5.0]]})
@@ -539,7 +539,7 @@ def test_list_four_right_pair(simple_stimulus: TextStimulus, src_col: str) -> No
     assert gaze.samples.get_column('label').to_list() == ['A', None]
 
 
-@pytest.mark.parametrize('src_col', ['position', 'pixel'])
+@pytest.mark.parametrize('src_col', ['degree', 'pixel'])
 def test_list_four_left_pair(simple_stimulus: TextStimulus, src_col: str) -> None:
     # 4-component list: [xl, yl, xr, yr] request left
     df = pl.DataFrame({src_col: [[5.0, 5.0, 50.0, 50.0], [15.0, 5.0, 50.0, 50.0]]})

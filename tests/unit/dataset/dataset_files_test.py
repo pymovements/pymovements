@@ -626,10 +626,10 @@ def test_load_gaze_file_has_correct_metadata(
                 'filename': 'test.csv',
                 'data': pl.DataFrame({'time': [0], 'x': [1.2], 'y': [3.4]}),
             },
-            None, {'position_columns': ['x', 'y']},
+            None, {'degree_columns': ['x', 'y']},
             {},
-            Gaze(samples=pl.DataFrame({'time': [0], 'position': [[1.2, 3.4]]})),
-            id='position_columns',
+            Gaze(samples=pl.DataFrame({'time': [0], 'degree': [[1.2, 3.4]]})),
+            id='degree_columns',
         ),
 
         pytest.param(
@@ -638,12 +638,12 @@ def test_load_gaze_file_has_correct_metadata(
                 'data': pl.DataFrame({'time': [0], 'x': [21.2], 'y': [23.4]}),
             },
             None, None,
-            {'position_columns': ['x', 'y']},
-            Gaze(samples=pl.DataFrame({'time': [0], 'position': [[21.2, 23.4]]})),
+            {'degree_columns': ['x', 'y']},
+            Gaze(samples=pl.DataFrame({'time': [0], 'degree': [[21.2, 23.4]]})),
             marks=pytest.mark.filterwarnings(
-                'ignore:.*DatasetDefinition.position_columns.*:DeprecationWarning',
+                'ignore:.*DatasetDefinition.degree_columns.*:DeprecationWarning',
             ),
-            id='position_columns_definition',
+            id='degree_columns_definition',
         ),
 
         pytest.param(

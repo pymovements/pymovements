@@ -363,7 +363,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(10),
                     'time': np.arange(10),
-                    'position': np.column_stack([
+                    'degree': np.column_stack([
                         np.concatenate([np.ones(5), np.zeros(5)]),
                         np.concatenate([np.zeros(5), np.ones(5)]),
                     ]),
@@ -371,7 +371,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'position': pl.List(pl.Float64),
+                    'degree': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'dispersion'},
@@ -534,7 +534,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'position': np.column_stack([
+                    'degree': np.column_stack([
                         np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
                         np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(20)]),
                     ]),
@@ -542,7 +542,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'position': pl.List(pl.Float64),
+                    'degree': pl.List(pl.Float64),
                 },
             ),
             {'measures': 'location'},
@@ -577,7 +577,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'position': np.column_stack([
+                    'degree': np.column_stack([
                         np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
                         np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
                     ]),
@@ -585,7 +585,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'position': pl.List(pl.Float64),
+                    'degree': pl.List(pl.Float64),
                 },
             ),
             {'measures': ('location', {'method': 'mean'})},
@@ -620,7 +620,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 {
                     'subject_id': np.ones(100),
                     'time': np.arange(100),
-                    'position': np.column_stack([
+                    'degree': np.column_stack([
                         np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
                         np.concatenate([np.ones(11), np.zeros(69), 2 * np.ones(19), [200]]),
                     ]),
@@ -628,7 +628,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                 schema={
                     'subject_id': pl.Int64,
                     'time': pl.Int64,
-                    'position': pl.List(pl.Float64),
+                    'degree': pl.List(pl.Float64),
                 },
             ),
             {'measures': ('location', {'method': 'median'})},
@@ -674,7 +674,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'pixel': pl.List(pl.Float64),
                 },
             ),
-            {'measures': ('location', {'position_column': 'pixel'})},
+            {'measures': ('location', {'degree_column': 'pixel'})},
             {'identifiers': 'subject_id'},
             pl.from_dict(
                 {
@@ -692,7 +692,7 @@ def test_event_samples_processor_init_exceptions(args, kwargs, exception, messag
                     'location': pl.List(pl.Float64),
                 },
             ),
-            id='one_identifier_two_events_location_position_column_pixel',
+            id='one_identifier_two_events_location_degree_column_pixel',
         ),
 
         pytest.param(
@@ -804,9 +804,9 @@ def test_event_samples_processor_process_correct_result(
             pl.from_dict(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'position': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+                    'degree': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
                 },
-                schema={'time': pl.Int64, 'position': pl.List(pl.Float64)},
+                schema={'time': pl.Int64, 'degree': pl.List(pl.Float64)},
             ),
             {'measures': 'amplitude'},
             {'identifiers': None},

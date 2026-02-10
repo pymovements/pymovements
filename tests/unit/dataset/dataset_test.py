@@ -399,7 +399,7 @@ def mock_toy(
 
     preprocessed_gazes = []
     for _ in range(fileinfo.height):
-        position_columns = [pixel_column.replace('pix', 'pos') for pixel_column in pixel_columns]
+        degree_columns = [pixel_column.replace('pix', 'pos') for pixel_column in pixel_columns]
         velocity_columns = [pixel_column.replace('pix', 'vel') for pixel_column in pixel_columns]
         acceleration_columns = [
             pixel_column.replace('pix', 'acc') for pixel_column in pixel_columns
@@ -412,7 +412,7 @@ def mock_toy(
             'time': pl.Int64,
         }
 
-        for column in pixel_columns + position_columns + velocity_columns + acceleration_columns:
+        for column in pixel_columns + degree_columns + velocity_columns + acceleration_columns:
             gaze_data[column] = np.zeros(1000)
             gaze_schema[column] = pl.Float64
 
@@ -420,7 +420,7 @@ def mock_toy(
         gaze = Gaze(
             pl.from_dict(gaze_data, schema=gaze_schema),
             pixel_columns=pixel_columns,
-            position_columns=position_columns,
+            degree_columns=degree_columns,
             velocity_columns=velocity_columns,
             acceleration_columns=acceleration_columns,
         )
@@ -915,12 +915,12 @@ def test_loaded_gazes_do_not_share_experiment_with_other(gaze_dataset_configurat
             assert gaze1.experiment is not gaze2.experiment
 
 
-def test_load_gaze_has_position_columns(gaze_dataset_configuration):
+def test_load_gaze_has_degree_columns(gaze_dataset_configuration):
     dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
     dataset.load(preprocessed=True)
 
     for result_gaze in dataset.gaze:
-        assert 'position' in result_gaze.columns
+        assert 'degree' in result_gaze.columns
 
 
 def test_load_correct_preprocessed_gazes(gaze_dataset_configuration):
@@ -1138,7 +1138,7 @@ def test_pix2deg(gaze_dataset_configuration):
 
     dataset.pix2deg()
 
-    expected_schema = {**original_schema, 'position': pl.List(pl.Float64)}
+    expected_schema = {**original_schema, 'degree': pl.List(pl.Float64)}
     for result_gaze in dataset.gaze:
         assert result_gaze.schema == expected_schema
 
@@ -1153,7 +1153,7 @@ def test_deg2pix(gaze_dataset_configuration):
     dataset.deg2pix(pixel_column='new_pixel')
 
     expected_schema = {
-        **original_schema, 'position': pl.List(pl.Float64),
+        **original_schema, 'degree': pl.List(pl.Float64),
         'new_pixel': pl.List(pl.Float64),
     }
     for result_gaze in dataset.gaze:
@@ -1466,16 +1466,16 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
     ('rename_arg', 'detect_event_kwargs', 'expected_message'),
     [
         pytest.param(
-            {'position': 'custom_position'},
+            {'degree': 'custom_degree'},
             {
                 'method': idt,
                 'threshold': 1,
             },
             (
-                "Column 'position' not found. Available columns are: "
-                "['time', 'task', 'trial', 'pixel', 'custom_position', 'velocity']"
+                "Column 'degree' not found. Available columns are: "
+                "['time', 'task', 'trial', 'pixel', 'custom_degree', 'velocity']"
             ),
-            id='no_position',
+            id='no_degree',
         ),
         pytest.param(
             {'velocity': 'custom_velocity'},
@@ -1485,7 +1485,7 @@ def test_detect_events_attribute_error(gaze_dataset_configuration):
             },
             (
                 "Column 'velocity' not found. Available columns are: "
-                "['time', 'task', 'trial', 'pixel', 'position', 'custom_velocity']"
+                "['time', 'task', 'trial', 'pixel', 'degree', 'custom_velocity']"
             ),
             id='no_velocity',
         ),
@@ -1717,7 +1717,7 @@ def test_save_preprocessed_directory_exists(
     [
         'time',
         'pixel',
-        'position',
+        'degree',
         'velocity',
         'acceleration',
     ],
@@ -1747,7 +1747,7 @@ def test_save_preprocessed(gaze_dataset_configuration, drop_column):
     [
         'time',
         'pixel',
-        'position',
+        'degree',
         'velocity',
         'acceleration',
     ],
@@ -2119,7 +2119,7 @@ def test_event_dataframe_add_property_has_expected_height(
                 'duration': pl.Int64,
                 'location': pl.List(pl.Float64),
             },
-            id='single_event_position',
+            id='single_event_degree',
         ),
     ],
 )
@@ -2211,11 +2211,11 @@ def test_dataset_compute_event_properties_warns(
         ),
         pytest.param(
             {'event_properties': 'location'},
-            id='single_event_position',
+            id='single_event_degree',
         ),
         pytest.param(
             {'event_properties': 'location', 'name': 'fixation'},
-            id='single_event_position_name_fixation',
+            id='single_event_degree_name_fixation',
         ),
     ],
 )

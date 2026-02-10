@@ -373,8 +373,8 @@ def load_gaze_file(
                 load_function_kwargs['time_unit'] = dataset_definition.time_unit
             if dataset_definition.pixel_columns is not None:
                 load_function_kwargs['pixel_columns'] = dataset_definition.pixel_columns
-            if dataset_definition.position_columns is not None:
-                load_function_kwargs['position_columns'] = dataset_definition.position_columns
+            if dataset_definition.degree_columns is not None:
+                load_function_kwargs['degree_columns'] = dataset_definition.degree_columns
             if dataset_definition.velocity_columns is not None:
                 load_function_kwargs['velocity_columns'] = dataset_definition.velocity_columns
             if dataset_definition.acceleration_columns is not None:

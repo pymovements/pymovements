@@ -81,7 +81,7 @@ def test_heatmap_own_figure_closes_by_default(gaze, monkeypatch):
     close_mock = Mock()
     monkeypatch.setattr(plt, 'close', close_mock)
     # We do not show to avoid backend usage here
-    pm.plotting.heatmap(gaze, position_column='pixel', show=False)
+    pm.plotting.heatmap(gaze, degree_column='pixel', show=False)
     close_mock.assert_called()
 
 
@@ -96,7 +96,7 @@ def test_heatmap_with_external_ax_no_show_no_close_and_warnings(gaze, monkeypatc
     with pytest.warns(UserWarning):
         ret_fig, ret_ax = pm.plotting.heatmap(
             gaze,
-            position_column='pixel',
+            degree_column='pixel',
             ax=ax,
             show=True,
             closefig=True,

@@ -225,7 +225,7 @@ class Screen:
         Raises
         ------
         ValueError
-            If positions aren't two-dimensional.
+            If degrees aren't two-dimensional.
 
         Examples
         --------
