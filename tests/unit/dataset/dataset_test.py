@@ -47,9 +47,54 @@ from pymovements.events import idt
 from pymovements.events import ivt
 from pymovements.events import microsaccades
 from pymovements.exceptions import UnknownMeasure
-
+from pymovements.stimulus.text import TextStimulus
 
 # pylint: disable=too-many-lines
+
+EXPECTED_AOI_MULTIPLEYE_STIMULI_TOY_X_1_TEXT_1_1 = pl.DataFrame(
+    {
+        'char_idx': [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        ],
+        'char': [
+            'W', 'h', 'a', 't', ' ', 'i', 's', ' ', 'p', 'y',
+        ],
+        'top_left_x': [
+            81.0, 94.0, 107.0, 120.0, 133.0, 146.0, 159.0, 172.0, 185.0, 198.0,
+        ],
+        'top_left_y': [
+            99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 99.0, 99.0,
+        ],
+        'width': [
+            13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+        ],
+        'height': [
+            30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
+        ],
+        'char_idx_in_line': [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        ],
+        'line_idx': [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+        'page': [
+            'question_01111' for _ in range(10)
+        ],
+        'word_idx': [
+            0, 0, 0, 0, 0, 1, 1, 1, 2, 2,
+        ],
+        'word_idx_in_line': [
+            0, 0, 0, 0, 0, 1, 1, 1, 2, 2,
+        ],
+        'word': [
+            'What', 'What', 'What', 'What', ' ', 'is', 'is', ' ', 'pymovements?', 'pymovements?',
+        ],
+        'question_image_version': [
+            'question_images_version_1' for _ in range(10)
+        ],
+    },
+)
+
 
 class _UNSET:
     ...
@@ -161,8 +206,10 @@ def mock_toy(
         raw_fileformat,
         eyes,
         remote=False,
+        stimulus=False,
         extract=_UNSET,
         filename_format_schema_overrides=_UNSET,
+        testfiles_dirpath=None,
 ):
     if extract is _UNSET:
         extract = None
@@ -333,6 +380,7 @@ def mock_toy(
             'trial_columns': ['task', 'trial'],
         },
     )
+    resource_definitions = [gaze_sample_resource_definition]
 
     files = [
         DatasetFile(
@@ -436,6 +484,7 @@ def mock_toy(
             'precomputed_events', None,
         ),
     )
+    resource_definitions.append(precomputed_events_resource_definition)
 
     precomputed_events_files = [
         DatasetFile(
@@ -474,6 +523,7 @@ def mock_toy(
             'precomputed_reading_measures', None,
         ),
     )
+    resource_definitions.append(precomputed_rm_resource_definition)
 
     precomputed_rm_files = [
         DatasetFile(
@@ -485,6 +535,46 @@ def mock_toy(
     ]
     files.extend(precomputed_rm_files)
 
+    if stimulus:
+        stimulus_definition = ResourceDefinition(
+            content='TextStimulus',
+            filename_pattern=r'toy_text_{text_id:d}_{page_id:d}_aoi.' + raw_fileformat,
+            filename_pattern_schema_overrides={'text_id': pl.Int64, 'page_id': pl.Int64},
+            # load_function='TextStimulus.from_csv',
+            load_kwargs={
+                'aoi_column': 'char',
+                'start_x_column': 'top_left_x',
+                'start_y_column': 'top_left_y',
+                'width_column': 'width',
+                'height_column': 'height',
+                'page_column': 'page',
+            },
+        )
+        resource_definitions.append(stimulus_definition)
+
+        stimulus_filenames = {
+            'toy_text_1_1_aoi.csv': {'text_id': 1, 'page_id': 1},
+            'toy_text_2_5_aoi.csv': {'text_id': 2, 'page_id': 5},
+            'toy_text_3_8_aoi.csv': {'text_id': 3, 'page_id': 8},
+        }
+
+        source_dirpath = testfiles_dirpath / 'stimuli'
+        target_dirpath = rootpath / 'stimuli'
+        target_dirpath.mkdir(parents=True, exist_ok=True)
+
+        stimulus_files = []
+        for stimulus_filename, stimulus_metadata in stimulus_filenames.items():
+            source_filepath = source_dirpath / stimulus_filename
+            target_filepath = target_dirpath / stimulus_filename
+            shutil.copy2(source_filepath, target_filepath)
+            stimulus_file = DatasetFile(
+                path=target_filepath,
+                definition=stimulus_definition,
+                metadata=stimulus_metadata,
+            )
+            stimulus_files.append(stimulus_file)
+        files.extend(stimulus_files)
+
     dataset_definition = DatasetDefinition(
         experiment=Experiment(
             screen_width_px=1280,
@@ -495,11 +585,7 @@ def mock_toy(
             origin='upper left',
             sampling_rate=1000,
         ),
-        resources=[
-            gaze_sample_resource_definition,
-            precomputed_events_resource_definition,
-            precomputed_rm_resource_definition,
-        ],
+        resources=resource_definitions,
         extract=extract,
     )
 
@@ -532,9 +618,10 @@ def mock_toy(
         'ToyRight',
         'ToyBino+Avg',
         'ToyRemote',
+        'ToyAOI',
     ],
 )
-def gaze_fixture_dataset(request, tmp_path):
+def gaze_fixture_dataset(request, tmp_path, testfiles_dirpath):
     rootpath = tmp_path
 
     dataset_type = request.param
@@ -552,6 +639,14 @@ def gaze_fixture_dataset(request, tmp_path):
         dataset_dict = mock_toy(rootpath, raw_fileformat='mat', eyes='both')
     elif dataset_type == 'ToyRemote':
         dataset_dict = mock_toy(rootpath, raw_fileformat='csv', eyes='both', remote=True)
+    elif dataset_type == 'ToyAOI':
+        dataset_dict = mock_toy(
+            rootpath,
+            raw_fileformat='csv',
+            eyes='both',
+            stimulus=True,
+            testfiles_dirpath=testfiles_dirpath,
+        )
     else:
         raise ValueError(f'{request.param} not supported as dataset mock')
 
@@ -744,6 +839,58 @@ def test_load_gaze_has_correct_metadata(gaze_dataset_configuration):
     expected_fileinfo = gaze_dataset_configuration['fileinfo']['gaze'].drop('filepath')
     for gaze, gaze_fileinfo in zip(dataset.gaze, expected_fileinfo.iter_rows(named=True)):
         assert gaze.metadata == gaze_fileinfo
+
+
+def test_stimuli_list_exists(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+
+    assert isinstance(dataset.stimuli, list)
+
+
+def test_stimuli_not_loaded(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(stimuli=False)
+
+    assert not dataset.stimuli
+
+
+@pytest.mark.parametrize(
+    'gaze_dataset_configuration',
+    ['ToyAOI'],
+    indirect=['gaze_dataset_configuration'],
+)
+def test_text_stimuli_list_not_empty(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load()
+
+    assert dataset.stimuli
+    assert all(isinstance(stim, TextStimulus) for stim in dataset.stimuli)
+
+
+@pytest.mark.parametrize(
+    'gaze_dataset_configuration',
+    ['ToyAOI'],
+    indirect=['gaze_dataset_configuration'],
+)
+@pytest.mark.parametrize(
+    'expected',
+    [
+        EXPECTED_AOI_MULTIPLEYE_STIMULI_TOY_X_1_TEXT_1_1,
+    ],
+)
+def test_loaded_text_stimuli_list_correct(gaze_dataset_configuration, expected):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.scan()
+    dataset.load_stimuli()
+    aois_list = dataset.stimuli
+    assert len(aois_list) == 3
+    head = aois_list[0].aois.head(10)
+
+    assert_frame_equal(
+        head,
+        expected,
+    )
+    assert len(aois_list[0].aois.columns) == len(expected.columns)
 
 
 def test_loaded_gazes_do_not_share_experiment_with_definition(gaze_dataset_configuration):
@@ -1055,6 +1202,7 @@ def test_clip(gaze_dataset_configuration):
         assert result_gaze.schema == expected_schema
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     'detect_event_kwargs',
     [
@@ -1141,6 +1289,7 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
         assert result_events.schema == expected_schema
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     'detect_event_kwargs',
     [
@@ -1194,6 +1343,7 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             dataset.detect_events(**detect_event_kwargs)
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('detect_event_kwargs_1', 'detect_event_kwargs_2', 'expected_schema'),
     [
@@ -1416,6 +1566,7 @@ def test_clear_events(events_init, events_expected, tmp_path):
         assert_frame_equal(events_df_result.frame, events_df_expected.frame)
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('detect_event_kwargs', 'events_dirname', 'expected_save_dirpath', 'save_kwargs'),
     [
@@ -1466,6 +1617,7 @@ def test_save_events(
     )
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('detect_event_kwargs', 'events_dirname', 'expected_save_dirpath', 'load_save_kwargs'),
     [
@@ -1621,6 +1773,7 @@ def test_save_preprocessed_has_no_side_effect(gaze_dataset_configuration, drop_c
     assert_frame_equal(old_frame, new_frame)
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('expected_save_preprocessed_path', 'expected_save_events_path', 'save_kwargs'),
     [
@@ -1687,6 +1840,7 @@ def test_save_creates_correct_directory(
     )
 
 
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 @pytest.mark.parametrize(
     ('expected_save_preprocessed_path', 'expected_save_events_path', 'save_kwargs'),
     [

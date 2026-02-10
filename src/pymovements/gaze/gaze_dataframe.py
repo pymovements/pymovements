@@ -151,7 +151,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     │ 1002 ┆ 0.3 ┆ 0.3 │
     └──────┴─────┴─────┘
 
-    We can now initialize our ``Gaze`` by specyfing the names of the pixel position
+    We can now initialize our ``Gaze`` by specifying the names of the pixel position
     columns, the timestamp column and the unit of the timestamps.
 
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')

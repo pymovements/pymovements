@@ -510,7 +510,7 @@ def split(
 
     idx = 0
     for arr_instance in arr:
-        # Create an array of indicies where sequence will be split.
+        # Create an array of indices where sequence will be split.
         split_indices = np.arange(
             start=window_size,
             stop=(n + 1) * window_size,

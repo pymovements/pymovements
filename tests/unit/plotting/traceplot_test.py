@@ -164,7 +164,7 @@ def gaze_no_exp_fixture():
         pytest.param(
             {
                 'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             },
             id='set_stimulus',
         ),

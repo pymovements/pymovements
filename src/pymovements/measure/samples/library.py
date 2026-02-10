@@ -32,7 +32,7 @@ class SampleMeasureLibrary:
     Attributes
     ----------
     measures: dict[str, Callable[..., pl.Expr]]
-        Dictionary of measures. The key correpsonds to the name of each measure.
+        Dictionary of measures. The key corresponds to the name of each measure.
     """
 
     measures: dict[str, Callable[..., pl.Expr]] = {}
