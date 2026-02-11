@@ -515,31 +515,32 @@ def data_loss(
 
     # Expected sample count over [start, end] with inclusive endpoints for a fixed rate.
     span = end_expr - start_expr
+    # Time span unit: ms, sampling rate unit: Hz = 1/s
     expected = (span * sampling_rate / 1000).floor().cast(pl.Int64) + 1
 
     # Missing rows due to time gaps, ensure non-negative and valid range
     valid_range = end_expr >= start_expr
-    time_missing = pl.when(valid_range).then(
+    time_loss = pl.when(valid_range).then(
         pl.max_horizontal(expected - observed, pl.lit(0)),
     ).otherwise(pl.lit(None))
 
-    invalid_missing = (
+    invalid_loss = (
         _is_invalid(column)
         .sum()
         .cast(pl.Int64)
     )
 
-    total_missing = (time_missing + invalid_missing).alias('data_loss_count')
+    total_loss = time_loss + invalid_loss
 
     if unit == 'count':
-        return total_missing
+        return total_loss.alias('data_loss_count')
 
     if unit == 'time':
-        missing_time = total_missing.cast(pl.Float64) / pl.lit(sampling_rate)
+        missing_time = total_loss.cast(pl.Float64) / pl.lit(sampling_rate)
         return missing_time.alias('data_loss_time')
 
     if unit == 'ratio':
-        ratio = (total_missing.cast(pl.Float64) / expected.cast(pl.Float64)).fill_null(0.0)
+        ratio = total_loss.cast(pl.Float64) / expected.cast(pl.Float64)
         return ratio.alias('data_loss_ratio')
 
     raise ValueError(
