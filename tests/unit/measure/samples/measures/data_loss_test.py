@@ -24,6 +24,7 @@ import re
 from math import inf
 from math import nan
 
+import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -43,44 +44,207 @@ class TestDataLoss:
     """Test data_loss sample measure."""
 
     @pytest.mark.parametrize(
-        ('times', 'values', 'sampling_rate', 'expected_vals'),
+        ('times', 'values', 'sampling_rate', 'start_time', 'end_time', 'expected_vals'),
         [
-            # 1 Hz: expected [0, 1, 2, 3, 4] (5 samples)
-            # Observed: [0.0, 1.0, 2.0, 4.0] (4 samples) -> 1 missing by time
-            # One NaN in values -> 1 missing by validity
-            # Total missing = 2
+            # 1 Hz: expected [0] (1 sample)
+            # Observed: [0.0] (1 sample) -> 0 missing
+            # Total missing = 0
             pytest.param(
-                [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, nan, 1.0], 1.0,
-                {'count': 2, 'time': 2.0, 'ratio': 2 / 5},
-                id='gap_plus_nan_invalid',
+                [0.0], [1.0], 1.0, None, None,
+                {'count': 0, 'time': 0.0, 'ratio': 0.0},
+                id='single_sample_1hz_float',
             ),
 
-            # 1 Hz: expected [0, 1, 2, 3, 4, 5, 6, 7] (8 samples)
-            # Observed: [0, 1, 2, 6, 7] (5 samples) -> 3 missing by time
-            # One None in values -> 1 missing by validity
-            # Total missing = 4
+            # 1 Hz: expected [0.000, 0.001, 0.002, 0.003, 0.004] (5 samples)
+            # Observed: [0.000, 0.001, 0.002, 0.003, 0.004] (5 samples) -> 0 missing
+            # Total missing = 0
             pytest.param(
-                [0.0, 1.0, 2.0, 6.0, 7.0], [1.0, None, 1.0, 1.0, 1.0], 1.0,
-                {'count': 4, 'time': 4.0, 'ratio': 4 / 8},
-                id='large_gap_with_invalid',
+                [0.0, 0.001, 0.002, 0.003, 0.004], [1.0, 1.0, 1.0, 1.0, 1.0], 1.0, None, None,
+                {'count': 0, 'time': 0.0, 'ratio': 0.0},
+                id='no_missing_regular_all_valid_1hz_float',
+            ),
+
+            # 1 Hz: expected [0.000, 0.001, 0.002, 0.003, 0.004] (5 samples)
+            # Observed: [0, 0.001, 0.002, 0.004] (4 samples) -> 1 missing by time
+            # Total missing = 1
+            pytest.param(
+                [0.0, 0.001, 0.002, 0.004], [1.0, 1.0, 1.0, 1.0], 1.0, None, None,
+                {'count': 1, 'time': 1.0, 'ratio': 1 / 5},
+                id='one_missing_sample_1hz_float',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # Total missing = 0
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0], [1.0, 1.0, 1.0, 1.0, 1.0], 1000.0, None, None,
+                {'count': 0, 'time': 0.0, 'ratio': 0.0},
+                id='no_missing_regular_all_valid_1khz_float',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # Total missing = 0
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0],
+                [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]],
+                1000.0, None, None,
+                {'count': 0, 'time': 0.0, 'ratio': 0.0},
+                id='no_missing_regular_all_valid_1khz_list',
+            ),
+
+            # 1 kHz: expected [100, 101, 102, 103, 104] (5 samples)
+            # Observed: [100.0, 101.0, 102.0, 103.0, 104.0] (5 samples) -> 0 missing
+            # Total missing = 0
+            pytest.param(
+                [100.0, 101.0, 102.0, 103.0, 104.0], [1.0, 1.0, 1.0, 1.0, 1.0], 1000.0, None, None,
+                {'count': 0, 'time': 0.0, 'ratio': 0.0},
+                id='no_missing_regular_all_valid_1khz_start_time_100',
             ),
 
             # 2 Hz: expected [0.0, 0.5, 1.0, 1.5] (4 samples)
             # Observed: 4 samples, all valid -> 0 missing
             pytest.param(
-                [0.0, 0.5, 1.0, 1.5], [1.0, 1.0, 1.0, 1.0], 2.0,
+                [0.0, 0.5, 1.0, 1.5], [1.0, 1.0, 1.0, 1.0], 2000.0, None, None,
                 {'count': 0, 'time': 0.0, 'ratio': 0.0},
-                id='no_missing_regular_all_valid',
+                id='no_missing_regular_all_valid_2khz',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 4.0] (4 samples) -> 1 missing by time
+            # Total missing = 2
+            pytest.param(
+                [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, 1.0, 1.0], 1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_missing_sample_float_1khz',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 4.0] (4 samples) -> 1 missing
+            # Total missing = 0
+            pytest.param(
+                [0.0, 1.0, 2.0, 4.0],
+                [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]],
+                1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_missing_sample_list',
+            ),
+
+            # 1 kHz: expected [100, 101, 102, 103, 104] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 4.0] (4 samples) -> 1 missing by time
+            # Total missing = 1
+            pytest.param(
+                [100.0, 101.0, 102.0, 104.0], [1.0, 1.0, 1.0, 1.0], 1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_missing_sample_start_time_100',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3] (4 samples)
+            # Observed: [0.0, 3.0] (2 samples) -> 2 missing by time
+            # Total missing = 2
+            pytest.param(
+                [0.0, 3.0], [1.0, 1.0], 1000.0, None, None,
+                {'count': 2, 'time': 0.002, 'ratio': 2 / 4},
+                id='half_missing_samples',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # One null in values -> 1 missing by validity
+            # Total missing = 1
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0], [1.0, 1.0, None, 1.0, 1.0], 1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_null_sample_1khz_float',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # One null in values -> 1 missing by validity
+            # Total missing = 1
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0], [1.0, 1.0, np.nan, 1.0, 1.0], 1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_nan_sample_1khz_float',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # One inf in values -> 1 missing by validity
+            # Total missing = 1
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0], [1.0, 1.0, np.inf, 1.0, 1.0], 1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_inf_sample_1khz_float',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # One null in values -> 1 missing by validity
+            # Total missing = 0
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0],
+                [[1.0, 1.0], None, [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]],
+                1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_null_sample_1khz_list',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # One null component in values -> 1 missing by validity
+            # Total missing = 0
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0],
+                [[1.0, 1.0], [None, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]],
+                1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_null_x_component_1khz_list',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 3.0, 4.0] (5 samples) -> 0 missing
+            # One null component in values -> 1 missing by validity
+            # Total missing = 0
+            pytest.param(
+                [0.0, 1.0, 2.0, 3.0, 4.0],
+                [[1.0, 1.0], [1.0, None], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]],
+                1000.0, None, None,
+                {'count': 1, 'time': 0.001, 'ratio': 1 / 5},
+                id='one_null_y_component_1khz_list',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4] (5 samples)
+            # Observed: [0.0, 1.0, 2.0, 4.0] (4 samples) -> 1 missing by time
+            # One NaN in values -> 1 missing by validity
+            # Total missing = 2
+            pytest.param(
+                [0.0, 1.0, 2.0, 4.0], [1.0, 1.0, nan, 1.0], 1000.0, None, None,
+                {'count': 2, 'time': 0.002, 'ratio': 2 / 5},
+                id='gap_plus_nan_invalid',
+            ),
+
+            # 1 kHz: expected [0, 1, 2, 3, 4, 5, 6, 7] (8 samples)
+            # Observed: [0, 1, 2, 6, 7] (5 samples) -> 3 missing by time
+            # One None in values -> 1 missing by validity
+            # Total missing = 4
+            pytest.param(
+                [0.0, 1.0, 2.0, 6.0, 7.0], [1.0, None, 1.0, 1.0, 1.0], 1000.0, None, None,
+                {'count': 4, 'time': 0.004, 'ratio': 4 / 8},
+                id='large_gap_with_invalid',
             ),
         ],
     )
     def test_internal_gaps_and_invalids(
-            self, unit, expected_col, times, values, sampling_rate,
+            self, unit, expected_col, times, values, sampling_rate, start_time, end_time,
             expected_vals,
     ):
         """Test data loss with internal time gaps and invalid values."""
         df = pl.DataFrame({'time': times, 'value': values})
-        expr = data_loss('value', sampling_rate=sampling_rate, unit=unit)
+        expr = data_loss(
+            'value', sampling_rate=sampling_rate, unit=unit,
+            start_time=start_time, end_time=end_time,
+        )
         result = df.select(expr)
         expected = pl.DataFrame({expected_col: [expected_vals[unit]]})
         assert_frame_equal(result, expected, check_exact=False, rel_tol=1e-12, abs_tol=1e-12)

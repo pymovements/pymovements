@@ -53,6 +53,7 @@ docs/source/reference/api
 docs/source/tutorials/data
 .ipynb_checkpoints
 docs/jupyter_execute
+docs/source/contributing/my_dataset.yaml
 
 # Testing
 .coverage

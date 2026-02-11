@@ -463,7 +463,7 @@ def data_loss(
     >>> import polars as pl
     >>> from pymovements.measure import data_loss
     >>> df = pl.DataFrame({'time': [0.0, 1.0, 2.0, 4.0]})
-    >>> df.select(data_loss('time', sampling_rate=1.0, unit='count'))
+    >>> df.select(data_loss('time', sampling_rate=1000.0, unit='count'))
     shape: (1, 1)
     ┌─────────────────┐
     │ data_loss_count │
@@ -478,7 +478,7 @@ def data_loss(
     ...     'time': [1, 2, 3, 4, 5, 9],
     ...     'pixel':  [[1, 1], [1, 1], None, None, [1, 1], [1, None]],
     ... })
-    >>> df.select(data_loss('pixel', sampling_rate=1.0, unit='count'))
+    >>> df.select(data_loss('pixel', sampling_rate=1000.0, unit='count'))
     shape: (1, 1)
     ┌─────────────────┐
     │ data_loss_count │
@@ -515,7 +515,7 @@ def data_loss(
 
     # Expected sample count over [start, end] with inclusive endpoints for a fixed rate.
     span = end_expr - start_expr
-    expected = (span * pl.lit(sampling_rate)).floor().cast(pl.Int64) + 1
+    expected = (span * sampling_rate / 1000).floor().cast(pl.Int64) + 1
 
     # Missing rows due to time gaps, ensure non-negative and valid range
     valid_range = end_expr >= start_expr
@@ -535,7 +535,7 @@ def data_loss(
         return total_missing
 
     if unit == 'time':
-        missing_time = (total_missing.cast(pl.Float64) / pl.lit(float(sampling_rate)))
+        missing_time = total_missing.cast(pl.Float64) / pl.lit(sampling_rate)
         return missing_time.alias('data_loss_time')
 
     if unit == 'ratio':
