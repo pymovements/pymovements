@@ -7,22 +7,24 @@ analysis.
 
 To follow the examples in this guide, you will need a working Python
 environment and the ``pymovements`` package installed.
-``pymovements`` can be installed via pip: ``pip install pymovements``
 
-.. grid-item-card::
+.. grid:: 1
 
-    **Already installed?**
-    ^^^^^^^^^^^^^^^^^^^^^^
+    .. grid-item-card::
 
-    Get familiar with ``pymovements`` by working through this beginner tutorial:
+        **Already installed?**
+        ^^^^^^^^^^^^^^^^^^^^^^
 
-    .. button-ref:: pymovements_in_10_minutes
-        :color: primary
-        :shadow:
+        Get familiar with ``pymovements`` by working through this beginner tutorial:
 
-        pymovements in 10 minutes
+        .. button-ref:: pymovements_in_10_minutes
+            :color: primary
+            :shadow:
 
-For more information on installation options and on the concepts, structure, and
+            pymovements in 10 minutes
+
+``pymovements`` can be installed via pip: ``pip install pymovements`` For more
+information on installation options and on the concepts, structure, and
 interpretation of eye-tracking data, see the sections below.
 
 .. toctree::
