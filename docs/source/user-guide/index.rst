@@ -3,7 +3,7 @@ User Guide
 ==========
 
 This user guide introduces the core concepts, data structures, and workflows
-used in pymovements for processing and analyzing eye-tracking data.
+used in ``pymovements`` for processing and analyzing eye-tracking data.
 It is intended for students, researchers, and practitioners who want to move
 from raw recordings to analysis-ready and reusable datasets.
 

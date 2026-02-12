@@ -6,8 +6,7 @@ Working with Datasets
 
     Work in progress ...
 
-Working with Datasets in pymovements
-- Introduction to FAIR principles and open data.
-- How to load small, well-documented datasets.
-- Exploring dataset structure and meaning.
-- Inspecting raw samples and events.
+    Meanwhile, please take a look at our helpful tutorials:
+        - :doc:`Downloading Public Datasets <../../tutorials/public-datasets>`
+        - :doc:`Working with a Local Dataset <../../tutorials/local-dataset>`
+        - :doc:`Contributing Datasets <../../contributing/contributing-datasets>`
