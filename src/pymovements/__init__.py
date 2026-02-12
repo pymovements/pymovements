@@ -27,6 +27,7 @@ from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
 from pymovements import utils
+from pymovements import warnings
 from pymovements._version import __version__
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
@@ -37,6 +38,8 @@ from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
+from pymovements.exceptions import UnknownFileType
+from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
 from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
@@ -50,6 +53,7 @@ from pymovements.measure import register_event_measure
 from pymovements.measure import register_sample_measure
 from pymovements.measure import SampleMeasureLibrary
 from pymovements.stimulus import text
+from pymovements.warnings import ExperimentalWarning
 
 
 __all__ = [
@@ -75,8 +79,6 @@ __all__ = [
     'Gaze',
     'GazeDataFrame',
 
-    'exceptions',
-
     'measure',
     'EVENT_MEASURES',
     'register_event_measure',
@@ -89,6 +91,14 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
+
+    'exceptions',
+    'UnknownFileType',
+    'UnknownMeasure',
+
+    'warnings',
+    'ExperimentalWarning',
+
     'utils',
 
     'text',
