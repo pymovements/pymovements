@@ -17,12 +17,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test module for std_dev sample measure."""
+"""Test module for std_rms sample measure."""
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements.measure.samples import std_dev
+from pymovements.measure.samples import std_rms
 
 
 @pytest.mark.parametrize(
@@ -33,12 +33,12 @@ from pymovements.measure.samples import std_dev
             pl.DataFrame(schema={'_position': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
             'position',
-            id='std_dev_missing_position_column',
+            id='std_rms_missing_position_column',
         ),
     ],
 )
-def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
-    expression = std_dev(**init_kwargs)
+def test_std_rms_exceptions(init_kwargs, input_df, exception, message):
+    expression = std_rms(**init_kwargs)
     with pytest.raises(exception, match=message):
         input_df.select([expression])
 
@@ -53,10 +53,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [None]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [None]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_one_sample_constancy',
+            id='std_rms_one_sample_constancy',
         ),
         pytest.param(
             {},
@@ -65,10 +65,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [1.4142135623730951]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [1.4142135623730951]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_two_samples_x_move',
+            id='std_rms_two_samples_x_move',
         ),
         pytest.param(
             {},
@@ -77,10 +77,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [2.8284271247461903]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [2.8284271247461903]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_two_samples_y_move',
+            id='std_rms_two_samples_y_move',
         ),
         pytest.param(
             {},
@@ -89,10 +89,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [3.5355339059327378]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [3.5355339059327378]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_two_samples_xy_move',
+            id='std_rms_two_samples_xy_move',
         ),
         pytest.param(
             {},
@@ -101,10 +101,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [1.632993161855452]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [1.632993161855452]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_four_samples_corners',
+            id='std_rms_four_samples_corners',
         ),
         pytest.param(
             {},
@@ -113,10 +113,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [1.4142135623730951]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [1.4142135623730951]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_three_samples_diagonal',
+            id='std_rms_three_samples_diagonal',
         ),
         pytest.param(
             {'position_column': 'gaze_pos'},
@@ -125,10 +125,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'gaze_pos': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [0.0]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [0.0]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_custom_column_constant_positions',
+            id='std_rms_custom_column_constant_positions',
         ),
         pytest.param(
             {},
@@ -137,10 +137,10 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [10.0]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [10.0]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_negative_positions',
+            id='std_rms_negative_positions',
         ),
         pytest.param(
             {},
@@ -149,15 +149,15 @@ def test_std_dev_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'std_dev': [1.0]},
-                schema={'std_dev': pl.Float64},
+                {'std_rms': [1.0]},
+                schema={'std_rms': pl.Float64},
             ),
-            id='std_dev_decimals',
+            id='std_rms_decimals',
         ),
     ],
 )
-def test_std_dev_has_expected_result(init_kwargs, input_df, expected_df):
-    expression = std_dev(**init_kwargs)
+def test_std_rms_has_expected_result(init_kwargs, input_df, expected_df):
+    expression = std_rms(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)

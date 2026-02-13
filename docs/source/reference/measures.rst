@@ -19,7 +19,7 @@ Measures
     null_ratio
     peak_velocity
     s2s_rms
-    std_dev
+    std_rms
 
 .. rubric:: Classes
 

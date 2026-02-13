@@ -404,36 +404,32 @@ def _check_has_two_componenents(n_components: int) -> None:
 
 
 @register_sample_measure
-def std_dev(
+def std_rms(
+    column: str = 'position',
     *,
-    position_column: str = 'position',
     n_components: int = 2,
-) -> pl.Expr:  # noqa: D401 - imperative mood
-    r"""Standard deviation of gaze positions during a fixation.
+) -> pl.Expr:
+    r"""Root-mean-square standard deviation.
 
-    The standard deviation (STD) measures the spatial spread of gaze positions
+    The standard deviation (STD) measures the spatial spread of samples
     around their centroid. It is computed as the root mean square of the
     squared standard deviations along the horizontal and vertical directions:
 
     .. math::
         \text{STD}_x = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2},\quad
-        \text{STD}_y = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (y_i - \bar{y})^2},\quad
+        \text{STD}_y = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (y_i - \bar{y})^2}
+
+    .. math::
         \text{STD} = \sqrt{\text{STD}_x^2 + \text{STD}_y^2}
 
-    where :math:`x_i` and :math:`y_i` are the gaze positions for the
+    where :math:`x_i` and :math:`y_i` are the positions for the
     :math:`i`-th sample, and :math:`\bar{x}` and :math:`\bar{y}` are their
     respective means. The STD is a radial measure representing the overall
-    spatial extent of the gaze positions around their centroid.
-
-    STD is relatively insensitive compared to RMS-S2S to displacement between
-    successive gaze positions, making it a good measure of spatial spread
-    rather than signal velocity. This makes STD particularly suitable for
-    quantifying the precision of eye trackers as it reflects the area over
-    which gaze positions are distributed during fixations.
+    spatial extent of the samples around their centroid.
 
     Parameters
     ----------
-    position_column: str
+    column: str
         The column name of the position tuples. (default: 'position')
     n_components: int
         Number of positional components. Usually these are the two components yaw and pitch.
@@ -442,7 +438,7 @@ def std_dev(
     Returns
     -------
     pl.Expr
-        The radial standard deviation of the gaze positions.
+        The radial standard deviation of the samples.
 
     Raises
     ------
@@ -456,56 +452,53 @@ def std_dev(
 
     For sequences with a single sample, this measure returns ``None`` since there
     is no variance to measure.
+
+    STD is relatively insensitive compared to :py:func:`s2s_rms` to displacement between
+    successive gaze positions, making it a good measure of spatial spread
+    rather than signal velocity. This makes STD particularly suitable for
+    quantifying the precision of eye trackers as it reflects the area over
+    which gaze positions are distributed during fixations.
     """
     _check_has_two_componenents(n_components)
 
-    x_position = pl.col(position_column).list.get(0)
-    y_position = pl.col(position_column).list.get(1)
+    x_position = pl.col(column).list.get(0)
+    y_position = pl.col(column).list.get(1)
 
     std_x_sq = x_position.std(ddof=1).pow(2)
     std_y_sq = y_position.std(ddof=1).pow(2)
 
     result = (std_x_sq + std_y_sq).sqrt()
 
-    return result.alias('std_dev')
+    return result.alias('std_rms')
 
 
 @register_sample_measure
 def s2s_rms(
+    column: str = 'position',
     *,
-    position_column: str = 'position',
     n_components: int = 2,
 ) -> pl.Expr:
-    r"""Root-mean-square of sample-to-sample displacements during a fixation.
+    r"""Root-mean-square of sample-to-sample displacements.
 
     The RMS-S2S (Root Mean Square - Sample to Sample) measures the magnitude
-    of displacements between successive gaze position samples. It is computed
+    of displacements between successive position samples. It is computed
     as the square root of the mean squared Euclidean distance between all
     adjacent sample pairs:
 
     .. math::
-        \begin{align}
-        \text{RMS-S2S} &= \sqrt{\frac{1}{n-1} \sum_{i=1}^{n-1} \theta_i^2},\quad
-        \theta_i = \sqrt{(x_{i+1} - x_i)^2 + (y_{i+1} - y_i)^2}\\
-        \text{RMS-S2S} &= \sqrt{\frac{1}{n-1} \sum_{i=1}^{n-1}
-        \left[ (x_{i+1} - x_i)^2 + (y_{i+1} - y_i)^2 \right]}
-        \end{align}
+        \theta_i = \sqrt{(x_{i+1} - x_i)^2 + (y_{i+1} - y_i)^2}
 
-    where :math:`x_i` and :math:`y_i` are the gaze positions for the
+    .. math::
+        \text{RMS-S2S} = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n-1} \theta_i^2}
+
+    where :math:`x_i` and :math:`y_i` are the positions for the
     :math:`i`-th sample, :math:`x_{i+1}` and :math:`y_{i+1}` are the positions
     for the next sample, :math:`\theta_i` is the Euclidean distance between
     successive samples, and :math:`n` is the total number of samples.
 
-    RMS-S2S is closely proportional to the average velocity of the signal
-    during fixations, making it a good indicator of slowest detectable eye
-    movements. Unlike STD, which measures spatial spread, RMS-S2S captures
-    the velocity aspect of signal variability. This makes RMS-S2S particularly
-    useful for assessing what threshold might differentiate eye movements
-    from measurement noise :cite:p:`Niehorster2020`.
-
     Parameters
     ----------
-    position_column: str
+    column: str
         The column name of the position tuples. (default: 'position')
     n_components: int
         Number of positional components. Usually these are the two components yaw and pitch.
@@ -525,11 +518,18 @@ def s2s_rms(
     -----
     For a single sample (n=1), there are no successive sample pairs, and
     this measure returns ``None`` since displacements cannot be computed.
+
+    RMS-S2S is closely proportional to the average velocity of the signal
+    during fixations, making it a good indicator of slowest detectable eye
+    movements. Unlike :py:func:`std_rms`, which measures spatial spread, RMS-S2S captures
+    the velocity aspect of signal variability. This makes RMS-S2S particularly
+    useful for assessing what threshold might differentiate eye movements
+    from measurement noise :cite:p:`Niehorster2020`.
     """
     _check_has_two_componenents(n_components)
 
-    x_position = pl.col(position_column).list.get(0)
-    y_position = pl.col(position_column).list.get(1)
+    x_position = pl.col(column).list.get(0)
+    y_position = pl.col(column).list.get(1)
 
     x_diff = x_position.diff()
     y_diff = y_position.diff()
@@ -543,32 +543,34 @@ def s2s_rms(
 
 @register_sample_measure
 def bcea(
+    column: str = 'position',
     *,
-    position_column: str = 'position',
     n_components: int = 2,
     confidence: float = 68.27,
 ) -> pl.Expr:
-    r"""Bivariate contour ellipse area (BCEA) of gaze positions during a fixation.
+    r"""Bivariate contour ellipse area (BCEA).
 
     The Bivariate Contour Ellipse Area (BCEA) :cite:p:`Crossland2002`
-    quantifies the area covered by gaze positions during a fixation.
+    quantifies the area covered by samples.
     It represents the area of an ellipse that encompasses
-    a specified proportion of all gaze position samples.
-    BCEA accounts for both the spread of gaze positions and their correlation between the horizontal
+    a specified proportion of all samples.
+    BCEA accounts for both the spread of samples and their correlation between the horizontal
     and vertical axes:
 
     .. math::
-        \begin{equation}
         \sigma_x = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2},\quad
-        \sigma_y = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (y_i - \bar{y})^2}\\
+        \sigma_y = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (y_i - \bar{y})^2}
+
+    .. math::
         \rho = \frac{\sum_{i=1}^{n} (x_i - \bar{x})(y_i - \bar{y})}
         {\sqrt{\sum_{i=1}^{n} (x_i - \bar{x})^2}
-        \sqrt{\sum_{i=1}^{n} (y_i - \bar{y})^2}}\\
+        \sqrt{\sum_{i=1}^{n} (y_i - \bar{y})^2}}
+
+    .. math::
         k = -2 \ln(1 - P/100),\quad
         \text{BCEA} = k \pi \sigma_x \sigma_y \sqrt{1 - \rho^2}
-        \end{equation}
 
-    where :math:`x_i` and :math:`y_i` are the gaze positions, :math:`\bar{x}`
+    where :math:`x_i` and :math:`y_i` are the positions, :math:`\bar{x}`
     and :math:`\bar{y}` are their respective means, :math:`\sigma_x` and
     :math:`\sigma_y` are the standard deviations, :math:`\rho` is the Pearson
     correlation coefficient between the horizontal and vertical components,
@@ -576,47 +578,16 @@ def bcea(
     is the scaling factor derived from the chi-square distribution with 2
     degrees of freedom :cite:p:`Niehorster2020`.
 
-    The relationship between confidence level :math:`P` and scaling factor
-    :math:`k` comes from the chi-square distribution. For a bivariate normal
-    distribution, the contours of constant Mahalanobis distance form ellipses.
-    The value of squared Mahalanobis distance corresponding to confidence :math:`P`
-    is :math:`k = -2 \ln(1-P/100)`, which is the :math:`P/100` quantile of the
-    chi-square distribution with 2 degrees of freedom (i.e., :math:`k = \chi^2_2(P/100)`).
-    Common confidence levels and their corresponding :math:`k` values are:
-
-    - 68.27%: :math:`k \approx 2.30`
-    - 95.45%: :math:`k \approx 6.18`
-    - 99.73%: :math:`k \approx 9.21`
-
-    The confidence level of 68.27% is the default as it corresponds to
-    the same probability mass as a ±1σ interval in 1D.
-    To choose the ``confidence`` :math:`P` based on the familiar 1D “±σ” coverage, first compute
-    :math:`P = \Pr(|Z| \le \sigma) = \chi^2_1(\sigma^2)` (since :math:`Z^2 \sim \chi^2_1`),
-    then use the same probability mass to get :math:`k = \chi^2_2(P)`.
-
-    >>> from scipy.stats import chi2
-    >>> sigma = 1.0
-    >>> confidence = chi2.cdf(sigma*sigma, df=1)
-    >>> k = chi2.ppf(confidence, df=2)
-    >>> confidence, k
-    (np.float64(0.6826894921370859), np.float64(2.295748928898636))
-
-    BCEA provides a more comprehensive measure of fixation stability than :py:func:`std_dev`
-    or :py:func:`s2s_rms` alone because it accounts for potential correlation between
-    horizontal and vertical eye movements.
-    When gaze positions are correlated, the effective spread is reduced compared to an uncorrelated
-    distribution with the same component-wise variances.
-
     Parameters
     ----------
-    position_column: str
+    column: str
         The column name of the position tuples. (default: 'position')
     n_components: int
         Number of positional components. Usually these are the two components yaw and pitch.
         (default: 2)
     confidence: float
         The confidence level as a percentage (0-100). This is the proportion
-        of gaze position samples that should fall within the ellipse contour.
+        of samples that should fall within the ellipse contour.
         Most commonly used values are 68.27 (±1σ), 95.45 (±2σ), and 99.73 (±3σ).
         (default: 68.27)
 
@@ -637,9 +608,41 @@ def bcea(
     This implementation uses sample variance (dividing by :math:`n-1`) for
     computing the variances and correlation coefficient.
 
+    The relationship between confidence level :math:`P` and scaling factor
+    :math:`k` comes from the chi-square distribution. For a bivariate normal
+    distribution, the contours of constant Mahalanobis distance form ellipses.
+    The value of squared Mahalanobis distance corresponding to confidence :math:`P`
+    is :math:`k = -2 \ln(1-P/100)`, which is the :math:`P/100` quantile of the
+    chi-square distribution with 2 degrees of freedom (i.e., :math:`k = \chi^2_2(P/100)`).
+    Common confidence levels and their corresponding :math:`k` values are:
+
+    - 68.27%: :math:`k \approx 2.30`
+    - 95.45%: :math:`k \approx 6.18`
+    - 99.73%: :math:`k \approx 9.21`
+
+    The confidence level of 68.27% is the default as it corresponds to
+    the same probability mass as a ±1σ interval in 1D.
+    To choose the ``confidence`` :math:`P` based on the familiar 1D "±σ" coverage, first compute
+    :math:`P = \Pr(|Z| \le \sigma) = \chi^2_1(\sigma^2)` (since :math:`Z^2 \sim \chi^2_1`),
+    then use the same probability mass to get :math:`k = \chi^2_2(P)`.
+
+    >>> from scipy.stats import chi2
+    >>> sigma = 1.0
+    >>> confidence = chi2.cdf(sigma*sigma, df=1)
+    >>> k = chi2.ppf(confidence, df=2)
+    >>> print(confidence, k)
+    0.6826894921370859 2.295748928898636
+
     For sequences with fewer than 2 samples, or when the variance of either
     component is zero, this measure returns ``None`` since statistics
     (variance, correlation) cannot be meaningfully computed.
+
+    :py:func:`s2s_rms` is closely proportional to the average velocity of the signal
+    during fixations, making it a good indicator of slowest detectable eye
+    movements. Unlike :py:func:`std_rms`, which measures spatial spread, :py:func:`s2s_rms` captures
+    the velocity aspect of signal variability. This makes :py:func:`s2s_rms` particularly
+    useful for assessing what threshold might differentiate eye movements
+    from measurement noise :cite:p:`Niehorster2020`.
     """
     _check_has_two_componenents(n_components)
 
@@ -649,8 +652,8 @@ def bcea(
             f"but got: {confidence}",
         )
 
-    x_position = pl.col(position_column).list.get(0)
-    y_position = pl.col(position_column).list.get(1)
+    x_position = pl.col(column).list.get(0)
+    y_position = pl.col(column).list.get(1)
 
     x_mean = x_position.mean()
     y_mean = y_position.mean()
@@ -660,18 +663,30 @@ def bcea(
     x_centered = x_position - x_mean
     y_centered = y_position - y_mean
 
-    variance_x = pl.when(n_minus_one <= 0).then(pl.lit(None)).otherwise(
-        x_centered.pow(2).sum() / n_minus_one,
+    variance_x = (
+        pl.when(n_minus_one <= 0)
+        .then(pl.lit(None))
+        .otherwise(
+            x_centered.pow(2).sum() / n_minus_one,
+        )
     )
-    variance_y = pl.when(n_minus_one <= 0).then(pl.lit(None)).otherwise(
-        y_centered.pow(2).sum() / n_minus_one,
+    variance_y = (
+        pl.when(n_minus_one <= 0)
+        .then(pl.lit(None))
+        .otherwise(
+            y_centered.pow(2).sum() / n_minus_one,
+        )
     )
 
     sigma_x = variance_x.sqrt()
     sigma_y = variance_y.sqrt()
 
-    covariance = pl.when(n_minus_one <= 0).then(pl.lit(None)).otherwise(
-        (x_centered * y_centered).sum() / n_minus_one,
+    covariance = (
+        pl.when(n_minus_one <= 0)
+        .then(pl.lit(None))
+        .otherwise(
+            (x_centered * y_centered).sum() / n_minus_one,
+        )
     )
 
     invalid_variance = (
@@ -685,7 +700,9 @@ def bcea(
         covariance.pow(2) / (variance_x * variance_y),
     )
 
-    factor_k = pl.lit(-2.0) * (1.0 - pl.lit(confidence) / 100.0).log()  # default is base e -> ln
+    factor_k = (
+        pl.lit(-2.0) * (1.0 - pl.lit(confidence) / 100.0).log()
+    )  # default is base e -> ln
 
     result = pl.when(invalid_variance).then(pl.lit(None)).otherwise(
         factor_k
