@@ -479,3 +479,118 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
     )
 
     assert_frame_equal(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    ('events_data', 'samples_data', 'kwargs', 'expected'),
+    [
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            2 / 3,
+            id='basic',
+        ),
+        pytest.param(
+            {'name': [], 'onset': [], 'offset': []},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            0.0,
+            id='empty_events',
+        ),
+        pytest.param(
+            {'name': ['saccade'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            0.0,
+            id='no_matching_name',
+        ),
+    ],
+)
+def test_events2timeratio_basic(events_data, samples_data, kwargs, expected):
+    events = pl.DataFrame(events_data)
+    samples = pl.DataFrame(samples_data)
+    result = samples.select(events2timeratio(events, samples, **kwargs))
+    assert result.to_series()[0] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ('events_data', 'samples_data', 'error_match'),
+    [
+        pytest.param(
+            {'name': ['blink'], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            'Onset column',
+            id='missing_onset_column',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            'Offset column',
+            id='missing_offset_column',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'x': [0.0, 1.0, 2.0, 3.0]},
+            'Time column',
+            id='missing_time_column',
+        ),
+    ],
+)
+def test_events2timeratio_missing_column(events_data, samples_data, error_match):
+    events = pl.DataFrame(events_data)
+    samples = pl.DataFrame(samples_data)
+    with pytest.raises(ValueError, match=error_match):
+        events2timeratio(events, samples, 'blink')
+
+
+@pytest.mark.parametrize(
+    ('events_data', 'samples_data', 'trial_columns', 'expected_dict'),
+    [
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
+            ['trial'],
+            {1: 0.5},
+            id='single_trial',
+        ),
+        pytest.param(
+            {
+                'name': ['blink', 'blink'],
+                'onset': [1.0, 1.0],
+                'offset': [2.0, 2.0],
+                'trial': [1, 2],
+            },
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial'],
+            {1: 0.5, 2: 0.5},
+            id='multiple_trials',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial'],
+            {1: 0.5, 2: 0.0},
+            id='partial_trials_with_events',
+        ),
+    ],
+)
+def test_events2timeratio_with_trials(
+    events_data, samples_data, trial_columns, expected_dict,
+):
+    events = pl.DataFrame(events_data)
+    samples = pl.DataFrame(samples_data)
+    result = samples.group_by(trial_columns, maintain_order=True).agg(
+        events2timeratio(
+            events, samples, 'blink', trial_columns=trial_columns,
+        ).mean(),
+    )
+    for row in result.to_dicts():
+        trial_val = row[trial_columns[0]]
+        assert row['event_ratio_blink'] == pytest.approx(expected_dict[trial_val])
