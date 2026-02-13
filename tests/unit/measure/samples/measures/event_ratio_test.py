@@ -51,21 +51,30 @@ class TestEventRatio:
             'expected_ratio',
         ),
         [
-            # Single blink event covering 3 out of 8 samples (1, 2, 3)
-            pytest.param('blink', ['blink'], [1.0], [3.0], 0.375, id='single_blink'),
-            # Two blink events covering 4 out of 8 samples (1, 2) and (5, 6)
+            # Single blink event covering time range [1, 3) = 2 time units
+            # Total time range = 7 (from 0 to 7)
+            pytest.param('blink', ['blink'], [1.0], [3.0], 2 / 7, id='single_blink'),
+            # Two blink events: [1, 2) = 1 unit + [5, 6) = 1 unit = 2 total
+            # Total time range = 7 (from 0 to 7)
             pytest.param(
                 'blink',
                 ['blink', 'blink'],
                 [1.0, 5.0],
                 [2.0, 6.0],
-                0.5,
+                2 / 7,
                 id='multiple_blinks',
             ),
             # No matching events
-            pytest.param('blink', ['saccade'], [1.0], [3.0], 0.0, id='no_matching_events'),
-            # Event covering single sample
-            pytest.param('blink', ['blink'], [1.0], [1.0], 0.125, id='single_sample'),
+            pytest.param(
+                'blink',
+                ['saccade'],
+                [1.0],
+                [3.0],
+                0.0,
+                id='no_matching_events',
+            ),
+            # Event covering single time unit [1, 1) = 0 units
+            pytest.param('blink', ['blink'], [1.0], [1.0], 0.0, id='single_sample'),
         ],
     )
     def test_event_ratio(
@@ -97,7 +106,7 @@ class TestEventRatio:
                 }),
                 ['trial'],
                 [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
-                {1: 0.5, 2: 0.0},
+                {1: 1.0, 2: 0.0},
                 id='single_trial_with_event',
             ),
             pytest.param(
@@ -111,7 +120,7 @@ class TestEventRatio:
                     {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 1},
                     {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 2},
                 ],
-                {1: 0.5, 2: 0.5},
+                {1: 0.0, 2: 0.0},
                 id='both_trials_with_event',
             ),
             pytest.param(
@@ -124,7 +133,7 @@ class TestEventRatio:
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
                 ],
-                {1: 2 / 3, 2: 0.0},
+                {1: 0.5, 2: 0.0},
                 id='event_partial_trial',
             ),
             pytest.param(
@@ -138,7 +147,7 @@ class TestEventRatio:
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
                 ],
-                {(1, 1): 0.5, (2, 1): 0.0},
+                {(1, 1): 0.0, (2, 1): 0.0},
                 id='multiple_trial_columns',
             ),
             pytest.param(
@@ -152,7 +161,7 @@ class TestEventRatio:
                     {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
                     {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
                 ],
-                {1: 1.0},
+                {1: 2 / 3},
                 id='adjacent_events',
             ),
             pytest.param(
@@ -181,6 +190,19 @@ class TestEventRatio:
                 {1: 0.0},
                 id='no_events_trial',
             ),
+            pytest.param(
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 0.0, 1.0],
+                        'trial': [1, 1, 2, 2],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    },
+                ),
+                ['trial'],
+                [{'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1}],
+                {1: 1.0, 2: 0.0},
+                id='partial_trials_with_events',
+            ),
         ],
     )
     def test_event_ratio_with_trials(self, samples, trial_columns, events_data, expected_ratios):
@@ -193,10 +215,8 @@ class TestEventRatio:
 
         gaze = pm.Gaze(samples=samples, events=events, trial_columns=trial_columns)
 
-        result = (
-            gaze.samples
-            .group_by(trial_columns, maintain_order=True)
-            .agg(gaze.measure_events_ratio('blink'))
+        result = gaze.samples.group_by(trial_columns, maintain_order=True).agg(
+            gaze.measure_events_ratio('blink').mean(),
         )
 
         expected_data = []

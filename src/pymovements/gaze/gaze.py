@@ -41,7 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
-from pymovements.events import events2segmentation
+from pymovements.events import events2timeratio
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
@@ -1249,15 +1249,16 @@ class Gaze:
         onset_column: str = 'onset',
         offset_column: str = 'offset',
     ) -> polars.Expr:
-        r"""Calculate ratio of samples associated with specific events.
+        r"""Calculate ratio of time associated with specific events.
 
-        This method computes the ratio of samples that are associated with events
-        having a specific name.
-        It uses the :py:func:`~pymovements.events.segmentation.events2segmentation` function to
-        create a binary segmentation map and then calculates the ratio as:
+        This method computes the ratio of time that is associated with events
+        having a specific name. It calculates the ratio from event durations (offset - onset).
+
+        The ratio is calculated as:
 
         .. math::
-            \frac{\sum_{i=1}^{n} \mathrm{segmentation}_i}{\mathrm{num\_samples}}
+            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} - t_{\mathrm{onset},i})}{t_{\mathrm{max}} -
+            t_{\mathrm{min}}}
 
         Parameters
         ----------
@@ -1273,7 +1274,8 @@ class Gaze:
         Returns
         -------
         polars.Expr
-            An expression that calculates the event ratio.
+            A Polars expression that calculates the event ratio. Use with select(),
+            with_columns(), or group_by().agg() for per-trial ratios.
 
         Examples
         --------
@@ -1297,7 +1299,7 @@ class Gaze:
         │ ---               │
         │ f64               │
         ╞═══════════════════╡
-        │ 0.75              │
+        │ 0.666667          │
         └───────────────────┘
 
         Raises
@@ -1341,17 +1343,14 @@ class Gaze:
                 },
             )
 
-        return (
-            events2segmentation(
-                events=events_df,
-                name=name,
-                time_column=time_column,
-                trial_columns=self.trial_columns,
-                onset_column=onset_column,
-                offset_column=offset_column,
-            )
-            .mean()
-            .alias(f"event_ratio_{name}")
+        return events2timeratio(
+            events=events_df,
+            samples=self.samples,
+            name=name,
+            time_column=time_column,
+            trial_columns=self.trial_columns,
+            onset_column=onset_column,
+            offset_column=offset_column,
         )
 
     @property
