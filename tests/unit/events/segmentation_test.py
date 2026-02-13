@@ -27,6 +27,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements.events.segmentation import _has_overlap
 from pymovements.events.segmentation import events2segmentation
+from pymovements.events.segmentation import events2timeratio
 from pymovements.events.segmentation import segmentation2events
 
 
