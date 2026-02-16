@@ -32,7 +32,7 @@ from pymovements.measure.samples import location
             {'method': 'foo'},
             ValueError,
             "Method 'foo' not supported",
-            id='position_unsupported_method_raises_value_error',
+            id='degree_unsupported_method_raises_value_error',
         ),
     ],
 )
@@ -47,40 +47,40 @@ def test_location_exceptions(init_kwargs, exception, message):
         pytest.param(
             {'method': 'mean'},
             pl.DataFrame(
-                {'position': [[0, 0], [1, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [1, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'location': [[0.5, 0]]},
                 schema={'location': pl.List(pl.Float64)},
             ),
-            id='position_two_samples_mean',
+            id='degree_two_samples_mean',
         ),
 
         pytest.param(
             {'method': 'mean'},
             pl.DataFrame(
-                {'position': [[0, 0], [0, 1], [0, 3]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [0, 1], [0, 3]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'location': [[0, 1.3333333333333333]]},
                 schema={'location': pl.List(pl.Float64)},
             ),
-            id='position_three_samples_mean',
+            id='degree_three_samples_mean',
         ),
 
         pytest.param(
             {'method': 'median'},
             pl.DataFrame(
-                {'position': [[0, 0], [2, 1], [3, 3]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [2, 1], [3, 3]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'location': [[2, 1]]},
                 schema={'location': pl.List(pl.Float64)},
             ),
-            id='position_three_samples_median',
+            id='degree_three_samples_median',
         ),
     ],
 )

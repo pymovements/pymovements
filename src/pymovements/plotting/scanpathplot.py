@@ -42,7 +42,7 @@ from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 def scanpathplot(
         gaze: Gaze | None = None,
-        position_column: str = 'location',
+        degree_column: str = 'location',
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
         cmap_norm: matplotlib.colors.Normalize | str | None = None,
@@ -58,7 +58,7 @@ def scanpathplot(
         color: str = 'blue',
         alpha: float = 0.5,
         add_traceplot: bool = False,
-        gaze_position_column: str = 'pixel',
+        gaze_degree_column: str = 'pixel',
         add_stimulus: bool = False,
         add_arrows: bool = True,
         arrow_color: str = 'black',
@@ -73,14 +73,14 @@ def scanpathplot(
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
-    """Plot scanpath from positional data.
+    """Plot scanpath from positional degree data.
 
     Parameters
     ----------
     gaze: Gaze | None
         Optional Gaze Dataframe. (default: None)
-    position_column: str
-        The column name of the x and y position data (default: 'location')
+    degree_column: str
+        The column name of the x and y degree data (default: 'location')
     cval: np.ndarray | None
         Line color values. (default: None)
     cmap: matplotlib.colors.Colormap | None
@@ -112,7 +112,7 @@ def scanpathplot(
         Alpha value of scanpath. (default: 0.5)
     add_traceplot: bool
         Boolean value indicating whether to add traceplot to the scanpath plot. (default: False)
-    gaze_position_column: str
+    gaze_degree_column: str
         Position column in the gaze dataframe. (default: 'pixel')
     add_stimulus: bool
         Boolean value indicating whether to plot the scanpath on the stimuls. (default: False)
@@ -173,8 +173,8 @@ def scanpathplot(
 
     fixations = events.frame.filter(pl.col('name') == event_name)
 
-    x_signal = fixations[position_column].list.get(0)
-    y_signal = fixations[position_column].list.get(1)
+    x_signal = fixations[degree_column].list.get(0)
+    y_signal = fixations[degree_column].list.get(1)
 
     own_figure = ax is None
 
@@ -197,7 +197,7 @@ def scanpathplot(
 
     for row in fixations.iter_rows(named=True):
         fixation = Circle(
-            row[position_column],
+            row[degree_column],
             math.sqrt(row['duration']),
             color=color,
             fill=True,
@@ -209,8 +209,8 @@ def scanpathplot(
     if add_traceplot:
         if gaze is None or gaze.samples is None:
             raise TypeError("scanpathplot 'gaze.samples' must not be None")
-        gaze_x_signal = gaze.samples[gaze_position_column].list.get(0)
-        gaze_y_signal = gaze.samples[gaze_position_column].list.get(1)
+        gaze_x_signal = gaze.samples[gaze_degree_column].list.get(0)
+        gaze_y_signal = gaze.samples[gaze_degree_column].list.get(1)
         line = _draw_line_data(
             gaze_x_signal,
             gaze_y_signal,

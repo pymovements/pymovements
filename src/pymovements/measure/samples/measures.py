@@ -106,7 +106,7 @@ def _is_invalid(column: str | pl.Expr, dtype: pl.DataType | None = None) -> pl.E
 @register_sample_measure
 def amplitude(
         *,
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         n_components: int = 2,
 ) -> pl.Expr:
     r"""Amplitude of an event.
@@ -119,14 +119,14 @@ def amplitude(
 
     where :math:`(x_{\text{min}},\; x_{\text{max}})` and
     :math:`(y_{\text{min}},\; y_{\text{max}})` are the minimum and maximum values of the
-    :math:`x` and :math:`y` components of the gaze positions during an event.
+    :math:`x` and :math:`y` components of the gaze degrees during an event.
 
     Parameters
     ----------
-    position_column: str
-        The column name of the position tuples. (default: 'position')
+    degree_column: str
+        The column name of the degree tuples. (default: 'degree')
     n_components: int
-        Number of positional components. Usually these are the two components yaw and pitch.
+        Number of positional degree components. Usually these are the two components yaw and pitch.
         (default: 2)
 
     Returns
@@ -141,12 +141,12 @@ def amplitude(
     """
     _check_has_two_componenents(n_components)
 
-    x_position = pl.col(position_column).list.get(0)
-    y_position = pl.col(position_column).list.get(1)
+    x_degree = pl.col(degree_column).list.get(0)
+    y_degree = pl.col(degree_column).list.get(1)
 
     result = (
-        (x_position.max() - x_position.min()).pow(2)
-        + (y_position.max() - y_position.min()).pow(2)
+        (x_degree.max() - x_degree.min()).pow(2)
+        + (y_degree.max() - y_degree.min()).pow(2)
     ).sqrt()
 
     return result.alias('amplitude')
@@ -155,7 +155,7 @@ def amplitude(
 @register_sample_measure
 def dispersion(
         *,
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         n_components: int = 2,
 ) -> pl.Expr:
     r"""Dispersion of an event.
@@ -167,14 +167,14 @@ def dispersion(
 
     where :math:`(x_{\text{min}},\; x_{\text{max}})` and
     :math:`(y_{\text{min}},\; y_{\text{max}})` are the minimum and maximum values of the
-    :math:`x` and :math:`y` components of the gaze positions during an event.
+    :math:`x` and :math:`y` components of the gaze degrees during an event.
 
     Parameters
     ----------
-    position_column: str
-        The column name of the position tuples. (default: 'position')
+    degree_column: str
+        The column name of the degree tuples. (default: 'degree')
     n_components: int
-        Number of positional components. Usually these are the two components yaw and pitch.
+        Number of positional degree components. Usually these are the two components yaw and pitch.
         (default: 2)
 
     Returns
@@ -189,10 +189,10 @@ def dispersion(
     """
     _check_has_two_componenents(n_components)
 
-    x_position = pl.col(position_column).list.get(0)
-    y_position = pl.col(position_column).list.get(1)
+    x_degree = pl.col(degree_column).list.get(0)
+    y_degree = pl.col(degree_column).list.get(1)
 
-    result = x_position.max() - x_position.min() + y_position.max() - y_position.min()
+    result = x_degree.max() - x_degree.min() + y_degree.max() - y_degree.min()
 
     return result.alias('dispersion')
 
@@ -200,25 +200,25 @@ def dispersion(
 @register_sample_measure
 def disposition(
         *,
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         n_components: int = 2,
 ) -> pl.Expr:
-    r"""Disposition of an event.
+    r"""Disdegree of an event.
 
     The disposition is calculated as:
 
     .. math::
-        \text{Disposition} = \sqrt{(x_0 - x_n)^2 + (y_0 - y_n)^2}
+        \text{Disdegree} = \sqrt{(x_0 - x_n)^2 + (y_0 - y_n)^2}
 
-    where :math:`x_0` and :math:`y_0` are the coordinates of the starting position and
-    :math:`x_n` and :math:`y_n` are the coordinates of the ending position of an event.
+    where :math:`x_0` and :math:`y_0` are the coordinates of the starting degree and
+    :math:`x_n` and :math:`y_n` are the coordinates of the ending degree of an event.
 
     Parameters
     ----------
-    position_column: str
-        The column name of the position tuples. (default: 'position')
+    degree_column: str
+        The column name of the degree tuples. (default: 'degree')
     n_components: int
-        Number of positional components. Usually these are the two components yaw and pitch.
+        Number of positional degree components. Usually these are the two components yaw and pitch.
         (default: 2)
 
     Returns
@@ -229,17 +229,17 @@ def disposition(
     Raises
     ------
     TypeError
-        If position_columns not of type tuple, position_columns not of length 2, or elements of
-        position_columns not of type str.
+        If degree_columns not of type tuple, degree_columns not of length 2, or elements of
+        degree_columns not of type str.
     """
     _check_has_two_componenents(n_components)
 
-    x_position = pl.col(position_column).list.get(0)
-    y_position = pl.col(position_column).list.get(1)
+    x_degree = pl.col(degree_column).list.get(0)
+    y_degree = pl.col(degree_column).list.get(1)
 
     result = (
-        (x_position.head(n=1) - x_position.reverse().head(n=1)).pow(2)
-        + (y_position.head(n=1) - y_position.reverse().head(n=1)).pow(2)
+        (x_degree.head(n=1) - x_degree.reverse().head(n=1)).pow(2)
+        + (y_degree.head(n=1) - y_degree.reverse().head(n=1)).pow(2)
     ).sqrt()
 
     return result.alias('disposition')
@@ -249,7 +249,7 @@ def disposition(
 def location(
         method: str = 'mean',
         *,
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         n_components: int = 2,
 ) -> pl.Expr:
     r"""Location of an event.
@@ -257,13 +257,13 @@ def location(
     For method ``mean`` the location is calculated as:
 
     .. math::
-        \text{Location} = \frac{1}{n} \sum_{i=1}^n \text{position}_i
+        \text{Location} = \frac{1}{n} \sum_{i=1}^n \text{degree}_i
 
     For method ``median`` the location is calculated as:
 
     .. math::
-        \text{Location} = \text{median} \left(\text{position}_1, \ldots,
-         \text{position}_n \right)
+        \text{Location} = \text{median} \left(\text{degree}_1, \ldots,
+         \text{degree}_n \right)
 
 
     Parameters
@@ -271,10 +271,10 @@ def location(
     method: str
         The centroid method to be used for calculation. Supported methods are ``mean``, ``median``.
         (default: 'mean')
-    position_column: str
-        The column name of the position tuples. (default: 'position')
+    degree_column: str
+        The column name of the degree tuples. (default: 'degree')
     n_components: int
-        Number of positional components. Usually these are the two components yaw and pitch.
+        Number of positional degree components. Usually these are the two components yaw and pitch.
         (default: 2)
 
     Returns
@@ -295,16 +295,16 @@ def location(
 
     component_expressions = []
     for component in range(n_components):
-        position_component = (
-            pl.col(position_column)
+        degree_component = (
+            pl.col(degree_column)
             .list.slice(0, None)
             .list.get(component)
         )
 
         if method == 'mean':
-            expression_component = position_component.mean()
+            expression_component = degree_component.mean()
         else:  # by exclusion this must be median
-            expression_component = position_component.median()
+            expression_component = degree_component.median()
 
         component_expressions.append(expression_component)
 
@@ -367,7 +367,7 @@ def peak_velocity(
     velocity_column: str
         The column name of the velocity tuples. (default: 'velocity')
     n_components: int
-        Number of positional components. Usually these are the two components yaw and pitch.
+        Number of positional degree components. Usually these are the two components yaw and pitch.
         (default: 2)
 
     Returns

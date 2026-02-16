@@ -245,12 +245,12 @@ def my_test_measure(column: str) -> pl.Expr:
                     },
                 ),
                 'time_column': 't',
-                'position_columns': ['x', 'y'],
+                'degree_columns': ['x', 'y'],
             },
             'null_ratio',
-            {'column': 'position'},
+            {'column': 'degree'},
             pl.DataFrame(data={'null_ratio': [0.5]}),
-            id='null_ratio_position_half_nulls',
+            id='null_ratio_degree_half_nulls',
         ),
 
         pytest.param(

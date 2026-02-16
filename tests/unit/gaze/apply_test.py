@@ -56,7 +56,7 @@ from pymovements.synthetic import step_function
                     offsets=[99],
                 ),
             ),
-            id='ivt_constant_position_monocular_fixation_six_components_eye_cyclops',
+            id='ivt_constant_degree_monocular_fixation_six_components_eye_cyclops',
         ),
 
         pytest.param(
@@ -97,14 +97,14 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
                 ),
             ),
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade', 'unclassified'],
                     onsets=[0, 50, 40],
@@ -165,7 +165,7 @@ from pymovements.synthetic import step_function
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='pix2deg_origin_center',
         ),
@@ -182,7 +182,7 @@ from pymovements.synthetic import step_function
                     },
                 ),
                 experiment=pm.Experiment(100, 100, 100, 100, 100, 'center', 1000),
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             pm.Gaze(
                 samples=pl.from_dict(
@@ -195,7 +195,7 @@ from pymovements.synthetic import step_function
                     },
                 ),
                 pixel_columns=['x_pix', 'y_pix'],
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
             ),
             id='deg2pix_origin_center',
         ),
@@ -214,7 +214,7 @@ from pymovements.synthetic import step_function
                 ),
                 experiment=pm.Experiment(100, 100, 100, 100, 100, 'center', 1000),
                 trial_columns='trial_id',
-                position_columns=['x', 'y'],
+                degree_columns=['x', 'y'],
             ),
             pm.Gaze(
                 samples=pl.from_dict(
@@ -228,7 +228,7 @@ from pymovements.synthetic import step_function
                     },
                 ),
                 trial_columns='trial_id',
-                position_columns=['x_dva', 'y_dva'],
+                degree_columns=['x_dva', 'y_dva'],
                 velocity_columns=['x_vel', 'y_vel'],
             ),
             id='pos2vel_preceding_trialize_single_column_str',

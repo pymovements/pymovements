@@ -241,13 +241,13 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
             }),
             {'input_columns': 'pixel', 'output_columns': ['x', 'y']},
             pl.DataFrame({
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
                 'x': [1.23],
@@ -258,14 +258,14 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
             }),
             {},
             pl.DataFrame({
                 'pixel_x': [1.23], 'pixel_y': [4.56],
-                'position_x': [1.23], 'position_y': [4.56],
+                'degree_x': [1.23], 'degree_y': [4.56],
                 'velocity_x': [1.23], 'velocity_y': [4.56],
                 'acceleration_x': [1.23], 'acceleration_y': [4.56],
             }),
@@ -274,7 +274,7 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56, 7.89, 10.11]],
-                'position': [[1.23, 4.56, 7.89, 10.11]],
+                'degree': [[1.23, 4.56, 7.89, 10.11]],
                 'velocity': [[1.23, 4.56, 7.89, 10.11]],
                 'acceleration': [[1.23, 4.56, 7.89, 10.11]],
             }),
@@ -282,8 +282,8 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
             pl.DataFrame({
                 'pixel_xl': [1.23], 'pixel_yl': [4.56],
                 'pixel_xr': [7.89], 'pixel_yr': [10.11],
-                'position_xl': [1.23], 'position_yl': [4.56],
-                'position_xr': [7.89], 'position_yr': [10.11],
+                'degree_xl': [1.23], 'degree_yl': [4.56],
+                'degree_xr': [7.89], 'degree_yr': [10.11],
                 'velocity_xl': [1.23], 'velocity_yl': [4.56],
                 'velocity_xr': [7.89], 'velocity_yr': [10.11],
                 'acceleration_xl': [1.23], 'acceleration_yl': [4.56],
@@ -294,7 +294,7 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56, 7.89, 10.11, 12.13, 14.15]],
-                'position': [[1.23, 4.56, 7.89, 10.11, 12.13, 14.15]],
+                'degree': [[1.23, 4.56, 7.89, 10.11, 12.13, 14.15]],
                 'velocity': [[1.23, 4.56, 7.89, 10.11, 12.13, 14.15]],
                 'acceleration': [[1.23, 4.56, 7.89, 10.11, 12.13, 14.15]],
             }),
@@ -303,9 +303,9 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
                 'pixel_xl': [1.23], 'pixel_yl': [4.56],
                 'pixel_xr': [7.89], 'pixel_yr': [10.11],
                 'pixel_xa': [12.13], 'pixel_ya': [14.15],
-                'position_xl': [1.23], 'position_yl': [4.56],
-                'position_xr': [7.89], 'position_yr': [10.11],
-                'position_xa': [12.13], 'position_ya': [14.15],
+                'degree_xl': [1.23], 'degree_yl': [4.56],
+                'degree_xr': [7.89], 'degree_yr': [10.11],
+                'degree_xa': [12.13], 'degree_ya': [14.15],
                 'velocity_xl': [1.23], 'velocity_yl': [4.56],
                 'velocity_xr': [7.89], 'velocity_yr': [10.11],
                 'velocity_xa': [12.13], 'velocity_ya': [14.15],
@@ -319,16 +319,16 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
             }),
-            {'input_columns': ['position'], 'output_suffixes': ['_x', '_y']},
+            {'input_columns': ['degree'], 'output_suffixes': ['_x', '_y']},
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
-                'position_x': [1.23], 'position_y': [4.56],
+                'degree_x': [1.23], 'degree_y': [4.56],
             }),
             id='df_single_row_two_components_unnest_one_multiple_columns_suffix_specified',
         ),
@@ -336,15 +336,15 @@ def test_gaze_unnest_has_expected_frame(init_data, unnest_kwargs, expected):
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
             }),
-            {'input_columns': ['position', 'acceleration'], 'output_suffixes': ['_x', '_y']},
+            {'input_columns': ['degree', 'acceleration'], 'output_suffixes': ['_x', '_y']},
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
-                'position_x': [1.23], 'position_y': [4.56],
+                'degree_x': [1.23], 'degree_y': [4.56],
                 'acceleration_x': [1.23], 'acceleration_y': [4.56],
             }),
             id='df_single_row_two_components_unnest_two_multiple_columns_suffix_specified',
@@ -404,11 +404,11 @@ def test_gaze_unnest_has_expected_frame_multiple_unnest(
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
             }),
-            {'input_columns': ['position', 'acceleration'], 'output_columns': ['_x', '_y']},
+            {'input_columns': ['degree', 'acceleration'], 'output_columns': ['_x', '_y']},
             ValueError,
             'You cannot specify output columns if you want to unnest more than one input column. '
             'Please specify output suffixes or use a single input column instead.',
@@ -417,7 +417,7 @@ def test_gaze_unnest_has_expected_frame_multiple_unnest(
         pytest.param(
             pl.DataFrame({
                 'pixel': [[1.23, 4.56]],
-                'position': [[1.23, 4.56]],
+                'degree': [[1.23, 4.56]],
                 'velocity': [[1.23, 4.56]],
                 'acceleration': [[1.23, 4.56]],
             }),
@@ -430,7 +430,7 @@ def test_gaze_unnest_has_expected_frame_multiple_unnest(
         pytest.param(
             pl.DataFrame({
                 'wrong_pixel_name': [[1.23, 4.56]],
-                'wrong_position_name': [[1.23, 4.56]],
+                'wrong_degree_name': [[1.23, 4.56]],
                 'wrong_velocity_name': [[1.23, 4.56]],
                 'wrong_acceleration_name': [[1.23, 4.56]],
             }),

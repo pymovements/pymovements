@@ -32,16 +32,16 @@ from pymovements.synthetic import step_function
     [
         pytest.param(
             {
-                'positions': None,
+                'degrees': None,
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
             ValueError,
-            id='positions_none_raises_value_error',
+            id='degrees_none_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': [[1, 2], [1, 2]],
+                'degrees': [[1, 2], [1, 2]],
                 'dispersion_threshold': None,
                 'minimum_duration': 1,
             },
@@ -50,7 +50,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
-                'positions': [[1, 2], [1, 2]],
+                'degrees': [[1, 2], [1, 2]],
                 'dispersion_threshold': 1,
                 'minimum_duration': None,
             },
@@ -59,34 +59,34 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
-                'positions': 1,
+                'degrees': 1,
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
             ValueError,
-            id='positions_not_array_like_raises_value_error',
+            id='degrees_not_array_like_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': [1, 2, 3],
+                'degrees': [1, 2, 3],
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
             ValueError,
-            id='positions_1d_raises_value_error',
+            id='degrees_1d_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': [[1, 2, 3], [1, 2, 3]],
+                'degrees': [[1, 2, 3], [1, 2, 3]],
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
             ValueError,
-            id='positions_not_2_elements_in_second_dimension_raises_value_error',
+            id='degrees_not_2_elements_in_second_dimension_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': [[1, 2], [1, 2]],
+                'degrees': [[1, 2], [1, 2]],
                 'dispersion_threshold': 0,
                 'minimum_duration': 1,
             },
@@ -95,7 +95,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
-                'positions': [[1, 2], [1, 2]],
+                'degrees': [[1, 2], [1, 2]],
                 'dispersion_threshold': 1,
                 'minimum_duration': 0,
             },
@@ -104,7 +104,7 @@ from pymovements.synthetic import step_function
         ),
         pytest.param(
             {
-                'positions': [[1, 2], [1, 2]],
+                'degrees': [[1, 2], [1, 2]],
                 'dispersion_threshold': 1,
                 'minimum_duration': 1.1,
             },
@@ -124,7 +124,7 @@ def test_idt_raises_error(kwargs, expected_error):
     [
         pytest.param(
             {
-                'positions': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
+                'degrees': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
                 'dispersion_threshold': 1,
                 'minimum_duration': 10,
             },
@@ -133,7 +133,7 @@ def test_idt_raises_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
             },
@@ -142,11 +142,11 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[0],
                 offsets=[99],
             ),
-            id='constant_position_single_fixation',
+            id='constant_degree_single_fixation',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
                 'name': 'custom_fixation',
@@ -156,11 +156,11 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[0],
                 offsets=[99],
             ),
-            id='constant_position_single_fixation_custom_name',
+            id='constant_degree_single_fixation_custom_name',
         ),
         pytest.param(
             {
-                'positions': step_function(
+                'degrees': step_function(
                     length=100,
                     steps=[49, 50],
                     values=[(9, 9), (1, 1)],
@@ -178,7 +178,7 @@ def test_idt_raises_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(
+                'degrees': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
                         (np.nan, np.nan), (0, 0),
@@ -197,7 +197,7 @@ def test_idt_raises_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(
+                'degrees': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
                         (np.nan, np.nan), (0, 0),
@@ -217,7 +217,7 @@ def test_idt_raises_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1100, dtype=int),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -227,11 +227,11 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='constant_position_single_fixation_with_timesteps',
+            id='constant_degree_single_fixation_with_timesteps',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -241,11 +241,11 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='constant_position_single_fixation_with_timesteps_extra_dim',
+            id='constant_degree_single_fixation_with_timesteps_extra_dim',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1100, dtype=float),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -255,11 +255,11 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='constant_position_single_fixation_with_timesteps_float_no_decimal',
+            id='constant_degree_single_fixation_with_timesteps_float_no_decimal',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1010, 0.1, dtype=float),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -269,7 +269,7 @@ def test_idt_raises_error(kwargs, expected_error):
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='constant_position_single_fixation_with_timesteps_float_with_decimal',
+            id='constant_degree_single_fixation_with_timesteps_float_with_decimal',
             marks=pytest.mark.xfail(reason='#532'),
         ),
     ],
@@ -286,7 +286,7 @@ def test_idt_detects_fixations(kwargs, expected):
     [
         pytest.param(
             {
-                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=10, steps=[0], values=[(0, 0)]),
                 'timesteps': np.concatenate([
                     np.arange(0, 5, dtype=int), np.arange(7, 12, dtype=int),
                 ]),
@@ -298,7 +298,7 @@ def test_idt_detects_fixations(kwargs, expected):
         ),
         pytest.param(
             {
-                'positions': step_function(length=10, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=10, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(0, 30, step=3, dtype=int),
                 'dispersion_threshold': 1,
                 'minimum_duration': 2,
@@ -308,17 +308,17 @@ def test_idt_detects_fixations(kwargs, expected):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.linspace(0, 1, 100),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
             TypeError, ('timesteps', 'int'),
-            id='constant_position_single_fixation_with_timesteps_float_with_fractions',
+            id='constant_degree_single_fixation_with_timesteps_float_with_fractions',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },

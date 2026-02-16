@@ -641,7 +641,7 @@ class Dataset:
         )
 
     def pix2deg(self, verbose: bool = True) -> Dataset:
-        """Compute gaze positions in degrees of visual angle from pixel coordinates.
+        """Compute gaze degrees in degrees of visual angle from pixel coordinates.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -668,11 +668,11 @@ class Dataset:
     def deg2pix(
             self,
             pixel_origin: str = 'upper left',
-            position_column: str = 'position',
+            degree_column: str = 'degree',
             pixel_column: str = 'pixel',
             verbose: bool = True,
     ) -> Dataset:
-        """Compute gaze positions in pixel coordinates from degrees of visual angle.
+        """Compute gaze degrees in pixel coordinates from degrees of visual angle.
 
         This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
 
@@ -683,8 +683,8 @@ class Dataset:
         pixel_origin: str
             The desired location of the pixel origin. (default: 'upper left')
             Supported values: ``center``, ``upper left``.
-        position_column: str
-            The input position column name. (default: 'position')
+        degree_column: str
+            The input degree column name. (default: 'degree')
         pixel_column: str
             The output pixel column name. (default: 'pixel')
         verbose : bool
@@ -704,7 +704,7 @@ class Dataset:
         return self.apply(
             'deg2pix',
             pixel_origin=pixel_origin,
-            position_column=position_column,
+            degree_column=degree_column,
             pixel_column=pixel_column,
             verbose=verbose,
         )

@@ -70,14 +70,14 @@ def test_from_pandas_explicit_columns():
         time_column='t',
         distance_column='d',
         pixel_columns=['x_pix', 'y_pix'],
-        position_columns=['x_pos', 'y_pos'],
+        degree_columns=['x_pos', 'y_pos'],
     )
 
     expected = pl.DataFrame({
         'time': [101, 102, 103, 104],
         'distance': [100, 100, 100, 100],
         'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-        'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+        'degree': [[9, 5], [8, 4], [7, 3], [6, 2]],
     })
 
     assert_frame_equal(gaze.samples, expected)

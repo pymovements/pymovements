@@ -13,7 +13,7 @@ resources:
   load_kwargs:
     time_column: n
     time_unit: ms
-    position_columns:
+    degree_columns:
     - lx
     - ly
     - rx

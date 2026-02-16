@@ -34,7 +34,7 @@ from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 def traceplot(
         gaze: Gaze,
-        position_column: str = 'pixel',
+        degree_column: str = 'pixel',
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
         cmap_norm: matplotlib.colors.Normalize | str | None = None,
@@ -54,14 +54,14 @@ def traceplot(
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
-    """Plot eye gaze trace from positional data.
+    """Plot eye gaze trace from positional degree data.
 
     Parameters
     ----------
     gaze: Gaze
         The Gaze to plot.
-    position_column: str
-        The column name of the x and y position data (default: 'pixel')
+    degree_column: str
+        The column name of the x and y degree data (default: 'pixel')
     cval: np.ndarray | None
         Line color values. (default: None)
     cmap: matplotlib.colors.Colormap | None
@@ -110,8 +110,8 @@ def traceplot(
 
     """
     # pylint: disable=duplicate-code
-    x_signal = gaze.samples[position_column].list.get(0)
-    y_signal = gaze.samples[position_column].list.get(1)
+    x_signal = gaze.samples[degree_column].list.get(0)
+    y_signal = gaze.samples[degree_column].list.get(1)
 
     own_figure = ax is None
 

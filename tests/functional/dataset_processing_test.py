@@ -100,7 +100,7 @@ def fixture_dataset_init_kwargs(request, make_example_dataset_files):
                     'time_column': 'time',
                     'time_unit': 'ms',
                     'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
-                    'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
+                    'degree_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
                 },
             }],
             experiment=Experiment(1024, 768, 38, 30, 60, 'center', 1000),

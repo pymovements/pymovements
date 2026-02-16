@@ -177,12 +177,12 @@ def pos2acc(
         mode: str = 'interp',
         cval: float = 0.0,
 ) -> np.ndarray:
-    """Compute velocity time series from 2-dimensional position time series.
+    """Compute velocity time series from 2-dimensional degree time series.
 
     Parameters
     ----------
     arr: list[float] | list[list[float]] | np.ndarray
-        Continuous 2D position time series
+        Continuous 2D degree time series
     sampling_rate: float
         Sampling rate of input time series.
     window_length: int
@@ -259,7 +259,7 @@ def pos2vel(
         method: str = 'smooth',
         **kwargs: int | float | str,
 ) -> np.ndarray:
-    """Compute velocity time series from 2-dimensional position time series.
+    """Compute velocity time series from 2-dimensional degree time series.
 
     Methods 'smooth', 'neighbors' and 'preceding' are adapted from
         Engbert et al.: Microsaccade Toolbox 0.9.
@@ -267,7 +267,7 @@ def pos2vel(
     Parameters
     ----------
     arr: list[float] | list[list[float]] | np.ndarray
-        Continuous 2D position time series
+        Continuous 2D degree time series
     sampling_rate: float
         Sampling rate of input time series. (default: 1000)
     method: str

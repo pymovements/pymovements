@@ -43,7 +43,7 @@ class GazeBaseVR(DatasetDefinition):
     Eye movements are recorded at a sampling frequency of 250 Hz a using SensoMotoric
     Instrument’s (SMI’s) tethered ET VR head-mounted display based on the
     HTC Vive (hereon called the ET-HMD) eye tracker and are provided as
-    positional data in degrees of visual angle.
+    positional degree data in degrees of visual angle.
 
     In each of the two sessions per round, participants are instructed to complete a series of
     tasks, a vergence task (VRG), a smooth pursuit task (PUR), a video viewing task (VID),
@@ -87,10 +87,10 @@ class GazeBaseVR(DatasetDefinition):
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created.
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created.
 
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
@@ -147,7 +147,7 @@ class GazeBaseVR(DatasetDefinition):
                     'load_kwargs': {
                         'time_column': 'n',
                         'time_unit': 'ms',
-                        'position_columns': ['lx', 'ly', 'rx', 'ry', 'x', 'y'],
+                        'degree_columns': ['lx', 'ly', 'rx', 'ry', 'x', 'y'],
                         'column_map': {
                             'xT': 'x_target_pos',
                             'yT': 'y_target_pos',
@@ -199,7 +199,7 @@ class GazeBaseVR(DatasetDefinition):
 
     time_unit: str | None = None
 
-    position_columns: list[str] | None = None
+    degree_columns: list[str] | None = None
 
     column_map: dict[str, str] | None = None
 

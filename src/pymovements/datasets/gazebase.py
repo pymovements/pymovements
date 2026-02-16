@@ -41,7 +41,7 @@ class GazeBase(DatasetDefinition):
     round consisting of two contiguous sessions.
 
     Eye movements are recorded at a sampling frequency of 1000 Hz using an EyeLink 1000 video-based
-    eye tracker and are provided as positional data in degrees of visual angle.
+    eye tracker and are provided as positional degree data in degrees of visual angle.
 
     In each of the two sessions per round, participants are instructed to complete a series of
     tasks, including a fixation task (FIX), a horizontal saccade task (HSS), a random saccade task
@@ -86,10 +86,10 @@ class GazeBase(DatasetDefinition):
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created.
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created.
 
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
@@ -145,7 +145,7 @@ class GazeBase(DatasetDefinition):
                     'load_kwargs': {
                         'time_column': 'n',
                         'time_unit': 'ms',
-                        'position_columns': ['x', 'y'],
+                        'degree_columns': ['x', 'y'],
                         'column_map': {
                             'val': 'validity',
                             'xT': 'x_target_pos',
@@ -190,7 +190,7 @@ class GazeBase(DatasetDefinition):
 
     time_unit: str | None = None
 
-    position_columns: list[str] | None = None
+    degree_columns: list[str] | None = None
 
     column_map: dict[str, str] | None = None
 

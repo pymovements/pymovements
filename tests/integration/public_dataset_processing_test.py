@@ -48,7 +48,7 @@ def test_public_dataset_processing(dataset_name, tmp_path):
         dataset.pos2acc()
 
         for gaze in dataset.gaze:
-            assert 'position' in gaze.columns
+            assert 'degree' in gaze.columns
             assert 'velocity' in gaze.columns
             assert 'acceleration' in gaze.columns
 

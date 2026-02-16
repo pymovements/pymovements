@@ -225,7 +225,7 @@ def pix2deg(
         n_components: int,
         origin: str = 'upper left',
         pixel_column: str = 'pixel',
-        position_column: str = 'position',
+        degree_column: str = 'degree',
 ) -> pl.Expr:
     """Convert pixel screen coordinates to degrees of visual angle.
 
@@ -247,8 +247,8 @@ def pix2deg(
         (default: ``upper left``)
     pixel_column: str
         The input pixel column name. (default: 'pixel')
-    position_column: str
-        The output position column name. (default: 'position')
+    degree_column: str
+        The output degree column name. (default: 'degree')
 
     Returns
     -------
@@ -294,7 +294,7 @@ def pix2deg(
         for component in range(n_components)
     ]
 
-    return pl.concat_list(list(degree_components)).alias(position_column)
+    return pl.concat_list(list(degree_components)).alias(degree_column)
 
 
 @register_transform
@@ -305,7 +305,7 @@ def deg2pix(
         distance: float | str,
         n_components: int,
         pixel_origin: str = 'upper left',
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         pixel_column: str = 'pixel',
 ) -> pl.Expr:
     """Convert degrees of visual angle to pixel screen coordinates.
@@ -325,8 +325,8 @@ def deg2pix(
     pixel_origin: str
         The desired location of the pixel origin. Supported values: ``center``, ``upper left``.
         (default: 'upper left')
-    position_column: str
-        The input position column name. (default: 'position')
+    degree_column: str
+        The input degree column name. (default: 'degree')
     pixel_column: str
         The output pixel column name. (default: 'pixel')
 
@@ -356,7 +356,7 @@ def deg2pix(
     ])
 
     centered_pixels = [
-        pl.col(position_column).list.get(component).radians().tan() *
+        pl.col(degree_column).list.get(component).radians().tan() *
         distance_pixels.list.get(component)
         for component in range(n_components)
     ]
@@ -453,10 +453,10 @@ def pos2acc(
         degree: int = 2,
         window_length: int = 7,
         padding: str | float | int | None = 'nearest',
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         acceleration_column: str = 'acceleration',
 ) -> pl.Expr:
-    """Compute acceleration data from positional data.
+    """Compute acceleration data from positional degree data.
 
     Parameters
     ----------
@@ -470,8 +470,8 @@ def pos2acc(
         The window size to use. (default: 7)
     padding: str | float | int | None
         The padding method to use. See ``savitzky_golay`` for details. (default: 'nearest')
-    position_column: str
-        The input position column name. (default: 'position')
+    degree_column: str
+        The input degree column name. (default: 'degree')
     acceleration_column: str
         The output acceleration column name. (default: 'acceleration')
 
@@ -487,7 +487,7 @@ def pos2acc(
         padding=padding,
         derivative=2,
         n_components=n_components,
-        input_column=position_column,
+        input_column=degree_column,
         output_column=acceleration_column,
     )
 
@@ -501,10 +501,10 @@ def pos2vel(
         degree: int | None = None,
         window_length: int | None = None,
         padding: str | float | int | None = 'nearest',
-        position_column: str = 'position',
+        degree_column: str = 'degree',
         velocity_column: str = 'velocity',
 ) -> pl.Expr:
-    """Compute velocitiy data from positional data.
+    """Compute velocitiy data from positional degree data.
 
     Parameters
     ----------
@@ -523,8 +523,8 @@ def pos2vel(
     padding: str | float | int | None
         The padding to use.  This has only an effect if using ``savitzky_golay`` as calculation
         method. (default: 'nearest')
-    position_column: str
-        The input position column name. (default: 'position')
+    degree_column: str
+        The input degree column name. (default: 'degree')
     velocity_column: str
         The output velocity column name. (default: 'velocity')
 
@@ -549,7 +549,7 @@ def pos2vel(
     if method == 'preceding':
         return pl.concat_list(
             [
-                pl.col(position_column).list.get(component)
+                pl.col(degree_column).list.get(component)
                 .diff(n=1, null_behavior='ignore') * sampling_rate
                 for component in range(n_components)
             ],
@@ -559,8 +559,8 @@ def pos2vel(
         return pl.concat_list(
             [
                 (
-                    pl.col(position_column).shift(n=-1).list.get(component)
-                    - pl.col(position_column).shift(n=1).list.get(component)
+                    pl.col(degree_column).shift(n=-1).list.get(component)
+                    - pl.col(degree_column).shift(n=1).list.get(component)
                 ) * (sampling_rate / 2)
                 for component in range(n_components)
             ],
@@ -574,10 +574,10 @@ def pos2vel(
         return pl.concat_list(
             [
                 (
-                    pl.col(position_column).shift(n=-2).list.get(component)
-                    + pl.col(position_column).shift(n=-1).list.get(component)
-                    - pl.col(position_column).shift(n=1).list.get(component)
-                    - pl.col(position_column).shift(n=2).list.get(component)
+                    pl.col(degree_column).shift(n=-2).list.get(component)
+                    + pl.col(degree_column).shift(n=-1).list.get(component)
+                    - pl.col(degree_column).shift(n=1).list.get(component)
+                    - pl.col(degree_column).shift(n=2).list.get(component)
                 ) * (sampling_rate / 6)
                 for component in range(n_components)
             ],
@@ -596,7 +596,7 @@ def pos2vel(
             padding=padding,
             derivative=1,
             n_components=n_components,
-            input_column=position_column,
+            input_column=degree_column,
             output_column=velocity_column,
         )
 
@@ -901,7 +901,7 @@ def smooth(
         window_length: int,
         n_components: int,
         degree: int | None = None,
-        column: str = 'position',
+        column: str = 'degree',
         padding: str | float | int | None = 'nearest',
 ) -> pl.Expr:
     """Smooth data in a column.
@@ -920,7 +920,7 @@ def smooth(
         The degree of the polynomial to use. This has only an effect if using ``savitzky_golay`` as
         smoothing method. `degree` must be less than `window_length`. (default: None)
     column: str
-        The input column name to which the smoothing is applied. (default: 'position')
+        The input column name to which the smoothing is applied. (default: 'degree')
     padding: str | float | int | None
         Must be either ``None``, a scalar or one of the strings ``mirror``, ``nearest`` or ``wrap``.
         This determines the type of extension to use for the padded signal to

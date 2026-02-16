@@ -32,8 +32,8 @@ from pymovements.measure.samples import disposition
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[2, 1]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[2, 1]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'disposition': [0]},
@@ -45,8 +45,8 @@ from pymovements.measure.samples import disposition
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [1, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [1, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'disposition': [1]},
@@ -58,8 +58,8 @@ from pymovements.measure.samples import disposition
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [0, 1]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [0, 1]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'disposition': [1]},
@@ -71,8 +71,8 @@ from pymovements.measure.samples import disposition
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [1, 1]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [1, 1]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'disposition': [np.sqrt(2)]},
@@ -84,8 +84,8 @@ from pymovements.measure.samples import disposition
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [1.1, 0], [1, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [1.1, 0], [1, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'disposition': [1]},
@@ -97,8 +97,8 @@ from pymovements.measure.samples import disposition
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[-1, 0], [0, 0], [1, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[-1, 0], [0, 0], [1, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'disposition': [2]},

@@ -109,7 +109,7 @@ def test_ivt_raise_error(kwargs, expected_error):
     [
         pytest.param(
             {
-                'positions': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
+                'degrees': np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=1),
                 'velocity_threshold': 1,
                 'minimum_duration': 10,
             },
@@ -118,7 +118,7 @@ def test_ivt_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
             },
@@ -127,11 +127,11 @@ def test_ivt_raise_error(kwargs, expected_error):
                 onsets=[0],
                 offsets=[99],
             ),
-            id='constant_position_single_fixation',
+            id='constant_degree_single_fixation',
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
                 'name': 'custom_fixation',
@@ -141,11 +141,11 @@ def test_ivt_raise_error(kwargs, expected_error):
                 onsets=[0],
                 offsets=[99],
             ),
-            id='constant_position_single_fixation_custom_name',
+            id='constant_degree_single_fixation_custom_name',
         ),
         pytest.param(
             {
-                'positions': step_function(
+                'degrees': step_function(
                     length=100,
                     steps=[49, 50],
                     values=[(9, 9), (1, 1)],
@@ -163,7 +163,7 @@ def test_ivt_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(
+                'degrees': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
                         (np.nan, np.nan),
@@ -182,7 +182,7 @@ def test_ivt_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(
+                'degrees': step_function(
                     length=100, steps=[10, 20, 90],
                     values=[
                         (np.nan, np.nan),
@@ -202,7 +202,7 @@ def test_ivt_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'degrees': step_function(length=100, steps=[0], values=[(0, 0)]),
                 'timesteps': np.arange(1000, 1100, dtype=int),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
@@ -212,17 +212,17 @@ def test_ivt_raise_error(kwargs, expected_error):
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='constant_position_single_fixation_with_timesteps',
+            id='constant_degree_single_fixation_with_timesteps',
         ),
     ],
 )
 def test_ivt_detects_fixations(kwargs, expected):
     velocities = pos2vel(
-        kwargs['positions'], sampling_rate=10, method='preceding',
+        kwargs['degrees'], sampling_rate=10, method='preceding',
     )
 
-    # Just use positions argument for velocity calculation
-    kwargs.pop('positions')
+    # Just use degrees argument for velocity calculation
+    kwargs.pop('degrees')
 
     events = ivt(velocities=velocities, **kwargs)
 

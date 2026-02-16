@@ -41,12 +41,12 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 2,
             },
             pm.gaze.from_numpy(
-                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                degree=step_function(length=100, steps=[0], values=[(0, 0)]),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
             pm.Events(name='fixation', onsets=[0], offsets=[99]),
-            id='idt_constant_position_single_fixation',
+            id='idt_constant_degree_single_fixation',
         ),
 
         pytest.param(
@@ -57,12 +57,12 @@ from pymovements.synthetic import step_function
                 'name': 'custom_fixation',
             },
             pm.gaze.from_numpy(
-                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                degree=step_function(length=100, steps=[0], values=[(0, 0)]),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
             pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
-            id='idt_constant_position_single_fixation_custom_name',
+            id='idt_constant_degree_single_fixation_custom_name',
         ),
 
         pytest.param(
@@ -72,7 +72,7 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 2,
             },
             pm.gaze.from_numpy(
-                position=step_function(
+                degree=step_function(
                     length=100, steps=[49, 50], values=[(9, 9), (1, 1)], start_value=(0, 0),
                 ),
                 orient='row',
@@ -89,7 +89,7 @@ from pymovements.synthetic import step_function
                 'minimum_duration': 2,
             },
             pm.gaze.from_numpy(
-                position=step_function(
+                degree=step_function(
                     length=100, steps=[10, 20, 90],
                     values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
                 ),
@@ -108,7 +108,7 @@ from pymovements.synthetic import step_function
                 'include_nan': True,
             },
             pm.gaze.from_numpy(
-                position=step_function(
+                degree=step_function(
                     length=100, steps=[10, 20, 90],
                     values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
                 ),
@@ -127,7 +127,7 @@ from pymovements.synthetic import step_function
             },
             pm.gaze.from_numpy(
                 time=np.arange(1000, 1100, dtype=int),
-                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                degree=step_function(length=100, steps=[0], values=[(0, 0)]),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
@@ -136,7 +136,7 @@ from pymovements.synthetic import step_function
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='idt_constant_position_single_fixation_with_timesteps_int',
+            id='idt_constant_degree_single_fixation_with_timesteps_int',
         ),
 
         pytest.param(
@@ -147,7 +147,7 @@ from pymovements.synthetic import step_function
             },
             pm.gaze.from_numpy(
                 time=np.arange(1000, 1010, 0.1, dtype=float),
-                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                degree=step_function(length=100, steps=[0], values=[(0, 0)]),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
@@ -156,7 +156,7 @@ from pymovements.synthetic import step_function
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='idt_constant_position_single_fixation_with_timesteps_float',
+            id='idt_constant_degree_single_fixation_with_timesteps_float',
             marks=pytest.mark.xfail(reason='#532'),
         ),
 
@@ -168,7 +168,7 @@ from pymovements.synthetic import step_function
             },
             pm.gaze.from_numpy(
                 time=np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
-                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                degree=step_function(length=100, steps=[0], values=[(0, 0)]),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
@@ -177,7 +177,7 @@ from pymovements.synthetic import step_function
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='idt_constant_position_single_fixation_with_timesteps_int_extra_dim',
+            id='idt_constant_degree_single_fixation_with_timesteps_int_extra_dim',
         ),
 
         pytest.param(
@@ -188,12 +188,12 @@ from pymovements.synthetic import step_function
             },
             pm.gaze.from_numpy(
                 trial=np.array(['A'] * 50 + ['B'] * 50),
-                position=step_function(length=100, steps=[0], values=[(0, 0)]),
+                degree=step_function(length=100, steps=[0], values=[(0, 0)]),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
             pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
-            id='idt_constant_position_single_fixation_per_trial',
+            id='idt_constant_degree_single_fixation_per_trial',
         ),
 
         pytest.param(
@@ -206,7 +206,7 @@ from pymovements.synthetic import step_function
                 samples=pl.DataFrame({
                     'trial': ['A'] * 50 + ['B'] * 50,
                     'screen': ['1'] * 25 + ['2'] * 25 + ['1'] * 25 + ['2'] * 25,
-                    'position': [(0, 0)] * 100,
+                    'degree': [(0, 0)] * 100,
                 }).to_pandas(),
                 trial_columns=['trial', 'screen'],
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
@@ -220,7 +220,7 @@ from pymovements.synthetic import step_function
                     'offset': [24, 49, 74, 99],
                 }),
             ),
-            id='idt_constant_position_single_fixation_per_trial_multiple_trial_columns',
+            id='idt_constant_degree_single_fixation_per_trial_multiple_trial_columns',
         ),
 
         pytest.param(
@@ -249,7 +249,7 @@ from pymovements.synthetic import step_function
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
             pm.Events(name='fixation', onsets=[0], offsets=[99]),
-            id='ivt_constant_position_single_fixation',
+            id='ivt_constant_degree_single_fixation',
         ),
 
         pytest.param(
@@ -264,7 +264,7 @@ from pymovements.synthetic import step_function
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
             pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
-            id='ivt_constant_position_single_fixation_custom_name',
+            id='ivt_constant_degree_single_fixation_custom_name',
         ),
 
         pytest.param(
@@ -338,7 +338,7 @@ from pymovements.synthetic import step_function
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='ivt_constant_position_single_fixation_with_timesteps_int',
+            id='ivt_constant_degree_single_fixation_with_timesteps_int',
         ),
 
         pytest.param(
@@ -358,7 +358,7 @@ from pymovements.synthetic import step_function
                 onsets=[1000],
                 offsets=[1099.9],
             ),
-            id='ivt_constant_position_single_fixation_with_timesteps_float',
+            id='ivt_constant_degree_single_fixation_with_timesteps_float',
         ),
 
         pytest.param(
@@ -378,7 +378,7 @@ from pymovements.synthetic import step_function
                 onsets=[1000],
                 offsets=[1099],
             ),
-            id='ivt_constant_position_single_fixation_with_timesteps_int_extra_dim',
+            id='ivt_constant_degree_single_fixation_with_timesteps_int_extra_dim',
         ),
 
         pytest.param(
@@ -398,7 +398,7 @@ from pymovements.synthetic import step_function
                 onsets=[0],
                 offsets=[99],
             ),
-            id='ivt_constant_position_binocular_fixation_two_components_eye_auto',
+            id='ivt_constant_degree_binocular_fixation_two_components_eye_auto',
         ),
 
         pytest.param(
@@ -418,7 +418,7 @@ from pymovements.synthetic import step_function
                 onsets=[0],
                 offsets=[99],
             ),
-            id='ivt_constant_position_binocular_fixation_four_components_eye_auto',
+            id='ivt_constant_degree_binocular_fixation_four_components_eye_auto',
         ),
 
         pytest.param(
@@ -438,7 +438,7 @@ from pymovements.synthetic import step_function
                 onsets=[0],
                 offsets=[99],
             ),
-            id='ivt_constant_position_binocular_fixation_six_components_eye_auto',
+            id='ivt_constant_degree_binocular_fixation_six_components_eye_auto',
         ),
 
         pytest.param(
@@ -460,7 +460,7 @@ from pymovements.synthetic import step_function
                 onsets=[0],
                 offsets=[99],
             ),
-            id='ivt_constant_position_monocular_fixation_six_components_eye_left',
+            id='ivt_constant_degree_monocular_fixation_six_components_eye_left',
         ),
 
         pytest.param(
@@ -482,7 +482,7 @@ from pymovements.synthetic import step_function
                 onsets=[0],
                 offsets=[99],
             ),
-            id='ivt_constant_position_monocular_fixation_six_components_eye_right',
+            id='ivt_constant_degree_monocular_fixation_six_components_eye_right',
         ),
 
         pytest.param(
@@ -504,7 +504,7 @@ from pymovements.synthetic import step_function
                 onsets=[0],
                 offsets=[99],
             ),
-            id='ivt_constant_position_monocular_fixation_six_components_eye_cyclops',
+            id='ivt_constant_degree_monocular_fixation_six_components_eye_cyclops',
         ),
 
         pytest.param(
@@ -519,7 +519,7 @@ from pymovements.synthetic import step_function
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
             pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
-            id='ivt_constant_position_single_fixation_per_trial',
+            id='ivt_constant_degree_single_fixation_per_trial',
         ),
 
 
@@ -679,7 +679,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(name='fixation', onsets=[0], offsets=[100]),
             ),
             pm.Events(name='fixation', onsets=[0], offsets=[100]),
@@ -691,7 +691,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(name='fixation', onsets=[10], offsets=[100]),
             ),
             pm.Events(
@@ -707,7 +707,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(name='fixation', onsets=[0], offsets=[90]),
             ),
             pm.Events(
@@ -723,7 +723,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(name='fixation', onsets=[0, 50], offsets=[40, 100]),
             ),
             pm.Events(
@@ -739,7 +739,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
                 ),
@@ -758,7 +758,7 @@ from pymovements.synthetic import step_function
             pm.gaze.from_numpy(
                 trial=np.array([1] * 50 + [2] * 50),
                 time=np.arange(0, 100),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name='fixation', onsets=[0, 90], offsets=[10, 100], trials=[1, 2],
                 ),
@@ -778,7 +778,7 @@ from pymovements.synthetic import step_function
             pm.gaze.from_numpy(
                 trial=np.array([1] * 50 + [2] * 50),
                 time=np.concatenate((np.arange(0, 50), np.arange(0, 50))),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name='fixation', onsets=[0, 40], offsets=[10, 50], trials=[1, 2],
                 ),
@@ -802,7 +802,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(100, 200),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
                 ),
@@ -820,7 +820,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(0, 200),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'saccade'], onsets=[210, 250], offsets=[240, 300],
                 ),
@@ -838,7 +838,7 @@ from pymovements.synthetic import step_function
             {},
             pm.gaze.from_numpy(
                 time=np.arange(100, 200),
-                position=np.zeros((2, 100)),
+                degree=np.zeros((2, 100)),
                 events=pm.Events(
                     name=['fixation', 'fixation'], onsets=[0, 120], offsets=[110, 220],
                 ),
@@ -871,7 +871,7 @@ def test_gaze_detect(method, kwargs, gaze, expected):
             },
             pm.gaze.from_numpy(
                 time=np.arange(0, 100, 1),
-                position=np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=0),
+                degree=np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=0),
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
             ),
             pm.events.Events(),
@@ -1054,13 +1054,13 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
     ('method', 'column'),
     [
         ('ivt', 'velocity'),
-        ('idt', 'position'),
+        ('idt', 'degree'),
     ],
 )
 def test_gaze_detect_missing_missing_eye_components_raises_exception(method, column):
     gaze = pm.gaze.from_numpy(
         trial=np.ones(100),
-        position=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
+        degree=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         velocity=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         orient='row',
         experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
@@ -1092,7 +1092,7 @@ def test_detect_no_events_warning():
     """Test that a warning is emitted when no events are detected."""
     gaze = pm.gaze.from_numpy(
         time=np.arange(100),
-        position=np.zeros((2, 100)),
+        degree=np.zeros((2, 100)),
         experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
     )
 
@@ -1104,7 +1104,7 @@ def test_detect_no_events_warning_trial_columns():
     """Test that a warning is emitted when no events are detected with trial columns."""
     gaze = pm.gaze.from_numpy(
         time=np.arange(100),
-        position=np.zeros((2, 100)),
+        degree=np.zeros((2, 100)),
         trial=np.array(['A'] * 50 + ['B'] * 50),
         experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
     )
@@ -1117,7 +1117,7 @@ def test_detect_with_events_no_warning():
     """Test that no warning is emitted when events are detected."""
     gaze = pm.gaze.from_numpy(
         time=np.arange(100),
-        position=np.zeros((2, 100)),
+        degree=np.zeros((2, 100)),
         experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
     )
 
@@ -1136,7 +1136,7 @@ def test_detect_with_events_trial_columns_warns_on_any_empty_trial():
     """Test that a warning is emitted when any trial has no events detected."""
     gaze = pm.gaze.from_numpy(
         time=np.arange(100),
-        position=np.zeros((2, 100)),
+        degree=np.zeros((2, 100)),
         trial=np.array(['A'] * 50 + ['B'] * 50),
         experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
     )

@@ -43,11 +43,11 @@ def args_fixture(experiment_fixture, request):
     if request.param == 'pix':
         column_names = ['x_pix', 'y_pix']
         pixel_columns = column_names
-        position_columns = None
+        degree_columns = None
     else:
         column_names = ['x_pos', 'y_pos']
         pixel_columns = None
-        position_columns = column_names
+        degree_columns = column_names
 
     # Init a dataframe with 2 columns and 100 rows
     df = pl.DataFrame(
@@ -62,17 +62,17 @@ def args_fixture(experiment_fixture, request):
         samples=df,
         experiment=experiment_fixture,
         pixel_columns=pixel_columns,
-        position_columns=position_columns,
+        degree_columns=degree_columns,
     )
 
     return gaze, request.param
 
 
-@pytest.fixture(name='position_column_mapping')
-def position_column_mapping_fixture():
+@pytest.fixture(name='degree_column_mapping')
+def degree_column_mapping_fixture():
     return {
         'pix': 'pixel',
-        'pos': 'position',
+        'pos': 'degree',
     }
 
 
@@ -125,50 +125,50 @@ def position_column_mapping_fixture():
         ),
     ],
 )
-def test_heatmap_show(args, kwargs, position_column_mapping, monkeypatch):
+def test_heatmap_show(args, kwargs, degree_column_mapping, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    position_column = position_column_mapping[args[1]]
-    kwargs['position_column'] = position_column
+    degree_column = degree_column_mapping[args[1]]
+    kwargs['degree_column'] = degree_column
     heatmap(args[0], **kwargs)
 
     mock.assert_called_once()
 
 
-def test_heatmap_noshow(args, position_column_mapping, monkeypatch):
+def test_heatmap_noshow(args, degree_column_mapping, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    position_column = position_column_mapping[args[1]]
-    heatmap(args[0], position_column=position_column, show=False)
+    degree_column = degree_column_mapping[args[1]]
+    heatmap(args[0], degree_column=degree_column, show=False)
 
     mock.assert_not_called()
 
 
-def test_heatmap_noshow_no_pixel_or_position_column(
-    args, position_column_mapping, monkeypatch,
+def test_heatmap_noshow_no_pixel_or_degree_column(
+    args, degree_column_mapping, monkeypatch,
 ):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    position_column = position_column_mapping[args[1]]
+    degree_column = degree_column_mapping[args[1]]
     gaze = args[0]
-    gaze.samples = gaze.samples.rename({position_column: 'custom_column'})
+    gaze.samples = gaze.samples.rename({degree_column: 'custom_column'})
 
-    heatmap(gaze, position_column='custom_column', show=False)
+    heatmap(gaze, degree_column='custom_column', show=False)
 
     mock.assert_not_called()
 
 
-def test_heatmap_save(args, position_column_mapping, monkeypatch, tmp_path):
+def test_heatmap_save(args, degree_column_mapping, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
 
-    position_column = position_column_mapping[args[1]]
+    degree_column = degree_column_mapping[args[1]]
     heatmap(
         args[0],
-        position_column=position_column,
+        degree_column=degree_column,
         show=False,
         savepath=str(tmp_path / 'test.svg'),
     )
@@ -176,13 +176,13 @@ def test_heatmap_save(args, position_column_mapping, monkeypatch, tmp_path):
     mock.assert_called_once()
 
 
-def test_heatmap_invalid_position_columns(args, position_column_mapping):
-    position_column = position_column_mapping[args[1]]
+def test_heatmap_invalid_degree_columns(args, degree_column_mapping):
+    degree_column = degree_column_mapping[args[1]]
     # Use the opposite column to trigger ColumnNotFoundError
-    invalid_column = 'position' if position_column == 'pixel' else 'pixel'
+    invalid_column = 'degree' if degree_column == 'pixel' else 'pixel'
 
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
-        heatmap(gaze=args[0], position_column=invalid_column, show=False)
+        heatmap(gaze=args[0], degree_column=invalid_column, show=False)
 
 
 def test_heatmap_no_experiment_property():

@@ -84,13 +84,13 @@ class Gaze:
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns:list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the input data frame. These columns will be
-        nested into the column ``position``. If the list is empty or None, the nested
-        ``position`` column will not be created. (default: None)
+    degree_columns: list[str] | None
+        The name of the dva degree columns in the input data frame. These columns will be
+        nested into the column ``degree``. If the list is empty or None, the nested
+        ``degree`` column will not be created. (default: None)
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
@@ -127,7 +127,7 @@ class Gaze:
         The name of the trial columns in the samples data frame. If not None, the transformation
         methods will be applied to each trial separately.
     n_components: int | None
-        The number of components in the pixel, position, velocity and acceleration columns.
+        The number of components in the pixel, degree, velocity and acceleration columns.
     calibrations: polars.DataFrame | None
         The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
         None by default, to be populated by I/O helpers (e.g. from_asc).
@@ -138,7 +138,7 @@ class Gaze:
 
     Notes
     -----
-    About using the arguments ``pixel_columns``, ``position_columns``, ``velocity_columns``,
+    About using the arguments ``pixel_columns``, ``degree_columns``, ``velocity_columns``,
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
@@ -159,7 +159,7 @@ class Gaze:
     Examples
     --------
     First let's create an example `DataFrame` with three columns:
-    the timestamp ``t`` and ``x`` and ``y`` for the pixel position.
+    the timestamp ``t`` and ``x`` and ``y`` for the pixel degree.
 
     >>> df = polars.from_dict(
     ...     data={'t': [1000, 1001, 1002], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]},
@@ -176,7 +176,7 @@ class Gaze:
     │ 1002 ┆ 0.3 ┆ 0.3 │
     └──────┴─────┴─────┘
 
-    We can now initialize our ``Gaze`` by specifying the names of the pixel position
+    We can now initialize our ``Gaze`` by specifying the names of the pixel degree
     columns, the timestamp column and the unit of the timestamps.
 
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')
@@ -260,7 +260,7 @@ class Gaze:
             time_column: str | None = None,
             time_unit: str | None = None,
             pixel_columns: list[str] | None = None,
-            position_columns: list[str] | None = None,
+            degree_columns: list[str] | None = None,
             velocity_columns: list[str] | None = None,
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
@@ -294,7 +294,7 @@ class Gaze:
             time_column=time_column,
             time_unit=time_unit,
             pixel_columns=pixel_columns,
-            position_columns=position_columns,
+            degree_columns=degree_columns,
             velocity_columns=velocity_columns,
             acceleration_columns=acceleration_columns,
             distance_column=distance_column,
@@ -628,22 +628,22 @@ class Gaze:
                 kwargs['n_components'] = self.n_components
 
             if transform_method.__name__ in {'pos2vel', 'pos2acc'}:
-                if 'position' not in self.samples.columns and 'position_column' not in kwargs:
+                if 'degree' not in self.samples.columns and 'degree_column' not in kwargs:
                     if 'pixel' in self.samples.columns:
                         raise polars.exceptions.ColumnNotFoundError(
-                            "Neither is 'position' in the samples dataframe columns, "
-                            'nor is a position column explicitly specified. '
+                            "Neither is 'degree' in the samples dataframe columns, "
+                            'nor is a degree column explicitly specified. '
                             "Since the samples dataframe has a 'pixel' column, consider running "
                             f'pix2deg() before {transform_method.__name__}(). If you want '
                             'to run transformations in pixel units, you can do so by using '
-                            f"{transform_method.__name__}(position_column='pixel'). "
+                            f"{transform_method.__name__}(degree_column='pixel'). "
                             f'Available columns in samples dataframe are: {self.samples.columns}',
                         )
                     raise polars.exceptions.ColumnNotFoundError(
-                        "Neither is 'position' in the samples dataframe columns, "
-                        'nor is a position column explicitly specified. '
-                        'You can specify the position column via: '
-                        f'{transform_method.__name__}(position_column="your_position_column"). '
+                        "Neither is 'degree' in the samples dataframe columns, "
+                        'nor is a degree column explicitly specified. '
+                        'You can specify the degree column via: '
+                        f'{transform_method.__name__}(degree_column="your_degree_column"). '
                         f'Available columns in samples dataframe are: {self.samples.columns}',
                     )
 
@@ -659,15 +659,15 @@ class Gaze:
 
             if transform_method.__name__ in {'deg2pix'}:
                 if (
-                    'position_column' in kwargs and
-                    kwargs.get('position_column') not in self.samples.columns
+                    'degree_column' in kwargs and
+                    kwargs.get('degree_column') not in self.samples.columns
                 ):
                     raise polars.exceptions.ColumnNotFoundError(
-                        f"The specified 'position_column' ({kwargs.get('position_column')}) "
+                        f"The specified 'degree_column' ({kwargs.get('degree_column')}) "
                         'is not found in the samples dataframe columns. '
-                        'You can specify the position column via: '
+                        'You can specify the degree column via: '
                         f'{transform_method.__name__}'
-                        f'(position_column="name_of_your_position_column"). '
+                        f'(degree_column="name_of_your_degree_column"). '
                         f'Available columns in samples dataframe are: {self.samples.columns}',
                     )
 
@@ -729,11 +729,11 @@ class Gaze:
         )
 
     def pix2deg(self) -> None:
-        """Compute gaze positions in degrees of visual angle from pixel position coordinates.
+        """Compute gaze degrees in degrees of visual angle from pixel degree coordinates.
 
         This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
+        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva degree columns.
 
         Raises
         ------
@@ -745,22 +745,22 @@ class Gaze:
     def deg2pix(
             self,
             pixel_origin: str = 'upper left',
-            position_column: str = 'position',
+            degree_column: str = 'degree',
             pixel_column: str = 'pixel',
     ) -> None:
-        """Compute gaze positions in pixel position coordinates from degrees of visual angle.
+        """Compute gaze degrees in pixel degree coordinates from degrees of visual angle.
 
         This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
+        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva degree columns.
 
         Parameters
         ----------
         pixel_origin: str
             The desired location of the pixel origin. (default: 'upper left')
             Supported values: ``center``, ``upper left``.
-        position_column: str
-            The input position column name. (default: 'position')
+        degree_column: str
+            The input degree column name. (default: 'degree')
         pixel_column: str
             The output pixel column name. (default: 'pixel')
 
@@ -772,7 +772,7 @@ class Gaze:
         self.transform(
             'deg2pix',
             pixel_origin=pixel_origin,
-            position_column=position_column,
+            degree_column=degree_column,
             pixel_column=pixel_column,
         )
 
@@ -783,7 +783,7 @@ class Gaze:
             window_length: int = 7,
             padding: str | float | int | None = 'nearest',
     ) -> None:
-        """Compute gaze acceleration in dva/s^2 from dva position coordinates.
+        """Compute gaze acceleration in dva/s^2 from dva degree coordinates.
 
         This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
@@ -810,7 +810,7 @@ class Gaze:
             method: str = 'fivepoint',
             **kwargs: int | float | str,
     ) -> None:
-        """Compute gaze velocity in dva/s from dva position coordinates.
+        """Compute gaze velocity in dva/s from dva degree coordinates.
 
         This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
 
@@ -857,7 +857,7 @@ class Gaze:
 
         Examples
         --------
-        Let's create an example Gaze of 1000Hz with a time column and a position column.
+        Let's create an example Gaze of 1000Hz with a time column and a degree column.
         Please note that time is always stored in milliseconds in the Gaze.
 
         >>> df = polars.DataFrame({
@@ -933,7 +933,7 @@ class Gaze:
             method: str = 'savitzky_golay',
             window_length: int = 7,
             degree: int = 2,
-            column: str = 'position',
+            column: str = 'degree',
             padding: str | float | int | None = 'nearest',
             **kwargs: int | float | str,
     ) -> None:
@@ -954,7 +954,7 @@ class Gaze:
             ``savitzky_golay`` as smoothing method. `degree` must be less than `window_length`.
             (default: 2)
         column: str
-            The input column name to which the smoothing is applied. (default: 'position')
+            The input column name to which the smoothing is applied. (default: 'degree')
         padding: str | float | int | None
             Must be either ``None``, a scalar or one of the strings
             ``mirror``, ``nearest`` or ``wrap``.
@@ -1302,7 +1302,7 @@ class Gaze:
             String specifier for inferring eye components. Supported values are: ``auto``,
             ``mono``, ``left``, ``right``, ``cyclops``. Default: ``auto``.
         gaze_type: str
-            Whether to use ``position`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
+            Whether to use ``degree`` or ``pixel`` coordinates for mapping. Default: ``pixel``.
         preserve_structure: bool
             Controls how list component columns are handled before mapping.
 
@@ -1331,8 +1331,8 @@ class Gaze:
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
-        pos_column_canditates = ['position_' + suffix for suffix in component_suffixes]
-        position_columns = [
+        pos_column_canditates = ['degree_' + suffix for suffix in component_suffixes]
+        degree_columns = [
             c
             for c in pos_column_canditates
             if c in self.samples.columns
@@ -1372,8 +1372,8 @@ class Gaze:
 
             if gaze_type == 'pixel' and pixel_columns:
                 mono_x, mono_y, lx, ly, rx, ry, cx, cy = choose(pixel_columns)
-            elif gaze_type == 'position' and position_columns:
-                mono_x, mono_y, lx, ly, rx, ry, cx, cy = choose(position_columns)
+            elif gaze_type == 'degree' and degree_columns:
+                mono_x, mono_y, lx, ly, rx, ry, cx, cy = choose(degree_columns)
             else:
                 return None
 
@@ -1513,13 +1513,13 @@ class Gaze:
                 gaze_type == 'pixel' and 'pixel' in self.samples.columns
             ) else None
             if (
-                source_col is None and gaze_type == 'position' and
-                'position' in self.samples.columns
+                source_col is None and gaze_type == 'degree' and
+                'degree' in self.samples.columns
             ):
-                source_col = 'position'
+                source_col = 'degree'
             if source_col is None:
                 raise ValueError(
-                    'neither position nor pixel column in samples dataframe, '
+                    'neither degree nor pixel column in samples dataframe, '
                     'at least one needed for mapping',
                 )
 
@@ -1552,13 +1552,13 @@ class Gaze:
                 if req_eye == 'right':
                     return xr, yr
                 if req_eye == 'mono':
-                    # Prefer mono aggregate if provided at positions 4/5, else fall back to
+                    # Prefer mono aggregate if provided at degrees 4/5, else fall back to
                     # right then left
                     if xa is not None and ya is not None:
                         return xa, ya
                     return (xr, yr) if (xr is not None and yr is not None) else (xl, yl)
                 if req_eye == 'cyclops':
-                    # Prefer explicit cyclops at positions 4/5.
+                    # Prefer explicit cyclops at degrees 4/5.
                     if xa is not None and ya is not None:
                         return xa, ya
                     # Else average L/R if both available
@@ -1643,7 +1643,7 @@ class Gaze:
         ----------
         input_columns: list[str] | str | None
             Name(s) of input column(s) to be unnested into several component columns.
-            If None all list columns 'pixel', 'position', 'velocity' and
+            If None all list columns 'pixel', 'degree', 'velocity' and
             'acceleration' will be unnested if existing. (default: None)
         output_suffixes: list[str] | None
             Suffixes to append to the column names. (default: None)
@@ -1664,7 +1664,7 @@ class Gaze:
             If no columns to unnest exist and none are specified.
         """
         if input_columns is None:
-            cols = ['pixel', 'position', 'velocity', 'acceleration']
+            cols = ['pixel', 'degree', 'velocity', 'acceleration']
             input_columns = [col for col in cols if col in self.samples.columns]
 
             if len(input_columns) == 0:
@@ -1766,7 +1766,7 @@ class Gaze:
             - 4 components: binocular data (e.g., x/y for left and right eye)
             - 6 components: binocular + cyclopean data (x/y for left, right, and cyclopean eye)
 
-        If no valid gaze columns were specified (pixel, position, etc.), raise an error
+        If no valid gaze columns were specified (pixel, degree, etc.), raise an error
         with a helpful message to guide proper initialization.
 
         Raises
@@ -1779,7 +1779,7 @@ class Gaze:
                 'Number of components required but no gaze components could be inferred.\n'
                 'This usually happens if you did not specify any column content'
                 ' and the content could not be autodetected from the column names. \n'
-                "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
+                "Please specify 'pixel_columns', 'degree_columns', 'velocity_columns'"
                 " or 'acceleration_columns' explicitly during initialization.",
             )
 
@@ -1828,7 +1828,7 @@ class Gaze:
     def _infer_n_components(self, column_specifiers: list[list[str]]) -> int | None:
         """Infer number of components from DataFrame.
 
-        Method checks nested columns `pixel`, `position`, `velocity` and `acceleration` for number
+        Method checks nested columns `pixel`, `degree`, `velocity` and `acceleration` for number
         of components by getting their list lengths, which must be equal for all else a ValueError
         is raised. Additionally, a list of list of column specifiers is checked for consistency.
 
@@ -1847,7 +1847,7 @@ class Gaze:
         ValueError
             If number of components is not equal for all considered columns and rows.
         """
-        all_considered_columns = ['pixel', 'position', 'velocity', 'acceleration']
+        all_considered_columns = ['pixel', 'degree', 'velocity', 'acceleration']
         considered_columns = [
             column for column in all_considered_columns if column in self.samples.columns
         ]
@@ -1951,21 +1951,21 @@ class Gaze:
         # Automatically infer eye to use for event detection.
         method_args = inspect.getfullargspec(method).args
 
-        if 'positions' in method_args:
-            if 'position' not in samples.columns:
+        if 'degrees' in method_args:
+            if 'degree' not in samples.columns:
                 raise polars.exceptions.ColumnNotFoundError(
-                    f'Column \'position\' not found.'
+                    f'Column \'degree\' not found.'
                     f' Available columns are: {samples.columns}',
                 )
 
             if eye_components is None:
                 raise ValueError(
-                    'eye_components must not be None if passing position to event detection',
+                    'eye_components must not be None if passing degree to event detection',
                 )
 
-            kwargs['positions'] = np.vstack(
+            kwargs['degrees'] = np.vstack(
                 [
-                    samples.get_column('position').list.get(eye_component)
+                    samples.get_column('degree').list.get(eye_component)
                     for eye_component in eye_components
                 ],
             ).transpose()
@@ -2003,7 +2003,7 @@ class Gaze:
             time_column: str | None = None,
             time_unit: str | None = None,
             pixel_columns: list[str] | None = None,
-            position_columns: list[str] | None = None,
+            degree_columns: list[str] | None = None,
             velocity_columns: list[str] | None = None,
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
@@ -2031,9 +2031,9 @@ class Gaze:
             column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
             pixel_columns = [c for c in column_canditates if c in self.samples.columns]
 
-        if auto_column_detect and position_columns is None:
-            column_canditates = ['position_' + suffix for suffix in component_suffixes]
-            position_columns = [c for c in column_canditates if c in self.samples.columns]
+        if auto_column_detect and degree_columns is None:
+            column_canditates = ['degree_' + suffix for suffix in component_suffixes]
+            degree_columns = [c for c in column_canditates if c in self.samples.columns]
 
         if auto_column_detect and velocity_columns is None:
             column_canditates = ['velocity_' + suffix for suffix in component_suffixes]
@@ -2053,10 +2053,10 @@ class Gaze:
             self.nest(pixel_columns, output_column='pixel')
             column_specifiers.append(pixel_columns)
 
-        if position_columns:
-            self._check_component_columns(position_columns=position_columns)
-            self.nest(position_columns, output_column='position')
-            column_specifiers.append(position_columns)
+        if degree_columns:
+            self._check_component_columns(degree_columns=degree_columns)
+            self.nest(degree_columns, output_column='degree')
+            column_specifiers.append(degree_columns)
 
         if velocity_columns:
             self._check_component_columns(velocity_columns=velocity_columns)
@@ -2077,7 +2077,7 @@ class Gaze:
                 'Gaze contains samples but no components could be inferred. \n'
                 'This usually happens if you did not specify any column content'
                 ' and the content could not be autodetected from the column names. \n'
-                "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
+                "Please specify 'pixel_columns', 'degree_columns', 'velocity_columns'"
                 " or 'acceleration_columns' explicitly during initialization."
                 ' Otherwise, transformation methods may fail.',
             )

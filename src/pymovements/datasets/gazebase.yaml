@@ -15,7 +15,7 @@ resources:
     load_kwargs:
       time_column: 'n'
       time_unit: 'ms'
-      position_columns: ['x', 'y']
+      degree_columns: ['x', 'y']
       column_map:
         val: "validity"
         xT: "x_target_pos"

@@ -30,11 +30,11 @@ from pymovements.measure.samples import amplitude
     ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            {'position_column': 'position'},
-            pl.DataFrame(schema={'_position': pl.Int64}),
+            {'degree_column': 'degree'},
+            pl.DataFrame(schema={'_degree': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
-            'position',
-            id='missing_position_column',
+            'degree',
+            id='missing_degree_column',
         ),
     ],
 )
@@ -50,8 +50,8 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[4, 5]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[4, 5]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'amplitude': [0]},
@@ -63,8 +63,8 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[2, 0], [0, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[2, 0], [0, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'amplitude': [2]},
@@ -76,8 +76,8 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 3], [0, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 3], [0, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'amplitude': [3]},
@@ -89,8 +89,8 @@ def test_amplitude_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [1, 1]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [1, 1]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'amplitude': [np.sqrt(2)]},

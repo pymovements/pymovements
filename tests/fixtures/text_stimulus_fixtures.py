@@ -52,7 +52,7 @@ def _stimulus_both_columns() -> TextStimulus:  # noqa: D403
     """AOIs with both trial and page columns for filtering tests.
 
     Two AOIs with identical spatial boxes but different (trial, page) keys,
-    and a third AOI at a different position.
+    and a third AOI at a different degree.
     """
     df = pl.DataFrame(
         {

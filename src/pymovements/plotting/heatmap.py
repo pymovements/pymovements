@@ -35,7 +35,7 @@ from pymovements.stimulus.image import _draw_image_stimulus
 
 def heatmap(
         gaze: Gaze,
-        position_column: str = 'pixel',
+        degree_column: str = 'pixel',
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
@@ -58,16 +58,16 @@ def heatmap(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot a heatmap of gaze data.
 
-    The heatmap displays the distribution of gaze positions across the experiment screen
+    The heatmap displays the distribution of gaze degrees across the experiment screen
     for a given Gaze object.
-    The color values indicate the time spent at each position in seconds.
+    The color values indicate the time spent at each degree in seconds.
 
     Parameters
     ----------
     gaze: Gaze
         A Gaze object.
-    position_column: str
-        The column name of the x and y position data. (default: 'pixel')
+    degree_column: str
+        The column name of the x and y degree data. (default: 'pixel')
     gridsize: tuple[int, int]
         The number of bins in the x and y dimensions. (default: (10, 10))
     cmap: colors.Colormap | str
@@ -117,13 +117,13 @@ def heatmap(
     Raises
     ------
     ValueError
-        If the position columns are not in pixels or degrees
+        If the degree columns are not in pixels or degrees
     ValueError
         If the experiment property of the Gaze is None
     """
-    # Extract x and y positions from the gaze dataframe
-    x = gaze.samples[position_column].list.get(0).to_numpy()
-    y = gaze.samples[position_column].list.get(1).to_numpy()
+    # Extract x and y degrees from the gaze dataframe
+    x = gaze.samples[degree_column].list.get(0).to_numpy()
+    y = gaze.samples[degree_column].list.get(1).to_numpy()
 
     # Check if experiment properties are available
     if not gaze.experiment:
@@ -138,10 +138,10 @@ def heatmap(
     screen = gaze.experiment.screen
 
     # Use screen properties to define the grid or degrees of visual angle
-    if position_column == 'pixel':
+    if degree_column == 'pixel':
         xmin, xmax = 0, screen.width_px
         ymin, ymax = 0, screen.height_px
-    elif position_column == 'position':
+    elif degree_column == 'degree':
         xmin, xmax = int(screen.x_min_dva), int(screen.x_max_dva)
         ymin, ymax = int(screen.y_min_dva), int(screen.y_max_dva)
     else:

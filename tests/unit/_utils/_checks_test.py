@@ -61,14 +61,14 @@ def test_check_no_zeros_raises_error(variable, expected_error, expected_err_msg)
         assert msg == expected_err_msg
 
 
-# Test check_shapes_positions_velocities
+# Test check_shapes_degrees_velocities
 @pytest.mark.parametrize(
     ('kwargs', 'expected_error', 'expected_err_msg'),
     [
         # Test for one array
         pytest.param(
             {
-                'positions': np.array([[1, 2], [3, 4]]),
+                'degrees': np.array([[1, 2], [3, 4]]),
             },
             None,
             '',
@@ -76,7 +76,7 @@ def test_check_no_zeros_raises_error(variable, expected_error, expected_err_msg)
         ),
         pytest.param(
             {
-                'positions': np.array([[1, 2], [3, 4]]),
+                'degrees': np.array([[1, 2], [3, 4]]),
                 'velocities': np.array([[1, 2], [3, 4]]),
             },
             None,
@@ -86,57 +86,57 @@ def test_check_no_zeros_raises_error(variable, expected_error, expected_err_msg)
         # Test for one wrong array
         pytest.param(
             {
-                'positions': np.array([1, 2, 3, 4]),
+                'degrees': np.array([1, 2, 3, 4]),
             },
             ValueError,
-            'positions must have shape (N, 2) but have shape (4,)',
+            'degrees must have shape (N, 2) but have shape (4,)',
             id='array_not_shape_N_2_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': np.array([[1, 2], [3, 4]]),
+                'degrees': np.array([[1, 2], [3, 4]]),
                 'velocities': np.array([1, 2, 3, 4]),
             },
             ValueError,
             'velocities must have shape (N, 2) but have shape (4,)',
-            id='positions_shape_N_2_velocities_not_shape_N_2_raises_value_error',
+            id='degrees_shape_N_2_velocities_not_shape_N_2_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': np.array([1, 2, 3, 4]),
+                'degrees': np.array([1, 2, 3, 4]),
                 'velocities': np.array([[1, 2], [3, 4]]),
             },
             ValueError,
-            'positions must have shape (N, 2) but have shape (4,)',
-            id='positions_not_shape_N_2_velocities_shape_N_2_raises_value_error',
+            'degrees must have shape (N, 2) but have shape (4,)',
+            id='degrees_not_shape_N_2_velocities_shape_N_2_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': np.array([1, 2, 3, 4]),
+                'degrees': np.array([1, 2, 3, 4]),
                 'velocities': np.array([1, 2, 3, 4]),
             },
             ValueError,
-            'positions must have shape (N, 2) but have shape (4,)',
-            id='positions_and_velocities_not_shape_N_2_raises_value_error',
+            'degrees must have shape (N, 2) but have shape (4,)',
+            id='degrees_and_velocities_not_shape_N_2_raises_value_error',
         ),
         pytest.param(
             {
-                'positions': np.array([[1, 2], [3, 4]]),
+                'degrees': np.array([[1, 2], [3, 4]]),
                 'velocities': np.array([[1, 2], [3, 4], [5, 6]]),
             },
             ValueError,
-            'positions, velocities'
+            'degrees, velocities'
             ' must have the same shape, but shapes are '
             '(2, 2), (3, 2)',
-            id='positions_and_velocities_N_2_but_different_lengths_raises_value_error',
+            id='degrees_and_velocities_N_2_but_different_lengths_raises_value_error',
         ),
     ],
 )
 def test_check_shapes_raises_error(kwargs, expected_error, expected_err_msg):
     """Test that check_shapes() raises an Exception.
 
-    Only if the shapes of the positions and velocities are not (N, 2) or if the lengths of the
-    positions and velocities are not equal.
+    Only if the shapes of the degrees and velocities are not (N, 2) or if the lengths of the
+    degrees and velocities are not equal.
     """
     if expected_error is None:
         _checks.check_shapes(**kwargs)

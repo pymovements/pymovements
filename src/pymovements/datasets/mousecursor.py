@@ -39,8 +39,8 @@ class MouseCursor(DatasetDefinition):
     The paper presents a dataset for comparing two types of eye tracking:
     smooth (vestibulo-ocular reflex or VOR-based) and saccadic eye tracking.
     Data were collected using a head-mounted infrared camera system that adjusted
-    the mouse cursor based on pupil position.
-    The experiments involved two participants completing tasks to either position the
+    the mouse cursor based on pupil degree.
+    The experiments involved two participants completing tasks to either degree the
     cursor within target areas or move it to a target location as quickly as possible.
     The dataset is intended to help researchers evaluate and compare eye tracking methods
     without needing to build the system themselves.
@@ -88,7 +88,7 @@ class MouseCursor(DatasetDefinition):
         milliseconds.
 
     pixel_columns: list[str] | None
-        The name of the pixel position columns in the input data frame. These columns will be
+        The name of the pixel degree columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 

@@ -29,11 +29,11 @@ from pymovements.measure.samples import dispersion
     ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            {'position_column': 'position'},
-            pl.DataFrame(schema={'_position': pl.Int64}),
+            {'degree_column': 'degree'},
+            pl.DataFrame(schema={'_degree': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
-            'position',
-            id='dispersion_missing_position_column',
+            'degree',
+            id='dispersion_missing_degree_column',
         ),
     ],
 )
@@ -49,8 +49,8 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[2, 3]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[2, 3]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'dispersion': [0]},
@@ -62,8 +62,8 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [2, 0]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [2, 0]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'dispersion': [2]},
@@ -75,8 +75,8 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [0, 3]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [0, 3]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'dispersion': [3]},
@@ -88,8 +88,8 @@ def test_dispersion_exceptions(init_kwargs, input_df, exception, message):
         pytest.param(
             {},
             pl.DataFrame(
-                {'position': [[0, 0], [2, 3]]},
-                schema={'position': pl.List(pl.Float64)},
+                {'degree': [[0, 0], [2, 3]]},
+                schema={'degree': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
                 {'dispersion': [5]},

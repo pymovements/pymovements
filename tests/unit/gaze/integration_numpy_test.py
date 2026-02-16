@@ -98,7 +98,7 @@ def test_from_numpy_with_schema():
         time_unit='ms',
         distance_column='d',
         pixel_columns=['x_pix', 'y_pix'],
-        position_columns=['x_pos', 'y_pos'],
+        degree_columns=['x_pos', 'y_pos'],
         velocity_columns=['x_vel', 'y_vel'],
         acceleration_columns=['x_acc', 'y_acc'],
     )
@@ -108,7 +108,7 @@ def test_from_numpy_with_schema():
             'time': [101, 102, 103, 104],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+            'degree': [[9, 5], [8, 4], [7, 3], [6, 2]],
             'velocity': [[1, 5], [2, 6], [3, 7], [4, 8]],
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
@@ -116,7 +116,7 @@ def test_from_numpy_with_schema():
             'time': pl.Int64,
             'distance': pl.Float64,
             'pixel': pl.List(pl.Float64),
-            'position': pl.List(pl.Float64),
+            'degree': pl.List(pl.Float64),
             'velocity': pl.List(pl.Float64),
             'acceleration': pl.List(pl.Float64),
         },
@@ -180,7 +180,7 @@ def test_from_numpy_explicit_columns():
     time = np.array([101, 102, 103, 104], dtype=np.int64)
     distance = np.array([100, 100, 100, 100], dtype=np.float64)
     pixel = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int64)
-    position = np.array([[9, 8, 7, 6], [5, 4, 3, 2]], dtype=np.float64)
+    degree = np.array([[9, 8, 7, 6], [5, 4, 3, 2]], dtype=np.float64)
     velocity = np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float64)
     acceleration = np.array([[2, 3, 4, 5], [6, 7, 8, 9]], dtype=np.float64)
 
@@ -199,7 +199,7 @@ def test_from_numpy_explicit_columns():
         time_unit='ms',
         distance=distance,
         pixel=pixel,
-        position=position,
+        degree=degree,
         velocity=velocity,
         acceleration=acceleration,
         experiment=experiment,
@@ -210,7 +210,7 @@ def test_from_numpy_explicit_columns():
             'time': [101, 102, 103, 104],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+            'degree': [[9, 5], [8, 4], [7, 3], [6, 2]],
             'velocity': [[1, 5], [2, 6], [3, 7], [4, 8]],
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
@@ -218,7 +218,7 @@ def test_from_numpy_explicit_columns():
             'time': pl.Int64,
             'distance': pl.Float64,
             'pixel': pl.List(pl.Int64),
-            'position': pl.List(pl.Float64),
+            'degree': pl.List(pl.Float64),
             'velocity': pl.List(pl.Float64),
             'acceleration': pl.List(pl.Float64),
         },
@@ -264,12 +264,12 @@ def test_from_numpy_all_none():
         experiment=None,
         time=None,
         pixel=None,
-        position=None,
+        degree=None,
         velocity=None,
         acceleration=None,
         time_column=None,
         pixel_columns=None,
-        position_columns=None,
+        degree_columns=None,
         velocity_columns=None,
         acceleration_columns=None,
     )
