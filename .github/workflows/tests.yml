@@ -26,19 +26,18 @@ jobs:
           - macos-latest
           - ubuntu-latest
           - windows-latest
-        tox_env:
-          - py313
+        python:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
         is_main:
           - ${{ contains(github.ref, 'main') }}
+        exclude:
+          - is_main: false
         include:
-          - tox_env: py310
-            python: "3.10"
-          - tox_env: py311
-            python: "3.11"
-          - tox_env: py312
-            python: "3.12"
-          - tox_env: py313
-            python: "3.13"
+          - python: "3.13"
+
     steps:
       - uses: actions/checkout@v4
         with:
