@@ -312,22 +312,17 @@ def events2timeratio(
             (pl.col('duration') / pl.col('time_range')).alias(f"event_ratio_{name}"),
         )
 
-        ratio_expr = None
+        ratio_expr: pl.Expr | None = None
         for row in trial_ratios.to_dicts():
-            condition = None
+            condition: pl.Expr | None = None
             for col in trial_columns:
                 trial_val = row.get(col)
                 trial_right_val = row.get(f"{col}_right")
                 val = trial_val if trial_val is not None else trial_right_val
-                # Accumulate trial equality conditions for row selection
-                if val is not None:
-                    if condition is None:
-                        condition = pl.col(col) == val
-                    else:
-                        condition = condition & (pl.col(col) == val)
-
-            if condition is None:
-                continue
+                if condition is None:
+                    condition = pl.col(col) == val
+                else:
+                    condition = condition & (pl.col(col) == val)
 
             ratio = row.get(f"event_ratio_{name}")
             if ratio is None:
@@ -339,10 +334,8 @@ def events2timeratio(
             else:
                 ratio_expr = ratio_expr.when(condition).then(pl.lit(ratio))
 
-        if ratio_expr is None:
-            return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
-
-        return ratio_expr.otherwise(pl.lit([0.0]).list.sum()).alias(
+        # At this point, trial_columns is guaranteed to be non-empty, so ratio_expr is set
+        return ratio_expr.otherwise(pl.lit([0.0]).list.sum()).alias(  # type: ignore[union-attr]
             f"event_ratio_{name}",
         )
 
