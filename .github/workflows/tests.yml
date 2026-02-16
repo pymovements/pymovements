@@ -36,6 +36,10 @@ jobs:
         exclude:
           - is_main: false
             python: "3.10"
+          - is_main: false
+            python: "3.11"
+          - is_main: false
+            python: "3.12"
 
     steps:
       - uses: actions/checkout@v4
