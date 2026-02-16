@@ -29,17 +29,7 @@ jobs:
         is_main:
           - ${{ contains(github.ref, 'main') }}
         include:
-          - is_main: true
-            tox_env: py310
-            python: "3.10"
-          - is_main: true
-            tox_env: py311
-            python: "3.11"
-          - is_main: true
-            tox_env: py312
-            python: "3.12"
-          - is_main: true || false
-            tox_env: py313
+          - tox_env: py313
             python: "3.13"
     steps:
       - uses: actions/checkout@v4
