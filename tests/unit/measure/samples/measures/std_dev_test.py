@@ -29,7 +29,7 @@ from pymovements.measure.samples import std_rms
     ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            {'position_column': 'position'},
+            {'column': 'position'},
             pl.DataFrame(schema={'_position': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
             'position',
@@ -119,7 +119,7 @@ def test_std_rms_exceptions(init_kwargs, input_df, exception, message):
             id='std_rms_three_samples_diagonal',
         ),
         pytest.param(
-            {'position_column': 'gaze_pos'},
+            {'column': 'gaze_pos'},
             pl.DataFrame(
                 {'gaze_pos': [[10, 20], [10, 20], [10, 20]]},
                 schema={'gaze_pos': pl.List(pl.Float64)},

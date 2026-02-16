@@ -29,7 +29,7 @@ from pymovements.measure.samples import bcea
     ('init_kwargs', 'input_df', 'exception', 'message'),
     [
         pytest.param(
-            {'position_column': 'position'},
+            {'column': 'position'},
             pl.DataFrame(schema={'_position': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
             'position',
@@ -167,7 +167,7 @@ def test_bcea_confidence_invalid_type_raises_type_error(confidence):
             id='bcea_four_samples_perfect_correlation',
         ),
         pytest.param(
-            {'position_column': 'gaze_pos'},
+            {'column': 'gaze_pos'},
             pl.DataFrame(
                 {'gaze_pos': [[10, 20], [10, 20]]},
                 schema={'gaze_pos': pl.List(pl.Float64)},
