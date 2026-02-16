@@ -35,8 +35,7 @@ jobs:
           - ${{ contains(github.ref, 'main') }}
         exclude:
           - is_main: false
-        include:
-          - python: "3.13"
+            python: "3.10"
 
     steps:
       - uses: actions/checkout@v4
