@@ -33,8 +33,6 @@ jobs:
           - "3.13"
         is_main:
           - ${{ contains(github.ref, 'main') }}
-        exclude:
-          - is_main: false
         include:
           - python: "3.13"
 
