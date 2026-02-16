@@ -580,6 +580,30 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             {1: 0.5, 2: 0.0},
             id='partial_trials_with_events',
         ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'time': [0.0, 1.0, 2.0], 'trial': [2, 2, 2]},
+            ['trial'],
+            {2: 0.0},
+            id='non_overlapping_trials_events_only',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [2]},
+            {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
+            ['trial'],
+            {1: 0.0},
+            id='non_overlapping_trials_samples_only',
+        ),
+        pytest.param(
+            {'name': ['saccade'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial'],
+            {1: 0.0, 2: 0.0},
+            id='empty_events_all_trials',
+        ),
     ],
 )
 def test_events2timeratio_with_trials(
