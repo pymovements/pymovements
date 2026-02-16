@@ -278,7 +278,7 @@ def events2timeratio(
     └───────────────────┘
     """
     if events.is_empty():
-        return pl.lit(0.0).alias(f"event_ratio_{name}")
+        return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
 
     if onset_column not in events.columns:
         raise ValueError(f"Onset column {onset_column!r} not found in events.")
@@ -290,7 +290,7 @@ def events2timeratio(
     relevant_events = events.filter(pl.col('name') == name)
 
     if relevant_events.is_empty():
-        return pl.lit(0.0).alias(f"event_ratio_{name}")
+        return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
 
     # Event ratio considering trial columns
     if trial_columns:
@@ -340,9 +340,11 @@ def events2timeratio(
                 ratio_expr = ratio_expr.when(condition).then(pl.lit(ratio))
 
         if ratio_expr is None:
-            return pl.lit(0.0).alias(f"event_ratio_{name}")
+            return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
 
-        return ratio_expr.otherwise(pl.lit(0.0)).alias(f"event_ratio_{name}")
+        return ratio_expr.otherwise(pl.lit([0.0]).list.sum()).alias(
+            f"event_ratio_{name}",
+        )
 
     total_duration = (
         relevant_events.select(pl.col(offset_column) - pl.col(onset_column)).sum()
