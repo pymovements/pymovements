@@ -27,7 +27,10 @@ from pymovements import __version__
 
 @pytest.mark.parametrize(
     (
-        'function_name', 'warning_message', 'scheduled_version', 'current_version',
+        'function_name',
+        'warning_message',
+        'scheduled_version',
+        'current_version',
         'assertion_message',
     ),
     [
@@ -106,8 +109,12 @@ from pymovements import __version__
     ],
 )
 def test_assert_deprecation_fixture_assert_false(
-        function_name, warning_message, scheduled_version, current_version, assertion_message,
-        assert_deprecation_is_removed,
+    function_name,
+    warning_message,
+    scheduled_version,
+    current_version,
+    assertion_message,
+    assert_deprecation_is_removed,
 ):
     with pytest.raises(AssertionError, match=assertion_message):
         assert_deprecation_is_removed(
@@ -118,12 +125,37 @@ def test_assert_deprecation_fixture_assert_false(
         )
 
 
+@pytest.mark.parametrize(
+    'version_string,expected',
+    [
+        pytest.param('0.26.0', '0.26.0', id='base_version'),
+        pytest.param('0.26.0+16.g7c26d6e1', '0.26.0', id='post_release'),
+        pytest.param('0.26.0+16.g7c26d6e1.dirty', '0.26.0', id='post_release_dirty'),
+        pytest.param('0.26.0-rc1', '0.26.0', id='release_candidate_hyphen'),
+        pytest.param('0.26.0rc1', '0.26.0', id='release_candidate_no_hyphen'),
+        pytest.param('0.26.0a1', '0.26.0', id='alpha'),
+        pytest.param('0.26.0b1', '0.26.0', id='beta'),
+        pytest.param('1.0.0', '1.0.0', id='major_version'),
+        pytest.param('0.1.0', '0.1.0', id='minor_version'),
+    ],
+)
+def test_base_version_extraction(version_string: str, expected: str) -> None:
+    """Test that version extraction regex correctly strips suffixes."""
+    base_version_regex = re.compile(r'(\d+[.]\d+[.]\d+)([+]?[-]?[a-z]?)?')
+    match = base_version_regex.match(version_string)
+    assert match is not None, f"Failed to match version {version_string!r}"
+    result = match.group(1)
+    assert result == expected
+
+
 def test_assert_deprecation_fixture_default_current_version_assert_false(
-        assert_deprecation_is_removed,
+    assert_deprecation_is_removed,
 ):
     base_version_regex = re.compile(r'(\d+[.]\d+[.]\d+)([+]?[-]?[a-z]?)?')
-    scheduled_version = base_version_regex.match(__version__).group(1)
-    warning_message = f'(This module will be removed in v{scheduled_version}.)'
+    match = base_version_regex.match(__version__)
+    assert match is not None, f"Failed to match __version__ {__version__!r}"
+    scheduled_version = match.group(1)
+    warning_message = f"(This module will be removed in v{scheduled_version}.)"
 
     assertion_message = (
         f'scheduled .* removed in v{scheduled_version}.'
@@ -168,8 +200,11 @@ def test_assert_deprecation_fixture_default_current_version_assert_false(
     ],
 )
 def test_assert_deprecation_fixture_assert_true(
-        function_name, warning_message, scheduled_version, current_version,
-        assert_deprecation_is_removed,
+    function_name,
+    warning_message,
+    scheduled_version,
+    current_version,
+    assert_deprecation_is_removed,
 ):
     assert_deprecation_is_removed(
         function_name=function_name,
