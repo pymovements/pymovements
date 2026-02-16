@@ -26,6 +26,8 @@ jobs:
           - macos-latest
           - ubuntu-latest
           - windows-latest
+        tox_env:
+          - py313
         is_main:
           - ${{ contains(github.ref, 'main') }}
         include:
