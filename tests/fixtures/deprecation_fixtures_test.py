@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test deprecation fixtures."""
+import re
+
 import pytest
 
 from pymovements import __version__
@@ -119,7 +121,8 @@ def test_assert_deprecation_fixture_assert_false(
 def test_assert_deprecation_fixture_default_current_version_assert_false(
         assert_deprecation_is_removed,
 ):
-    scheduled_version = __version__.split('+')[0].split('-')[0]
+    base_version_regex = re.compile(r'(\d+[.]\d+[.]\d+)([+]?[-]?[a-z]?)?')
+    scheduled_version = base_version_regex.match(__version__).group(1)
     warning_message = f'(This module will be removed in v{scheduled_version}.)'
 
     assertion_message = (
