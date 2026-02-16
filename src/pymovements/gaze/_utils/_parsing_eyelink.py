@@ -331,52 +331,36 @@ def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[
     return context
 
 
-def _collect_context_and_events(
-        lines: list[str],
-        compiled_patterns: list[dict[str, Any]],
-        additional_columns: set[str],
-) -> tuple[
-    dict[float, dict[str, Any]], list[tuple[str, str, float]],
-    list[tuple[str, str, float, float]],
-]:
-    """First pass: collect all context and events separately."""
-    context_timeline: dict[float, dict[str, Any]] = {}
-    event_starts: list[tuple[str, str, float]] = []
-    event_ends: list[tuple[str, str, float, float]] = []
-
-    current_additional: dict[str, Any] = {}
-    for col in additional_columns:
-        current_additional[col] = None
-
-    for line in lines:
-        # 1. Check pattern matches and update current_additional
-        matched_context = _check_patterns(line, compiled_patterns)
-        if matched_context:
-            current_additional.update(matched_context)
-
-        # 2. Check for event starts/ends
-        if start_event := parse_eyelink_event_start(line):
-            event_name, eye, timestamp = start_event
-            event_starts.append((event_name, eye, timestamp))
-            # Store context snapshot at the moment of start
-            context_timeline[timestamp] = {**current_additional}
-
-        elif end_event := parse_eyelink_event_end(line):
-            event_name, eye, onset, offset = end_event
-            event_ends.append((event_name, eye, onset, offset))
-            # Store context snapshot at the moment of end
-            context_timeline[offset] = {**current_additional}
-
-    return context_timeline, event_starts, event_ends
-
-
 def _match_events_with_context(
         event_starts: list[tuple[str, str, float]],
         event_ends: list[tuple[str, str, float, float]],
         context_timeline: dict[float, dict[str, Any]],
         additional_columns: set[str],
 ) -> list[dict[str, Any]]:
-    """Second pass: match starts/ends and build complete events using a stack per eye and type."""
+    """Match event starts and ends and build complete events using a stack per eye and type.
+
+    This function pairs event start markers (SFIX/SSACC/SBLINK) with their corresponding
+    end markers (EFIX/ESACC/EBLINK) using a stack-based approach. For each event type
+    and eye, starts are pushed onto a stack and matched with ends by popping (LIFO).
+
+    Parameters
+    ----------
+    event_starts : list[tuple[str, str, float]]
+        List of event starts as tuples of (event_name, eye, timestamp).
+    event_ends : list[tuple[str, str, float, float]]
+        List of event ends as tuples of (event_name, eye, onset, offset).
+    context_timeline : dict[float, dict[str, Any]]
+        Dictionary mapping timestamps to context dictionaries containing additional
+        column values at that point in time.
+    additional_columns : set[str]
+        Set of additional column names to include in the output events.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        List of matched event dictionaries with keys: name, eye, onset, offset,
+        and any additional columns from the context.
+    """
     matched_events: list[dict[str, Any]] = []
 
     # Stacks for each event type and eye: (event_name, eye) -> list of start_timestamps
@@ -555,23 +539,14 @@ def parse_eyelink(
 
     compiled_metadata_patterns.extend(EYELINK_META_REGEXES)
 
-    context_timeline, event_starts, event_ends = _collect_context_and_events(
-        lines, compiled_patterns, additional_columns,
-    )
-    matched_events = _match_events_with_context(
-        event_starts, event_ends, context_timeline, additional_columns,
-    )
-    for event in matched_events:
-        for key, value in event.items():
-            events[key].append(value)
+    # Event collection for deterministic matching
+    context_timeline: dict[float, dict[str, Any]] = {}
+    event_starts: list[tuple[str, str, float]] = []
+    event_ends: list[tuple[str, str, float, float]] = []
 
-        # collect blink intervals and compute counts later once sampling rate is known
-        if event['name'] == 'blink_eyelink':
-            blink_intervals.append((event['onset'], event['offset']))
-
-    if (
-        not isinstance(messages, (bool, list)) or
-        (isinstance(messages, list) and not all(isinstance(regexp, str) for regexp in messages))
+    if not isinstance(messages, (bool, list)) or (
+        isinstance(messages, list)
+        and not all(isinstance(regexp, str) for regexp in messages)
     ):
         raise ValueError(
             'Make sure to pass either a bool or a list of regular expressions '
@@ -590,9 +565,7 @@ def parse_eyelink(
     total_recording_duration = 0.0
     num_expected_samples = 0
     num_valid_samples = 0  # excluding blinks
-    # Collect ALL SAMPLES config lines (don't stop at the first match) so
-    # inconsistent values (e.g. different sampling rates across SAMPLES lines)
-    # can be detected later.
+    # First pass: collect SAMPLES config for binocular detection only
     is_binocular = False
     for line in lines:
         if match := SAMPLES_CONFIG_REGEX.search(line):
@@ -604,14 +577,6 @@ def parse_eyelink(
                 ('LEFT' in tracked and 'RIGHT' in tracked) or
                 tracked == 'LR' or tracked == 'L R'
             )
-
-        for pattern_dict in compiled_patterns:
-            if match := pattern_dict['pattern'].match(line):
-                if 'value' in pattern_dict:
-                    current_column = pattern_dict['column']
-                    current_additional[current_column] = pattern_dict['value']
-                else:
-                    current_additional.update(match.groupdict())
 
     # Update the samples dictionary to include binocular data with correct column names if needed
     if is_binocular:
@@ -640,7 +605,25 @@ def parse_eyelink(
         ):
             samples.pop(_k, None)
 
+    # Reset additional columns before second pass
+    for col in additional_columns:
+        current_additional[col] = None
+
+    # Second pass: collect events, patterns, samples, and metadata
     for line in lines:
+        # Collect event starts/ends for deterministic matching
+        # Store context BEFORE processing this line's patterns (context is from previous lines)
+        if start_event := parse_eyelink_event_start(line):
+            event_name, eye, timestamp = start_event
+            event_starts.append((event_name, eye, timestamp))
+            context_timeline[timestamp] = {**current_additional}
+
+        elif end_event := parse_eyelink_event_end(line):
+            event_name, eye, onset, offset = end_event
+            event_ends.append((event_name, eye, onset, offset))
+            context_timeline[offset] = {**current_additional}
+
+        # Then process patterns and update context for subsequent lines
         matched_ctx = _check_patterns(line, compiled_patterns)
         if matched_ctx:
             current_additional.update(matched_ctx)
@@ -794,6 +777,20 @@ def parse_eyelink(
 
     if not metadata:
         warnings.warn('No metadata found. Please check the file for errors.')
+
+    # Match events using collected starts/ends and context timeline
+    matched_events = _match_events_with_context(
+        event_starts,
+        event_ends,
+        context_timeline,
+        additional_columns,
+    )
+    for event in matched_events:
+        for key, value in event.items():
+            events[key].append(value)
+
+        if event['name'] == 'blink_eyelink':
+            blink_intervals.append((event['onset'], event['offset']))
 
     # the actual tracked eye is in the samples config, not in the recording config
     # the recording config contains the eyes that were recorded
