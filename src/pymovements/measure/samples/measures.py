@@ -454,7 +454,7 @@ def std_rms(
     is no variance to measure.
 
     STD is relatively insensitive compared to :py:func:`s2s_rms` to displacement between
-    successive gaze positions, making it a good measure of spatial spread
+    successive gaze samples, making it a good measure of spatial spread
     rather than signal velocity. This makes STD particularly suitable for
     quantifying the precision of eye trackers as it reflects the area over
     which gaze positions are distributed during fixations.
@@ -481,8 +481,8 @@ def s2s_rms(
     r"""Root-mean-square of sample-to-sample displacements.
 
     The RMS-S2S (Root Mean Square - Sample to Sample) measures the magnitude
-    of displacements between successive position samples. It is computed
-    as the square root of the mean squared Euclidean distance between all
+    of displacements between successive samples. It is computed as the square
+    root of the mean squared Euclidean distance between all
     adjacent sample pairs:
 
     .. math::
@@ -491,9 +491,9 @@ def s2s_rms(
     .. math::
         \text{RMS-S2S} = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n-1} \theta_i^2}
 
-    where :math:`x_i` and :math:`y_i` are the positions for the
-    :math:`i`-th sample, :math:`x_{i+1}` and :math:`y_{i+1}` are the positions
-    for the next sample, :math:`\theta_i` is the Euclidean distance between
+    where :math:`x_i` and :math:`y_i` are the x/y components for the
+    :math:`i`-th sample, :math:`x_{i+1}` and :math:`y_{i+1}` refer to the components
+    of the next sample, :math:`\theta_i` is the Euclidean distance between
     successive samples, and :math:`n` is the total number of samples.
 
     Parameters
@@ -570,7 +570,7 @@ def bcea(
         k = -2 \ln(1 - P/100),\quad
         \text{BCEA} = k \pi \sigma_x \sigma_y \sqrt{1 - \rho^2}
 
-    where :math:`x_i` and :math:`y_i` are the positions, :math:`\bar{x}`
+    where :math:`x_i` and :math:`y_i` are the x and y sample components, :math:`\bar{x}`
     and :math:`\bar{y}` are their respective means, :math:`\sigma_x` and
     :math:`\sigma_y` are the standard deviations, :math:`\rho` is the Pearson
     correlation coefficient between the horizontal and vertical components,
