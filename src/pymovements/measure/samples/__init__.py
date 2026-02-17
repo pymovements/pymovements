@@ -28,7 +28,7 @@ from pymovements.measure.samples.measures import disposition
 from pymovements.measure.samples.measures import location
 from pymovements.measure.samples.measures import null_ratio
 from pymovements.measure.samples.measures import peak_velocity
-from pymovements.measure.samples.measures import s2s_rms
+from pymovements.measure.samples.measures import rms_s2s
 from pymovements.measure.samples.measures import std_rms
 
 
@@ -44,6 +44,6 @@ __all__ = [
     'location',
     'null_ratio',
     'peak_velocity',
-    's2s_rms',
+    'rms_s2s',
     'std_rms',
 ]

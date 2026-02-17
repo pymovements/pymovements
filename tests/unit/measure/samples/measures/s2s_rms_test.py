@@ -17,12 +17,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test module for s2s_rms sample measure."""
+"""Test module for rms_s2s sample measure."""
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements.measure.samples import s2s_rms
+from pymovements.measure.samples import rms_s2s
 
 
 @pytest.mark.parametrize(
@@ -33,12 +33,12 @@ from pymovements.measure.samples import s2s_rms
             pl.DataFrame(schema={'_position': pl.Int64}),
             pl.exceptions.ColumnNotFoundError,
             'position',
-            id='s2s_rms_missing_position_column',
+            id='rms_s2s_missing_position_column',
         ),
     ],
 )
-def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
-    expression = s2s_rms(**init_kwargs)
+def test_rms_s2s_exceptions(init_kwargs, input_df, exception, message):
+    expression = rms_s2s(**init_kwargs)
     with pytest.raises(exception, match=message):
         input_df.select([expression])
 
@@ -53,10 +53,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [None]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [None]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_one_sample_returns_none',
+            id='rms_s2s_one_sample_returns_none',
         ),
         pytest.param(
             {},
@@ -65,10 +65,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [2.0]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [2.0]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_two_samples_x_move',
+            id='rms_s2s_two_samples_x_move',
         ),
         pytest.param(
             {},
@@ -77,10 +77,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [3.0]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [3.0]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_two_samples_y_move',
+            id='rms_s2s_two_samples_y_move',
         ),
         pytest.param(
             {},
@@ -89,10 +89,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [5.0]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [5.0]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_two_samples_xy_move',
+            id='rms_s2s_two_samples_xy_move',
         ),
         pytest.param(
             {},
@@ -101,10 +101,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [1.0]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [1.0]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_three_samples_constant_step',
+            id='rms_s2s_three_samples_constant_step',
         ),
         pytest.param(
             {},
@@ -113,10 +113,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [1.0]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [1.0]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_five_samples_square',
+            id='rms_s2s_five_samples_square',
         ),
         pytest.param(
             {'column': 'gaze_pos'},
@@ -125,10 +125,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'gaze_pos': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [0.0]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [0.0]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_custom_column_constant_positions',
+            id='rms_s2s_custom_column_constant_positions',
         ),
         pytest.param(
             {},
@@ -137,10 +137,10 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [2.8284271247461903]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [2.8284271247461903]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_negative_positions',
+            id='rms_s2s_negative_positions',
         ),
         pytest.param(
             {},
@@ -149,15 +149,15 @@ def test_s2s_rms_exceptions(init_kwargs, input_df, exception, message):
                 schema={'position': pl.List(pl.Float64)},
             ),
             pl.DataFrame(
-                {'s2s_rms': [1.1547005383792515]},
-                schema={'s2s_rms': pl.Float64},
+                {'rms_s2s': [1.1547005383792515]},
+                schema={'rms_s2s': pl.Float64},
             ),
-            id='s2s_rms_four_samples_mixed_steps',
+            id='rms_s2s_four_samples_mixed_steps',
         ),
     ],
 )
-def test_s2s_rms_has_expected_result(init_kwargs, input_df, expected_df):
-    expression = s2s_rms(**init_kwargs)
+def test_rms_s2s_has_expected_result(init_kwargs, input_df, expected_df):
+    expression = rms_s2s(**init_kwargs)
     result_df = input_df.select([expression])
 
     assert_frame_equal(result_df, expected_df)

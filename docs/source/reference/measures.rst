@@ -18,7 +18,7 @@ Measures
     location
     null_ratio
     peak_velocity
-    s2s_rms
+    rms_s2s
     std_rms
 
 .. rubric:: Classes

@@ -453,7 +453,7 @@ def std_rms(
     For sequences with a single sample, this measure returns ``None`` since there
     is no variance to measure.
 
-    STD is relatively insensitive compared to :py:func:`s2s_rms` to displacement between
+    STD is relatively insensitive compared to :py:func:`rms_s2s` to displacement between
     successive gaze samples, making it a good measure of spatial spread
     rather than signal velocity. This makes STD particularly suitable for
     quantifying the precision of eye trackers as it reflects the area over
@@ -473,7 +473,7 @@ def std_rms(
 
 
 @register_sample_measure
-def s2s_rms(
+def rms_s2s(
     column: str = 'position',
     *,
     n_components: int = 2,
@@ -538,7 +538,7 @@ def s2s_rms(
 
     result = squared_distances.mean().sqrt()
 
-    return result.alias('s2s_rms')
+    return result.alias('rms_s2s')
 
 
 @register_sample_measure
@@ -637,10 +637,10 @@ def bcea(
     component is zero, this measure returns ``None`` since statistics
     (variance, correlation) cannot be meaningfully computed.
 
-    :py:func:`s2s_rms` is closely proportional to the average velocity of the signal
+    :py:func:`rms_s2s` is closely proportional to the average velocity of the signal
     during fixations, making it a good indicator of slowest detectable eye
-    movements. Unlike :py:func:`std_rms`, which measures spatial spread, :py:func:`s2s_rms` captures
-    the velocity aspect of signal variability. This makes :py:func:`s2s_rms` particularly
+    movements. Unlike :py:func:`std_rms`, which measures spatial spread, :py:func:`rms_s2s` captures
+    the velocity aspect of signal variability. This makes :py:func:`rms_s2s` particularly
     useful for assessing what threshold might differentiate eye movements
     from measurement noise :cite:p:`Niehorster2020`.
     """
