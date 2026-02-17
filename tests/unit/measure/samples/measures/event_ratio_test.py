@@ -281,3 +281,44 @@ class TestEventRatio:
         base_kwargs.update(kwargs)
         with pytest.raises(error_type, match=match):
             fixture_gaze_data.measure_events_ratio(**base_kwargs)
+
+    @pytest.mark.parametrize(
+        ('sampling_rate_arg', 'experiment_rate', 'expected'),
+        [
+            # Sampling rate from experiment (1000.0 Hz -> dt = 1.0)
+            # Expected: (3-1+1) + (7-5+1) / (7-0+1) = 6/8 = 0.75
+            pytest.param(None, 1000.0, 0.75, id='from_experiment'),
+            # Explicit override (500.0 Hz -> dt = 2.0)
+            # Expected: (3-1+2) + (7-5+2) / (7-0+2) = 8/9
+            pytest.param(500.0, 1000.0, 8 / 9, id='explicit_override'),
+            # No experiment, no rate (dt = 0.0)
+            # Expected: (3-1) + (7-5) / (7-0) = 4/7
+            pytest.param(None, None, 4 / 7, id='no_experiment_no_rate'),
+        ],
+    )
+    def test_measure_events_ratio_sampling_rate_fallback(
+        self,
+        sampling_rate_arg,
+        experiment_rate,
+        expected,
+    ):
+        """Test sampling_rate fallback logic for measure_events_ratio."""
+        samples = pl.DataFrame({
+            'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+            'pixel': [[0, 0]] * 8,
+        })
+        events = pm.Events(
+            name=['blink', 'blink'],
+            onsets=[1.0, 5.0],
+            offsets=[3.0, 7.0],
+        )
+        experiment = pm.Experiment(sampling_rate=experiment_rate) if experiment_rate else None
+        gaze = pm.Gaze(samples=samples, events=events, experiment=experiment)
+
+        result = gaze.samples.select(
+            gaze.measure_events_ratio(
+                'blink', sampling_rate=sampling_rate_arg,
+            ),
+        )
+
+        assert result.to_series()[0] == pytest.approx(expected)

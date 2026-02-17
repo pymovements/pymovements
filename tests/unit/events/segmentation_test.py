@@ -506,6 +506,20 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             0.0,
             id='no_matching_name',
         ),
+        pytest.param(
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
+            {'name': 'blink'},
+            4.0 / 7.0,
+            id='two_events_no_sampling_rate',
+        ),
+        pytest.param(
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
+            {'name': 'blink', 'sampling_rate': 1000.0},
+            0.75,
+            id='two_events_with_sampling_rate',
+        ),
     ],
 )
 def test_events2timeratio_basic(events_data, samples_data, kwargs, expected):

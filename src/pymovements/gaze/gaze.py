@@ -1246,6 +1246,7 @@ class Gaze:
         name: str,
         time_column: str = 'time',
         *,
+        sampling_rate: float | None = None,
         onset_column: str = 'onset',
         offset_column: str = 'offset',
     ) -> polars.Expr:
@@ -1254,7 +1255,16 @@ class Gaze:
         This method computes the ratio of time that is associated with events
         having a specific name. It calculates the ratio from event durations (offset - onset).
 
-        The ratio is calculated as:
+        If `sampling_rate` is provided, the ratio is calculated inclusively as:
+
+        .. math::
+            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} -
+            t_{\mathrm{onset},i} + \Delta t)}{t_{\mathrm{max}} -
+            t_{\mathrm{min}} + \Delta t}
+
+        where :math:`\Delta t = 1000 / f_s`.
+
+        If `sampling_rate` is not provided, the ratio is calculated as:
 
         .. math::
             \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} - t_{\mathrm{onset},i})}{t_{\mathrm{max}} -
@@ -1266,6 +1276,9 @@ class Gaze:
             Name of events to include in the ratio calculation.
         time_column: str
             Name of the timestamp column in the samples data. (default: 'time')
+        sampling_rate: float | None
+            Sampling rate of the gaze data in Hz. If not provided, it will be
+            taken from the experiment if available.
         onset_column: str
             Name of the column containing event onset times (default: 'onset').
         offset_column: str
@@ -1328,6 +1341,9 @@ class Gaze:
                 f"Available columns: {self.samples.columns}",
             )
 
+        if sampling_rate is None and self.experiment is not None:
+            sampling_rate = self.experiment.sampling_rate
+
         if self.events is not None and not self.events.frame.is_empty():
             events_df = self.events.frame
         else:
@@ -1349,6 +1365,7 @@ class Gaze:
             name=name,
             time_column=time_column,
             trial_columns=self.trial_columns,
+            sampling_rate=sampling_rate,
             onset_column=onset_column,
             offset_column=offset_column,
         )

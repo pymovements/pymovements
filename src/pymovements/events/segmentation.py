@@ -225,6 +225,7 @@ def events2timeratio(
     name: str,
     time_column: str = 'time',
     trial_columns: list[str] | None = None,
+    sampling_rate: float | None = None,
     onset_column: str = 'onset',
     offset_column: str = 'offset',
 ) -> pl.Expr:
@@ -246,6 +247,10 @@ def events2timeratio(
     trial_columns : list[str] | None
         The names of columns identifying trials. If provided, ratios are computed
         per trial.
+    sampling_rate : float | None
+        The sampling rate of the gaze data in Hz. If provided, the ratio
+        is calculated inclusively by adding the sampling interval to the
+        durations and the total time range.
     onset_column : str
         The name of the column containing event onset times.
     offset_column : str
@@ -276,6 +281,16 @@ def events2timeratio(
     ╞═══════════════════╡
     │ 0.571429          │
     └───────────────────┘
+    >>> # Inclusive ratio using sampling rate
+    >>> samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000.0))
+    shape: (1, 1)
+    ┌───────────────────┐
+    │ event_ratio_blink │
+    │ ---               │
+    │ f64               │
+    ╞═══════════════════╡
+    │ 0.75              │
+    └───────────────────┘
     """
     if events.is_empty():
         return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
@@ -292,16 +307,20 @@ def events2timeratio(
     if relevant_events.is_empty():
         return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
 
+    dt_ms = 0.0
+    if sampling_rate is not None:
+        dt_ms = 1000.0 / sampling_rate
+
     # Event ratio considering trial columns
     if trial_columns:
         event_durations = (
             relevant_events.group_by(trial_columns, maintain_order=True)
-            .agg((pl.col(offset_column) - pl.col(onset_column)).alias('duration'))
+            .agg((pl.col(offset_column) - pl.col(onset_column) + dt_ms).alias('duration'))
             .with_columns(pl.col('duration').list.sum())
         )
 
         sample_time_ranges = samples.group_by(trial_columns, maintain_order=True).agg(
-            (pl.col(time_column).max() - pl.col(time_column).min()).alias('time_range'),
+            (pl.col(time_column).max() - pl.col(time_column).min() + dt_ms).alias('time_range'),
         )
 
         trial_ratios = event_durations.join(
@@ -340,11 +359,11 @@ def events2timeratio(
         )
 
     total_duration = (
-        relevant_events.select(pl.col(offset_column) - pl.col(onset_column)).sum()
+        relevant_events.select(pl.col(offset_column) - pl.col(onset_column) + dt_ms).sum()
     ).item()
 
     time_range = samples.select(
-        pl.col(time_column).max() - pl.col(time_column).min(),
+        pl.col(time_column).max() - pl.col(time_column).min() + dt_ms,
     ).item()
 
     return pl.lit(total_duration / time_range).alias(f"event_ratio_{name}")
