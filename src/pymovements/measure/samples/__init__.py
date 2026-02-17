@@ -21,12 +21,15 @@
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.measure.samples.measures import amplitude
+from pymovements.measure.samples.measures import bcea
 from pymovements.measure.samples.measures import data_loss
 from pymovements.measure.samples.measures import dispersion
 from pymovements.measure.samples.measures import disposition
 from pymovements.measure.samples.measures import location
 from pymovements.measure.samples.measures import null_ratio
 from pymovements.measure.samples.measures import peak_velocity
+from pymovements.measure.samples.measures import rms_s2s
+from pymovements.measure.samples.measures import std_rms
 
 
 __all__ = [
@@ -34,10 +37,13 @@ __all__ = [
     'SampleMeasureLibrary',
 
     'amplitude',
+    'bcea',
     'data_loss',
     'dispersion',
     'disposition',
     'location',
     'null_ratio',
     'peak_velocity',
+    'rms_s2s',
+    'std_rms',
 ]
