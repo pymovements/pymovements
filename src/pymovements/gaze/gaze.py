@@ -1989,6 +1989,25 @@ class Gaze:
                 ],
             ).transpose()
 
+        if 'pixels' in method_args and 'pixels' not in kwargs:
+            if 'pixel' not in samples.columns:
+                raise polars.exceptions.ColumnNotFoundError(
+                    f'Column \'pixel\' not found.'
+                    f' Available columns are: {samples.columns}',
+                )
+
+            if eye_components is None:
+                raise ValueError(
+                    'eye_components must not be None if passing pixel to event detection',
+                )
+
+            kwargs['pixels'] = np.vstack(
+                [
+                    samples.get_column('pixel').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
+
         if 'events' in method_args:
             kwargs['events'] = events
 

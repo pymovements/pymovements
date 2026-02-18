@@ -32,6 +32,7 @@ import pymovements as pm
         pytest.param(pm.events.ivt, 'ivt', id='ivt'),
         pytest.param(pm.events.microsaccades, 'microsaccades', id='microsaccades'),
         pytest.param(pm.events.fill, 'fill', id='fill'),
+        pytest.param(pm.events.out_of_screen, 'out_of_screen', id='out_of_screen'),
     ],
 )
 def test_transform_registered(method, name):
