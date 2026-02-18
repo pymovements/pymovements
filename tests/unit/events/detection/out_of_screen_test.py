@@ -20,8 +20,6 @@
 """Test functionality of the out_of_screen detection algorithm."""
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import pytest
 from polars.testing import assert_frame_equal
@@ -198,40 +196,6 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([
-                    [960, 540],
-                    [np.nan, 540],
-                    [960, 540],
-                ]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
-            },
-            Events(
-                name='out_of_screen',
-                onsets=[1],
-                offsets=[1],
-            ),
-            id='nan_x_detected_as_out_of_screen',
-        ),
-        pytest.param(
-            {
-                'pixels': np.array([
-                    [960, np.nan],
-                    [960, 540],
-                    [960, 540],
-                ]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
-            },
-            Events(
-                name='out_of_screen',
-                onsets=[0],
-                offsets=[0],
-            ),
-            id='nan_y_detected_as_out_of_screen',
-        ),
-        pytest.param(
-            {
-                'pixels': np.array([
                     [-1, 540], [960, 540], [960, 1081],
                 ]),
                 'timesteps': np.array([1000, 1001, 1002], dtype=int),
@@ -262,7 +226,7 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([
-                    [-1, -1], [2000, 2000], [np.nan, np.nan],
+                    [-1, -1], [2000, 2000], [-5, 2000],
                 ]),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
@@ -278,24 +242,6 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
 )
 def test_out_of_screen_detects_events(kwargs, expected):
     """Test if out_of_screen correctly detects out-of-screen events."""
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        events = out_of_screen(**kwargs)
+    events = out_of_screen(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
-
-
-def test_out_of_screen_emits_warning_with_percentage():
-    """Test that out_of_screen emits a warning reporting the percentage of out-of-screen data."""
-    # 2 out of 4 samples are out-of-screen = 50%
-    pixels = np.array([[-1, 540], [960, 540], [960, 540], [960, 1081]])
-    with pytest.warns(UserWarning, match=r'2/4 \(50\.0%\)'):
-        out_of_screen(pixels=pixels, x_min=0, x_max=1920, y_min=0, y_max=1080)
-
-
-def test_out_of_screen_no_warning_when_all_on_screen():
-    """Test that out_of_screen does not emit a warning when all samples are on-screen."""
-    pixels = np.array([[960, 540], [960, 540]])
-    with warnings.catch_warnings():
-        warnings.simplefilter('error')
-        out_of_screen(pixels=pixels, x_min=0, x_max=1920, y_min=0, y_max=1080)

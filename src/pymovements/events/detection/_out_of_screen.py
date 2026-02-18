@@ -20,8 +20,6 @@
 """Provides detection of out-of-screen gaze samples."""
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 
 from pymovements._utils import _checks
@@ -44,11 +42,7 @@ def out_of_screen(
 
     The algorithm classifies each gaze sample as out-of-screen if the x or y pixel coordinate
     falls outside the given screen boundaries. Consecutive out-of-screen samples are merged
-    into single events. Samples with NaN coordinates are also classified as out-of-screen.
-
-    This is inspired by the ``mark_trackloss`` function from the VWPre R package, which marks
-    gaze samples as trackloss when they fall outside the defined screen region or contain
-    missing values.
+    into single events.
 
     Parameters
     ----------
@@ -101,27 +95,17 @@ def out_of_screen(
     timesteps = np.array(timesteps)
     _checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
-    # A sample is out-of-screen if x or y is outside the screen boundaries or is NaN.
+    # A sample is out-of-screen if x or y is outside the screen boundaries.
     x = pixels[:, 0]
     y = pixels[:, 1]
 
     out_of_screen_mask = (
         (x < x_min) | (x > x_max)
         | (y < y_min) | (y > y_max)
-        | np.isnan(x) | np.isnan(y)
     )
 
     # Get indices of out-of-screen samples.
     candidate_indices = np.where(out_of_screen_mask)[0]
-
-    n_total = len(pixels)
-    n_out = len(candidate_indices)
-    if n_out > 0:
-        pct = round(n_out / n_total * 100, 2)
-        warnings.warn(
-            f'{name}: {n_out}/{n_total} ({pct}%) samples are outside of '
-            f'screen boundaries [{x_min}, {x_max}] x [{y_min}, {y_max}].',
-        )
 
     if len(candidate_indices) == 0:
         return Events(name=name, onsets=[], offsets=[])
