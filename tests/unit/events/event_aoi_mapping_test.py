@@ -23,6 +23,8 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
+from pymovements.events import Events
+from pymovements.stimulus.text import TextStimulus
 
 EXPECTED_DF = {
     'char': pl.DataFrame(
@@ -772,3 +774,165 @@ def test_map_to_aois_raises_value_error_missing_width_height(dataset, make_examp
         dataset.events[0].map_to_aois(aoi_df)
     msg, = excinfo.value.args
     assert msg == 'either TextStimulus.width or TextStimulus.end_x_column must be defined'
+
+def _base_events_for_transform_test() -> pl.DataFrame:
+    """Return base fixation events (without AOI columns) from horizontal goldens."""
+    return EXPECTED_DF['word'].select(
+        'name',
+        'onset',
+        'offset',
+        'duration',
+        'location_x',
+        'location_y',
+    )
+
+
+def _mirror_horizontal(
+    events_df: pl.DataFrame,
+    aois_df: pl.DataFrame,
+    *,
+    start_x_column: str,
+    width_column: str,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Mirror events and AOIs left-right around AOI horizontal span."""
+    x_min = aois_df.get_column(start_x_column).min()
+    x_max = (aois_df.get_column(start_x_column) + aois_df.get_column(width_column)).max()
+    axis_sum = x_min + x_max
+
+    mirrored_events = events_df.with_columns((pl.lit(axis_sum) - pl.col('location_x')).alias('location_x'))
+    mirrored_aois = aois_df.with_columns(
+        (
+            pl.lit(axis_sum)
+            - (pl.col(start_x_column) + pl.col(width_column))
+        ).alias(start_x_column),
+    )
+    return mirrored_events, mirrored_aois
+
+
+def _transpose_xy(
+    events_df: pl.DataFrame,
+    aois_df: pl.DataFrame,
+    *,
+    start_x_column: str,
+    start_y_column: str,
+    width_column: str,
+    height_column: str,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Swap x/y axes for both events and AOIs."""
+    transposed_events = events_df.with_columns(
+        pl.col('location_y').alias('location_x'),
+        pl.col('location_x').alias('location_y'),
+    )
+    transposed_aois = aois_df.with_columns(
+        pl.col(start_y_column).alias(start_x_column),
+        pl.col(start_x_column).alias(start_y_column),
+        pl.col(height_column).alias(width_column),
+        pl.col(width_column).alias(height_column),
+    )
+    return transposed_events, transposed_aois
+
+
+@pytest.mark.parametrize('aoi_column', ['word', 'char'])
+def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, make_example_file):
+    """Pseudo horizontal-rl test by mirroring both fixations and AOIs."""
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
+
+    base_stimulus = pm.stimulus.text.from_file(
+        filepath,
+        aoi_column=aoi_column,
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_mode='horizontal-lr',
+    )
+    base_events = Events(data=_base_events_for_transform_test())
+    base_events.map_to_aois(base_stimulus)
+    expected_labels = base_events.frame.get_column(aoi_column).to_list()
+
+    mirrored_events_df, mirrored_aois_df = _mirror_horizontal(
+        _base_events_for_transform_test(),
+        base_stimulus.aois,
+        start_x_column='top_left_x',
+        width_column='width',
+    )
+
+    mirrored_stimulus = TextStimulus(
+        mirrored_aois_df,
+        aoi_column=aoi_column,
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_mode='horizontal-rl',
+    )
+    mirrored_events = Events(data=mirrored_events_df)
+    mirrored_events.map_to_aois(mirrored_stimulus)
+
+    assert mirrored_events.frame.get_column(aoi_column).to_list() == expected_labels
+
+
+@pytest.mark.parametrize(
+    ('aoi_column', 'writing_mode', 'mirror_after_transpose'),
+    [
+        pytest.param('word', 'vertical-lr', False, id='word-vertical-lr'),
+        pytest.param('char', 'vertical-lr', False, id='char-vertical-lr'),
+        pytest.param('word', 'vertical-rl', True, id='word-vertical-rl'),
+        pytest.param('char', 'vertical-rl', True, id='char-vertical-rl'),
+    ],
+)
+def test_event_to_aoi_mapping_vertical_by_axis_transform(
+    aoi_column,
+    writing_mode,
+    mirror_after_transpose,
+    make_example_file,
+):
+    """Pseudo vertical tests by axis transpose (+ optional left-right mirror)."""
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
+
+    base_stimulus = pm.stimulus.text.from_file(
+        filepath,
+        aoi_column=aoi_column,
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_mode='horizontal-lr',
+    )
+    base_events = Events(data=_base_events_for_transform_test())
+    base_events.map_to_aois(base_stimulus)
+    expected_labels = base_events.frame.get_column(aoi_column).to_list()
+
+    transformed_events_df, transformed_aois_df = _transpose_xy(
+        _base_events_for_transform_test(),
+        base_stimulus.aois,
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+    )
+    if mirror_after_transpose:
+        transformed_events_df, transformed_aois_df = _mirror_horizontal(
+            transformed_events_df,
+            transformed_aois_df,
+            start_x_column='top_left_x',
+            width_column='width',
+        )
+
+    transformed_stimulus = TextStimulus(
+        transformed_aois_df,
+        aoi_column=aoi_column,
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_mode=writing_mode,
+    )
+    transformed_events = Events(data=transformed_events_df)
+    transformed_events.map_to_aois(transformed_stimulus)
+
+    assert transformed_events.frame.get_column(aoi_column).to_list() == expected_labels

@@ -25,11 +25,31 @@ import warnings
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+from typing import Literal
 
 import polars as pl
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+
+
+WritingMode = Literal[
+    'horizontal-lr',
+    'horizontal-rl',
+    'vertical-lr',
+    'vertical-rl',
+]
+
+
+def _validate_writing_mode(writing_mode: WritingMode) -> WritingMode:
+    """Validate writing mode values."""
+    valid_writing_modes = {'horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'}
+    if writing_mode not in valid_writing_modes:
+        raise ValueError(
+            "Invalid writing_mode. Expected one of "
+            "'horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'.",
+        )
+    return writing_mode
 
 
 @repr_html(['aois'])
@@ -64,6 +84,15 @@ class TextStimulus:
     trial_column: str | None
         Name for the column that specifies the unique trial id.
         (default: None)
+    writing_mode: WritingMode
+        Writing mode of the text, specifying the direction of text flow.
+        - 'horizontal-lr': Horizontal text, left-to-right (e.g., English, Japanese horizontal)
+        - 'horizontal-rl': Horizontal text, right-to-left (e.g., Arabic, Hebrew)
+        - 'vertical-rl': Vertical text, top-to-bottom with columns progressing right-to-left (e.g., Japanese tategaki)
+        - 'vertical-lr': Vertical text, top-to-bottom with columns progressing left-to-right (e.g., Mongolian)
+        This parameter is reserved for future functionality (e.g., detecting progressive/regressive
+        saccades, computing reading-specific measures) and currently does not affect behavior.
+        (default: 'horizontal-lr')
     """
 
     def __init__(
@@ -79,6 +108,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
+            writing_mode: WritingMode = 'horizontal-lr',
     ) -> None:
 
         self.aois = aois.clone()
@@ -91,6 +121,7 @@ class TextStimulus:
         self.end_y_column = end_y_column
         self.page_column = page_column
         self.trial_column = trial_column
+        self.writing_mode = _validate_writing_mode(writing_mode)
 
     def split(
             self,
@@ -120,8 +151,9 @@ class TextStimulus:
                 end_y_column=self.end_y_column,
                 page_column=self.page_column,
                 trial_column=self.trial_column,
+                writing_mode=self.writing_mode,
             )
-            for df in self.aois.partition_by(by=by, as_dict=False)
+            for df in self.aois.partition_by(by, as_dict=False)
         ]
 
     def get_aoi(
@@ -183,6 +215,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
+            writing_mode: WritingMode = 'horizontal-lr',
             read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
@@ -215,6 +248,9 @@ class TextStimulus:
         trial_column: str | None
             Name of column that specifies the unique trial id.
             (default: None)
+        writing_mode: WritingMode
+            Writing mode of the text. See :py:class:`~pymovements.stimulus.TextStimulus`
+            for details. (default: 'horizontal-lr')
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -249,6 +285,7 @@ class TextStimulus:
             end_y_column=end_y_column,
             page_column=page_column,
             trial_column=trial_column,
+            writing_mode=writing_mode,
         )
 
 
@@ -296,6 +333,7 @@ def from_file(
         page_column: str | None = None,
         trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
+        writing_mode: WritingMode = 'horizontal-lr',
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -329,6 +367,9 @@ def from_file(
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)
+    writing_mode: WritingMode
+        Text writing direction mode. See TextStimulus.__init__ for details.
+        (default: 'horizontal-lr')
 
 
     Returns
@@ -348,6 +389,7 @@ def from_file(
         page_column=page_column,
         trial_column=trial_column,
         read_csv_kwargs=custom_read_kwargs,
+        writing_mode=writing_mode,
     )
 
 
