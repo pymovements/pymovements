@@ -46,7 +46,7 @@ def _validate_writing_mode(writing_mode: WritingMode) -> WritingMode:
     valid_writing_modes = {'horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'}
     if writing_mode not in valid_writing_modes:
         raise ValueError(
-            "Invalid writing_mode. Expected one of "
+            'Invalid writing_mode. Expected one of '
             "'horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'.",
         )
     return writing_mode
