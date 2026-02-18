@@ -851,6 +851,61 @@ from pymovements.synthetic import step_function
             id='fill_fixation_events_exceed_time_boundaries',
         ),
 
+        # out_of_screen: auto-fill pixels and screen boundaries from experiment
+        pytest.param(
+            'out_of_screen',
+            {},
+            pm.gaze.from_numpy(
+                pixel=np.array([[960, 540], [960, 540], [-1, 540]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='out_of_screen', onsets=[2], offsets=[2]),
+            id='out_of_screen_auto_fill_screen_boundaries',
+        ),
+
+        pytest.param(
+            'out_of_screen',
+            {},
+            pm.gaze.from_numpy(
+                pixel=np.array([[960, 540], [960, 540], [960, 540]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(),
+            id='out_of_screen_all_within_screen_no_events',
+        ),
+
+        pytest.param(
+            'out_of_screen',
+            {},
+            pm.gaze.from_numpy(
+                time=np.array([1000, 1001, 1002], dtype=int),
+                pixel=np.array([[-1, 540], [960, 540], [960, 1081]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='out_of_screen', onsets=[1000, 1002], offsets=[1000, 1002]),
+            id='out_of_screen_with_timesteps',
+        ),
+
+        pytest.param(
+            'out_of_screen',
+            {
+                'x_min': 100,
+                'x_max': 1000,
+                'y_min': 100,
+                'y_max': 500,
+            },
+            pm.gaze.from_numpy(
+                pixel=np.array([[50, 300], [500, 300], [500, 300]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='out_of_screen', onsets=[0], offsets=[0]),
+            id='out_of_screen_explicit_boundaries_override_auto_fill',
+        ),
+
 
     ],
 )
@@ -1017,6 +1072,15 @@ def test_gaze_detect_custom_method_no_arguments():
             id='ivt_cyclops_eye_four_components_raises_attribute_error',
         ),
 
+        pytest.param(
+            'out_of_screen',
+            {},
+            pm.gaze.Gaze(None, pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000)),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'pixel' not found. Available columns are: ['time']",
+            id='out_of_screen_no_pixel_raises_column_not_found_error',
+        ),
+
     ],
 )
 def test_gaze_detect_raises_exception(method, kwargs, gaze, exception, exception_msg):
@@ -1055,11 +1119,13 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
     [
         ('ivt', 'velocity'),
         ('idt', 'position'),
+        ('out_of_screen', 'pixel'),
     ],
 )
 def test_gaze_detect_missing_missing_eye_components_raises_exception(method, column):
     gaze = pm.gaze.from_numpy(
         trial=np.ones(100),
+        pixel=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         position=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         velocity=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         orient='row',
