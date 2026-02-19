@@ -315,8 +315,10 @@ def events2timeratio(
     if samples.height == 1:
         sample_time = samples.get_column(time_column).item(0)
         event_filter = (
-            pl.col(onset_column) <= sample_time) & (
-            pl.col(offset_column) >= sample_time)
+            pl.col(onset_column) <= sample_time
+        ) & (
+            pl.col(offset_column) >= sample_time
+        )
         if trial_columns:
             for col in trial_columns:
                 sample_val = samples.get_column(col).item(0)
