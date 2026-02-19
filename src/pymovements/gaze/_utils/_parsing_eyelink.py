@@ -408,7 +408,6 @@ def _match_events_with_context(
 
             # Current behaviour: if it was a matched event, it uses context from the start
             # If it was unmatched, it uses context from END.
-            # One can choose a different behaviour, but this on is conserving previous impl.
             if stack or (
                 not stack and start_ts ==
                 onset and onset in context_timeline
