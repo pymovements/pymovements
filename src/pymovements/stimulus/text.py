@@ -87,8 +87,8 @@ class WritingSystem:
             return WritingSystem(
                 axis='horizontal', directionality='right-to-left', lining='top-to-bottom')
         raise ValueError(
-            f"Unknown descriptor '{descriptor}'. Valid descriptors are: {
-                WritingSystem.VALID_DESCRIPTORS}",
+            f"Unknown descriptor '{descriptor}'. "
+            f"Valid descriptors are: {WritingSystem.VALID_DESCRIPTORS}",
         )
 
 
