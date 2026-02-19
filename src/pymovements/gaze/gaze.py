@@ -41,6 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events import events2segmentation
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
@@ -1025,18 +1026,13 @@ class Gaze:
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """
-        from pymovements.events.segmentation import events2segmentation
-
         if self.events is None:
             raise AttributeError(
                 'Gaze object has no events. Use detect() to detect events first.',
             )
 
         events_frame = self.events.frame
-        if 'name' in events_frame.columns:
-            has_matching = events_frame.filter(polars.col('name') == name).height > 0
-        else:
-            has_matching = events_frame.height > 0
+        has_matching = events_frame.filter(polars.col('name') == name).height > 0
 
         if not has_matching:
             raise ValueError(

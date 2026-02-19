@@ -192,7 +192,7 @@ def events2segmentation(
 
     # Parse and validate padding
     if padding is None:
-        pad_before, pad_after = 0, 0
+        pad_before, pad_after = 0.0, 0.0
     elif isinstance(padding, tuple):
         pad_before, pad_after = padding
     else:
