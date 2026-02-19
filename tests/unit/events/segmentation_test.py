@@ -489,7 +489,7 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
             {'time': [0.0, 1.0, 2.0, 3.0]},
             {'name': 'blink'},
-            2 / 3,
+            0.75,
             id='basic',
         ),
         pytest.param(
@@ -510,7 +510,7 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
             {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
             {'name': 'blink'},
-            4.0 / 7.0,
+            0.75,
             id='two_events_no_sampling_rate',
         ),
         pytest.param(
@@ -519,6 +519,13 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             {'name': 'blink', 'sampling_rate': 1000.0},
             0.75,
             id='two_events_with_sampling_rate',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            3.0 / 4.0,
+            id='basic_with_mode_dt',
         ),
     ],
 )
@@ -566,7 +573,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
             {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
             ['trial'],
-            {1: 0.5},
+            {1: 2 / 3},
             id='single_trial',
         ),
         pytest.param(
@@ -581,7 +588,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
                 'trial': [1, 1, 1, 2, 2, 2],
             },
             ['trial'],
-            {1: 0.5, 2: 0.5},
+            {1: 2 / 3, 2: 2 / 3},
             id='multiple_trials',
         ),
         pytest.param(
@@ -591,7 +598,7 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
                 'trial': [1, 1, 1, 2, 2, 2],
             },
             ['trial'],
-            {1: 0.5, 2: 0.0},
+            {1: 2 / 3, 2: 0.0},
             id='partial_trials_with_events',
         ),
         pytest.param(

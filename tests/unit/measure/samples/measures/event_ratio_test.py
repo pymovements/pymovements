@@ -51,17 +51,17 @@ class TestEventRatio:
             'expected_ratio',
         ),
         [
-            # Single blink event covering time range [1, 3) = 2 time units
-            # Total time range = 7 (from 0 to 7)
-            pytest.param('blink', ['blink'], [1.0], [3.0], 2 / 7, id='single_blink'),
-            # Two blink events: [1, 2) = 1 unit + [5, 6) = 1 unit = 2 total
-            # Total time range = 7 (from 0 to 7)
+            # Single blink event covering time range [1, 3] = 2 time units + 1 dt = 3
+            # Total time range = 7 - 0 + 1 = 8
+            pytest.param('blink', ['blink'], [1.0], [3.0], 3 / 8, id='single_blink'),
+            # Two blink events: [1, 2] = 1 unit + 1 dt + [5, 6] = 1 unit + 1 dt = 4 total
+            # Total time range = 8 (from 0 to 7 + dt)
             pytest.param(
                 'blink',
                 ['blink', 'blink'],
                 [1.0, 5.0],
                 [2.0, 6.0],
-                2 / 7,
+                4 / 8,
                 id='multiple_blinks',
             ),
             # No matching events
@@ -73,8 +73,9 @@ class TestEventRatio:
                 0.0,
                 id='no_matching_events',
             ),
-            # Event covering single time unit [1, 1) = 0 units
-            pytest.param('blink', ['blink'], [1.0], [1.0], 0.0, id='single_sample'),
+            # Event covering single sample [1, 1] = 0 units + 1 dt = 1 unit
+            # Total time range = 8
+            pytest.param('blink', ['blink'], [1.0], [1.0], 1 / 8, id='single_sample'),
         ],
     )
     def test_event_ratio(
@@ -120,7 +121,7 @@ class TestEventRatio:
                     {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 1},
                     {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 2},
                 ],
-                {1: 0.0, 2: 0.0},
+                {1: 0.5, 2: 0.5},
                 id='both_trials_with_event',
             ),
             pytest.param(
@@ -133,7 +134,7 @@ class TestEventRatio:
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
                 ],
-                {1: 0.5, 2: 0.0},
+                {1: 2 / 3, 2: 0.0},
                 id='event_partial_trial',
             ),
             pytest.param(
@@ -147,7 +148,7 @@ class TestEventRatio:
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
                 ],
-                {(1, 1): 0.0, (2, 1): 0.0},
+                {(1, 1): 0.5, (2, 1): 0.0},
                 id='multiple_trial_columns',
             ),
             pytest.param(
@@ -161,7 +162,7 @@ class TestEventRatio:
                     {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
                     {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
                 ],
-                {1: 2 / 3},
+                {1: 1.0},
                 id='adjacent_events',
             ),
             pytest.param(
@@ -175,7 +176,7 @@ class TestEventRatio:
                     {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
                     {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 1},
                 ],
-                {1: 1.0},
+                {1: 1.25},
                 id='overlapping_events',
                 marks=pytest.mark.filterwarnings('ignore:Overlapping events detected'),
             ),
@@ -291,9 +292,9 @@ class TestEventRatio:
             # Explicit override (500.0 Hz -> dt = 2.0)
             # Expected: (3-1+2) + (7-5+2) / (7-0+2) = 8/9
             pytest.param(500.0, 1000.0, 8 / 9, id='explicit_override'),
-            # No experiment, no rate (dt = 0.0)
-            # Expected: (3-1) + (7-5) / (7-0) = 4/7
-            pytest.param(None, None, 4 / 7, id='no_experiment_no_rate'),
+            # No experiment, no rate (dt = 1.0 inferred from mode)
+            # Expected: (3-1+1) + (7-5+1) / (7-0+1) = 6/8 = 0.75
+            pytest.param(None, None, 0.75, id='no_experiment_no_rate'),
         ],
     )
     def test_measure_events_ratio_sampling_rate_fallback(

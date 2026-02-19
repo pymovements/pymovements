@@ -250,7 +250,8 @@ def events2timeratio(
     sampling_rate : float | None
         The sampling rate of the gaze data in Hz. If provided, the ratio
         is calculated inclusively by adding the sampling interval to the
-        durations and the total time range.
+        durations and the total time range. If ``None``, the sampling
+        interval is estimated as the mode of the time differences.
     onset_column : str
         The name of the column containing event onset times.
     offset_column : str
@@ -307,9 +308,33 @@ def events2timeratio(
     if relevant_events.is_empty():
         return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
 
+    if samples.is_empty():
+        return pl.lit(None).cast(pl.Float64).alias(f"event_ratio_{name}")
+
+    # Single-sample series: return 1.0 if that sample falls within an event, else 0.0.
+    if samples.height == 1:
+        sample_time = samples.get_column(time_column).item(0)
+        event_filter = (
+            pl.col(onset_column) <= sample_time) & (
+            pl.col(offset_column) >= sample_time)
+        if trial_columns:
+            for col in trial_columns:
+                sample_val = samples.get_column(col).item(0)
+                event_filter = event_filter & (pl.col(col) == sample_val)
+        matching = relevant_events.filter(event_filter)
+        return pl.lit(1.0 if not matching.is_empty() else 0.0).alias(f"event_ratio_{name}")
+
     dt_ms = 0.0
     if sampling_rate is not None:
         dt_ms = 1000.0 / sampling_rate
+    else:
+        # Calculate the mode of time differences as a robust estimate for the sampling interval
+        time_diffs = samples[time_column].diff().drop_nulls()
+
+        if not time_diffs.is_empty():
+            mode_result = time_diffs.mode()
+            if not mode_result.is_empty():
+                dt_ms = mode_result[0]
 
     # Event ratio considering trial columns
     if trial_columns:
