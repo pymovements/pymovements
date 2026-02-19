@@ -31,7 +31,7 @@ from pymovements.gaze.transforms_numpy import consecutive
 @register_event_detection
 def out_of_screen(
         pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        *, 
+        *,
         x_max: float,
         y_max: float,
         x_min: float = 0,
