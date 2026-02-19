@@ -45,7 +45,7 @@ class WritingSystem:
         Primary axis along which text is laid out.
         (default: 'horizontal')
     lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left']
-        Direction in which lines of text are stacked. For horizontal text, this is typically 'top-to-bottom'. 
+        Direction in which lines of text are stacked. For horizontal text, this is typically 'top-to-bottom'.
         For vertical text, this is typically 'left-to-right' or 'right-to-left'.
         (default: 'top-to-bottom')
     directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
@@ -81,11 +81,14 @@ class WritingSystem:
     @staticmethod
     def from_descriptor(descriptor: str) -> WritingSystem:
         if descriptor in {'left-to-right', 'ltr'}:
-            return WritingSystem(axis='horizontal', directionality='left-to-right', lining='top-to-bottom')
+            return WritingSystem(
+                axis='horizontal', directionality='left-to-right', lining='top-to-bottom')
         if descriptor in {'right-to-left', 'rtl'}:
-            return WritingSystem(axis='horizontal', directionality='right-to-left', lining='top-to-bottom')
+            return WritingSystem(
+                axis='horizontal', directionality='right-to-left', lining='top-to-bottom')
         raise ValueError(
-            f"Unknown descriptor '{descriptor}'. Valid descriptors are: {WritingSystem.VALID_DESCRIPTORS}"
+            f"Unknown descriptor '{descriptor}'. Valid descriptors are: {
+                WritingSystem.VALID_DESCRIPTORS}",
         )
 
 
@@ -138,8 +141,8 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
-            writing_system: WritingSystem | str = "left-to-right",
-        ) -> None:
+            writing_system: WritingSystem | str = 'left-to-right',
+    ) -> None:
 
         self.aois = aois.clone()
         self.aoi_column = aoi_column
@@ -367,7 +370,7 @@ def from_file(
         page_column: str | None = None,
         trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
-        writing_system: WritingSystem | str = "left-to-right",
+        writing_system: WritingSystem | str = 'left-to-right',
 ) -> TextStimulus:
     """Load text stimulus from file.
 

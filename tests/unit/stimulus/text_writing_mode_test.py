@@ -119,6 +119,7 @@ def test_writing_system_explicit_writing_system_object(sample_aoi_dataframe, sam
     assert stimulus.writing_system == writing_system
     assert stimulus.writing_system == VERTICAL_RL
 
+
 def test_writing_system_str_object(sample_aoi_dataframe, sample_schema):
     """Test that writing_system can be set from string descriptor."""
     stimulus = TextStimulus(
@@ -128,7 +129,7 @@ def test_writing_system_str_object(sample_aoi_dataframe, sample_schema):
         start_y_column=sample_schema['y_min'],
         width_column=sample_schema['width'],
         height_column=sample_schema['height'],
-        writing_system="left-to-right",
+        writing_system='left-to-right',
     )
     assert isinstance(stimulus.writing_system, WritingSystem)
     assert stimulus.writing_system == HORIZONTAL_LR
