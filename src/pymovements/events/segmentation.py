@@ -280,7 +280,7 @@ def events2timeratio(
     │ ---               │
     │ f64               │
     ╞═══════════════════╡
-    │ 0.571429          │
+    │ 0.75              │
     └───────────────────┘
     >>> # Inclusive ratio using sampling rate
     >>> samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000.0))
