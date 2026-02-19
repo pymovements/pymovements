@@ -776,6 +776,7 @@ def test_map_to_aois_raises_value_error_missing_width_height(dataset, make_examp
     msg, = excinfo.value.args
     assert msg == 'either TextStimulus.width or TextStimulus.end_x_column must be defined'
 
+
 def _base_events_for_transform_test() -> pl.DataFrame:
     """Return base fixation events (without AOI columns) from horizontal goldens."""
     return EXPECTED_DF['word'].select(
@@ -800,7 +801,8 @@ def _mirror_horizontal(
     x_max = (aois_df.get_column(start_x_column) + aois_df.get_column(width_column)).max()
     axis_sum = x_min + x_max
 
-    mirrored_events = events_df.with_columns((pl.lit(axis_sum) - pl.col('location_x')).alias('location_x'))
+    mirrored_events = events_df.with_columns(
+        (pl.lit(axis_sum) - pl.col('location_x')).alias('location_x'))
     mirrored_aois = aois_df.with_columns(
         (
             pl.lit(axis_sum)

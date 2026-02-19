@@ -141,7 +141,7 @@ def test_writing_mode_preserved_by_split(sample_aoi_dataframe, sample_schema, wr
         page_column='page',
         writing_system=writing_system,
     )
-    
+
     # Split by page
     split_parts = stimulus.split(by='page')
     
@@ -166,7 +166,7 @@ def test_writing_mode_preserved_by_from_csv(sample_aoi_dataframe, writing_system
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
         sample_aoi_dataframe.write_csv(csv_path)
-        
+
         stimulus = TextStimulus.from_csv(
             path=csv_path,
             aoi_column='aoi',
@@ -195,7 +195,7 @@ def test_writing_mode_preserved_by_from_file(sample_aoi_dataframe, writing_syste
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
         sample_aoi_dataframe.write_csv(csv_path)
-        
+
         stimulus = from_file(
             aoi_path=csv_path,
             aoi_column='aoi',
@@ -215,7 +215,7 @@ def test_writing_mode_from_csv_default(sample_aoi_dataframe):
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
         sample_aoi_dataframe.write_csv(csv_path)
-        
+
         stimulus = TextStimulus.from_csv(
             path=csv_path,
             aoi_column='aoi',
@@ -234,7 +234,7 @@ def test_writing_mode_from_file_default(sample_aoi_dataframe):
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
         sample_aoi_dataframe.write_csv(csv_path)
-        
+
         stimulus = from_file(
             aoi_path=csv_path,
             aoi_column='aoi',
@@ -259,7 +259,7 @@ def test_writing_mode_attribute_access(sample_aoi_dataframe, sample_schema):
         height_column=sample_schema['height'],
         writing_system=HORIZONTAL_RL,
     )
-    
+
     # Test attribute access
     assert hasattr(stimulus, 'writing_system')
     assert isinstance(stimulus.writing_system, WritingSystem)

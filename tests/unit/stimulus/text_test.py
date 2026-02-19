@@ -543,7 +543,8 @@ def test_text_stimulus_rtl_writing_mode_and_line_order(make_example_file):
     )
 
     assert first_line['char'].to_list() == ['T', 'C', 'A', 'R', 'T', 'S', 'B', 'A']
-    assert first_line['top_left_x'].to_list() == [1160.0, 1175.0, 1190.0, 1205.0, 1220.0, 1235.0, 1250.0, 1265.0]
+    assert first_line['top_left_x'].to_list() == [
+        1160.0, 1175.0, 1190.0, 1205.0, 1220.0, 1235.0, 1250.0, 1265.0]
 
 
 def test_text_stimulus_vertical_rl_writing_mode_and_line_order(make_example_file):
@@ -575,8 +576,10 @@ def test_text_stimulus_vertical_rl_writing_mode_and_line_order(make_example_file
     line_indices = sorted(text_stimulus_vertical_rl.aois['line_idx'].unique().to_list())
 
     assert first_line['char'].to_list() == ['A', 'B', 'S', 'T', 'R', 'A', 'C', 'T']
-    assert first_line['top_left_x'].to_list() == [1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0]
-    assert first_line['top_left_y'].to_list() == [122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0]
+    assert first_line['top_left_x'].to_list() == [
+        1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0]
+    assert first_line['top_left_y'].to_list() == [
+        122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0]
     assert line_indices == [0, 1, 2]
     assert line_positions['x'].to_list() == [1265.0, 1205.0, 1145.0]
 
@@ -610,7 +613,9 @@ def test_text_stimulus_vertical_lr_writing_mode_and_line_order(make_example_file
     line_indices = sorted(text_stimulus_vertical_lr.aois['line_idx'].unique().to_list())
 
     assert first_line['char'].to_list() == ['A', 'B', 'S', 'T', 'R', 'A', 'C', 'T']
-    assert first_line['top_left_x'].to_list() == [400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0]
-    assert first_line['top_left_y'].to_list() == [122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0]
+    assert first_line['top_left_x'].to_list() == [
+        400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0]
+    assert first_line['top_left_y'].to_list() == [
+        122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0]
     assert line_indices == [0, 1, 2]
     assert line_positions['x'].to_list() == [400.0, 460.0, 520.0]
