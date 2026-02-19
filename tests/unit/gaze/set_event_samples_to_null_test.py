@@ -20,6 +20,8 @@
 """Test Gaze.set_event_samples_to_null() method."""
 from __future__ import annotations
 
+import warnings
+
 import polars as pl
 import pytest
 
@@ -218,7 +220,7 @@ def test_multiple_data_columns_nullified():
     )
     gaze.set_event_samples_to_null('blink', padding=0)
 
-    for col in ['pixel', 'position', 'velocity']:
+    for col in ('pixel', 'position', 'velocity'):
         result = gaze.samples[col].to_list()
         assert result[1] is None
         assert result[2] is None
@@ -228,7 +230,6 @@ def test_multiple_data_columns_nullified():
 
 def test_scalar_columns_nullified():
     """Scalar (non-nested) data columns are also nullified."""
-    import warnings
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', UserWarning)
         gaze = pm.Gaze(
