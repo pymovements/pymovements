@@ -330,13 +330,11 @@ def events2timeratio(
     if sampling_rate is not None:
         dt_ms = 1000.0 / sampling_rate
     else:
-        # Calculate the mode of time differences as a robust estimate for the sampling interval
+        # Calculate the mode of time differences as a robust estimate for the sampling interval.
+        # At this point, samples is non-empty and has more than one row (single-sample above),
+        # so `diff().drop_nulls()` will yield at least one element and `mode()` will be non-empty.
         time_diffs = samples[time_column].diff().drop_nulls()
-
-        if not time_diffs.is_empty():
-            mode_result = time_diffs.mode()
-            if not mode_result.is_empty():
-                dt_ms = mode_result[0]
+        dt_ms = float(time_diffs.mode().item())
 
     # Event ratio considering trial columns
     if trial_columns:
