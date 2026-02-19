@@ -974,7 +974,7 @@ class Dataset:
 
             gaze.samples = samples
 
-        ## final summary of filtering results and warnings
+        # final summary of filtering results and warnings
         if n_removed_invalid_velocity_norm > 0:
             warn(
                 f'{n_removed_invalid_velocity_norm} samples were removed because velocity norm '
