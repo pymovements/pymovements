@@ -1298,3 +1298,233 @@ class Dataset:
 
         Please cite the referenced publication if you intend to use the dataset in your research.
         """
+
+    def report(self):
+        """Generate a comprehensive overview report of the dataset.
+
+        Prints a detailed overview of the dataset including definition details,
+        eyetracker configuration, screen setup, resource files, and data structure.
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+        """
+        print('=' * 80)
+        print('DATASET OVERVIEW')
+        print('=' * 80)
+
+        definition = self.definition
+
+        # Basic information
+        print('\nDEFINITION:')
+        # DatasetDefinition explicit fields printed if present
+        if hasattr(definition, 'name') and definition.name is not None:
+            print(f"  Name: {definition.name}")
+        if hasattr(definition, 'long_name') and definition.long_name:
+            print(f"  Long Name: {definition.long_name}")
+        if hasattr(self, 'path') and self.path is not None:
+            print(f"  Path: {self.path}")
+        if hasattr(definition, 'resources') and definition.resources:
+            print(f"  Number of Resources: {len(getattr(definition, 'resources', []))}")
+        if hasattr(definition, 'mirrors') and definition.mirrors:
+            print(
+                f"  Mirrors: {
+                    ', '.join([
+                        f'{k}({len(v)})' for k,
+                        v in definition.mirrors.items()
+                    ])
+                }",
+            )
+        if hasattr(definition, 'extract') and definition.extract:
+            print(f"  Extract: {definition.extract}")
+        if hasattr(definition, 'column_map') and definition.column_map:
+            print(f"  Column Map: {definition.column_map}")
+        if hasattr(definition, 'trial_columns') and definition.trial_columns:
+            print(f"  Trial Columns: {definition.trial_columns}")
+        if hasattr(definition, 'time_column') and definition.time_column:
+            print(f"  Time Column: {definition.time_column}")
+        if hasattr(definition, 'time_unit') and definition.time_unit:
+            print(f"  Time Unit: {definition.time_unit}")
+        if hasattr(definition, 'pixel_columns') and definition.pixel_columns:
+            print(f"  Pixel Columns: {definition.pixel_columns}")
+        if hasattr(definition, 'position_columns') and definition.position_columns:
+            print(f"  Position Columns: {definition.position_columns}")
+        if hasattr(definition, 'velocity_columns') and definition.velocity_columns:
+            print(f"  Velocity Columns: {definition.velocity_columns}")
+        if hasattr(definition, 'acceleration_columns') and definition.acceleration_columns:
+            print(f"  Acceleration Columns: {definition.acceleration_columns}")
+        if hasattr(definition, 'distance_column') and definition.distance_column:
+            print(f"  Distance Column: {definition.distance_column}")
+        if hasattr(definition, 'custom_read_kwargs') and definition.custom_read_kwargs:
+            print(f"  Custom Read Kwargs keys: {list(definition.custom_read_kwargs.keys())}")
+
+        # Experiment information
+        if hasattr(definition, 'experiment') and definition.experiment:
+            exp = definition.experiment
+            if hasattr(exp, 'name') and exp.name is not None:
+                print(f"  Name: {exp.name}")
+            if hasattr(exp, 'description') and exp.description is not None:
+                print(f"  Description: {exp.description}")
+            if hasattr(exp, 'sampling_rate_hz') and exp.sampling_rate_hz is not None:
+                print(f"  Sampling Rate: {exp.sampling_rate_hz} Hz")
+            if hasattr(exp, 'coordinates') and exp.coordinates is not None:
+                print(f"  Coordinates: {exp.coordinates}")
+            if hasattr(exp, 'origin') and exp.origin is not None:
+                print(f"  Origin: {exp.origin}")
+            if hasattr(exp, 'units') and exp.units is not None:
+                print(f"  Units: {exp.units}")
+
+            # Eyetracker (check each attribute from EyeTracker class)
+            if hasattr(exp, 'eyetracker') and exp.eyetracker is not None:
+                tracker = exp.eyetracker
+                print('\nEYETRACKER:')
+                if getattr(tracker, 'sampling_rate', None) is not None:
+                    print(f"  Sampling Rate: {tracker.sampling_rate} Hz")
+                if getattr(tracker, 'left', None) is not None:
+                    print(f"  Left Eye Tracked: {tracker.left}")
+                if getattr(tracker, 'right', None) is not None:
+                    print(f"  Right Eye Tracked: {tracker.right}")
+                if getattr(tracker, 'model', None) is not None:
+                    print(f"  Model: {tracker.model}")
+                if getattr(tracker, 'version', None) is not None:
+                    print(f"  Version: {tracker.version}")
+                if getattr(tracker, 'vendor', None) is not None:
+                    print(f"  Vendor: {tracker.vendor}")
+                if getattr(tracker, 'mount', None) is not None:
+                    print(f"  Mount: {tracker.mount}")
+
+            # Screen configuration
+            if hasattr(exp, 'screen') and exp.screen:
+                screen = exp.screen
+                print('\nSCREEN CONFIGURATION:')
+                if hasattr(screen, 'width_px') and screen.width_px is not None:
+                    print(f"  Width: {screen.width_px} px")
+                if hasattr(screen, 'height_px') and screen.height_px is not None:
+                    print(f"  Height: {screen.height_px} px")
+                if hasattr(screen, 'width_cm') and screen.width_cm is not None:
+                    print(f"  Width (physical): {screen.width_cm} cm")
+                if hasattr(screen, 'height_cm') and screen.height_cm is not None:
+                    print(f"  Height (physical): {screen.height_cm} cm")
+                if hasattr(screen, 'distance_cm') and screen.distance_cm is not None:
+                    print(f"  Distance: {screen.distance_cm} cm")
+                if hasattr(screen, 'framerate_hz') and screen.framerate_hz is not None:
+                    print(f"  Framerate: {screen.framerate_hz} Hz")
+                # Derived metrics
+                if (
+                    hasattr(screen, 'width_px') and screen.width_px is not None and
+                    hasattr(screen, 'height_px') and screen.height_px not in (None, 0)
+                ):
+                    aspect_ratio = screen.width_px / screen.height_px
+                    print(f"   Aspect Ratio: {aspect_ratio:.2f}")
+                if (
+                    hasattr(screen, 'width_px') and screen.width_px is not None and
+                    hasattr(screen, 'width_cm') and screen.width_cm not in (None, 0)
+                ):
+                    ppcm = screen.width_px / screen.width_cm
+                    print(f"   Pixels per cm: {ppcm:.1f}")
+
+        # Data structure snapshot
+        if hasattr(self, 'gaze') and self.gaze:
+            print('\nDATA STRUCTURE:')
+            print(f"  Gaze Recordings: {len(self.gaze)}")
+            sample_gaze = self.gaze[0]
+            print(f"  Sample columns: {list(sample_gaze.samples.columns)}")
+            print(f"  Sample data shape: {sample_gaze.samples.shape}")
+            try:
+                mem_mb = sample_gaze.samples.estimated_size() / (1024 * 1024)
+                print(f"  Estimated memory usage: {mem_mb:.1f} MB")
+            except Exception:
+                pass
+
+        if hasattr(self, 'events') and self.events:
+            print(f"  Event Recordings: {len(self.events)}")
+
+            # Aggregate metrics across all recordings
+        total_samples_all = 0
+        null_counts_all = {}
+
+        # First pass to collect all column names
+        all_columns = set()
+        for gaze_recording in self.gaze:
+            all_columns.update(gaze_recording.samples.columns)
+            total_samples_all += len(gaze_recording.samples)
+
+        # Initialize null counters for all columns
+        for col in all_columns:
+            null_counts_all[col] = 0
+
+        # Count nulls in each recording
+        for gaze_recording in self.gaze:
+            samples = gaze_recording.samples
+            for col in samples.columns:
+                null_counts_all[col] += samples[col].is_null().sum()
+
+        # Print overall statistics
+        print('\nDATA QUALITY:')
+        print(f"Total samples across all recordings: {total_samples_all}")
+
+        # Missing data summary
+        print('\nMissing Data:')
+        has_missing = False
+        for col, null_count in sorted(null_counts_all.items(), key=lambda x: x[1], reverse=True):
+            if null_count > 0:
+                has_missing = True
+                percent = (null_count / total_samples_all) * 100
+                print(f"  '{col}': {null_count} missing values ({percent:.2f}%)")
+
+        if not has_missing:
+            print('  No missing values found in any column')
+
+        # References (if present)
+        if hasattr(definition, 'references') and definition.references:
+            print('\nREFERENCES:')
+            for i, ref in enumerate(definition.references, 1):
+                print(f"  {i}.")
+                for attr_name in dir(ref):
+                    if not attr_name.startswith('_'):
+                        attr_value = getattr(ref, attr_name)
+                        if attr_value is not None and not callable(attr_value):
+                            if isinstance(attr_value, list):
+                                print(
+                                    f"     {
+                                        attr_name.replace(
+                                            '_', ' '
+                                        ).title()
+                                    }: {
+                                        ', '.join(attr_value)
+                                    }",
+                                )
+                            else:
+                                print(f"     {attr_name.replace('_', ' ').title()}: {attr_value}")
+
+        # Participants (if present)
+        if hasattr(definition, 'participants') and definition.participants:
+            print('\nPARTICIPANTS:')
+            for i, participant in enumerate(definition.participants):
+                print(f"  Participant {i + 1}:")
+                for attr_name in dir(participant):
+                    if not attr_name.startswith('_'):
+                        attr_value = getattr(participant, attr_name)
+                        if attr_value is not None and not callable(attr_value):
+                            print(f"    {attr_name.replace('_', ' ').title()}: {attr_value}")
+
+        # Resource details
+        print('\nRESOURCE FILES:')
+        for i, resource in enumerate(getattr(definition, 'resources', []), 1):
+            print(f"  {i}. {resource.filename}")
+            for attr_name in dir(resource):
+                if not attr_name.startswith('_') and attr_name != 'filename':
+                    attr_value = getattr(resource, attr_name)
+                    if attr_value is not None and not callable(attr_value):
+                        if attr_name == 'columns' and hasattr(attr_value, '__iter__'):
+                            column_names = [col.name for col in attr_value if hasattr(col, 'name')]
+                            if column_names:
+                                print(f"     Columns: {', '.join(column_names[:5])}")
+                                if len(column_names) > 5:
+                                    print(f"     ... and {len(column_names) - 5} more columns")
+                        else:
+                            print(f"     {attr_name.replace('_', ' ').title()}: {attr_value}")
+
+        print('=' * 80)
+        return self
