@@ -802,7 +802,8 @@ def _mirror_horizontal(
     axis_sum = x_min + x_max
 
     mirrored_events = events_df.with_columns(
-        (pl.lit(axis_sum) - pl.col('location_x')).alias('location_x'))
+        (pl.lit(axis_sum) - pl.col('location_x')).alias('location_x'),
+    )
     mirrored_aois = aois_df.with_columns(
         (
             pl.lit(axis_sum)
@@ -876,13 +877,42 @@ def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, 
 
     assert mirrored_events.frame.get_column(aoi_column).to_list() == expected_labels
 
+
 @pytest.mark.parametrize(
     ('aoi_column', 'writing_system', 'mirror_after_transpose'),
     [
-        pytest.param('word', WritingSystem('vertical', 'left-to-right', 'top-to-bottom'), False, id='word-vertical-lr'),
-        pytest.param('char', WritingSystem('vertical', 'left-to-right', 'top-to-bottom'), False, id='char-vertical-lr'),
-        pytest.param('word', WritingSystem('vertical', 'right-to-left', 'top-to-bottom'), True, id='word-vertical-rl'),
-        pytest.param('char', WritingSystem('vertical', 'right-to-left', 'top-to-bottom'), True, id='char-vertical-rl'),
+        pytest.param(
+            'word',
+            WritingSystem(
+                'vertical',
+                'left-to-right',
+                'top-to-bottom'),
+            False,
+            id='word-vertical-lr'),
+        pytest.param(
+            'char',
+            WritingSystem(
+                'vertical',
+                'left-to-right',
+                'top-to-bottom'),
+            False,
+            id='char-vertical-lr'),
+        pytest.param(
+            'word',
+            WritingSystem(
+                'vertical',
+                'right-to-left',
+                'top-to-bottom'),
+            True,
+            id='word-vertical-rl'),
+        pytest.param(
+            'char',
+            WritingSystem(
+                'vertical',
+                'right-to-left',
+                'top-to-bottom'),
+            True,
+            id='char-vertical-rl'),
     ],
 )
 def test_event_to_aoi_mapping_vertical_by_axis_transform(

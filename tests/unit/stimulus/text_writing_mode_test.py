@@ -144,7 +144,7 @@ def test_writing_mode_preserved_by_split(sample_aoi_dataframe, sample_schema, wr
 
     # Split by page
     split_parts = stimulus.split(by='page')
-    
+
     # Check that all split parts preserve the writing_system
     assert len(split_parts) == 2
     for part in split_parts:
@@ -176,7 +176,7 @@ def test_writing_mode_preserved_by_from_csv(sample_aoi_dataframe, writing_system
             height_column='height',
             writing_system=writing_system,
         )
-        
+
         assert isinstance(stimulus.writing_system, WritingSystem)
         assert stimulus.writing_system == writing_system
 
@@ -205,7 +205,7 @@ def test_writing_mode_preserved_by_from_file(sample_aoi_dataframe, writing_syste
             height_column='height',
             writing_system=writing_system,
         )
-        
+
         assert isinstance(stimulus.writing_system, WritingSystem)
         assert stimulus.writing_system == writing_system
 
@@ -224,7 +224,7 @@ def test_writing_mode_from_csv_default(sample_aoi_dataframe):
             width_column='width',
             height_column='height',
         )
-        
+
         assert isinstance(stimulus.writing_system, WritingSystem)
         assert stimulus.writing_system == HORIZONTAL_LR
 
@@ -243,7 +243,7 @@ def test_writing_mode_from_file_default(sample_aoi_dataframe):
             width_column='width',
             height_column='height',
         )
-        
+
         assert isinstance(stimulus.writing_system, WritingSystem)
         assert stimulus.writing_system == HORIZONTAL_LR
 
