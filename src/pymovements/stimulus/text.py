@@ -88,6 +88,7 @@ class WritingSystem:
             f"Unknown descriptor '{descriptor}'. Valid descriptors are: {WritingSystem.VALID_DESCRIPTORS}"
         )
 
+
 @repr_html(['aois'])
 class TextStimulus:
     """A DataFrame for the text stimulus that the gaze data was recorded on.
@@ -248,7 +249,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
-                writing_system: WritingSystem = WritingSystem(),
+        writing_system: WritingSystem = WritingSystem(),
             read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
