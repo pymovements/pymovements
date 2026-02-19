@@ -82,10 +82,12 @@ class WritingSystem:
     def from_descriptor(descriptor: str) -> WritingSystem:
         if descriptor in {'left-to-right', 'ltr'}:
             return WritingSystem(
-                axis='horizontal', directionality='left-to-right', lining='top-to-bottom')
+                axis='horizontal', directionality='left-to-right', lining='top-to-bottom',
+            )
         if descriptor in {'right-to-left', 'rtl'}:
             return WritingSystem(
-                axis='horizontal', directionality='right-to-left', lining='top-to-bottom')
+                axis='horizontal', directionality='right-to-left', lining='top-to-bottom',
+            )
         raise ValueError(
             f"Unknown descriptor '{descriptor}'. "
             f"Valid descriptors are: {WritingSystem.VALID_DESCRIPTORS}",
