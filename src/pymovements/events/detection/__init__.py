@@ -37,6 +37,7 @@ from pymovements.events.detection._ivt import ivt
 from pymovements.events.detection._library import EventDetectionLibrary
 from pymovements.events.detection._library import register_event_detection
 from pymovements.events.detection._microsaccades import microsaccades
+from pymovements.events.detection._out_of_screen import out_of_screen
 
 __all__ = [
     'EventDetectionLibrary',
@@ -46,4 +47,5 @@ __all__ = [
     'idt',
     'ivt',
     'microsaccades',
+    'out_of_screen',
 ]
