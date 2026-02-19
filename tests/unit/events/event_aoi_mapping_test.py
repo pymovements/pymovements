@@ -25,6 +25,7 @@ from polars.testing import assert_frame_equal
 import pymovements as pm
 from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
+from pymovements.stimulus.text import WritingSystem
 
 EXPECTED_DF = {
     'char': pl.DataFrame(
@@ -845,7 +846,7 @@ def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, 
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_mode='horizontal-lr',
+        writing_system=WritingSystem('horizontal', 'top-to-bottom', 'left-to-right'),
     )
     base_events = Events(data=_base_events_for_transform_test())
     base_events.map_to_aois(base_stimulus)
@@ -866,26 +867,25 @@ def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, 
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_mode='horizontal-rl',
+        writing_system=WritingSystem('horizontal', 'top-to-bottom', 'right-to-left'),
     )
     mirrored_events = Events(data=mirrored_events_df)
     mirrored_events.map_to_aois(mirrored_stimulus)
 
     assert mirrored_events.frame.get_column(aoi_column).to_list() == expected_labels
 
-
 @pytest.mark.parametrize(
-    ('aoi_column', 'writing_mode', 'mirror_after_transpose'),
+    ('aoi_column', 'writing_system', 'mirror_after_transpose'),
     [
-        pytest.param('word', 'vertical-lr', False, id='word-vertical-lr'),
-        pytest.param('char', 'vertical-lr', False, id='char-vertical-lr'),
-        pytest.param('word', 'vertical-rl', True, id='word-vertical-rl'),
-        pytest.param('char', 'vertical-rl', True, id='char-vertical-rl'),
+        pytest.param('word', WritingSystem('vertical', 'left-to-right', 'top-to-bottom'), False, id='word-vertical-lr'),
+        pytest.param('char', WritingSystem('vertical', 'left-to-right', 'top-to-bottom'), False, id='char-vertical-lr'),
+        pytest.param('word', WritingSystem('vertical', 'right-to-left', 'top-to-bottom'), True, id='word-vertical-rl'),
+        pytest.param('char', WritingSystem('vertical', 'right-to-left', 'top-to-bottom'), True, id='char-vertical-rl'),
     ],
 )
 def test_event_to_aoi_mapping_vertical_by_axis_transform(
     aoi_column,
-    writing_mode,
+    writing_system,
     mirror_after_transpose,
     make_example_file,
 ):
@@ -900,7 +900,7 @@ def test_event_to_aoi_mapping_vertical_by_axis_transform(
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_mode='horizontal-lr',
+        writing_system=WritingSystem('horizontal', 'top-to-bottom', 'left-to-right'),
     )
     base_events = Events(data=_base_events_for_transform_test())
     base_events.map_to_aois(base_stimulus)
@@ -930,7 +930,7 @@ def test_event_to_aoi_mapping_vertical_by_axis_transform(
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_mode=writing_mode,
+        writing_system=writing_system,
     )
     transformed_events = Events(data=transformed_events_df)
     transformed_events.map_to_aois(transformed_stimulus)
