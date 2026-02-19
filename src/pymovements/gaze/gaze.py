@@ -353,13 +353,15 @@ class Gaze:
 
     @overload
     def split(
-            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
+            self, by: str | Sequence[str] | None = None,
+            *, as_dict: Literal[False], extend_metadata: bool = True,
     ) -> list[Gaze]:
         ...
 
     @overload
     def split(
-            self, by: Sequence[str] | None = None, *, as_dict: Literal[True],
+            self, by: Sequence[str] | None = None,
+            *, as_dict: Literal[True], extend_metadata: bool = True,
     ) -> dict[tuple[Any, ...], Gaze]:
         ...
 
@@ -368,6 +370,7 @@ class Gaze:
             by: str | Sequence[str] | None = None,
             *,
             as_dict: bool = False,
+            extend_metadata: bool = True,
     ) -> list[Gaze] | dict[tuple[Any, ...], Gaze]:
         """Split a single Gaze object into multiple Gaze objects based on specified column(s).
 
@@ -381,6 +384,9 @@ class Gaze:
         as_dict: bool
             Return a dictionary instead of a list. The dictionary keys are tuples of the distinct
             group values that identify each group split. (default: False)
+        extend_metadata: bool
+            If ``True``, extend metadata dictionary of each split with its respective key/value
+            pair. (default: ``True``)
 
         Returns
         -------
@@ -482,15 +488,22 @@ class Gaze:
             key=_replace_nones_in_split_keys(sample_key_dtypes, events_key_dtypes),
         )
 
-        gazes = {
-            key: Gaze(
+        gazes: dict[tuple[Any, ...], Gaze] = {}
+
+        for key in keys:
+            metadata_split = deepcopy(self.metadata)
+            if extend_metadata:
+                for by_id, column_name in enumerate(by):
+                    metadata_split[column_name] = key[by_id]
+
+            gaze_split = Gaze(
                 samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
+                metadata=metadata_split,
             )
-            for key in keys
-        }
+            gazes[key] = gaze_split
 
         if as_dict:
             return gazes
