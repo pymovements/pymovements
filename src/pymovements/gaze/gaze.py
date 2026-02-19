@@ -1949,8 +1949,10 @@ class Gaze:
             The filled keyword argument dictionary.
         """
         # Automatically infer eye to use for event detection.
-        method_args = inspect.getfullargspec(
-            method).args + inspect.getfullargspec(method).kwonlyargs
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
 
         if 'positions' in method_args:
             if 'position' not in samples.columns:
