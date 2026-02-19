@@ -117,12 +117,23 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'pixels': np.array([[0, 0], [1920, 1080], [960, 540]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'pixels': np.array([[0, 0], [1919.9, 1079.9], [960, 540]]),
+                'x_max': 1920, 'y_max': 1080,
             },
             Events(),
-            id='on_boundary_no_events',
+            id='on_boundary_inclusive_min_exclusive_max_no_events',
+        ),
+        pytest.param(
+            {
+                'pixels': np.array([[0, 0], [1920, 1080], [960, 540]]),
+                'x_max': 1920, 'y_max': 1080,
+            },
+            Events(
+                name='out_of_screen',
+                onsets=[1],
+                offsets=[1],
+            ),
+            id='at_max_boundary_exclusive_detected',
         ),
         pytest.param(
             {

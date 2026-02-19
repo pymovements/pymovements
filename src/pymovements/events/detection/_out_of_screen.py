@@ -31,11 +31,11 @@ from pymovements.gaze.transforms_numpy import consecutive
 @register_event_detection
 def out_of_screen(
         pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+        x_max: float,
+        y_max: float,
         timesteps: list[int] | np.ndarray | None = None,
         x_min: float = 0,
-        x_max: float = 0,
         y_min: float = 0,
-        y_max: float = 0,
         name: str = 'out_of_screen',
 ) -> Events:
     """Detect gaze samples with pixel coordinates outside of screen boundaries.
@@ -50,18 +50,18 @@ def out_of_screen(
         shape (N, 2)
         Continuous 2D pixel coordinate time series. The first column is the x coordinate
         and the second column is the y coordinate.
+    x_max: float
+        Maximum valid x pixel coordinate (exclusive). For a 1920px wide screen, set to 1920.
+    y_max: float
+        Maximum valid y pixel coordinate (exclusive). For a 1080px tall screen, set to 1080.
     timesteps: list[int] | np.ndarray | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
     x_min: float
         Minimum valid x pixel coordinate (inclusive). (default: 0)
-    x_max: float
-        Maximum valid x pixel coordinate (inclusive). For a 1920px wide screen, set to 1920.
     y_min: float
         Minimum valid y pixel coordinate (inclusive). (default: 0)
-    y_max: float
-        Maximum valid y pixel coordinate (inclusive). For a 1080px tall screen, set to 1080.
     name: str
         Name for detected events in Events. (default: 'out_of_screen')
 
@@ -100,8 +100,8 @@ def out_of_screen(
     y = pixels[:, 1]
 
     out_of_screen_mask = (
-        (x < x_min) | (x > x_max)
-        | (y < y_min) | (y > y_max)
+        (x < x_min) | (x >= x_max)
+        | (y < y_min) | (y >= y_max)
     )
 
     # Get indices of out-of-screen samples.
