@@ -61,7 +61,7 @@ def sample_schema():
     }
 
 
-def test_writing_mode_default(sample_aoi_dataframe, sample_schema):
+def test_writing_system_default(sample_aoi_dataframe, sample_schema):
     """Test that default writing_system is horizontal-lr."""
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
@@ -84,7 +84,7 @@ def test_writing_mode_default(sample_aoi_dataframe, sample_schema):
         VERTICAL_LR,
     ],
 )
-def test_writing_mode_explicit(sample_aoi_dataframe, sample_schema, writing_system):
+def test_writing_system_explicit(sample_aoi_dataframe, sample_schema, writing_system):
     """Test that writing_system can be set explicitly."""
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
@@ -99,7 +99,7 @@ def test_writing_mode_explicit(sample_aoi_dataframe, sample_schema, writing_syst
     assert stimulus.writing_system == writing_system
 
 
-def test_writing_mode_explicit_writing_system_object(sample_aoi_dataframe, sample_schema):
+def test_writing_system_explicit_writing_system_object(sample_aoi_dataframe, sample_schema):
     """Test that writing_system accepts WritingSystem objects."""
     writing_system = WritingSystem(
         axis='vertical',
@@ -119,6 +119,20 @@ def test_writing_mode_explicit_writing_system_object(sample_aoi_dataframe, sampl
     assert stimulus.writing_system == writing_system
     assert stimulus.writing_system == VERTICAL_RL
 
+def test_writing_system_str_object(sample_aoi_dataframe, sample_schema):
+    """Test that writing_system can be set from string descriptor."""
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column=sample_schema['aoi'],
+        start_x_column=sample_schema['x_min'],
+        start_y_column=sample_schema['y_min'],
+        width_column=sample_schema['width'],
+        height_column=sample_schema['height'],
+        writing_system="left-to-right",
+    )
+    assert isinstance(stimulus.writing_system, WritingSystem)
+    assert stimulus.writing_system == HORIZONTAL_LR
+
 
 @pytest.mark.parametrize(
     'writing_system',
@@ -129,7 +143,7 @@ def test_writing_mode_explicit_writing_system_object(sample_aoi_dataframe, sampl
         VERTICAL_LR,
     ],
 )
-def test_writing_mode_preserved_by_split(sample_aoi_dataframe, sample_schema, writing_system):
+def test_writing_system_preserved_by_split(sample_aoi_dataframe, sample_schema, writing_system):
     """Test that split() preserves writing_system."""
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
@@ -161,7 +175,7 @@ def test_writing_mode_preserved_by_split(sample_aoi_dataframe, sample_schema, wr
         VERTICAL_LR,
     ],
 )
-def test_writing_mode_preserved_by_from_csv(sample_aoi_dataframe, writing_system):
+def test_writing_system_preserved_by_from_csv(sample_aoi_dataframe, writing_system):
     """Test that from_csv() accepts and preserves writing_system."""
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
@@ -190,7 +204,7 @@ def test_writing_mode_preserved_by_from_csv(sample_aoi_dataframe, writing_system
         VERTICAL_LR,
     ],
 )
-def test_writing_mode_preserved_by_from_file(sample_aoi_dataframe, writing_system):
+def test_writing_system_preserved_by_from_file(sample_aoi_dataframe, writing_system):
     """Test that from_file() accepts and preserves writing_system."""
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
@@ -210,7 +224,7 @@ def test_writing_mode_preserved_by_from_file(sample_aoi_dataframe, writing_syste
         assert stimulus.writing_system == writing_system
 
 
-def test_writing_mode_from_csv_default(sample_aoi_dataframe):
+def test_writing_system_from_csv_default(sample_aoi_dataframe):
     """Test that from_csv() uses default writing_system when not specified."""
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
@@ -229,7 +243,7 @@ def test_writing_mode_from_csv_default(sample_aoi_dataframe):
         assert stimulus.writing_system == HORIZONTAL_LR
 
 
-def test_writing_mode_from_file_default(sample_aoi_dataframe):
+def test_writing_system_from_file_default(sample_aoi_dataframe):
     """Test that from_file() uses default writing_system when not specified."""
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / 'test_aoi.csv'
@@ -248,7 +262,7 @@ def test_writing_mode_from_file_default(sample_aoi_dataframe):
         assert stimulus.writing_system == HORIZONTAL_LR
 
 
-def test_writing_mode_attribute_access(sample_aoi_dataframe, sample_schema):
+def test_writing_system_attribute_access(sample_aoi_dataframe, sample_schema):
     """Test that writing_system can be accessed as an attribute."""
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
