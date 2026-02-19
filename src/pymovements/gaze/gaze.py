@@ -1949,7 +1949,10 @@ class Gaze:
             The filled keyword argument dictionary.
         """
         # Automatically infer eye to use for event detection.
-        method_args = inspect.getfullargspec(method).args
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
 
         if 'positions' in method_args:
             if 'position' not in samples.columns:
@@ -1988,6 +1991,35 @@ class Gaze:
                     for eye_component in eye_components
                 ],
             ).transpose()
+
+        if 'pixels' in method_args and 'pixels' not in kwargs:
+            if 'pixel' not in samples.columns:
+                raise polars.exceptions.ColumnNotFoundError(
+                    f'Column \'pixel\' not found.'
+                    f' Available columns are: {samples.columns}',
+                )
+
+            if eye_components is None:
+                raise ValueError(
+                    'eye_components must not be None if passing pixel to event detection',
+                )
+
+            kwargs['pixels'] = np.vstack(
+                [
+                    samples.get_column('pixel').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
+
+        if method.__name__ == 'out_of_screen' and self.experiment is not None:
+            if 'x_min' not in kwargs:
+                kwargs['x_min'] = 0
+            if 'x_max' not in kwargs:
+                kwargs['x_max'] = self.experiment.screen.width_px
+            if 'y_min' not in kwargs:
+                kwargs['y_min'] = 0
+            if 'y_max' not in kwargs:
+                kwargs['y_max'] = self.experiment.screen.height_px
 
         if 'events' in method_args:
             kwargs['events'] = events
