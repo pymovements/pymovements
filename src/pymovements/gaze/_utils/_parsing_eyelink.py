@@ -75,6 +75,7 @@ EYELINK_META_REGEXES = [
             r'\s+(?P<day>\d\d?)\s+(?P<time>\d\d:\d\d:\d\d)\s+(?P<year>\d{4})\s*'
         ),
         r'\*\*\s+(?P<version_2>EYELINK.*)',
+        r'\*\*\s+RECORDED\s+BY\s+(?P<recorded_by>.*)',
         r'MSG\s+\d+[.]?\d*\s+DISPLAY_COORDS\s*=?\s*(?P<DISPLAY_COORDS>.*)',
         r'PUPIL\s+(?P<pupil_data_type>(AREA|DIAMETER))\s*',
         r'MSG\s+\d+[.]?\d*\s+ELCLCFG\s+(?P<mount_configuration>.*)',
@@ -491,7 +492,7 @@ def parse_eyelink(
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
     """
-    # pylint: disable=too-many-branches, too-many-statements
+    # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
 
     if patterns is None:
@@ -537,6 +538,9 @@ def parse_eyelink(
         metadata[key] = None
 
     compiled_metadata_patterns.extend(EYELINK_META_REGEXES)
+
+    # Flag: whether file was recorded by libeyelink.py (PyGaze)
+    recorded_by_libeyelink = False
 
     # Event collection for deterministic matching
     context_timeline: dict[float, dict[str, Any]] = {}
@@ -658,15 +662,12 @@ def parse_eyelink(
                 width = right - left
                 height = bottom - top
 
-                # The values in GAZE_COORDS refer to the highest pixel index (starting with 0)
-                # in standard EyeLink files, so they need to be incremented to get the resolution.
-                # In contrast, EDF/ASC files created with pygaze specify the exact resolution.
-                # All existing screen displays have an even number of pixels (1280, 1024, etc.).
-                # Therefore, we increment by 1 only if the resolution values are odd.
-                # See https://github.com/pymovements/pymovements/issues/1286
-                if width % 2 != 0:
+                # Resolution handling depends on recorder implementation.
+                # - Standard EyeLink GAZE_COORDS list the highest pixel index (0-based),
+                #   so we must increment to obtain the resolution.
+                # - PyGaze (libeyelink.py) logs exact resolution; do not increment there.
+                if not recorded_by_libeyelink:
                     width += 1
-                if height % 2 != 0:
                     height += 1
 
                 recording_config[-1]['resolution'] = (width, height)
@@ -771,6 +772,13 @@ def parse_eyelink(
 
                     else:
                         metadata.update(match.groupdict())
+
+                    # Check for libeyelink recorder to skip resolution increment
+                    if 'recorded_by' in match.groupdict():
+                        recorded_by = match.groupdict()['recorded_by'].strip()
+                        metadata['recorded_by'] = recorded_by
+                        if recorded_by.lower().startswith('libeyelink.py'):
+                            recorded_by_libeyelink = True
 
                     # each metadata pattern should only match once
                     compiled_metadata_patterns.remove(pattern_dict)
