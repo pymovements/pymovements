@@ -432,8 +432,8 @@ def test_from_asc_example_file_raises_exception(
             {'encoding': 'latin1'},
             Experiment(
                 screen=Screen(
-                    width_px=1920,
-                    height_px=1080,
+                    width_px=1921,
+                    height_px=1081,
                 ),
                 eyetracker=EyeTracker(
                     sampling_rate=1000.0,

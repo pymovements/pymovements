@@ -395,6 +395,7 @@ def from_asc(
         events: bool = False,
         messages: bool | list[str] = False,
         metadata: dict[str, Any] | None = None,
+        extend_resolution: bool | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -440,6 +441,10 @@ def from_asc(
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. (default: None)
+    extend_resolution: bool | None
+        Flag indicating if the screen resolution should be extended by 1 pixel.
+        If None, the resolution is extended unless the file was recorded by libeyelink.py.
+        (default: None)
 
     Returns
     -------
@@ -535,6 +540,7 @@ def from_asc(
         metadata_patterns=metadata_patterns,
         encoding=encoding,
         messages=messages,
+        extend_resolution=extend_resolution,
     )
 
     if add_columns is not None:
