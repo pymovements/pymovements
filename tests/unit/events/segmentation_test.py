@@ -602,7 +602,7 @@ def test_events2segmentation_padding_causes_overlap_warning():
     expected = [True, True, True, True, True, True, True, True, True, True, True, False]
     assert result_df['blink'].to_list() == expected
 
-    
+
 @pytest.mark.parametrize(
     ('events_data', 'samples_data', 'kwargs', 'expected'),
     [
