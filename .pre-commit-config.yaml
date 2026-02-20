@@ -5,7 +5,6 @@ exclude: |
 
 ci:
   autoupdate_commit_msg: 'ci: pre-commit autoupdate'
-  skip: [ pylint ]
 
 repos:
   # Ruff + Ty integration
@@ -95,38 +94,6 @@ repos:
       - id: no-commit-to-branch
       - id: requirements-txt-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/PyCQA/doc8
-    rev: v2.0.0
-    hooks:
-      - id: doc8
-  - repo: https://github.com/PyCQA/pylint
-    rev: v4.0.4
-    hooks:
-      - id: pylint
-        name: pylint
-        entry: pylint
-        language: system
-        types: [ python ]
-        files: ^src/
-        args:
-          [
-            '--output-format=parseable',
-            '--rcfile=pylintrc',
-          ]
-      - id: pylint
-        name: pylint-tests-directory
-        entry: pylint
-        language: system
-        types: [ python ]
-        files: ^tests/
-        args:
-          [
-            '--output-format=parseable',
-            '--disable=missing-class-docstring',
-            '--disable=missing-function-docstring',
-            '--disable=protected-access',
-            '--rcfile=pylintrc',
-          ]
   - repo: local
     hooks:
       - id: write-datasets-yaml
