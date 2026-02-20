@@ -721,78 +721,118 @@ def _fill_experiment_from_parsing_eyelink_metadata(
 ) -> Experiment:
     """Fill Experiment with metadata gained from parsing."""
     if experiment is None:
-        experiment = Experiment(sampling_rate=metadata['sampling_rate'])
+        experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
 
     # Compare metadata from experiment definition with metadata from ASC file.
-    # Fill in missing metadata in experiment definition and raise an error if there are conflicts
+    # Fill in missing metadata in experiment definition and raise a warning if there are conflicts
     issues = []
 
     # Screen resolution (assuming that width and height will always be missing or set together)
     experiment_resolution = (experiment.screen.width_px, experiment.screen.height_px)
-    if experiment_resolution == (None, None):
-        try:
-            width, height = metadata['resolution']
-            experiment.screen.width_px = math.ceil(width)
-            experiment.screen.height_px = math.ceil(height)
-        except TypeError:
+    resolution = metadata.get('resolution')
+    try:
+        width, height = resolution
+        parsed_resolution = (math.ceil(width), math.ceil(height))
+    except (TypeError, ValueError):
+        parsed_resolution = None
+    if parsed_resolution is None:
+        if experiment_resolution == (None, None):
             warnings.warn('No screen resolution found.')
-    elif experiment_resolution != metadata['resolution']:
-        issues.append(f"Screen resolution: {experiment_resolution} != {metadata['resolution']}")
-
+    else:
+        if experiment_resolution != (None,None) and experiment_resolution != parsed_resolution:
+            issues.append(
+                "Screen resolution: "
+                f"{experiment_resolution[0]}x{experiment_resolution[1]} != "
+                f"{parsed_resolution[0]}x{parsed_resolution[1]}",
+            )
+        experiment.screen.width_px, experiment.screen.height_px = parsed_resolution
+    
     # Sampling rate
-    if experiment.eyetracker.sampling_rate != metadata['sampling_rate']:
-        issues.append(
-            f"Sampling rate: {experiment.eyetracker.sampling_rate} != {metadata['sampling_rate']}",
-        )
+    parsed_sampling_rate = metadata.get('sampling_rate')
+    if parsed_sampling_rate is None:
+        if experiment.eyetracker.sampling_rate is None:
+            warnings.warn('No sampling rate found.')
+    else:
+        if (
+            experiment.eyetracker.sampling_rate is not None
+            and experiment.eyetracker.sampling_rate != parsed_sampling_rate
+        ):
+            issues.append(
+                f"Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}"
+            )
+            experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
     # Tracked eye
-    asc_left_eye = 'L' in (metadata['tracked_eye'] or '')
-    asc_right_eye = 'R' in (metadata['tracked_eye'] or '')
-    if experiment.eyetracker.left is None:
+    parsed_tracked_eye = metadata.get('tracked_eye')
+    if parsed_tracked_eye == '':
+        if experiment.eyetracker.left is None and experiment.eyetracker.right is None:
+            warnings.warn('No tracked eye information found.')
+    else:
+        asc_left_eye = 'L' in parsed_tracked_eye
+        asc_right_eye = 'R' in parsed_tracked_eye
+        if experiment.eyetracker.left is not None and experiment.eyetracker.left != asc_left_eye:
+            issues.append(
+                f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}'
+            )
         experiment.eyetracker.left = asc_left_eye
-    elif experiment.eyetracker.left != asc_left_eye:
-        issues.append(f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}')
-    if experiment.eyetracker.right is None:
+        if experiment.eyetracker.right is not None and experiment.eyetracker.right != asc_right_eye:
+            issues.append(
+                f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}'
+            )
         experiment.eyetracker.right = asc_right_eye
-    elif experiment.eyetracker.right != asc_right_eye:
-        issues.append(f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}')
-
+    
     # Mount configuration
-    if experiment.eyetracker.mount is None:
-        try:
-            experiment.eyetracker.mount = metadata['mount_configuration']['mount_type']
-        except KeyError:
+    try:
+        parsed_mount = metadata['mount_configuration']['mount_type']
+    except KeyError:
+        parsed_mount = None
+    if parsed_mount is None:
+        if experiment.eyetracker.mount is None:
             warnings.warn('No mount configuration found.')
-    elif experiment.eyetracker.mount != metadata['mount_configuration']['mount_type']:
-        issues.append(
-            f'Mount configuration: {experiment.eyetracker.mount} != '
-            f"{metadata['mount_configuration']['mount_type']}",
-        )
+    else:
+        if experiment.eyetracker.mount is not None and experiment.eyetracker.mount != parsed_mount:
+            issues.append(
+                f'Mount configuration: {experiment.eyetracker.mount} != {parsed_mount}'
+            )
+        experiment.eyetracker.mount = parsed_mount
 
     # Eye tracker vendor
-    asc_vendor = 'EyeLink' if 'EyeLink' in metadata['model'] else None
-    if experiment.eyetracker.vendor is None:
+    asc_vendor = 'EyeLink' if 'EyeLink' in (metadata.get('model') or '') else None
+    if asc_vendor is None:
+        if experiment.eyetracker.vendor is None:
+            warnings.warn('No eye tracker vendor found.')
+    else:
+        if experiment.eyetracker.vendor is not None and experiment.eyetracker.vendor != asc_vendor:
+            issues.append(
+                f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}'
+            )
         experiment.eyetracker.vendor = asc_vendor
-    elif experiment.eyetracker.vendor != asc_vendor:
-        issues.append(f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}')
 
     # Eye tracker model
-    if experiment.eyetracker.model is None:
-        experiment.eyetracker.model = metadata['model']
-    elif experiment.eyetracker.model != metadata['model']:
-        issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {metadata['model']}")
-
+    parsed_model = metadata.get('model') or ''
+    if parsed_model == 'unknown':
+        if experiment.eyetracker.model is None:
+            warnings.warn('No eye tracker model found.')
+    else:
+        if experiment.eyetracker.model is not None and experiment.eyetracker.model != parsed_model:
+            issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {parsed_model}")
+        experiment.eyetracker.model = parsed_model
+    
     # Eye tracker software version
-    if experiment.eyetracker.version is None:
-        experiment.eyetracker.version = metadata['version_number']
-    elif experiment.eyetracker.version != metadata['version_number']:
-        issues.append(
-            f'Eye tracker software version: {experiment.eyetracker.version} != '
-            f"{metadata['version_number']}",
-        )
+    parsed_version = metadata.get('version_number')
+    if parsed_version == 'unknown':
+        if experiment.eyetracker.version is None:
+            warnings.warn('No eye tracker software version found.')
+    else:
+        if experiment.eyetracker.version is not None and experiment.eyetracker.version != parsed_version:
+            issues.append(
+                f'Eye tracker software version: {experiment.eyetracker.version} != {parsed_version}'
+            )
+        experiment.eyetracker.version = parsed_version
+    
 
     if issues:
-        raise ValueError(
+        warnings.warn(
             'Experiment metadata does not match the metadata in the ASC file:\n'
             + '\n'.join(f'- {issue}' for issue in issues),
         )
