@@ -23,13 +23,75 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from typing import ClassVar
+from typing import Literal
 
 import polars as pl
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+
+
+@dataclass(frozen=True)
+class WritingSystem:
+    """Writing system specification used by :class:`TextStimulus`.
+
+    Parameters
+    ----------
+    axis: Literal['horizontal', 'vertical']
+        Primary axis along which text is laid out.
+        (default: 'horizontal')
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left']
+        Direction in which lines of text are stacked. For horizontal text, this is typically 'top-to-bottom'.
+        For vertical text, this is typically 'left-to-right' or 'right-to-left'.
+        (default: 'top-to-bottom')
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
+        Direction in which text flows within a line. For horizontal text, this is typically 'left-to-right' or 'right-to-left'.
+        For vertical text, this is typically 'top-to-bottom'. Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English) is not currently supported.
+        (default: 'left-to-right')
+
+    Notes
+    -----
+    This class is reserved for future functionality (e.g., detecting progressive/regressive saccades) and currently does not affect behavior.
+    Typical configurations will be:
+        - WritingSystem(axis='horizontal', lining='top-to-bottom', directionality='left-to-right')
+            Horizontal text, left-to-right (e.g., English, Japanese horizontal)
+        - WritingSystem(axis='horizontal', lining='top-to-bottom', directionality='right-to-left')
+            Horizontal text, right-to-left (e.g., Arabic, Hebrew)
+        - WritingSystem(axis='vertical', lining='right-to-left', directionality='top-to-bottom')
+            Vertical text, top-to-bottom with columns progressing right-to-left (e.g., Japanese tategaki)
+        - WritingSystem(axis='vertical', lining='left-to-right', directionality='top-to-bottom')
+            Vertical text, top-to-bottom with columns progressing left-to-right (e.g., Mongolian)
+    """
+
+    axis: Literal['horizontal', 'vertical'] = 'horizontal'
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
+
+    VALID_DESCRIPTORS: ClassVar[tuple[str, ...]] = (
+        'left-to-right',
+        'ltr',
+        'right-to-left',
+        'rtl',
+    )
+
+    @staticmethod
+    def from_descriptor(descriptor: str) -> WritingSystem:
+        if descriptor in {'left-to-right', 'ltr'}:
+            return WritingSystem(
+                axis='horizontal', directionality='left-to-right', lining='top-to-bottom',
+            )
+        if descriptor in {'right-to-left', 'rtl'}:
+            return WritingSystem(
+                axis='horizontal', directionality='right-to-left', lining='top-to-bottom',
+            )
+        raise ValueError(
+            f"Unknown descriptor '{descriptor}'. "
+            f"Valid descriptors are: {WritingSystem.VALID_DESCRIPTORS}",
+        )
 
 
 @repr_html(['aois'])
@@ -64,6 +126,8 @@ class TextStimulus:
     trial_column: str | None
         Name for the column that specifies the unique trial id.
         (default: None)
+    writing_system: WritingSystem | str
+        Writing system of the text.
     """
 
     def __init__(
@@ -79,6 +143,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
+            writing_system: WritingSystem | str = 'left-to-right',
     ) -> None:
 
         self.aois = aois.clone()
@@ -91,6 +156,11 @@ class TextStimulus:
         self.end_y_column = end_y_column
         self.page_column = page_column
         self.trial_column = trial_column
+
+        if isinstance(writing_system, str):
+            self.writing_system = WritingSystem.from_descriptor(writing_system)
+        else:
+            self.writing_system = writing_system
 
     def split(
             self,
@@ -120,8 +190,9 @@ class TextStimulus:
                 end_y_column=self.end_y_column,
                 page_column=self.page_column,
                 trial_column=self.trial_column,
+                writing_system=self.writing_system,
             )
-            for df in self.aois.partition_by(by=by, as_dict=False)
+            for df in self.aois.partition_by(by, as_dict=False)
         ]
 
     def get_aoi(
@@ -183,6 +254,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
+        writing_system: WritingSystem = WritingSystem(),
             read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
@@ -215,6 +287,9 @@ class TextStimulus:
         trial_column: str | None
             Name of column that specifies the unique trial id.
             (default: None)
+        writing_system: WritingSystem
+            Writing system of the text. See :py:class:`~pymovements.stimulus.TextStimulus`
+            for details. (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -249,6 +324,7 @@ class TextStimulus:
             end_y_column=end_y_column,
             page_column=page_column,
             trial_column=trial_column,
+            writing_system=writing_system,
         )
 
 
@@ -296,6 +372,7 @@ def from_file(
         page_column: str | None = None,
         trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
+        writing_system: WritingSystem | str = 'left-to-right',
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -329,6 +406,9 @@ def from_file(
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)
+    writing_system: WritingSystem
+        Text writing system. See TextStimulus.__init__ for details.
+        (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
 
 
     Returns
@@ -348,6 +428,7 @@ def from_file(
         page_column=page_column,
         trial_column=trial_column,
         read_csv_kwargs=custom_read_kwargs,
+        writing_system=writing_system,
     )
 
 
