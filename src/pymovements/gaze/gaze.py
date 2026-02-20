@@ -41,6 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events import events2timeratio
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
@@ -1240,6 +1241,135 @@ class Gaze:
             ],
         )
 
+    def measure_events_ratio(
+        self,
+        name: str,
+        time_column: str = 'time',
+        *,
+        sampling_rate: float | None = None,
+        onset_column: str = 'onset',
+        offset_column: str = 'offset',
+    ) -> polars.Expr:
+        r"""Calculate ratio of time associated with specific events.
+
+        This method computes the ratio of time that is associated with events
+        having a specific name. It calculates the ratio from event durations (offset - onset).
+
+        If `sampling_rate` is provided, the ratio is calculated inclusively as:
+
+        .. math::
+            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} -
+            t_{\mathrm{onset},i} + \Delta t)}{t_{\mathrm{max}} -
+            t_{\mathrm{min}} + \Delta t}
+
+        where :math:`\Delta t = 1000 / f_s`.
+
+        If `sampling_rate` is not provided, the ratio is calculated as:
+
+        .. math::
+            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} - t_{\mathrm{onset},i})}{t_{\mathrm{max}} -
+            t_{\mathrm{min}}}
+
+        Parameters
+        ----------
+        name: str
+            Name of events to include in the ratio calculation.
+        time_column: str
+            Name of the timestamp column in the samples data. (default: 'time')
+        sampling_rate: float | None
+            Sampling rate of the gaze data in Hz. If not provided, it will be
+            taken from the experiment if available.
+        onset_column: str
+            Name of the column containing event onset times (default: 'onset').
+        offset_column: str
+            Name of the column containing event offset times (default: 'offset').
+
+        Returns
+        -------
+        polars.Expr
+            A Polars expression that calculates the event ratio. Use with select(),
+            with_columns(), or group_by().agg() for per-trial ratios.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     samples=pl.DataFrame({
+        ...         'time': [0, 1, 2, 3],
+        ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+        ...     }),
+        ...     events=pm.Events(
+        ...         name=['blink'],
+        ...         onsets=[1],
+        ...         offsets=[3],
+        ...     ),
+        ... )
+        >>> gaze.samples.select(gaze.measure_events_ratio('blink'))
+        shape: (1, 1)
+        ┌───────────────────┐
+        │ event_ratio_blink │
+        │ ---               │
+        │ f64               │
+        ╞═══════════════════╡
+        │ 0.75              │
+        └───────────────────┘
+
+        Raises
+        ------
+        ValueError
+            If `name` is not a non-empty string.
+        TypeError
+            If `time_column` is not a string.
+        KeyError
+            If `time_column` is not present in the samples DataFrame.
+        """
+        if not isinstance(name, str) or not name:
+            raise ValueError(
+                f"name must be a non-empty string, but got: {name!r}",
+            )
+
+        if not isinstance(time_column, str):
+            raise TypeError(
+                f"invalid type for 'time_column'. "
+                f"Expected 'str' , got '{type(time_column).__name__}'",
+            )
+
+        if time_column not in self.samples.columns:
+            raise ValueError(
+                f"time_column '{time_column}' not found in samples. "
+                f"Available columns: {self.samples.columns}",
+            )
+
+        if sampling_rate is None and self.experiment is not None:
+            sampling_rate = self.experiment.sampling_rate
+
+        if self.events is not None and not self.events.frame.is_empty():
+            events_df = self.events.frame
+        else:
+            events_df = polars.DataFrame(
+                schema={
+                    'name': polars.String,
+                    onset_column: self.samples.schema[time_column],
+                    offset_column: self.samples.schema[time_column],
+                    **(
+                        {col: self.samples.schema[col] for col in self.trial_columns}
+                        if self.trial_columns else {}
+                    ),
+                },
+            )
+
+        return events2timeratio(
+            events=events_df,
+            samples=self.samples,
+            name=name,
+            time_column=time_column,
+            trial_columns=self.trial_columns,
+            sampling_rate=sampling_rate,
+            onset_column=onset_column,
+            offset_column=offset_column,
+        )
+
     @property
     def schema(self) -> polars.type_aliases.SchemaDict:
         """Schema of samples dataframe."""
@@ -1949,7 +2079,10 @@ class Gaze:
             The filled keyword argument dictionary.
         """
         # Automatically infer eye to use for event detection.
-        method_args = inspect.getfullargspec(method).args
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
 
         if 'positions' in method_args:
             if 'position' not in samples.columns:
@@ -1988,6 +2121,35 @@ class Gaze:
                     for eye_component in eye_components
                 ],
             ).transpose()
+
+        if 'pixels' in method_args and 'pixels' not in kwargs:
+            if 'pixel' not in samples.columns:
+                raise polars.exceptions.ColumnNotFoundError(
+                    f'Column \'pixel\' not found.'
+                    f' Available columns are: {samples.columns}',
+                )
+
+            if eye_components is None:
+                raise ValueError(
+                    'eye_components must not be None if passing pixel to event detection',
+                )
+
+            kwargs['pixels'] = np.vstack(
+                [
+                    samples.get_column('pixel').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
+
+        if method.__name__ == 'out_of_screen' and self.experiment is not None:
+            if 'x_min' not in kwargs:
+                kwargs['x_min'] = 0
+            if 'x_max' not in kwargs:
+                kwargs['x_max'] = self.experiment.screen.width_px
+            if 'y_min' not in kwargs:
+                kwargs['y_min'] = 0
+            if 'y_max' not in kwargs:
+                kwargs['y_max'] = self.experiment.screen.height_px
 
         if 'events' in method_args:
             kwargs['events'] = events
