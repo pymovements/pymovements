@@ -1115,7 +1115,7 @@ def test_unnest_location_absent_is_noop() -> None:
     ],
 )
 def test_merge_subsequent_close_events(events, max_gap):
-    
+
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=True)
     assert (max_gap + len(events.frame)) == 10, \
         f"Expected {10 - max_gap} events after merging," + \
