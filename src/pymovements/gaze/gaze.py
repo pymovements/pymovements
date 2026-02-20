@@ -461,12 +461,12 @@ class Gaze:
 
         Each gaze split only consists of a single trial:
         >>> for gaze_split in gazes:
-        ...     print(gaze_split.samples['trial'].unique())
-        1
-        2
-        3
-        4
-        5
+        ...     print(gaze_split.samples['trial'].unique().to_list())
+        [1]
+        [2]
+        [3]
+        [4]
+        [5]
 
         Per default, the ``Gaze.metadata`` field is extended with the key/value pairs
         from the split:
