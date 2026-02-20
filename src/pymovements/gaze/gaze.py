@@ -2274,7 +2274,7 @@ class Gaze:
             pupil_series = samples.get_column('pupil')
             if isinstance(pupil_series.dtype, polars.List):
                 # Binocular: [left, right] — pick eye based on eye_components
-                eye_idx = 1 if eye_components and eye_components[0] in (2, 3) else 0
+                eye_idx = 1 if eye_components and eye_components[0] in {2, 3} else 0
                 kwargs['pupil'] = pupil_series.list.get(eye_idx).to_numpy()
             else:
                 kwargs['pupil'] = pupil_series.to_numpy()
