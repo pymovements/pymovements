@@ -286,7 +286,39 @@ class Events:
         event_property_columns -= set(list(self._minimal_schema.keys()))
         event_property_columns -= set(self._additional_columns)
         return list(event_property_columns)
+    
+    def filter_by_name(self, pattern: str) -> pl.DataFrame:
+        """Filter events by name using a name or regular expression.
 
+        Parameters
+        ----------
+        pattern : str
+            Regular expression pattern applied to the ``name`` column.
+
+            Examples
+            --------
+            Exact match:
+                ``r"^fixation\\.ivt$"``
+
+            Prefix match:
+                ``r"^fixation"``
+
+            Suffix match:
+                ``r"ivt$"``
+
+            All saccade variants:
+                ``"saccade"``
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame containing matching events.
+        """
+        if "name" not in self.frame.columns:
+            raise ValueError("Events frame has no 'name' column.")
+
+        return self.frame.filter(pl.col("name").str.contains(pattern))
+        
     def _filter_by_prefix(self, prefix: str) -> pl.DataFrame:
         """Filter events by name prefix.
 
@@ -300,7 +332,8 @@ class Events:
         pl.DataFrame
             DataFrame containing events whose ``name`` column starts with ``prefix``.
         """
-        return self.frame.filter(pl.col('name').str.starts_with(prefix))
+        # return self.frame.filter(pl.col('name').str.starts_with(prefix))
+        return self.filter_by_name(rf"^{prefix}")    
 
     @property
     def fixations(self) -> pl.DataFrame:

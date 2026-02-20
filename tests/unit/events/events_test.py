@@ -634,26 +634,25 @@ def _edf(names):
     })
     return Events(data=df)
 
-
-def test_fixations_filter():
-    edf = _edf(['fixation', 'fixation_ivt', 'saccade', 'blink'])
-    out = edf.fixations
-    assert set(out['name'].to_list()) == {'fixation', 'fixation_ivt'}
-
-
-def test_saccades_filter():
-    edf = _edf(['saccade', 'saccade_algo', 'fixation'])
-    out = edf.saccades
-    assert set(out['name'].to_list()) == {'saccade', 'saccade_algo'}
+def test_filter_by_name_literal_substring():
+    edf = _edf(["fixation.ivt", "fixation", "saccade.ivt", "blink"])
+    out = edf.filter_by_name("fixation")
+    assert set(out["name"].to_list()) == {"fixation.ivt", "fixation"}
 
 
-def test_blinks_filter():
-    edf = _edf(['blink', 'blink_fast', 'fixation'])
-    out = edf.blinks
-    assert set(out['name'].to_list()) == {'blink', 'blink_fast'}
+def test_filter_by_name_prefix_regex():
+    edf = _edf(["fixation.ivt", "fixation", "saccade.ivt", "blink"])
+    out = edf.filter_by_name(r"^fixation")
+    assert set(out["name"].to_list()) == {"fixation.ivt", "fixation"}
 
 
-def test_microsaccades_filter():
-    edf = _edf(['microsaccade', 'microsaccade_x', 'saccade'])
-    out = edf.microsaccades
-    assert set(out['name'].to_list()) == {'microsaccade', 'microsaccade_x'}
+def test_filter_by_name_exact_match_regex():
+    edf = _edf(["fixation.ivt", "fixation", "fixation_ivt", "saccade"])
+    out = edf.filter_by_name(r"^fixation\.ivt$")
+    assert out["name"].to_list() == ["fixation.ivt"]
+
+
+def test_filter_by_name_no_matches():
+    edf = _edf(["fixation", "saccade"])
+    out = edf.filter_by_name(r"^blink$")
+    assert out.height == 0
