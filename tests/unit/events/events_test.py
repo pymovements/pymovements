@@ -944,16 +944,39 @@ def test_split_as_dict_returns_expected_dict(events, by, expected_splits):
     assert splits == expected_splits
 
 
+def test_filter_by_name_literal_substring():
+    edf = _edf(['fixation.ivt', 'fixation', 'saccade.ivt', 'blink'])
+    out = edf.filter_by_name('fixation')
+    assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
+
+
 def test_fixations_filter(make_events):
     events = make_events(['fixation', 'fixation_ivt', 'saccade', 'blink'])
     out = events.fixations
     assert set(out['name'].to_list()) == {'fixation', 'fixation_ivt'}
 
 
+def test_filter_by_name_prefix_regex():
+    edf = _edf(['fixation.ivt', 'fixation', 'saccade.ivt', 'blink'])
+    out = edf.filter_by_name(r'^fixation')
+    assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
+
+
 def test_saccades_filter(make_events):
     events = make_events(['saccade', 'saccade_algo', 'fixation'])
     out = events.saccades
     assert set(out['name'].to_list()) == {'saccade', 'saccade_algo'}
+
+
+def test_filter_by_name_exact_match_regex():
+    edf = _edf(['fixation.ivt', 'fixation', 'fixation_ivt', 'saccade'])
+    out = edf.filter_by_name(r'^fixation\.ivt$')
+    assert out['name'].to_list() == ['fixation.ivt']
+
+    def test_filter_by_name_no_matches():
+    edf = _edf(['fixation', 'saccade'])
+    out = edf.filter_by_name(r'^blink$')
+    assert out.height == 0
 
 
 def test_blinks_filter(make_events):
