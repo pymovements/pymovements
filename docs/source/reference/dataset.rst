@@ -1,3 +1,5 @@
+.. _dataset_sec:
+
 Dataset
 =======
 
@@ -46,11 +48,13 @@ in different formats.
     GazeBaseVR
     GazeGraph
     GazeOnFaces
+    GGTG
     HBN
     IITB_HGC
     InteRead
     JuDo1000
     MECOL1W1
+    MECOL1W2
     MECOL2W1
     MECOL2W2
     MouseCursor
@@ -59,6 +63,7 @@ in different formats.
     PotsdamBingeRemotePVT
     PotsdamBingeWearablePVT
     Provo
+    RaCCooNS
     SBSAT
     TECO
     UCL

@@ -52,14 +52,17 @@ docs/doctree*
 docs/source/reference/api
 docs/source/tutorials/data
 .ipynb_checkpoints
+docs/jupyter_execute
+docs/source/contributing/my_dataset.yaml
 
 # Testing
-.tox
 .coverage
 .coverage.*
+.DS_Store
+.tox
 benchmark-data.json
 coverage.xml
 htmlcov/
+tests/events
 tests/preprocessed/
 toy_dataset/
-.DS_Store

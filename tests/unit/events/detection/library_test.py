@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import pymovements as pm
         pytest.param(pm.events.ivt, 'ivt', id='ivt'),
         pytest.param(pm.events.microsaccades, 'microsaccades', id='microsaccades'),
         pytest.param(pm.events.fill, 'fill', id='fill'),
+        pytest.param(pm.events.out_of_screen, 'out_of_screen', id='out_of_screen'),
     ],
 )
 def test_transform_registered(method, name):

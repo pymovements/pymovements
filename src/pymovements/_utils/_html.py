@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,6 +20,7 @@
 """Provides functions for generating HTML representations of objects for Jupyter notebooks."""
 from __future__ import annotations
 
+import pathlib
 from collections.abc import Callable
 from html import escape
 from itertools import islice
@@ -50,10 +51,32 @@ STYLE = """
     .pymovements-section-label {
         cursor: pointer;
         font-weight: bold;
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        transition: background-color 0.1s, border-color 0.1s;
+    }
+    .pymovements-section-label:hover {
+        background-color: rgba(0, 120, 215, 0.1);
+        border-color: #0078d7;
+        text-decoration: none;
+    }
+    .pymovements-section-label-empty {
+        font-weight: bold;
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 0px 6px;
+        border-radius: 4px;
+        display: inline-block;
     }
     .pymovements-section-label:before {
         display: inline-block;
         content: "►";
+        margin-right: 6px;
+        color: green;
+        font-size: 0.8em;
     }
     .pymovements-section-toggle:checked + .pymovements-section-label:before {
         content: "▼";
@@ -138,29 +161,68 @@ def _attr_html(name: str, obj: object, depth: int = 0) -> str:
     section_id = uuid4()
     name = escape(name)
 
-    inline_details = _attr_inline_details_html(obj)
-    details = _attr_details_html(obj, depth=depth)
+    inline_details, is_expandable = _attr_inline_details_html(obj)
+
+    if is_expandable:
+        details = _attr_details_html(obj, depth=depth)
+        return f"""
+        <li class="pymovements-section">
+            <input id="pymovements-{section_id}" class="pymovements-section-toggle" type="checkbox">
+            <label for="pymovements-{section_id}" class="pymovements-section-label">{name}:</label>
+            <div class="pymovements-section-inline-details">{inline_details}</div>
+            <div class="pymovements-section-details">{details}</div>
+        </li>
+        """
 
     return f"""
     <li class="pymovements-section">
-        <input id="pymovements-{section_id}" class="pymovements-section-toggle" type="checkbox">
-        <label for="pymovements-{section_id}" class="pymovements-section-label">{name}:</label>
+        <span class="pymovements-section-label-empty">{name}:</span>
         <div class="pymovements-section-inline-details">{inline_details}</div>
-        <div class="pymovements-section-details">{details}</div>
     </li>
     """
 
 
-def _attr_inline_details_html(obj: object) -> str:
+def _attr_inline_details_html(obj: object) -> tuple[str, bool]:
     """Generate inline (collapsed) details for HTML representation."""
-    if isinstance(obj, pl.DataFrame):
+    is_expandable = True
+
+    if obj is None:
+        inline_details = 'None'
+        is_expandable = False
+
+    elif isinstance(obj, pl.DataFrame):
         inline_details = f"DataFrame ({len(obj.columns)} columns, {len(obj)} rows)"
 
     elif isinstance(obj, list):
         inline_details = f"list ({len(obj)} items)"
+        if len(obj) == 0:
+            is_expandable = False
+
+    elif isinstance(obj, tuple):
+        inline_details = f"tuple ({len(obj)} items)"
+        if len(obj) == 0:
+            is_expandable = False
 
     elif isinstance(obj, dict):
         inline_details = f"dict ({len(obj)} items)"
+        if len(obj) == 0:
+            is_expandable = False
+
+    elif isinstance(obj, str):
+        if len(obj) < 50:
+            inline_details = f"'{obj}'"
+            is_expandable = False
+        else:
+            inline_details = f"'{obj[:50]}...'"
+
+    elif isinstance(obj, (int, float, bool, pathlib.Path, type)):
+        inline_details = repr(obj).replace('\n', ' ')
+        is_expandable = False
+
+    # boolean-like objects like `_HasResourcesIndexer`
+    elif repr(obj) in {'True', 'False'}:
+        inline_details = repr(obj)
+        is_expandable = False
 
     elif len(repr(obj)) < 50:
         inline_details = repr(obj).replace('\n', ' ')
@@ -168,14 +230,14 @@ def _attr_inline_details_html(obj: object) -> str:
     else:
         inline_details = type(obj).__name__
 
-    return escape(inline_details)
+    return escape(str(inline_details)), is_expandable
 
 
 def _attr_details_html(obj: object, depth: int = 0, max_depth: int = 3) -> str:
     """Generate expanded details for HTML representation."""
     max_items = 2
 
-    if isinstance(obj, list) and depth < max_depth:
+    if isinstance(obj, (list, tuple)) and depth < max_depth:
         details = '<ul>'
         for item in obj[:max_items]:
             details += f'<li>{_attr_details_html(item, depth + 1)}</li>'

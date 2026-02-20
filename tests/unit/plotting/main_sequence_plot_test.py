@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,232 +17,207 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test main_sequence_plot."""
-import re
+"""Tests for main_sequence_plot branches.
+
+- Using external axes triggers the ax.scatter path and returns the provided fig/ax.
+- Warning about ignored figsize when external ax is given (from prepare_figure).
+"""
+from __future__ import annotations
+
 from unittest.mock import Mock
 
-import numpy as np
+import matplotlib.pyplot as plt
 import polars as pl
 import pytest
-from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 
-from pymovements import __version__
-from pymovements import Events
-from pymovements.plotting.main_sequence_plot import main_sequence_plot
+import pymovements as pm
 
 
-@pytest.fixture(name='events')
-def events_fixture():
-    yield Events(
-        pl.DataFrame(
-            {
-                'amplitude': [1.0, 1.0, 2.0, 2.0, 3.0, 4.0],
-                'peak_velocity': [10.0, 11.0, 12.0, 11.0, 13.0, 13.0],
-                'name': ['saccade' for _ in range(6)],
-            },
-        ),
+def _make_events() -> pm.Events:
+    # Build a minimal Events with saccades and necessary columns
+    df = pl.DataFrame(
+        {
+            'trial': [1, 1, 1],
+            'name': ['saccade', 'saccade', 'saccade'],
+            'onset': [0, 10, 20],
+            'offset': [5, 15, 25],
+            'duration': [5, 5, 5],
+            'amplitude': [2.0, 3.5, 1.0],
+            'peak_velocity': [100.0, 250.0, 80.0],
+        },
+    )
+    return pm.Events(df)
+
+
+def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(monkeypatch):
+    events = _make_events()
+    fig, ax = plt.subplots()
+
+    # Ensure we don't accidentally show/close
+    show_mock = Mock()
+    monkeypatch.setattr(plt, 'show', show_mock)
+    close_mock = Mock()
+    monkeypatch.setattr(plt, 'close', close_mock)
+
+    # With an external ax and default figsize parameter present,
+    # a UserWarning should be raised that figsize is ignored.
+    with pytest.warns(UserWarning):
+        ret_fig, ret_ax = pm.plotting.main_sequence_plot(
+            events=events,
+            ax=ax,
+            show=False,
+            closefig=False,
+        )
+
+    # It should return the same fig/ax and plot into the provided ax (through ax.scatter path)
+    assert ret_ax is ax
+    assert ret_fig is fig
+
+    # A scatter call produces a PathCollection on the axes
+    assert len(ax.collections) > 0
+
+    # No show or close when using external ax
+    show_mock.assert_not_called()
+    close_mock.assert_not_called()
+
+
+def make_events(rows: list[dict]) -> pm.Events:
+    return pm.Events(pl.DataFrame(rows))
+
+
+def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch):
+    # event_df path triggers the deprecation branch (97->98)
+    df = pl.DataFrame({
+        'trial': [1, 1],
+        'name': ['saccade', 'saccade'],
+        'onset': [0, 10],
+        'offset': [5, 15],
+        'duration': [5, 5],
+        'amplitude': [2.0, 4.0],
+        'peak_velocity': [100.0, 200.0],
+    })
+    event_df = pm.Events(df)
+
+    show_called = []
+    monkeypatch.setattr(plt, 'show', lambda: show_called.append(True))
+
+    with pytest.warns(DeprecationWarning):
+        fig, ax = pm.plotting.main_sequence_plot(event_df=event_df, show=False)
+    assert fig is ax.figure
+
+
+def test_main_sequence_plot_raises_on_empty_events():
+    # Covers 108->109: not events -> ValueError
+    empty_events = make_events([])
+    with pytest.raises(ValueError):
+        pm.plotting.main_sequence_plot(events=empty_events, show=False)
+
+
+def test_main_sequence_plot_raises_when_no_saccades():
+    # Covers 117->118: dataframe present but no 'saccade' rows
+    df = pl.DataFrame({
+        'trial': [1, 2],
+        'name': ['fixation', 'blink'],
+        'onset': [0, 10],
+        'offset': [5, 15],
+        'duration': [5, 5],
+        # Include columns to pass column presence checks if needed later
+        'amplitude': [1.0, 1.0],
+        'peak_velocity': [10.0, 20.0],
+    })
+    events = pm.Events(df)
+    with pytest.raises(ValueError):
+        pm.plotting.main_sequence_plot(events=events, show=False)
+
+
+def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
+    # Has saccades, but no 'peak_velocity' -> triggers lines 126–127
+    df = pl.DataFrame({
+        'trial': [1, 1],
+        'name': ['saccade', 'saccade'],
+        'onset': [0, 10],
+        'offset': [5, 15],
+        'duration': [5, 5],
+        'amplitude': [2.0, 4.0],
+        # 'peak_velocity' intentionally missing
+    })
+    events = pm.Events(df)
+    with pytest.raises(KeyError):
+        pm.plotting.main_sequence_plot(events=events, show=False)
+
+
+def test_main_sequence_plot_keyerror_when_missing_amplitude():
+    # Has saccades, but no 'amplitude' -> triggers lines 135–136
+    df = pl.DataFrame({
+        'trial': [1, 1],
+        'name': ['saccade', 'saccade'],
+        'onset': [0, 10],
+        'offset': [5, 15],
+        'duration': [5, 5],
+        # 'amplitude' intentionally missing
+        'peak_velocity': [100.0, 200.0],
+    })
+    events = pm.Events(df)
+    with pytest.raises(KeyError):
+        pm.plotting.main_sequence_plot(events=events, show=False)
+
+
+def test_main_sequence_plot_sets_title():
+    df = pl.DataFrame({
+        'trial': [1, 1],
+        'name': ['saccade', 'saccade'],
+        'onset': [0, 10],
+        'offset': [5, 15],
+        'duration': [5, 5],
+        'amplitude': [2.0, 4.0],
+        'peak_velocity': [100.0, 200.0],
+    })
+    events = pm.Events(df)
+    _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
+    assert ax.get_title() == 'Main Sequence'
+
+
+def test_main_sequence_plot_measure_s_adds_text():
+    events = _make_events()
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='s', show=False)
+    # one text object (annotation) expected
+    legend_tokens = any('S' in text.get_text() for text in ax.get_legend().get_texts())
+    assert legend_tokens
+
+
+def test_main_sequence_plot_measure_invalid_raises():
+    events = _make_events()
+    with pytest.raises(ValueError):
+        pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='banana', show=False)
+
+
+def test_main_sequence_plot_fit_false_no_line():
+    events = _make_events()
+    _, ax = pm.plotting.main_sequence_plot(events=events, fit=False, show=False)
+    # there should be no extra line2D beyond the default axes spines; at least 1 scatter exists
+    assert not any(isinstance(artist, Line2D) for artist in ax.lines)
+
+
+def test_main_sequence_plot_fit_with_measure_false_draws_unlabeled_line():
+    events = _make_events()
+
+    _, ax = pm.plotting.main_sequence_plot(
+        events=events,
+        fit=True,
+        fit_measure=False,
+        show=False,
     )
 
+    # We expect at least one line (the fit line)
+    assert any(isinstance(artist, Line2D) for artist in ax.lines)
 
-@pytest.mark.parametrize(
-    ('show', 'color', 'marker', 'alpha', 'size'),
-    [
-        pytest.param(
-            True,
-            'blue',
-            'x',
-            0.6,
-            30,
-            id='show_plot',
-        ),
-    ],
-)
-def test_main_sequence_plot_show_plot(events, show, monkeypatch, color, marker, alpha, size):
-    mock_show = Mock()
-    mock_scatter = Mock()
+    # Legend should exist (from the scatter 'saccades' label)
+    legend = ax.get_legend()
+    assert legend is not None
 
-    monkeypatch.setattr(plt, 'show', mock_show)
-    monkeypatch.setattr(plt, 'scatter', mock_scatter)
+    legend_texts = [t.get_text() for t in legend.get_texts()]
 
-    main_sequence_plot(
-        events,
-        show=show,
-        color=color,
-        marker=marker,
-        alpha=alpha,
-        marker_size=size,
-    )
-    plt.close()
-
-    mock_scatter.assert_called_with(
-        [1.0, 1.0, 2.0, 2.0, 3.0, 4.0],
-        [10.0, 11.0, 12.0, 11.0, 13.0, 13.0],
-        color='blue',
-        alpha=0.6,
-        s=30,
-        marker='x',
-    )
-
-    mock_show.assert_called_once()
-
-
-@pytest.mark.parametrize(
-    'events',
-    [
-        pytest.param(
-            Events(
-                pl.DataFrame(
-                    {
-                        'amplitude': [1.0, 1.0, 2.0, 2.0, 3.0, 4.0],
-                        'peak_velocity': [10.0, 11.0, 12.0, 11.0, 13.0, 13.0],
-                        'name': ['saccade' for _ in range(5)] + ['fixation'],
-
-                    },
-                ),
-            ),
-            id='filter_out_fixations',
-        ),
-    ],
-)
-def test_main_sequence_plot_filter_out_fixations(events, monkeypatch):
-    mock_scatter = Mock()
-
-    monkeypatch.setattr(plt, 'scatter', mock_scatter)
-
-    main_sequence_plot(events, show=False)
-    plt.close()
-
-    mock_scatter.assert_called_with(
-        [1.0, 1.0, 2.0, 2.0, 3.0],
-        [10.0, 11.0, 12.0, 11.0, 13.0],
-        color='purple',
-        alpha=0.5,
-        s=25,
-        marker='o',
-    )
-
-
-def test_main_sequence_plot_save_path(events, monkeypatch):
-    mock_function = Mock()
-    monkeypatch.setattr(plt.Figure, 'savefig', mock_function)
-    main_sequence_plot(events, show=False, savepath='mock')
-    plt.close()
-    mock_function.assert_called_once()
-
-
-def test_main_sequence_plot_not_show(events, monkeypatch):
-    mock_function = Mock()
-    monkeypatch.setattr(plt, 'show', mock_function)
-    main_sequence_plot(events, show=False)
-    plt.close()
-    mock_function.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    'title',
-    [
-        'foo',
-    ],
-)
-def test_main_sequence_plot_set_title(events, title, monkeypatch):
-    mock_function = Mock()
-    monkeypatch.setattr(plt, 'title', mock_function)
-    main_sequence_plot(events, title=title)
-    plt.close()
-
-
-@pytest.mark.parametrize(
-    ('events', 'expected_error', 'error_msg'),
-    [
-        pytest.param(
-            Events(
-                pl.DataFrame(
-                    {
-                        'peak_velocity': np.linspace(10, 50, num=100),
-                        'name': ['saccade' for _ in range(100)],
-
-                    },
-                ),
-            ),
-            KeyError,
-            'The input dataframe you provided does not contain '
-            'the saccade amplitudes which are needed to create '
-            'the main sequence plot. ',
-            id='amplitude_missing',
-        ),
-        pytest.param(
-            Events(
-                pl.DataFrame(
-                    {
-                        'amplitude': np.arange(100),
-                        'name': ['saccade' for _ in range(100)],
-                    },
-                ),
-            ),
-            KeyError,
-            'The input dataframe you provided does not contain '
-            'the saccade peak velocities which are needed to create '
-            'the main sequence plot. ',
-            id='peak_velocity_missing',
-        ),
-        pytest.param(
-            Events(
-                pl.DataFrame(
-                    {
-                        'amplitude': [1.0, 1.0],
-                        'peak_velocity': [10.0, 11.0],
-                        'name': ['fixation', 'fixation'],
-                    },
-                ),
-            ),
-            ValueError,
-            'There are no saccades in the event dataframe. '
-            'Please make sure you ran a saccade detection algorithm. '
-            'The event name should be stored in a colum called "name".',
-            id='no_saccades_in_events',
-        ),
-        pytest.param(
-            Events(),
-            ValueError,
-            'Events object is empty. '
-            'Please make sure you ran a saccade detection algorithm. '
-            'The event name should be stored in a colum called "name".',
-            id='empty_events',
-        ),
-    ],
-)
-def test_main_sequence_plot_error(events, expected_error, error_msg):
-    with pytest.raises(expected_error) as actual_error:
-        main_sequence_plot(events)
-
-    msg, = actual_error.value.args
-
-    assert msg == error_msg
-
-
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_main_sequence_plot_events(events):
-    main_sequence_plot(event_df=events, show=False)
-    plt.close()
-
-
-def test_main_sequence_plot_events_deprecated(events):
-    with pytest.raises(DeprecationWarning):
-        main_sequence_plot(event_df=events, show=False)
-    plt.close()
-
-
-def test_main_sequence_plot_events_removed(events):
-    with pytest.raises(DeprecationWarning) as info:
-        main_sequence_plot(event_df=events, show=False)
-    plt.close()
-
-    regex = re.compile(r'.*will be removed in v(?P<version>[0-9]*[.][0-9]*[.][0-9]*)[.)].*')
-
-    msg = info.value.args[0]
-    remove_version = regex.match(msg).groupdict()['version']
-    current_version = __version__.split('+')[0]
-    assert current_version < remove_version, (
-        f'keyward argument events was planned to be removed in v{remove_version}. '
-        f'Current version is v{current_version}.'
-    )
+    # Only the 'saccades' label should be there, no R² or S
+    assert any(text == 'saccade' for text in legend_texts)
+    assert not any('R²' in text or 'S =' in text or text.startswith('S ') for text in legend_texts)

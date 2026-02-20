@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,7 @@ class EventDataFrame(metaclass=DeprecatedMetaClass):
     trials: list[int | float | str] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
-        List of trial columns in passed dataframe.
+        List of trial columns in the passed dataframe.
 
     Attributes
     ----------

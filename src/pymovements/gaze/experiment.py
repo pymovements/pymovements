@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -57,10 +57,10 @@ class Experiment:
         (default: None)
     sampling_rate: float | None
         Sampling rate in Hz. (default: None)
-    screen : Screen | None
+    screen: Screen | None
         Scree object for experiment. Mutually exclusive with explicit screen arguments.
         (default: None)
-    eyetracker : EyeTracker | None
+    eyetracker: EyeTracker | None
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
 
     Examples
@@ -244,7 +244,7 @@ class Experiment:
         Raises
         ------
         ValueError
-            If selected method is invalid, input array is too short for the
+            If the selected method is invalid, the input array is too short for the
             selected method or the sampling rate is below zero
 
         Examples
@@ -294,7 +294,7 @@ class Experiment:
         Returns
         -------
         dict[str, Any | dict[str, str | float | None]]
-            Experiment as dictionary.
+            Experiment as a dictionary.
         """
         data: dict[str, dict[str, str | float | None]] = {}
 
@@ -307,7 +307,10 @@ class Experiment:
 
     def __str__(self: Experiment) -> str:
         """Return Experiment string."""
-        return f'{type(self).__name__}(screen={self.screen}, eyetracker={self.eyetracker})'
+        return (
+            f"{type(self).__name__}(screen={self.screen}, "
+            f"eyetracker={self.eyetracker})"
+        )
 
     def __bool__(self) -> bool:
         """Return True if the experiment has data defined, else False."""

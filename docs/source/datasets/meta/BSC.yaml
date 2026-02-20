@@ -1,0 +1,14 @@
+name: BSC
+long_name: Beijing Sentence Corpus
+resources:
+- content: precomputed_events
+  filename: BSC.EMD.zip
+  url: https://osf.io/download/xfe4s/
+  md5: c7118bfe48c91264d69c45d347f11416
+  filename_pattern: BSC.EMD.txt
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
+    trial_columns:
+    - book_name
+    - screen_id

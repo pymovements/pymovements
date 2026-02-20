@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -39,11 +40,18 @@ class GazeOnFaces(DatasetDefinition):
     session. Eye movements are recorded at a sampling frequency of 60 Hz
     using an EyeLink 1000 video-based eye tracker and are provided as pixel coordinates.
 
-    Participants were sat 57 cm away from the screen (19inch LCD monitor,
+    Participants were sat 57 cm away from the screen (19-inch LCD monitor,
     screen res=1280×1024, 60 Hz). Recordings of the eye movements of one eye in monocular
     pupil/corneal reflection tracking mode.
 
     Check the respective paper for details :cite:p:`GazeOnFaces`.
+
+    Warning
+    -------
+    This dataset currently cannot be fully processed by ``pymovements`` due to an error during
+    archive extraction.
+
+    See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
 
     Attributes
     ----------
@@ -64,7 +72,7 @@ class GazeOnFaces(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
@@ -81,16 +89,17 @@ class GazeOnFaces(DatasetDefinition):
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -115,22 +124,32 @@ class GazeOnFaces(DatasetDefinition):
 
     name: str = 'GazeOnFaces'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'GazeOnFaces dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
-                    {
-                        'content': 'gaze',
-                        'url': 'https://uncloud.univ-nantes.fr/index.php/s/8KW6dEdyBJqxpmo/download?path=%2F&files=gaze_csv.zip',  # noqa: E501 # pylint: disable=line-too-long
-                        'filename': 'gaze_csv.zip',
-                        'md5': 'fe219f07c9253cd9aaee6bd50233c034',
-                        'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
-                        'filename_pattern_schema_overrides': {
-                            'sub_id': int,
-                            'trial_id': int,
+                {
+                    'content': 'gaze',
+                    'url': 'https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=',
+                    'filename': 'database3_sciencemuseum.zip',
+                    'filename_pattern': r'gaze_sub{sub_id:d}_trial{trial_id:d}.csv',
+                    'filename_pattern_schema_overrides': {
+                        'sub_id': int,
+                        'trial_id': int,
+                    },
+                    'load_kwargs': {
+                        'pixel_columns': ['x', 'y'],
+                        'read_csv_kwargs': {
+                            'separator': ',',
+                            'has_header': False,
+                            'new_columns': ['x', 'y'],
+                            'schema_overrides': [pl.Float32, pl.Float32],
                         },
                     },
+                },
             ],
         ),
     )
@@ -155,17 +174,8 @@ class GazeOnFaces(DatasetDefinition):
 
     time_unit: Any = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': ',',
-                'has_header': False,
-                'new_columns': ['x', 'y'],
-                'schema_overrides': [pl.Float32, pl.Float32],
-            },
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

@@ -11,6 +11,20 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !str
       video_id: !str
+    load_kwargs:
+      time_column: 'time'
+      time_unit: 'step'
+      pixel_columns: ['x_pix', 'y_pix']
+      read_csv_kwargs:
+        separator: ","
+        columns:
+          - "time"
+          - "x_pix"
+          - "y_pix"
+        schema_overrides:
+          time: !polars.Int64
+          x_pix: !polars.Float32
+          y_pix: !polars.Float32
 
 experiment:
   screen_width_px: 800
@@ -20,25 +34,3 @@ experiment:
   distance_cm: 63.5
   origin: "center"
   sampling_rate: 120
-
-time_column: "time"
-
-time_unit: "step"
-
-pixel_columns:
-  - "x_pix"
-  - "y_pix"
-
-column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    separator: ","
-    columns:
-      - "time"
-      - "x_pix"
-      - "y_pix"
-    schema_overrides:
-      time: !polars.Int64
-      x_pix: !polars.Float32
-      y_pix: !polars.Float32

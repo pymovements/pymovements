@@ -10,6 +10,21 @@ resources:
     filename_pattern: 'Experiment {experiment_id:d}.csv'
     filename_pattern_schema_overrides:
       experiment_id: !int
+    load_kwargs:
+      trial_columns: ['Trial', 'Participant']
+      time_column: 'Time'
+      time_unit: 'ms'
+      pixel_columns: ['x', 'y']
+      read_csv_kwargs:
+        schema_overrides:
+          Tracking: !polars.Utf8
+          Trial: !polars.Int64
+          Measurement: !polars.Int64
+          ExactTime: !polars.Utf8
+          Time: !polars.Float32
+          x: !polars.Float32
+          y: !polars.Float32
+          Participant: !polars.Int64
 
 experiment:
   screen_width_px: 1920
@@ -19,29 +34,3 @@ experiment:
   distance_cm: 50
   origin: "upper left"
   sampling_rate: 3
-
-trial_columns:
-  - "Trial"
-  - "Participant"
-
-time_column: "Time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "x"
-  - "y"
-
-column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    schema_overrides:
-      Tracking: !polars.Utf8
-      Trial: !polars.Int64
-      Measurement: !polars.Int64
-      ExactTime: !polars.Utf8
-      Time: !polars.Float32
-      x: !polars.Float32
-      y: !polars.Float32
-      Participant: !polars.Int64

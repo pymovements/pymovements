@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
-from pathlib import Path
-
 import polars
 import pytest
 from polars.testing import assert_frame_equal
@@ -175,23 +173,24 @@ EXPECTED_DF = polars.DataFrame(
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs', 'expected'),
+    ('filename', 'custom_read_kwargs', 'expected'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             EXPECTED_DF,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             EXPECTED_DF,
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus(aoi_file, custom_read_kwargs, expected):
+def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file):
+    aoi_file = make_example_file(filename)
     aois = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -211,10 +210,13 @@ def test_text_stimulus(aoi_file, custom_read_kwargs, expected):
     assert len(aois.aois.columns) == len(expected.columns)
 
 
-def test_text_stimulus_unsupported_format():
-    with pytest.raises(ValueError) as excinfo:
+def test_text_stimulus_unsupported_format(make_example_file):
+    image_filepath = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
+
+    message = 'Stimulus file is not a valid CSV file: .*pexels-zoorg-1000498.jpg'
+    with pytest.raises(ValueError, match=message):
         text.from_file(
-            'tests/files/toy_text_1_1_aoi.pickle',
+            image_filepath,
             aoi_column='char',
             start_x_column='top_left_x',
             start_y_column='top_left_y',
@@ -222,28 +224,39 @@ def test_text_stimulus_unsupported_format():
             height_column='height',
             page_column='page',
         )
-    msg, = excinfo.value.args
-    expected = 'unsupported file format ".pickle".Supported formats are: '\
-        '[\'.csv\', \'.ias\', \'.tsv\', \'.txt\']'
-    assert msg == expected
+
+
+def test_text_stimulus_file_not_found_raises():
+    message = 'Stimulus file not found.*nonexistingfile[.]csv'
+    with pytest.raises(FileNotFoundError, match=message):
+        text.from_file(
+            'nonexistingfile.csv',
+            aoi_column='char',
+            start_x_column='top_left_x',
+            start_y_column='top_left_y',
+            width_column='width',
+            height_column='height',
+            page_column='page',
+        )
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus_splitting(aoi_file, custom_read_kwargs):
+def test_text_stimulus_splitting(filename, custom_read_kwargs, make_example_file):
+    aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -260,21 +273,22 @@ def test_text_stimulus_splitting(aoi_file, custom_read_kwargs):
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus_splitting_unique_within(aoi_file, custom_read_kwargs):
+def test_text_stimulus_splitting_unique_within(filename, custom_read_kwargs, make_example_file):
+    aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -291,21 +305,22 @@ def test_text_stimulus_splitting_unique_within(aoi_file, custom_read_kwargs):
 
 
 @pytest.mark.parametrize(
-    ('aoi_file', 'custom_read_kwargs'),
+    ('filename', 'custom_read_kwargs'),
     [
         pytest.param(
-            'tests/files/toy_text_1_1_aoi.csv',
+            'stimuli/toy_text_aoi.csv',
             None,
             id='toy_text_1_1_aoi',
         ),
         pytest.param(
-            Path('tests/files/toy_text_1_1_aoi.csv'),
+            'stimuli/toy_text_aoi.csv',
             {'separator': ','},
             id='toy_text_1_1_aoi_sep',
         ),
     ],
 )
-def test_text_stimulus_splitting_different_between(aoi_file, custom_read_kwargs):
+def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs, make_example_file):
+    aoi_file = make_example_file(filename)
     aois_df = text.from_file(
         aoi_file,
         aoi_column='char',
@@ -327,9 +342,10 @@ def test_text_stimulus_splitting_different_between(aoi_file, custom_read_kwargs)
 
 
 @pytest.fixture(name='text_stimulus')
-def fixture_text_stimulus():
+def fixture_text_stimulus(make_example_file):
+    filepath = make_example_file('stimuli/toy_text_aoi.csv')
     yield text.from_file(
-        'tests/files/toy_text_1_1_aoi.csv',
+        filepath,
         aoi_column='word',
         start_x_column='top_left_x',
         start_y_column='top_left_y',

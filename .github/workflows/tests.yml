@@ -1,17 +1,21 @@
 name: tests
+
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
   test:
-    name: test ${{ matrix.tox_env }} (${{ matrix.os }})
+    name: test Python ${{ matrix.python }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     env:
       MPLBACKEND: Agg
@@ -19,38 +23,24 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-13
           - macos-latest
           - ubuntu-latest
           - windows-latest
-        tox_env:
-          - py39
-          - py310
-          - py311
-          - py312
-          - py313
+        python:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+        is_main:
+          - ${{ contains(github.ref, 'main') }}
         exclude:
-            - os: macos-latest
-              tox_env: py39
-            - os: macos-13
-              tox_env: py310
-            - os: macos-13
-              tox_env: py311
-            - os: macos-13
-              tox_env: py312
-            - os: macos-13
-              tox_env: py313
-        include:
-          - tox_env: py39
-            python: "3.9"
-          - tox_env: py310
+          - is_main: false
             python: "3.10"
-          - tox_env: py311
+          - is_main: false
             python: "3.11"
-          - tox_env: py312
+          - is_main: false
             python: "3.12"
-          - tox_env: py313
-            python: "3.13"
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,7 +51,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            test-${{ matrix.os }}-${{ matrix.tox_env }}-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
+            test-${{ matrix.os }}-py${{ matrix.python }}-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
           path: |
             ~/.cache
             ~/.tox
@@ -75,7 +65,7 @@ jobs:
         run: python -m pip install tox
 
       - name: Setup test environment
-        run: tox -vv --notest -e ${{ matrix.tox_env }}
+        run: tox -vv --notest -e ${{ matrix.python }}
 
       - name: Cache environment
         uses: actions/cache/save@v4
@@ -88,13 +78,13 @@ jobs:
             ~/.tox
 
       - name: Run test
-        run: tox --skip-pkg-install -e ${{ matrix.tox_env }}
+        run: tox --skip-pkg-install -e ${{ matrix.python }}
 
       - name: Upload coverage reports to Codecov
         if: success() || failure()
         uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   pylint:
     name: pylint
@@ -109,7 +99,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            pylint-ubuntu-latest-py39-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
+            pylint-ubuntu-latest-py310-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
           path: |
             ~/.cache
             ~/.tox
@@ -117,7 +107,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.10"
 
       - name: Install tox
         run: python -m pip install tox
@@ -152,7 +142,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            test-minreq-${{ matrix.os }}-${{ matrix.tox_env }}-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
+            test-minreq-${{ matrix.os }}-py${{ matrix.python }}-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
           path: |
             ~/.cache
             ~/.tox
@@ -160,13 +150,13 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.10"
 
       - name: Install tox
         run: python -m pip install tox-min-req
 
       - name: Setup test environment
-        run: MIN_REQ=1 tox -vv --notest -e py39
+        run: MIN_REQ=1 tox -vv --notest -e py310
 
       - name: Cache environment
         uses: actions/cache/save@v4
@@ -179,7 +169,7 @@ jobs:
             ~/.tox
 
       - name: Run test
-        run: MIN_REQ=1 tox --skip-pkg-install -e py39
+        run: MIN_REQ=1 tox --skip-pkg-install -e py310
 
 
   docs:
@@ -201,7 +191,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key:
-            docs-${{ matrix.os }}-py39-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
+            docs-${{ matrix.os }}-py310-${{ hashFiles('tox.ini', 'pyproject.toml', '.github/workflows/tests') }}
           path: |
             ~/.cache
             ~/.tox
@@ -214,7 +204,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.13"
 
       - name: Install tox
         run: python -m pip install tox

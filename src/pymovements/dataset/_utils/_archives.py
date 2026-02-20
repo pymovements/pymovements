@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -50,8 +50,8 @@ def extract_archive(
 ) -> Path:
     """Extract an archive.
 
-    The archive type and a possible compression is automatically detected from the file name.
-    If the file is compressed but not an archive the call is dispatched to :func:`_decompress`.
+    The archive type and possible compression are automatically detected from the file name.
+    If the file is compressed but not an archive, the call is dispatched to :func:`_decompress`.
 
     Parameters
     ----------
@@ -61,7 +61,7 @@ def extract_archive(
         Path to the directory the file will be extracted to. If omitted, the directory of the file
         is used. (default: None)
     recursive: bool
-        Recursively extract archives which are included in extracted archive. (default: True)
+        Recursively extract archives which are included in the extracted archive. (default: True)
     remove_finished: bool
         If ``True``, remove the file after the extraction. (default: False)
     remove_top_level: bool
@@ -168,15 +168,23 @@ def _extract_tar(
     compression: str | None
         Compression filename suffix.
     resume: bool
-        Resume if archive was already previous extracted.
+        Resume if archive was already previously extracted.
     verbose: int
-        Print messages for resuming each dataset resource.
+        If ``True``, show a progress bar and print messages for resuming each dataset resource.
     """
     mode = f'r:{compression[1:]}' if compression else 'r'
 
     # ignore mypy error for now, see issue #1020
     with tarfile.open(source_path, mode) as archive:  # type: ignore[call-overload]
-        for member in tqdm(archive.getmembers()):
+        members = archive.getmembers()
+        for member in tqdm(
+                members,
+                total=len(members),
+                desc='Extracting archive',
+                unit='file',
+                ncols=80,
+                disable=not verbose,
+        ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
                 if (
@@ -212,13 +220,19 @@ def _extract_zip(
     compression: str | None
         Compression filename suffix.
     resume: bool
-        Resume if archive was already previous extracted.
+        Resume if archive was already previously extracted.
     verbose: int
-        Print messages for resuming each dataset resource.
+        If ``True``, show a progress bar and print messages for resuming each dataset resource.
     """
     compression_id = _ZIP_COMPRESSION_MAP[compression] if compression else zipfile.ZIP_STORED
     with zipfile.ZipFile(source_path, 'r', compression=compression_id) as archive:
-        for member in tqdm(archive.filelist):
+        for member in tqdm(
+                archive.filelist,
+                total=len(archive.filelist),
+                desc='Extracting archive',
+                unit='file',
+                disable=not verbose,
+        ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
                 if (

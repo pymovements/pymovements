@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -55,24 +56,25 @@ class MECOL1W1(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -96,24 +98,30 @@ class MECOL1W1(DatasetDefinition):
 
     name: str = 'MECOL1W1'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Multilingual Eye-tracking Corpus native reader first wave'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/67dc6027920cab9abae48b83/',
-                    'filename': 'joint_l1_fixation_version1.3.rda',
+                    'url': 'https://osf.io/download/uza8d/',
+                    'filename': 'joint_l1_fixation_version2.0.rda',
                     'md5': '3c969a930a71cd62c67b936426dd079b',
-                    'filename_pattern': 'joint_l1_fixation_version1.3.rda',
+                    'filename_pattern': 'joint_l1_fixation_version2.0.rda',
+                    'load_kwargs': {
+                        'trial_columns': ['uniform_id', 'itemid'],
+                        'r_dataframe_key': 'joint.fix',
+                    },
                 },
                 {
                     'content': 'precomputed_reading_measures',
                     'url': 'https://osf.io/download/n5pvh/',
-                    'filename': 'sentence_data_version1.3.csv',
+                    'filename': 'sentence_data_version2.0.csv',
                     'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
-                    'filename_pattern': 'sentence_data_version1.3.csv',
+                    'filename_pattern': 'sentence_data_version2.0.csv',
                 },
             ],
         ),
@@ -123,18 +131,8 @@ class MECOL1W1(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'uniform_id',
-            'itemid',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'r_dataframe_key': 'joint.fix'},
-            'precomputed_reading_measures': {},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

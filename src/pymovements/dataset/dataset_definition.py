@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +24,9 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
-from typing import Union
 from warnings import warn
 
 import yaml
@@ -37,14 +37,12 @@ from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
 from pymovements.dataset.resources import _HasResourcesIndexer
+from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
-ResourcesLike = Union[
-    Sequence[dict[str, Any]],
-    dict[str, Sequence[dict[str, Any]]],
-]
+ResourcesLike = Sequence[dict[str, Any]] | dict[str, Sequence[dict[str, Any]]]
 
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
@@ -63,65 +61,110 @@ class DatasetDefinition:
     mirrors: dict[str, Sequence[str]]
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: {})
+
+        .. deprecated:: v0.24.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
+           This field will be removed in v0.29.0.
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
+
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
+
         (default: ResourceDefinitions())
     experiment: Experiment | None
         The experiment definition. (default: None)
     extract: dict[str, bool] | None
         Decide whether to extract the data. (default: None)
+
         .. deprecated:: v0.22.1
-        This field will be removed in v0.27.0.
-    custom_read_kwargs: dict[str, dict[str, Any]]
+           This field will be removed in v0.27.0.
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
-        If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is`.asc` the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        If the file extension is `.csv`, the keyword arguments will be passed
+        to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
+        will be passed to :py:func:`pymovements.gaze.from_asc`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
-    column_map : dict[str, str]
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
+    column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
-        (default: field(default_factory=dict))
+        (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     trial_columns: list[str] | None
-            The name of the trial columns in the input data frame. If the list is empty or None,
-            the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
-            methods will be applied to each trial separately. (default: None)
+        The name of the trial columns in the input data frame. If the list is empty or None,
+        the input data frame is assumed to contain only one trial. If the list is not empty,
+        the input data frame is assumed to contain multiple trials, and the transformation
+        methods will be applied to each trial separately. (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
 
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
 
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created. (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     position_columns: list[str] | None
         The name of the dva position columns in the input data frame. These columns will be
         nested into the column ``position``. If the list is empty or None, the nested
         ``position`` column will not be created. (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     velocity_columns: list[str] | None
         The name of the velocity columns in the input data frame. These columns will be nested
         into the column ``velocity``. If the list is empty or None, the nested ``velocity``
         column will not be created. (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     acceleration_columns: list[str] | None
         The name of the acceleration columns in the input data frame. These columns will be
         nested into the column ``acceleration``. If the list is empty or None, the nested
         ``acceleration`` column will not be created. (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     distance_column : str | None
         The name of the column containing eye-to-screen distance in millimeters for each sample
         in the input data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. This column will be renamed to ``distance``. (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
 
     Parameters
     ----------
@@ -132,55 +175,71 @@ class DatasetDefinition:
     has_files: dict[str, bool] | None
         Indicate whether the dataset contains 'gaze', 'precomputed_events', and
         'precomputed_reading_measures'. (default: None)
+
         .. deprecated:: v0.23.0
-        This field will be removed in v0.28.0.
+           This field will be removed in v0.28.0.
     mirrors: dict[str, Sequence[str]] | None
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: None)
+
+        .. deprecated:: v0.24.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
+           This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
+
         - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
+
         (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
     extract: dict[str, bool] | None
         Decide whether to extract the data. (default: None)
+
         .. deprecated:: v0.22.1
-        This field will be removed in v0.27.0.
+           This field will be removed in v0.27.0.
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Named groups will
         appear in the `fileinfo` dataframe. (default: None)
+
+        .. deprecated:: v0.24.1
+           This field will be removed in v0.28.0.
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype. (default: None)
+
+        .. deprecated:: v0.24.1
+           This field will be removed in v0.28.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
-        If the file extension is `.csv` the keyword arguments will be passed
-        to :py:func:`polars.read_csv`. If the file extension is`.asc` the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        If the file extension is `.csv`, the keyword arguments will be passed
+        to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
+        will be passed to :py:func:`pymovements.gaze.from_asc`.
         See Notes for more details on how to use this argument.
         (default: None)
+
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
     column_map : dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
         (default: None)
     trial_columns: list[str] | None
-            The name of the trial columns in the input data frame. If the list is empty or None,
-            the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
-            methods will be applied to each trial separately. (default: None)
+        The name of the trial columns in the input data frame. If the list is empty or None,
+        the input data frame is assumed to contain only one trial. If the list is not empty,
+        the input data frame is assumed to contain multiple trials, and the transformation
+        methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
-
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. (default: 'ms')
-
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
@@ -205,30 +264,37 @@ class DatasetDefinition:
 
     Notes
     -----
-    When working with the ``gaze_custom_read_kwargs`` attribute there are specific use cases and
+    .. deprecated:: v0.25.0
+       The ``custom_read_kwargs`` attribute is deprecated.
+       Please specify :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+       This field will be removed in v0.30.0.
+
+    When working with the ``custom_read_kwargs`` attribute, there are specific use cases and
     considerations to keep in mind, especially for reading csv files:
 
-    1. Custom separator
-    To read a csv file with a custom separator, you can pass the `separator` keyword argument to
-    ``gaze_custom_read_kwargs``. For example pass ``gaze_custom_read_kwargs={'separator': ';'}`` to
-    read a semicolon-separated csv file.
+    1. Custom separator:
+       To read a csv file with a custom separator, you can pass the `separator` keyword argument to
+       ``custom_read_kwargs``. For example pass ``custom_read_kwargs={'separator': ';'}`` to
+       read a semicolon-separated csv file.
 
-    2. Reading subset of columns
-    To read only specific columns, specify them in ``gaze_custom_read_kwargs``. For example:
-    ``gaze_custom_read_kwargs={'columns': ['col1', 'col2']}``
+    2. Reading subset of columns:
+       To read only specific columns, specify them in ``custom_read_kwargs``. For example:
+       ``custom_read_kwargs={'columns': ['col1', 'col2']}``
 
-    3. Specifying column datatypes
-    ``polars.read_csv`` infers data types from a fixed number of rows, which might not be accurate
-    for the entire dataset. To ensure correct data types, you can pass a dictionary to the
-    ``schema_overrides`` keyword argument in ``gaze_custom_read_kwargs``.
-    Use data types from the `polars` library.
-    For instance:
-    ``gaze_custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
+    3. Specifying column datatypes:
+       :py:func:`polars.read_csv` infers data types from a fixed number of rows,
+       which might not be accurate for the entire dataset.
+       To ensure correct data types, you can pass a dictionary to the
+       ``schema_overrides`` keyword argument in ``custom_read_kwargs``.
+       Use data types from the :py:mod:`polars` library.
+       For instance:
+       ``custom_read_kwargs={'schema_overrides': {'col1': polars.Int64, 'col2': polars.Float64}}``
     """
 
     # pylint: disable=too-many-instance-attributes
-
     name: str = '.'
+
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
 
     long_name: str | None = None
 
@@ -240,9 +306,9 @@ class DatasetDefinition:
 
     extract: dict[str, bool] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(default_factory=dict)
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None
 
-    column_map: dict[str, str] = field(default_factory=dict)
+    column_map: dict[str, str] | None = None
 
     trial_columns: list[str] | None = None
     time_column: str | None = None
@@ -256,6 +322,7 @@ class DatasetDefinition:
     def __init__(
             self,
             name: str = '.',
+            *,
             long_name: str | None = None,
             has_files: dict[str, bool] | None = None,
             mirrors: dict[str, Sequence[str]] | None = None,
@@ -282,42 +349,134 @@ class DatasetDefinition:
 
         self.extract = extract
 
-        self.trial_columns = trial_columns
-        self.time_column = time_column
-        self.time_unit = time_unit
-        self.pixel_columns = pixel_columns
-        self.position_columns = position_columns
-        self.velocity_columns = velocity_columns
-        self.acceleration_columns = acceleration_columns
-        self.distance_column = distance_column
+        self.resources = self._initialize_resources(resources=resources)
+        self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         if mirrors is None:
             self.mirrors = {}
         else:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.mirrors is deprecated since version v0.24.0. '
+                    'Please specify ResourceDefinition.mirrors instead. '
+                    'This field will be removed in v0.29.0.',
+                ),
+            )
             self.mirrors = mirrors
 
-        if custom_read_kwargs is None:
-            self.custom_read_kwargs = {}
-        else:
-            self.custom_read_kwargs = custom_read_kwargs
+        if trial_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.trial_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.trial_columns = trial_columns
 
-        if column_map is None:
-            self.column_map = {}
-        else:
+        if time_column is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.time_column is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.time_column = time_column
+
+        if time_unit is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.time_unit is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.time_unit = time_unit
+
+        if pixel_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.pixel_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.pixel_columns = pixel_columns
+
+        if position_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.position_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.position_columns = position_columns
+
+        if velocity_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.velocity_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.velocity_columns = velocity_columns
+
+        if acceleration_columns is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.acceleration_columns is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.acceleration_columns = acceleration_columns
+
+        if distance_column is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.distance_column is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.distance_column = distance_column
+
+        if column_map is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.column_map is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
             self.column_map = column_map
 
-        self.resources = self._initialize_resources(
-            resources=resources,
-            filename_format=filename_format,
-            filename_format_schema_overrides=filename_format_schema_overrides,
-        )
-        self._has_resources = _HasResourcesIndexer(resources=self.resources)
+        if custom_read_kwargs is not None:
+            warn(
+                DeprecationWarning(
+                    'DatasetDefinition.custom_read_kwargs is deprecated since version v0.25.0. '
+                    'Please specify ResourceDefinition.load_kwargs instead. '
+                    'This field will be removed in v0.30.0.',
+                ),
+            )
+            self.custom_read_kwargs = custom_read_kwargs
+
+        if filename_format:
+            # the setter will raise a deprecation warning
+            self.filename_format = filename_format
+
+        if filename_format_schema_overrides:
+            # the setter will raise a deprecation warning
+            self.filename_format_schema_overrides = filename_format_schema_overrides
 
         if has_files is not None:
             warn(
                 DeprecationWarning(
                     'DatasetDefinition.has_files is deprecated since version v0.23.0. '
-                    'Please specify Resource.filename_pattern instead. '
+                    'Please specify ResourceDefinition.filename_pattern instead. '
                     'This field will be removed in v0.28.0.',
                 ),
             )
@@ -337,12 +496,12 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format(self) -> dict[str, str]:
-        """Regular expression which will be matched before trying to load the file.
+        """Regular expression, which will be matched before trying to load the file.
 
         Namedgroups will appear in the `fileinfo` dataframe.
 
         .. deprecated:: v0.23.0
-        Please use Resource.filename_pattern instead.
+        Please use ResourceDefinition.filename_pattern instead.
         This property will be removed in v0.28.0.
 
         Returns
@@ -351,7 +510,7 @@ class DatasetDefinition:
             filename format for each content type
         """
         data: dict[str, str] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.
@@ -366,9 +525,20 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format(self, data: dict[str, str]) -> None:
-        for resource in self.resources:
-            if resource.content in data:
-                resource.filename_pattern = data[resource.content]
+        for content_type, content_filename_pattern in data.items():
+            content_resources = self.resources.filter(content_type)
+
+            if not content_resources:
+                # legacy DatasetDefinitions may have defined filename_format without resources.
+                resource = ResourceDefinition(
+                    content=content_type,
+                    filename_pattern=content_filename_pattern,
+                )
+                self.resources.append(resource)
+                continue
+
+            for content_resource in content_resources:
+                content_resource.filename_pattern = content_filename_pattern
 
     @property
     @deprecated(
@@ -382,7 +552,7 @@ class DatasetDefinition:
         This casts specific named groups to a particular datatype.
 
         .. deprecated:: v0.23.0
-        Please use Resource.filename_pattern_schema_overrides instead.
+        Please use ResourceDefinition.filename_pattern_schema_overrides instead.
         This property will be removed in v0.28.0.
 
         Returns
@@ -391,7 +561,7 @@ class DatasetDefinition:
             filename format schema overrides for each content type
         """
         data: dict[str, dict[str, type]] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.
@@ -406,9 +576,20 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def filename_format_schema_overrides(self, data: dict[str, dict[str, type]]) -> None:
-        for resource in self.resources:
-            if resource.content in data:
-                resource.filename_pattern_schema_overrides = data[resource.content]
+        for content_type, content_schema_overrides in data.items():
+            content_resources = self.resources.filter(content_type)
+
+            if not content_resources:
+                # legacy DatasetDefinitions may have defined fields without resources.
+                resource = ResourceDefinition(
+                    content=content_type,
+                    filename_pattern_schema_overrides=content_schema_overrides,
+                )
+                self.resources.append(resource)
+                continue
+
+            for content_resource in content_resources:
+                content_resource.filename_pattern_schema_overrides = content_schema_overrides
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
@@ -559,40 +740,20 @@ class DatasetDefinition:
     def _initialize_resources(
             self,
             resources: ResourceDefinitions | ResourcesLike | None,
-            filename_format: dict[str, str] | None,
-            filename_format_schema_overrides: dict[str, dict[str, type]] | None,
     ) -> ResourceDefinitions:
         """Initialize ``ResourceDefinitions`` instance if necessary."""
         if isinstance(resources, ResourceDefinitions):
             return resources
 
         if resources is None:
-            # some legacy definitions may have defined filename format but no resources.
-            # create legacy formatted resource dict to contain filename pattern.
-            if filename_format:
-                resources = {
-                    content_type: [{'filename_pattern': filename_format[content_type]}]
-                    for content_type in filename_format
-                }
-            else:
-                return ResourceDefinitions()
-
-        # this calls deprecated methods and will be removed in the future.
-        if isinstance(resources, dict):
-            if filename_format:
-                for content_type in filename_format:
-                    for resource_dict in resources[content_type]:
-                        resource_dict['filename_pattern'] = filename_format[content_type]
-            if filename_format_schema_overrides:
-                for content_type in filename_format_schema_overrides:
-                    for resource_dict in resources[content_type]:
-                        _schema_overrides = filename_format_schema_overrides[content_type]
-                        resource_dict['filename_pattern_schema_overrides'] = _schema_overrides
-            return ResourceDefinitions.from_dict(resources)
+            return ResourceDefinitions()
 
         if isinstance(resources, Sequence):
-            assert isinstance(resources, Sequence)
-            return ResourceDefinitions.from_dicts(resources)
+            return ResourceDefinitions(resources)
+
+        if isinstance(resources, dict):
+            # this calls a deprecated method and will be removed in the future.
+            return ResourceDefinitions.from_dict(resources)
 
         raise TypeError(
             f'resources is of type {type(resources).__name__} but must be of type'

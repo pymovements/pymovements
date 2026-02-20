@@ -1,3 +1,5 @@
+.. _events_sec:
+
 Events
 ======
 
@@ -16,16 +18,6 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     Events
     EventDataFrame
 
-.. rubric:: Processing
-
-.. autosummary::
-    :toctree: api
-    :nosignatures:
-    :template: class.rst
-
-    EventProcessor
-    EventGazeProcessor
-
 .. currentmodule:: pymovements.events.detection
 
 .. rubric:: Detection Methods
@@ -40,18 +32,15 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     microsaccades
     fill
 
-.. currentmodule:: pymovements.events.properties
+.. currentmodule:: pymovements.events.segmentation
 
-.. rubric:: Event Properties
+.. rubric:: Segmentation Methods
 
 .. autosummary::
     :toctree: api
     :nosignatures:
     :template: function.rst
 
-    amplitude
-    duration
-    dispersion
-    disposition
-    peak_velocity
-    location
+    events2segmentation
+    events2timeratio
+    segmentation2events
