@@ -583,6 +583,16 @@ def test_events2segmentation_negative_tuple_padding_raises():
         events2segmentation(events_df, name='blink', padding=(1, -2))
 
 
+def test_events2segmentation_invalid_padding_type_raises():
+    events_df = pl.DataFrame({
+        'name': ['blink'],
+        'onset': pl.Series([2], dtype=pl.Int64),
+        'offset': pl.Series([5], dtype=pl.Int64),
+    })
+    with pytest.raises(TypeError, match='Padding must be None, a tuple, or a number'):
+        events2segmentation(events_df, name='blink', padding='invalid')
+
+
 def test_events2segmentation_padding_causes_overlap_warning():
     # Two events that are separate but overlap when padded
     events_df = pl.DataFrame({

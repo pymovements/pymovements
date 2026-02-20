@@ -76,6 +76,8 @@ def events2segmentation(
 
     Raises
     ------
+    TypeError
+        If ``padding`` is not None, a tuple, or a number.
     ValueError
         If ``onset_column`` or ``offset_column`` is missing from the events.
         If any onset is greater than its offset.
