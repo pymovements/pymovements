@@ -150,41 +150,62 @@ quote-style = "single"
 indent-style = "space"
 
 [tool.ruff.lint]
-# Core rules + replacements
 select = [
-  # See https://docs.astral.sh/ruff/linter/#rule-selection, and https://docs.astral.sh/ruff/rules/
-  "E4", # pycodestyle errors
-  "E7", # pycodestyle errors
-  "E9", # pycodestyle errors
-  "F", # pyflakes
-  "W", # pycodestyle warnings
-  "I", # isort (replaces reorder-python-imports)
-  "UP", # pyupgrade (Python 3.10+)
-  "D", # pydocstyle (replaces pydocstyle/pydoclint)
+  "E4", # Import errors
+  "E7", # Statement errors
+  "E9", # Syntax errors
+  "F", # pyflakes (flake8 core)
+  "W", # pycodestyle warnings (flake8 core)
+  # Import sorting
+  "I", # isort
+  # Python upgrades
+  "UP", # pyupgrade
+  # Docstring style
+  "D", # pydocstyle
+  # flake8-annotations
   "ANN", # flake8-annotations
+  # flake8-bugbear
   "B", # flake8-bugbear
+  # flake8-comprehensions
   "C4", # flake8-comprehensions
-  "T20", # flake8-print (replaces nbqa-flake8 parts)
+  # flake8-print
+  "T20", # flake8-print
+  # flake8-simplify
   "SIM" # flake8-simplify
 ]
 # Preserve current ignore patterns from pydocstyle
-ignore = [  # See https://docs.astral.sh/ruff/rules/#pydocstyle-d
+ignore = [
+  # pydocstyle ignores
   "D107", # Missing docstring in __init__
-  "D203", # One blank line before class
-  "D213", # Multi-line summary second line
-  "D413" # Missing blank line after last section
+  "D203", # One blank line before class (conflicts with D211)
+  "D213", # Multi-line summary second line (conflicts with D212)
+  "D413", # Missing blank line after last section
+  # Rules to enable in future:
+  "B028", # no-explicit-stacklevel
+  "ANN401", # any-type
+  "B905", # zip-without-explicit-strict
+  "T201", # print
+  "SIM108", # if-else-block-instead-of-if-exp
+  "ANN204", # missing-return-type-special-method
+  "SIM102" # collapsible-if
 ]
 
 [tool.ruff.lint.isort]
-force-single-line = true # Matches current reorder-python-imports
-order-by-type = false # Matches current behavior
-required-imports = ["from __future__ import annotations"] # Auto-add future imports TODO: needed?
-known-first-party = ["pymovements"] # Application directories
+force-single-line = true # Each import on separate line
+order-by-type = false
+known-first-party = ["pymovements"] # Match --application-directories=src
+force-sort-within-sections = true # Ensure consistent ordering
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401", "F403"]  # https://docs.astral.sh/ruff/rules/#pyflakes-f
-"tests/*" = ["D103"]  # https://docs.astral.sh/ruff/rules/undocumented-public-function/
-"tests/*_fixtures.py" = ["ALL"]  # https://docs.astral.sh/ruff/linter/#ruff-check
+"tests/*" = [
+  "D103", # Missing docstring in public function
+  "ANN" # Tests don't need type annotations
+]
+"__init__.py" = ["F401", "F403"] # Allow unused imports in __init__.py
+"tests/*_fixtures.py" = ["ALL"] # Skip all checks for test fixtures
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.setuptools.package-data]
 pymovements = ["datasets/*.yaml"]
@@ -197,28 +218,24 @@ enabled = true
 dev_template = "{tag}+post{ccount}.{sha}"
 dirty_template = "{tag}+post{ccount}.{sha}.dirty"
 
-# ty configuration
-[tool.ty.environment]
-python = ".venv"  # TODO: discuss .venv usage vs tox
-
 # Per-module overrides
 [[tool.ty.overrides]]
 include = ["tests/**"]
-rules = { "unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore" }
+rules = {"unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore"}
 
 [[tool.ty.overrides]]
 include = ["docs/**"]
-rules = { "unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore" }
+rules = {"unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore"}
 
 [[tool.ty.overrides]]
 include = ["scipy/**"]
-rules = { "unresolved-import" = "ignore" }
+rules = {"unresolved-import" = "ignore"}
+
+[[tool.ty.overrides]]
+include = ["deprecated/**"]
+rules = {"unresolved-import" = "ignore"}
 
 [tool.ty.rules]
-# Import resolution (matches mypy ignore_missing_imports)
-unresolved-import = "ignore"
-invalid-assignment = "ignore"
-unresolved-attribute = "ignore"
 
 [tool.ty.src]
 exclude = ["**/tests/**", "**/docs/**"]

@@ -11,15 +11,22 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.0
     hooks:
-      # Lint and fix
+      # Lint and fix (with import sorting via I rules)
       - id: ruff
         args: [ --fix, --show-fixes ]
       # Format
       - id: ruff-format
-      # Import sorting (separate hook until unified)
+      # Add future annotations to src/ files (excluding __init__.py)
       - id: ruff
-        name: ruff-sort-imports
-        args: [ --select, I, --fix ]
+        name: ruff-add-future-annotations
+        files: ^src/
+        exclude: __init__\.py$
+        args:
+          - --select
+          - I
+          - --fix
+          - --config
+          - 'lint.isort.required-imports = ["from __future__ import annotations"]'
 
   # Type checking
   - repo: local
