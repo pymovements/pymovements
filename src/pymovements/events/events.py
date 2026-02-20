@@ -728,10 +728,10 @@ class Events:
             # calculate when gap is null or > max_gap
             (pl.col('gap').is_null() | (pl.col('gap') > max_gap))
             .cast(pl.Int64)
-            # cumulative sum (of ones) in 'group' to assign a unique group number 
+            # cumulative sum (of ones) in 'group' to assign a unique group number
             # to each sequence of events to be merged
             .cum_sum()
-            # the group identifier is the same for events that are close enough to be merged, 
+            # the group identifier is the same for events that are close enough to be merged,
             # and different for events that are not close enough to be merged
             .alias('group'),
         )
@@ -750,5 +750,5 @@ class Events:
         self.frame = pl.concat([fix, other]).sort('onset')
 
         if verbose:
-            print(f"Merged {number_of_events} '{name}' events" + \
+            print(f"Merged {number_of_events} '{name}' events" +
                   f" into {len(fix)} events with max_gap={max_gap} ms.")
