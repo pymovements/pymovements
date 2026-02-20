@@ -29,6 +29,7 @@ from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.events.segmentation import events2segmentation
+from pymovements.events.segmentation import events2timeratio
 from pymovements.events.segmentation import segmentation2events
 
 
@@ -41,6 +42,7 @@ __all__ = [
     'microsaccades',
     'out_of_screen',
     'events2segmentation',
+    'events2timeratio',
     'segmentation2events',
 
     'PrecomputedEventDataFrame',

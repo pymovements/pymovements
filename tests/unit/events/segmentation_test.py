@@ -27,6 +27,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements.events.segmentation import _has_overlap
 from pymovements.events.segmentation import events2segmentation
+from pymovements.events.segmentation import events2timeratio
 from pymovements.events.segmentation import segmentation2events
 
 
@@ -482,7 +483,7 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
 
 
 @pytest.mark.parametrize(
-    'events_df, gaze_df, padding, expected',
+    ('events_df', 'gaze_df', 'padding', 'expected'),
     [
         pytest.param(
             pl.DataFrame({
@@ -600,3 +601,251 @@ def test_events2segmentation_padding_causes_overlap_warning():
     # padded: 0-5 and 5-10
     expected = [True, True, True, True, True, True, True, True, True, True, True, False]
     assert result_df['blink'].to_list() == expected
+
+    
+@pytest.mark.parametrize(
+    ('events_data', 'samples_data', 'kwargs', 'expected'),
+    [
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            0.75,
+            id='basic',
+        ),
+        pytest.param(
+            {'name': [], 'onset': [], 'offset': []},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            0.0,
+            id='empty_events',
+        ),
+        pytest.param(
+            {'name': ['saccade'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            0.0,
+            id='no_matching_name',
+        ),
+        pytest.param(
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
+            {'name': 'blink'},
+            0.75,
+            id='two_events_no_sampling_rate',
+        ),
+        pytest.param(
+            {'name': ['blink', 'blink'], 'onset': [1.0, 5.0], 'offset': [3.0, 7.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]},
+            {'name': 'blink', 'sampling_rate': 1000.0},
+            0.75,
+            id='two_events_with_sampling_rate',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            {'name': 'blink'},
+            3.0 / 4.0,
+            id='basic_with_mode_dt',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'time': []},
+            {'name': 'blink'},
+            None,
+            id='empty_samples',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [1.0]},
+            {'time': [1.0]},
+            {'name': 'blink'},
+            1.0,
+            id='single_sample_with_event',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [2.0], 'offset': [2.0]},
+            {'time': [1.0]},
+            {'name': 'blink'},
+            0.0,
+            id='single_sample_outside_event',
+        ),
+        pytest.param(
+            {'name': ['saccade'], 'onset': [1.0], 'offset': [1.0]},
+            {'time': [1.0]},
+            {'name': 'blink'},
+            0.0,
+            id='single_sample_no_matching_name',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [1.0], 'trial': [1]},
+            {'time': [1.0], 'trial': [2]},
+            {'name': 'blink', 'trial_columns': ['trial']},
+            0.0,
+            id='single_sample_trial_mismatch',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [1.0], 'trial': [2]},
+            {'time': [1.0], 'trial': [2]},
+            {'name': 'blink', 'trial_columns': ['trial']},
+            1.0,
+            id='single_sample_trial_match',
+        ),
+        pytest.param(
+            {'name': [], 'onset': [], 'offset': []},
+            {'time': [1.0, 2.0]},
+            {'name': 'blink'},
+            0.0,
+            id='fully_empty_events',
+        ),
+    ],
+)
+def test_events2timeratio_basic(events_data, samples_data, kwargs, expected):
+    if not events_data.get('name') and 'schema' not in events_data:
+        events = pl.DataFrame(
+            events_data,
+            schema={'name': pl.String, 'onset': pl.Float64, 'offset': pl.Float64},
+        )
+    else:
+        events = pl.DataFrame(events_data)
+    samples = pl.DataFrame(samples_data)
+    result = samples.select(events2timeratio(events, samples, **kwargs))
+    if expected is None:
+        assert result.to_series()[0] is None
+    else:
+        assert result.to_series()[0] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ('events_data', 'samples_data', 'error_match'),
+    [
+        pytest.param(
+            {'name': ['blink'], 'offset': [3.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            'Onset column',
+            id='missing_onset_column',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0]},
+            {'time': [0.0, 1.0, 2.0, 3.0]},
+            'Offset column',
+            id='missing_offset_column',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [3.0]},
+            {'x': [0.0, 1.0, 2.0, 3.0]},
+            'Time column',
+            id='missing_time_column',
+        ),
+    ],
+)
+def test_events2timeratio_missing_column(events_data, samples_data, error_match):
+    events = pl.DataFrame(events_data)
+    samples = pl.DataFrame(samples_data)
+    with pytest.raises(ValueError, match=error_match):
+        events2timeratio(events, samples, 'blink')
+
+
+@pytest.mark.parametrize(
+    ('events_data', 'samples_data', 'trial_columns', 'expected_dict'),
+    [
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
+            ['trial'],
+            {1: 2 / 3},
+            id='single_trial',
+        ),
+        pytest.param(
+            {
+                'name': ['blink', 'blink'],
+                'onset': [1.0, 1.0],
+                'offset': [2.0, 2.0],
+                'trial': [1, 2],
+            },
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial'],
+            {1: 2 / 3, 2: 2 / 3},
+            id='multiple_trials',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial'],
+            {1: 2 / 3, 2: 0.0},
+            id='partial_trials_with_events',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {'time': [0.0, 1.0, 2.0], 'trial': [2, 2, 2]},
+            ['trial'],
+            {2: 0.0},
+            id='non_overlapping_trials_events_only',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [2]},
+            {'time': [0.0, 1.0, 2.0], 'trial': [1, 1, 1]},
+            ['trial'],
+            {1: 0.0},
+            id='non_overlapping_trials_samples_only',
+        ),
+        pytest.param(
+            {'name': ['saccade'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial'],
+            {1: 0.0, 2: 0.0},
+            id='empty_events_all_trials',
+        ),
+        pytest.param(
+            {'name': ['blink'], 'onset': [1.0], 'offset': [2.0], 'trial': [1]},
+            {
+                'time': [1.0, 2.0, 1.0, 2.0],
+                'trial': [1, 1, 2, 2],
+            },
+            ['trial'],
+            {1: 1.0, 2: 0.0},
+            id='trial_with_no_events',
+        ),
+        pytest.param(
+            {
+                'name': ['blink', 'blink'],
+                'onset': [1.0, 1.0],
+                'offset': [2.0, 2.0],
+                'trial': [1, 1],
+                'block': [1, 2],
+            },
+            {
+                'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                'trial': [1, 1, 1, 1, 1, 1],
+                'block': [1, 1, 1, 2, 2, 2],
+            },
+            ['trial', 'block'],
+            {(1, 1): 2 / 3, (1, 2): 2 / 3},
+            id='two_trial_columns',
+        ),
+    ],
+)
+def test_events2timeratio_with_trials(
+    events_data, samples_data, trial_columns, expected_dict,
+):
+    events = pl.DataFrame(events_data)
+    samples = pl.DataFrame(samples_data)
+    result = samples.group_by(trial_columns, maintain_order=True).agg(
+        events2timeratio(
+            events, samples, 'blink', trial_columns=trial_columns,
+        ).mean(),
+    )
+    for row in result.to_dicts():
+        if len(trial_columns) == 1:
+            key = row[trial_columns[0]]
+        else:
+            key = tuple(row[col] for col in trial_columns)
+        assert row['event_ratio_blink'] == pytest.approx(expected_dict[key])
