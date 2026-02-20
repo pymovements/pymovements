@@ -225,7 +225,7 @@ def gaze_fixture(request, make_gaze):
         pytest.param(
             {
                 'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             },
             id='set_stimulus',
         ),
@@ -234,7 +234,7 @@ def gaze_fixture(request, make_gaze):
                 'add_arrows': True,
                 'arrow_color': 'blue',
                 'arrow_rad': 0.0,
-                'arrowstyle': '->',
+                'arrow_style': '->',
             },
             id='param_arrows',
         ),

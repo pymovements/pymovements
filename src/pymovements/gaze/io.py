@@ -164,7 +164,7 @@ def from_csv(
     │ 9    ┆ 0          ┆ 0          │
     └──────┴────────────┴────────────┘
 
-    We can now load the data into a ``Gaze`` by specyfing the experimental setting
+    We can now load the data into a ``Gaze`` by specifying the experimental setting
     and the names of the pixel position columns. We can specify a custom separator for the csv
     file by passing it as a keyword argument to :py:func:`polars.read_csv`:
 

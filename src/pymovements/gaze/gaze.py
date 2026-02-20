@@ -41,6 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events import events2timeratio
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
@@ -176,7 +177,7 @@ class Gaze:
     │ 1002 ┆ 0.3 ┆ 0.3 │
     └──────┴─────┴─────┘
 
-    We can now initialize our ``Gaze`` by specyfing the names of the pixel position
+    We can now initialize our ``Gaze`` by specifying the names of the pixel position
     columns, the timestamp column and the unit of the timestamps.
 
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')
@@ -353,13 +354,15 @@ class Gaze:
 
     @overload
     def split(
-            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
+            self, by: str | Sequence[str] | None = None,
+            *, as_dict: Literal[False], extend_metadata: bool = True,
     ) -> list[Gaze]:
         ...
 
     @overload
     def split(
-            self, by: Sequence[str] | None = None, *, as_dict: Literal[True],
+            self, by: Sequence[str] | None = None,
+            *, as_dict: Literal[True], extend_metadata: bool = True,
     ) -> dict[tuple[Any, ...], Gaze]:
         ...
 
@@ -368,6 +371,7 @@ class Gaze:
             by: str | Sequence[str] | None = None,
             *,
             as_dict: bool = False,
+            extend_metadata: bool = True,
     ) -> list[Gaze] | dict[tuple[Any, ...], Gaze]:
         """Split a single Gaze object into multiple Gaze objects based on specified column(s).
 
@@ -381,6 +385,9 @@ class Gaze:
         as_dict: bool
             Return a dictionary instead of a list. The dictionary keys are tuples of the distinct
             group values that identify each group split. (default: False)
+        extend_metadata: bool
+            If ``True``, extend metadata dictionary of each split with its respective key/value
+            pair. (default: ``True``)
 
         Returns
         -------
@@ -451,6 +458,28 @@ class Gaze:
         >>> gazes = gaze.split(by='trial')
         >>> len(gazes)
         5
+
+        Each gaze split only consists of a single trial:
+
+        >>> for gaze_split in gazes:
+        ...     print(gaze_split.samples['trial'].unique().to_list())
+        [1]
+        [2]
+        [3]
+        [4]
+        [5]
+
+        Per default, the ``Gaze.metadata`` field is extended with the key/value pairs
+        from the split:
+
+        >>> gazes = gaze.split(by='trial', extend_metadata=True)
+        >>> for gaze_split in gazes:
+        ...     print(gaze_split.metadata['trial'])
+        1
+        2
+        3
+        4
+        5
         """
         # Use trial_columns if by is None
         if by is None:
@@ -482,15 +511,22 @@ class Gaze:
             key=_replace_nones_in_split_keys(sample_key_dtypes, events_key_dtypes),
         )
 
-        gazes = {
-            key: Gaze(
+        gazes: dict[tuple[Any, ...], Gaze] = {}
+
+        for key in keys:
+            metadata_split = deepcopy(self.metadata)
+            if extend_metadata:
+                for by_id, column_name in enumerate(by):
+                    metadata_split[column_name] = key[by_id]
+
+            gaze_split = Gaze(
                 samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
+                metadata=metadata_split,
             )
-            for key in keys
-        }
+            gazes[key] = gaze_split
 
         if as_dict:
             return gazes
@@ -1033,6 +1069,13 @@ class Gaze:
 
             new_events = method(**method_kwargs)
 
+            if len(new_events) == 0:
+                warn(
+                    f"{getattr(method, '__name__', method)}: No events were detected.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
             self.events.frame = polars.concat(
                 [self.events.frame, new_events.frame],
                 how='diagonal_relaxed',
@@ -1086,6 +1129,13 @@ class Gaze:
 
                 new_events_grouped.append(new_events.frame)
 
+            if not new_events_grouped or any(len(df) == 0 for df in new_events_grouped):
+                warn(
+                    f"{getattr(method, '__name__', method)}: No events were detected.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
             self.events.frame = polars.concat(
                 [self.events.frame, *new_events_grouped],
                 how='diagonal',
@@ -1131,7 +1181,7 @@ class Gaze:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -1155,7 +1205,7 @@ class Gaze:
         if overwrite_columns:
             warn(
                 'The following columns already exist in event and will be overwritten: '
-                f"{overwrite_columns}",
+                f'{overwrite_columns}',
             )
             self.events.drop(overwrite_columns)
         if results.height:
@@ -1224,6 +1274,135 @@ class Gaze:
                 for trial_values, df in
                 self.samples.group_by(self.trial_columns, maintain_order=True)
             ],
+        )
+
+    def measure_events_ratio(
+        self,
+        name: str,
+        time_column: str = 'time',
+        *,
+        sampling_rate: float | None = None,
+        onset_column: str = 'onset',
+        offset_column: str = 'offset',
+    ) -> polars.Expr:
+        r"""Calculate ratio of time associated with specific events.
+
+        This method computes the ratio of time that is associated with events
+        having a specific name. It calculates the ratio from event durations (offset - onset).
+
+        If `sampling_rate` is provided, the ratio is calculated inclusively as:
+
+        .. math::
+            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} -
+            t_{\mathrm{onset},i} + \Delta t)}{t_{\mathrm{max}} -
+            t_{\mathrm{min}} + \Delta t}
+
+        where :math:`\Delta t = 1000 / f_s`.
+
+        If `sampling_rate` is not provided, the ratio is calculated as:
+
+        .. math::
+            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} - t_{\mathrm{onset},i})}{t_{\mathrm{max}} -
+            t_{\mathrm{min}}}
+
+        Parameters
+        ----------
+        name: str
+            Name of events to include in the ratio calculation.
+        time_column: str
+            Name of the timestamp column in the samples data. (default: 'time')
+        sampling_rate: float | None
+            Sampling rate of the gaze data in Hz. If not provided, it will be
+            taken from the experiment if available.
+        onset_column: str
+            Name of the column containing event onset times (default: 'onset').
+        offset_column: str
+            Name of the column containing event offset times (default: 'offset').
+
+        Returns
+        -------
+        polars.Expr
+            A Polars expression that calculates the event ratio. Use with select(),
+            with_columns(), or group_by().agg() for per-trial ratios.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     samples=pl.DataFrame({
+        ...         'time': [0, 1, 2, 3],
+        ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+        ...     }),
+        ...     events=pm.Events(
+        ...         name=['blink'],
+        ...         onsets=[1],
+        ...         offsets=[3],
+        ...     ),
+        ... )
+        >>> gaze.samples.select(gaze.measure_events_ratio('blink'))
+        shape: (1, 1)
+        ┌───────────────────┐
+        │ event_ratio_blink │
+        │ ---               │
+        │ f64               │
+        ╞═══════════════════╡
+        │ 0.75              │
+        └───────────────────┘
+
+        Raises
+        ------
+        ValueError
+            If `name` is not a non-empty string.
+        TypeError
+            If `time_column` is not a string.
+        KeyError
+            If `time_column` is not present in the samples DataFrame.
+        """
+        if not isinstance(name, str) or not name:
+            raise ValueError(
+                f"name must be a non-empty string, but got: {name!r}",
+            )
+
+        if not isinstance(time_column, str):
+            raise TypeError(
+                f"invalid type for 'time_column'. "
+                f"Expected 'str' , got '{type(time_column).__name__}'",
+            )
+
+        if time_column not in self.samples.columns:
+            raise ValueError(
+                f"time_column '{time_column}' not found in samples. "
+                f"Available columns: {self.samples.columns}",
+            )
+
+        if sampling_rate is None and self.experiment is not None:
+            sampling_rate = self.experiment.sampling_rate
+
+        if self.events is not None and not self.events.frame.is_empty():
+            events_df = self.events.frame
+        else:
+            events_df = polars.DataFrame(
+                schema={
+                    'name': polars.String,
+                    onset_column: self.samples.schema[time_column],
+                    offset_column: self.samples.schema[time_column],
+                    **(
+                        {col: self.samples.schema[col] for col in self.trial_columns}
+                        if self.trial_columns else {}
+                    ),
+                },
+            )
+
+        return events2timeratio(
+            events=events_df,
+            samples=self.samples,
+            name=name,
+            time_column=time_column,
+            trial_columns=self.trial_columns,
+            sampling_rate=sampling_rate,
+            onset_column=onset_column,
+            offset_column=offset_column,
         )
 
     @property
@@ -1815,7 +1994,7 @@ class Gaze:
         """Infer number of components from DataFrame.
 
         Method checks nested columns `pixel`, `position`, `velocity` and `acceleration` for number
-        of components by getting their list lenghts, which must be equal for all else a ValueError
+        of components by getting their list lengths, which must be equal for all else a ValueError
         is raised. Additionally, a list of list of column specifiers is checked for consistency.
 
         Parameters
@@ -1935,7 +2114,10 @@ class Gaze:
             The filled keyword argument dictionary.
         """
         # Automatically infer eye to use for event detection.
-        method_args = inspect.getfullargspec(method).args
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
 
         if 'positions' in method_args:
             if 'position' not in samples.columns:
@@ -1974,6 +2156,35 @@ class Gaze:
                     for eye_component in eye_components
                 ],
             ).transpose()
+
+        if 'pixels' in method_args and 'pixels' not in kwargs:
+            if 'pixel' not in samples.columns:
+                raise polars.exceptions.ColumnNotFoundError(
+                    f'Column \'pixel\' not found.'
+                    f' Available columns are: {samples.columns}',
+                )
+
+            if eye_components is None:
+                raise ValueError(
+                    'eye_components must not be None if passing pixel to event detection',
+                )
+
+            kwargs['pixels'] = np.vstack(
+                [
+                    samples.get_column('pixel').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
+
+        if method.__name__ == 'out_of_screen' and self.experiment is not None:
+            if 'x_min' not in kwargs:
+                kwargs['x_min'] = 0
+            if 'x_max' not in kwargs:
+                kwargs['x_max'] = self.experiment.screen.width_px
+            if 'y_min' not in kwargs:
+                kwargs['y_min'] = 0
+            if 'y_max' not in kwargs:
+                kwargs['y_max'] = self.experiment.screen.height_px
 
         if 'events' in method_args:
             kwargs['events'] = events
@@ -2192,7 +2403,7 @@ class Gaze:
         Parameters
         ----------
         dirpath: str | Path
-            Absloute directory name to save data.
+            Absolute directory name to save data.
             This argument is used only for this single call and does not alter
             :py:meth:`pymovements.Dataset.events_rootpath`.
         save_events: bool | None
@@ -2230,7 +2441,7 @@ class Gaze:
             if verbose >= 2:
                 print('Saving experiment file to', dirpath)
             if self.experiment is not None:
-                self.experiment.to_yaml(Path(f"{dirpath}/experiment.yaml"))
+                self.experiment.to_yaml(Path(f'{dirpath}/experiment.yaml'))
             elif save_experiment is not None:
                 raise ValueError('no experiment data in the Gaze object')
         return self
@@ -2396,7 +2607,7 @@ def _check_messages(messages: polars.DataFrame) -> None:
         if not isinstance(messages, polars.DataFrame):
             raise TypeError(
                 "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-                f"not {type(messages)}.",
+                f'not {type(messages)}.',
             )
         required_cols = {'time', 'content'}
         if not required_cols.issubset(set(messages.columns)):

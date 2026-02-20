@@ -170,6 +170,87 @@ class TextStimulus:
         """
         return _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
 
+    @staticmethod
+    def from_csv(
+            path: str | Path,
+            *,
+            aoi_column: str,
+            start_x_column: str,
+            start_y_column: str,
+            width_column: str | None = None,
+            height_column: str | None = None,
+            end_x_column: str | None = None,
+            end_y_column: str | None = None,
+            page_column: str | None = None,
+            trial_column: str | None = None,
+            read_csv_kwargs: dict[str, Any] | None = None,
+    ) -> TextStimulus:
+        """Load text stimulus from file.
+
+        Parameters
+        ----------
+        path:  str | Path
+            Path to file to be read.
+        aoi_column: str
+            Name of column that contains the content of the aois.
+        start_x_column: str
+            Name of column which contains the x coordinate's start position of the
+            areas of interest.
+        start_y_column: str
+            Name of column which contains the y coordinate's start position of the
+            areas of interest.
+        width_column: str | None
+            Name of the column which contains the width of the area of interest. (default: None)
+        height_column: str | None
+            Name of column which contains the height of the area of interest. (default: None)
+        end_x_column: str | None
+            Name of column which contains the x coordinate's end position of the areas of interest.
+            (default: None)
+        end_y_column: str | None
+            Name of column which contains the y coordinate's end position of the areas of interest.
+            (default: None)
+        page_column: str | None
+            Name of column which contains the page information of the area of interest.
+            (default: None)
+        trial_column: str | None
+            Name of column that specifies the unique trial id.
+            (default: None)
+        read_csv_kwargs: dict[str, Any] | None
+            Custom read keyword arguments for polars. (default: None)
+
+
+        Returns
+        -------
+        TextStimulus
+            Returns the text stimulus file.
+        """
+        if isinstance(path, str):
+            path = Path(path)
+        if read_csv_kwargs is None:
+            read_csv_kwargs = {}
+
+        try:
+            stimulus_df = pl.read_csv(path, **read_csv_kwargs)
+        except FileNotFoundError as exception:
+            raise FileNotFoundError(f'Stimulus file not found: {path}') from exception
+        except pl.exceptions.ComputeError as exception:
+            raise ValueError(f'Stimulus file is not a valid CSV file: {path}') from exception
+
+        stimulus_df = stimulus_df.fill_null(' ')
+
+        return TextStimulus(
+            aois=stimulus_df,
+            aoi_column=aoi_column,
+            start_x_column=start_x_column,
+            start_y_column=start_y_column,
+            width_column=width_column,
+            height_column=height_column,
+            end_x_column=end_x_column,
+            end_y_column=end_y_column,
+            page_column=page_column,
+            trial_column=trial_column,
+        )
+
 
 def _is_number(v: Any) -> bool:
     """Return True if v is an int/float and not NaN."""
@@ -244,7 +325,7 @@ def from_file(
         Name of the column which contains the page information of the area of interest.
         (default: None)
     trial_column: str | None
-        Name fo the column that specifies the unique trial id.
+        Name for the column that specifies the unique trial id.
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)
@@ -255,26 +336,8 @@ def from_file(
     TextStimulus
         Returns the text stimulus file.
     """
-    if isinstance(aoi_path, str):
-        aoi_path = Path(aoi_path)
-    if custom_read_kwargs is None:
-        custom_read_kwargs = {}
-
-    valid_extensions = {'.csv', '.tsv', '.txt', '.ias'}
-    if aoi_path.suffix in valid_extensions:
-        stimulus_df = pl.read_csv(
-            aoi_path,
-            **custom_read_kwargs,
-        )
-        stimulus_df = stimulus_df.fill_null(' ')
-    else:
-        raise ValueError(
-            f'unsupported file format "{aoi_path.suffix}".'
-            f'Supported formats are: {sorted(valid_extensions)}',
-        )
-
-    return TextStimulus(
-        aois=stimulus_df,
+    return TextStimulus.from_csv(
+        path=aoi_path,
         aoi_column=aoi_column,
         start_x_column=start_x_column,
         start_y_column=start_y_column,
@@ -284,6 +347,7 @@ def from_file(
         end_y_column=end_y_column,
         page_column=page_column,
         trial_column=trial_column,
+        read_csv_kwargs=custom_read_kwargs,
     )
 
 
@@ -298,10 +362,6 @@ def _get_aoi(
     If `width` is used, calculation: start_x_column <= x_eye < start_x_column + width.
     If `end_x_column` is used, calculation: start_x_column <= x_eye < end_x_column.
     Analog for y coordinate and height.
-
-    .. deprecated:: v0.21.1
-       Please use :py:meth:`~pymovements.TextStimulus.get_aoi()` instead.
-       This function will be removed in v0.26.0.
 
     Parameters
     ----------

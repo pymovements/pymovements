@@ -72,56 +72,79 @@ from pymovements.synthetic import step_function
             },
             id='length_10_4_channel_single_step_with_start_value',
         ),
+    ],
+)
+def test_step_function(params, expected):
+    arr = step_function(**params)
+    assert np.array_equal(arr, expected['value']), (
+        f"arr = {arr}, expected = {expected['value']}"
+    )
+    assert arr.dtype == expected['value'].dtype
+
+
+@pytest.mark.parametrize(
+    ('params', 'expected_exception'),
+    [
         pytest.param(
             {'length': 100, 'steps': [10, 50, 90], 'values': [1, 0], 'start_value': 0},
-            {'exception': ValueError},
+            ValueError,
             id='steps_values_unequal_length_raises_value_error',
         ),
         pytest.param(
-            {'length': 100, 'steps': [10, 90, 50], 'values': [1, 0, 1], 'start_value': 0},
-            {'exception': ValueError},
+            {
+                'length': 100,
+                'steps': [10, 90, 50],
+                'values': [1, 0, 1],
+                'start_value': 0,
+            },
+            ValueError,
             id='steps_not_sorted_raises_value_error',
         ),
         pytest.param(
             {'length': 10, 'steps': [3, 5], 'values': [1, (2, 3)]},
-            {'exception': ValueError},
+            ValueError,
             id='varying_number_of_channels_1_2_raises_value_error',
         ),
         pytest.param(
             {'length': 10, 'steps': [3, 5], 'values': [(1, 2), (3, 5, 6)]},
-            {'exception': ValueError},
+            ValueError,
             id='varying_number_of_channels_2_3_raises_value_error',
         ),
         pytest.param(
             {'length': 10, 'steps': [5], 'values': [(1, 2)], 'start_value': (1, 2, 3)},
-            {'exception': ValueError},
+            ValueError,
             id='number_of_channels_unequal_start_value_channels_raises_value_error',
         ),
         pytest.param(
             {'length': 0, 'steps': [0], 'values': [0], 'noise': -1},
-            {'exception': ValueError},
+            ValueError,
             id='negative_noise_raises_value_error',
         ),
+    ],
+)
+def test_step_function_exceptions(params, expected_exception):
+    with pytest.raises(expected_exception):
+        step_function(**params)
+
+
+@pytest.mark.parametrize(
+    ('params', 'expected_dimension'),
+    [
         pytest.param(
-            {'length': 4, 'steps': [2], 'values': [(np.nan, np.nan)], 'start_value': (0, 0)},
-            {'dimension': (4, 2)},
+            {
+                'length': 4,
+                'steps': [2],
+                'values': [(np.nan, np.nan)],
+                'start_value': (0, 0),
+            },
+            (4, 2),
             id='length_5_2_nan_value',
         ),
     ],
 )
-def test_step_function(params, expected):
-    if 'exception' in expected:
-        with pytest.raises(expected['exception']):
-            step_function(**params)
-        return
-    if 'dimension' in expected:
-        arr = step_function(**params)
-        assert expected['dimension'] == arr.shape
-        return
-
+def test_step_function_dimensions(params, expected_dimension):
     arr = step_function(**params)
-    assert np.array_equal(arr, expected['value']), f"arr = {arr}, expected = {expected['value']}"
-    assert arr.dtype == expected['value'].dtype
+    assert expected_dimension == arr.shape
 
 
 @pytest.mark.parametrize(

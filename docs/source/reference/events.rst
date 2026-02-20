@@ -31,3 +31,16 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     ivt
     microsaccades
     fill
+
+.. currentmodule:: pymovements.events.segmentation
+
+.. rubric:: Segmentation Methods
+
+.. autosummary::
+    :toctree: api
+    :nosignatures:
+    :template: function.rst
+
+    events2segmentation
+    events2timeratio
+    segmentation2events
