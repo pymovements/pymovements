@@ -107,7 +107,7 @@ repos:
     hooks:
       - id: autopep8
   - repo: https://github.com/PyCQA/autoflake
-    rev: v2.3.1
+    rev: v2.3.3
     hooks:
       - id: autoflake
   - repo: https://github.com/PyCQA/doc8
