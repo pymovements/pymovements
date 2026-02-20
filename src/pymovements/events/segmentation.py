@@ -201,9 +201,9 @@ def events2segmentation(
     elif isinstance(padding, numbers.Number):
         pad_before = pad_after = padding
     else:
-        padding_type = type(padding)
         raise TypeError(
-            f'padding should be a number or a two-dimensional tuple of numbers, but is {padding_type}',
+            'padding should be a number or a two-dimensional tuple'
+            f' of numbers, but is {type(padding)}',
         )
 
     if pad_before < 0 or pad_after < 0:
