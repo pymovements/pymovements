@@ -718,44 +718,45 @@ def parse_eyelink(
                 y_right_pix_s = eye_tracking_sample_match.group('y_pix_right')
                 pupil_right_s = eye_tracking_sample_match.group('pupil_right')
 
-                samples['x_left_pix'].append(check_nan(x_left_pix_s))
-                samples['y_left_pix'].append(check_nan(y_left_pix_s))
-                samples['pupil_left'].append(check_nan(pupil_left_s))
-                samples['x_right_pix'].append(check_nan(x_right_pix_s))
-                samples['y_right_pix'].append(check_nan(y_right_pix_s))
-                samples['pupil_right'].append(check_nan(pupil_right_s))
+                x_left_pix = check_nan(x_left_pix_s)
+                y_left_pix = check_nan(y_left_pix_s)
+                pupil_left = check_nan(pupil_left_s)
+                x_right_pix = check_nan(x_right_pix_s)
+                y_right_pix = check_nan(y_right_pix_s)
+                pupil_right = check_nan(pupil_right_s)
+
+                samples['x_left_pix'].append(x_left_pix)
+                samples['y_left_pix'].append(y_left_pix)
+                samples['pupil_left'].append(pupil_left)
+                samples['x_right_pix'].append(x_right_pix)
+                samples['y_right_pix'].append(y_right_pix)
+                samples['pupil_right'].append(pupil_right)
+
+                if not blinking and all(
+                    not np.isnan(val) for val in (
+                        x_left_pix, y_left_pix, pupil_left,
+                        x_right_pix, y_right_pix, pupil_right,
+                    )
+                ):
+                    num_valid_samples += 1
             else:
                 x_pix_s = eye_tracking_sample_match.group('x_pix')
                 y_pix_s = eye_tracking_sample_match.group('y_pix')
                 pupil_s = eye_tracking_sample_match.group('pupil')
 
-                samples['x_pix'].append(check_nan(x_pix_s))
-                samples['y_pix'].append(check_nan(y_pix_s))
-                samples['pupil'].append(check_nan(pupil_s))
+                x_pix = check_nan(x_pix_s)
+                y_pix = check_nan(y_pix_s)
+                pupil = check_nan(pupil_s)
+
+                samples['x_pix'].append(x_pix)
+                samples['y_pix'].append(y_pix)
+                samples['pupil'].append(pupil)
+
+                if not blinking and all(not np.isnan(val) for val in (x_pix, y_pix, pupil)):
+                    num_valid_samples += 1
 
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
-
-            # only check monocular validity when parsing monocular files
-            if not is_binocular:
-                if not blinking and all(
-                    (not np.isnan(val)) for val in (
-                        samples['x_pix'][-1], samples['y_pix'][-1], samples['pupil'][-1],
-                    )
-                ):
-                    num_valid_samples += 1
-
-            if is_binocular and not blinking and all(
-                (not np.isnan(val)) for val in (
-                    samples['x_left_pix'][-1],
-                    samples['y_left_pix'][-1],
-                    samples['pupil_left'][-1],
-                    samples['x_right_pix'][-1],
-                    samples['y_right_pix'][-1],
-                    samples['pupil_right'][-1],
-                )
-            ):
-                num_valid_samples += 1
 
         elif match := CALIBRATION_TIMESTAMP_REGEX.match(line):
             cal_timestamp = match.groupdict()['timestamp']
