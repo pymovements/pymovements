@@ -460,6 +460,7 @@ class Gaze:
         5
 
         Each gaze split only consists of a single trial:
+
         >>> for gaze_split in gazes:
         ...     print(gaze_split.samples['trial'].unique().to_list())
         [1]
@@ -470,6 +471,7 @@ class Gaze:
 
         Per default, the ``Gaze.metadata`` field is extended with the key/value pairs
         from the split:
+
         >>> gazes = gaze.split(by='trial', extend_metadata=True)
         >>> for gaze_split in gazes:
         ...     print(gaze_split.metadata['trial'])
