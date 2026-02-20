@@ -1090,3 +1090,27 @@ def test_unnest_location_absent_is_noop() -> None:
     after_cols = set(events.frame.columns)
 
     assert before_cols == after_cols
+
+
+def test_merge_subsequent_close_events():
+    for max_gap in range(6):
+        # print(f"\n\nmax_gap: {max_gap}")
+        mevents = Events(
+            pl.DataFrame(
+                {
+                    'name': [
+                        'fixation', 'fixation', 'fixation', 'blink', 'saccade',
+                        'blink', 'fixation', 'fixation', 'fixation', 'fixation',
+                    ],
+                    'onset': [0, 2, 5, 13, 21, 22, 30, 40, 53, 73],
+                    'offset': [1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
+                    'other_col': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+                    'other_col_2': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+                },
+            ),
+        )
+        mevents.merge_subsequent_close_events('fixation', max_gap=max_gap)
+        assert max_gap + \
+            len(mevents.frame) == 10, \
+            f"Expected {10 - max_gap} events after merging," + \
+            f" but got {len(mevents.frame)} for max_gap={max_gap}"
