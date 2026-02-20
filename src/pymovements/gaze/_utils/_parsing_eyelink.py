@@ -492,7 +492,7 @@ def parse_eyelink(
     the current context (values derived from the provided ``patterns`` at that line), so trial/task
     information is preserved when available.
     """
-    # pylint: disable=too-many-branches, too-many-statements
+    # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
     msg_prefix = r'MSG\s+\d+[.]?\d*\s+'
 
     if patterns is None:
@@ -664,14 +664,12 @@ def parse_eyelink(
 
                 # Resolution handling depends on recorder implementation.
                 # - Standard EyeLink GAZE_COORDS list the highest pixel index (0-based),
-                #   so we must increment to obtain the resolution (making odd -> even).
+                #   so we must increment to obtain the resolution.
                 # - PyGaze (libeyelink.py) logs exact resolution; do not increment there.
                 # See https://github.com/pymovements/pymovements/issues/1286
                 if not recorded_by_libeyelink:
-                    if width % 2 != 0:
-                        width += 1
-                    if height % 2 != 0:
-                        height += 1
+                    width += 1
+                    height += 1
 
                 recording_config[-1]['resolution'] = (width, height)
 
