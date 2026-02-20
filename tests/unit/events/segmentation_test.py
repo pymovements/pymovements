@@ -589,7 +589,7 @@ def test_events2segmentation_invalid_padding_type_raises():
         'onset': pl.Series([2], dtype=pl.Int64),
         'offset': pl.Series([5], dtype=pl.Int64),
     })
-    with pytest.raises(TypeError, match='Padding must be None, a tuple, or a number'):
+    with pytest.raises(TypeError, match='padding should be a number or a two-dimensional tuple'):
         events2segmentation(events_df, name='blink', padding='invalid')
 
 

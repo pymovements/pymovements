@@ -979,7 +979,7 @@ class Gaze:
             **kwargs,
         )
 
-    def set_event_samples_to_null(
+    def nullify_event_samples(
             self,
             name: str,
             *,
@@ -1023,7 +1023,7 @@ class Gaze:
         ...     }),
         ...     events=pm.Events(name='blink', onsets=[2], offsets=[3]),
         ... )
-        >>> gaze.set_event_samples_to_null('blink', padding=0)
+        >>> gaze.nullify_event_samples('blink', padding=0)
         >>> gaze.samples['pixel'].to_list()
         [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
         """

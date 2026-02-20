@@ -20,6 +20,7 @@
 """Segmentation utilities for events."""
 from __future__ import annotations
 
+import numbers
 import warnings
 
 import numpy as np
@@ -197,11 +198,11 @@ def events2segmentation(
         pad_before, pad_after = 0.0, 0.0
     elif isinstance(padding, tuple):
         pad_before, pad_after = padding
-    elif isinstance(padding, (int, float)):
+    elif isinstance(padding, numbers.Number):
         pad_before = pad_after = padding
     else:
         raise TypeError(
-            f'Padding must be None, a tuple, or a number, but got {type(padding).__name__}.',
+            f'padding should be a number or a two-dimensional tuple of numbers, but is {type(padding)}',
         )
 
     if pad_before < 0 or pad_after < 0:

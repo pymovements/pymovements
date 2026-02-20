@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test Gaze.set_event_samples_to_null() method."""
+"""Test Gaze.nullify_event_samples() method."""
 from __future__ import annotations
 
 import warnings
@@ -37,7 +37,7 @@ def test_basic_nullify_during_blink():
         }),
         events=pm.Events(name='blink', onsets=[2], offsets=[3]),
     )
-    gaze.set_event_samples_to_null('blink', padding=0)
+    gaze.nullify_event_samples('blink', padding=0)
 
     result = gaze.samples['pixel'].to_list()
     assert result[0] == [1.0, 2.0]
@@ -57,7 +57,7 @@ def test_with_symmetric_padding():
         }),
         events=pm.Events(name='blink', onsets=[3], offsets=[4]),
     )
-    gaze.set_event_samples_to_null('blink', padding=1)
+    gaze.nullify_event_samples('blink', padding=1)
 
     result = gaze.samples['pixel'].to_list()
     # Padded range: 2-5
@@ -80,7 +80,7 @@ def test_with_asymmetric_padding():
         }),
         events=pm.Events(name='blink', onsets=[4], offsets=[5]),
     )
-    gaze.set_event_samples_to_null('blink', padding=(2, 1))
+    gaze.nullify_event_samples('blink', padding=(2, 1))
 
     result = gaze.samples['pixel'].to_list()
     # Padded range: 2-6
@@ -111,7 +111,7 @@ def test_multi_trial():
         ),
         trial_columns='trial',
     )
-    gaze.set_event_samples_to_null('blink', padding=0)
+    gaze.nullify_event_samples('blink', padding=0)
 
     result = gaze.samples['pixel'].to_list()
     # Trial 1: time 1-2 nullified
@@ -137,7 +137,7 @@ def test_no_events_attribute_raises():
     gaze.events = None
 
     with pytest.raises(AttributeError, match='no events'):
-        gaze.set_event_samples_to_null('blink')
+        gaze.nullify_event_samples('blink')
 
 
 def test_no_matching_events_raises():
@@ -151,7 +151,7 @@ def test_no_matching_events_raises():
     )
 
     with pytest.raises(ValueError, match="No events with name 'blink'"):
-        gaze.set_event_samples_to_null('blink')
+        gaze.nullify_event_samples('blink')
 
 
 def test_only_specified_event_type_nullified():
@@ -169,7 +169,7 @@ def test_only_specified_event_type_nullified():
             }),
         ),
     )
-    gaze.set_event_samples_to_null('blink', padding=0)
+    gaze.nullify_event_samples('blink', padding=0)
 
     result = gaze.samples['pixel'].to_list()
     # Only blink at 2-3 nullified
@@ -201,7 +201,7 @@ def test_time_and_trial_columns_preserved():
     original_time = gaze.samples['time'].to_list()
     original_trial = gaze.samples['trial'].to_list()
 
-    gaze.set_event_samples_to_null('blink', padding=0)
+    gaze.nullify_event_samples('blink', padding=0)
 
     assert gaze.samples['time'].to_list() == original_time
     assert gaze.samples['trial'].to_list() == original_trial
@@ -218,7 +218,7 @@ def test_multiple_data_columns_nullified():
         }),
         events=pm.Events(name='blink', onsets=[1], offsets=[2]),
     )
-    gaze.set_event_samples_to_null('blink', padding=0)
+    gaze.nullify_event_samples('blink', padding=0)
 
     for col in ('pixel', 'position', 'velocity'):
         result = gaze.samples[col].to_list()
@@ -239,7 +239,7 @@ def test_scalar_columns_nullified():
             }),
             events=pm.Events(name='blink', onsets=[1], offsets=[2]),
         )
-    gaze.set_event_samples_to_null('blink', padding=0)
+    gaze.nullify_event_samples('blink', padding=0)
 
     result = gaze.samples['pupil'].to_list()
     assert result[0] == 3.0
