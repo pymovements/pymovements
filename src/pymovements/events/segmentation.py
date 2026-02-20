@@ -195,8 +195,12 @@ def events2segmentation(
         pad_before, pad_after = 0.0, 0.0
     elif isinstance(padding, tuple):
         pad_before, pad_after = padding
-    else:
+    elif isinstance(padding, (int, float)):
         pad_before = pad_after = padding
+    else:
+        raise TypeError(
+            f'Padding must be None, a tuple, or a number, but got {type(padding).__name__}.',
+        )
 
     if pad_before < 0 or pad_after < 0:
         raise ValueError(
