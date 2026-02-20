@@ -1091,11 +1091,11 @@ def test_unnest_location_absent_is_noop() -> None:
 
     assert before_cols == after_cols
 
+@pytest.mark.parametrize('max_gap', range(6)) 
 
-def test_merge_subsequent_close_events():
-    for max_gap in range(6):
-        # print(f"\n\nmax_gap: {max_gap}")
-        mevents = Events(
+@pytest.mark.parametrize('events', 
+    [
+        Events(
             pl.DataFrame(
                 {
                     'name': [
@@ -1106,11 +1106,16 @@ def test_merge_subsequent_close_events():
                     'offset': [1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
                     'other_col': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
                     'other_col_2': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
-                },
-            ),
-        )
-        mevents.merge_subsequent_close_events('fixation', max_gap=max_gap)
-        assert max_gap + \
-            len(mevents.frame) == 10, \
+                }
+
+            )
+        
+        ) 
+    ]
+    )
+def test_merge_subsequent_close_events(events, max_gap):
+    
+    events.merge_subsequent_close_events('fixation', max_gap=max_gap)
+    assert (max_gap + len(events.frame)) == 10, \
             f"Expected {10 - max_gap} events after merging," + \
-            f" but got {len(mevents.frame)} for max_gap={max_gap}"
+            f" but got {len(events.frame)} for max_gap={max_gap}"
