@@ -46,10 +46,12 @@ from pymovements.gaze import from_asc
                 pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning'),
-                pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*No tracked eye information found.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning'),
-                pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*No eye tracker software version found.*:UserWarning'),
             ],
             id='empty_file',
         ),
@@ -297,7 +299,7 @@ def test_from_asc_example_file_has_shape_and_schema(
         filename, kwargs, shape, schema, make_example_file,
 ):
     filepath = make_example_file(filename)
-    
+
     gaze = from_asc(filepath, **kwargs)
 
     assert gaze.samples.shape == shape
@@ -593,6 +595,7 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
 
     with pytest.warns(UserWarning, match=expected_message):
         from_asc(filepath, experiment=Experiment(**experiment_kwargs))
+
 
 @pytest.mark.parametrize(
     ('filename', 'kwargs', 'expected_metadata'),

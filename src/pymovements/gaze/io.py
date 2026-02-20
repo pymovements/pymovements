@@ -739,14 +739,14 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         if experiment_resolution == (None, None):
             warnings.warn('No screen resolution found.')
     else:
-        if experiment_resolution != (None,None) and experiment_resolution != parsed_resolution:
+        if experiment_resolution != (None, None) and experiment_resolution != parsed_resolution:
             issues.append(
-                "Screen resolution: "
+                'Screen resolution: '
                 f"{experiment_resolution[0]}x{experiment_resolution[1]} != "
                 f"{parsed_resolution[0]}x{parsed_resolution[1]}",
             )
         experiment.screen.width_px, experiment.screen.height_px = parsed_resolution
-    
+
     # Sampling rate
     parsed_sampling_rate = metadata.get('sampling_rate')
     if parsed_sampling_rate is None:
@@ -758,7 +758,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
             and experiment.eyetracker.sampling_rate != parsed_sampling_rate
         ):
             issues.append(
-                f"Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}"
+                f"Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}",
             )
             experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
@@ -772,15 +772,15 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         asc_right_eye = 'R' in parsed_tracked_eye
         if experiment.eyetracker.left is not None and experiment.eyetracker.left != asc_left_eye:
             issues.append(
-                f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}'
+                f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}',
             )
         experiment.eyetracker.left = asc_left_eye
         if experiment.eyetracker.right is not None and experiment.eyetracker.right != asc_right_eye:
             issues.append(
-                f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}'
+                f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}',
             )
         experiment.eyetracker.right = asc_right_eye
-    
+
     # Mount configuration
     try:
         parsed_mount = metadata['mount_configuration']['mount_type']
@@ -792,7 +792,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     else:
         if experiment.eyetracker.mount is not None and experiment.eyetracker.mount != parsed_mount:
             issues.append(
-                f'Mount configuration: {experiment.eyetracker.mount} != {parsed_mount}'
+                f'Mount configuration: {experiment.eyetracker.mount} != {parsed_mount}',
             )
         experiment.eyetracker.mount = parsed_mount
 
@@ -804,7 +804,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     else:
         if experiment.eyetracker.vendor is not None and experiment.eyetracker.vendor != asc_vendor:
             issues.append(
-                f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}'
+                f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}',
             )
         experiment.eyetracker.vendor = asc_vendor
 
@@ -817,7 +817,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         if experiment.eyetracker.model is not None and experiment.eyetracker.model != parsed_model:
             issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {parsed_model}")
         experiment.eyetracker.model = parsed_model
-    
+
     # Eye tracker software version
     parsed_version = metadata.get('version_number')
     if parsed_version == 'unknown':
@@ -826,10 +826,10 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     else:
         if experiment.eyetracker.version is not None and experiment.eyetracker.version != parsed_version:
             issues.append(
-                f'Eye tracker software version: {experiment.eyetracker.version} != {parsed_version}'
+                f'Eye tracker software version: {
+                    experiment.eyetracker.version} != {parsed_version}',
             )
         experiment.eyetracker.version = parsed_version
-    
 
     if issues:
         warnings.warn(
