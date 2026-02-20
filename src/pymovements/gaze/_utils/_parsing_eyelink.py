@@ -666,7 +666,6 @@ def parse_eyelink(
                 # - Standard EyeLink GAZE_COORDS list the highest pixel index (0-based),
                 #   so we must increment to obtain the resolution.
                 # - PyGaze (libeyelink.py) logs exact resolution; do not increment there.
-                # See https://github.com/pymovements/pymovements/issues/1286
                 if not recorded_by_libeyelink:
                     width += 1
                     height += 1
