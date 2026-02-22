@@ -316,6 +316,27 @@ def test_blink_raise_error(kwargs, expected_error):
             Events(),
             id='single_nan_sample_filtered_by_duration',
         ),
+        pytest.param(
+            # Explicit delta with valid (non-NaN) data — exercises the
+            # delta flagging path (line 167: delta is not None AND valid_diffs > 0).
+            # The large jump from 500 to 100 (diff=400 > delta=50) flags the
+            # transition samples. With max_value_run=0, only the two edge
+            # transitions are flagged as separate short events.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 100.0),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'delta': 50.0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+                'max_value_run': 0,
+            },
+            Events(name='blink', onsets=[9, 89], offsets=[10, 90]),
+            id='explicit_delta_with_valid_diffs',
+        ),
     ],
 )
 def test_blink_detects_events(kwargs, expected):
