@@ -337,6 +337,25 @@ def test_blink_raise_error(kwargs, expected_error):
             Events(name='blink', onsets=[9, 89], offsets=[10, 90]),
             id='explicit_delta_with_valid_diffs',
         ),
+        pytest.param(
+            # Short unflagged gap at the start of the array — not enough flagged
+            # samples before it, so absorption is rejected (False branch of
+            # _absorb_islands line 256).
+            {
+                'pupil': np.concatenate([
+                    np.full(2, 500.0),
+                    np.full(80, np.nan),
+                    np.full(118, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'max_value_run': 3,
+                'nas_around_run': 2,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(name='blink', onsets=[2], offsets=[81]),
+            id='absorption_rejected_at_boundary',
+        ),
     ],
 )
 def test_blink_detects_events(kwargs, expected):
