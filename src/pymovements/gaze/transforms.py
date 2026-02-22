@@ -195,7 +195,8 @@ def downsample(
 def norm(
         *,
         columns: tuple[str, str],
-) -> pl.Expr:
+        parent_column: str | None = None,
+    ) -> pl.Expr:
     r"""Take the norm of a 2D series.
 
     The norm is defined by :math:`\sqrt{x^2 + y^2}` with :math:`x` being the yaw component and
@@ -205,14 +206,21 @@ def norm(
     ----------
     columns: tuple[str, str]
         Columns to take norm of.
+    parent_column: str | None
+        The parent column name. If one wants to compute the norm for nested columns,
+        this should be specified. (default: None)
 
     Returns
     -------
     pl.Expr
         The respective polars expression.
     """
-    x = pl.col(columns[0])
-    y = pl.col(columns[1])
+    if parent_column is not None:
+        x = pl.col(parent_column).struct.field(columns[0])
+        y = pl.col(parent_column).struct.field(columns[1])
+    else:
+        x = pl.col(columns[0])
+        y = pl.col(columns[1])
     return (x.pow(2) + y.pow(2)).sqrt()
 
 
