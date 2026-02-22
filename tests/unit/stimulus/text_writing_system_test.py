@@ -120,7 +120,7 @@ def test_writing_system_explicit_writing_system_object(sample_aoi_dataframe, sam
     assert stimulus.writing_system == VERTICAL_RL
 
 
-def test_writing_system_str_object(sample_aoi_dataframe, sample_schema):
+def test_writing_system_str_object_ltr(sample_aoi_dataframe, sample_schema):
     """Test that writing_system can be set from string descriptor."""
     stimulus = TextStimulus(
         aois=sample_aoi_dataframe,
@@ -133,6 +133,40 @@ def test_writing_system_str_object(sample_aoi_dataframe, sample_schema):
     )
     assert isinstance(stimulus.writing_system, WritingSystem)
     assert stimulus.writing_system == HORIZONTAL_LR
+
+
+def test_writing_system_str_object_rtl(sample_aoi_dataframe, sample_schema):
+    """Test that writing_system can be set from string descriptor."""
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column=sample_schema['aoi'],
+        start_x_column=sample_schema['x_min'],
+        start_y_column=sample_schema['y_min'],
+        width_column=sample_schema['width'],
+        height_column=sample_schema['height'],
+        writing_system='right-to-left',
+    )
+    assert isinstance(stimulus.writing_system, WritingSystem)
+    assert stimulus.writing_system == HORIZONTAL_RL
+
+
+@pytest.mark.parametrize('descriptor', ['LTR', 'LEFT-TO-RIGHT', 'RTL', 'RIGHT-TO-LEFT'])
+def test_writing_system_str_object_requires_exact_descriptor(
+        sample_aoi_dataframe,
+        sample_schema,
+        descriptor,
+):
+    """Test that writing_system descriptor strings require exact canonical values."""
+    with pytest.raises(ValueError, match='Unknown descriptor'):
+        TextStimulus(
+            aois=sample_aoi_dataframe,
+            aoi_column=sample_schema['aoi'],
+            start_x_column=sample_schema['x_min'],
+            start_y_column=sample_schema['y_min'],
+            width_column=sample_schema['width'],
+            height_column=sample_schema['height'],
+            writing_system=descriptor,
+        )
 
 
 @pytest.mark.parametrize(
