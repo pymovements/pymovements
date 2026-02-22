@@ -18,4 +18,5 @@ These How-Tos provide detailed guides to implement the most important use cases 
     saving-loading-preprocessed
     event-handling
     creating-synthetic-data
+    blink-cleaning
     R-tutorial
