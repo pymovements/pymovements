@@ -20,6 +20,7 @@
 """Segmentation utilities for events."""
 from __future__ import annotations
 
+import numbers
 import warnings
 
 import numpy as np
@@ -33,6 +34,7 @@ def events2segmentation(
     trial_columns: list[str] | None = None,
     onset_column: str = 'onset',
     offset_column: str = 'offset',
+    padding: float | tuple[float, float] | None = None,
 ) -> pl.Expr:
     """Convert a list of events to a binary segmentation expression.
 
@@ -61,6 +63,12 @@ def events2segmentation(
         The name of the column containing the offset of the event (inclusive).
         The values must correspond to the values in ``time_column``.
         Default is 'offset'.
+    padding : float | tuple[float, float] | None
+        Padding to extend each event interval, in the same units as ``time_column``.
+        If a single float, the same padding is applied symmetrically before and after
+        each event. If a tuple ``(before, after)``, ``before`` is subtracted from the
+        onset and ``after`` is added to the offset. Both values must be non-negative.
+        Default is None (no padding).
 
     Returns
     -------
@@ -69,9 +77,12 @@ def events2segmentation(
 
     Raises
     ------
+    TypeError
+        If ``padding`` is not None, a tuple, or a number.
     ValueError
         If ``onset_column`` or ``offset_column`` is missing from the events.
         If any onset is greater than its offset.
+        If any padding value is negative.
 
     Notes
     -----
@@ -83,6 +94,10 @@ def events2segmentation(
     against the values in the ``time_column`` of the samples DataFrame. If the
     ``time_column`` contains indices, then onsets and offsets are indices. If the
     ``time_column`` contains timestamps, then onsets and offsets are timestamps.
+
+    When ``padding`` is specified, each event interval is extended by subtracting
+    ``pad_before`` from the onset and adding ``pad_after`` to the offset. The padding
+    values are in the same units as the ``time_column``.
 
     .. warning::
         The offset is considered inclusive.
@@ -120,6 +135,30 @@ def events2segmentation(
     │ 8    ┆ true  │
     │ 9    ┆ true  │
     └──────┴───────┘
+    >>> # With padding to extend event intervals
+    >>> single_event = pl.DataFrame(
+    ...     {'name': ['blink'], 'onset': [3], 'offset': [5]}
+    ... )
+    >>> gaze_df.with_columns(
+    ...     events2segmentation(single_event, name='blink', padding=1)
+    ... )
+    shape: (10, 2)
+    ┌──────┬───────┐
+    │ time ┆ blink │
+    │ ---  ┆ ---   │
+    │ i64  ┆ bool  │
+    ╞══════╪═══════╡
+    │ 0    ┆ false │
+    │ 1    ┆ false │
+    │ 2    ┆ true  │
+    │ 3    ┆ true  │
+    │ 4    ┆ true  │
+    │ 5    ┆ true  │
+    │ 6    ┆ true  │
+    │ 7    ┆ false │
+    │ 8    ┆ false │
+    │ 9    ┆ false │
+    └──────┴───────┘
     >>> # With trial columns
     >>> events_df = pl.DataFrame({
     ...     'name': ['blink', 'blink'],
@@ -154,6 +193,24 @@ def events2segmentation(
     if offset_column not in events.columns:
         raise ValueError(f"Offset column '{offset_column}' not found in events.")
 
+    # Parse and validate padding
+    if padding is None:
+        pad_before, pad_after = 0.0, 0.0
+    elif isinstance(padding, tuple):
+        pad_before, pad_after = padding
+    elif isinstance(padding, numbers.Number):
+        pad_before = pad_after = padding
+    else:
+        raise TypeError(
+            'padding should be a number or a two-dimensional tuple'
+            f' of numbers, but is {type(padding)}',
+        )
+
+    if pad_before < 0 or pad_after < 0:
+        raise ValueError(
+            f'Padding values must be non-negative, but got ({pad_before}, {pad_after}).',
+        )
+
     # Filter events by name
     if 'name' in events.columns:
         relevant_events = events.filter(pl.col('name') == name)
@@ -172,13 +229,17 @@ def events2segmentation(
             'Onset must be less than or equal to offset, but found invalid event(s)',
         )
 
-    # Check for overlaps
+    # Apply padding for overlap checking
+    padded_onsets = onsets - pad_before
+    padded_offsets = offsets + pad_after
+
+    # Check for overlaps using padded intervals
     if len(onsets) > 1:
         # Check for overlaps within each trial
         if trial_columns:
             for trial_group in relevant_events.group_by(trial_columns):
-                trial_onsets = trial_group[1][onset_column].to_numpy()
-                trial_offsets = trial_group[1][offset_column].to_numpy()
+                trial_onsets = trial_group[1][onset_column].to_numpy() - pad_before
+                trial_offsets = trial_group[1][offset_column].to_numpy() + pad_after
                 if _has_overlap(trial_onsets, trial_offsets):
                     warnings.warn(
                         f"Overlapping events detected for trial {trial_group[0]}",
@@ -188,7 +249,7 @@ def events2segmentation(
                     break
 
         # Check for overlaps if no trialised check has been performed
-        elif _has_overlap(onsets, offsets):
+        elif _has_overlap(padded_onsets, padded_offsets):
             # If trial column is present, mention that it might be needed
             if 'trial' in events.columns:
                 warnings.warn(
@@ -203,8 +264,8 @@ def events2segmentation(
     is_event = pl.repeat(False, pl.len())
     for event in relevant_events.to_dicts():
         is_in_time_range = (
-            pl.col(time_column).ge(event[onset_column])
-            & pl.col(time_column).le(event[offset_column])
+            pl.col(time_column).ge(event[onset_column] - pad_before)
+            & pl.col(time_column).le(event[offset_column] + pad_after)
         )
 
         # Select events matching time and trial criteria
@@ -217,6 +278,181 @@ def events2segmentation(
             is_event = is_event | is_in_time_range
 
     return is_event.alias(name)
+
+
+def events2timeratio(
+    events: pl.DataFrame,
+    samples: pl.DataFrame,
+    name: str,
+    time_column: str = 'time',
+    trial_columns: list[str] | None = None,
+    sampling_rate: float | None = None,
+    onset_column: str = 'onset',
+    offset_column: str = 'offset',
+) -> pl.Expr:
+    """Create an expression to calculate time-based event ratio.
+
+    This function creates an expression that calculates the ratio of time covered by events
+    relative to the total time span.
+
+    Parameters
+    ----------
+    events : pl.DataFrame
+        Event data. Must have onset and offset columns.
+    samples : pl.DataFrame
+        Sample data containing the time column.
+    name : str
+        The name of the event type to calculate ratio for (e.g. 'blink').
+    time_column : str
+        The name of the column containing timestamps in samples.
+    trial_columns : list[str] | None
+        The names of columns identifying trials. If provided, ratios are computed
+        per trial.
+    sampling_rate : float | None
+        The sampling rate of the gaze data in Hz. If provided, the ratio
+        is calculated inclusively by adding the sampling interval to the
+        durations and the total time range. If ``None``, the sampling
+        interval is estimated as the mode of the time differences.
+    onset_column : str
+        The name of the column containing event onset times.
+    offset_column : str
+        The name of the column containing event offset times.
+
+    Returns
+    -------
+    pl.Expr
+        An expression that calculates the event ratio. When aggregated with
+        group_by().agg(), computes per-trial ratios.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.events import events2timeratio
+    >>> events = pl.DataFrame({
+    ...     'name': ['blink', 'blink'],
+    ...     'onset': [1.0, 5.0],
+    ...     'offset': [3.0, 7.0],
+    ... })
+    >>> samples = pl.DataFrame({'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]})
+    >>> samples.select(events2timeratio(events, samples, 'blink'))
+    shape: (1, 1)
+    ┌───────────────────┐
+    │ event_ratio_blink │
+    │ ---               │
+    │ f64               │
+    ╞═══════════════════╡
+    │ 0.75              │
+    └───────────────────┘
+    >>> # Inclusive ratio using sampling rate
+    >>> samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000.0))
+    shape: (1, 1)
+    ┌───────────────────┐
+    │ event_ratio_blink │
+    │ ---               │
+    │ f64               │
+    ╞═══════════════════╡
+    │ 0.75              │
+    └───────────────────┘
+    """
+    if events.is_empty():
+        return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
+
+    if onset_column not in events.columns:
+        raise ValueError(f"Onset column {onset_column!r} not found in events.")
+    if offset_column not in events.columns:
+        raise ValueError(f"Offset column {offset_column!r} not found in events.")
+    if time_column not in samples.columns:
+        raise ValueError(f"Time column {time_column!r} not found in samples.")
+
+    relevant_events = events.filter(pl.col('name') == name)
+
+    if relevant_events.is_empty():
+        return pl.lit([0.0]).list.sum().alias(f"event_ratio_{name}")
+
+    if samples.is_empty():
+        return pl.lit(None).cast(pl.Float64).alias(f"event_ratio_{name}")
+
+    # Single-sample series: return 1.0 if that sample falls within an event, else 0.0.
+    if samples.height == 1:
+        sample_time = samples.get_column(time_column).item(0)
+        event_filter = (
+            pl.col(onset_column) <= sample_time
+        ) & (
+            pl.col(offset_column) >= sample_time
+        )
+        if trial_columns:
+            for col in trial_columns:
+                sample_val = samples.get_column(col).item(0)
+                event_filter = event_filter & (pl.col(col) == sample_val)
+        matching = relevant_events.filter(event_filter)
+        return pl.lit(1.0 if not matching.is_empty() else 0.0).alias(f"event_ratio_{name}")
+
+    dt_ms = 0.0
+    if sampling_rate is not None:
+        dt_ms = 1000.0 / sampling_rate
+    else:
+        # Calculate the mode of time differences as a robust estimate for the sampling interval.
+        # At this point, samples is non-empty and has more than one row (single-sample above),
+        # so `diff().drop_nulls()` will yield at least one element and `mode()` will be non-empty.
+        time_diffs = samples[time_column].diff().drop_nulls()
+        dt_ms = float(time_diffs.mode().item())
+
+    # Event ratio considering trial columns
+    if trial_columns:
+        event_durations = (
+            relevant_events.group_by(trial_columns, maintain_order=True)
+            .agg((pl.col(offset_column) - pl.col(onset_column) + dt_ms).alias('duration'))
+            .with_columns(pl.col('duration').list.sum())
+        )
+
+        sample_time_ranges = samples.group_by(trial_columns, maintain_order=True).agg(
+            (pl.col(time_column).max() - pl.col(time_column).min() + dt_ms).alias('time_range'),
+        )
+
+        trial_ratios = event_durations.join(
+            sample_time_ranges,
+            on=trial_columns,
+            how='full',
+        ).with_columns(
+            (pl.col('duration') / pl.col('time_range')).alias(f"event_ratio_{name}"),
+        )
+
+        ratio_expr: pl.Expr | None = None
+        for row in trial_ratios.to_dicts():
+            condition: pl.Expr | None = None
+            for col in trial_columns:
+                trial_val = row.get(col)
+                trial_right_val = row.get(f"{col}_right")
+                val = trial_val if trial_val is not None else trial_right_val
+                if condition is None:
+                    condition = pl.col(col) == val
+                else:
+                    condition = condition & (pl.col(col) == val)
+
+            ratio = row.get(f"event_ratio_{name}")
+            if ratio is None:
+                ratio = 0.0
+
+            # Build conditional expression for event ratio
+            if ratio_expr is None:
+                ratio_expr = pl.when(condition).then(pl.lit(ratio))
+            else:
+                ratio_expr = ratio_expr.when(condition).then(pl.lit(ratio))
+
+        # At this point, trial_columns is guaranteed to be non-empty, so ratio_expr is set
+        return ratio_expr.otherwise(pl.lit([0.0]).list.sum()).alias(  # type: ignore[union-attr]
+            f"event_ratio_{name}",
+        )
+
+    total_duration = (
+        relevant_events.select(pl.col(offset_column) - pl.col(onset_column) + dt_ms).sum()
+    ).item()
+
+    time_range = samples.select(
+        pl.col(time_column).max() - pl.col(time_column).min() + dt_ms,
+    ).item()
+
+    return pl.lit(total_duration / time_range).alias(f"event_ratio_{name}")
 
 
 def segmentation2events(
