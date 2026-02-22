@@ -906,6 +906,61 @@ from pymovements.synthetic import step_function
             id='out_of_screen_explicit_boundaries_override_auto_fill',
         ),
 
+        pytest.param(
+            'blink',
+            {
+                'max_value_run': 0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            pm.gaze.Gaze(
+                pl.DataFrame({
+                    'time': np.arange(200, dtype=np.int64),
+                    'x': np.zeros(200),
+                    'y': np.zeros(200),
+                    'pupil': np.concatenate([
+                        np.full(10, 500.0),
+                        np.full(80, np.nan),
+                        np.full(110, 500.0),
+                    ]),
+                }),
+                time_column='time',
+                position_columns=['x', 'y'],
+            ),
+            pm.Events(name='blink', onsets=[10], offsets=[89]),
+            id='blink_scalar_pupil_auto_fill',
+        ),
+
+        pytest.param(
+            'blink',
+            {
+                'max_value_run': 0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            pm.gaze.Gaze(
+                pl.DataFrame({
+                    'time': np.arange(200, dtype=np.int64),
+                    'x': np.zeros(200),
+                    'y': np.zeros(200),
+                    'pupil': [
+                        [left, right] for left, right in zip(
+                            np.concatenate([
+                                np.full(10, 500.0),
+                                np.full(80, np.nan),
+                                np.full(110, 500.0),
+                            ]),
+                            np.full(200, 500.0),
+                        )
+                    ],
+                }),
+                time_column='time',
+                position_columns=['x', 'y'],
+            ),
+            pm.Events(name='blink', onsets=[10], offsets=[89]),
+            id='blink_list_pupil_binocular_auto_fill',
+        ),
+
 
     ],
 )
@@ -1079,6 +1134,15 @@ def test_gaze_detect_custom_method_no_arguments():
             pl.exceptions.ColumnNotFoundError,
             "Column 'pixel' not found. Available columns are: ['time']",
             id='out_of_screen_no_pixel_raises_column_not_found_error',
+        ),
+
+        pytest.param(
+            'blink',
+            {},
+            pm.gaze.Gaze(None, pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000)),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'pupil' not found. Available columns are: ['time']",
+            id='blink_no_pupil_raises_column_not_found_error',
         ),
 
     ],
