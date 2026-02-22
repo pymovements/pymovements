@@ -2055,6 +2055,14 @@ def test_filter_samples_raises_for_invalid_bounds(tmp_path):
         dataset.filter_samples(min_velocity=2.0, max_velocity=1.0)
 
 
+def test_filter_samples_raises_for_invalid_duration_bounds(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    dataset.gaze = [Mock(samples=pl.DataFrame({'duration': [1.0]}))]
+
+    with pytest.raises(ValueError, match='min_duration must be less than or equal to max_duration'):
+        dataset.filter_samples(min_duration=2.0, max_duration=1.0)
+
+
 def test_filter_samples_raises_for_missing_required_column(tmp_path):
     dataset = Dataset('ToyDataset', path=tmp_path)
     dataset.gaze = [Mock(samples=pl.DataFrame({'time': [0, 1, 2]}))]
