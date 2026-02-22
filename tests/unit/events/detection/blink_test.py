@@ -292,6 +292,30 @@ def test_blink_raise_error(kwargs, expected_error):
             Events(name='my_blink', onsets=[10], offsets=[89]),
             id='custom_name_parameter',
         ),
+        pytest.param(
+            # Explicit delta with all-NaN pupil — valid_diffs is empty so delta
+            # flagging is skipped, but NaN flagging still catches everything.
+            {
+                'pupil': np.full(100, np.nan),
+                'timesteps': np.arange(100, dtype=int),
+                'delta': 10.0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(name='blink', onsets=[0], offsets=[99]),
+            id='explicit_delta_all_nan_no_valid_diffs',
+        ),
+        pytest.param(
+            # Single-sample pupil — duration is 0 so it is filtered by minimum_duration=1.
+            {
+                'pupil': np.array([np.nan]),
+                'timesteps': np.array([0], dtype=int),
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(),
+            id='single_nan_sample_filtered_by_duration',
+        ),
     ],
 )
 def test_blink_detects_events(kwargs, expected):

@@ -1450,7 +1450,7 @@ class Gaze:
         """
         if not isinstance(name, str) or not name:
             raise ValueError(
-                f"name must be a non-empty string, but got: {name!r}",
+                f'name must be a non-empty string, but got: {name!r}',
             )
 
         if not isinstance(time_column, str):
@@ -1462,7 +1462,7 @@ class Gaze:
         if time_column not in self.samples.columns:
             raise ValueError(
                 f"time_column '{time_column}' not found in samples. "
-                f"Available columns: {self.samples.columns}",
+                f'Available columns: {self.samples.columns}',
             )
 
         if sampling_rate is None and self.experiment is not None:
