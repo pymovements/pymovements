@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import re
 import shutil
@@ -2062,13 +2063,21 @@ def test_filter_samples_raises_for_missing_required_column(tmp_path):
         dataset.filter_samples(min_velocity=1.0)
 
 
+def test_filter_samples_raises_for_missing_duration_column(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    dataset.gaze = [Mock(samples=pl.DataFrame({'velocity': [1.0, 2.0, 3.0]}))]
+
+    with pytest.raises(ValueError, match="column 'duration' is missing"):
+        dataset.filter_samples(min_duration=1.0)
+
+
 def test_filter_samples_warns_for_invalid_velocity_norm(tmp_path):
     dataset = Dataset('ToyDataset', path=tmp_path)
 
     gaze = Mock()
     gaze.samples = pl.DataFrame(
         {
-            'velocity': [[1.0, 0.0], [float('nan'), 0.0], None],
+            'velocity': [[1.0, 0.0], [math.nan, 0.0], None],
             'duration': [10, 10, 10],
         },
     )
@@ -2091,7 +2100,7 @@ def test_filter_samples_warns_for_invalid_duration(tmp_path):
     gaze.samples = pl.DataFrame(
         {
             'velocity': [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
-            'duration': [10.0, float('nan'), None],
+            'duration': [10.0, math.nan, None],
         },
     )
     dataset.gaze = [gaze]
@@ -2103,6 +2112,29 @@ def test_filter_samples_warns_for_invalid_duration(tmp_path):
         dataset.filter_samples(min_duration=0.0)
 
     expected = pl.DataFrame({'velocity': [[1.0, 0.0]], 'duration': [10.0]})
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_max_duration(tmp_path):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+
+    gaze = Mock()
+    gaze.samples = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
+            'duration': [50, 120, 300],
+        },
+    )
+    dataset.gaze = [gaze]
+
+    dataset.filter_samples(max_duration=120)
+
+    expected = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [1.0, 0.0]],
+            'duration': [50, 120],
+        },
+    )
     assert_frame_equal(dataset.gaze[0].samples, expected)
 
 
@@ -2145,6 +2177,24 @@ def test_filter_samples_logs_number_of_filtered_samples(tmp_path, caplog):
         dataset.filter_samples(min_velocity=2.0, max_velocity=6.0, min_duration=100)
 
     assert 'Filtered out 2 samples.' in caplog.text
+
+
+def test_filter_samples_does_not_log_when_no_filters_are_set(tmp_path, caplog):
+    dataset = Dataset('ToyDataset', path=tmp_path)
+
+    gaze = Mock()
+    gaze.samples = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [3.0, 4.0]],
+            'duration': [50, 120],
+        },
+    )
+    dataset.gaze = [gaze]
+
+    with caplog.at_level(logging.INFO):
+        dataset.filter_samples()
+
+    assert 'Filtered out' not in caplog.text
 
 
 @pytest.mark.parametrize(

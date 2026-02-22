@@ -941,6 +941,7 @@ class Dataset:
                     filter_expressions.append(pl.col('duration') <= max_duration)
 
             if has_target_event_filter:
+                assert target_event is not None
                 filter_expressions.append(
                     events2segmentation(
                         events=gaze.events.frame,
