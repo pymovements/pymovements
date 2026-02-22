@@ -189,8 +189,6 @@ def blink(
     # Filter by duration using timestep units (ms when timesteps are in ms)
     filtered = []
     for c in candidates:
-        if len(c) == 0:
-            continue
         duration = timesteps[c[-1]] - timesteps[c[0]]
         if duration < minimum_duration:
             continue
