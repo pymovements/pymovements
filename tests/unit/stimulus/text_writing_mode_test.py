@@ -36,8 +36,8 @@ VERTICAL_RL = WritingSystem('vertical', 'right-to-left', 'top-to-bottom')
 VERTICAL_LR = WritingSystem('vertical', 'left-to-right', 'top-to-bottom')
 
 
-@pytest.fixture
-def sample_aoi_dataframe():
+@pytest.fixture(name='sample_aoi_dataframe')
+def fixture_sample_aoi_dataframe():
     """Create a sample AOI dataframe for testing."""
     return pl.DataFrame({
         'aoi': ['word1', 'word2', 'word3'],
@@ -49,8 +49,8 @@ def sample_aoi_dataframe():
     })
 
 
-@pytest.fixture
-def sample_schema():
+@pytest.fixture(name='sample_schema')
+def fixture_sample_schema():
     """Create a sample schema for testing."""
     return {
         'aoi': 'aoi',

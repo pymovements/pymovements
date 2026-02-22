@@ -62,16 +62,40 @@ class WritingSystem:
     -----
     This class is reserved for future functionality (e.g., detecting regressive saccades)
     and currently does not affect behavior.
-    Typical configurations will be:
-        - WritingSystem(axis='horizontal', lining='top-to-bottom', directionality='left-to-right')
-            Horizontal text, left-to-right (e.g., English, Japanese horizontal)
-        - WritingSystem(axis='horizontal', lining='top-to-bottom', directionality='right-to-left')
-            Horizontal text, right-to-left (e.g., Arabic, Hebrew)
-        - WritingSystem(axis='vertical', lining='right-to-left', directionality='top-to-bottom')
-            Vertical text, top-to-bottom with columns progressing right-to-left
-            (e.g., Japanese tategaki)
-        - WritingSystem(axis='vertical', lining='left-to-right', directionality='top-to-bottom')
-            Vertical text, top-to-bottom with columns progressing left-to-right (e.g., Mongolian)
+
+        Typical configurations are:
+
+        * Horizontal LTR::
+
+            WritingSystem(
+                axis='horizontal',
+                lining='top-to-bottom',
+                directionality='left-to-right',
+            )
+
+        * Horizontal RTL::
+
+            WritingSystem(
+                axis='horizontal',
+                lining='top-to-bottom',
+                directionality='right-to-left',
+            )
+
+        * Vertical RL columns::
+
+            WritingSystem(
+                axis='vertical',
+                lining='right-to-left',
+                directionality='top-to-bottom',
+            )
+
+        * Vertical LR columns::
+
+            WritingSystem(
+                axis='vertical',
+                lining='left-to-right',
+                directionality='top-to-bottom',
+            )
     """
 
     axis: Literal['horizontal', 'vertical'] = 'horizontal'
