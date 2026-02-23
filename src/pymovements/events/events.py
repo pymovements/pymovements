@@ -344,19 +344,19 @@ class Events:
         pattern : str
             Regular expression pattern applied to the ``name`` column.
 
-            Examples
-            --------
-            Exact match:
-                ``r"^fixation\\.ivt$"``
+        Examples
+        --------
+        Exact match:
+            ``r"^fixation\\.ivt$"``
 
-            Prefix match:
-                ``r"^fixation"``
+        Prefix match:
+            ``r"^fixation"``
 
-            Suffix match:
-                ``r"ivt$"``
+        Suffix match:
+            ``r"ivt$"``
 
-            All saccade variants:
-                ``"saccade"``
+        All saccade variants:
+            ``"saccade"``
 
         Returns
         -------
