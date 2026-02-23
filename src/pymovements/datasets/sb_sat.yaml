@@ -2,6 +2,15 @@ name: SBSAT
 
 long_name: "Stony Brook SAT reading fixation dataset"
 
+description: |
+  SB-SAT dataset :cite:p:`SB-SAT`.
+
+  This dataset includes monocular eye tracking data from a single participant in a single
+  session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
+  eye tracker and are provided as pixel coordinates.
+  The participant is instructed to read texts and answer questions.
+  Check the respective paper for details :cite:p:`SB-SAT`.
+
 resources:
   - content: gaze
     url: https://osf.io/download/jgae7/

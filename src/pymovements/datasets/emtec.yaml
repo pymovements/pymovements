@@ -2,6 +2,15 @@ name: "EMTeC"
 
 long_name: 'Eye movements on Machine-generated Texts Corpus'
 
+description: |
+  EMTeC dataset :cite:p:`EMTeC`.
+
+  This dataset includes eye-tracking data from 107 native speakers of English reading
+  machine-generated texts.  Eye movements are recorded at a sampling frequency of 1,000 Hz
+  using an EyeLink 1000 eye tracker and are provided as pixel coordinates.
+
+  Check the respective paper for details :cite:p:`EMTeC`.
+
 resources:
   - content: gaze
     url: "https://osf.io/download/374sk/"

@@ -2,6 +2,19 @@ name: "GazeOnFaces"
 
 long_name: 'GazeOnFaces dataset'
 
+description: |
+  GazeOnFaces dataset :cite:p:`GazeOnFaces`.
+
+  This dataset includes monocular eye tracking data from single participants in a single
+  session. Eye movements are recorded at a sampling frequency of 60 Hz
+  using an EyeLink 1000 video-based eye tracker and are provided as pixel coordinates.
+
+  Participants were sat 57 cm away from the screen (19-inch LCD monitor,
+  screen res=1280×1024, 60 Hz). Recordings of the eye movements of one eye in monocular
+  pupil/corneal reflection tracking mode.
+
+  Check the respective paper for details :cite:p:`GazeOnFaces`.
+
 resources:
   - content: gaze
     url: "https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip="
