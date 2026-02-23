@@ -10,10 +10,10 @@ description: |
   precomputed events are reported.
 
   Each participant is instructed to read three texts:
-      - Task called Syllables contains 90 syllables arranged in a 9 x 10 matrix
-      - Task called MeaningfulText consists of a passage about
-        a young boy who watches a squirrel from his window.
-      - Task called PseudoText comprises fictional, meaningless words.
+    - Task called Syllables contains 90 syllables arranged in a 9 x 10 matrix
+    - Task called MeaningfulText consists of a passage about
+      a young boy who watches a squirrel from his window.
+    - Task called PseudoText comprises fictional, meaningless words.
 
   Check the respective paper for details :cite:p:`ETDD70`.
 
