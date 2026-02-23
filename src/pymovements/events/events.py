@@ -337,7 +337,7 @@ class Events:
         return list(event_property_columns)
 
     def filter_by_name(self, pattern: str) -> pl.DataFrame:
-        """Filter events by name using a name or regular expression.
+        r"""Filter events by name using a name or regular expression.
 
         Parameters
         ----------
