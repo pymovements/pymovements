@@ -973,7 +973,7 @@ def test_filter_by_name_exact_match_regex():
     out = edf.filter_by_name(r'^fixation\.ivt$')
     assert out['name'].to_list() == ['fixation.ivt']
 
-    def test_filter_by_name_no_matches():
+def test_filter_by_name_no_matches():
     edf = _edf(['fixation', 'saccade'])
     out = edf.filter_by_name(r'^blink$')
     assert out.height == 0
