@@ -183,6 +183,7 @@ EXPECTED_METADATA_EYELINK = {
     'year': 2023,
     'version_1': 'EYELINK II 1',
     'version_2': 'EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)',
+    'recorded_by': 'pymovements',
     'model': 'EyeLink Portable Duo',
     'version_number': '6.12',
     'sampling_rate': 1000.0,
@@ -191,7 +192,7 @@ EXPECTED_METADATA_EYELINK = {
     'pupil_data_type': 'AREA',
     'calibrations': [],
     'validations': [],
-    'resolution': (1280, 1024),
+    'resolution': (1280.0, 1024.0),
     'DISPLAY_COORDS': (0.0, 0.0, 1279.0, 1023.0),
     'data_loss_ratio_blinks': 3 / 12,
     'data_loss_ratio': 4 / 12,
@@ -1729,30 +1730,123 @@ END 20 SAMPLES EVENTS RES 0 0
 
 
 @pytest.mark.parametrize(
-    ('asc_body', 'expected_res'),
+    ('asc_body', 'expected_res', 'expected_recorded_by', 'extend_resolution'),
     [
         pytest.param(
             """MSG 10 RECCFG CR 1000 2 1 L
 MSG 20 DISPLAY_COORDS 0 0 1279 1023
 MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
-""", (1280.0, 1024.0), id='odd_resolution_increment',
+""",
+            (1280.0, 1024.0),
+            '',
+            None,
+            id='odd_resolution_increment',
         ),
         pytest.param(
             """MSG 10 RECCFG CR 1000 2 1 L
 MSG 20 DISPLAY_COORDS 0 0 1280 1024
 MSG 30 GAZE_COORDS 0.00 0.00 1280.00 1024.00
-""", (1280.0, 1024.0), id='even_resolution_no_increment',
+""",
+            (1281.0, 1025.0),
+            '',
+            None,
+            id='even_resolution_increment',
+        ),
+        pytest.param(
+            """** RECORDED BY libeyelink.py
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1279 1023
+MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
+""",
+            (1279.0, 1023.0),
+            'libeyelink.py',
+            None,
+            id='libeyelink_odd_no_increment',
+        ),
+        pytest.param(
+            """** RECORDED BY libeyelink.py
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1280 1024
+MSG 30 GAZE_COORDS 0.00 0.00 1280.00 1024.00
+""",
+            (1280.0, 1024.0),
+            'libeyelink.py',
+            None,
+            id='libeyelink_even_no_increment',
+        ),
+        pytest.param(
+            """** RECORDED BY some_user
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1279 1023
+MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
+""",
+            (1280.0, 1024.0),
+            'some_user',
+            None,
+            id='other_user_odd_increment',
+        ),
+        pytest.param(
+            """** RECORDED BY some_user
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1280 1024
+MSG 30 GAZE_COORDS 0.00 0.00 1280.00 1024.00
+""",
+            (1281.0, 1025.0),
+            'some_user',
+            None,
+            id='other_user_even_increment',
+        ),
+        pytest.param(
+            """** RECORDED BY some_user
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1279 1023
+MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
+""",
+            (1280.0, 1024.0),
+            'some_user',
+            True,
+            id='force_extend_true',
+        ),
+        pytest.param(
+            """** RECORDED BY some_user
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1279 1023
+MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
+""",
+            (1279.0, 1023.0),
+            'some_user',
+            False,
+            id='force_extend_false',
+        ),
+        pytest.param(
+            """** RECORDED BY libeyelink.py
+MSG 10 RECCFG CR 1000 2 1 L
+MSG 20 DISPLAY_COORDS 0 0 1279 1023
+MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
+""",
+            (1280.0, 1024.0),
+            'libeyelink.py',
+            True,
+            id='libeyelink_force_extend_true',
         ),
     ],
 )
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_parse_eyelink_resolution_handling(make_text_file, asc_body, expected_res):
+def test_parse_eyelink_resolution_handling(
+        make_text_file, asc_body, expected_res, expected_recorded_by, extend_resolution,
+):
     """Test EyeLink GAZE_COORDS resolution handling (increments for odd values)."""
     filepath = make_text_file('res_test.asc', body=asc_body)
-    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+    _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
+        filepath, extend_resolution=extend_resolution,
+    )
     res = metadata['recording_config'][0]['resolution']
     assert res == expected_res
+    if expected_recorded_by:
+        assert metadata['recorded_by'] == expected_recorded_by
+    else:
+        assert 'recorded_by' not in metadata
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
