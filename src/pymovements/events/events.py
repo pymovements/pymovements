@@ -358,7 +358,7 @@ class Events:
         ... )
         >>> print(events)
         shape
-                
+
         All fixations:
         >>> events.filter_by_name('fixation')
         shape
