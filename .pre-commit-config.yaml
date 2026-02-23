@@ -31,13 +31,14 @@ repos:
   # Type checking
   - repo: local
     hooks: # https://github.com/astral-sh/ty/issues/269 TODO: choose hook working on pre-commit.com
-      - id: ty
-        name: ty
-        entry: uvx ty check
-        language: system
+      - id: ty-check
+        name: ty-check
+        language: python
+        entry: ty check
         types: [ python ]
         args: [ --output-format=concise ]
         pass_filenames: false
+        additional_dependencies: [ty]
   - repo: https://github.com/citation-file-format/cffconvert
     rev: 054bda51dbe278b3e86f27c890e3f3ac877d616c
     hooks:
