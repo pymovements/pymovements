@@ -442,8 +442,12 @@ def from_asc(
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. (default: None)
     extend_resolution: bool | None
-        Flag indicating if the screen resolution should be extended by 1 pixel.
-        If None, the resolution is extended unless the file was recorded by libeyelink.py.
+        Extend the parsed screen resolution by 1 pixel if ``True``.
+        If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
+        ``libeyelink.py`` (e.g., if *PyGaze* was used for recording data).
+        Some files that were not recorded by SR Research software may need to specify
+        ``False`` if their reported screen resolution is inconsistent with the 
+        SR Research specification.
         (default: None)
 
     Returns
@@ -493,7 +497,6 @@ def from_asc(
     Using other ``edf2asc`` parameters may lead to errors or unexpected behavior. For example, using
     ``-e`` or ``-ns`` to output only events or ``-s`` or ``-ne`` to only output samples will not
     work with this function, as it expects both samples and events to be present in the ASC file.
-
 
     Examples
     --------
