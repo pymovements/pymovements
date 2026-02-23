@@ -346,17 +346,47 @@ class Events:
 
         Examples
         --------
-        Exact match:
-            ``r"^fixation\\.ivt$"``
+        Let's create some events with different names first:
+
+        >>> events = pm.Events(
+        ...     names=[
+        ...         'fixation', 'fixation.idt', 'fixation.ivt', 'fixation.eyelink',
+        ...         'saccade', 'saccade', 'microsaccade', 'microsaccade',
+        ...     ],
+        ...     onsets=[100, 101, 99, 100, 90, 115, 145, 175],
+        ...     offsets=[177, 178, 175, 175, 100, 124, 157, 199],
+        ... )
+        >>> print(events)
+        shape
+                
+        All fixations:
+        >>> events.filter_by_name('fixation')
+        shape
+
+        Exact match for fixation:
+        >>> events.filter_by_name('^fixation$')
+        shape
 
         Prefix match:
-            ``r"^fixation"``
+        >>> events.filter_by_name('^fixation\\.$')
+        shape
 
         Suffix match:
-            ``r"ivt$"``
+        >>> events.filter_by_name('ivt$')
+        shape
 
         All saccade variants:
-            ``"saccade"``
+        >>> events.filter_by_name('saccade')
+        Events
+
+        Only microsaccades:
+        >>> events.filter_by_name('microsaccade')
+        Events
+
+        Exact match for saccade:
+        >>> events.filter_by_name('^saccade$')
+        Events
+
 
         Returns
         -------
