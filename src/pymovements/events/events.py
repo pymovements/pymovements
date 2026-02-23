@@ -368,22 +368,6 @@ class Events:
 
         return self.frame.filter(pl.col('name').str.contains(pattern))
 
-    def _filter_by_prefix(self, prefix: str) -> pl.DataFrame:
-        """Filter events by name prefix.
-
-        Parameters
-        ----------
-        prefix: str
-            Event name prefix used to select rows (e.g., ``"fixation"``, ``"saccade"``).
-
-        Returns
-        -------
-        pl.DataFrame
-            DataFrame containing events whose ``name`` column starts with ``prefix``.
-        """
-        # return self.frame.filter(pl.col('name').str.starts_with(prefix))
-        return self.filter_by_name(rf"^{prefix}")
-
     @property
     def fixations(self) -> pl.DataFrame:
         """Fixation events.
@@ -395,7 +379,7 @@ class Events:
             ``name`` starts with ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``,
             ``"fixation_eyelink"``).
         """
-        return self._filter_by_prefix('fixation')
+        return self.filter_by_name('fixation')
 
     @property
     def saccades(self) -> pl.DataFrame:
@@ -407,7 +391,7 @@ class Events:
             DataFrame containing all saccade events, i.e., rows where
             ``name`` starts with ``"saccade"`` (e.g., ``"saccade"``, ``"saccade_algo"``).
         """
-        return self._filter_by_prefix('saccade')
+        return self.filter_by_name('saccade')
 
     @property
     def blinks(self) -> pl.DataFrame:
@@ -419,7 +403,7 @@ class Events:
             DataFrame containing all blink events, i.e., rows where
             ``name`` starts with ``"blink"`` (e.g., ``"blink"``, ``"blink_detectorX"``).
         """
-        return self._filter_by_prefix('blink')
+        return self.filter_by_name('blink')
 
     @property
     def microsaccades(self) -> pl.DataFrame:
@@ -431,7 +415,7 @@ class Events:
             DataFrame containing all microsaccade events, i.e., rows where
             ``name`` starts with ``"microsaccade"`` (e.g., ``"microsaccade"``).
         """
-        return self._filter_by_prefix('microsaccade')
+        return self.filter_by_name('microsaccade')
 
     def clone(self) -> Events:
         """Return a copy of an Events object.
