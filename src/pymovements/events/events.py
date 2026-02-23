@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Events class."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -25,9 +26,9 @@ from typing import Any
 from typing import Literal
 from typing import overload
 
+from deprecated.sphinx import deprecated
 import numpy as np
 import polars as pl
-from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements._utils import _checks
@@ -103,13 +104,13 @@ class Events:
     _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
 
     def __init__(
-            self,
-            data: pl.DataFrame | None = None,
-            name: str | list[str] | None = None,
-            onsets: list[int | float] | np.ndarray | None = None,
-            offsets: list[int | float] | np.ndarray | None = None,
-            trials: list[int | float | str | None] | np.ndarray | None = None,
-            trial_columns: list[str] | str | None = None,
+        self,
+        data: pl.DataFrame | None = None,
+        name: str | list[str] | None = None,
+        onsets: list[int | float] | np.ndarray | None = None,
+        offsets: list[int | float] | np.ndarray | None = None,
+        trials: list[int | float | str | None] | np.ndarray | None = None,
+        trial_columns: list[str] | str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
 
@@ -129,7 +130,8 @@ class Events:
                 self.trial_columns = trial_columns
 
             self._additional_columns = [
-                column_name for column_name in data_dict.keys()
+                column_name
+                for column_name in data_dict.keys()
                 if column_name not in self._minimal_schema
             ]
 
@@ -139,7 +141,6 @@ class Events:
 
             # Make sure lengths of onsets and offsets are equal.
             if onsets is not None:
-
                 # mypy does not get that offsets cannot be None (l. 87)
                 assert offsets is not None
 
@@ -182,7 +183,8 @@ class Events:
         if self.trial_columns is not None:
             # Keep any additional columns beyond trial and minimal schema columns
             other_cols = [
-                col for col in self.frame.columns
+                col
+                for col in self.frame.columns
                 if col not in self.trial_columns and col not in self._minimal_schema
             ]
             self.frame = self.frame.select(
@@ -192,9 +194,7 @@ class Events:
         # Convert to int if possible.
         all_decimals = self.frame.select(
             pl.all_horizontal(
-                pl.col('onset', 'offset').round()
-                .eq(pl.col('onset', 'offset'))
-                .all(),
+                pl.col('onset', 'offset').round().eq(pl.col('onset', 'offset')).all(),
             ),
         ).item()
         if all_decimals:
@@ -228,9 +228,9 @@ class Events:
         self.frame = self.frame.select([pl.all(), duration().alias('duration')])
 
     def add_event_properties(
-            self,
-            event_properties: pl.DataFrame,
-            join_on: str | list[str],
+        self,
+        event_properties: pl.DataFrame,
+        join_on: str | list[str],
     ) -> None:
         """Add new event properties into dataframe.
 
@@ -244,8 +244,8 @@ class Events:
         self.frame = self.frame.join(event_properties, on=join_on, how='left')
 
     def drop(
-            self,
-            columns: str | list[str],
+        self,
+        columns: str | list[str],
     ) -> None:
         """Remove columns from the events data frame.
 
@@ -272,21 +272,21 @@ class Events:
             if column not in existing_columns:
                 raise ValueError(
                     f"The column '{column}' does not exist and thus cannot be removed. "
-                    f"Available columns to remove: {available_columns}.",
+                    f'Available columns to remove: {available_columns}.',
                 )
             if column in minimal_schema:
                 raise ValueError(
                     f"The column '{column}' cannot be removed "
                     'because it belongs to the minimal schema (onset, offset, name). '
-                    f"Available columns to remove: {available_columns}.",
+                    f'Available columns to remove: {available_columns}.',
                 )
         for column in columns:
             self.frame = self.frame.drop(column)
 
     def add_trial_column(
-            self,
-            column: str | list[str],
-            data: int | float | str | list[int | float | str] | None,
+        self,
+        column: str | list[str],
+        data: int | float | str | list[int | float | str] | None,
     ) -> None:
         """Add new trial columns with constant values.
 
@@ -315,11 +315,13 @@ class Events:
 
         self.frame = self.frame.select(
             [
-                pl.lit(column_data).alias(column_name) if not isinstance(column_data, int)
+                pl.lit(column_data).alias(column_name)
+                if not isinstance(column_data, int)
                 # Enforce Int64 columns for integers.
                 else pl.lit(column_data).alias(column_name).cast(pl.Int64)
                 for column_name, column_data in trial_columns.items()
-            ] + [pl.all()],
+            ]
+            + [pl.all()],
         )
 
     @property
@@ -414,8 +416,7 @@ class Events:
         )
 
     @deprecated(
-        reason='Please use Events.clone() instead. '
-               'This function will be removed in v0.28.0.',
+        reason='Please use Events.clone() instead. This function will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def copy(self) -> Events:
@@ -434,21 +435,25 @@ class Events:
 
     @overload
     def split(
-            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
-    ) -> list[Events]:
-        ...
+        self,
+        by: str | Sequence[str] | None = None,
+        *,
+        as_dict: Literal[False],
+    ) -> list[Events]: ...
 
     @overload
     def split(
-            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[True],
-    ) -> dict[tuple[Any, ...], Events]:
-        ...
+        self,
+        by: str | Sequence[str] | None = None,
+        *,
+        as_dict: Literal[True],
+    ) -> dict[tuple[Any, ...], Events]: ...
 
     def split(
-            self,
-            by: str | Sequence[str] | None = None,
-            *,
-            as_dict: bool = False,
+        self,
+        by: str | Sequence[str] | None = None,
+        *,
+        as_dict: bool = False,
     ) -> list[Events] | dict[tuple[Any, ...], Events]:
         """Split the Events into multiple frames based on specified column(s).
 
@@ -484,10 +489,7 @@ class Events:
                 for key, frame in event_dfs.items()
             }
 
-        return [
-            Events(frame, trial_columns=self.trial_columns)
-            for frame in event_dfs
-        ]
+        return [Events(frame, trial_columns=self.trial_columns) for frame in event_dfs]
 
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add minimal schema columns to :py:class:`polars.DataFrame` if they are missing.
@@ -510,7 +512,8 @@ class Events:
                 pl.lit(None).cast(column_type).alias(column_name)
                 for column_name, column_type in self._minimal_schema.items()
                 if column_name not in df.columns
-            ] + [pl.all()],
+            ]
+            + [pl.all()],
         )
         return df
 
@@ -522,8 +525,7 @@ class Events:
         output_suffixes = ['_x', '_y']
 
         col_names = [
-            [f'{input_col}{suffix}' for suffix in output_suffixes]
-            for input_col in input_columns
+            [f'{input_col}{suffix}' for suffix in output_suffixes] for input_col in input_columns
         ]
 
         for input_col, column_names in zip(input_columns, col_names):
@@ -535,11 +537,11 @@ class Events:
             ).drop(input_col)
 
     def map_to_aois(
-            self,
-            aoi_dataframe: TextStimulus,
-            *,
-            preserve_structure: bool = True,
-            verbose: bool = True,
+        self,
+        aoi_dataframe: TextStimulus,
+        *,
+        preserve_structure: bool = True,
+        verbose: bool = True,
     ) -> None:
         """Map events to AOIs, ignoring non-fixations.
 
@@ -588,8 +590,10 @@ class Events:
             raise ValueError('cannot concat empty list')
 
         # Backward-compatibility: derive component coordinates if only a list column exists.
-        if preserve_structure and 'location' in self.frame.columns and (
-            'location_x' not in self.frame.columns or 'location_y' not in self.frame.columns
+        if (
+            preserve_structure
+            and 'location' in self.frame.columns
+            and ('location_x' not in self.frame.columns or 'location_y' not in self.frame.columns)
         ):
             self.frame = self.frame.with_columns(
                 [
@@ -606,8 +610,7 @@ class Events:
         # Build a stable dtype schema for the AOI columns to avoid concat SchemaError when
         # mixing empty rows (all None) with real AOI rows (strings/floats, etc.).
         aoi_schema: dict[str, pl.PolarsDataType] = (
-            {col: aoi_dataframe.aois.schema[col] for col in aoi_columns}
-            if aoi_columns else {}
+            {col: aoi_dataframe.aois.schema[col] for col in aoi_columns} if aoi_columns else {}
         )
 
         def _empty_aoi_row() -> pl.DataFrame:
@@ -616,12 +619,12 @@ class Events:
 
         out_rows: list[pl.DataFrame] = []
         for row in tqdm(
-                self.frame.iter_rows(named=True),
-                total=len(self.frame),
-                desc='Mapping events to AOIs',
-                unit='event',
-                ncols=80,
-                disable=not verbose,
+            self.frame.iter_rows(named=True),
+            total=len(self.frame),
+            desc='Mapping events to AOIs',
+            unit='event',
+            ncols=80,
+            disable=not verbose,
         ):
             name_val = row.get('name')
             is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
@@ -673,8 +676,10 @@ class Events:
         # original 'location' list column and kept only component columns. We avoid unnesting,
         # but if component columns already exist, we drop the original list column to preserve
         # legacy schema without altering coordinates.
-        if preserve_structure and 'location' in self.frame.columns and (
-            'location_x' in self.frame.columns or 'location_y' in self.frame.columns
+        if (
+            preserve_structure
+            and 'location' in self.frame.columns
+            and ('location_x' in self.frame.columns or 'location_y' in self.frame.columns)
         ):
             self.frame = self.frame.drop('location')
 

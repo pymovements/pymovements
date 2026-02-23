@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test write_datasets_yaml script."""
+
 from pathlib import Path
 
 import pytest
@@ -55,35 +56,30 @@ def make_datasets_directory_fixture(tmp_path):
             [],
             id='empty_new',
         ),
-
         pytest.param(
             ['empty', True],
             0,
             [],
             id='empty_exist',
         ),
-
         pytest.param(
             ['single', False],
             1,
             ['first'],
             id='single_new',
         ),
-
         pytest.param(
             ['single', True],
             0,
             ['first'],
             id='single_exist',
         ),
-
         pytest.param(
             ['two', False],
             1,
             ['first', 'second'],
             id='two_new',
         ),
-
         pytest.param(
             ['two', True],
             0,
@@ -93,7 +89,10 @@ def make_datasets_directory_fixture(tmp_path):
     ],
 )
 def test_write_datasets_yaml(
-        fixture_args, expected_return, expected_yaml, make_datasets_directory,
+    fixture_args,
+    expected_return,
+    expected_yaml,
+    make_datasets_directory,
 ):
     datasets_dirpath = make_datasets_directory(*fixture_args)
     datasets_yaml_filename = 'datasets.yaml'

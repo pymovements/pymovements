@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements import DatasetLibrary
 from pymovements import Experiment
@@ -48,11 +49,14 @@ from pymovements.gaze import from_asc
             ],
             id='empty_file',
         ),
-
     ],
 )
 def test_from_asc_has_expected_samples(
-        header, body, kwargs, expected_samples, make_text_file,
+    header,
+    body,
+    kwargs,
+    expected_samples,
+    make_text_file,
 ):
     filepath = make_text_file('test_eyelink.asc', header=header, body=body)
     gaze = from_asc(filepath, **kwargs)
@@ -69,18 +73,58 @@ def test_from_asc_has_expected_samples(
             pl.from_dict(
                 data={
                     'time': [
-                        2154556, 2154557, 2154560, 2154564, 2154596, 2154598, 2154599, 2154695,
-                        2154696, 2339227, 2339245, 2339246, 2339271, 2339272, 2339290, 2339291,
+                        2154556,
+                        2154557,
+                        2154560,
+                        2154564,
+                        2154596,
+                        2154598,
+                        2154599,
+                        2154695,
+                        2154696,
+                        2339227,
+                        2339245,
+                        2339246,
+                        2339271,
+                        2339272,
+                        2339290,
+                        2339291,
                     ],
                     'pupil': [
-                        778.0, 778.0, 777.0, 778.0, 784.0, 784.0, 784.0, 798.0,
-                        799.0, 619.0, 621.0, 622.0, 617.0, 617.0, 618.0, 618.0,
+                        778.0,
+                        778.0,
+                        777.0,
+                        778.0,
+                        784.0,
+                        784.0,
+                        784.0,
+                        798.0,
+                        799.0,
+                        619.0,
+                        621.0,
+                        622.0,
+                        617.0,
+                        617.0,
+                        618.0,
+                        618.0,
                     ],
                     'pixel': [
-                        [138.1, 132.8], [138.2, 132.7], [137.9, 131.6], [138.1, 131.0],
-                        [139.6, 132.1], [139.5, 131.9], [139.5, 131.8], [147.2, 134.4],
-                        [147.3, 134.1], [673.2, 523.8], [629.0, 531.4], [629.9, 531.9],
-                        [639.4, 531.9], [639.0, 531.9], [637.6, 531.4], [637.3, 531.2],
+                        [138.1, 132.8],
+                        [138.2, 132.7],
+                        [137.9, 131.6],
+                        [138.1, 131.0],
+                        [139.6, 132.1],
+                        [139.5, 131.9],
+                        [139.5, 131.8],
+                        [147.2, 134.4],
+                        [147.3, 134.1],
+                        [673.2, 523.8],
+                        [629.0, 531.4],
+                        [629.9, 531.9],
+                        [639.4, 531.9],
+                        [639.0, 531.9],
+                        [637.6, 531.4],
+                        [637.3, 531.2],
                     ],
                 },
                 schema={
@@ -91,7 +135,6 @@ def test_from_asc_has_expected_samples(
             ),
             id='eyelink_asc_mono_pattern_eyelink',
         ),
-
         pytest.param(
             'eyelink_monocular_example.asc',
             {
@@ -101,18 +144,58 @@ def test_from_asc_has_expected_samples(
             pl.DataFrame(
                 data={
                     'time': [
-                        2154556, 2154557, 2154560, 2154564, 2154596, 2154598, 2154599, 2154695,
-                        2154696, 2339227, 2339245, 2339246, 2339271, 2339272, 2339290, 2339291,
+                        2154556,
+                        2154557,
+                        2154560,
+                        2154564,
+                        2154596,
+                        2154598,
+                        2154599,
+                        2154695,
+                        2154696,
+                        2339227,
+                        2339245,
+                        2339246,
+                        2339271,
+                        2339272,
+                        2339290,
+                        2339291,
                     ],
                     'pupil': [
-                        778.0, 778.0, 777.0, 778.0, 784.0, 784.0, 784.0, 798.0,
-                        799.0, 619.0, 621.0, 622.0, 617.0, 617.0, 618.0, 618.0,
+                        778.0,
+                        778.0,
+                        777.0,
+                        778.0,
+                        784.0,
+                        784.0,
+                        784.0,
+                        798.0,
+                        799.0,
+                        619.0,
+                        621.0,
+                        622.0,
+                        617.0,
+                        617.0,
+                        618.0,
+                        618.0,
                     ],
                     'pixel': [
-                        [138.1, 132.8], [138.2, 132.7], [137.9, 131.6], [138.1, 131.0],
-                        [139.6, 132.1], [139.5, 131.9], [139.5, 131.8], [147.2, 134.4],
-                        [147.3, 134.1], [673.2, 523.8], [629.0, 531.4], [629.9, 531.9],
-                        [639.4, 531.9], [639.0, 531.9], [637.6, 531.4], [637.3, 531.2],
+                        [138.1, 132.8],
+                        [138.2, 132.7],
+                        [137.9, 131.6],
+                        [138.1, 131.0],
+                        [139.6, 132.1],
+                        [139.5, 131.9],
+                        [139.5, 131.8],
+                        [147.2, 134.4],
+                        [147.3, 134.1],
+                        [673.2, 523.8],
+                        [629.0, 531.4],
+                        [629.9, 531.9],
+                        [639.4, 531.9],
+                        [639.0, 531.9],
+                        [637.6, 531.4],
+                        [637.3, 531.2],
                     ],
                     'trial_id': [0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, None],
                     'point_id': 3 * [None] + [0, 1, 2, 3] + [None, 0] + [0, 0, 1, 2] + [0, 1, None],
@@ -131,26 +214,64 @@ def test_from_asc_has_expected_samples(
             ),
             id='eyelink_asc_mono_pattern_list',
         ),
-
         pytest.param(
             'eyelink_monocular_2khz_example.asc',
             {'patterns': 'eyelink'},
             pl.from_dict(
                 data={
                     'time': [
-                        2154556.5, 2154557.0, 2154560.5, 2154564.0, 2154596.0, 2154598.5, 2154599.0,
-                        2154695.0, 2154696.0, 2339227.0, 2339245.0, 2339246.0, 2339271.5, 2339272.0,
-                        2339290.0, 2339291.0,
+                        2154556.5,
+                        2154557.0,
+                        2154560.5,
+                        2154564.0,
+                        2154596.0,
+                        2154598.5,
+                        2154599.0,
+                        2154695.0,
+                        2154696.0,
+                        2339227.0,
+                        2339245.0,
+                        2339246.0,
+                        2339271.5,
+                        2339272.0,
+                        2339290.0,
+                        2339291.0,
                     ],
                     'pupil': [
-                        778.0, 778.0, 777.0, 778.0, 784.0, 784.0, 784.0, 798.0,
-                        799.0, 619.0, 621.0, 622.0, 617.0, 617.0, 618.0, 618.0,
+                        778.0,
+                        778.0,
+                        777.0,
+                        778.0,
+                        784.0,
+                        784.0,
+                        784.0,
+                        798.0,
+                        799.0,
+                        619.0,
+                        621.0,
+                        622.0,
+                        617.0,
+                        617.0,
+                        618.0,
+                        618.0,
                     ],
                     'pixel': [
-                        [138.1, 132.8], [138.2, 132.7], [137.9, 131.6], [138.1, 131.0],
-                        [139.6, 132.1], [139.5, 131.9], [139.5, 131.8], [147.2, 134.4],
-                        [147.3, 134.1], [673.2, 523.8], [629.0, 531.4], [629.9, 531.9],
-                        [639.4, 531.9], [639.0, 531.9], [637.6, 531.4], [637.3, 531.2],
+                        [138.1, 132.8],
+                        [138.2, 132.7],
+                        [137.9, 131.6],
+                        [138.1, 131.0],
+                        [139.6, 132.1],
+                        [139.5, 131.9],
+                        [139.5, 131.8],
+                        [147.2, 134.4],
+                        [147.3, 134.1],
+                        [673.2, 523.8],
+                        [629.0, 531.4],
+                        [629.9, 531.9],
+                        [639.4, 531.9],
+                        [639.0, 531.9],
+                        [637.6, 531.4],
+                        [637.3, 531.2],
                     ],
                 },
                 schema={
@@ -164,7 +285,10 @@ def test_from_asc_has_expected_samples(
     ],
 )
 def test_from_asc_example_file_has_expected_samples(
-        filename, kwargs, expected_samples, make_example_file,
+    filename,
+    kwargs,
+    expected_samples,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -185,7 +309,6 @@ def test_from_asc_example_file_has_expected_samples(
             },
             id='eyelink_asc_mono_pattern_eyelink',
         ),
-
         pytest.param(
             'eyelink_monocular_example.asc',
             {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
@@ -198,12 +321,12 @@ def test_from_asc_example_file_has_expected_samples(
             },
             id='eyelink_asc_mono_pattern_eyelink_add_columns',
         ),
-
         pytest.param(
             'eyelink_monocular_example.asc',
             {
                 'patterns': 'eyelink',
-                'add_columns': {'test': 1}, 'column_schema_overrides': {'test': pl.Float64},
+                'add_columns': {'test': 1},
+                'column_schema_overrides': {'test': pl.Float64},
             },
             (16, 4),
             {
@@ -214,7 +337,6 @@ def test_from_asc_example_file_has_expected_samples(
             },
             id='eyelink_asc_mono_pattern_eyelink_add_columns_with_schema',
         ),
-
         pytest.param(
             'eyelink_monocular_example.asc',
             {
@@ -233,7 +355,6 @@ def test_from_asc_example_file_has_expected_samples(
             },
             id='eyelink_asc_mono_toydataset_eyelink',
         ),
-
         pytest.param(
             'eyelink_monocular_2khz_example.asc',
             {'patterns': 'eyelink'},
@@ -245,7 +366,6 @@ def test_from_asc_example_file_has_expected_samples(
             },
             id='eyelink_asc_mono_2khz_pattern_eyelink',
         ),
-
         pytest.param(
             'eyelink_monocular_no_dummy_example.asc',
             {
@@ -260,7 +380,6 @@ def test_from_asc_example_file_has_expected_samples(
             },
             id='eyelink_asc_mono_no_dummy_pattern_eyelink',
         ),
-
         pytest.param(
             'eyelink_monocular_no_dummy_example.asc',
             {
@@ -289,7 +408,11 @@ def test_from_asc_example_file_has_expected_samples(
     ],
 )
 def test_from_asc_example_file_has_shape_and_schema(
-        filename, kwargs, shape, schema, make_example_file,
+    filename,
+    kwargs,
+    shape,
+    schema,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -308,7 +431,6 @@ def test_from_asc_example_file_has_shape_and_schema(
             "unknown pattern key 'foobar'. Supported keys are: eyelink",
             id='unknown_pattern',
         ),
-
         pytest.param(
             'eyelink_monocular_no_dummy_example.asc',
             {
@@ -324,7 +446,11 @@ def test_from_asc_example_file_has_shape_and_schema(
     ],
 )
 def test_from_asc_example_file_raises_exception(
-        filename, kwargs, exception, message_prefix, make_example_file,
+    filename,
+    kwargs,
+    exception,
+    message_prefix,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     with pytest.raises(exception) as excinfo:
@@ -357,12 +483,13 @@ def test_from_asc_example_file_raises_exception(
             ),
             id='monocular_1khz',
         ),
-
         pytest.param(
             'eyelink_monocular_example.asc',
             {
                 'experiment': Experiment(
-                    screen_width_cm=40, screen_height_cm=30, sampling_rate=1000,
+                    screen_width_cm=40,
+                    screen_height_cm=30,
+                    sampling_rate=1000,
                 ),
             },
             Experiment(
@@ -384,7 +511,6 @@ def test_from_asc_example_file_raises_exception(
             ),
             id='monocular_1khz_experiment',
         ),
-
         pytest.param(
             'eyelink_monocular_2khz_example.asc',
             {},
@@ -405,7 +531,6 @@ def test_from_asc_example_file_raises_exception(
             ),
             id='monocular_2khz',
         ),
-
         pytest.param(
             'eyelink_monocular_no_dummy_example.asc',
             {'encoding': 'latin1'},
@@ -426,7 +551,6 @@ def test_from_asc_example_file_raises_exception(
             ),
             id='monocular_500hz_no_dummy',
         ),
-
         pytest.param(
             'eyelink_binocular_example.asc',
             {'encoding': 'latin1'},
@@ -450,7 +574,10 @@ def test_from_asc_example_file_raises_exception(
     ],
 )
 def test_from_asc_example_file_has_expected_experiment(
-        filename, kwargs, expected_experiment, make_example_file,
+    filename,
+    kwargs,
+    expected_experiment,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -472,7 +599,10 @@ def test_from_asc_example_file_has_expected_experiment(
     ],
 )
 def test_from_asc_example_file_has_expected_trial_columns(
-        filename, kwargs, expected_trial_columns, make_example_file,
+    filename,
+    kwargs,
+    expected_trial_columns,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -491,18 +621,19 @@ def test_from_asc_example_file_has_expected_trial_columns(
             2,
             id='eyelink_asc_mono',
         ),
-
         pytest.param(
             'eyelink_binocular_example.asc',
             {},
             4,
             id='eyelink_asc_bino',
         ),
-
     ],
 )
 def test_from_asc_example_file_has_expected_n_components(
-        filename, kwargs, expected_n_components, make_example_file,
+    filename,
+    kwargs,
+    expected_n_components,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -577,13 +708,15 @@ def test_from_asc_example_file_has_expected_n_components(
     ],
 )
 def test_from_asc_detects_mismatches_in_experiment_metadata(
-        experiment_kwargs, issues, make_example_file,
+    experiment_kwargs,
+    issues,
+    make_example_file,
 ):
     filepath = make_example_file('eyelink_monocular_example.asc')
     with pytest.raises(ValueError) as excinfo:
         from_asc(filepath, experiment=Experiment(**experiment_kwargs))
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     expected_msg = 'Experiment metadata does not match the metadata in the ASC file:\n'
     expected_msg += '\n'.join(f'- {issue}' for issue in issues)
     assert msg == expected_msg
@@ -604,7 +737,6 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
             },
             id='eyelink_asc_mono_subject_id_metadata_patterns',
         ),
-
         pytest.param(
             'eyelink_monocular_no_dummy_example.asc',
             {
@@ -618,7 +750,6 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
             },
             id='eyelink_monocular_no_dummy_example_encoding_utf8',
         ),
-
         pytest.param(
             'eyelink_monocular_no_dummy_example.asc',
             {
@@ -635,7 +766,10 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
     ],
 )
 def test_from_asc_example_file_has_expected_metadata(
-        filename, kwargs, expected_metadata, make_example_file,
+    filename,
+    kwargs,
+    expected_metadata,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -646,7 +780,8 @@ def test_from_asc_example_file_has_expected_metadata(
 
 
 @pytest.mark.parametrize(
-    'filename', [
+    'filename',
+    [
         pytest.param('eyelink_monocular_example.asc', id='mono'),
     ],
 )
@@ -668,7 +803,8 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
 
 
 @pytest.mark.parametrize(
-    'filename', [
+    'filename',
+    [
         pytest.param('eyelink_monocular_example.asc', id='mono'),
     ],
 )
@@ -779,10 +915,24 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                     ],
                     'eye': ['left', 'right', 'right', 'left', 'left', 'right', 'left', 'right'],
                     'onset': [
-                        1408667, 1408667, 1408793, 1408787, 1408774, 1408778, 1408897, 1408899,
+                        1408667,
+                        1408667,
+                        1408793,
+                        1408787,
+                        1408774,
+                        1408778,
+                        1408897,
+                        1408899,
                     ],
                     'offset': [
-                        1408773, 1408777, 1408872, 1408883, 1408896, 1408898, 1409025, 1409027,
+                        1408773,
+                        1408777,
+                        1408872,
+                        1408883,
+                        1408896,
+                        1408898,
+                        1409025,
+                        1409027,
                     ],
                     'duration': [106, 110, 79, 96, 122, 120, 128, 128],
                 },
@@ -799,7 +949,10 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
     ],
 )
 def test_from_asc_example_file_has_expected_events(
-        filename, kwargs, expected_event_frame, make_example_file,
+    filename,
+    kwargs,
+    expected_event_frame,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
@@ -816,16 +969,22 @@ def test_from_asc_example_file_has_expected_events(
     ('header', 'body', 'expected_warning', 'expected_message', 'from_asc_kwargs'),
     [
         pytest.param(
-            '', 'END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
-            UserWarning, 'END recording message without associated START recording message',
+            '',
+            'END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
+            UserWarning,
+            'END recording message without associated START recording message',
             {},
             id='no_start_recording',
         ),
     ],
 )
 def test_from_asc_warns(
-        header, body, expected_warning, expected_message,
-        make_text_file, from_asc_kwargs,
+    header,
+    body,
+    expected_warning,
+    expected_message,
+    make_text_file,
+    from_asc_kwargs,
 ):
     filepath = make_text_file(filename='test.asc', header=header, body=body)
 
@@ -909,17 +1068,14 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
 @pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
 def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_keyerror(
-        make_text_file,
+    make_text_file,
 ):
     """Orphaned event end markers with custom patterns should not raise KeyError, but should warn.
 
     This test reproduces a scenario where an event end marker appears before the
     associated context dictionary has been populated with keys from custom patterns.
     """
-    body = (
-        'EFIX R 1000 1100 100 500.0 500.0 1000\n'
-        'MSG 1200 START_TRIAL_1\n'
-    )
+    body = 'EFIX R 1000 1100 100 500.0 500.0 1000\nMSG 1200 START_TRIAL_1\n'
     patterns = [r'START_TRIAL_(?P<trial_id>\d+)']
     filepath = make_text_file(filename='orphaned_event.asc', body=body)
 

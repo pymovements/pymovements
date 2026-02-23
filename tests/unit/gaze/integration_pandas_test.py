@@ -18,10 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test from gaze.from_pandas."""
+
 import pandas as pd
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements import Events
 from pymovements import Experiment
@@ -73,12 +74,14 @@ def test_from_pandas_explicit_columns():
         position_columns=['x_pos', 'y_pos'],
     )
 
-    expected = pl.DataFrame({
-        'time': [101, 102, 103, 104],
-        'distance': [100, 100, 100, 100],
-        'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-        'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
-    })
+    expected = pl.DataFrame(
+        {
+            'time': [101, 102, 103, 104],
+            'distance': [100, 100, 100, 100],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+        }
+    )
 
     assert_frame_equal(gaze.samples, expected)
 
@@ -103,11 +106,13 @@ def test_from_pandas_with_trial_columnms():
         pixel_columns=['x_pix', 'y_pix'],
     )
 
-    expected = pl.DataFrame({
-        'trial_id': [1, 1, 2, 2],
-        'time': [101, 102, 103, 104],
-        'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-    })
+    expected = pl.DataFrame(
+        {
+            'trial_id': [1, 1, 2, 2],
+            'time': [101, 102, 103, 104],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+        }
+    )
 
     assert_frame_equal(gaze.samples, expected)
     assert gaze.trial_columns == ['trial_id']
@@ -121,25 +126,21 @@ def test_from_pandas_with_trial_columnms():
             None,
             id='events_none',
         ),
-
         pytest.param(
             pd.DataFrame(),
             Events(),
             id='events_empty',
         ),
-
         pytest.param(
             pd.DataFrame(),
             Events(name='fixation', onsets=[123], offsets=[345]),
             id='fixation',
         ),
-
         pytest.param(
             pd.DataFrame(),
             Events(name='saccade', onsets=[34123], offsets=[67345]),
             id='saccade',
         ),
-
     ],
 )
 def test_from_pandas_events(samples, events):
@@ -180,5 +181,4 @@ def test_from_pandas_data_argument_is_removed(assert_deprecation_is_removed):
         function_name='from_pandas() keyword argument data',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )

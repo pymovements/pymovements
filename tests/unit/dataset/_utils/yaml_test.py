@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements paths."""
+
 import pytest
 import yaml
 
@@ -33,7 +34,7 @@ def test_type_constructor_assertion_error(make_text_file):
     with pytest.raises(ValueError) as excinfo:
         with open(yaml_file, encoding='utf-8') as f:
             yaml.safe_load(f)
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == "Unknown node=ScalarNode(tag='!test', value='')"
 
 
@@ -46,7 +47,7 @@ def test_module_name_not_found_error(make_text_file):
     with pytest.raises(ModuleNotFoundError) as excinfo:
         with open(yaml_file, encoding='utf-8') as f:
             yaml.safe_load(f)
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == "No module named 'pm'"
 
 
@@ -59,5 +60,5 @@ def test_unknown_attribute_error(make_text_file):
     with pytest.raises(ValueError) as excinfo:
         with open(yaml_file, encoding='utf-8') as f:
             yaml.safe_load(f)
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == 'Unknown type: notexisting for module yaml'

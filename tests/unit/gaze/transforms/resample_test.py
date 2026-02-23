@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test the resample transformation function."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 import pymovements as pm
 
@@ -221,7 +222,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [1., 2., 2., 4., 4.],
+                    'pixel': [1.0, 2.0, 2.0, 4.0, 4.0],
                 },
                 schema={'time': pl.Int64, 'pixel': pl.Float64},
             ),
@@ -241,7 +242,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4],
-                    'pixel': [1., 1., 2., 2., 2., 2., 4., 4., 4.],
+                    'pixel': [1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 4.0, 4.0, 4.0],
                 },
                 schema={'time': pl.Float64, 'pixel': pl.Float64},
             ),
@@ -261,7 +262,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [1., 1., 2., 2., 4.],
+                    'pixel': [1.0, 1.0, 2.0, 2.0, 4.0],
                 },
                 schema={'time': pl.Int64, 'pixel': pl.Float64},
             ),
@@ -281,7 +282,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [1., 2., 2., 4., 4.],
+                    'pixel': [1.0, 2.0, 2.0, 4.0, 4.0],
                 },
                 schema={'time': pl.Int64, 'pixel': pl.Float64},
             ),
@@ -303,7 +304,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [[1., 2.], [1.5, 2.5], [2., 3.], [2.5, 3.5], [3., 4.]],
+                    'pixel': [[1.0, 2.0], [1.5, 2.5], [2.0, 3.0], [2.5, 3.5], [3.0, 4.0]],
                 },
             ),
             id='upsample_500_to_1000_interpolate_linear_two_components',
@@ -323,7 +324,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [[1., 2.], [2., 3.], [2., 3.], [3., 4.], [3., 4.]],
+                    'pixel': [[1.0, 2.0], [2.0, 3.0], [2.0, 3.0], [3.0, 4.0], [3.0, 4.0]],
                 },
             ),
             id='upsample_500_to_1000_interpolate_nearest_two_components',
@@ -344,8 +345,15 @@ import pymovements as pm
                 {
                     'time': [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4],
                     'pixel': [
-                        [1., 2.], [1., 2.], [2., 3.], [2., 3.], [2., 3.],
-                        [2., 3.], [3., 4.], [3., 4.], [3., 4.],
+                        [1.0, 2.0],
+                        [1.0, 2.0],
+                        [2.0, 3.0],
+                        [2.0, 3.0],
+                        [2.0, 3.0],
+                        [2.0, 3.0],
+                        [3.0, 4.0],
+                        [3.0, 4.0],
+                        [3.0, 4.0],
                     ],
                 },
                 schema={'time': pl.Float64, 'pixel': pl.List(pl.Float64)},
@@ -367,7 +375,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [[1., 2.], [1., 2.], [2., 3.], [2., 3.], [3., 4.]],
+                    'pixel': [[1.0, 2.0], [1.0, 2.0], [2.0, 3.0], [2.0, 3.0], [3.0, 4.0]],
                 },
             ),
             id='upsample_500_to_1000_fill_forward_two_components',
@@ -387,7 +395,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [[1., 2.], [2., 3.], [2., 3.], [3., 4.], [3., 4.]],
+                    'pixel': [[1.0, 2.0], [2.0, 3.0], [2.0, 3.0], [3.0, 4.0], [3.0, 4.0]],
                 },
             ),
             id='upsample_500_to_1000_fill_backward_two_components',
@@ -411,7 +419,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [[1., 2.], [1.5, 2.5], [2., 3.], [2.5, 3.5], [3., 4.]],
+                    'pixel': [[1.0, 2.0], [1.5, 2.5], [2.0, 3.0], [2.5, 3.5], [3.0, 4.0]],
                     'distance': [1, 1.5, 2, 3, 4],
                     'other': [1, None, 2, None, 4],
                 },
@@ -444,7 +452,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [[1., 2.], [1.5, 2.5], [2., 3.], [2.5, 3.5], [3., 4.]],
+                    'pixel': [[1.0, 2.0], [1.5, 2.5], [2.0, 3.0], [2.5, 3.5], [3.0, 4.0]],
                     'distance': [1, None, 2, None, 4],
                     'other': [1, None, 2, None, 4],
                 },
@@ -466,7 +474,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, None, 2., 3., 4.],
+                    'pixel': [None, None, 2.0, 3.0, 4.0],
                 },
             ),
             id='upsample_500_to_1000_interpolate_linear_one_component_with_none_values',
@@ -485,7 +493,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, None, 2., 4., 4.],
+                    'pixel': [None, None, 2.0, 4.0, 4.0],
                 },
             ),
             id='upsample_500_to_1000_interpolate_nearest_one_component_with_none_values',
@@ -504,7 +512,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, None, 2., 2., 4.],
+                    'pixel': [None, None, 2.0, 2.0, 4.0],
                 },
             ),
             id='upsample_500_to_1000_fill_forward_one_component_with_none_values',
@@ -523,7 +531,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, 2., 2., 4., 4.],
+                    'pixel': [None, 2.0, 2.0, 4.0, 4.0],
                 },
             ),
             id='upsample_500_to_1000_fill_backward_one_component_with_none_values',
@@ -561,7 +569,7 @@ import pymovements as pm
             },
             pl.DataFrame(
                 {
-                    'time': [1713398400010., 1713398400011., 1713398400012.],
+                    'time': [1713398400010.0, 1713398400011.0, 1713398400012.0],
                     'pixel': [1, 2, 4],
                 },
             ),
@@ -605,7 +613,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, 2., 2., 4., 4.],
+                    'pixel': [None, 2.0, 2.0, 4.0, 4.0],
                     'description': ['text', 'more_text', 'more_text', None, None],
                 },
             ),
@@ -626,7 +634,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, None, 2., 2., 4.],
+                    'pixel': [None, None, 2.0, 2.0, 4.0],
                     'description': ['text', 'text', 'more_text', 'more_text', 'more_text'],
                 },
             ),
@@ -718,14 +726,16 @@ def test_resample_returns(kwargs, df, expected_df):
 )
 def test_resample_raises_error(kwargs, exception, msg_substrings):
     """Test if resample raises expected error."""
-    df = pl.DataFrame({
-        'time': [0, 1, 2, 3, 4, 5],
-        'pixel': [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]],
-    })
+    df = pl.DataFrame(
+        {
+            'time': [0, 1, 2, 3, 4, 5],
+            'pixel': [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]],
+        }
+    )
 
     with pytest.raises(exception) as excinfo:
         pm.gaze.transforms.resample(df, **kwargs)
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()

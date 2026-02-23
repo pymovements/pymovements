@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests for unified axes/closefig plotting API behavior and warnings."""
+
 from __future__ import annotations
 
 from unittest.mock import Mock

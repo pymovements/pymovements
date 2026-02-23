@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Experiment class."""
+
 from re import escape
 
 import polars as pl
@@ -40,7 +41,7 @@ def test_gaze_messages_must_be_polars_dataframe(bad_messages):
     """Ensure that non-DataFrame `messages` raises a TypeError with exact message."""
     expected = (
         f"The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-        f"not {type(bad_messages)}."
+        f'not {type(bad_messages)}.'
     )
     with pytest.raises(TypeError, match=escape(expected)):
         Gaze(messages=bad_messages)
@@ -74,9 +75,7 @@ def test_gaze_messages_accepts_none_or_polars_dataframe(good_messages):
 )
 def test_gaze_messages_dataframe_must_have_time_and_content_columns(bad_df):
     """Ensure that a polars DataFrame missing required columns raises a TypeError."""
-    expected = (
-        "The `messages` polars DataFrame must contain the columns ['time', 'content']."
-    )
+    expected = "The `messages` polars DataFrame must contain the columns ['time', 'content']."
     with pytest.raises(TypeError, match=escape(expected)):
         Gaze(messages=bad_df)
 
@@ -100,7 +99,7 @@ def test_gaze_str_messages_variations(messages_df, expected_fragment):
     """Check __str__ shows clear messages summary."""
     gaze = Gaze(messages=messages_df)
     s = str(gaze)
-    assert f"messages={expected_fragment}" in s, s
+    assert f'messages={expected_fragment}' in s, s
 
 
 def test_gaze_str_messages_exluded_if_none():

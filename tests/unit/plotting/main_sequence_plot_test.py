@@ -22,14 +22,15 @@
 - Using external axes triggers the ax.scatter path and returns the provided fig/ax.
 - Warning about ignored figsize when external ax is given (from prepare_figure).
 """
+
 from __future__ import annotations
 
 from unittest.mock import Mock
 
+from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import polars as pl
 import pytest
-from matplotlib.lines import Line2D
 
 import pymovements as pm
 
@@ -88,15 +89,17 @@ def make_events(rows: list[dict]) -> pm.Events:
 
 def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch):
     # event_df path triggers the deprecation branch (97->98)
-    df = pl.DataFrame({
-        'trial': [1, 1],
-        'name': ['saccade', 'saccade'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        'amplitude': [2.0, 4.0],
-        'peak_velocity': [100.0, 200.0],
-    })
+    df = pl.DataFrame(
+        {
+            'trial': [1, 1],
+            'name': ['saccade', 'saccade'],
+            'onset': [0, 10],
+            'offset': [5, 15],
+            'duration': [5, 5],
+            'amplitude': [2.0, 4.0],
+            'peak_velocity': [100.0, 200.0],
+        }
+    )
     event_df = pm.Events(df)
 
     show_called = []
@@ -116,16 +119,18 @@ def test_main_sequence_plot_raises_on_empty_events():
 
 def test_main_sequence_plot_raises_when_no_saccades():
     # Covers 117->118: dataframe present but no 'saccade' rows
-    df = pl.DataFrame({
-        'trial': [1, 2],
-        'name': ['fixation', 'blink'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        # Include columns to pass column presence checks if needed later
-        'amplitude': [1.0, 1.0],
-        'peak_velocity': [10.0, 20.0],
-    })
+    df = pl.DataFrame(
+        {
+            'trial': [1, 2],
+            'name': ['fixation', 'blink'],
+            'onset': [0, 10],
+            'offset': [5, 15],
+            'duration': [5, 5],
+            # Include columns to pass column presence checks if needed later
+            'amplitude': [1.0, 1.0],
+            'peak_velocity': [10.0, 20.0],
+        }
+    )
     events = pm.Events(df)
     with pytest.raises(ValueError):
         pm.plotting.main_sequence_plot(events=events, show=False)
@@ -133,15 +138,17 @@ def test_main_sequence_plot_raises_when_no_saccades():
 
 def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
     # Has saccades, but no 'peak_velocity' -> triggers lines 126–127
-    df = pl.DataFrame({
-        'trial': [1, 1],
-        'name': ['saccade', 'saccade'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        'amplitude': [2.0, 4.0],
-        # 'peak_velocity' intentionally missing
-    })
+    df = pl.DataFrame(
+        {
+            'trial': [1, 1],
+            'name': ['saccade', 'saccade'],
+            'onset': [0, 10],
+            'offset': [5, 15],
+            'duration': [5, 5],
+            'amplitude': [2.0, 4.0],
+            # 'peak_velocity' intentionally missing
+        }
+    )
     events = pm.Events(df)
     with pytest.raises(KeyError):
         pm.plotting.main_sequence_plot(events=events, show=False)
@@ -149,30 +156,34 @@ def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
 
 def test_main_sequence_plot_keyerror_when_missing_amplitude():
     # Has saccades, but no 'amplitude' -> triggers lines 135–136
-    df = pl.DataFrame({
-        'trial': [1, 1],
-        'name': ['saccade', 'saccade'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        # 'amplitude' intentionally missing
-        'peak_velocity': [100.0, 200.0],
-    })
+    df = pl.DataFrame(
+        {
+            'trial': [1, 1],
+            'name': ['saccade', 'saccade'],
+            'onset': [0, 10],
+            'offset': [5, 15],
+            'duration': [5, 5],
+            # 'amplitude' intentionally missing
+            'peak_velocity': [100.0, 200.0],
+        }
+    )
     events = pm.Events(df)
     with pytest.raises(KeyError):
         pm.plotting.main_sequence_plot(events=events, show=False)
 
 
 def test_main_sequence_plot_sets_title():
-    df = pl.DataFrame({
-        'trial': [1, 1],
-        'name': ['saccade', 'saccade'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        'amplitude': [2.0, 4.0],
-        'peak_velocity': [100.0, 200.0],
-    })
+    df = pl.DataFrame(
+        {
+            'trial': [1, 1],
+            'name': ['saccade', 'saccade'],
+            'onset': [0, 10],
+            'offset': [5, 15],
+            'duration': [5, 5],
+            'amplitude': [2.0, 4.0],
+            'peak_velocity': [100.0, 200.0],
+        }
+    )
     events = pm.Events(df)
     _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
     assert ax.get_title() == 'Main Sequence'

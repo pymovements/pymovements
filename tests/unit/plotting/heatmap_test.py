@@ -18,14 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test heatmap."""
+
 from unittest.mock import Mock
 
+from matplotlib import figure
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 import pymovements as pm
 from pymovements import Experiment
@@ -96,7 +97,8 @@ def position_column_mapping_fixture():
                 'xlabel': None,
                 'ylabel': None,
                 'cbar_label': None,
-            }, id='default_labels',
+            },
+            id='default_labels',
         ),
         pytest.param(
             {
@@ -108,20 +110,24 @@ def position_column_mapping_fixture():
             id='custom_labels',
         ),
         pytest.param(
-            {'show_cbar': True}, id='show_cbar_true',
+            {'show_cbar': True},
+            id='show_cbar_true',
         ),
         pytest.param(
-            {'show_cbar': False}, id='show_cbar_false',
+            {'show_cbar': False},
+            id='show_cbar_false',
         ),
         pytest.param(
             {
                 'add_stimulus': True,
                 'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
                 'stimulus_origin': 'lower',
-            }, id='add_stimulus_true',
+            },
+            id='add_stimulus_true',
         ),
         pytest.param(
-            {'add_stimulus': False}, id='add_stimulus_false',
+            {'add_stimulus': False},
+            id='add_stimulus_false',
         ),
     ],
 )
@@ -147,7 +153,9 @@ def test_heatmap_noshow(args, position_column_mapping, monkeypatch):
 
 
 def test_heatmap_noshow_no_pixel_or_position_column(
-    args, position_column_mapping, monkeypatch,
+    args,
+    position_column_mapping,
+    monkeypatch,
 ):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
@@ -202,10 +210,12 @@ def test_heatmap_no_experiment_property():
 @pytest.fixture(name='gaze')
 def gaze_fixture():
     """Provide a minimal valid Gaze object for plotting tests."""
-    df = pl.DataFrame({
-        'x_pix': np.arange(100),
-        'y_pix': np.arange(100),
-    })
+    df = pl.DataFrame(
+        {
+            'x_pix': np.arange(100),
+            'y_pix': np.arange(100),
+        }
+    )
 
     experiment = pm.Experiment(
         screen_width_px=1024,

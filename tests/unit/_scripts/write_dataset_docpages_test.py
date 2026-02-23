@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test autowriting sphinx docpages for datasets."""
+
 from pymovements import DatasetLibrary
 from pymovements._scripts import write_dataset_docpages
 

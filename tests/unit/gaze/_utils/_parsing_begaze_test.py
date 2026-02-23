@@ -18,15 +18,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - BeGaze."""
-import datetime
+
 from collections.abc import Callable
+import datetime
 from math import nan
 from typing import Any
 
 import numpy as np
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements.gaze import io
 from pymovements.gaze._utils import _parsing_begaze
@@ -119,7 +120,6 @@ PATTERNS: list[dict[str, Any] | str] = [
         'column': 'task',
         'value': None,
     },
-
     r'START_TRIAL_(?P<trial_id>\d+)',
     {
         'pattern': r'STOP_TRIAL',
@@ -139,20 +139,55 @@ METADATA_PATTERNS: list[dict[str, Any] | str] = [
 BEGAZE_EXPECTED_GAZE_DF = pl.from_dict(
     {
         'time': [
-            10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123,
+            10000000.123,
+            10000002.123,
+            10000004.123,
+            10000006.123,
+            10000008.123,
             10000011.123,
-            10000014.345, 10000017.345, 10000019.123, 10000020.123, 10000021.123,
+            10000014.345,
+            10000017.345,
+            10000019.123,
+            10000020.123,
+            10000021.123,
         ],
         'x_pix': [
-            850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, np.nan,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            np.nan,
             np.nan,
         ],
         'y_pix': [
-            717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, np.nan,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            np.nan,
             np.nan,
         ],
         'pupil': [
-            714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, np.nan, 0.0,
+            714.0,
+            714.0,
+            714.0,
+            714.0,
+            714.0,
+            714.0,
+            714.0,
+            714.0,
+            np.nan,
+            0.0,
             0.0,
         ],
         'task': [None, 'A', None, 'B', 'B', 'B', 'B', None, None, None, None],
@@ -176,12 +211,14 @@ EXPECTED_METADATA_BEGAZE = {
     'sampling_rate': 1000.00,
     'tracked_eye': 'L',
     'datetime': datetime.datetime(2023, 3, 8, 9, 25, 20),
-    'blinks': [{
-        'duration_ms': 2,
-        'num_samples': 2,
-        'start_timestamp': 10000019.123,
-        'stop_timestamp': 10000021.123,
-    }],
+    'blinks': [
+        {
+            'duration_ms': 2,
+            'num_samples': 2,
+            'start_timestamp': 10000019.123,
+            'stop_timestamp': 10000021.123,
+        }
+    ],
     'metadata_1': '123',
     'metadata_2': 'abc',
     'metadata_3': True,
@@ -271,7 +308,8 @@ def test_parse_begaze_binocular_parametrized(
     )
 
     gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
-        p, prefer_eye=prefer_eye,
+        p,
+        prefer_eye=prefer_eye,
     )
 
     assert gaze_df['time'].to_list() == [10000000.1, 10000001.1, 10000002.1]
@@ -299,7 +337,8 @@ def test_parse_begaze_binocular_parametrized(
 
 @pytest.mark.parametrize(
     'with_trial_columns',
-    [False, True], ids=['no_trial_columns', 'with_trial_columns'],
+    [False, True],
+    ids=['no_trial_columns', 'with_trial_columns'],
 )
 def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns):
     # Exercise the public loader that wraps parse_begaze using the same BEGAZE_TEXT fixture.
@@ -326,9 +365,11 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
     )
     # Align None/NaN semantics inside the nested list column as well.
     expected_samples = expected_samples.with_columns(
-        pl.col('pixel').list.eval(
+        pl.col('pixel')
+        .list.eval(
             pl.when(pl.element().is_nan()).then(None).otherwise(pl.element()),
-        ).alias('pixel'),
+        )
+        .alias('pixel'),
     )
     assert_frame_equal(
         gaze.samples.select(expected_samples.columns),
@@ -360,7 +401,8 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
 
 
 @pytest.mark.parametrize(
-    'text,prefer_eye,expected_time,expected_events', [
+    'text,prefer_eye,expected_time,expected_events',
+    [
         (
             '## [BeGaze]\n'
             '## Date:\t08.03.2023 09:25:20\n'
@@ -413,10 +455,15 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
             [10000000.1, 10000001.1, 10000002.1],
             ['fixation_begaze', 'saccade_begaze'],
         ),
-    ], ids=['generic_info_only', 'right_eye_preferred', 'continuous_fixation', 'dash_event_gap'],
+    ],
+    ids=['generic_info_only', 'right_eye_preferred', 'continuous_fixation', 'dash_event_gap'],
 )
 def test_parse_begaze_generic_info_only(
-        make_text_file, text, prefer_eye, expected_time, expected_events,
+    make_text_file,
+    text,
+    prefer_eye,
+    expected_time,
+    expected_events,
 ):
     # When only a generic 'Info' column exists, events should be derived from it.
     p = make_text_file(filename='begaze_info_only.txt', body=text, encoding='ascii')
@@ -431,7 +478,8 @@ def test_parse_begaze_generic_info_only(
 
 
 @pytest.mark.parametrize(
-    'text', [
+    'text',
+    [
         (
             '## [BeGaze]\n'
             '## Date:\t08.03.2023 09:25:20\n'
@@ -442,7 +490,8 @@ def test_parse_begaze_generic_info_only(
             '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tFixation\n'
             '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\tFixation\n'
         ),
-    ], ids=['initial_dash'],
+    ],
+    ids=['initial_dash'],
 )
 def test_parse_begaze_initial_dash_no_event(make_text_file, text):
     # The first labelled event occurs only after an initial '-' value.
@@ -470,7 +519,13 @@ def test_parse_begaze_initial_dash_no_event(make_text_file, text):
             '\tPupil Confidence\tL Event Info\n'
             '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
             '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\n',
-            'ascii', 'L', 'L', ['fixation_begaze', 'saccade_begaze'], None, None, 2,
+            'ascii',
+            'L',
+            'L',
+            ['fixation_begaze', 'saccade_begaze'],
+            None,
+            None,
+            2,
         ),
         (
             # Non-ASCII in Stimulus should parse if encoding is provided.
@@ -481,7 +536,13 @@ def test_parse_begaze_initial_dash_no_event(make_text_file, text):
             '\tPupil Confidence\tL Event Info\tStimulus\n'
             '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\tGröße_치맥.bmp\n'
             '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\tSaccade\tGröße_치맥.bmp\n',
-            'utf-16', 'L', 'L', ['fixation_begaze', 'saccade_begaze'], None, None, 2,
+            'utf-16',
+            'L',
+            'L',
+            ['fixation_begaze', 'saccade_begaze'],
+            None,
+            None,
+            2,
         ),
         (
             # Plane values -1 and >0 should not affect parsing logic - Blink row
@@ -491,7 +552,13 @@ def test_parse_begaze_initial_dash_no_event(make_text_file, text):
             '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\t-1\tFixation\n'
             '10000001100\tSMP\t1\t11.0\t21.0\t3.1\t1\t2\tBlink\n'
             '10000002100\tSMP\t1\t12.0\t22.0\t3.2\t1\t1\tFixation\n',
-            'ascii', 'L', None, ['fixation_begaze', 'blink_begaze', 'fixation_begaze'], 1, 1, 3,
+            'ascii',
+            'L',
+            None,
+            ['fixation_begaze', 'blink_begaze', 'fixation_begaze'],
+            1,
+            1,
+            3,
         ),
     ],
     ids=['no_stimulus', 'non_ascii_stimulus', 'plane_values'],
@@ -510,7 +577,9 @@ def test_parse_begaze_misc_samples(
     p = make_text_file(filename='begaze_misc.txt', body=text, encoding=encoding)
 
     gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(
-        p, prefer_eye=prefer_eye, encoding=encoding,
+        p,
+        prefer_eye=prefer_eye,
+        encoding=encoding,
     )
 
     if expect_tracked_eye is not None:
@@ -535,7 +604,11 @@ def test_parse_begaze_misc_samples(
             'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
             'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
             '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
-            'L', 'L', 0, 0, None,
+            'L',
+            'L',
+            0,
+            0,
+            None,
             id='space_header_no_samples_L',
         ),
         pytest.param(
@@ -545,7 +618,11 @@ def test_parse_begaze_misc_samples(
             'Time Type Trial L POR X [px] L POR Y [px] L Pupil Diameter [mm] R POR X [px] '
             'R POR Y [px] R Pupil Diameter [mm] Pupil Confidence L Event Info R Event Info\n'
             '10000000100\tSMP\t1\t10\t20\t3.0\t110\t120\t4.0\t1\tFixation\tSaccade\n',
-            'R', 'R', 0, 0, None,
+            'R',
+            'R',
+            0,
+            0,
+            None,
             id='space_header_no_samples_R',
         ),
         pytest.param(
@@ -555,14 +632,23 @@ def test_parse_begaze_misc_samples(
             '## Sample Rate:\t1000\n'
             'Time\tType\tTrial\tPupil Confidence\tInfo\n'
             '10000000100\tSMP\t1\t1\tFixation\n',
-            'L', None, 0, 0, lambda meta: meta['sampling_rate'] == 1000.0,
+            'L',
+            None,
+            0,
+            0,
+            lambda meta: meta['sampling_rate'] == 1000.0,
             id='no_eye_columns_no_samples',
         ),
     ],
 )
 def test_parse_begaze_unparseable_or_missing_eye_headers(
-        make_text_file, text, prefer_eye, expected_tracked_eye, expected_rows, expected_events_rows,
-        extra_assert,
+    make_text_file,
+    text,
+    prefer_eye,
+    expected_tracked_eye,
+    expected_rows,
+    expected_events_rows,
+    extra_assert,
 ):
     p = make_text_file(filename='begaze_header_cases.txt', body=text, encoding='ascii')
     gaze_df, event_df, metadata = _parsing_begaze.parse_begaze(p, prefer_eye=prefer_eye)
@@ -598,14 +684,22 @@ def test_parse_begaze_no_eye_columns_disables_header_parsing(make_text_file):
     'row, eye, header_idx, expected',
     [
         (
-            ['t', 'SMP', '1', 'Fixation', 'Saccade'], 'L', {
-                'L Event Info': 3, 'R Event Info': 4,
-            }, 'Fixation',
+            ['t', 'SMP', '1', 'Fixation', 'Saccade'],
+            'L',
+            {
+                'L Event Info': 3,
+                'R Event Info': 4,
+            },
+            'Fixation',
         ),
         (
-            ['t', 'SMP', '1', 'Fixation', 'Saccade'], 'R', {
-                'L Event Info': 3, 'R Event Info': 4,
-            }, 'Saccade',
+            ['t', 'SMP', '1', 'Fixation', 'Saccade'],
+            'R',
+            {
+                'L Event Info': 3,
+                'R Event Info': 4,
+            },
+            'Saccade',
         ),
         (['t', 'SMP', '1', 'Blink'], 'L', {'Info': 3}, 'Blink'),
         (['t', 'SMP', '1', 'Blink'], 'R', {'Info': 3}, 'Blink'),
@@ -652,7 +746,8 @@ def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_fil
     p = make_text_file(filename='begaze_space_header.txt', body=text, encoding='ascii')
 
     with pytest.raises(
-            ValueError, match="could not find a tabular header row containing 'Time' and 'Type'",
+        ValueError,
+        match="could not find a tabular header row containing 'Time' and 'Type'",
     ):
         _parsing_begaze.parse_begaze(p, prefer_eye='L')
 
@@ -702,17 +797,25 @@ def test_parse_begaze_space_separated_header_sets_header_cols_none(make_text_fil
     ids=['compiled_patterns_len_lt3', 'raw_string_patterns_len_lt3', 'msg_no_meta_patterns'],
 )
 def test_metadata_parsing_various(
-        make_text_file, text, metadata_patterns, expected_keys, expect_warning,
+    make_text_file,
+    text,
+    metadata_patterns,
+    expected_keys,
+    expect_warning,
 ):
     p = make_text_file(filename='begaze_meta_various.txt', body=text, encoding='ascii')
     if expect_warning:
         with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
             _, _, meta = _parsing_begaze.parse_begaze(
-                p, prefer_eye='L', metadata_patterns=metadata_patterns,
+                p,
+                prefer_eye='L',
+                metadata_patterns=metadata_patterns,
             )
     else:
         _, _, meta = _parsing_begaze.parse_begaze(
-            p, prefer_eye='L', metadata_patterns=metadata_patterns,
+            p,
+            prefer_eye='L',
+            metadata_patterns=metadata_patterns,
         )
     for k, v in expected_keys.items():
         assert meta.get(k) == v
@@ -729,7 +832,8 @@ def test_parse_begaze_raises_when_no_tabular_header(make_text_file):
     p = make_text_file(filename='begaze_no_header.txt', body=body, encoding='ascii')
 
     with pytest.raises(
-            ValueError, match="could not find a tabular header row containing 'Time' and 'Type'",
+        ValueError,
+        match="could not find a tabular header row containing 'Time' and 'Type'",
     ):
         _parsing_begaze.parse_begaze(p)
 
@@ -740,7 +844,7 @@ def test_metadata_patterns_non_sample_full_coverage(make_text_file):
         'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tPupil Confidence\t'
         'L Event Info\n'
         'nachricht: alpha\n'  # non-sample line -> groupdict pattern
-        'SET_TRUE\n'          # non-sample line -> key/value pattern (no second warning)
+        'SET_TRUE\n'  # non-sample line -> key/value pattern (no second warning)
         '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n'
     )
     patterns = [
@@ -767,8 +871,8 @@ def test_metadata_overwrite_warning_on_non_sample_lines(make_text_file):
         '## [BeGaze]\n'
         'Time\tType\tTrial\tL POR X [px]\tL POR Y [px]\tL Pupil Diameter [mm]\tPupil Confidence\t'
         'L Event Info\n'
-        'SET_KV_A\n'   # non-sample line -> sets dup_key = 'A'
-        'SET_KV_B\n'   # non-sample line -> sets dup_key = 'B' (overwrites)
+        'SET_KV_A\n'  # non-sample line -> sets dup_key = 'A'
+        'SET_KV_B\n'  # non-sample line -> sets dup_key = 'B' (overwrites)
         '10000000100\tSMP\t1\t10\t20\t3.0\t1\tFixation\n'
     )
     metadata_patterns = [
@@ -848,7 +952,11 @@ def exp_with_flags(sampling_rate: float, left: bool, right: bool) -> Experiment:
     ],
 )
 def test_from_begaze_loads_expected_experiment(
-        header, kwargs, expected_experiment, expect_warning, make_text_file,
+    header,
+    kwargs,
+    expected_experiment,
+    expect_warning,
+    make_text_file,
 ):
     # Build a minimal BeGaze file containing only the provided header part and
     # a minimal L-eye data row.
@@ -899,11 +1007,24 @@ def test_parse_begaze_optional_columns_harmonized(
 ) -> None:
     # Build minimal header row with variable trial/stimulus/task capitalisation
     base_cols = [
-        'Time', 'Type', trial_header, 'L POR X [px]', 'L POR Y [px]',
-        'L Pupil Diameter [mm]', 'Pupil Confidence', 'L Event Info',
+        'Time',
+        'Type',
+        trial_header,
+        'L POR X [px]',
+        'L POR Y [px]',
+        'L Pupil Diameter [mm]',
+        'Pupil Confidence',
+        'L Event Info',
     ]
     values = [
-        '10000000100', 'SMP', '1', '10.0', '20.0', '3.0', '1', 'Fixation',
+        '10000000100',
+        'SMP',
+        '1',
+        '10.0',
+        '20.0',
+        '3.0',
+        '1',
+        'Fixation',
     ]
     if include_stimulus:
         assert stimulus_header is not None
@@ -949,31 +1070,32 @@ def test_parse_begaze_optional_columns_harmonized(
 
 
 @pytest.mark.parametrize(
-    'trial_header', ['Trial', 'TRIAL', 'trial'], ids=['camel', 'upper', 'lower'],
+    'trial_header',
+    ['Trial', 'TRIAL', 'trial'],
+    ids=['camel', 'upper', 'lower'],
 )
 def test_parse_begaze_trial_header_ignored_when_patterns_provide_trial_id(
-    make_text_file: Callable, trial_header: str,
+    make_text_file: Callable,
+    trial_header: str,
 ) -> None:
     # When patterns include trial_id, header-derived trial should be ignored.
-    header = (
-        '## [BeGaze]\n'
-        '## Date:\t08.03.2023 09:25:20\n'
-        '## Sample Rate:\t1000\n'
-    )
+    header = '## [BeGaze]\n## Date:\t08.03.2023 09:25:20\n## Sample Rate:\t1000\n'
     cols = (
         f'Time\tType\t{trial_header}\tL POR X [px]\tL POR Y [px]'
         '\tL Pupil Diameter [mm]\tPupil Confidence\tL Event Info\n'
     )
     # Emit a message that sets trial_id via patterns before the sample
     body = (
-        header + cols +
-        '10000000050\tMSG\t1\t# Message: START_TRIAL_5\n'
+        header + cols + '10000000050\tMSG\t1\t# Message: START_TRIAL_5\n'
         '10000000100\tSMP\t1\t10.0\t20.0\t3.0\t1\tFixation\n'
     )
     p = make_text_file(filename='begaze_trial_patterns.txt', body=body, encoding='ascii')
 
     gaze_df, _, _ = _parsing_begaze.parse_begaze(
-        p, patterns=PATTERNS, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
+        p,
+        patterns=PATTERNS,
+        metadata_patterns=METADATA_PATTERNS,
+        prefer_eye='L',
     )
 
     # trial_id must come from patterns, not header
@@ -990,7 +1112,10 @@ def test_parse_begaze_trial_header_ignored_when_patterns_provide_trial_id(
     ],
 )
 def test_meta_parsing_bad_date_and_sampling_kept(
-        make_text_file, bad_date, bad_sampling, expected_datetime_type,
+    make_text_file,
+    bad_date,
+    bad_sampling,
+    expected_datetime_type,
 ):
     # Cover _parse_begaze_meta_line except branches for datetime and sampling_rate casts.
     text = (
@@ -1014,14 +1139,21 @@ def test_meta_parsing_bad_date_and_sampling_kept(
 def test_missing_pupil_mm_sets_nan(make_text_file, include_pupil_mm):
     # Cover pupil_s fallback to 'nan' when per-eye pupil column missing
     cols = [
-        'Time', 'Type', 'Trial', 'L POR X [px]', 'L POR Y [px]', 'Pupil Confidence', 'L Event Info',
+        'Time',
+        'Type',
+        'Trial',
+        'L POR X [px]',
+        'L POR Y [px]',
+        'Pupil Confidence',
+        'L Event Info',
     ]
     if include_pupil_mm:
         cols.insert(5, 'L Pupil Diameter [mm]')
     header = '## [BeGaze]\n## Sample Rate:\t1000\n' + '\t'.join(cols) + '\n'
     # If we include pupil mm, provide value - else sample has no pupil diameter field
-    sample = '10000000100\tSMP\t1\t10\t20' + \
-        ('\t3.0' if include_pupil_mm else '') + '\t1\tFixation\n'
+    sample = (
+        '10000000100\tSMP\t1\t10\t20' + ('\t3.0' if include_pupil_mm else '') + '\t1\tFixation\n'
+    )
     p = make_text_file(filename='begaze_pupil_missing.txt', body=header + sample, encoding='ascii')
 
     gaze_df, _, _ = _parsing_begaze.parse_begaze(p, prefer_eye='L')
@@ -1067,7 +1199,9 @@ def test_metadata_patterns_on_short_lines_and_removal(make_text_file, repeat_met
 
     with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
         _, _, meta = _parsing_begaze.parse_begaze(
-            p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
+            p,
+            metadata_patterns=METADATA_PATTERNS,
+            prefer_eye='L',
         )
     assert meta.get('metadata_3') is True
 
@@ -1117,7 +1251,9 @@ def test_header_msg_metadata_key_value_branch(make_text_file, repeat):
     )
 
     _, _, meta = _parsing_begaze.parse_begaze(
-        p, metadata_patterns=METADATA_PATTERNS, prefer_eye='L',
+        p,
+        metadata_patterns=METADATA_PATTERNS,
+        prefer_eye='L',
     )
     assert meta.get('metadata_4') is True
 
@@ -1140,13 +1276,16 @@ def test_header_short_line_metadata_patterns_copy_and_remove(make_text_file):
     ]
 
     p = make_text_file(
-        filename='begaze_header_short_meta.txt', body=header + short_lines + sample,
+        filename='begaze_header_short_meta.txt',
+        body=header + short_lines + sample,
         encoding='ascii',
     )
 
     with pytest.warns(RuntimeWarning, match='non-sample lines matched by metadata_patterns'):
         _, _, meta = _parsing_begaze.parse_begaze(
-            p, metadata_patterns=meta_patterns, prefer_eye='L',
+            p,
+            metadata_patterns=meta_patterns,
+            prefer_eye='L',
         )
 
     # Both metadata entries should be set and patterns removed after match

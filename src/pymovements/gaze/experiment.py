@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Experiment class."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -94,17 +95,17 @@ class Experiment:
     """
 
     def __init__(
-            self,
-            screen_width_px: int | None = None,
-            screen_height_px: int | None = None,
-            screen_width_cm: float | None = None,
-            screen_height_cm: float | None = None,
-            distance_cm: float | None = None,
-            origin: str | None = None,
-            sampling_rate: float | None = None,
-            *,
-            screen: Screen | None = None,
-            eyetracker: EyeTracker | None = None,
+        self,
+        screen_width_px: int | None = None,
+        screen_height_px: int | None = None,
+        screen_width_cm: float | None = None,
+        screen_height_cm: float | None = None,
+        distance_cm: float | None = None,
+        origin: str | None = None,
+        sampling_rate: float | None = None,
+        *,
+        screen: Screen | None = None,
+        eyetracker: EyeTracker | None = None,
     ):
         _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
         _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
@@ -217,10 +218,10 @@ class Experiment:
         self.eyetracker.sampling_rate = sampling_rate
 
     def pos2vel(
-            self,
-            arr: list[float] | list[list[float]] | np.ndarray,
-            method: str = 'smooth',
-            **kwargs: int | float | str,
+        self,
+        arr: list[float] | list[list[float]] | np.ndarray,
+        method: str = 'smooth',
+        **kwargs: int | float | str,
     ) -> np.ndarray:
         """Compute velocity time series from 2-dimensional position time series.
 
@@ -272,7 +273,10 @@ class Experiment:
         """
         assert self.sampling_rate is not None
         return transforms_numpy.pos2vel(
-            arr=arr, sampling_rate=self.sampling_rate, method=method, **kwargs,
+            arr=arr,
+            sampling_rate=self.sampling_rate,
+            method=method,
+            **kwargs,
         )
 
     def __eq__(self: Experiment, other: Experiment) -> bool:
@@ -280,7 +284,9 @@ class Experiment:
         return self.screen == other.screen and self.eyetracker == other.eyetracker
 
     def to_dict(
-        self, *, exclude_none: bool = True,
+        self,
+        *,
+        exclude_none: bool = True,
     ) -> dict[str, Any | dict[str, str | float | None]]:
         """Convert the experiment instance into a dictionary.
 
@@ -307,10 +313,7 @@ class Experiment:
 
     def __str__(self: Experiment) -> str:
         """Return Experiment string."""
-        return (
-            f"{type(self).__name__}(screen={self.screen}, "
-            f"eyetracker={self.eyetracker})"
-        )
+        return f'{type(self).__name__}(screen={self.screen}, eyetracker={self.eyetracker})'
 
     def __bool__(self) -> bool:
         """Return True if the experiment has data defined, else False."""

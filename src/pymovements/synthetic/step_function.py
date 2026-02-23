@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the synthetic step function."""
+
 from __future__ import annotations
 
 from collections.abc import Sized
@@ -26,12 +27,12 @@ import numpy as np
 
 
 def step_function(
-        length: int,
-        steps: list[int],
-        values: list[float | tuple[float, ...]],
-        start_value: float | tuple[float, ...] = 0,
-        noise: float = 0,
-        dtype: np.typing.DTypeLike = np.float64,
+    length: int,
+    steps: list[int],
+    values: list[float | tuple[float, ...]],
+    start_value: float | tuple[float, ...] = 0,
+    noise: float = 0,
+    dtype: np.typing.DTypeLike = np.float64,
 ) -> np.ndarray:
     """Create a synthetic eye gaze by using a simple step function.
 
@@ -94,8 +95,7 @@ def step_function(
     # Check that steps and values have equal length.
     if len(steps) != len(values):
         raise ValueError(
-            'length of steps not equal to length of values'
-            f' ({len(steps)} != {len(values)})',
+            f'length of steps not equal to length of values ({len(steps)} != {len(values)})',
         )
 
     # Check that steps are sorted in ascending order.
@@ -120,7 +120,6 @@ def step_function(
 
     # Make sure start value corresponds to number of channels.
     if n_channels > 1:
-
         # If start value is a scalar, create tuple with length of number of channels.
         if isinstance(start_value, (int, float)):
             start_value = tuple(start_value for _ in range(n_channels))
@@ -145,7 +144,7 @@ def step_function(
         arr[begin:end] = value
 
     # Set value for each step until the end.
-    arr[steps[-1]:] = values[-1]
+    arr[steps[-1] :] = values[-1]
 
     # Add noise if desired.
     if noise > 0:

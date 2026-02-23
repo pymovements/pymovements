@@ -18,10 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test from gaze.from_numpy."""
+
 import numpy as np
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements import Events
 from pymovements import Experiment
@@ -287,22 +288,18 @@ def test_from_numpy_all_none():
             None,
             id='events_none',
         ),
-
         pytest.param(
             Events(),
             id='events_empty',
         ),
-
         pytest.param(
             Events(name='fixation', onsets=[123], offsets=[345]),
             id='fixation',
         ),
-
         pytest.param(
             Events(name='saccade', onsets=[34123], offsets=[67345]),
             id='saccade',
         ),
-
     ],
 )
 def test_from_numpy_events(events):
@@ -354,5 +351,4 @@ def test_from_numpy_data_argument_is_removed(assert_deprecation_is_removed):
         function_name='from_numpy() keyword argument "data"',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )

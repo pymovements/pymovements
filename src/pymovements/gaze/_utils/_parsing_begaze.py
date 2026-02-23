@@ -24,25 +24,26 @@ A tabular header row with at least the columns 'Time' and 'Type' is required.
 The parser selects monocular data from left or right eye columns depending on availability
 and the `prefer_eye` parameter.
 """
+
 from __future__ import annotations
 
 __all__ = [
     'parse_begaze',
 ]
 
-import datetime
-import re
 from collections import defaultdict
+import datetime
 from pathlib import Path
+import re
 from typing import Any
-
 import warnings
 
 import numpy as np
 import polars as pl
 
-from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan
+from pymovements.gaze._utils._parsing import check_nan
+from pymovements.gaze._utils._parsing import compile_patterns
+from pymovements.gaze._utils._parsing import get_pattern_keys
 
 # Regular expressions for BeGaze header metadata lines with named groups.
 # Note: we compile regexes for performance and to support minor whitespace variations.
@@ -72,7 +73,8 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:
                     groupdict['datetime'] = datetime.datetime.strptime(
-                        groupdict['date'].strip(), '%d.%m.%Y %H:%M:%S',
+                        groupdict['date'].strip(),
+                        '%d.%m.%Y %H:%M:%S',
                     )
                 except ValueError:
                     # Keep original string if parsing fails
@@ -103,14 +105,14 @@ def parse_event_for_eye(row: list[str], eye: str, header_idx: dict[str, int]) ->
 
 
 def parse_begaze(
-        filepath: Path | str,
-        *,
-        patterns: list[dict[str, Any] | str] | None = None,
-        schema: dict[str, Any] | None = None,
-        metadata_patterns: list[dict[str, Any] | str] | None = None,
-        encoding: str = 'ascii',
-        prefer_eye: str = 'L',
-        harmonise_trial_header: bool = True,
+    filepath: Path | str,
+    *,
+    patterns: list[dict[str, Any] | str] | None = None,
+    schema: dict[str, Any] | None = None,
+    metadata_patterns: list[dict[str, Any] | str] | None = None,
+    encoding: str = 'ascii',
+    prefer_eye: str = 'L',
+    harmonise_trial_header: bool = True,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any]]:
     """Parse BeGaze raw data export file.
 
@@ -174,9 +176,7 @@ def parse_begaze(
     compiled_metadata_patterns = compile_patterns(metadata_patterns, '')
 
     additional_columns = get_pattern_keys(compiled_patterns, 'column')
-    current_additional = {
-        additional_column: None for additional_column in additional_columns
-    }
+    current_additional = dict.fromkeys(additional_columns)
     current_event = '-'
     current_event_onset: float | None = None
     previous_timestamp: float | None = None
@@ -184,7 +184,9 @@ def parse_begaze(
     num_valid_samples = 0
     num_blink_samples = 0
     current_event_additional: dict[str, dict[str, Any]] = {
-        'fixation': {}, 'saccade': {}, 'blink': {},
+        'fixation': {},
+        'saccade': {},
+        'blink': {},
     }
 
     samples: dict[str, list[Any]] = {
@@ -234,12 +236,14 @@ def parse_begaze(
             and blink_start_prev_ts is not None
             and blink_last_ts is not None
         ):
-            blinks_meta.append({
-                'duration_ms': blink_last_ts - blink_start_prev_ts,
-                'num_samples': blink_sample_count,
-                'start_timestamp': blink_start_prev_ts,
-                'stop_timestamp': blink_last_ts,
-            })
+            blinks_meta.append(
+                {
+                    'duration_ms': blink_last_ts - blink_start_prev_ts,
+                    'num_samples': blink_sample_count,
+                    'start_timestamp': blink_start_prev_ts,
+                    'stop_timestamp': blink_last_ts,
+                }
+            )
             blink_active = False
             blink_start_prev_ts = None
             blink_last_ts = None
@@ -275,8 +279,9 @@ def parse_begaze(
                 # like "L POR X [px]". We only accept such a line as the header marker
                 # if there are tab-separated rows following it. Otherwise, keep searching
                 # for a valid tabular header and let the generic error trigger later.
-                has_tabular_rows_ahead = any(('\t' in line)
-                                             for line in lines[idx + 1:] if line.strip())
+                has_tabular_rows_ahead = any(
+                    ('\t' in line) for line in lines[idx + 1 :] if line.strip()
+                )
                 if not has_tabular_rows_ahead:
                     # Do not set header_row_index, continue scanning for a proper header
                     continue
@@ -306,10 +311,7 @@ def parse_begaze(
 
     def has_eye_columns(eye: str) -> bool:
         # Only require X/Y columns - pupil diameter may be absent in some exports (e.g. DIDEC)
-        return (
-            f'{eye} POR X [px]' in header_idx and
-            f'{eye} POR Y [px]' in header_idx
-        )
+        return f'{eye} POR X [px]' in header_idx and f'{eye} POR Y [px]' in header_idx
 
     if not has_eye_columns(selected_eye):
         # fall back to the other eye if available and inform the user once
@@ -371,12 +373,12 @@ def parse_begaze(
         if key in metadata and metadata[key] not in ('', None) and metadata[key] != value:
             warnings.warn(
                 f"BeGaze parser: metadata key '{key}' is being overwritten "
-                f"(old={metadata[key]!r}, new={value!r}).",
+                f'(old={metadata[key]!r}, new={value!r}).',
                 RuntimeWarning,
             )
         metadata[key] = value
 
-    for line in lines[header_row_index + 1:]:
+    for line in lines[header_row_index + 1 :]:
         # Apply message-driven additional columns first
         for pattern_dict in compiled_patterns:
             if match := pattern_dict['pattern'].match(line):
@@ -445,9 +447,9 @@ def parse_begaze(
         y_pix = check_nan(y_s)
         pupil = check_nan(pupil_s)
 
-        pupil_conf_s = parts[
-            header_idx['Pupil Confidence']
-        ] if 'Pupil Confidence' in header_idx else None
+        pupil_conf_s = (
+            parts[header_idx['Pupil Confidence']] if 'Pupil Confidence' in header_idx else None
+        )
 
         event = parse_event_for_eye(parts, selected_eye, header_idx)
         # Handle blink samples: override with NaNs for positions and 0.0 for pupil
@@ -480,9 +482,7 @@ def parse_begaze(
                 # As a conservative fallback for Stimulus/Task-like trailing columns,
                 # try the last field when appropriate - otherwise keep None.
                 lower_src = src_col.lower()
-                if lower_src.endswith('stimulus') or lower_src == 'stimulus':
-                    val = parts[-1] if len(parts) >= 1 else None
-                elif lower_src == 'task':
+                if lower_src.endswith('stimulus') or lower_src == 'stimulus' or lower_src == 'task':
                     val = parts[-1] if len(parts) >= 1 else None
                 else:
                     val = None

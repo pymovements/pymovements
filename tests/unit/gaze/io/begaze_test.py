@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests for reading BeGaze files via io.from_begaze."""
+
 from __future__ import annotations
 
 import warnings
@@ -28,7 +29,6 @@ import pytest
 from pymovements import Experiment
 from pymovements.gaze import from_begaze
 from pymovements.gaze.io import _fill_experiment_from_parsing_begaze_metadata
-
 
 # Minimal BeGaze-like content (tabs) with MSG lines that our parser understands.
 BEGAZE_MINI = (
@@ -72,7 +72,7 @@ def test_from_begaze_adds_missing_trial_columns_with_none(make_text_file, trial_
     gaze = from_begaze(filepath, trial_columns=trial_columns)
 
     cols = gaze.samples.columns
-    for col in ([trial_columns] if isinstance(trial_columns, str) else trial_columns):
+    for col in [trial_columns] if isinstance(trial_columns, str) else trial_columns:
         assert col in cols
         # Entire column should be None because it was missing in the file
         assert gaze.samples[col].to_list() == [None]
@@ -85,8 +85,15 @@ def test_from_begaze_adds_missing_trial_columns_with_none(make_text_file, trial_
             'Stimulus',
             # Include Stimulus in the file so there are no missing trial columns
             [
-                'Time', 'Type', 'Trial', 'L POR X [px]', 'L POR Y [px]',
-                'L Pupil Diameter [mm]', 'Pupil Confidence', 'L Event Info', 'Stimulus',
+                'Time',
+                'Type',
+                'Trial',
+                'L POR X [px]',
+                'L POR Y [px]',
+                'L Pupil Diameter [mm]',
+                'Pupil Confidence',
+                'L Event Info',
+                'Stimulus',
             ],
             ['10000000100', 'SMP', '1', '10', '20', '3.0', '1', 'Fixation', 'img.bmp'],
             id='no_missing_single_trial_column',
@@ -94,7 +101,10 @@ def test_from_begaze_adds_missing_trial_columns_with_none(make_text_file, trial_
     ],
 )
 def test_from_begaze_does_not_add_trial_columns_when_present(
-    make_text_file, trial_columns, header_cols, row_vals,
+    make_text_file,
+    trial_columns,
+    header_cols,
+    row_vals,
 ):
     # Build a minimal BeGaze file where requested trial columns are already present
     header = '## [BeGaze]\n## Date:\t08.03.2023 09:25:20\n## Sample Rate:\t1000\n'
@@ -248,7 +258,11 @@ def test_from_begaze_has_correct_samples(
     ],
 )
 def test_fill_experiment_from_parsing_begaze_metadata(
-        exp_kwargs, metadata, expect_sampling_rate, expect_screen, expect_warnings_regex,
+    exp_kwargs,
+    metadata,
+    expect_sampling_rate,
+    expect_screen,
+    expect_warnings_regex,
 ):
     # Prepare an experiment based on parameters
     experiment: Experiment | None
@@ -259,7 +273,7 @@ def test_fill_experiment_from_parsing_begaze_metadata(
             experiment.screen.width_px = 1280
             experiment.screen.height_px = 720
         # For the matching-left/right cases, preset corresponding flags to True
-        tracked = (metadata.get('tracked_eye') or '')
+        tracked = metadata.get('tracked_eye') or ''
         if tracked == 'L':
             experiment.eyetracker.left = True
             experiment.eyetracker.right = False

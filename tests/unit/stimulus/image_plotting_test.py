@@ -18,11 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements plotting utils."""
+
 from pathlib import Path
 from unittest.mock import Mock
 
-import pytest
 from matplotlib import pyplot
+import pytest
 
 from pymovements.stimulus.image import _draw_image_stimulus
 

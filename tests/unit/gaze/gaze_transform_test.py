@@ -18,10 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze transform method."""
+
 import numpy as np
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 import pymovements as pm
 
@@ -45,7 +46,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            pm.gaze.transforms.downsample, {'factor': 1},
+            pm.gaze.transforms.downsample,
+            {'factor': 1},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -58,7 +60,6 @@ def fixture_experiment():
             ),
             id='downsample_factor_1_method_pass',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -70,7 +71,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'downsample', {'factor': 1},
+            'downsample',
+            {'factor': 1},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -83,7 +85,6 @@ def fixture_experiment():
             ),
             id='downsample_factor_1',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -95,7 +96,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'downsample', {'factor': 2},
+            'downsample',
+            {'factor': 2},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -128,7 +130,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'center_origin', {},
+            'center_origin',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -141,7 +144,6 @@ def fixture_experiment():
             ),
             id='center_origin_center',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -162,7 +164,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'center_origin', {},
+            'center_origin',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -175,7 +178,6 @@ def fixture_experiment():
             ),
             id='center_origin_upper_left',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -196,7 +198,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'pix2deg', {},
+            'pix2deg',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -212,7 +215,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_center',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -233,7 +235,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'pix2deg', {'n_components': 2},
+            'pix2deg',
+            {'n_components': 2},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -249,7 +252,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_center_explicit_n_components',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -270,7 +272,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'pix2deg', {},
+            'pix2deg',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -286,7 +289,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_upper_left',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -309,7 +311,8 @@ def fixture_experiment():
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'distance_column': 'distance',
             },
-            'pix2deg', {},
+            'pix2deg',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -326,7 +329,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_center_distance_column',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -349,7 +351,8 @@ def fixture_experiment():
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'distance_column': 'distance',
             },
-            'pix2deg', {'n_components': 2},
+            'pix2deg',
+            {'n_components': 2},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -367,7 +370,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_center_explicit_n_components_distance_column',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -389,7 +391,8 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'pix2deg', {'distance': 'distance'},
+            'pix2deg',
+            {'distance': 'distance'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -406,7 +409,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_center_explicit_distance_column',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -428,7 +430,8 @@ def fixture_experiment():
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'distance_column': 'distance',
             },
-            'pix2deg', {},
+            'pix2deg',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -446,7 +449,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_upper_left_default_distance_column',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -469,7 +471,8 @@ def fixture_experiment():
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'distance_column': 'distance',
             },
-            'pix2deg', {},
+            'pix2deg',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -487,7 +490,6 @@ def fixture_experiment():
             ),
             id='pix2deg_origin_upper_left_from_experiment_distance_column',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -508,7 +510,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'deg2pix', {'pixel_origin': 'center'},
+            'deg2pix',
+            {'pixel_origin': 'center'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -524,7 +527,6 @@ def fixture_experiment():
             ),
             id='deg2pix_origin_center',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -544,7 +546,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'deg2pix', {},
+            'deg2pix',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -560,7 +563,6 @@ def fixture_experiment():
             ),
             id='deg2pix_origin_upper_left_default',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -581,7 +583,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'deg2pix', {},
+            'deg2pix',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -597,7 +600,6 @@ def fixture_experiment():
             ),
             id='deg2pix_origin_upper_left_from_experiment',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -620,7 +622,8 @@ def fixture_experiment():
                 'position_columns': ['x_dva', 'y_dva'],
                 'distance_column': 'distance',
             },
-            'deg2pix', {'pixel_origin': 'center'},
+            'deg2pix',
+            {'pixel_origin': 'center'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -637,7 +640,6 @@ def fixture_experiment():
             ),
             id='deg2pix_origin_center_distance_column',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -659,7 +661,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'pos2vel', {'method': 'preceding'},
+            'pos2vel',
+            {'method': 'preceding'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -676,7 +679,6 @@ def fixture_experiment():
             ),
             id='pos2vel_preceding',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -697,7 +699,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'pos2vel', {'method': 'neighbors'},
+            'pos2vel',
+            {'method': 'neighbors'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -713,7 +716,6 @@ def fixture_experiment():
             ),
             id='pos2vel_neighbors',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -734,7 +736,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'pos2vel', {'method': 'fivepoint'},
+            'pos2vel',
+            {'method': 'fivepoint'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -750,7 +753,6 @@ def fixture_experiment():
             ),
             id='pos2vel_fivepoint',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -773,7 +775,8 @@ def fixture_experiment():
                 'position_columns': ['x_dva', 'y_dva'],
                 'trial_columns': 'trial_id',
             },
-            'pos2vel', {'method': 'preceding'},
+            'pos2vel',
+            {'method': 'preceding'},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -801,7 +804,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            'smooth', {'method': 'moving_average', 'window_length': 3},
+            'smooth',
+            {'method': 'moving_average', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -825,7 +829,8 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            pm.gaze.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
+            pm.gaze.transforms.smooth,
+            {'method': 'moving_average', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -838,7 +843,6 @@ def fixture_experiment():
             ),
             id='smooth_method_pass',
         ),
-
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -850,9 +854,13 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            'clip', {
-                'input_column': 'pixel', 'output_column': 'pixel', 'n_components': 2,
-                'lower_bound': 1, 'upper_bound': 10,
+            'clip',
+            {
+                'input_column': 'pixel',
+                'output_column': 'pixel',
+                'n_components': 2,
+                'lower_bound': 1,
+                'upper_bound': 10,
             },
             pm.Gaze(
                 samples=pl.from_dict(
@@ -866,11 +874,13 @@ def fixture_experiment():
             ),
             id='clip',
         ),
-
     ],
 )
 def test_gaze_transform_expected_frame(
-        gaze_init_kwargs, transform_method, transform_kwargs, expected,
+    gaze_init_kwargs,
+    transform_method,
+    transform_kwargs,
+    expected,
 ):
     gaze = pm.Gaze(**gaze_init_kwargs)
     gaze.transform(transform_method, **transform_kwargs)
@@ -912,7 +922,8 @@ def test_gaze_transform_expected_frame(
                 'pixel_columns': ['x_pix', 'y_pix'],
                 'distance_column': 'distance',
             },
-            'pix2deg', {},
+            'pix2deg',
+            {},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -934,7 +945,11 @@ def test_gaze_transform_expected_frame(
     ],
 )
 def test_gaze_transform_expected_samples_warning(
-        gaze_init_kwargs, transform_method, transform_kwargs, expected_result, expected_warning,
+    gaze_init_kwargs,
+    transform_method,
+    transform_kwargs,
+    expected_result,
+    expected_warning,
 ):
     with pytest.warns(expected_warning):
         gaze = pm.Gaze(**gaze_init_kwargs)
@@ -961,7 +976,7 @@ def test_gaze_transform_raises_exception(init_kwargs, exception, exception_msg):
     with pytest.raises(exception) as excinfo:
         pm.Gaze(**init_kwargs)
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == exception_msg
 
 
@@ -1068,7 +1083,7 @@ def test_gaze_pix2deg_exceptions(init_kwargs, exception, expected_msg):
     with pytest.raises(exception) as excinfo:
         gaze.pix2deg()
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg.startswith(expected_msg)
 
 
@@ -1168,7 +1183,7 @@ def test_gaze_deg2pix_exceptions(init_kwargs, exception, expected_msg):
     with pytest.raises(exception) as excinfo:
         gaze.deg2pix()
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg.startswith(expected_msg)
 
 
@@ -1269,7 +1284,7 @@ def test_gaze_pos2acc_exceptions(init_kwargs, exception, expected_msg):
     with pytest.raises(exception) as excinfo:
         gaze.pos2acc()
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg.startswith(expected_msg)
 
 
@@ -1392,7 +1407,7 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
     with pytest.raises(exception) as excinfo:
         gaze.pos2vel()
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg.startswith(expected_msg)
 
 
@@ -1462,7 +1477,9 @@ def test_gaze_pos2vel_exceptions(init_kwargs, exception, expected_msg):
     ],
 )
 def test_gaze_smooth_expected_column(
-        gaze_init_kwargs, kwargs, expected,
+    gaze_init_kwargs,
+    kwargs,
+    expected,
 ):
     gaze = pm.Gaze(**gaze_init_kwargs)
     gaze.smooth(**kwargs)
@@ -1524,16 +1541,28 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000.0,
+                        1000.5,
+                        1001.0,
+                        2000.0,
+                        2000.5,
+                        2001.0,
+                        3000.0,
+                        3000.5,
+                        3001.0,
                     ],
                     'distance': [1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
                     'pixel': [
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
                     ],
                 },
                 schema={
@@ -1567,18 +1596,29 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000.0,
+                        1000.5,
+                        1001.0,
+                        2000.0,
+                        2000.5,
+                        2001.0,
+                        3000.0,
+                        3000.5,
+                        3001.0,
                     ],
                     'distance': [1, None, 0, 1, None, 0, 1, None, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
                     'pixel': [
-                        [0.0, 0.0], None, [1.0, 1.0],
-                        [0.0, 0.0], None, [1.0, 1.0],
-                        [0.0, 0.0], None, [1.0, 1.0],
+                        [0.0, 0.0],
+                        None,
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        None,
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        None,
+                        [1.0, 1.0],
                     ],
-
                 },
             ),
             id='resample_no_columns_multiple_trials',
@@ -1605,16 +1645,28 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000.0,
+                        1000.5,
+                        1001.0,
+                        2000.0,
+                        2000.5,
+                        2001.0,
+                        3000.0,
+                        3000.5,
+                        3001.0,
                     ],
                     'distance': [1, None, 0, 1, None, 0, 1, None, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
                     'pixel': [
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
                     ],
                 },
             ),
@@ -1642,16 +1694,28 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000.0,
+                        1000.5,
+                        1001.0,
+                        2000.0,
+                        2000.5,
+                        2001.0,
+                        3000.0,
+                        3000.5,
+                        3001.0,
                     ],
                     'distance': [1, None, 0, 1, None, 0, 1, None, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
                     'pixel': [
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
-                        [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
+                        [0.0, 0.0],
+                        [0.5, 0.5],
+                        [1.0, 1.0],
                     ],
                 },
             ),
@@ -1660,7 +1724,9 @@ def test_gaze_smooth_expected_column(
     ],
 )
 def test_gaze_resample_expected(
-        gaze_init_kwargs, kwargs, expected_samples,
+    gaze_init_kwargs,
+    kwargs,
+    expected_samples,
 ):
     gaze = pm.Gaze(**gaze_init_kwargs)
     gaze.resample(**kwargs)

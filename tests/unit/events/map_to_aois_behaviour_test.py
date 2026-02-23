@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Several tests about specific Events.map_to_aois behaviours."""
+
 from __future__ import annotations
 
 import polars as pl
@@ -25,7 +26,6 @@ import pytest
 
 from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
-
 
 # Tests for Events.map_to_aois ignoring non-fixation events:
 # These tests ensure that AOIs are only mapped for fixations and that non-fixations
@@ -89,16 +89,28 @@ def test_map_to_aois_ignores_non_fixations(
         pytest.param(
             [
                 {
-                    'name': 'fixation', 'onset': 0, 'offset': 1,
-                    'location': [5, 5], 'trial': 1, 'page': 'X',
+                    'name': 'fixation',
+                    'onset': 0,
+                    'offset': 1,
+                    'location': [5, 5],
+                    'trial': 1,
+                    'page': 'X',
                 },
                 {
-                    'name': 'saccade', 'onset': 1, 'offset': 2,
-                    'location': [5, 5], 'trial': 1, 'page': 'X',
+                    'name': 'saccade',
+                    'onset': 1,
+                    'offset': 2,
+                    'location': [5, 5],
+                    'trial': 1,
+                    'page': 'X',
                 },
                 {
-                    'name': 'fixation', 'onset': 2, 'offset': 3,
-                    'location': [5, 5], 'trial': 1, 'page': 'Y',
+                    'name': 'fixation',
+                    'onset': 2,
+                    'offset': 3,
+                    'location': [5, 5],
+                    'trial': 1,
+                    'page': 'Y',
                 },
             ],
             ['TX', None, 'TY'],
@@ -136,7 +148,8 @@ def test_map_to_aois_fixation_missing_coordinates(simple_stimulus: TextStimulus)
 
 
 def test_map_to_aois_get_aoi_exception_sets_none_without_crash(
-    simple_stimulus: TextStimulus, monkeypatch: pytest.MonkeyPatch,
+    simple_stimulus: TextStimulus,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Simulate a recoverable exception in get_aoi and assert mapping continues with None AOI.
 

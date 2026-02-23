@@ -18,16 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the scanpath plotting function."""
+
 from __future__ import annotations
 
 import math
 from warnings import warn
 
+from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
 import polars as pl
-from matplotlib.patches import Circle
 
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
@@ -41,37 +42,37 @@ from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 
 def scanpathplot(
-        gaze: Gaze | None = None,
-        position_column: str = 'location',
-        cval: np.ndarray | None = None,
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
-        cmap_segmentdata: LinearSegmentedColormapType | None = None,
-        cbar_label: str | None = None,
-        show_cbar: bool = False,
-        padding: float | None = None,
-        pad_factor: float | None = 0.05,
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        color: str = 'blue',
-        alpha: float = 0.5,
-        add_traceplot: bool = False,
-        gaze_position_column: str = 'pixel',
-        add_stimulus: bool = False,
-        add_arrows: bool = True,
-        arrow_color: str = 'black',
-        arrow_rad: float = 0.25,
-        arrow_style: str = 'simple',
-        arrow_scale: float = 40.,
-        path_to_image_stimulus: str | None = None,
-        stimulus_origin: str = 'upper',
-        events: Events | EventDataFrame | None = None,
-        *,
-        event_name: str = 'fixation',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
+    gaze: Gaze | None = None,
+    position_column: str = 'location',
+    cval: np.ndarray | None = None,
+    cmap: matplotlib.colors.Colormap | None = None,
+    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap_segmentdata: LinearSegmentedColormapType | None = None,
+    cbar_label: str | None = None,
+    show_cbar: bool = False,
+    padding: float | None = None,
+    pad_factor: float | None = 0.05,
+    figsize: tuple[int, int] = (15, 5),
+    title: str | None = None,
+    savepath: str | None = None,
+    show: bool = True,
+    color: str = 'blue',
+    alpha: float = 0.5,
+    add_traceplot: bool = False,
+    gaze_position_column: str = 'pixel',
+    add_stimulus: bool = False,
+    add_arrows: bool = True,
+    arrow_color: str = 'black',
+    arrow_rad: float = 0.25,
+    arrow_style: str = 'simple',
+    arrow_scale: float = 40.0,
+    path_to_image_stimulus: str | None = None,
+    stimulus_origin: str = 'upper',
+    events: Events | EventDataFrame | None = None,
+    *,
+    event_name: str = 'fixation',
+    ax: plt.Axes | None = None,
+    closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot scanpath from positional data.
 

@@ -22,14 +22,15 @@
 .. deprecated:: v0.22.0
    This module will be removed in v0.27.0.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 from deprecated.sphinx import deprecated
 from matplotlib import colors
+import matplotlib.pyplot as plt
+import numpy as np
 
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
@@ -43,19 +44,19 @@ from pymovements.stimulus.image import _draw_image_stimulus
     version='v0.22.0',
 )
 def setup_matplotlib(
-        x_signal: np.ndarray,
-        y_signal: np.ndarray,
-        figsize: tuple[int, int],
-        cmap: colors.Colormap | None = None,
-        cmap_norm: colors.Normalize | str | None = None,
-        cmap_segmentdata: LinearSegmentedColormapType | None = None,
-        cval: np.ndarray | None = None,
-        show_cbar: bool = False,
-        add_stimulus: bool = False,
-        path_to_image_stimulus: str | None = None,
-        stimulus_origin: str = 'upper',
-        padding: float | None = None,
-        pad_factor: float | None = 0.05,
+    x_signal: np.ndarray,
+    y_signal: np.ndarray,
+    figsize: tuple[int, int],
+    cmap: colors.Colormap | None = None,
+    cmap_norm: colors.Normalize | str | None = None,
+    cmap_segmentdata: LinearSegmentedColormapType | None = None,
+    cval: np.ndarray | None = None,
+    show_cbar: bool = False,
+    add_stimulus: bool = False,
+    path_to_image_stimulus: str | None = None,
+    stimulus_origin: str = 'upper',
+    padding: float | None = None,
+    pad_factor: float | None = 0.05,
 ) -> MatplotlibSetupType:
     """Configure cmap.
 
@@ -114,18 +115,17 @@ def setup_matplotlib(
 
 
 @deprecated(
-    reason='Please use ImageStimulus.show() instead. '
-           'This function will be removed in v0.27.0.',
+    reason='Please use ImageStimulus.show() instead. This function will be removed in v0.27.0.',
     version='v0.22.0',
 )
 def draw_image_stimulus(
-        image_stimulus: str | Path,
-        origin: str = 'upper',
-        show: bool = False,
-        figsize: tuple[float, float] = (15, 10),
-        extent: list[float] | None = None,
-        fig: plt.Figure | None = None,
-        ax: plt.Axes | None = None,
+    image_stimulus: str | Path,
+    origin: str = 'upper',
+    show: bool = False,
+    figsize: tuple[float, float] = (15, 10),
+    extent: list[float] | None = None,
+    fig: plt.Figure | None = None,
+    ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Draw stimulus.
 
@@ -171,12 +171,12 @@ def draw_image_stimulus(
     version='v0.22.0',
 )
 def draw_line_data(
-        x_signal: np.ndarray,
-        y_signal: np.ndarray,
-        ax: plt.Axes,
-        cmap: colors.Colormap | None = None,
-        cmap_norm: colors.Normalize | str | None = None,
-        cval: np.ndarray | None = None,
+    x_signal: np.ndarray,
+    y_signal: np.ndarray,
+    ax: plt.Axes,
+    cmap: colors.Colormap | None = None,
+    cmap_norm: colors.Normalize | str | None = None,
+    cval: np.ndarray | None = None,
 ) -> plt.Axes:
     """Draw line data.
 

@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Experiment class."""
+
 import pytest
 
 from pymovements import Experiment
@@ -52,7 +53,6 @@ def test_sampling_rate_setter():
             {'screen': Screen(1024, 768), 'eyetracker': EyeTracker(sampling_rate=1000)},
             id='screen_and_eyetracker',
         ),
-
     ],
 )
 def test_sampling_rate_trivial_equality(experiment_init_kwargs):
@@ -88,19 +88,16 @@ def test_sampling_rate_equality(experiment1, experiment2):
             Experiment(eyetracker=EyeTracker(sampling_rate=1000)),
             id='sampling_rate',
         ),
-
         pytest.param(
             {'eyetracker': {'sampling_rate': 1000}},
             Experiment(eyetracker=EyeTracker(sampling_rate=1000)),
             id='eyetracker_sampling_rate',
         ),
-
         pytest.param(
             {'screen_width_px': 1024, 'screen_height_px': 768},
             Experiment(screen=Screen(1024, 768)),
             id='screen_width_px_and_screen_height_px',
         ),
-
         pytest.param(
             {'screen': {'width_px': 1024, 'height_px': 768}},
             Experiment(screen=Screen(1024, 768)),
@@ -231,19 +228,16 @@ def test_experiment_to_dict_exclude_none(experiment, exclude_none, expected_dict
             False,
             id='default',
         ),
-
         pytest.param(
             Experiment(origin=None),
             False,
             id='origin_none',
         ),
-
         pytest.param(
             Experiment(origin='center'),
             True,
             id='origin_center',
         ),
-
         pytest.param(
             Experiment(distance_cm=60),
             True,

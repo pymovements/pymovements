@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provide fixtures to securely make files from examples in ``tests/files``."""
+
 from __future__ import annotations
 
 import shutil
@@ -36,7 +37,8 @@ def fixture_testfiles_dirpath(request):
 
 @pytest.fixture(name='make_example_file', scope='function')
 def fixture_make_example_file(
-        testfiles_dirpath: Path, tmp_path: Path,
+    testfiles_dirpath: Path,
+    tmp_path: Path,
 ) -> Callable[[str, str | None], Path]:
     """Make a temporary copy of a file from one of the example files in tests/files.
 
@@ -55,6 +57,7 @@ def fixture_make_example_file(
         Function that takes a example_filename and returns the Path to the copied file.
 
     """
+
     def _make_example_file(example_filename: str, target_filename: str | None = None) -> Path:
         """Make a temporary copy of a file from one of the example files in tests/files.
 
@@ -82,6 +85,7 @@ def fixture_make_example_file(
         target_filepath.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_filepath, target_filepath)
         return target_filepath
+
     return _make_example_file
 
 
@@ -103,8 +107,12 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
         The file is saved into a temporary directory.
 
     """
+
     def _make_text_file(
-            filename: str | Path, header: str = '', body: str = '\n', encoding: str = 'utf-8',
+        filename: str | Path,
+        header: str = '',
+        body: str = '\n',
+        encoding: str = 'utf-8',
     ) -> Path:
         relative_filepath = _validate_filename(filename)
         content = header + body
@@ -114,6 +122,7 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
         # write contents to a file
         filepath.write_text(content, encoding=encoding)
         return filepath
+
     return _make_text_file
 
 
@@ -134,23 +143,24 @@ def fixture_make_csv_file(tmp_path: Path) -> Callable:
         Returns the path to the created file. The file is saved into a temporary directory.
 
     """
+
     def _make_csv_file(
-            filename: str | Path,
-            data: pl.DataFrame,
-            *,
-            header: str | None = None,
-            include_bom: bool = False,
-            include_header: bool = True,
-            separator: str = ',',
-            line_terminator: str = '\n',
-            quote_char: str = '"',
-            datetime_format: str | None = None,
-            date_format: str | None = None,
-            time_format: str | None = None,
-            float_scientific: bool | None = None,
-            float_precision: int | None = None,
-            null_value: str | None = None,
-            quote_style: pl._typing.CsvQuoteStyle | None = None,
+        filename: str | Path,
+        data: pl.DataFrame,
+        *,
+        header: str | None = None,
+        include_bom: bool = False,
+        include_header: bool = True,
+        separator: str = ',',
+        line_terminator: str = '\n',
+        quote_char: str = '"',
+        datetime_format: str | None = None,
+        date_format: str | None = None,
+        time_format: str | None = None,
+        float_scientific: bool | None = None,
+        float_precision: int | None = None,
+        null_value: str | None = None,
+        quote_style: pl._typing.CsvQuoteStyle | None = None,
     ) -> Path:
         r"""Make a csv file with optional header.
 
@@ -247,6 +257,7 @@ def fixture_make_csv_file(tmp_path: Path) -> Callable:
                 quote_style=quote_style,
             )
         return filepath
+
     return _make_csv_file
 
 
@@ -259,7 +270,7 @@ def _validate_filename(filename: str | Path) -> Path:
     Returns a Path relative to current directory (to be joined with tmp_path).
     """
     if not isinstance(filename, (str, Path)):
-        raise TypeError(f"filename must be a str or Path, got {type(filename).__name__}")
+        raise TypeError(f'filename must be a str or Path, got {type(filename).__name__}')
 
     if isinstance(filename, str) and filename.startswith('~'):
         raise ValueError("filename must be a relative path; '~' (home) is not allowed")

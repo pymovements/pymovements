@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides eye movement measures."""
+
 from pymovements.measure import events
 from pymovements.measure import reading
 from pymovements.measure import samples

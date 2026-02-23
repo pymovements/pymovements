@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides event related functionality."""
+
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
 from pymovements.events.detection import ivt

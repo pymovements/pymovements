@@ -18,12 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test segmentation utilities."""
+
 from __future__ import annotations
 
 import numpy as np
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements.events.segmentation import _has_overlap
 from pymovements.events.segmentation import events2segmentation
@@ -33,11 +34,13 @@ from pymovements.events.segmentation import segmentation2events
 
 @pytest.fixture(name='events_df')
 def fixture_events_df():
-    return pl.DataFrame({
-        'name': ['blink', 'blink'],
-        'onset': pl.Series([2, 7], dtype=pl.Int64),
-        'offset': pl.Series([5, 9], dtype=pl.Int64),
-    })
+    return pl.DataFrame(
+        {
+            'name': ['blink', 'blink'],
+            'onset': pl.Series([2, 7], dtype=pl.Int64),
+            'offset': pl.Series([5, 9], dtype=pl.Int64),
+        }
+    )
 
 
 @pytest.mark.parametrize(
@@ -82,20 +85,34 @@ def test_events2segmentation_basic(events_df, name, time_column, expected):
             id='custom_columns',
         ),
         pytest.param(
-            pl.DataFrame({
-                'name': ['blink', 'blink'],
-                'onset': [2, 1],
-                'offset': [4, 5],
-                'trial': [1, 2],
-            }),
-            pl.DataFrame({
-                'time': pl.Series([0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5], dtype=pl.Int64),
-                'trial': [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['blink', 'blink'],
+                    'onset': [2, 1],
+                    'offset': [4, 5],
+                    'trial': [1, 2],
+                }
+            ),
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5], dtype=pl.Int64),
+                    'trial': [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
+                }
+            ),
             {'name': 'blink', 'trial_columns': ['trial']},
             [
-                False, False, True, True, True, False,  # Trial 1
-                False, True, True, True, True, True,  # Trial 2
+                False,
+                False,
+                True,
+                True,
+                True,
+                False,  # Trial 1
+                False,
+                True,
+                True,
+                True,
+                True,
+                True,  # Trial 2
             ],
             id='trialized',
         ),
@@ -154,12 +171,14 @@ def test_events2segmentation_overlap_warning():
 
 
 def test_events2segmentation_overlap_warning_trial_hint():
-    events_df = pl.DataFrame({
-        'name': ['blink', 'blink'],
-        'onset': [2, 1],
-        'offset': [4, 5],
-        'trial': [1, 2],
-    })
+    events_df = pl.DataFrame(
+        {
+            'name': ['blink', 'blink'],
+            'onset': [2, 1],
+            'offset': [4, 5],
+            'trial': [1, 2],
+        }
+    )
     with pytest.warns(UserWarning, match='Consider providing trial_columns'):
         events2segmentation(events_df, name='blink')
 
@@ -202,7 +221,8 @@ def test_events2segmentation_overlap_warning_trial_hint():
 def test_segmentation2events(segmentation, name, expected_dict):
     result_df = segmentation2events(segmentation, name=name)
     expected_df = pl.DataFrame(
-        expected_dict, schema={
+        expected_dict,
+        schema={
             'name': pl.String,
             'onset': pl.Int64,
             'offset': pl.Int64,
@@ -239,8 +259,10 @@ def test_roundtrip_indices(segmentation):
     'segmentation, time_column, expected_match',
     [
         pytest.param(
-            np.array([0, 1, 0]), np.array([1, 2]),
-            'length .* must match', id='mismatched_length',
+            np.array([0, 1, 0]),
+            np.array([1, 2]),
+            'length .* must match',
+            id='mismatched_length',
         ),
     ],
 )
@@ -276,7 +298,10 @@ def test_segmentation2events_invalid_parameters(segmentation, time_column, expec
     ],
 )
 def test_segmentation2events_time_column_types(
-    time_column, segmentation, expected_onset, expected_offset,
+    time_column,
+    segmentation,
+    expected_onset,
+    expected_offset,
 ):
     result_df = segmentation2events(segmentation, name='blink', time_column=time_column)
     assert result_df.get_column('onset')[0] == expected_onset
@@ -351,16 +376,20 @@ def test_events2segmentation_errors(
 
 
 def test_events2segmentation_trialized_overlap_warning():
-    events_df = pl.DataFrame({
-        'name': ['blink', 'blink'],
-        'onset': [2, 4],
-        'offset': [5, 7],
-        'trial': [1, 1],
-    })
-    gaze_df = pl.DataFrame({
-        'time': np.arange(10, dtype=np.int64),
-        'trial': [1] * 10,
-    })
+    events_df = pl.DataFrame(
+        {
+            'name': ['blink', 'blink'],
+            'onset': [2, 4],
+            'offset': [5, 7],
+            'trial': [1, 1],
+        }
+    )
+    gaze_df = pl.DataFrame(
+        {
+            'time': np.arange(10, dtype=np.int64),
+            'trial': [1] * 10,
+        }
+    )
 
     with pytest.warns(UserWarning, match='Overlapping events detected for trial'):
         result_expr = events2segmentation(events_df, name='blink', trial_columns=['trial'])
@@ -375,44 +404,68 @@ def test_events2segmentation_trialized_overlap_warning():
     'faulty_segmentation, expected_exception, expected_match, kwargs',
     [
         pytest.param(
-            np.array([0, 1, 2]), ValueError, 'binary values', {},
+            np.array([0, 1, 2]),
+            ValueError,
+            'binary values',
+            {},
             id='int_values_not_binary',
         ),
         pytest.param(
-            np.array([6.0, 7.0]), ValueError, 'binary values', {},
+            np.array([6.0, 7.0]),
+            ValueError,
+            'binary values',
+            {},
             id='float_values_not_binary',
         ),
         pytest.param(
-            np.array([1.1, 2.2]), ValueError, 'binary values', {},
+            np.array([1.1, 2.2]),
+            ValueError,
+            'binary values',
+            {},
             id='float_non_binary',
         ),
         pytest.param(
-            np.array([0.0, 1.0, 0.5]), ValueError, 'binary values', {},
+            np.array([0.0, 1.0, 0.5]),
+            ValueError,
+            'binary values',
+            {},
             id='not_binary_float_array',
         ),
         pytest.param(
-            [0, 1, 0], TypeError, 'must be a polars.Series or numpy.ndarray', {},
+            [0, 1, 0],
+            TypeError,
+            'must be a polars.Series or numpy.ndarray',
+            {},
             id='list_input',
         ),
         pytest.param(
-            np.array([[0, 1], [1, 0]]), ValueError, 'must be a 1D array', {},
+            np.array([[0, 1], [1, 0]]),
+            ValueError,
+            'must be a 1D array',
+            {},
             id='2d_array',
         ),
         pytest.param(
-            pl.Series([0, 1, 0]), ValueError, 'trial_columns length .* must match',
+            pl.Series([0, 1, 0]),
+            ValueError,
+            'trial_columns length .* must match',
             {'trial_columns': pl.DataFrame({'trial': [1, 1]})},
             id='invalid_trial_length',
         ),
         pytest.param(
-            np.array([0, 1, 0]), TypeError,
-            'time_column must be a polars.Series or numpy.ndarray, but is <class \'list\'>',
+            np.array([0, 1, 0]),
+            TypeError,
+            "time_column must be a polars.Series or numpy.ndarray, but is <class 'list'>",
             {'time_column': [1, 2, 3]},
             id='invalid_time_column_type',
         ),
     ],
 )
 def test_segmentation2events_invalid_values(
-    faulty_segmentation, expected_exception, expected_match, kwargs,
+    faulty_segmentation,
+    expected_exception,
+    expected_match,
+    kwargs,
 ):
     with pytest.raises(expected_exception, match=expected_match):
         segmentation2events(faulty_segmentation, name='blink', **kwargs)
@@ -713,13 +766,19 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
     ],
 )
 def test_events2timeratio_with_trials(
-    events_data, samples_data, trial_columns, expected_dict,
+    events_data,
+    samples_data,
+    trial_columns,
+    expected_dict,
 ):
     events = pl.DataFrame(events_data)
     samples = pl.DataFrame(samples_data)
     result = samples.group_by(trial_columns, maintain_order=True).agg(
         events2timeratio(
-            events, samples, 'blink', trial_columns=trial_columns,
+            events,
+            samples,
+            'blink',
+            trial_columns=trial_columns,
         ).mean(),
     )
     for row in result.to_dicts():

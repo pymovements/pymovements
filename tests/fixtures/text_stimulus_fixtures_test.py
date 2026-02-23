@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Basic self-test for shared TextStimulus fixtures."""
+
 from __future__ import annotations
 
 from collections.abc import Sized
@@ -72,8 +73,11 @@ def test_fixtures_provide_textstimulus(request: pytest.FixtureRequest, fixture_n
     ],
 )
 def test_fixtures_basic_get_aoi(
-        request: pytest.FixtureRequest, fixture_name: str, row: dict,
-        expect: Sized, expect_multiple: bool,
+    request: pytest.FixtureRequest,
+    fixture_name: str,
+    row: dict,
+    expect: Sized,
+    expect_multiple: bool,
 ) -> None:
     stim: TextStimulus = request.getfixturevalue(fixture_name)
     if expect_multiple:
@@ -99,7 +103,9 @@ def test_fixtures_basic_get_aoi(
 )
 def test_simple_stimulus_get_aoi(
     simple_stimulus: TextStimulus,
-    x: int, y: int, expected_label: str | None,
+    x: int,
+    y: int,
+    expected_label: str | None,
 ) -> None:
     aoi = simple_stimulus.get_aoi(row={'x': x, 'y': y}, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1
@@ -116,7 +122,10 @@ def test_simple_stimulus_get_aoi(
     ],
 )
 def test_stimulus_with_trial_page_selection(
-    stimulus_with_trial_page: TextStimulus, trial: int, page: str, expected_label: str | None,
+    stimulus_with_trial_page: TextStimulus,
+    trial: int,
+    page: str,
+    expected_label: str | None,
 ) -> None:
     aoi = stimulus_with_trial_page.get_aoi(
         row={
@@ -141,7 +150,9 @@ def test_stimulus_with_trial_page_selection(
 )
 def test_stimulus_overlap_behaviour(
     stimulus_overlap: TextStimulus,
-        row: dict[str, int], expected_label: str | None, expect_len: int,
+    row: dict[str, int],
+    expected_label: str | None,
+    expect_len: int,
 ) -> None:
     if expect_len > 1:
         with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
