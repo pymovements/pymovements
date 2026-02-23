@@ -23,7 +23,7 @@ from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.events.measures import register_event_measure
 from pymovements.measure.events.processing import EventProcessor
 from pymovements.measure.events.processing import EventSamplesProcessor
-
+# fmt: off
 __all__ = [
     'EVENT_MEASURES',
     'register_event_measure',

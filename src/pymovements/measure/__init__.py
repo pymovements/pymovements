@@ -31,6 +31,7 @@ from pymovements.measure.samples import null_ratio
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
 
+# fmt: off
 __all__ = [
     'events',
     'EVENT_MEASURES',

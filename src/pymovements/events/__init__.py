@@ -32,7 +32,7 @@ from pymovements.events.segmentation import events2segmentation
 from pymovements.events.segmentation import events2timeratio
 from pymovements.events.segmentation import segmentation2events
 
-
+# fmt: off
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',

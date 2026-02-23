@@ -31,7 +31,7 @@ from pymovements.measure.samples.measures import peak_velocity
 from pymovements.measure.samples.measures import rms_s2s
 from pymovements.measure.samples.measures import std_rms
 
-
+# fmt: off
 __all__ = [
     'register_sample_measure',
     'SampleMeasureLibrary',

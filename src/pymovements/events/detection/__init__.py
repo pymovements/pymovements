@@ -38,7 +38,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
 from pymovements.events.detection._library import register_event_detection
 from pymovements.events.detection._microsaccades import microsaccades
 from pymovements.events.detection._out_of_screen import out_of_screen
-
+# fmt: off
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',
