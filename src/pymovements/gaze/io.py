@@ -836,7 +836,8 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         if experiment.eyetracker.version is not None and experiment.eyetracker.version != parsed_version:
             issues.append(
                 f'Eye tracker software version: {
-                    experiment.eyetracker.version} != {parsed_version}',
+                    experiment.eyetracker.version
+                } != {parsed_version}',
             )
         experiment.eyetracker.version = parsed_version
 

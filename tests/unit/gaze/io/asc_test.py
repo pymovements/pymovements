@@ -47,11 +47,13 @@ from pymovements.gaze import from_asc
                 pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning'),
                 pytest.mark.filterwarnings(
-                    'ignore:.*No tracked eye information found.*:UserWarning'),
+                    'ignore:.*No tracked eye information found.*:UserWarning',
+                ),
                 pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning'),
                 pytest.mark.filterwarnings(
-                    'ignore:.*No eye tracker software version found.*:UserWarning'),
+                    'ignore:.*No eye tracker software version found.*:UserWarning',
+                ),
             ],
             id='empty_file',
         ),
