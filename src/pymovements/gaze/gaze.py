@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Sequence
+from contextlib import suppress
 from copy import deepcopy
 import inspect
 import math
@@ -1507,13 +1508,8 @@ class Gaze:
         # (by unnesting) or keep list columns intact and extract per-row. By default,
         # preserve_structure=True attempts to unnest.
         if preserve_structure:
-            try:
+            with suppress(Warning, ValueError, AttributeError):
                 self.unnest()
-            except (Warning, ValueError, AttributeError):  # tolerate common cases
-                # - Warning: nothing to unnest when no list columns exist
-                # - ValueError/AttributeError: shape or configuration-related issues
-                # In all these cases: continue without failing and use fallback logic.
-                pass
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
@@ -2596,7 +2592,7 @@ def _replace_nones_in_split_keys(
         """Return a comparable surrogate value for a particular datatype."""
         if dtype in {float, int, bool}:
             return -math.inf
-        if dtype == str:
+        if dtype is str:
             return ''
         raise TypeError(
             f'dtype {dtype.__name__} not supported as "by" column dtype in split(). '

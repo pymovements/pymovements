@@ -104,7 +104,7 @@ class DatasetLibrary:
             List of dataset names that are available in
             :py:class:`~pymovements.DatasetLibrary`.
         """
-        return sorted(list(cls.definitions.keys()))
+        return sorted(cls.definitions.keys())
 
 
 DatasetDefinitionClass = TypeVar('DatasetDefinitionClass', bound=type[DatasetDefinition])

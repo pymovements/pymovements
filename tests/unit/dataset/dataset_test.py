@@ -255,7 +255,7 @@ def create_raw_gaze_files_from_fileinfo(gazes, fileinfo, rootpath):
     for gaze, fileinfo_row in zip(gazes, fileinfo.to_dicts()):
         filepath = fileinfo_row['filepath']
 
-        for key in fileinfo_row.keys():
+        for key in fileinfo_row:
             if key in gaze.columns:
                 gaze = gaze.drop(key)
 

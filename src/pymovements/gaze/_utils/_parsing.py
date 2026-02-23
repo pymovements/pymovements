@@ -105,7 +105,7 @@ def get_pattern_keys(compiled_patterns: list[dict[str, Any]], pattern_key: str) 
         if pattern_key in compiled_pattern_dict:
             keys.add(compiled_pattern_dict[pattern_key])
 
-        for key in compiled_pattern_dict['pattern'].groupindex.keys():
+        for key in compiled_pattern_dict['pattern'].groupindex:
             keys.add(key)
 
     return keys

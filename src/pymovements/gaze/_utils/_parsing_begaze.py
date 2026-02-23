@@ -32,6 +32,7 @@ __all__ = [
 ]
 
 from collections import defaultdict
+import contextlib
 import datetime
 from pathlib import Path
 import re
@@ -65,10 +66,8 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
             # Casting and processing for known fields
             if groupdict.get('sampling_rate') is not None:
                 # Regex only matches numeric forms (optionally with dot), so float cast is safe.
-                try:
+                with contextlib.suppress(ValueError):
                     groupdict['sampling_rate'] = float(groupdict['sampling_rate'])
-                except ValueError:
-                    pass
             if groupdict.get('date') is not None:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:

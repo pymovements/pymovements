@@ -130,9 +130,7 @@ class Events:
                 self.trial_columns = trial_columns
 
             self._additional_columns = [
-                column_name
-                for column_name in data_dict.keys()
-                if column_name not in self._minimal_schema
+                column_name for column_name in data_dict if column_name not in self._minimal_schema
             ]
 
         else:
@@ -302,7 +300,7 @@ class Events:
         if isinstance(column, str):
             trial_columns = {column: data}
         # In case a list of a single column is passed as an explicit value.
-        elif len(column) == 1 and (isinstance(data, (int, float, str) or data is None)):
+        elif len(column) == 1 and (isinstance(data, (int, float, str)) or data is None):
             trial_columns = {column[0]: data}
         else:
             if not isinstance(data, Sequence):
@@ -334,7 +332,7 @@ class Events:
             List of event property columns.
         """
         event_property_columns = set(self.frame.columns)
-        event_property_columns -= set(list(self._minimal_schema.keys()))
+        event_property_columns -= set(self._minimal_schema.keys())
         event_property_columns -= set(self._additional_columns)
         return list(event_property_columns)
 
