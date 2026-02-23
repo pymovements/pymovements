@@ -395,6 +395,7 @@ def from_asc(
         events: bool = False,
         messages: bool | list[str] = False,
         metadata: dict[str, Any] | None = None,
+        extend_resolution: bool | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -440,6 +441,14 @@ def from_asc(
         (default: False)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. (default: None)
+    extend_resolution: bool | None
+        Extend the parsed screen resolution by 1 pixel if ``True``.
+        If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
+        ``libeyelink.py`` (e.g., if *PyGaze* was used for recording data).
+        Some files that were not recorded by SR Research software may need to specify
+        ``False`` if their reported screen resolution is inconsistent with the
+        SR Research specification.
+        (default: None)
 
     Returns
     -------
@@ -489,7 +498,6 @@ def from_asc(
     ``-e`` or ``-ns`` to output only events or ``-s`` or ``-ne`` to only output samples will not
     work with this function, as it expects both samples and events to be present in the ASC file.
 
-
     Examples
     --------
     We can load an asc file stored at `tests/files/eyelink_monocular_example.asc` into a ``Gaze``:
@@ -535,6 +543,7 @@ def from_asc(
         metadata_patterns=metadata_patterns,
         encoding=encoding,
         messages=messages,
+        extend_resolution=extend_resolution,
     )
 
     if add_columns is not None:
