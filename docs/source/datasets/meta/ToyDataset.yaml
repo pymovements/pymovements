@@ -1,5 +1,20 @@
 name: ToyDataset
 long_name: pymovements Toy Dataset
+description: 'Example toy dataset.
+
+
+  This dataset includes monocular eye tracking data from a single participant in a
+  single
+
+  session. Eye movements are recorded at a sampling frequency of 1000 Hz using an
+  EyeLink Portable
+
+  Duo video-based eye tracker and are provided as pixel coordinates.
+
+
+  The participant is instructed to read 4 texts with 5 screens each.
+
+  '
 resources:
 - content: gaze
   filename: pymovements-toy-dataset.zip

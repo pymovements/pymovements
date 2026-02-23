@@ -1,5 +1,17 @@
 name: MECOL2W1
 long_name: Multilingual Eye-tracking Corpus second language reader first wave
+description: 'MECOL2W1 dataset :cite:p:`MECOL2W1`.
+
+
+  This dataset includes eye tracking data from several participants in a single
+
+  session. The participants read several paragraphs of texts.
+
+  The participant is instructed to read texts and answer questions.
+
+  Check the respective paper for details :cite:p:`MECOL2W1`.
+
+  '
 resources:
 - content: precomputed_events
   filename: joint_l2_fixation_trimmed_report_2.0.rda

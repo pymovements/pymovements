@@ -1,5 +1,19 @@
 name: CoLAGaze
 long_name: Corpus of Eye Movements for Linguistic Acceptability
+description: 'CoLAGaze dataset :cite:p:`CoLAGaze`.
+
+
+  This dataset includes eye-tracking data from native speakers of English reading
+
+  sentences from the CoLA dataset. Eye movements are recorded at a sampling frequency
+  of 2,000 Hz
+
+  using an EyeLink 1000 eye tracker and are provided as pixel coordinates.
+
+
+  Check the respective paper for details :cite:p:`CoLAGaze`.
+
+  '
 resources:
 - content: gaze
   filename: raw_data.zip
