@@ -445,7 +445,32 @@ def test_from_asc_example_file_raises_exception(
                     mount='Desktop',
                 ),
             ),
-            id='binocular_1kHz',
+            id='binocular_1kHz_nonstandard_resolution',
+        ),
+
+        pytest.param(
+            'eyelink_binocular_example.asc',
+            # asc file was not recorded by SR Research software but misses required header
+            # for auto-inferring if screen resolution needs to be extended or not.
+            # The following header line is needed in the source asc file for auto-inferring:
+            # ** Recorded by: libeyelink.py
+            {'encoding': 'latin1', 'extend_resolution': False},
+            Experiment(
+                screen=Screen(
+                    width_px=1920,
+                    height_px=1080,
+                ),
+                eyetracker=EyeTracker(
+                    sampling_rate=1000.0,
+                    left=True,
+                    right=True,
+                    model='EyeLink Portable Duo',
+                    version='6.14',
+                    vendor='EyeLink',
+                    mount='Desktop',
+                ),
+            ),
+            id='binocular_1kHz_force_extend',
         ),
     ],
 )
