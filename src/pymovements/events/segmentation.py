@@ -20,6 +20,7 @@
 """Segmentation utilities for events."""
 from __future__ import annotations
 
+import numbers
 import warnings
 
 import numpy as np
@@ -33,6 +34,7 @@ def events2segmentation(
     trial_columns: list[str] | None = None,
     onset_column: str = 'onset',
     offset_column: str = 'offset',
+    padding: float | tuple[float, float] | None = None,
 ) -> pl.Expr:
     """Convert a list of events to a binary segmentation expression.
 
@@ -61,6 +63,12 @@ def events2segmentation(
         The name of the column containing the offset of the event (inclusive).
         The values must correspond to the values in ``time_column``.
         Default is 'offset'.
+    padding : float | tuple[float, float] | None
+        Padding to extend each event interval, in the same units as ``time_column``.
+        If a single float, the same padding is applied symmetrically before and after
+        each event. If a tuple ``(before, after)``, ``before`` is subtracted from the
+        onset and ``after`` is added to the offset. Both values must be non-negative.
+        Default is None (no padding).
 
     Returns
     -------
@@ -69,9 +77,12 @@ def events2segmentation(
 
     Raises
     ------
+    TypeError
+        If ``padding`` is not None, a tuple, or a number.
     ValueError
         If ``onset_column`` or ``offset_column`` is missing from the events.
         If any onset is greater than its offset.
+        If any padding value is negative.
 
     Notes
     -----
@@ -83,6 +94,10 @@ def events2segmentation(
     against the values in the ``time_column`` of the samples DataFrame. If the
     ``time_column`` contains indices, then onsets and offsets are indices. If the
     ``time_column`` contains timestamps, then onsets and offsets are timestamps.
+
+    When ``padding`` is specified, each event interval is extended by subtracting
+    ``pad_before`` from the onset and adding ``pad_after`` to the offset. The padding
+    values are in the same units as the ``time_column``.
 
     .. warning::
         The offset is considered inclusive.
@@ -120,6 +135,30 @@ def events2segmentation(
     │ 8    ┆ true  │
     │ 9    ┆ true  │
     └──────┴───────┘
+    >>> # With padding to extend event intervals
+    >>> single_event = pl.DataFrame(
+    ...     {'name': ['blink'], 'onset': [3], 'offset': [5]}
+    ... )
+    >>> gaze_df.with_columns(
+    ...     events2segmentation(single_event, name='blink', padding=1)
+    ... )
+    shape: (10, 2)
+    ┌──────┬───────┐
+    │ time ┆ blink │
+    │ ---  ┆ ---   │
+    │ i64  ┆ bool  │
+    ╞══════╪═══════╡
+    │ 0    ┆ false │
+    │ 1    ┆ false │
+    │ 2    ┆ true  │
+    │ 3    ┆ true  │
+    │ 4    ┆ true  │
+    │ 5    ┆ true  │
+    │ 6    ┆ true  │
+    │ 7    ┆ false │
+    │ 8    ┆ false │
+    │ 9    ┆ false │
+    └──────┴───────┘
     >>> # With trial columns
     >>> events_df = pl.DataFrame({
     ...     'name': ['blink', 'blink'],
@@ -154,6 +193,24 @@ def events2segmentation(
     if offset_column not in events.columns:
         raise ValueError(f"Offset column '{offset_column}' not found in events.")
 
+    # Parse and validate padding
+    if padding is None:
+        pad_before, pad_after = 0.0, 0.0
+    elif isinstance(padding, tuple):
+        pad_before, pad_after = padding
+    elif isinstance(padding, numbers.Number):
+        pad_before = pad_after = padding
+    else:
+        raise TypeError(
+            'padding should be a number or a two-dimensional tuple'
+            f' of numbers, but is {type(padding)}',
+        )
+
+    if pad_before < 0 or pad_after < 0:
+        raise ValueError(
+            f'Padding values must be non-negative, but got ({pad_before}, {pad_after}).',
+        )
+
     # Filter events by name
     if 'name' in events.columns:
         relevant_events = events.filter(pl.col('name') == name)
@@ -172,13 +229,17 @@ def events2segmentation(
             'Onset must be less than or equal to offset, but found invalid event(s)',
         )
 
-    # Check for overlaps
+    # Apply padding for overlap checking
+    padded_onsets = onsets - pad_before
+    padded_offsets = offsets + pad_after
+
+    # Check for overlaps using padded intervals
     if len(onsets) > 1:
         # Check for overlaps within each trial
         if trial_columns:
             for trial_group in relevant_events.group_by(trial_columns):
-                trial_onsets = trial_group[1][onset_column].to_numpy()
-                trial_offsets = trial_group[1][offset_column].to_numpy()
+                trial_onsets = trial_group[1][onset_column].to_numpy() - pad_before
+                trial_offsets = trial_group[1][offset_column].to_numpy() + pad_after
                 if _has_overlap(trial_onsets, trial_offsets):
                     warnings.warn(
                         f"Overlapping events detected for trial {trial_group[0]}",
@@ -188,7 +249,7 @@ def events2segmentation(
                     break
 
         # Check for overlaps if no trialised check has been performed
-        elif _has_overlap(onsets, offsets):
+        elif _has_overlap(padded_onsets, padded_offsets):
             # If trial column is present, mention that it might be needed
             if 'trial' in events.columns:
                 warnings.warn(
@@ -203,8 +264,8 @@ def events2segmentation(
     is_event = pl.repeat(False, pl.len())
     for event in relevant_events.to_dicts():
         is_in_time_range = (
-            pl.col(time_column).ge(event[onset_column])
-            & pl.col(time_column).le(event[offset_column])
+            pl.col(time_column).ge(event[onset_column] - pad_before)
+            & pl.col(time_column).le(event[offset_column] + pad_after)
         )
 
         # Select events matching time and trial criteria

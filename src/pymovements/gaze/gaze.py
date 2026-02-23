@@ -41,6 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
+from pymovements.events import events2segmentation
 from pymovements.events import events2timeratio
 from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
@@ -1012,6 +1013,94 @@ class Gaze:
             padding=padding,
             **kwargs,
         )
+
+    def nullify_event_samples(
+            self,
+            name: str,
+            *,
+            padding: float | tuple[float, float] = (25, 25),
+    ) -> None:
+        """Set gaze sample values to null during detected events.
+
+        This method nullifies gaze data columns (e.g. pixel, position, velocity,
+        acceleration) for all samples that fall within the time intervals of
+        detected events of the specified type. This is useful for removing artifact
+        data during events such as blinks, where gaze samples are unreliable.
+
+        Parameters
+        ----------
+        name : str
+            The name of the event type whose samples should be set to null
+            (e.g. ``'blink'``). Must match an event name in :py:attr:`~.Gaze.events`.
+        padding : float | tuple[float, float]
+            Padding to extend each event interval, in the same units as the time
+            column. If a single float, the same padding is applied symmetrically
+            before and after each event. If a tuple ``(before, after)``, ``before``
+            is subtracted from the onset and ``after`` is added to the offset.
+            Both values must be non-negative. Default is ``(25, 25)``.
+
+        Raises
+        ------
+        AttributeError
+            If :py:attr:`~.Gaze.events` is ``None``.
+        ValueError
+            If no events with the specified ``name`` are found.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>>
+        >>> gaze = pm.Gaze(
+        ...     samples=pl.DataFrame({
+        ...         'time': pl.Series(range(6), dtype=pl.Int64),
+        ...         'pixel': [[1.0, 2.0]] * 6,
+        ...     }),
+        ...     events=pm.Events(name='blink', onsets=[2], offsets=[3]),
+        ... )
+        >>> gaze.nullify_event_samples('blink', padding=0)
+        >>> gaze.samples['pixel'].to_list()
+        [[1.0, 2.0], [1.0, 2.0], None, None, [1.0, 2.0], [1.0, 2.0]]
+        """
+        if self.events is None:
+            raise AttributeError(
+                'Gaze object has no events. Use detect() to detect events first.',
+            )
+
+        events_frame = self.events.frame
+        has_matching = events_frame.filter(polars.col('name') == name).height > 0
+
+        if not has_matching:
+            raise ValueError(
+                f"No events with name '{name}' found in events.",
+            )
+
+        mask_expr = events2segmentation(
+            events_frame,
+            name=name,
+            time_column='time',
+            trial_columns=self.trial_columns,
+            padding=padding,
+        )
+
+        # Determine columns to preserve (time + trial columns)
+        preserve_columns = {'time'}
+        if self.trial_columns is not None:
+            preserve_columns.update(self.trial_columns)
+
+        # Nullify all non-preserved columns where the event mask is True
+        null_columns = [
+            col for col in self.samples.columns if col not in preserve_columns
+        ]
+
+        self.samples = self.samples.with_columns(mask_expr)
+
+        self.samples = self.samples.with_columns([
+            polars.when(polars.col(name)).then(None).otherwise(polars.col(col)).alias(col)
+            for col in null_columns
+        ])
+
+        self.samples = self.samples.drop(name)
 
     def detect(
             self,
