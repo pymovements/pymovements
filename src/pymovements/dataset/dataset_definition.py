@@ -85,7 +85,7 @@ class DatasetDefinition:
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv`, the keyword arguments will be passed
         to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        will be passed to :py:func:`pymovements.gaze.from_asc`.
         See Notes for more details on how to use this argument.
         (default: field(default_factory=dict))
 
@@ -201,7 +201,7 @@ class DatasetDefinition:
         .. deprecated:: v0.22.1
            This field will be removed in v0.27.0.
     filename_format: dict[str, str] | None
-        Regular expression, which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Named groups will
         appear in the `fileinfo` dataframe. (default: None)
 
         .. deprecated:: v0.24.1
@@ -217,7 +217,7 @@ class DatasetDefinition:
         behavior of this argument depends on the file extension of the dataset files.
         If the file extension is `.csv`, the keyword arguments will be passed
         to :py:func:`polars.read_csv`. If the file extension is `.asc`, the keyword arguments
-        will be passed to :py:func:`pymovements.utils.parsing.parse_eyelink`.
+        will be passed to :py:func:`pymovements.gaze.from_asc`.
         See Notes for more details on how to use this argument.
         (default: None)
 
@@ -514,7 +514,7 @@ class DatasetDefinition:
             filename format for each content type
         """
         data: dict[str, str] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.
@@ -565,7 +565,7 @@ class DatasetDefinition:
             filename format schema overrides for each content type
         """
         data: dict[str, dict[str, type]] = {}
-        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures')
+        content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
         for content_type in content_types:
             if content_resources := self.resources.filter(content=content_type):
                 # take first resource with matching content type.

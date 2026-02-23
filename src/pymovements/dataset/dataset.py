@@ -26,11 +26,13 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._html import repr_html
+from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -41,6 +43,9 @@ from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
 from pymovements.measure.reading import ReadingMeasures
+from pymovements.stimulus.image import ImageStimulus
+from pymovements.stimulus.text import TextStimulus
+from pymovements.warnings import ExperimentalWarning
 
 
 logging.basicConfig(level=logging.INFO)
@@ -72,6 +77,7 @@ class Dataset:
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
+        self.stimuli: list[ImageStimulus | TextStimulus] = []
 
         # Handle different definition input types
         if isinstance(definition, (str, Path)):
@@ -101,6 +107,7 @@ class Dataset:
             *,
             events: bool | None = None,
             preprocessed: bool = False,
+            stimuli: bool | None = None,
             subset: dict[str, float | int | str | list[float | int | str]] | None = None,
             events_dirname: str | None = None,
             preprocessed_dirname: str | None = None,
@@ -118,17 +125,20 @@ class Dataset:
         preprocessed: bool
             If ``True``, load previously saved preprocessed data, otherwise load raw data.
             (default: False)
+        stimuli: bool | None
+            If ``True``, load stimulus data. If ``None``, load stimulus data only if available.
+            (default: True)
         subset:  dict[str, float | int | str | list[float | int | str]] | None
             If specified, load only a subset of the dataset. All keys in the dictionary must be
             present in the fileinfo dataframe inferred by `scan()`. Values can be either
             float, int , str or a list of these. (default: None)
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to
+            One-time usage of an alternative directory name to load data relative to
             :py:meth:`pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
             :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to
+            One-time usage of an alternative directory name to load data relative to
             :py:meth:`pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
             :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
@@ -170,6 +180,14 @@ class Dataset:
                 events_dirname=events_dirname,
                 extension=extension,
             )
+
+        # Load stimulus files if desired and if present
+        if stimuli is not False:
+            has_stimuli = any(
+                'stimulus' in file.content.lower() for file in self.definition.resources
+            )
+            if stimuli is True or has_stimuli:
+                self.load_stimuli()
 
         return self
 
@@ -430,6 +448,36 @@ class Dataset:
         )
         self.events = events
         return self
+
+    def load_stimuli(self) -> None:
+        """Load text stimuli.
+
+        This method checks that the file information for stimuli is available,
+        then loads each text stimulus file listed in ``Dataset.fileinfo['stimuli']`` using
+        the dataset definition and path settings. The resulting list of
+        stimulus objects is assigned to ``Dataset.stimuli``.
+
+        Supported file extensions:
+
+        - CSV-like: .csv, .tsv, .txt, .ias
+
+        Raises
+        ------
+        ValueError
+            If the file info is missing or improperly formatted.
+        """
+        warn(
+            'Stimulus support is experimental. '
+            'Names and behavior may change without being considered a breaking change. '
+            'Please set the used pymovements version explicitly to prevent unexptected changes. '
+            f'The used pymovements version is v{__version__}.',
+            ExperimentalWarning,
+        )
+
+        self._check_fileinfo()
+        self.stimuli = dataset_files.load_stimuli_files(
+            files=[file for file in self._files if 'stimulus' in file.definition.content.lower()],
+        )
 
     def apply(
             self,
@@ -884,7 +932,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
@@ -934,7 +982,7 @@ class Dataset:
         Raises
         ------
         UnknownMeasure
-            If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+            If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
             :ref:`event-measures` for an overview of supported measures.
         """
         return self.compute_event_properties(

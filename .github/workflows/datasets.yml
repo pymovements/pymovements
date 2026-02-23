@@ -1,7 +1,7 @@
 name: datasets
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
   push:
     tags:
@@ -89,7 +89,7 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request_target' }}
     steps:
       - name: Checkout pymovements repository
         uses: actions/checkout@v4

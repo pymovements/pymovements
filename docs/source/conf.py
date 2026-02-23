@@ -70,7 +70,7 @@ extensions = [
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'myst_nb',  # load after `sphinx_mdinclude` to supress extension error ('.md' registration)
+    'myst_nb',  # load after `sphinx_mdinclude` to suppress extension error ('.md' registration)
 ]
 source_suffix = {
     '.rst': 'restructuredtext',
@@ -181,7 +181,10 @@ nitpick_ignore_regex = [
 
 
     # Matplotlib color types referenced in plotting API
-    (r'py:class', r'^(?:colors\.Colormap|LinearSegmentedColormapType)$'),
+    (
+        r'py:class',
+        r'^(?:colors\.Colormap|colors\.Normalize|LinearSegmentedColormapType|Normalize)$',
+    ),
 
     # Project-internal typing aliases used only in docs
     (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
@@ -201,6 +204,9 @@ nitpick_ignore_regex = [
 
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+
+    # Odd matplotlib reference seen in deprecated utils.plotting docs
+    (r'py:class', r'^matplotlib\.pyplot\.figure$'),
 ]
 
 

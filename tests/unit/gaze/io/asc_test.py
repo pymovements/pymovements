@@ -432,6 +432,31 @@ def test_from_asc_example_file_raises_exception(
             {'encoding': 'latin1'},
             Experiment(
                 screen=Screen(
+                    width_px=1921,
+                    height_px=1081,
+                ),
+                eyetracker=EyeTracker(
+                    sampling_rate=1000.0,
+                    left=True,
+                    right=True,
+                    model='EyeLink Portable Duo',
+                    version='6.14',
+                    vendor='EyeLink',
+                    mount='Desktop',
+                ),
+            ),
+            id='binocular_1kHz_nonstandard_resolution',
+        ),
+
+        pytest.param(
+            'eyelink_binocular_example.asc',
+            # asc file was not recorded by SR Research software but misses required header
+            # for auto-inferring if screen resolution needs to be extended or not.
+            # The following header line is needed in the source asc file for auto-inferring:
+            # ** Recorded by: libeyelink.py
+            {'encoding': 'latin1', 'extend_resolution': False},
+            Experiment(
+                screen=Screen(
                     width_px=1920,
                     height_px=1080,
                 ),
@@ -445,7 +470,7 @@ def test_from_asc_example_file_raises_exception(
                     mount='Desktop',
                 ),
             ),
-            id='binocular_1kHz',
+            id='binocular_1kHz_force_extend',
         ),
     ],
 )
@@ -901,3 +926,48 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
     # utilities.
     assert 'data_loss_ratio' in gaze._metadata
     assert 'data_loss_ratio_blinks' in gaze._metadata
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_keyerror(
+        make_text_file,
+):
+    """Orphaned event end markers with custom patterns should not raise KeyError, but should warn.
+
+    This test reproduces a scenario where an event end marker appears before the
+    associated context dictionary has been populated with keys from custom patterns.
+    """
+    body = (
+        'EFIX R 1000 1100 100 500.0 500.0 1000\n'
+        'MSG 1200 START_TRIAL_1\n'
+    )
+    patterns = [r'START_TRIAL_(?P<trial_id>\d+)']
+    filepath = make_text_file(filename='orphaned_event.asc', body=body)
+
+    with pytest.warns(UserWarning, match='Missing start marker before end for event'):
+        gaze = from_asc(filepath, patterns=patterns, events=True)
+
+    expected_events = pl.from_dict(
+        data={
+            'name': ['fixation_eyelink'],
+            'eye': ['right'],
+            'onset': [1000],
+            'offset': [1100],
+            'duration': [100],
+            'trial_id': [None],
+        },
+        schema={
+            'name': pl.Utf8,
+            'eye': pl.Utf8,
+            'onset': pl.Int64,
+            'offset': pl.Int64,
+            'duration': pl.Int64,
+            'trial_id': pl.Null,
+        },
+    )
+
+    assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)

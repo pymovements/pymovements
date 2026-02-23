@@ -26,10 +26,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib.colors
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy as np
 from deprecated.sphinx import deprecated
+from matplotlib import colors
 
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
@@ -46,8 +46,8 @@ def setup_matplotlib(
         x_signal: np.ndarray,
         y_signal: np.ndarray,
         figsize: tuple[int, int],
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
+        cmap: colors.Colormap | None = None,
+        cmap_norm: colors.Normalize | str | None = None,
         cmap_segmentdata: LinearSegmentedColormapType | None = None,
         cval: np.ndarray | None = None,
         show_cbar: bool = False,
@@ -70,9 +70,9 @@ def setup_matplotlib(
         Time-step array.
     figsize: tuple[int, int]
         Figure size.
-    cmap: matplotlib.colors.Colormap | None
+    cmap: colors.Colormap | None
         Color map for line color values. (default: None)
-    cmap_norm: matplotlib.colors.Normalize | str | None
+    cmap_norm: colors.Normalize | str | None
         Normalization for color values. (default: None)
     cmap_segmentdata: LinearSegmentedColormapType | None
         Color map segmentation to build color map. (default: None)
@@ -124,9 +124,9 @@ def draw_image_stimulus(
         show: bool = False,
         figsize: tuple[float, float] = (15, 10),
         extent: list[float] | None = None,
-        fig: matplotlib.pyplot.figure | None = None,
-        ax: matplotlib.pyplot.Axes | None = None,
-) -> tuple[matplotlib.pyplot.figure, matplotlib.pyplot.Axes]:
+        fig: plt.Figure | None = None,
+        ax: plt.Axes | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
     """Draw stimulus.
 
     .. deprecated:: v0.22.0
@@ -145,15 +145,15 @@ def draw_image_stimulus(
         Size of the figure. (default: (15, 10))
     extent: list[float] | None
         Extent of image. (default: None)
-    fig: matplotlib.pyplot.figure | None
+    fig: plt.Figure | None
         Matplotlib canvas. (default: None)
-    ax: matplotlib.pyplot.Axes | None
+    ax: plt.Axes | None
         Matplotlib axes. (default: None)
 
     Returns
     -------
-    fig: matplotlib.pyplot.figure
-    ax: matplotlib.pyplot.Axes
+    fig: plt.Figure
+    ax: plt.Axes
     """
     return _draw_image_stimulus(
         image_stimulus=image_stimulus,
@@ -173,11 +173,11 @@ def draw_image_stimulus(
 def draw_line_data(
         x_signal: np.ndarray,
         y_signal: np.ndarray,
-        ax: matplotlib.pyplot.Axes,
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
+        ax: plt.Axes,
+        cmap: colors.Colormap | None = None,
+        cmap_norm: colors.Normalize | str | None = None,
         cval: np.ndarray | None = None,
-) -> matplotlib.pyplot.Axes:
+) -> plt.Axes:
     """Draw line data.
 
     .. deprecated:: v0.22.0
@@ -189,18 +189,18 @@ def draw_line_data(
         Data to be plotted.
     y_signal: np.ndarray
         Data to be plotted.
-    ax: matplotlib.pyplot.Axes
+    ax: plt.Axes
         Matplotlib axes.
-    cmap: matplotlib.colors.Colormap | None
+    cmap: colors.Colormap | None
         Color map for line color values. (default: None)
-    cmap_norm: matplotlib.colors.Normalize | str | None
+    cmap_norm: colors.Normalize | str | None
         Normalization for color values. (default: None)
     cval: np.ndarray | None
         Line color values. (default: None)
 
     Returns
     -------
-    matplotlib.pyplot.Axes
+    plt.Axes
         Axes with added line data.
     """
     return _draw_line_data(

@@ -41,7 +41,7 @@ class EventProcessor:
     Raises
     ------
     UnknownMeasure
-        If ``measures`` includes an unknwon measure. See :ref:`event-measures` for an overview
+        If ``measures`` includes an unknown measure. See :ref:`event-measures` for an overview
         of supported measures.
     """
 
@@ -74,8 +74,8 @@ class EventProcessor:
         Returns
         -------
         pl.DataFrame
-            :py:class:`polars.DataFrame` with properties as columns and rows refering to the rows in
-            the source dataframe.
+            :py:class:`polars.DataFrame` with properties as columns and rows referring to the rows
+            in the source dataframe.
         """
         result = events.select(self.measures)
         return result
@@ -92,7 +92,7 @@ class EventSamplesProcessor:
     Raises
     ------
     UnknownMeasure
-        If ``event_properties`` includes an unknwon measure. See :ref:`sample-measures` and
+        If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
         :ref:`event-measures` for an overview of supported measures.
     """
 
@@ -150,8 +150,8 @@ class EventSamplesProcessor:
         Returns
         -------
         pl.DataFrame
-            :py:class:`polars.DataFrame` with properties as columns and rows refering to the rows in
-            the source dataframe.
+            :py:class:`polars.DataFrame` with properties as columns and rows referring to the rows
+            in the source dataframe.
 
         Raises
         ------
@@ -197,12 +197,21 @@ class EventSamplesProcessor:
             # Find samples that belong to the current event (lazy evaluation).
             event_samples = samples.lazy().filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
-                *[pl.col(column) == event_keys[column] for column in _identifiers],
+                *[
+                    pl.col(column).is_null() if event_keys[column] is None
+                    else pl.col(column) == event_keys[column]
+                    for column in _identifiers
+                ],
             )
 
             # Compute event measure values and include identifier columns.
+            # Cast literals to the schema type from the events dataframe to ensure
+            # consistent schemas across all events when concatenating results.
             result = event_samples.select(
-                *[pl.lit(event_keys[column]).alias(column) for column in event_identifiers],
+                *[
+                    pl.lit(event_keys[column]).cast(events.schema[column]).alias(column)
+                    for column in event_identifiers
+                ],
                 *self.measures,
             )
             results.append(result)
