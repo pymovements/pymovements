@@ -446,7 +446,7 @@ def from_asc(
         If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
         ``libeyelink.py`` (e.g., if *PyGaze* was used for recording data).
         Some files that were not recorded by SR Research software may need to specify
-        ``False`` if their reported screen resolution is inconsistent with the 
+        ``False`` if their reported screen resolution is inconsistent with the
         SR Research specification.
         (default: None)
 
