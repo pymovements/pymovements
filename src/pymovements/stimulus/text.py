@@ -95,6 +95,7 @@ class WritingSystem:
         )
     """
     directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
+    _: KW_ONLY
     axis: Literal['horizontal', 'vertical'] = 'horizontal'
     lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
 
