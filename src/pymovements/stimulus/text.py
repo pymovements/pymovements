@@ -41,6 +41,12 @@ class WritingSystem:
 
     Attributes
     ----------
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
+        Direction in which text flows within a line.
+        For horizontal text, this is typically 'left-to-right' or 'right-to-left'.
+        For vertical text, this is typically 'top-to-bottom'.
+        Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English)
+        is not currently supported. (default: 'left-to-right')
     axis: Literal['horizontal', 'vertical']
         Primary axis along which text is laid out.
         (default: 'horizontal')
@@ -49,14 +55,8 @@ class WritingSystem:
         For horizontal text, this is typically 'top-to-bottom'.
         For vertical text, this is typically 'left-to-right' or 'right-to-left'.
         (default: 'top-to-bottom')
-    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
-        Direction in which text flows within a line.
-        For horizontal text, this is typically 'left-to-right' or 'right-to-left'.
-        For vertical text, this is typically 'top-to-bottom'.
-        Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English)
-        is not currently supported. (default: 'left-to-right')
-    DESCRIPTORS: ClassVar[dict[str, dict[str, str]]]
-        Mapping of descriptor strings to initialization keyword arguments for :meth:`from_descriptor`.
+    DESCRIPTORS: ClassVar[tuple[str, ...]]
+        Valid descriptor strings for :meth:`from_descriptor`.
 
     Notes
     -----
@@ -97,31 +97,16 @@ class WritingSystem:
                 directionality='top-to-bottom',
             )
     """
-    AXES: ClassVar[type] = Literal['horizontal', 'vertical']
-    LININGS: ClassVar[type] = Literal['top-to-bottom', 'left-to-right', 'right-to-left']
-    DIRECTIONALITIES: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
-
-    DESCRIPTORS: ClassVar[dict[str, dict[str, AXES | LININGS | DIRECTIONALITIES]]] = {
-        'left-to-right': {
-            'axis': 'horizontal', 'directionality': 'left-to-right', 'lining': 'top-to-bottom',
-        },
-        'ltr': {  # same as 'left-to-right'
-            'axis': 'horizontal', 'directionality': 'left-to-right', 'lining': 'top-to-bottom',
-        },
-        'right-to-left': {
-            'axis': 'horizontal', 'directionality': 'right-to-left', 'lining': 'top-to-bottom',
-        },
-        'rtl': {  # same as 'right-to-left'
-            'axis': 'horizontal', 'directionality': 'right-to-left', 'lining': 'top-to-bottom',
-        },
-        'top-to-bottom': {
-            'axis': 'vertical', 'directionality': 'top-to-bottom', 'lining': 'left-to-right',
-        },
-    }
-
-    directionality: Directionalities = 'left-to-right'
-    axis: Axes = 'horizontal'
-    lining: Linings = 'top-to-bottom'
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
+    axis: Literal['horizontal', 'vertical'] = 'horizontal'
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
+    
+    DESCRIPTORS: ClassVar[tuple[str, ...]] = (
+        'left-to-right',
+        'ltr',
+        'right-to-left',
+        'rtl',
+    )
 
     @staticmethod
     def from_descriptor(descriptor: str) -> WritingSystem:
@@ -137,12 +122,17 @@ class WritingSystem:
         WritingSystem
             The corresponding WritingSystem instance.
         """
-        if descriptor in WritingSystem.DESCRIPTORS:
-            return WritingSystem(**WritingSystem.DESCRIPTORS[descriptor])
-
+        if descriptor in {'left-to-right', 'ltr'}:
+            return WritingSystem(
+                axis='horizontal', directionality='left-to-right', lining='top-to-bottom',
+            )
+        if descriptor in {'right-to-left', 'rtl'}:
+            return WritingSystem(
+                axis='horizontal', directionality='right-to-left', lining='top-to-bottom',
+            )
         raise ValueError(
             f"Unknown descriptor '{descriptor}'. "
-            f"Valid descriptors are: {list(WritingSystem.DESCRIPTORS.keys())}",
+            f"Valid descriptors are: {WritingSystem.DESCRIPTORS}",
         )
 
 
@@ -180,7 +170,7 @@ class TextStimulus:
         (default: None)
     writing_system: WritingSystem | str
         Writing system of the text. If ``writing_system`` is a string,
-        :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
+        :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` is used for initialization.
         (default: ``'left-to-right'``)
     """
 
