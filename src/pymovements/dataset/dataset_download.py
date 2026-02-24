@@ -86,7 +86,7 @@ def download_dataset(
     for resource in definition.resources:
         if resource.source is None:
             continue  # resource has no downloadable source
-            
+
         if not definition.mirrors:
             mirrors = None
         else:
