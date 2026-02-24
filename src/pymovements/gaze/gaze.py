@@ -1450,7 +1450,7 @@ class Gaze:
         """
         if not isinstance(name, str) or not name:
             raise ValueError(
-                f"name must be a non-empty string, but got: {name!r}",
+                f'name must be a non-empty string, but got: {name!r}',
             )
 
         if not isinstance(time_column, str):
@@ -1462,7 +1462,7 @@ class Gaze:
         if time_column not in self.samples.columns:
             raise ValueError(
                 f"time_column '{time_column}' not found in samples. "
-                f"Available columns: {self.samples.columns}",
+                f'Available columns: {self.samples.columns}',
             )
 
         if sampling_rate is None and self.experiment is not None:
@@ -2264,6 +2264,20 @@ class Gaze:
                     for eye_component in eye_components
                 ],
             ).transpose()
+
+        if 'pupil' in method_args and 'pupil' not in kwargs:
+            if 'pupil' not in samples.columns:
+                raise polars.exceptions.ColumnNotFoundError(
+                    f'Column \'pupil\' not found.'
+                    f' Available columns are: {samples.columns}',
+                )
+            pupil_series = samples.get_column('pupil')
+            if isinstance(pupil_series.dtype, polars.List):
+                # Binocular: [left, right] — pick eye based on eye_components
+                eye_idx = 1 if eye_components and eye_components[0] in {2, 3} else 0
+                kwargs['pupil'] = pupil_series.list.get(eye_idx).to_numpy()
+            else:
+                kwargs['pupil'] = pupil_series.to_numpy()
 
         if method.__name__ == 'out_of_screen' and self.experiment is not None:
             if 'x_min' not in kwargs:
