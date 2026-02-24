@@ -31,6 +31,7 @@ from warnings import warn
 from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
+from pymovements.dataset.websource import WebSource
 
 
 @repr_html()
@@ -42,6 +43,8 @@ class ResourceDefinition:
     ----------
     content: str
         The content type of the resource.
+    source: WebSource | None
+        The source of the downloadable resource. (default: None)
     filename: str | None
         The target filename of the downloadable resource. This may be an archive. (default: None)
     url: str | None
@@ -68,6 +71,8 @@ class ResourceDefinition:
 
     content: str
 
+    source: WebSource | None = None
+
     filename: str | None = None
     url: str | None = None
     mirrors: list[str] | None = None
@@ -78,6 +83,33 @@ class ResourceDefinition:
 
     load_function: str | None = None
     load_kwargs: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if self.source is not None:
+            if any([self.filename, self.url, self.mirrors, self.md5]):
+                warn(
+                    UserWarning(
+                        "Both 'source' and deprecated fields ('filename', 'url', 'mirrors', 'md5') "
+                        "were provided. 'source' will take precedence and deprecated fields will "
+                        "be ignored. Deprecated fields will be removed in v0.32.0.",
+                    ),
+                )
+            return
+
+        if any([self.filename, self.url, self.mirrors, self.md5]):
+            warn(
+                DeprecationWarning(
+                    "Fields 'filename', 'url', 'mirrors', 'md5' are deprecated since v0.27.0. "
+                    "Please use 'source' (type 'WebSource') instead. "
+                    "These fields will be removed in v0.32.0.",
+                ),
+            )
+            self.source = WebSource(
+                url=self.url,
+                filename=self.filename,
+                mirrors=self.mirrors,
+                md5=self.md5,
+            )
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
@@ -106,6 +138,9 @@ class ResourceDefinition:
             dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
             dictionary['url'] = url
 
+        if 'source' in dictionary and isinstance(dictionary['source'], dict):
+            dictionary['source'] = WebSource.from_dict(dictionary['source'])
+
         return ResourceDefinition(**dictionary)
 
     def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
@@ -124,6 +159,9 @@ class ResourceDefinition:
             ``dict`` representation of ``ResourceDefinition``.
         """
         data = asdict(self)
+
+        if self.source:
+            data['source'] = self.source.to_dict(exclude_none=exclude_none)
 
         # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:
