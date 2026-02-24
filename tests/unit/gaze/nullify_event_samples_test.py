@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze.nullify_event_samples() method."""
+
 from __future__ import annotations
 
 import warnings
@@ -31,10 +32,12 @@ import pymovements as pm
 def test_basic_nullify_during_blink():
     """Blink event samples are set to null for pixel column."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(6), dtype=pl.Int64),
-            'pixel': [[1.0, 2.0]] * 6,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(6), dtype=pl.Int64),
+                'pixel': [[1.0, 2.0]] * 6,
+            }
+        ),
         events=pm.Events(name='blink', onsets=[2], offsets=[3]),
     )
     gaze.nullify_event_samples('blink', padding=0)
@@ -51,10 +54,12 @@ def test_basic_nullify_during_blink():
 def test_with_symmetric_padding():
     """Padding extends the null window symmetrically."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(8), dtype=pl.Int64),
-            'pixel': [[1.0, 2.0]] * 8,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(8), dtype=pl.Int64),
+                'pixel': [[1.0, 2.0]] * 8,
+            }
+        ),
         events=pm.Events(name='blink', onsets=[3], offsets=[4]),
     )
     gaze.nullify_event_samples('blink', padding=1)
@@ -74,10 +79,12 @@ def test_with_symmetric_padding():
 def test_with_asymmetric_padding():
     """Asymmetric padding extends differently before and after."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(10), dtype=pl.Int64),
-            'pixel': [[1.0, 2.0]] * 10,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(10), dtype=pl.Int64),
+                'pixel': [[1.0, 2.0]] * 10,
+            }
+        ),
         events=pm.Events(name='blink', onsets=[4], offsets=[5]),
     )
     gaze.nullify_event_samples('blink', padding=(2, 1))
@@ -97,11 +104,13 @@ def test_with_asymmetric_padding():
 def test_multi_trial():
     """Events only affect their own trial's samples."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series([0, 1, 2, 3, 0, 1, 2, 3], dtype=pl.Int64),
-            'trial': [1, 1, 1, 1, 2, 2, 2, 2],
-            'pixel': [[1.0, 2.0]] * 8,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series([0, 1, 2, 3, 0, 1, 2, 3], dtype=pl.Int64),
+                'trial': [1, 1, 1, 1, 2, 2, 2, 2],
+                'pixel': [[1.0, 2.0]] * 8,
+            }
+        ),
         events=pm.Events(
             name='blink',
             onsets=[1],
@@ -129,10 +138,12 @@ def test_multi_trial():
 def test_no_events_attribute_raises():
     """Raise AttributeError when events is None."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(5), dtype=pl.Int64),
-            'pixel': [[1.0, 2.0]] * 5,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(5), dtype=pl.Int64),
+                'pixel': [[1.0, 2.0]] * 5,
+            }
+        ),
     )
     gaze.events = None
 
@@ -143,10 +154,12 @@ def test_no_events_attribute_raises():
 def test_no_matching_events_raises():
     """Raise ValueError when no events match the given name."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(5), dtype=pl.Int64),
-            'pixel': [[1.0, 2.0]] * 5,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(5), dtype=pl.Int64),
+                'pixel': [[1.0, 2.0]] * 5,
+            }
+        ),
         events=pm.Events(name='saccade', onsets=[1], offsets=[2]),
     )
 
@@ -157,16 +170,20 @@ def test_no_matching_events_raises():
 def test_only_specified_event_type_nullified():
     """Only the specified event type is nullified; other event types are unaffected."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(10), dtype=pl.Int64),
-            'pixel': [[float(i), float(i)] for i in range(10)],
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(10), dtype=pl.Int64),
+                'pixel': [[float(i), float(i)] for i in range(10)],
+            }
+        ),
         events=pm.Events(
-            data=pl.DataFrame({
-                'name': ['blink', 'saccade'],
-                'onset': [2, 6],
-                'offset': [3, 8],
-            }),
+            data=pl.DataFrame(
+                {
+                    'name': ['blink', 'saccade'],
+                    'onset': [2, 6],
+                    'offset': [3, 8],
+                }
+            ),
         ),
     )
     gaze.nullify_event_samples('blink', padding=0)
@@ -184,11 +201,13 @@ def test_only_specified_event_type_nullified():
 def test_time_and_trial_columns_preserved():
     """Time and trial columns must remain intact after nullification."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(6), dtype=pl.Int64),
-            'trial': [1, 1, 1, 2, 2, 2],
-            'pixel': [[1.0, 2.0]] * 6,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(6), dtype=pl.Int64),
+                'trial': [1, 1, 1, 2, 2, 2],
+                'pixel': [[1.0, 2.0]] * 6,
+            }
+        ),
         events=pm.Events(
             name='blink',
             onsets=[1],
@@ -210,12 +229,14 @@ def test_time_and_trial_columns_preserved():
 def test_multiple_data_columns_nullified():
     """All data columns (not time/trial) are nullified during events."""
     gaze = pm.Gaze(
-        samples=pl.DataFrame({
-            'time': pl.Series(range(5), dtype=pl.Int64),
-            'pixel': [[1.0, 2.0]] * 5,
-            'position': [[0.5, 0.5]] * 5,
-            'velocity': [[10.0, 10.0]] * 5,
-        }),
+        samples=pl.DataFrame(
+            {
+                'time': pl.Series(range(5), dtype=pl.Int64),
+                'pixel': [[1.0, 2.0]] * 5,
+                'position': [[0.5, 0.5]] * 5,
+                'velocity': [[10.0, 10.0]] * 5,
+            }
+        ),
         events=pm.Events(name='blink', onsets=[1], offsets=[2]),
     )
     gaze.nullify_event_samples('blink', padding=0)
@@ -233,10 +254,12 @@ def test_scalar_columns_nullified():
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', UserWarning)
         gaze = pm.Gaze(
-            samples=pl.DataFrame({
-                'time': pl.Series(range(5), dtype=pl.Int64),
-                'pupil': [3.0, 3.5, 4.0, 3.5, 3.0],
-            }),
+            samples=pl.DataFrame(
+                {
+                    'time': pl.Series(range(5), dtype=pl.Int64),
+                    'pupil': [3.0, 3.5, 4.0, 3.5, 3.0],
+                }
+            ),
             events=pm.Events(name='blink', onsets=[1], offsets=[2]),
         )
     gaze.nullify_event_samples('blink', padding=0)

@@ -18,12 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
+
 import polars
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements.stimulus import text
-
 
 EXPECTED_DF = polars.DataFrame(
     {

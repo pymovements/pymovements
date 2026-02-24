@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test deprecation fixtures."""
+
 import re
 
 import pytest
@@ -27,7 +28,10 @@ from pymovements import __version__
 
 @pytest.mark.parametrize(
     (
-        'function_name', 'warning_message', 'scheduled_version', 'current_version',
+        'function_name',
+        'warning_message',
+        'scheduled_version',
+        'current_version',
         'assertion_message',
     ),
     [
@@ -106,8 +110,12 @@ from pymovements import __version__
     ],
 )
 def test_assert_deprecation_fixture_assert_false(
-        function_name, warning_message, scheduled_version, current_version, assertion_message,
-        assert_deprecation_is_removed,
+    function_name,
+    warning_message,
+    scheduled_version,
+    current_version,
+    assertion_message,
+    assert_deprecation_is_removed,
 ):
     with pytest.raises(AssertionError, match=assertion_message):
         assert_deprecation_is_removed(
@@ -119,15 +127,14 @@ def test_assert_deprecation_fixture_assert_false(
 
 
 def test_assert_deprecation_fixture_default_current_version_assert_false(
-        assert_deprecation_is_removed,
+    assert_deprecation_is_removed,
 ):
     base_version_regex = re.compile(r'(\d+[.]\d+[.]\d+)([+]?[-]?[a-z]?)?')
     scheduled_version = base_version_regex.match(__version__).group(1)
     warning_message = f'(This module will be removed in v{scheduled_version}.)'
 
     assertion_message = (
-        f'scheduled .* removed in v{scheduled_version}.'
-        f' Current version is v{scheduled_version}'
+        f'scheduled .* removed in v{scheduled_version}. Current version is v{scheduled_version}'
     )
 
     with pytest.raises(AssertionError, match=assertion_message):
@@ -168,8 +175,11 @@ def test_assert_deprecation_fixture_default_current_version_assert_false(
     ],
 )
 def test_assert_deprecation_fixture_assert_true(
-        function_name, warning_message, scheduled_version, current_version,
-        assert_deprecation_is_removed,
+    function_name,
+    warning_message,
+    scheduled_version,
+    current_version,
+    assert_deprecation_is_removed,
 ):
     assert_deprecation_is_removed(
         function_name=function_name,

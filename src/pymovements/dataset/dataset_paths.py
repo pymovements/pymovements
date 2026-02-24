@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """DatasetPaths module."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -65,17 +66,17 @@ class DatasetPaths:
     """
 
     def __init__(
-            self,
-            *,
-            root: str | Path = 'data',
-            dataset: str | None = None,
-            raw: str = 'raw',
-            events: str = 'events',
-            precomputed_events: str = 'precomputed_events',
-            precomputed_reading_measures: str = 'precomputed_reading_measures',
-            preprocessed: str = 'preprocessed',
-            downloads: str = 'downloads',
-            stimuli: str = 'stimuli',
+        self,
+        *,
+        root: str | Path = 'data',
+        dataset: str | None = None,
+        raw: str = 'raw',
+        events: str = 'events',
+        precomputed_events: str = 'precomputed_events',
+        precomputed_reading_measures: str = 'precomputed_reading_measures',
+        preprocessed: str = 'preprocessed',
+        downloads: str = 'downloads',
+        stimuli: str = 'stimuli',
     ):
         self._root = Path(root)
         self._dataset = dataset
@@ -88,11 +89,11 @@ class DatasetPaths:
         self._stimuli = stimuli
 
     def get_preprocessed_filepath(
-            self,
-            raw_filepath: Path,
-            *,
-            preprocessed_dirname: str | None = None,
-            extension: str = 'feather',
+        self,
+        raw_filepath: Path,
+        *,
+        preprocessed_dirname: str | None = None,
+        extension: str = 'feather',
     ) -> Path:
         """Get preprocessed filepath in accordance to filepath of the raw file.
 
@@ -131,11 +132,11 @@ class DatasetPaths:
         return preprocessed_file_dirpath / preprocessed_filename
 
     def raw_to_event_filepath(
-            self,
-            raw_filepath: Path,
-            *,
-            events_dirname: str | None = None,
-            extension: str = 'feather',
+        self,
+        raw_filepath: Path,
+        *,
+        events_dirname: str | None = None,
+        extension: str = 'feather',
     ) -> Path:
         """Get event filepath in accordance to filepath of the raw file.
 

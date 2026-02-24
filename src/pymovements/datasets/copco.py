@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the CopCo dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -177,7 +178,7 @@ class CopCo(DatasetDefinition):
         default_factory=lambda: Experiment(
             screen_width_px=1920,
             screen_height_px=1080,
-            screen_width_cm=59.,
+            screen_width_cm=59.0,
             screen_height_cm=33.5,
             distance_cm=85,
             origin='center',

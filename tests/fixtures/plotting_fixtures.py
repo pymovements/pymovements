@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provide fixtures for non-interactive plotting tests."""
+
 from collections.abc import Generator
 
 import matplotlib

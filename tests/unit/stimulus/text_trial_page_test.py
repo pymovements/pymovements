@@ -22,6 +22,7 @@
 These tests specifically cover the trial/page filtering that was buggy before and
 regression cases around exclusive end boundaries and no-match behavior.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -39,7 +40,9 @@ from pymovements.stimulus.text import TextStimulus
     ],
 )
 def test_get_aoi_filters_by_trial_and_page(
-        stimulus_both_columns: TextStimulus, row: dict, expected: str | None,
+    stimulus_both_columns: TextStimulus,
+    row: dict,
+    expected: str | None,
 ) -> None:
     aoi = stimulus_both_columns.get_aoi(row=row, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1  # always one row (possibly filled with Nones)
@@ -55,7 +58,9 @@ def test_get_aoi_filters_by_trial_and_page(
     ],
 )
 def test_get_aoi_filters_by_trial_only(
-        stimulus_only_trial: TextStimulus, row: dict, expected: str | None,
+    stimulus_only_trial: TextStimulus,
+    row: dict,
+    expected: str | None,
 ) -> None:
     aoi = stimulus_only_trial.get_aoi(row=row, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1
@@ -71,7 +76,9 @@ def test_get_aoi_filters_by_trial_only(
     ],
 )
 def test_get_aoi_filters_by_page_only(
-        stimulus_only_page: TextStimulus, row: dict, expected: str | None,
+    stimulus_only_page: TextStimulus,
+    row: dict,
+    expected: str | None,
 ) -> None:
     aoi = stimulus_only_page.get_aoi(row=row, x_eye='x', y_eye='y')
     assert aoi.shape[0] == 1

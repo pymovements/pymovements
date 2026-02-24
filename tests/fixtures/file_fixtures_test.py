@@ -18,12 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test file fixtures."""
+
 import filecmp
 from pathlib import Path
 
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 
 def test_testfiles_dirpath_has_files(testfiles_dirpath):
@@ -52,7 +53,7 @@ def test_make_text_file_accepts_relative_path_object(make_text_file):
     p = make_text_file(Path('nested') / 'custom.txt', header='H', body='B')
     assert p.name == 'custom.txt'
     assert p.parent.name == 'nested'
-    print(f"dir in parent: {p.parent}")
+    print(f'dir in parent: {p.parent}')
     assert p.exists()
     assert p.read_text(encoding='utf-8') == 'HB'
 
@@ -80,7 +81,7 @@ def test_make_text_file_defaults(make_text_file):
 
 def test_make_text_file_non_utf8_encoding(make_text_file):
     header = 'über header\n(seit 2017 gibt es ein großgeschriebenes ß: NĀMLICH ẞ 🤷\n'
-    body = 'Le type naïf de la fête de l\'été'
+    body = "Le type naïf de la fête de l'été"
     p = make_text_file('utf16.txt', header=header, body=body, encoding='utf-16')
     assert p.read_text(encoding='utf-16') == header + body
 
@@ -100,7 +101,7 @@ def test_make_text_file_rejects_absolute_paths(make_text_file):
 
 
 def test_make_text_file_rejects_tilde_home(make_text_file):
-    with pytest.raises(ValueError, match=r"~\' \(home\) is not allowed|relative path"):
+    with pytest.raises(ValueError, match=r'~\' \(home\) is not allowed|relative path'):
         make_text_file('~/.secret.txt', header='h', body='b')
 
 
@@ -108,23 +109,35 @@ def test_make_text_file_rejects_tilde_home(make_text_file):
     ('filename', 'data', 'header', 'kwargs', 'read_kwargs'),
     [
         pytest.param(
-            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), None, None, None,
+            'test.csv',
+            pl.DataFrame({'a': [1, 2, 3]}),
+            None,
+            None,
+            None,
             id='no_header_single_column_no_kwargs',
         ),
-
         pytest.param(
-            'test.csv', pl.DataFrame({'a': [1, 2, 3], 'b': ['A', 'B', 'C']}), None, None, None,
+            'test.csv',
+            pl.DataFrame({'a': [1, 2, 3], 'b': ['A', 'B', 'C']}),
+            None,
+            None,
+            None,
             id='no_header_two_columns_no_kwargs',
         ),
-
         pytest.param(
-            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), '# test header', None, {'skip_lines': 1},
+            'test.csv',
+            pl.DataFrame({'a': [1, 2, 3]}),
+            '# test header',
+            None,
+            {'skip_lines': 1},
             id='single_line_header_single_column_no_kwargs',
         ),
-
         pytest.param(
-            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), None,
-            {'separator': '\t'}, {'separator': '\t'},
+            'test.csv',
+            pl.DataFrame({'a': [1, 2, 3]}),
+            None,
+            {'separator': '\t'},
+            {'separator': '\t'},
             id='no_header_single_column_tab_separated',
         ),
     ],

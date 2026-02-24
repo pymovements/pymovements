@@ -18,10 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module to create a Gaze from a numpy array."""
+
 from __future__ import annotations
 
-import warnings
 from typing import Literal
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -34,28 +35,28 @@ from pymovements.gaze.gaze import Gaze
 
 
 def from_numpy(
-        samples: np.ndarray | None = None,
-        experiment: Experiment | None = None,
-        events: Events | None = None,
-        *,
-        trial: np.ndarray | None = None,
-        time: np.ndarray | None = None,
-        pixel: np.ndarray | None = None,
-        position: np.ndarray | None = None,
-        velocity: np.ndarray | None = None,
-        acceleration: np.ndarray | None = None,
-        distance: np.ndarray | None = None,
-        schema: list[str] | None = None,
-        orient: Literal['col', 'row'] = 'col',
-        trial_columns: str | list[str] | None = None,
-        time_column: str | None = None,
-        time_unit: str | None = None,
-        pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
-        velocity_columns: list[str] | None = None,
-        acceleration_columns: list[str] | None = None,
-        distance_column: str | None = None,
-        data: np.ndarray | None = None,
+    samples: np.ndarray | None = None,
+    experiment: Experiment | None = None,
+    events: Events | None = None,
+    *,
+    trial: np.ndarray | None = None,
+    time: np.ndarray | None = None,
+    pixel: np.ndarray | None = None,
+    position: np.ndarray | None = None,
+    velocity: np.ndarray | None = None,
+    acceleration: np.ndarray | None = None,
+    distance: np.ndarray | None = None,
+    schema: list[str] | None = None,
+    orient: Literal['col', 'row'] = 'col',
+    trial_columns: str | list[str] | None = None,
+    time_column: str | None = None,
+    time_unit: str | None = None,
+    pixel_columns: list[str] | None = None,
+    position_columns: list[str] | None = None,
+    velocity_columns: list[str] | None = None,
+    acceleration_columns: list[str] | None = None,
+    distance_column: str | None = None,
+    data: np.ndarray | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a numpy array.
 
@@ -286,7 +287,8 @@ def from_numpy(
     pixel_columns = None
     if pixel is not None:
         sample_component = pl.from_numpy(
-            data=pixel, orient=orient,
+            data=pixel,
+            orient=orient,
         ).select(
             pl.all().name.prefix('pixel_'),
         )
@@ -296,7 +298,8 @@ def from_numpy(
     position_columns = None
     if position is not None:
         sample_component = pl.from_numpy(
-            data=position, orient=orient,
+            data=position,
+            orient=orient,
         ).select(
             pl.all().name.prefix('position_'),
         )
@@ -306,7 +309,8 @@ def from_numpy(
     velocity_columns = None
     if velocity is not None:
         sample_component = pl.from_numpy(
-            data=velocity, orient=orient,
+            data=velocity,
+            orient=orient,
         ).select(
             pl.all().name.prefix('velocity_'),
         )
@@ -343,19 +347,19 @@ def from_numpy(
 
 
 def from_pandas(
-        samples: pd.DataFrame,
-        experiment: Experiment | None = None,
-        events: Events | None = None,
-        *,
-        trial_columns: str | list[str] | None = None,
-        time_column: str | None = None,
-        time_unit: str | None = None,
-        pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
-        velocity_columns: list[str] | None = None,
-        acceleration_columns: list[str] | None = None,
-        distance_column: str | None = None,
-        data: pd.DataFrame | None = None,
+    samples: pd.DataFrame,
+    experiment: Experiment | None = None,
+    events: Events | None = None,
+    *,
+    trial_columns: str | list[str] | None = None,
+    time_column: str | None = None,
+    time_unit: str | None = None,
+    pixel_columns: list[str] | None = None,
+    position_columns: list[str] | None = None,
+    velocity_columns: list[str] | None = None,
+    acceleration_columns: list[str] | None = None,
+    distance_column: str | None = None,
+    data: pd.DataFrame | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a pandas DataFrame.
 

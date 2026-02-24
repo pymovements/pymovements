@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides basic checks to be reused in other modules."""
+
 from __future__ import annotations
 
 from collections.abc import Sized

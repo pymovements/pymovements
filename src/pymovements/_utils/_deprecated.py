@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Helpers for deprecations."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -56,12 +57,12 @@ class DeprecatedMetaClass(type):
     """
 
     def __new__(
-            mcs: type[DeprecatedMetaClass],
-            name: str,
-            bases: tuple,
-            classdict: dict,
-            *args: Any,
-            **kwargs: Any,
+        mcs: type[DeprecatedMetaClass],
+        name: str,
+        bases: tuple,
+        classdict: dict,
+        *args: Any,
+        **kwargs: Any,
     ) -> DeprecatedMetaClass:
         """Create a new deprecated class."""
         alias = classdict.get('_DeprecatedMetaClass__alias')
@@ -69,16 +70,18 @@ class DeprecatedMetaClass(type):
         version_removed = classdict.get('_DeprecatedMetaClass__version_removed')
 
         if alias is not None:
+
             def new(cls: type, *args: Any, **kwargs: Any) -> type:
-                alias = getattr(cls, '_DeprecatedMetaClass__alias')
-                version_deprecated = getattr(cls, '_DeprecatedMetaClass__version_deprecated')
-                version_removed = getattr(cls, '_DeprecatedMetaClass__version_removed')
+                alias = cls._DeprecatedMetaClass__alias  # type: ignore[attr-defined]
+                version_deprecated = cls._DeprecatedMetaClass__version_deprecated  # type: ignore[attr-defined]
+                version_removed = cls._DeprecatedMetaClass__version_removed  # type: ignore[attr-defined]
 
                 warn(
-                    f"{cls.__name__} has been renamed to {alias.__name__} "
-                    f"in {version_deprecated} "
-                    f"and will be removed in {version_removed}.",
-                    DeprecationWarning, stacklevel=2,
+                    f'{cls.__name__} has been renamed to {alias.__name__} '
+                    f'in {version_deprecated} '
+                    f'and will be removed in {version_removed}.',
+                    DeprecationWarning,
+                    stacklevel=2,
                 )
 
                 return alias(*args, **kwargs)
@@ -97,10 +100,11 @@ class DeprecatedMetaClass(type):
 
             if alias is not None:
                 warn(
-                    f"{mcs.__name__} has been renamed to {alias.__name__} "
-                    f"in {version_deprecated} "
-                    f"and will be removed in {version_removed}.",
-                    DeprecationWarning, stacklevel=2,
+                    f'{mcs.__name__} has been renamed to {alias.__name__} '
+                    f'in {version_deprecated} '
+                    f'and will be removed in {version_removed}.',
+                    DeprecationWarning,
+                    stacklevel=2,
                 )
 
             fixed_bases.add(alias or b)
@@ -114,7 +118,7 @@ class DeprecatedMetaClass(type):
         """
         if subclass is cls:
             return True
-        return issubclass(subclass, getattr(cls, '_DeprecatedMetaClass__alias'))
+        return issubclass(subclass, cls._DeprecatedMetaClass__alias)  # type: ignore[attr-defined]
 
     def __instancecheck__(cls, instance: Any) -> bool:
         """Check if is instance of deprecated class.

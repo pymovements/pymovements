@@ -18,14 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test traceplot."""
+
 from unittest.mock import Mock
 
+from matplotlib import figure
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 import pymovements as pm
 
@@ -136,7 +137,8 @@ def gaze_no_exp_fixture():
         pytest.param(
             {
                 'cmap': matplotlib.colors.LinearSegmentedColormap(
-                    name='test', segmentdata={},
+                    name='test',
+                    segmentdata={},
                 ),
             },
             id='cmap_class',
@@ -189,14 +191,7 @@ def test_traceplot_noshow(gaze, monkeypatch):
 def test_traceplot_save(gaze, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    pm.plotting.traceplot(
-        gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
-    )
+    pm.plotting.traceplot(gaze=gaze, show=False, savepath=str(tmp_path / 'test.svg'))
 
     mock.assert_called_once()
 
@@ -273,7 +268,8 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
 
 @pytest.mark.parametrize(
-    'bad_x, bad_y', [
+    ('bad_x', 'bad_y'),
+    [
         (np.inf, 0.0),
         (np.nan, 0.0),
         (np.inf, np.nan),
@@ -286,7 +282,8 @@ def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
         'position',
         [
             [bad_x, bad_y],
-        ] + gaze.samples['position'].to_list()[1:],
+        ]
+        + gaze.samples['position'].to_list()[1:],
     )
     # get index of 'position' column
     pos_index = gaze.samples.get_column_index('position')

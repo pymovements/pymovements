@@ -21,6 +21,7 @@
 
 Not part of the public API.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -28,14 +29,14 @@ from typing import Literal
 from typing import TypeAlias
 from warnings import warn
 
-import matplotlib.pyplot as plt
-import numpy as np
-import PIL.Image
 from matplotlib import colors
 from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import FancyArrowPatch
+import matplotlib.pyplot as plt
+import numpy as np
+import PIL.Image
 
 from pymovements.gaze.experiment import Screen
 
@@ -84,9 +85,7 @@ DEFAULT_SEGMENTDATA_TWOSLOPE: LinearSegmentedColormapType = {
     ],
 }
 
-CmapNormType: TypeAlias = (
-    colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
-)
+CmapNormType: TypeAlias = colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
 
 MatplotlibSetupType: TypeAlias = tuple[
     plt.figure,
@@ -99,8 +98,10 @@ MatplotlibSetupType: TypeAlias = tuple[
 
 
 def prepare_figure(
-    ax: plt.Axes | None, figsize: tuple[int, int] | tuple[float, float] | None,
-    *, func_name: str,
+    ax: plt.Axes | None,
+    figsize: tuple[int, int] | tuple[float, float] | None,
+    *,
+    func_name: str,
 ) -> tuple[plt.Figure, plt.Axes, bool]:
     """Prepare a matplotlib figure and axes.
 
@@ -237,7 +238,6 @@ def _setup_axes_and_colormap(
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-
         # Convert to NumPy arrays first
         x_arr = np.asarray(x_signal)
         y_arr = np.asarray(y_signal)
@@ -246,7 +246,6 @@ def _setup_axes_and_colormap(
         valid_y = y_arr[np.isfinite(y_arr)]
 
         if valid_x.size > 0 and valid_y.size > 0:
-
             # autoset axes limits if there is at least one data point
             x_min, x_max = np.nanmin(valid_x), np.nanmax(valid_x)
             y_min, y_max = np.nanmin(valid_y), np.nanmax(valid_y)
@@ -294,16 +293,21 @@ def _setup_axes_and_colormap(
                 cmap_segmentdata = DEFAULT_SEGMENTDATA
 
         cmap = colors.LinearSegmentedColormap(
-            'line_cmap', segmentdata=cmap_segmentdata, N=512,
+            'line_cmap',
+            segmentdata=cmap_segmentdata,
+            N=512,
         )
 
     if cmap_norm == 'twoslope':
         cmap_norm = colors.TwoSlopeNorm(
-            vcenter=0, vmin=-cval_max, vmax=cval_max,
+            vcenter=0,
+            vmin=-cval_max,
+            vmax=cval_max,
         )
     elif cmap_norm == 'normalize':
         cmap_norm = colors.Normalize(
-            vmin=cval_min, vmax=cval_max,
+            vmin=cval_min,
+            vmax=cval_max,
         )
     elif cmap_norm == 'nonorm':
         cmap_norm = colors.NoNorm()
@@ -328,13 +332,14 @@ def _draw_arrow_data(
     rad: float = 0.25,
     color: str = 'black',
     arrowstyle: str = 'simple',
-    mutation_scale: float = 40.,
+    mutation_scale: float = 40.0,
 ) -> PatchCollection:
     """Draw arrow data as arrows and return the collection."""
     arrows = []
     for i in range(len(fixation_x) - 1):
         arrow = FancyArrowPatch(
-            (fixation_x[i], fixation_y[i]), (fixation_x[i + 1], fixation_y[i + 1]),
+            (fixation_x[i], fixation_y[i]),
+            (fixation_x[i + 1], fixation_y[i + 1]),
             arrowstyle=arrowstyle,
             connectionstyle='arc3,rad=' + str(rad),
             color=color,

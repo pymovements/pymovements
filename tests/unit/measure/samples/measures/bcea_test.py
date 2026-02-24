@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test module for bcea sample measure."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements.measure.samples import bcea
 

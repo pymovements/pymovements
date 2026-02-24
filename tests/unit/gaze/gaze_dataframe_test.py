@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated GazeDataFrame alias for Gaze."""
+
 import pytest
 
 from pymovements import Gaze
@@ -26,22 +27,21 @@ from pymovements import GazeDataFrame
 
 @pytest.fixture(name='gaze_subclass')
 def fixture_gaze_subclass():
-    class GazeSubclass(Gaze):
-        ...
+    class GazeSubclass(Gaze): ...
+
     yield GazeSubclass
 
 
 @pytest.fixture(name='gaze_df_subclass')
 def fixture_gaze_df_subclass():
-    class GazeDataFrameSubclass(GazeDataFrame):
-        ...
+    class GazeDataFrameSubclass(GazeDataFrame): ...
+
     yield GazeDataFrameSubclass
 
 
 @pytest.fixture(name='gaze_df_subsubclass')
 def fixture_gaze_df_subsubclass(gaze_df_subclass):
-    class GazeDataFrameSubSubclass(gaze_df_subclass):
-        ...
+    class GazeDataFrameSubSubclass(gaze_df_subclass): ...
 
     yield GazeDataFrameSubSubclass
 
@@ -134,26 +134,26 @@ def test_is_gaze_df_deprecated():
 def test_is_gaze_df_subclass_deprecated():
     # pylint: disable=unused-variable
     with pytest.raises(DeprecationWarning):
-        class AnotherGazeDataFrameSubclass(GazeDataFrame):
-            ...
+
+        class AnotherGazeDataFrameSubclass(GazeDataFrame): ...
 
 
 def test_is_gaze_df_dubplicate_subclass_deprecated():
     # pylint: disable=unused-variable
     with pytest.raises(DeprecationWarning):
-        class AnotherGazeDataFrameSubclass(GazeDataFrame):
-            ...
+
+        class AnotherGazeDataFrameSubclass(GazeDataFrame): ...
 
 
 def test_is_gaze_df_subsubclass_deprecated():
     # pylint: disable=unused-variable
     with pytest.raises(DeprecationWarning):
-        class YetAnotherGazeDataFrameSubclass(GazeDataFrame):
-            ...
+
+        class YetAnotherGazeDataFrameSubclass(GazeDataFrame): ...
 
         with pytest.raises(DeprecationWarning):
-            class AnotherGazeDataFrameSubSubclass(YetAnotherGazeDataFrameSubclass):
-                ...
+
+            class AnotherGazeDataFrameSubSubclass(YetAnotherGazeDataFrameSubclass): ...
 
 
 def test_is_gaze_df_removed(assert_deprecation_is_removed):
@@ -164,5 +164,4 @@ def test_is_gaze_df_removed(assert_deprecation_is_removed):
         function_name='GazeDataFrame',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )

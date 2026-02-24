@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test basic preprocessing on various gaze files."""
+
 import pytest
 
 from pymovements import DatasetLibrary
@@ -94,10 +95,18 @@ def fixture_init_kwargs(request, make_example_file):
         'eyelink_monocular_2khz': {
             'file': make_example_file('eyelink_monocular_2khz_example.asc'),
             'experiment': Experiment(
-                1280, 1024, 38, 30.2, 68, 'upper left',
+                1280,
+                1024,
+                38,
+                30.2,
+                68,
+                'upper left',
                 eyetracker=EyeTracker(
-                    sampling_rate=2000.0, left=True, right=False,
-                    model='EyeLink Portable Duo', vendor='EyeLink',
+                    sampling_rate=2000.0,
+                    left=True,
+                    right=False,
+                    model='EyeLink Portable Duo',
+                    vendor='EyeLink',
                 ),
             ),
             'definition': ResourceDefinition(content='gaze'),
@@ -105,10 +114,18 @@ def fixture_init_kwargs(request, make_example_file):
         'eyelink_monocular_no_dummy': {
             'file': make_example_file('eyelink_monocular_no_dummy_example.asc'),
             'experiment': Experiment(
-                1920, 1080, 38, 30.2, 68, 'upper left',
+                1920,
+                1080,
+                38,
+                30.2,
+                68,
+                'upper left',
                 eyetracker=EyeTracker(
-                    sampling_rate=500.0, left=True, right=False,
-                    model='EyeLink 1000 Plus', vendor='EyeLink',
+                    sampling_rate=500.0,
+                    left=True,
+                    right=False,
+                    model='EyeLink 1000 Plus',
+                    vendor='EyeLink',
                 ),
             ),
             'definition': ResourceDefinition(content='gaze'),
@@ -163,7 +180,6 @@ def fixture_init_kwargs(request, make_example_file):
             'experiment': DatasetLibrary.get('RaCCooNS').experiment,
             'definition': DatasetLibrary.get('RaCCooNS').resources[0],
         },
-
     }
     yield init_param_dict[request.param]
 

@@ -18,16 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides path specific functions."""
+
 from __future__ import annotations
 
-import re
 from pathlib import Path
+import re
 
 
 def get_filepaths(
-        path: str | Path,
-        extension: str | list[str] | None = None,
-        regex: re.Pattern | None = None,
+    path: str | Path,
+    extension: str | list[str] | None = None,
+    regex: re.Pattern | None = None,
 ) -> list[Path]:
     """Get filepaths from rootpath depending on extension or regular expression.
 
@@ -77,10 +78,10 @@ def get_filepaths(
 
 
 def match_filepaths(
-        path: str | Path,
-        regex: re.Pattern,
-        relative: bool = True,
-        relative_anchor: Path | None = None,
+    path: str | Path,
+    regex: re.Pattern,
+    relative: bool = True,
+    relative_anchor: Path | None = None,
 ) -> list[dict[str, str]]:
     """Traverse path and match regular expression.
 
@@ -121,8 +122,10 @@ def match_filepaths(
     for childpath in path.iterdir():
         if childpath.is_dir():
             recursive_results = match_filepaths(
-                path=childpath, regex=regex,
-                relative=relative, relative_anchor=relative_anchor,
+                path=childpath,
+                regex=regex,
+                relative=relative,
+                relative_anchor=relative_anchor,
             )
             match_dicts.extend(recursive_results)
         elif match := regex.match(childpath.name):

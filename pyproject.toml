@@ -76,7 +76,8 @@ dev = [
   "setuptools>=61.0.0",
   "types-tqdm>=4.67.0",
   "pre-commit>=3.0.0",
-  "pylint>=4.0.0"
+  "ruff>=0.13.0",
+  "ty>=0.0.13"
 ]
 
 [project.urls]
@@ -85,17 +86,6 @@ Homepage = "https://github.com/pymovements/pymovements"
 Documentation = "https://pymovements.readthedocs.io/en/stable"
 "Bug Tracker" = "https://github.com/pymovements/pymovements/issues"
 Changelog = "https://github.com/pymovements/pymovements/releases"
-
-[tool.autoflake]
-in-place = true
-remove-all-unused-imports = true
-ignore-init-module-imports = true
-
-[tool.autopep8]
-max_line_length = 100
-in-place = true
-recursive = true
-aggressive = 1
 
 [tool.codespell]
 skip = "./src/pymovements/_version.py,./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
@@ -150,9 +140,6 @@ module = "docs.*"
 check_untyped_defs = false
 disallow_untyped_defs = false
 
-[tool.pydoclint]
-skip-checking-raises = true
-
 [tool.pytest.ini_options]
 addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
@@ -168,6 +155,83 @@ filterwarnings = [
 markers = ["network: mark a test as requiring network access"]
 testpaths = ['tests', 'src']
 
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+  ".venv",
+  ".git",
+  ".tox",
+  "build",
+  "dist",
+  "docs",
+  "*egg",
+  "*.ini",
+  "src/pymovements/_version.py"
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = [
+  "E4", # Import errors
+  "E7", # Statement errors
+  "E9", # Syntax errors
+  "F", # pyflakes (flake8 core)
+  "W", # pycodestyle warnings (flake8 core)
+  # Import sorting
+  "I", # isort
+  # Python upgrades
+  "UP", # pyupgrade
+  # Docstring style
+  "D", # pydocstyle
+  # flake8-annotations
+  "ANN", # flake8-annotations
+  # flake8-bugbear
+  "B", # flake8-bugbear
+  # flake8-comprehensions
+  "C4", # flake8-comprehensions
+  # flake8-print
+  "T20", # flake8-print
+  # flake8-simplify
+  "SIM" # flake8-simplify
+]
+# Preserve current ignore patterns from pydocstyle
+ignore = [
+  # pydocstyle ignores
+  "D107", # Missing docstring in __init__
+  "D203", # One blank line before class (conflicts with D211)
+  "D213", # Multi-line summary second line (conflicts with D212)
+  "D413", # Missing blank line after last section
+  # Rules to enable in future:
+  "B028", # no-explicit-stacklevel
+  "ANN401", # any-type
+  "B905", # zip-without-explicit-strict
+  "T201", # print
+  "SIM108", # if-else-block-instead-of-if-exp
+  "ANN204", # missing-return-type-special-method
+  "SIM102" # collapsible-if
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true # Each import on separate line
+order-by-type = false
+known-first-party = ["pymovements"] # Match --application-directories=src
+force-sort-within-sections = true # Ensure consistent ordering
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+  "D103", # Missing docstring in public function
+  "ANN" # Tests don't need type annotations
+]
+"__init__.py" = ["F401", "F403"] # Allow unused imports in __init__.py
+"tests/*_fixtures.py" = ["ALL"] # Skip all checks for test fixtures
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.setuptools.package-data]
 pymovements = ["datasets/*.yaml"]
 
@@ -178,3 +242,37 @@ where = ["src"]
 enabled = true
 dev_template = "{tag}+post{ccount}.{sha}"
 dirty_template = "{tag}+post{ccount}.{sha}.dirty"
+
+# Per-module overrides
+[[tool.ty.overrides]]
+include = ["tests/**"]
+rules = {"unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore"}
+
+[[tool.ty.overrides]]
+include = ["docs/**"]
+rules = {"unresolved-import" = "ignore", "invalid-assignment" = "ignore", "invalid-argument-type" = "ignore"}
+
+[[tool.ty.overrides]]
+include = ["scipy/**"]
+rules = {"unresolved-import" = "ignore"}
+
+[[tool.ty.overrides]]
+include = ["deprecated/**"]
+rules = {"unresolved-import" = "ignore"}
+
+[[tool.ty.overrides]]
+include = ["src/pymovements/**"]
+rules = {unresolved-import = "ignore", unresolved-attribute = "ignore", invalid-method-override = "ignore", unused-type-ignore-comment = "ignore", invalid-argument-type = "ignore", call-non-callable = "ignore"}
+
+[tool.ty.rules]
+
+[tool.ty.src]
+exclude = ["**/tests/**", "**/docs/**"]
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/pymovements/_version.py"
+versionfile_build = "src/pymovements/_version.py"
+tag_prefix = "v"
+parentdir_prefix = "pymovements-"

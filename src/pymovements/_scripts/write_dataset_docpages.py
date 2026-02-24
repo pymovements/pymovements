@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Write documentation pages for datasets."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -28,9 +29,9 @@ import pymovements as pm
 
 
 def write_docfiles_for_dataset(
-        dataset_name: str,
-        doc_dirpath: Path,
-        doc_meta_dirname: str,
+    dataset_name: str,
+    doc_dirpath: Path,
+    doc_meta_dirname: str,
 ) -> None:
     """Write sphinx documentation files for given dataset.
 
@@ -49,17 +50,17 @@ def write_docfiles_for_dataset(
     meta_dirpath.mkdir(exist_ok=True)
     definition.to_yaml(meta_dirpath / f'{definition.name}.yaml')
 
-    rst_content = f'''.. datatemplate:yaml:: meta/{definition.name}.yaml
-    :template: dataset.rst\n'''
+    rst_content = f""".. datatemplate:yaml:: meta/{definition.name}.yaml
+    :template: dataset.rst\n"""
 
     with open(doc_dirpath / f'{definition.name}.rst', 'w', encoding='utf-8') as rst_file:
         rst_file.write(rst_content)
 
 
 def main(
-        doc_dirpath: str | Path = 'docs/source/datasets',
-        doc_yaml_filename: str = 'datasets.yaml',
-        doc_meta_dirname: str = 'meta',
+    doc_dirpath: str | Path = 'docs/source/datasets',
+    doc_yaml_filename: str = 'datasets.yaml',
+    doc_meta_dirname: str = 'meta',
 ) -> int:
     """Write sphinx documentation files for all datasets.
 

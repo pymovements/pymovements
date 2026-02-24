@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """DatasetDefinition module."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -29,8 +30,8 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
-import yaml
 from deprecated.sphinx import deprecated
+import yaml
 
 from pymovements._utils._html import repr_html
 from pymovements.dataset._utils._yaml import reverse_substitute_types
@@ -40,7 +41,6 @@ from pymovements.dataset.resources import _HasResourcesIndexer
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
-
 
 ResourcesLike = Sequence[dict[str, Any]] | dict[str, Sequence[dict[str, Any]]]
 
@@ -320,27 +320,27 @@ class DatasetDefinition:
     distance_column: str | None = None
 
     def __init__(
-            self,
-            name: str = '.',
-            *,
-            long_name: str | None = None,
-            has_files: dict[str, bool] | None = None,
-            mirrors: dict[str, Sequence[str]] | None = None,
-            resources: ResourceDefinitions | ResourcesLike | None = None,
-            experiment: Experiment | None = None,
-            extract: dict[str, bool] | None = None,
-            filename_format: dict[str, str] | None = None,
-            filename_format_schema_overrides: dict[str, dict[str, type]] | None = None,
-            custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
-            column_map: dict[str, str] | None = None,
-            trial_columns: list[str] | None = None,
-            time_column: str | None = None,
-            time_unit: str | None = None,
-            pixel_columns: list[str] | None = None,
-            position_columns: list[str] | None = None,
-            velocity_columns: list[str] | None = None,
-            acceleration_columns: list[str] | None = None,
-            distance_column: str | None = None,
+        self,
+        name: str = '.',
+        *,
+        long_name: str | None = None,
+        has_files: dict[str, bool] | None = None,
+        mirrors: dict[str, Sequence[str]] | None = None,
+        resources: ResourceDefinitions | ResourcesLike | None = None,
+        experiment: Experiment | None = None,
+        extract: dict[str, bool] | None = None,
+        filename_format: dict[str, str] | None = None,
+        filename_format_schema_overrides: dict[str, dict[str, type]] | None = None,
+        custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
+        column_map: dict[str, str] | None = None,
+        trial_columns: list[str] | None = None,
+        time_column: str | None = None,
+        time_unit: str | None = None,
+        pixel_columns: list[str] | None = None,
+        position_columns: list[str] | None = None,
+        velocity_columns: list[str] | None = None,
+        acceleration_columns: list[str] | None = None,
+        distance_column: str | None = None,
     ) -> None:
         self.name = name
         self.long_name = long_name
@@ -492,7 +492,7 @@ class DatasetDefinition:
     @property
     @deprecated(
         reason='Please use ResourceDefinition.filename_pattern instead. '
-               'This property will be removed in v0.28.0.',
+        'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def filename_format(self) -> dict[str, str]:
@@ -521,7 +521,7 @@ class DatasetDefinition:
     @filename_format.setter
     @deprecated(
         reason='Please use ResourceDefinition.filename_pattern instead. '
-               'This property will be removed in v0.28.0.',
+        'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def filename_format(self, data: dict[str, str]) -> None:
@@ -543,7 +543,7 @@ class DatasetDefinition:
     @property
     @deprecated(
         reason='Please use ResourceDefinition.filename_pattern_schema_overrides instead. '
-               'This property will be removed in v0.28.0.',
+        'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def filename_format_schema_overrides(self) -> dict[str, dict[str, type]]:
@@ -572,7 +572,7 @@ class DatasetDefinition:
     @filename_format_schema_overrides.setter
     @deprecated(
         reason='Please use ResourceDefinition.filename_pattern instead. '
-               'This property will be removed in v0.28.0.',
+        'This property will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def filename_format_schema_overrides(self, data: dict[str, dict[str, type]]) -> None:
@@ -692,7 +692,7 @@ class DatasetDefinition:
     @property
     @deprecated(
         reason='Please use DatasetDefinition.resources.has_content() instead. '
-               'This field will be removed in v0.28.0.',
+        'This field will be removed in v0.28.0.',
         version='v0.23.0',
     )
     def has_resources(self) -> _HasResourcesIndexer:
@@ -738,8 +738,8 @@ class DatasetDefinition:
         return self._has_resources
 
     def _initialize_resources(
-            self,
-            resources: ResourceDefinitions | ResourcesLike | None,
+        self,
+        resources: ResourceDefinitions | ResourcesLike | None,
     ) -> ResourceDefinitions:
         """Initialize ``ResourceDefinitions`` instance if necessary."""
         if isinstance(resources, ResourceDefinitions):

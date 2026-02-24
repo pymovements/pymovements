@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the JuDo1000 dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

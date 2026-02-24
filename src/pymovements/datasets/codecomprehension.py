@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the CodeComprehension dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -109,7 +110,9 @@ class CodeComprehension(DatasetDefinition):
                     'filename_pattern_schema_overrides': {'subject_id': pl.String},
                     'load_kwargs': {
                         'read_csv_kwargs': {
-                            'separator': '\t', 'null_values': '.', 'quote_char': '"',
+                            'separator': '\t',
+                            'null_values': '.',
+                            'quote_char': '"',
                         },
                     },
                 },

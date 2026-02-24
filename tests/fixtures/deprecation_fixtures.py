@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provide fixtures to assert deprecations."""
+
 from __future__ import annotations
 
 import re
@@ -33,11 +34,11 @@ def fixture_assert_deprecation_is_removed():
     regex = re.compile(r'.*will be removed in v(?P<version>[0-9]+[.][0-9]+[.][0-9]+)[.)].*')
 
     def _assert_deprecation_is_removed(
-            *,
-            function_name: str,
-            warning_message: str,
-            scheduled_version: str,
-            current_version: str | None = None,
+        *,
+        function_name: str,
+        warning_message: str,
+        scheduled_version: str,
+        current_version: str | None = None,
     ) -> None:
         """Assert that function deprecation is removed as scheduled.
 
@@ -89,4 +90,5 @@ def fixture_assert_deprecation_is_removed():
             f'{function_name} was scheduled to be removed in v{scheduled_version}. '
             f'Current version is v{current_version}.'
         )
+
     return _assert_deprecation_is_removed

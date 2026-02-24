@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for py:func:`pymovements.gaze.transforms."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -27,8 +28,8 @@ from typing import TypeVar
 
 import numpy as np
 import polars as pl
-import scipy
 from polars.datatypes.classes import NumericType
+import scipy
 
 from pymovements._utils import _checks
 
@@ -109,12 +110,12 @@ def register_transform(method: TransformMethod) -> TransformMethod:
 
 @register_transform
 def center_origin(
-        *,
-        screen_resolution: tuple[int, int],
-        n_components: int,
-        origin: str = 'upper left',
-        pixel_column: str = 'pixel',
-        output_column: str | None = None,
+    *,
+    screen_resolution: tuple[int, int],
+    n_components: int,
+    origin: str = 'upper left',
+    pixel_column: str = 'pixel',
+    output_column: str | None = None,
 ) -> pl.Expr:
     """Center pixel data.
 
@@ -168,8 +169,8 @@ def center_origin(
 
 @register_transform
 def downsample(
-        *,
-        factor: int,
+    *,
+    factor: int,
 ) -> pl.Expr:
     """Downsample gaze data by an integer factor.
 
@@ -193,8 +194,8 @@ def downsample(
 
 @register_transform
 def norm(
-        *,
-        columns: tuple[str, str],
+    *,
+    columns: tuple[str, str],
 ) -> pl.Expr:
     r"""Take the norm of a 2D series.
 
@@ -218,14 +219,14 @@ def norm(
 
 @register_transform
 def pix2deg(
-        *,
-        screen_resolution: tuple[int, int],
-        screen_size: tuple[float, float],
-        distance: float | str,
-        n_components: int,
-        origin: str = 'upper left',
-        pixel_column: str = 'pixel',
-        position_column: str = 'position',
+    *,
+    screen_resolution: tuple[int, int],
+    screen_size: tuple[float, float],
+    distance: float | str,
+    n_components: int,
+    origin: str = 'upper left',
+    pixel_column: str = 'pixel',
+    position_column: str = 'position',
 ) -> pl.Expr:
     """Convert pixel screen coordinates to degrees of visual angle.
 
@@ -282,14 +283,17 @@ def pix2deg(
             f'`{type(distance).__name__}`',
         )
 
-    distance_pixels = pl.concat_list([
-        distance_series.mul(screen_resolution[component % 2] / screen_size[component % 2])
-        for component in range(n_components)
-    ])
+    distance_pixels = pl.concat_list(
+        [
+            distance_series.mul(screen_resolution[component % 2] / screen_size[component % 2])
+            for component in range(n_components)
+        ]
+    )
 
     degree_components = [
         pl.arctan2(
-            centered_pixels.list.get(component), distance_pixels.list.get(component),
+            centered_pixels.list.get(component),
+            distance_pixels.list.get(component),
         ).degrees()
         for component in range(n_components)
     ]
@@ -299,14 +303,14 @@ def pix2deg(
 
 @register_transform
 def deg2pix(
-        *,
-        screen_resolution: tuple[int, int],
-        screen_size: tuple[float, float],
-        distance: float | str,
-        n_components: int,
-        pixel_origin: str = 'upper left',
-        position_column: str = 'position',
-        pixel_column: str = 'pixel',
+    *,
+    screen_resolution: tuple[int, int],
+    screen_size: tuple[float, float],
+    distance: float | str,
+    n_components: int,
+    pixel_origin: str = 'upper left',
+    position_column: str = 'position',
+    pixel_column: str = 'pixel',
 ) -> pl.Expr:
     """Convert degrees of visual angle to pixel screen coordinates.
 
@@ -350,14 +354,16 @@ def deg2pix(
             f'`{type(distance).__name__}`',
         )
 
-    distance_pixels = pl.concat_list([
-        distance_series.mul(screen_resolution[component % 2] / screen_size[component % 2])
-        for component in range(n_components)
-    ])
+    distance_pixels = pl.concat_list(
+        [
+            distance_series.mul(screen_resolution[component % 2] / screen_size[component % 2])
+            for component in range(n_components)
+        ]
+    )
 
     centered_pixels = [
-        pl.col(position_column).list.get(component).radians().tan() *
-        distance_pixels.list.get(component)
+        pl.col(position_column).list.get(component).radians().tan()
+        * distance_pixels.list.get(component)
         for component in range(n_components)
     ]
 
@@ -447,14 +453,14 @@ def _check_screen_size(screen_size: tuple[float, float]) -> None:
 
 @register_transform
 def pos2acc(
-        *,
-        sampling_rate: float,
-        n_components: int,
-        degree: int = 2,
-        window_length: int = 7,
-        padding: str | float | int | None = 'nearest',
-        position_column: str = 'position',
-        acceleration_column: str = 'acceleration',
+    *,
+    sampling_rate: float,
+    n_components: int,
+    degree: int = 2,
+    window_length: int = 7,
+    padding: str | float | int | None = 'nearest',
+    position_column: str = 'position',
+    acceleration_column: str = 'acceleration',
 ) -> pl.Expr:
     """Compute acceleration data from positional data.
 
@@ -494,15 +500,15 @@ def pos2acc(
 
 @register_transform
 def pos2vel(
-        *,
-        sampling_rate: float,
-        method: str,
-        n_components: int,
-        degree: int | None = None,
-        window_length: int | None = None,
-        padding: str | float | int | None = 'nearest',
-        position_column: str = 'position',
-        velocity_column: str = 'velocity',
+    *,
+    sampling_rate: float,
+    method: str,
+    n_components: int,
+    degree: int | None = None,
+    window_length: int | None = None,
+    padding: str | float | int | None = 'nearest',
+    position_column: str = 'position',
+    velocity_column: str = 'velocity',
 ) -> pl.Expr:
     """Compute velocitiy data from positional data.
 
@@ -549,8 +555,8 @@ def pos2vel(
     if method == 'preceding':
         return pl.concat_list(
             [
-                pl.col(position_column).list.get(component)
-                .diff(n=1, null_behavior='ignore') * sampling_rate
+                pl.col(position_column).list.get(component).diff(n=1, null_behavior='ignore')
+                * sampling_rate
                 for component in range(n_components)
             ],
         ).alias(velocity_column)
@@ -561,7 +567,8 @@ def pos2vel(
                 (
                     pl.col(position_column).shift(n=-1).list.get(component)
                     - pl.col(position_column).shift(n=1).list.get(component)
-                ) * (sampling_rate / 2)
+                )
+                * (sampling_rate / 2)
                 for component in range(n_components)
             ],
         ).alias(velocity_column)
@@ -578,7 +585,8 @@ def pos2vel(
                     + pl.col(position_column).shift(n=-1).list.get(component)
                     - pl.col(position_column).shift(n=1).list.get(component)
                     - pl.col(position_column).shift(n=2).list.get(component)
-                ) * (sampling_rate / 6)
+                )
+                * (sampling_rate / 6)
                 for component in range(n_components)
             ],
         ).alias(velocity_column)
@@ -608,15 +616,15 @@ def pos2vel(
 
 @register_transform
 def savitzky_golay(
-        *,
-        window_length: int,
-        degree: int,
-        sampling_rate: float,
-        n_components: int,
-        input_column: str,
-        output_column: str | None = None,
-        derivative: int = 0,
-        padding: str | float | int | None = 'nearest',
+    *,
+    window_length: int,
+    degree: int,
+    sampling_rate: float,
+    n_components: int,
+    input_column: str,
+    output_column: str | None = None,
+    derivative: int = 0,
+    padding: str | float | int | None = 'nearest',
 ) -> pl.Expr:
     """Apply a 1-D Savitzky-Golay filter to a column|_|:cite:p:`SavitzkyGolay1964`.
 
@@ -730,11 +738,11 @@ def savitzky_golay(
 
 @register_transform
 def resample(
-        samples: pl.DataFrame,
-        resampling_rate: float,
-        columns: str | list[str] = 'all',
-        fill_null_strategy: str = 'interpolate_linear',
-        n_components: int | None = None,
+    samples: pl.DataFrame,
+    resampling_rate: float,
+    columns: str | list[str] = 'all',
+    fill_null_strategy: str = 'interpolate_linear',
+    n_components: int | None = None,
 ) -> pl.DataFrame:
     """Resample a DataFrame to a new sampling rate by timestamps in time column.
 
@@ -814,6 +822,7 @@ def resample(
 
     numeric_columns: list[str] | None = None
     if columns is not None:
+
         def _base_dtype(dt: pl.DataType) -> pl.DataType:
             # Follow nested dtypes (e.g., List(inner=...)) until reaching the base type
             while hasattr(dt, 'inner'):
@@ -821,7 +830,8 @@ def resample(
             return dt
 
         numeric_columns = [
-            c for c in columns
+            c
+            for c in columns
             if issubclass(
                 (bd if isinstance(bd := _base_dtype(samples.schema[c]), type) else type(bd)),
                 NumericType,
@@ -840,12 +850,16 @@ def resample(
         )
 
     # Resample data by datetime column, create milliseconds time column and drop datetime column
-    samples = samples.upsample(
-        time_column='datetime',
-        every=f'{resample_step_us}us',
-    ).with_columns(
-        pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
-    ).drop('datetime')
+    samples = (
+        samples.upsample(
+            time_column='datetime',
+            every=f'{resample_step_us}us',
+        )
+        .with_columns(
+            pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
+        )
+        .drop('datetime')
+    )
 
     # Convert time column to integer if all values are integers
     all_decimals = samples.select(
@@ -896,13 +910,13 @@ def resample(
 
 @register_transform
 def smooth(
-        *,
-        method: str,
-        window_length: int,
-        n_components: int,
-        degree: int | None = None,
-        column: str = 'position',
-        padding: str | float | int | None = 'nearest',
+    *,
+    method: str,
+    window_length: int,
+    n_components: int,
+    degree: int | None = None,
+    column: str = 'position',
+    padding: str | float | int | None = 'nearest',
 ) -> pl.Expr:
     """Smooth data in a column.
 
@@ -999,15 +1013,16 @@ def smooth(
 
             def pad_callable(x: np.ndarray, **_: Any) -> np.ndarray:
                 return np.pad(x, **pad_kwargs)  # pragma: no cover
+
             pad_func = pad_callable
         else:
             # No padding: identity callable that ignores any extra kwargs
             def identity_callable(x: np.ndarray, **_: Any) -> np.ndarray:
                 return x  # pragma: no cover
+
             pad_func = identity_callable
 
         if method == 'moving_average':
-
             return pl.concat_list(
                 [
                     pl.col(column)
@@ -1031,7 +1046,8 @@ def smooth(
                     span=window_length,
                     adjust=False,
                     min_samples=window_length,
-                ).shift(n=pad_kwargs['pad_width'])
+                )
+                .shift(n=pad_kwargs['pad_width'])
                 .slice(pad_kwargs['pad_width'] * 2)
                 for component in range(n_components)
             ],
@@ -1061,12 +1077,12 @@ def smooth(
 
 @register_transform
 def clip(
-        lower_bound: int | float | None,
-        upper_bound: int | float | None,
-        *,
-        input_column: str,
-        output_column: str,
-        n_components: int,
+    lower_bound: int | float | None,
+    upper_bound: int | float | None,
+    *,
+    input_column: str,
+    output_column: str,
+    n_components: int,
 ) -> pl.Expr:
     """Clip gaze signal to a lower and upper bound.
 
@@ -1097,11 +1113,11 @@ def clip(
 
 
 def _apply_on_columns(
-        frame: pl.DataFrame,
-        columns: list[str],
-        transformation: Callable,
-        n_components: int | None = None,
-        return_dtype: pl.DataType | None = None,
+    frame: pl.DataFrame,
+    columns: list[str],
+    transformation: Callable,
+    n_components: int | None = None,
+    return_dtype: pl.DataType | None = None,
 ) -> pl.DataFrame:
     """Apply a function on nested and normal columns of a DataFrame.
 
@@ -1131,7 +1147,6 @@ def _apply_on_columns(
     for column in columns:
         # Determine if the column is nested based on its data type
         if isinstance(frame.schema[column], pl.List):
-
             # Raise an error if n_components is not specified for nested columns
             if n_components is None:
                 raise ValueError(
@@ -1164,10 +1179,12 @@ def _apply_on_columns(
             )
         else:
             frame = frame.with_columns(
-                pl.col(column).map_batches(
+                pl.col(column)
+                .map_batches(
                     transformation,
                     return_dtype=(return_dtype or frame.schema[column]),
-                ).alias(column),
+                )
+                .alias(column),
             )
 
     return frame

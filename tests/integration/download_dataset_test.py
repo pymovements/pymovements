@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test downloading and scanning all items in DatasetLibrary."""
+
 import pytest
 
 from pymovements import Dataset

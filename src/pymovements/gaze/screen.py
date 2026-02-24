@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the Screen class."""
+
 from __future__ import annotations
 
 from dataclasses import asdict
@@ -207,8 +208,8 @@ class Screen:
         )
 
     def pix2deg(
-            self,
-            arr: float | list[float] | list[list[float]] | np.ndarray,
+        self,
+        arr: float | list[float] | list[list[float]] | np.ndarray,
     ) -> np.ndarray:
         """Convert pixel screen coordinates to degrees of visual angle.
 

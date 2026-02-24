@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements utils downloads."""
+
 import hashlib
 import os.path
 from unittest import mock
@@ -86,12 +87,14 @@ def test_download_file_https_failure(tmp_path, verbose):
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
-    with mock.patch(
-        'pymovements.dataset._utils._downloads._download_url',
-        side_effect=OSError(),
+    with (
+        mock.patch(
+            'pymovements.dataset._utils._downloads._download_url',
+            side_effect=OSError(),
+        ),
+        pytest.raises(OSError),
     ):
-        with pytest.raises(OSError):
-            download_file(url, tmp_path, filename, md5, verbose=verbose)
+        download_file(url, tmp_path, filename, md5, verbose=verbose)
 
 
 def test_download_file_http_failure(tmp_path):
@@ -99,12 +102,14 @@ def test_download_file_http_failure(tmp_path):
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
-    with mock.patch(
-        'pymovements.dataset._utils._downloads._download_url',
-        side_effect=OSError(),
+    with (
+        mock.patch(
+            'pymovements.dataset._utils._downloads._download_url',
+            side_effect=OSError(),
+        ),
+        pytest.raises(OSError),
     ):
-        with pytest.raises(OSError):
-            download_file(url, tmp_path, filename, md5)
+        download_file(url, tmp_path, filename, md5)
 
 
 @pytest.mark.network
@@ -116,9 +121,11 @@ def test_download_file_with_invalid_md5(tmp_path):
     with pytest.raises(RuntimeError) as excinfo:
         download_file(url, tmp_path, filename, md5)
 
-    msg, = excinfo.value.args
-    assert msg == f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "\
+    (msg,) = excinfo.value.args
+    assert (
+        msg == f'File {os.path.join(tmp_path, "pymovements-0.4.0.tar.gz")} '
         'not found or download corrupted.'
+    )
 
 
 @pytest.mark.network
@@ -148,11 +155,13 @@ def test__get_redirected_url_with_redirects_max_hops():
     with pytest.raises(RuntimeError) as excinfo:
         _get_redirected_url(url, max_hops=0)
 
-    msg, = excinfo.value.args
-    assert msg == 'Request to '\
-        'https://github.com/pymovements/pymovements/archive/master.zip '\
-        'exceeded 0 redirects. The last redirect points to '\
+    (msg,) = excinfo.value.args
+    assert (
+        msg == 'Request to '
+        'https://github.com/pymovements/pymovements/archive/master.zip '
+        'exceeded 0 redirects. The last redirect points to '
         'https://codeload.github.com/pymovements/pymovements/zip/main.'
+    )
 
 
 def test__DownloadProgressBar_tsize_not_None():

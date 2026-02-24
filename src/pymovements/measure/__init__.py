@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides eye movement measures."""
+
 from pymovements.measure import events
 from pymovements.measure import reading
 from pymovements.measure import samples
@@ -31,6 +32,7 @@ from pymovements.measure.samples import null_ratio
 from pymovements.measure.samples.library import register_sample_measure
 from pymovements.measure.samples.library import SampleMeasureLibrary
 
+# fmt: off
 __all__ = [
     'events',
     'EVENT_MEASURES',

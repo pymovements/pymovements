@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides string specific functions."""
+
 from __future__ import annotations
 
 import re
@@ -48,7 +49,7 @@ def curly_to_regex(s: str) -> re.Pattern:
         Converted regex patterns.
     """
 
-    def replace_aux(match: re.Match) -> str:     # Auxiliary replacement function
+    def replace_aux(match: re.Match) -> str:  # Auxiliary replacement function
         pattern = r'.'
         if match.group('type') == 'd':
             pattern = r'[0-9]'
@@ -57,7 +58,7 @@ def curly_to_regex(s: str) -> re.Pattern:
         quantity = r'+'
         if match.group('quantity'):
             quantity = f'{{{match.group("quantity")}}}'
-        return fr'(?P<{match.group("name")}>{pattern}{quantity})'
+        return rf'(?P<{match.group("name")}>{pattern}{quantity})'
 
     result = CURLY_TO_REGEX.sub(replace_aux, s)
     result = result.replace('{{', '{').replace('}}', '}')

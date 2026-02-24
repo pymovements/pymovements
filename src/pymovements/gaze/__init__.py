@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides gaze related functionality."""
+
 from pymovements.gaze import transforms
 from pymovements.gaze import transforms_numpy
 from pymovements.gaze.experiment import Experiment
@@ -31,7 +32,6 @@ from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.gaze.screen import Screen
-
 
 __all__ = [
     'Experiment',

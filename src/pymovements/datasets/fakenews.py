@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides a definition for the FakeNewsPerception dataset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -92,7 +93,8 @@ class FakeNewsPerception(DatasetDefinition):
                     'md5': 'ab009f28cd703f433e9b6c02b0bb38d2',
                     'filename_pattern': r'P{subject_id:d}_S{session_id:d}_{truth_value:s}.csv',
                     'filename_pattern_schema_overrides': {
-                        'subject_id': int, 'session_id': int,
+                        'subject_id': int,
+                        'session_id': int,
                         'truth_value': str,
                     },
                     'load_kwargs': {'read_csv_kwargs': {'null_values': 'NA', 'quote_char': '"'}},
