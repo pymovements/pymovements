@@ -30,10 +30,10 @@ from pymovements.stimulus.text import WritingSystem
 
 
 # examining typical configurations
-HORIZONTAL_LR = WritingSystem('horizontal', 'top-to-bottom', 'left-to-right')
-HORIZONTAL_RL = WritingSystem('horizontal', 'top-to-bottom', 'right-to-left')
-VERTICAL_RL = WritingSystem('vertical', 'right-to-left', 'top-to-bottom')
-VERTICAL_LR = WritingSystem('vertical', 'left-to-right', 'top-to-bottom')
+HORIZONTAL_LR = WritingSystem('left-to-right', axis='horizontal', lining='top-to-bottom')
+HORIZONTAL_RL = WritingSystem('right-to-left', axis='horizontal', lining='top-to-bottom')
+VERTICAL_RL = WritingSystem('top-to-bottom', axis='vertical', lining='right-to-left')
+VERTICAL_LR = WritingSystem('top-to-bottom', axis='vertical', lining='left-to-right')
 
 
 @pytest.fixture(name='sample_aoi_dataframe')
