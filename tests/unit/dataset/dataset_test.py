@@ -1089,7 +1089,7 @@ def test_load_events_exceptions(
     assert (
         msg
         == """\
-unsupported file format "invalid".\
+unsupported file format "invalid". \
 Supported formats are: [\'csv\', \'txt\', \'tsv\', \'feather\']"""
     )
 
