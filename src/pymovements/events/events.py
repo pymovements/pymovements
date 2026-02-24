@@ -336,20 +336,148 @@ class Events:
         event_property_columns -= set(self._additional_columns)
         return list(event_property_columns)
 
-    def _filter_by_prefix(self, prefix: str) -> pl.DataFrame:
-        """Filter events by name prefix.
+    def filter_by_name(self, name: str) -> pl.DataFrame:
+        """Filter events by name.
 
         Parameters
         ----------
-        prefix: str
-            Event name prefix used to select rows (e.g., ``"fixation"``, ``"saccade"``).
+        name : str
+            Filter events that contain that string in the ``name`` column.
+            Supports regular expressions.
+
+        Examples
+        --------
+        Let's create some events with different names first:
+
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     name=[
+        ...         'saccade', 'fixation', 'fixation_idt', 'fixation_ivt', 'fixation_eyelink',
+        ...         'microsaccade', 'microsaccade', 'saccade',
+        ...     ],
+        ...     onsets=[90, 99, 99, 100, 101, 115, 145, 175],
+        ...     offsets=[100, 176, 175, 178, 175, 124, 157, 199],
+        ... )
+        >>> events
+        shape: (8, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ saccade          ┆ 90    ┆ 100    ┆ 10       │
+        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        │ microsaccade     ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade     ┆ 145   ┆ 157    ┆ 12       │
+        │ saccade          ┆ 175   ┆ 199    ┆ 24       │
+        └──────────────────┴───────┴────────┴──────────┘
+
+        All fixations:
+
+        >>> events.filter_by_name('fixation')
+        shape: (4, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        └──────────────────┴───────┴────────┴──────────┘
+
+        Exact match for fixation:
+
+        >>> events.filter_by_name('^fixation$')
+        shape: (1, 4)
+        ┌──────────┬───────┬────────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════╪═══════╪════════╪══════════╡
+        │ fixation ┆ 99    ┆ 176    ┆ 77       │
+        └──────────┴───────┴────────┴──────────┘
+
+        Prefix match:
+
+        >>> events.filter_by_name('^fixation_')
+        shape: (3, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        └──────────────────┴───────┴────────┴──────────┘
+
+        Suffix match:
+
+        >>> events.filter_by_name('ivt$')
+        shape: (1, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ fixation_ivt ┆ 100   ┆ 178    ┆ 78       │
+        └──────────────┴───────┴────────┴──────────┘
+
+        All saccade variants:
+
+        >>> events.filter_by_name('saccade')
+        shape: (4, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ saccade      ┆ 90    ┆ 100    ┆ 10       │
+        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
+        │ saccade      ┆ 175   ┆ 199    ┆ 24       │
+        └──────────────┴───────┴────────┴──────────┘
+
+        Only microsaccades:
+
+        >>> events.filter_by_name('microsaccade')
+        shape: (2, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
+        └──────────────┴───────┴────────┴──────────┘
+
+        Exact match for saccade:
+
+        >>> events.filter_by_name('^saccade$')
+        shape: (2, 4)
+        ┌─────────┬───────┬────────┬──────────┐
+        │ name    ┆ onset ┆ offset ┆ duration │
+        │ ---     ┆ ---   ┆ ---    ┆ ---      │
+        │ str     ┆ i64   ┆ i64    ┆ i64      │
+        ╞═════════╪═══════╪════════╪══════════╡
+        │ saccade ┆ 90    ┆ 100    ┆ 10       │
+        │ saccade ┆ 175   ┆ 199    ┆ 24       │
+        └─────────┴───────┴────────┴──────────┘
 
         Returns
         -------
         pl.DataFrame
-            DataFrame containing events whose ``name`` column starts with ``prefix``.
+            DataFrame containing matching events.
         """
-        return self.frame.filter(pl.col('name').str.starts_with(prefix))
+        if 'name' not in self.frame.columns:
+            raise ValueError("Events frame is missing the 'name' column.")
+
+        return self.frame.filter(pl.col('name').str.contains(name))
 
     @property
     def fixations(self) -> pl.DataFrame:
@@ -362,7 +490,7 @@ class Events:
             ``name`` starts with ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``,
             ``"fixation_eyelink"``).
         """
-        return self._filter_by_prefix('fixation')
+        return self.filter_by_name('fixation')
 
     @property
     def saccades(self) -> pl.DataFrame:
@@ -374,7 +502,7 @@ class Events:
             DataFrame containing all saccade events, i.e., rows where
             ``name`` starts with ``"saccade"`` (e.g., ``"saccade"``, ``"saccade_algo"``).
         """
-        return self._filter_by_prefix('saccade')
+        return self.filter_by_name('saccade')
 
     @property
     def blinks(self) -> pl.DataFrame:
@@ -386,7 +514,7 @@ class Events:
             DataFrame containing all blink events, i.e., rows where
             ``name`` starts with ``"blink"`` (e.g., ``"blink"``, ``"blink_detectorX"``).
         """
-        return self._filter_by_prefix('blink')
+        return self.filter_by_name('blink')
 
     @property
     def microsaccades(self) -> pl.DataFrame:
@@ -398,7 +526,7 @@ class Events:
             DataFrame containing all microsaccade events, i.e., rows where
             ``name`` starts with ``"microsaccade"`` (e.g., ``"microsaccade"``).
         """
-        return self._filter_by_prefix('microsaccade')
+        return self.filter_by_name('microsaccade')
 
     def clone(self) -> Events:
         """Return a copy of an Events object.
