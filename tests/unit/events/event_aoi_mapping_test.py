@@ -883,41 +883,25 @@ def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, 
     [
         pytest.param(
             'word',
-            WritingSystem(
-                'vertical',
-                'left-to-right',
-                'top-to-bottom',
-            ),
+            WritingSystem('top-to-bottom', axis='vertical', lining='left-to-right'),
             False,
             id='word-vertical-lr',
         ),
         pytest.param(
             'char',
-            WritingSystem(
-                'vertical',
-                'left-to-right',
-                'top-to-bottom',
-            ),
+            WritingSystem('top-to-bottom', axis='vertical', lining='left-to-right'),
             False,
             id='char-vertical-lr',
         ),
         pytest.param(
             'word',
-            WritingSystem(
-                'vertical',
-                'right-to-left',
-                'top-to-bottom',
-            ),
+            WritingSystem('top-to-bottom', axis='vertical', lining='right-to-left'),
             True,
             id='word-vertical-rl',
         ),
         pytest.param(
             'char',
-            WritingSystem(
-                'vertical',
-                'right-to-left',
-                'top-to-bottom',
-            ),
+            WritingSystem('top-to-bottom', axis='vertical', lining='right-to-left'),
             True,
             id='char-vertical-rl',
         ),
