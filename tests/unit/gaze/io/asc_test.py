@@ -616,7 +616,7 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
 ):
     filepath = make_example_file('eyelink_monocular_example.asc')
     expected_message = (
-        'Experiment metadata does not match the metadata in the ASC file:\n'
+        'Experiment metadata does not match the metadata parsed from the ASC file:\n'
         + '\n'.join(f'- {issue}' for issue in issues)
     )
 
