@@ -854,7 +854,7 @@ def save_preprocessed(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}". Supported formats are: {valid_extensions}',
             )
 
 
