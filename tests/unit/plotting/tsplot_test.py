@@ -143,7 +143,7 @@ def test_tsplot_sets_title(gaze):
 
 
 @pytest.mark.parametrize(
-    'bad_x, bad_y',
+    ('bad_x', 'bad_y'),
     [
         (np.inf, 0.0),
         (np.nan, 0.0),
