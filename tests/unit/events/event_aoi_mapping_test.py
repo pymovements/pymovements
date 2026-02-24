@@ -849,7 +849,7 @@ def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, 
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_system=WritingSystem('horizontal', 'top-to-bottom', 'left-to-right'),
+        writing_system=WritingSystem.from_descriptor('left-to-right'),
     )
     base_events = Events(data=_base_events_for_transform_test())
     base_events.map_to_aois(base_stimulus)
@@ -870,7 +870,7 @@ def test_event_to_aoi_mapping_horizontal_rl_by_left_right_mirroring(aoi_column, 
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_system=WritingSystem('horizontal', 'top-to-bottom', 'right-to-left'),
+        writing_system=WritingSystem.from_descriptor('left-to-right'),
     )
     mirrored_events = Events(data=mirrored_events_df)
     mirrored_events.map_to_aois(mirrored_stimulus)
@@ -924,7 +924,7 @@ def test_event_to_aoi_mapping_vertical_by_axis_transform(
         width_column='width',
         height_column='height',
         page_column='page',
-        writing_system=WritingSystem('horizontal', 'top-to-bottom', 'left-to-right'),
+        writing_system=WritingSystem.from_descriptor('left-to-right'),
     )
     base_events = Events(data=_base_events_for_transform_test())
     base_events.map_to_aois(base_stimulus)
