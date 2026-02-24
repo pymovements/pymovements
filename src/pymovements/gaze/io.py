@@ -18,13 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Functionality to load Gaze from a csv file."""
-
 from __future__ import annotations
 
 import math
+import warnings
 from pathlib import Path
 from typing import Any
-import warnings
 
 import polars as pl
 
@@ -36,24 +35,24 @@ from pymovements.gaze.gaze import Gaze
 
 
 def from_csv(
-    file: str | Path,
-    experiment: Experiment | None = None,
-    *,
-    trial_columns: str | list[str] | None = None,
-    time_column: str | None = None,
-    time_unit: str | None = None,
-    pixel_columns: list[str] | None = None,
-    position_columns: list[str] | None = None,
-    velocity_columns: list[str] | None = None,
-    acceleration_columns: list[str] | None = None,
-    distance_column: str | None = None,
-    auto_column_detect: bool = False,
-    column_map: dict[str, str] | None = None,
-    add_columns: dict[str, str] | None = None,
-    column_schema_overrides: dict[str, type] | None = None,
-    read_csv_kwargs: dict[str, Any] | None = None,
-    metadata: dict[str, Any] | None = None,
-    **kwargs: Any,
+        file: str | Path,
+        experiment: Experiment | None = None,
+        *,
+        trial_columns: str | list[str] | None = None,
+        time_column: str | None = None,
+        time_unit: str | None = None,
+        pixel_columns: list[str] | None = None,
+        position_columns: list[str] | None = None,
+        velocity_columns: list[str] | None = None,
+        acceleration_columns: list[str] | None = None,
+        distance_column: str | None = None,
+        auto_column_detect: bool = False,
+        column_map: dict[str, str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, type] | None = None,
+        read_csv_kwargs: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        **kwargs: Any,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -248,18 +247,20 @@ def from_csv(
     # Read data.
     samples = pl.read_csv(file, **read_csv_kwargs)
     if column_map is not None:
-        samples = samples.rename(
-            {key: column_map[key] for key in [key for key in column_map if key in samples.columns]}
-        )
+        samples = samples.rename({
+            key: column_map[key] for key in
+            [
+                key for key in column_map.keys()
+                if key in samples.columns
+            ]
+        })
 
     if add_columns is not None:
-        samples = samples.with_columns(
-            [
-                pl.lit(value).alias(column)
-                for column, value in add_columns.items()
-                if column not in samples.columns
-            ]
-        )
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
 
     # Cast numerical columns to Float64 if they were incorrectly inferred to be Utf8.
     # This can happen if the column only has missing values in the top 100 rows.
@@ -272,20 +273,16 @@ def from_csv(
     )
     for column in numerical_columns:
         if samples[column].dtype == pl.Utf8:
-            samples = samples.with_columns(
-                [
-                    pl.col(column).cast(pl.Float64),
-                ]
-            )
+            samples = samples.with_columns([
+                pl.col(column).cast(pl.Float64),
+            ])
 
     if column_schema_overrides is not None:
         # Apply overrides as provided - callers should pass concrete pl.DataType instances
-        samples = samples.with_columns(
-            [
-                pl.col(column_key).cast(column_dtype)
-                for column_key, column_dtype in column_schema_overrides.items()
-            ]
-        )
+        samples = samples.with_columns([
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
+        ])
 
     # Create gaze object.
     gaze = Gaze(
@@ -313,36 +310,25 @@ def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
     """
     cal_items = metadata.pop('calibrations', []) or []
     if cal_items:
-        return pl.from_dicts(
-            [
-                {
-                    'time': float(item.get('timestamp'))
-                    if item.get('timestamp') not in (None, '')
-                    else None,
-                    'num_points': int(item.get('num_points'))
-                    if item.get('num_points') not in (None, '')
-                    else None,
-                    'eye': (
-                        'left'
-                        if (item.get('tracked_eye') or '').upper() == 'LEFT'
-                        else 'right'
-                        if (item.get('tracked_eye') or '').upper() == 'RIGHT'
-                        else None
-                    ),
-                    'tracking_mode': item.get('type')
-                    if item.get('type') not in (None, '')
-                    else None,
-                }
-                for item in cal_items
-            ]
-        ).with_columns(
-            [
-                pl.col('time').cast(pl.Float64),
-                pl.col('num_points').cast(pl.Int64),
-                pl.col('eye').cast(pl.Utf8),
-                pl.col('tracking_mode').cast(pl.Utf8),
-            ]
-        )
+        return pl.from_dicts([
+            {
+                'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
+                else None,
+                'num_points': int(item.get('num_points')) if item.get('num_points')
+                not in (None, '') else None,
+                'eye': (
+                    'left' if (item.get('tracked_eye') or '').upper() == 'LEFT' else
+                    'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
+                ),
+                'tracking_mode': item.get('type') if item.get('type') not in (None, '') else None,
+            }
+            for item in cal_items
+        ]).with_columns([
+            pl.col('time').cast(pl.Float64),
+            pl.col('num_points').cast(pl.Int64),
+            pl.col('eye').cast(pl.Utf8),
+            pl.col('tracking_mode').cast(pl.Utf8),
+        ])
     return pl.DataFrame(
         schema={
             'time': pl.Float64,
@@ -361,40 +347,29 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
     """
     val_items = metadata.pop('validations', []) or []
     if val_items:
-        return pl.from_dicts(
-            [
-                {
-                    'time': float(item.get('timestamp'))
-                    if item.get('timestamp') not in (None, '')
-                    else None,
-                    'num_points': int(item.get('num_points'))
-                    if item.get('num_points') not in (None, '')
-                    else None,
-                    'eye': (
-                        'left'
-                        if (item.get('tracked_eye') or '').upper() == 'LEFT'
-                        else 'right'
-                        if (item.get('tracked_eye') or '').upper() == 'RIGHT'
-                        else None
-                    ),
-                    'accuracy_avg': float(item.get('validation_score_avg'))
-                    if item.get('validation_score_avg') not in (None, '')
-                    else None,
-                    'accuracy_max': float(item.get('validation_score_max'))
-                    if item.get('validation_score_max') not in (None, '')
-                    else None,
-                }
-                for item in val_items
-            ]
-        ).with_columns(
-            [
-                pl.col('time').cast(pl.Float64),
-                pl.col('num_points').cast(pl.Int64),
-                pl.col('eye').cast(pl.Utf8),
-                pl.col('accuracy_avg').cast(pl.Float64),
-                pl.col('accuracy_max').cast(pl.Float64),
-            ]
-        )
+        return pl.from_dicts([
+            {
+                'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
+                else None,
+                'num_points': int(item.get('num_points')) if item.get('num_points')
+                not in (None, '') else None,
+                'eye': (
+                    'left' if (item.get('tracked_eye') or '').upper() == 'LEFT' else
+                    'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
+                ),
+                'accuracy_avg': float(item.get('validation_score_avg')) if
+                item.get('validation_score_avg') not in (None, '') else None,
+                'accuracy_max': float(item.get('validation_score_max')) if
+                item.get('validation_score_max') not in (None, '') else None,
+            }
+            for item in val_items
+        ]).with_columns([
+            pl.col('time').cast(pl.Float64),
+            pl.col('num_points').cast(pl.Int64),
+            pl.col('eye').cast(pl.Utf8),
+            pl.col('accuracy_avg').cast(pl.Float64),
+            pl.col('accuracy_max').cast(pl.Float64),
+        ])
     return pl.DataFrame(
         schema={
             'time': pl.Float64,
@@ -407,20 +382,20 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
 
 
 def from_asc(
-    file: str | Path,
-    *,
-    patterns: str | list[dict[str, Any] | str] | None = None,
-    metadata_patterns: list[dict[str, Any] | str] | None = None,
-    schema: dict[str, Any] | None = None,
-    experiment: Experiment | None = None,
-    trial_columns: str | list[str] | None = None,
-    add_columns: dict[str, str] | None = None,
-    column_schema_overrides: dict[str, Any] | None = None,
-    encoding: str | None = None,
-    events: bool = False,
-    messages: bool | list[str] = False,
-    metadata: dict[str, Any] | None = None,
-    extend_resolution: bool | None = None,
+        file: str | Path,
+        *,
+        patterns: str | list[dict[str, Any] | str] | None = None,
+        metadata_patterns: list[dict[str, Any] | str] | None = None,
+        schema: dict[str, Any] | None = None,
+        experiment: Experiment | None = None,
+        trial_columns: str | list[str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, Any] | None = None,
+        encoding: str | None = None,
+        events: bool = False,
+        messages: bool | list[str] = False,
+        metadata: dict[str, Any] | None = None,
+        extend_resolution: bool | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -572,21 +547,17 @@ def from_asc(
     )
 
     if add_columns is not None:
-        samples = samples.with_columns(
-            [
-                pl.lit(value).alias(column)
-                for column, value in add_columns.items()
-                if column not in samples.columns
-            ]
-        )
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
 
     if column_schema_overrides is not None:
-        samples = samples.with_columns(
-            [
-                pl.col(column_key).cast(column_dtype)
-                for column_key, column_dtype in column_schema_overrides.items()
-            ]
-        )
+        samples = samples.with_columns([
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
+        ])
 
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_eyelink_metadata(experiment, parsed_metadata)
@@ -631,16 +602,16 @@ def from_asc(
 
 
 def from_ipc(
-    file: str | Path,
-    experiment: Experiment | None = None,
-    *,
-    trial_columns: str | list[str] | None = None,
-    column_map: dict[str, str] | None = None,
-    add_columns: dict[str, str] | None = None,
-    column_schema_overrides: dict[str, type] | None = None,
-    read_ipc_kwargs: dict[str, Any] | None = None,
-    metadata: dict[str, Any] | None = None,
-    **kwargs: Any,
+        file: str | Path,
+        experiment: Experiment | None = None,
+        *,
+        trial_columns: str | list[str] | None = None,
+        column_map: dict[str, str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, type] | None = None,
+        read_ipc_kwargs: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        **kwargs: Any,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -722,26 +693,26 @@ def from_ipc(
     samples = pl.read_ipc(file, **read_ipc_kwargs)
 
     if column_map is not None:
-        samples = samples.rename(
-            {key: column_map[key] for key in [key for key in column_map if key in samples.columns]}
-        )
+        samples = samples.rename({
+            key: column_map[key] for key in
+            [
+                key for key in column_map.keys()
+                if key in samples.columns
+            ]
+        })
 
     if add_columns is not None:
-        samples = samples.with_columns(
-            [
-                pl.lit(value).alias(column)
-                for column, value in add_columns.items()
-                if column not in samples.columns
-            ]
-        )
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
 
     if column_schema_overrides is not None:
-        samples = samples.with_columns(
-            [
-                pl.col(column_key).cast(column_dtype)
-                for column_key, column_dtype in column_schema_overrides.items()
-            ]
-        )
+        samples = samples.with_columns([
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
+        ])
 
     # Create gaze object.
     gaze = Gaze(
@@ -754,93 +725,117 @@ def from_ipc(
 
 
 def _fill_experiment_from_parsing_eyelink_metadata(
-    experiment: Experiment | None,
-    metadata: dict[str, Any],
+        experiment: Experiment | None,
+        metadata: dict[str, Any],
 ) -> Experiment:
     """Fill Experiment with metadata gained from parsing."""
     if experiment is None:
-        experiment = Experiment(sampling_rate=metadata['sampling_rate'])
+        experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
+    else:
+        # we overwrite fields so make sure we're working on a copy.
+        # experiment = deepcopy(experiment)
+        pass
 
     # Compare metadata from experiment definition with metadata from ASC file.
-    # Fill in missing metadata in experiment definition and raise an error if there are conflicts
+    # Fill in missing metadata in experiment definition and raise a warning if there are conflicts
     issues = []
 
     # Screen resolution (assuming that width and height will always be missing or set together)
     experiment_resolution = (experiment.screen.width_px, experiment.screen.height_px)
-    if experiment_resolution == (None, None):
-        try:
-            width, height = metadata['resolution']
-            experiment.screen.width_px = math.ceil(width)
-            experiment.screen.height_px = math.ceil(height)
-        except TypeError:
-            warnings.warn('No screen resolution found.')
-    elif experiment_resolution != metadata['resolution']:
-        issues.append(f'Screen resolution: {experiment_resolution} != {metadata["resolution"]}')
+    resolution = metadata.get('resolution', (None, None))
+    try:
+        width, height = resolution
+        parsed_resolution = (math.ceil(width), math.ceil(height))
+    except (TypeError, ValueError):
+        parsed_resolution = None
+    if parsed_resolution is None:
+        warnings.warn('No screen resolution found.')
+    else:
+        if experiment_resolution not in {(None, None), parsed_resolution}:
+            issues.append(
+                'Screen resolution: '
+                f"{experiment_resolution[0]}x{experiment_resolution[1]} != "
+                f"{parsed_resolution[0]}x{parsed_resolution[1]}",
+            )
+        experiment.screen.width_px, experiment.screen.height_px = parsed_resolution
 
     # Sampling rate
-    if experiment.eyetracker.sampling_rate != metadata['sampling_rate']:
-        issues.append(
-            f'Sampling rate: {experiment.eyetracker.sampling_rate} != {metadata["sampling_rate"]}',
-        )
+    parsed_sampling_rate = metadata.get('sampling_rate')
+    if parsed_sampling_rate is None:
+        warnings.warn('No sampling rate found.')
+    else:
+        if experiment.eyetracker.sampling_rate not in {None, parsed_sampling_rate}:
+            issues.append(
+                f"Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}",
+            )
+        experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
     # Tracked eye
-    asc_left_eye = 'L' in (metadata['tracked_eye'] or '')
-    asc_right_eye = 'R' in (metadata['tracked_eye'] or '')
-    if experiment.eyetracker.left is None:
+    parsed_tracked_eye: str = metadata.get('tracked_eye', '')
+    if parsed_tracked_eye in {None, ''}:
+        warnings.warn('No tracked eye information found.')
+    else:
+        asc_left_eye = 'L' in parsed_tracked_eye
+        asc_right_eye = 'R' in parsed_tracked_eye
+        if experiment.eyetracker.left not in {None, asc_left_eye}:
+            issues.append(f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}')
         experiment.eyetracker.left = asc_left_eye
-    elif experiment.eyetracker.left != asc_left_eye:
-        issues.append(f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}')
-    if experiment.eyetracker.right is None:
+        if experiment.eyetracker.right not in {None, asc_right_eye}:
+            issues.append(f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}')
         experiment.eyetracker.right = asc_right_eye
-    elif experiment.eyetracker.right != asc_right_eye:
-        issues.append(f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}')
 
     # Mount configuration
-    if experiment.eyetracker.mount is None:
-        try:
-            experiment.eyetracker.mount = metadata['mount_configuration']['mount_type']
-        except KeyError:
-            warnings.warn('No mount configuration found.')
-    elif experiment.eyetracker.mount != metadata['mount_configuration']['mount_type']:
-        issues.append(
-            f'Mount configuration: {experiment.eyetracker.mount} != '
-            f'{metadata["mount_configuration"]["mount_type"]}',
-        )
+    parsed_mount = metadata.get('mount_configuration', {}).get('mount_type')
+    if parsed_mount is None:
+        warnings.warn('No mount configuration found.')
+    else:
+        if experiment.eyetracker.mount not in {None, parsed_mount}:
+            issues.append(f'Mount configuration: {experiment.eyetracker.mount} != {parsed_mount}')
+        experiment.eyetracker.mount = parsed_mount
 
     # Eye tracker vendor
-    asc_vendor = 'EyeLink' if 'EyeLink' in metadata['model'] else None
-    if experiment.eyetracker.vendor is None:
+    asc_vendor = 'EyeLink' if 'EyeLink' in (metadata.get('model') or '') else None
+    if asc_vendor is None:
+        warnings.warn('No eye tracker vendor found.')
+    else:
+        if experiment.eyetracker.vendor not in {None, asc_vendor}:
+            issues.append(f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}')
         experiment.eyetracker.vendor = asc_vendor
-    elif experiment.eyetracker.vendor != asc_vendor:
-        issues.append(f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}')
 
     # Eye tracker model
-    if experiment.eyetracker.model is None:
-        experiment.eyetracker.model = metadata['model']
-    elif experiment.eyetracker.model != metadata['model']:
-        issues.append(f'Eye tracker model: {experiment.eyetracker.model} != {metadata["model"]}')
+    parsed_model = metadata.get('model') or ''
+    if parsed_model == 'unknown':
+        warnings.warn('No eye tracker model found.')
+    else:
+        if experiment.eyetracker.model not in {None, parsed_model}:
+            issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {parsed_model}")
+        experiment.eyetracker.model = parsed_model
 
     # Eye tracker software version
-    if experiment.eyetracker.version is None:
-        experiment.eyetracker.version = metadata['version_number']
-    elif experiment.eyetracker.version != metadata['version_number']:
-        issues.append(
-            f'Eye tracker software version: {experiment.eyetracker.version} != '
-            f'{metadata["version_number"]}',
-        )
+    parsed_version = metadata.get('version_number')
+    if parsed_version == 'unknown':
+        warnings.warn('No eye tracker software version found.')
+    else:
+        if experiment.eyetracker.version not in {None, parsed_version}:
+            issues.append(
+                'Eye tracker software version: '
+                f'{experiment.eyetracker.version} != {parsed_version}',
+            )
+        experiment.eyetracker.version = parsed_version
 
     if issues:
-        raise ValueError(
-            'Experiment metadata does not match the metadata in the ASC file:\n'
-            + '\n'.join(f'- {issue}' for issue in issues),
+        warnings.warn(
+            'Experiment metadata does not match the metadata parsed from the ASC file:\n'
+            + '\n'.join(f'- {issue}' for issue in issues) + '\n'
+            'Experiment metadata was overwritten with parsed metadata.',
         )
 
     return experiment
 
 
 def _fill_experiment_from_parsing_begaze_metadata(
-    experiment: Experiment | None,
-    metadata: dict[str, Any],
+        experiment: Experiment | None,
+        metadata: dict[str, Any],
 ) -> Experiment:
     """Fill Experiment with BeGaze metadata.
 
@@ -859,7 +854,7 @@ def _fill_experiment_from_parsing_begaze_metadata(
         experiment.eyetracker.sampling_rate = metadata['sampling_rate']
 
     # Tracked eye flags if present (metadata may provide 'L'/'R')
-    tracked = metadata.get('tracked_eye') or ''
+    tracked = (metadata.get('tracked_eye') or '')
     left_parsed = 'L' in tracked
     right_parsed = 'R' in tracked
 
@@ -867,16 +862,16 @@ def _fill_experiment_from_parsing_begaze_metadata(
         experiment.eyetracker.left = left_parsed
     elif experiment.eyetracker.left != left_parsed:
         warnings.warn(
-            f'BeGaze metadata suggests left tracked={left_parsed} but experiment has '
-            f'{experiment.eyetracker.left}; keeping experiment value.',
+            f"BeGaze metadata suggests left tracked={left_parsed} but experiment has "
+            f"{experiment.eyetracker.left}; keeping experiment value.",
         )
 
     if experiment.eyetracker.right is None:
         experiment.eyetracker.right = right_parsed
     elif experiment.eyetracker.right != right_parsed:
         warnings.warn(
-            f'BeGaze metadata suggests right tracked={right_parsed} but experiment has '
-            f'{experiment.eyetracker.right}; keeping experiment value.',
+            f"BeGaze metadata suggests right tracked={right_parsed} but experiment has "
+            f"{experiment.eyetracker.right}; keeping experiment value.",
         )
 
     # BeGaze headers typically do not include screen resolution in a standard way; if present as
@@ -891,33 +886,33 @@ def _fill_experiment_from_parsing_begaze_metadata(
             experiment.screen.width_px = int(width)
         elif width is not None and experiment.screen.width_px not in (None, int(width)):
             warnings.warn(
-                f'BeGaze metadata screen width={width} differs from experiment value '
-                f'{experiment.screen.width_px}; keeping experiment value.',
+                f"BeGaze metadata screen width={width} differs from experiment value "
+                f"{experiment.screen.width_px}; keeping experiment value.",
             )
         if experiment.screen.height_px is None and height is not None:
             experiment.screen.height_px = int(height)
         elif height is not None and experiment.screen.height_px not in (None, int(height)):
             warnings.warn(
-                f'BeGaze metadata screen height={height} differs from experiment value '
-                f'{experiment.screen.height_px}; keeping experiment value.',
+                f"BeGaze metadata screen height={height} differs from experiment value "
+                f"{experiment.screen.height_px}; keeping experiment value.",
             )
 
     return experiment
 
 
 def from_begaze(
-    file: str | Path,
-    *,
-    patterns: list[dict[str, Any] | str] | None = None,
-    metadata_patterns: list[dict[str, Any] | str] | None = None,
-    schema: dict[str, Any] | None = None,
-    experiment: Experiment | None = None,
-    trial_columns: str | list[str] | None = None,
-    add_columns: dict[str, str] | None = None,
-    column_schema_overrides: dict[str, Any] | None = None,
-    encoding: str | None = 'ascii',
-    prefer_eye: str = 'L',
-    metadata: dict[str, Any] | None = None,
+        file: str | Path,
+        *,
+        patterns: list[dict[str, Any] | str] | None = None,
+        metadata_patterns: list[dict[str, Any] | str] | None = None,
+        schema: dict[str, Any] | None = None,
+        experiment: Experiment | None = None,
+        trial_columns: str | list[str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, Any] | None = None,
+        encoding: str | None = 'ascii',
+        prefer_eye: str = 'L',
+        metadata: dict[str, Any] | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze` from a BeGaze text export.
 
@@ -963,21 +958,17 @@ def from_begaze(
     )
 
     if add_columns is not None:
-        samples = samples.with_columns(
-            [
-                pl.lit(value).alias(column)
-                for column, value in add_columns.items()
-                if column not in samples.columns
-            ]
-        )
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
 
     if column_schema_overrides is not None:
-        samples = samples.with_columns(
-            [
-                pl.col(fileinfo_key).cast(fileinfo_dtype)
-                for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
-            ]
-        )
+        samples = samples.with_columns([
+            pl.col(fileinfo_key).cast(fileinfo_dtype)
+            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+        ])
 
     # Fill experiment with parsed metadata.
     experiment = _fill_experiment_from_parsing_begaze_metadata(experiment, parsed_metadata)
@@ -985,7 +976,9 @@ def from_begaze(
     # Ensure required trial columns exist (e.g. 'Stimulus' for DIDEC) even if missing in file
     if trial_columns:
         # Normalise to a list of column names to avoid iterating over characters
-        trial_cols_list = [trial_columns] if isinstance(trial_columns, str) else list(trial_columns)
+        trial_cols_list = (
+            [trial_columns] if isinstance(trial_columns, str) else list(trial_columns)
+        )
         missing = [c for c in trial_cols_list if c not in samples.columns]
         if missing:
             samples = samples.with_columns([pl.lit(None).alias(c) for c in set(missing)])
