@@ -731,6 +731,10 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     """Fill Experiment with metadata gained from parsing."""
     if experiment is None:
         experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
+    else:
+        # we overwrite fields so make sure we're working on a copy.
+        #experiment = deepcopy(experiment)
+        pass
 
     # Compare metadata from experiment definition with metadata from ASC file.
     # Fill in missing metadata in experiment definition and raise a warning if there are conflicts
@@ -745,8 +749,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     except (TypeError, ValueError):
         parsed_resolution = None
     if parsed_resolution is None:
-        if experiment_resolution == (None, None):
-            warnings.warn('No screen resolution found.')
+        warnings.warn('No screen resolution found.')
     else:
         if experiment_resolution != (None, None) and experiment_resolution != parsed_resolution:
             issues.append(
@@ -759,8 +762,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     # Sampling rate
     parsed_sampling_rate = metadata.get('sampling_rate')
     if parsed_sampling_rate is None:
-        if experiment.eyetracker.sampling_rate is None:
-            warnings.warn('No sampling rate found.')
+        warnings.warn('No sampling rate found.')
     else:
         if (
             experiment.eyetracker.sampling_rate is not None
@@ -774,8 +776,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     # Tracked eye
     parsed_tracked_eye = metadata.get('tracked_eye')
     if parsed_tracked_eye == '':
-        if experiment.eyetracker.left is None and experiment.eyetracker.right is None:
-            warnings.warn('No tracked eye information found.')
+        warnings.warn('No tracked eye information found.')
     else:
         asc_left_eye = 'L' in parsed_tracked_eye
         asc_right_eye = 'R' in parsed_tracked_eye
@@ -791,13 +792,9 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         experiment.eyetracker.right = asc_right_eye
 
     # Mount configuration
-    try:
-        parsed_mount = metadata['mount_configuration']['mount_type']
-    except KeyError:
-        parsed_mount = None
+    parsed_mount = metadata.get('mount_configuration', {}).get(['mount_type'])
     if parsed_mount is None:
-        if experiment.eyetracker.mount is None:
-            warnings.warn('No mount configuration found.')
+        warnings.warn('No mount configuration found.')
     else:
         if experiment.eyetracker.mount is not None and experiment.eyetracker.mount != parsed_mount:
             issues.append(
@@ -808,8 +805,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     # Eye tracker vendor
     asc_vendor = 'EyeLink' if 'EyeLink' in (metadata.get('model') or '') else None
     if asc_vendor is None:
-        if experiment.eyetracker.vendor is None:
-            warnings.warn('No eye tracker vendor found.')
+        warnings.warn('No eye tracker vendor found.')
     else:
         if experiment.eyetracker.vendor is not None and experiment.eyetracker.vendor != asc_vendor:
             issues.append(
@@ -820,8 +816,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     # Eye tracker model
     parsed_model = metadata.get('model') or ''
     if parsed_model == 'unknown':
-        if experiment.eyetracker.model is None:
-            warnings.warn('No eye tracker model found.')
+        warnings.warn('No eye tracker model found.')
     else:
         if experiment.eyetracker.model is not None and experiment.eyetracker.model != parsed_model:
             issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {parsed_model}")
@@ -830,21 +825,20 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     # Eye tracker software version
     parsed_version = metadata.get('version_number')
     if parsed_version == 'unknown':
-        if experiment.eyetracker.version is None:
-            warnings.warn('No eye tracker software version found.')
+        warnings.warn('No eye tracker software version found.')
     else:
         if experiment.eyetracker.version is not None and experiment.eyetracker.version != parsed_version:
             issues.append(
-                f'Eye tracker software version: {
-                    experiment.eyetracker.version
-                } != {parsed_version}',
+                'Eye tracker software version: '
+                f'{experiment.eyetracker.version} != {parsed_version}',
             )
         experiment.eyetracker.version = parsed_version
 
     if issues:
         warnings.warn(
-            'Experiment metadata does not match the metadata in the ASC file:\n'
-            + '\n'.join(f'- {issue}' for issue in issues),
+            'Experiment metadata does not match the metadata parsed from the ASC file:\n'
+            + '\n'.join(f'- {issue}' for issue in issues) + '\n'
+            'Experiment metadata was overwritten with parsed metadata.',
         )
 
     return experiment
