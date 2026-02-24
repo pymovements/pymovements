@@ -231,7 +231,7 @@ def load_event_files(
         else:
             valid_extensions = ['csv', 'txt', 'tsv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}". Supported formats are: {valid_extensions}',
             )
 
         list_of_events.append(Events(events))
