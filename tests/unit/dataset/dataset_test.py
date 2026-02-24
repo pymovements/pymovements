@@ -20,6 +20,8 @@
 """Test all functionality in pymovements.dataset.dataset."""
 from __future__ import annotations
 
+import logging
+import math
 import os
 import re
 import shutil
@@ -2024,6 +2026,283 @@ def test_check_gaze(new_gaze, exception, tmp_path):
 
     with pytest.raises(exception):
         dataset._check_gaze()
+
+
+def _make_dataset_with_mock_gaze(
+    tmp_path: Path,
+    samples: pl.DataFrame,
+    *,
+    trial_columns: list[str] | None = None,
+    events: Events | None = None,
+) -> Dataset:
+    dataset = Dataset('ToyDataset', path=tmp_path)
+    gaze = Mock()
+    gaze.samples = samples
+    gaze.trial_columns = trial_columns
+    gaze.events = events
+    dataset.gaze = [gaze]
+    return dataset
+
+
+def test_filter_samples_filters_by_velocity_and_duration(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [3.0, 4.0], [6.0, 8.0]],
+                'duration': [50, 120, 300],
+            },
+        ),
+    )
+
+    result = dataset.filter_samples(min_velocity=2.0, max_velocity=6.0, min_duration=100)
+
+    assert result is dataset
+    expected = pl.DataFrame({'velocity': [[3.0, 4.0]], 'duration': [120]})
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_raises_for_invalid_bounds(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame({'velocity': [1.0]}),
+    )
+
+    with pytest.raises(ValueError, match='min_velocity must be less than or equal to max_velocity'):
+        dataset.filter_samples(min_velocity=2.0, max_velocity=1.0)
+
+
+def test_filter_samples_raises_for_invalid_duration_bounds(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame({'duration': [1.0]}),
+    )
+
+    with pytest.raises(ValueError, match='min_duration must be less than or equal to max_duration'):
+        dataset.filter_samples(min_duration=2.0, max_duration=1.0)
+
+
+def test_filter_samples_raises_for_missing_required_column(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame({'time': [0, 1, 2]}),
+    )
+
+    with pytest.raises(ValueError, match="column 'velocity' is missing"):
+        dataset.filter_samples(min_velocity=1.0)
+
+
+def test_filter_samples_raises_for_missing_duration_column(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame({'velocity': [1.0, 2.0, 3.0]}),
+    )
+
+    with pytest.raises(ValueError, match="column 'duration' is missing"):
+        dataset.filter_samples(min_duration=1.0)
+
+
+def test_filter_samples_warns_for_invalid_velocity_norm(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [math.nan, 0.0], None],
+                'duration': [10, 10, 10],
+            },
+        ),
+    )
+
+    with pytest.warns(
+        UserWarning,
+        match='samples were removed because velocity norm was null or NaN',
+    ):
+        dataset.filter_samples(min_velocity=0.0)
+
+    expected = pl.DataFrame({'velocity': [[1.0, 0.0]], 'duration': [10]})
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_min_velocity(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [3.0, 4.0], [6.0, 8.0]],
+                'duration': [50, 120, 300],
+            },
+        ),
+    )
+
+    dataset.filter_samples(min_velocity=6.0)
+
+    expected = pl.DataFrame({'velocity': [[6.0, 8.0]], 'duration': [300]})
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_max_velocity(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [3.0, 4.0], [6.0, 8.0]],
+                'duration': [50, 120, 300],
+            },
+        ),
+    )
+
+    dataset.filter_samples(max_velocity=5.0)
+
+    expected = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [3.0, 4.0]],
+            'duration': [50, 120],
+        },
+    )
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_warns_for_invalid_duration(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
+                'duration': [10.0, math.nan, None],
+            },
+        ),
+    )
+
+    with pytest.warns(
+        UserWarning,
+        match='samples were removed because duration was null or NaN',
+    ):
+        dataset.filter_samples(min_duration=0.0)
+
+    expected = pl.DataFrame({'velocity': [[1.0, 0.0]], 'duration': [10.0]})
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_max_duration(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
+                'duration': [50, 120, 300],
+            },
+        ),
+    )
+
+    dataset.filter_samples(max_duration=120)
+
+    expected = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [1.0, 0.0]],
+            'duration': [50, 120],
+        },
+    )
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_min_duration(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
+                'duration': [50, 120, 300],
+            },
+        ),
+    )
+
+    dataset.filter_samples(min_duration=120)
+
+    expected = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [1.0, 0.0]],
+            'duration': [120, 300],
+        },
+    )
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_duration_range(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
+                'duration': [50, 120, 180, 300],
+            },
+        ),
+    )
+
+    dataset.filter_samples(min_duration=100, max_duration=200)
+
+    expected = pl.DataFrame(
+        {
+            'velocity': [[1.0, 0.0], [1.0, 0.0]],
+            'duration': [120, 180],
+        },
+    )
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_filters_by_target_event(tmp_path):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame({'time': [0, 1, 2, 3, 4], 'value': [10, 11, 12, 13, 14]}),
+        trial_columns=None,
+        events=Events(
+            data=pl.DataFrame(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [1, 4],
+                    'offset': [2, 4],
+                },
+            ),
+        ),
+    )
+
+    dataset.filter_samples(target_event='fixation')
+
+    expected = pl.DataFrame({'time': [1, 2], 'value': [11, 12]})
+    assert_frame_equal(dataset.gaze[0].samples, expected)
+
+
+def test_filter_samples_logs_number_of_filtered_samples(tmp_path, caplog):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [3.0, 4.0], [6.0, 8.0]],
+                'duration': [50, 120, 300],
+            },
+        ),
+    )
+
+    with caplog.at_level(logging.INFO):
+        dataset.filter_samples(min_velocity=2.0, max_velocity=6.0, min_duration=100)
+
+    assert 'Filtered out 2 samples.' in caplog.text
+
+
+def test_filter_samples_does_not_log_when_no_filters_are_set(tmp_path, caplog):
+    dataset = _make_dataset_with_mock_gaze(
+        tmp_path,
+        pl.DataFrame(
+            {
+                'velocity': [[1.0, 0.0], [3.0, 4.0]],
+                'duration': [50, 120],
+            },
+        ),
+    )
+
+    with caplog.at_level(logging.INFO):
+        dataset.filter_samples()
+
+    assert 'Filtered out' not in caplog.text
 
 
 @pytest.mark.parametrize(

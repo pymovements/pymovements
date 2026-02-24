@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
+import numpy as np
 import polars as pl
 from tqdm.auto import tqdm
 
@@ -40,6 +41,7 @@ from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.events import Events
+from pymovements.events import events2segmentation
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
 from pymovements.measure.reading import ReadingMeasures
@@ -833,6 +835,168 @@ class Dataset:
             verbose=verbose,
             **kwargs,
         )
+
+    def filter_samples(
+            self,
+            min_velocity: float | None = None,
+            max_velocity: float | None = None,
+            min_duration: float | None = None,
+            max_duration: float | None = None,
+            target_event: str | None = None,
+    ) -> Dataset:
+        """Filter sample rows in each gaze dataframe by velocity and/or duration.
+
+        Filtering is applied in-place to each :py:attr:`~pymovements.Gaze.samples` dataframe.
+        If velocity thresholds are provided, the ``velocity`` column is required and interpreted as
+        either scalar velocity values or vector-like values (e.g., list components). For vector
+        values, the Euclidean norm is used.
+
+        Parameters
+        ----------
+        min_velocity: float | None
+            Keep samples with velocity greater than or equal to this value. (default: None)
+        max_velocity: float | None
+            Keep samples with velocity less than or equal to this value. (default: None)
+        min_duration: float | None
+            Keep samples with duration greater than or equal to this value.
+            Requires a ``duration`` column. (default: None)
+        max_duration: float | None
+            Keep samples with duration less than or equal to this value.
+            Requires a ``duration`` column. (default: None)
+        target_event: str | None
+            If provided, keep only samples that belong to the specified event name based on
+            :py:attr:`~pymovements.Gaze.events`. (default: None)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+
+        Raises
+        ------
+        AttributeError
+            If gaze files have not been loaded yet.
+        ValueError
+            If a minimum threshold is greater than the corresponding maximum threshold, or if
+            required columns are missing.
+        """
+        if min_velocity is not None and max_velocity is not None and min_velocity > max_velocity:
+            raise ValueError('min_velocity must be less than or equal to max_velocity')
+        if min_duration is not None and max_duration is not None and min_duration > max_duration:
+            raise ValueError('min_duration must be less than or equal to max_duration')
+
+        self._check_gaze()
+
+        n_removed_invalid_velocity_norm = 0
+        n_removed_invalid_duration = 0
+        n_filtered_samples = 0
+
+        for gaze in self.gaze:
+            filter_expressions: list[pl.Expr] = []
+            samples = gaze.samples
+            has_velocity_filter = min_velocity is not None or max_velocity is not None
+            has_duration_filter = min_duration is not None or max_duration is not None
+            has_target_event_filter = target_event is not None and len(target_event) > 0
+            invalid_velocity_norm_condition = None
+            invalid_duration_condition = None
+
+            if has_velocity_filter:
+                if 'velocity' not in samples.columns:
+                    raise ValueError(
+                        "Cannot filter by velocity because column 'velocity' is missing.",
+                    )
+
+                samples = samples.with_columns(
+                    pl.col('velocity').map_elements(
+                        lambda value: float(np.linalg.norm(value)) if value is not None else None,
+                        return_dtype=pl.Float64,
+                    ).alias('__velocity_norm'),
+                )
+                invalid_velocity_norm_condition = (
+                    pl.col('__velocity_norm').is_null() |
+                    pl.col('__velocity_norm').is_nan()
+                )
+                filter_expressions.append(~invalid_velocity_norm_condition)
+
+                if min_velocity is not None:
+                    filter_expressions.append(pl.col('__velocity_norm') >= min_velocity)
+                if max_velocity is not None:
+                    filter_expressions.append(pl.col('__velocity_norm') <= max_velocity)
+
+            if has_duration_filter:
+                if 'duration' not in samples.columns:
+                    raise ValueError(
+                        "Cannot filter by duration because column 'duration' is missing.",
+                    )
+
+                invalid_duration_condition = (
+                    pl.col('duration').is_null() |
+                    pl.col('duration').cast(pl.Float64, strict=False).is_nan()
+                )
+                filter_expressions.append(~invalid_duration_condition)
+
+                if min_duration is not None:
+                    filter_expressions.append(pl.col('duration') >= min_duration)
+                if max_duration is not None:
+                    filter_expressions.append(pl.col('duration') <= max_duration)
+
+            if has_target_event_filter:
+                assert target_event is not None
+                filter_expressions.append(
+                    events2segmentation(
+                        events=gaze.events.frame,
+                        name=target_event,
+                        time_column='time',
+                        trial_columns=gaze.trial_columns,
+                    ),
+                )
+
+            if filter_expressions:
+                n_samples_before_filtering = samples.height
+                condition = filter_expressions[0]
+                for expr in filter_expressions[1:]:
+                    condition = condition & expr
+                condition_bool = condition.fill_null(False)
+
+                if invalid_velocity_norm_condition is not None:
+                    n_removed_invalid_velocity_norm += samples.filter(
+                        invalid_velocity_norm_condition & ~condition_bool,
+                    ).height
+                if invalid_duration_condition is not None:
+                    n_removed_invalid_duration += samples.filter(
+                        invalid_duration_condition & ~condition_bool,
+                    ).height
+
+                samples = samples.filter(condition_bool)
+                n_filtered_samples += n_samples_before_filtering - samples.height
+
+            if '__velocity_norm' in samples.columns:
+                samples = samples.drop('__velocity_norm')
+
+            gaze.samples = samples
+
+        # final summary of filtering results and warnings
+        if n_removed_invalid_velocity_norm > 0:
+            warn(
+                f'{n_removed_invalid_velocity_norm} samples were removed because velocity norm '
+                'was null or NaN during filtering.',
+                UserWarning,
+            )
+        if n_removed_invalid_duration > 0:
+            warn(
+                f'{n_removed_invalid_duration} samples were removed because duration '
+                'was null or NaN during filtering.',
+                UserWarning,
+            )
+
+        if (
+            min_velocity is not None or max_velocity is not None
+            or min_duration is not None or max_duration is not None
+            or target_event is not None
+        ):
+            logger.info('Filtered out %d samples.', n_filtered_samples)
+
+        return self
 
     def detect(
             self,
