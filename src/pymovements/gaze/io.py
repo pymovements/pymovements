@@ -742,7 +742,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
 
     # Screen resolution (assuming that width and height will always be missing or set together)
     experiment_resolution = (experiment.screen.width_px, experiment.screen.height_px)
-    resolution = metadata.get('resolution')
+    resolution = metadata.get('resolution', (None, None))
     try:
         width, height = resolution
         parsed_resolution = (math.ceil(width), math.ceil(height))
@@ -771,8 +771,8 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
     # Tracked eye
-    parsed_tracked_eye = metadata.get('tracked_eye')
-    if parsed_tracked_eye == '':
+    parsed_tracked_eye: str = metadata.get('tracked_eye', '')
+    if parsed_tracked_eye in {None, ''}:
         warnings.warn('No tracked eye information found.')
     else:
         asc_left_eye = 'L' in parsed_tracked_eye
