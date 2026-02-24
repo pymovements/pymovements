@@ -468,7 +468,7 @@ class Events:
             DataFrame containing matching events.
         """
         if 'name' not in self.frame.columns:
-            raise ValueError("Events frame has no 'name' column.")
+            raise ValueError("Events frame is missing the 'name' column.")
 
         return self.frame.filter(pl.col('name').str.contains(name))
 

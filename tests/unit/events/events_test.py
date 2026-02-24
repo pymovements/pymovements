@@ -962,6 +962,15 @@ def test_filter_by_name_prefix_regex(make_events):
     assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
 
 
+def test_filter_by_name_missing_column_raises_column_not_found_error(make_events):
+    events = make_events(['microsaccade', 'microsaccade_x', 'saccade'])
+    events.frame = events.frame.drop('name')
+    expected_msg = "Events frame is missing the 'name' column."
+
+    with pytest.raises(ValueError, match=expected_msg):
+        events.filter_by_name('saccade')
+
+
 def test_saccades_filter(make_events):
     events = make_events(['saccade', 'saccade_algo', 'fixation'])
     out = events.saccades
