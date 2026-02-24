@@ -55,8 +55,8 @@ class WritingSystem:
         For vertical text, this is typically 'top-to-bottom'.
         Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English)
         is not currently supported. (default: 'left-to-right')
-    VALID_DESCRIPTORS: ClassVar[tuple[str, ...]]
-        Valid descriptor strings for :meth:`from_descriptor`.
+    DESCRIPTORS: ClassVar[dict[str, dict[str, str]]]
+        Mapping of descriptor strings to initialization keyword arguments for :meth:`from_descriptor`.
 
     Notes
     -----
@@ -101,12 +101,24 @@ class WritingSystem:
     axis: Literal['horizontal', 'vertical'] = 'horizontal'
     lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
     directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
-    VALID_DESCRIPTORS: ClassVar[tuple[str, ...]] = (
-        'left-to-right',
-        'ltr',
-        'right-to-left',
-        'rtl',
-    )
+
+    DESCRIPTORS: ClassVar[dict[str, dict[str, str]]] = {
+        'left-to-right': {
+            'axis': 'horizontal', 'directionality': 'left-to-right', 'lining': 'top-to-bottom',
+        },
+        'ltr': {  # same as 'left-to-right'
+            'axis': 'horizontal', 'directionality': 'left-to-right', 'lining': 'top-to-bottom',
+        },
+        'right-to-left': {
+            'axis': 'horizontal', 'directionality': 'right-to-left', 'lining': 'top-to-bottom',
+        },
+        'rtl': {  # same as 'right-to-left'
+            'axis': 'horizontal', 'directionality': 'right-to-left', 'lining': 'top-to-bottom',
+        },
+        'top-to-bottom': {
+            'axis': 'vertical', 'directionality': 'top-to-bottom', 'lining': 'left-to-right',
+        },
+    }
 
     @staticmethod
     def from_descriptor(descriptor: str) -> WritingSystem:
@@ -115,25 +127,19 @@ class WritingSystem:
         Parameters
         ----------
         descriptor: str
-            The descriptor string.
-            Valid values are 'left-to-right' (or 'ltr') and 'right-to-left' (or 'rtl').
+            The descriptor string. Valid values are found in ``WritingSystem.DESCRIPTORS``.
 
         Returns
         -------
         WritingSystem
             The corresponding WritingSystem instance.
         """
-        if descriptor in {'left-to-right', 'ltr'}:
-            return WritingSystem(
-                axis='horizontal', directionality='left-to-right', lining='top-to-bottom',
-            )
-        if descriptor in {'right-to-left', 'rtl'}:
-            return WritingSystem(
-                axis='horizontal', directionality='right-to-left', lining='top-to-bottom',
-            )
+        if descriptor in WritingSystem.DESCRIPTORS:
+            return WritingSystem(**WritingSystem.DESCRIPTORS[descriptor])
+
         raise ValueError(
             f"Unknown descriptor '{descriptor}'. "
-            f"Valid descriptors are: {WritingSystem.VALID_DESCRIPTORS}",
+            f"Valid descriptors are: {list(WritingSystem.DESCRIPTORS.keys())}",
         )
 
 
