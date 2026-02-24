@@ -11,12 +11,15 @@ Measures
     :template: function.rst
 
     amplitude
+    bcea
+    data_loss
     dispersion
     disposition
     location
     null_ratio
-    data_loss
     peak_velocity
+    rms_s2s
+    std_rms
 
 .. rubric:: Classes
 
