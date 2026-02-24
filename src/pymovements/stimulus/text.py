@@ -58,44 +58,41 @@ class WritingSystem:
     DESCRIPTORS: ClassVar[tuple[str, ...]]
         Valid descriptor strings for :meth:`from_descriptor`.
 
-    Notes
-    -----
-    This class is reserved for future functionality (e.g., detecting regressive saccades)
-    and currently does not affect behavior.
+    Examples
+    --------
+    Typical configurations are:
 
-        Typical configurations are:
+    * Horizontal left-to-right (LTR)::
 
-        * Horizontal LTR::
+        WritingSystem(
+            directionality='left-to-right',
+            axis='horizontal',
+            lining='top-to-bottom',
+        )
 
-            WritingSystem(
-                axis='horizontal',
-                lining='top-to-bottom',
-                directionality='left-to-right',
-            )
+    * Horizontal right-to-left (RTL)::
 
-        * Horizontal RTL::
+        WritingSystem(
+            directionality='right-to-left',
+            axis='horizontal',
+            lining='top-to-bottom',
+        )
 
-            WritingSystem(
-                axis='horizontal',
-                lining='top-to-bottom',
-                directionality='right-to-left',
-            )
+    * Vertical right-to-left columns::
 
-        * Vertical RL columns::
+        WritingSystem(
+            directionality='top-to-bottom',
+            axis='vertical',
+            lining='right-to-left',
+        )
 
-            WritingSystem(
-                axis='vertical',
-                lining='right-to-left',
-                directionality='top-to-bottom',
-            )
+    * Vertical left-to-right columns::
 
-        * Vertical LR columns::
-
-            WritingSystem(
-                axis='vertical',
-                lining='left-to-right',
-                directionality='top-to-bottom',
-            )
+        WritingSystem(
+            directionality='top-to-bottom',
+            axis='vertical',
+            lining='left-to-right',
+        )
     """
     directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
     axis: Literal['horizontal', 'vertical'] = 'horizontal'
