@@ -336,13 +336,14 @@ class Events:
         event_property_columns -= set(self._additional_columns)
         return list(event_property_columns)
 
-    def filter_by_name(self, pattern: str) -> pl.DataFrame:
-        """Filter events by name using a name or regular expression.
+    def filter_by_name(self, name: str) -> pl.DataFrame:
+        """Filter events by name.
 
         Parameters
         ----------
-        pattern : str
-            Regular expression pattern applied to the ``name`` column.
+        name : str
+            Filter events that contain that string in the ``name`` column.
+            Supports regular expressions.
 
         Examples
         --------
@@ -469,7 +470,7 @@ class Events:
         if 'name' not in self.frame.columns:
             raise ValueError("Events frame has no 'name' column.")
 
-        return self.frame.filter(pl.col('name').str.contains(pattern))
+        return self.frame.filter(pl.col('name').str.contains(name))
 
     @property
     def fixations(self) -> pl.DataFrame:
