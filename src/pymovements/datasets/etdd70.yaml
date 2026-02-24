@@ -3,23 +3,23 @@ name: ETDD70
 long_name: 'Eye-Tracking Dyslexia Dataset'
 
 resources:
-- content: gaze
-  source:
-    url: https://zenodo.org/api/records/13332134/files-archive
-    filename: edd_raw.zip
-    md5:
-  filename_pattern: 'Subject_{subject_id:d}_{task:s}_raw.csv'
-  load_kwargs:
-    time_column: 'time'
-    time_unit: 'ms'
-    pixel_columns: ['gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right']
+  - content: gaze
+    source:
+      url: https://zenodo.org/api/records/13332134/files-archive
+      filename: edd_raw.zip
+      md5:
+    filename_pattern: 'Subject_{subject_id:d}_{task:s}_raw.csv'
+    load_kwargs:
+      time_column: 'time'
+      time_unit: 'ms'
+      pixel_columns: ['gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right']
 
-- content: precomputed_events
-  source:
-    url: https://zenodo.org/api/records/13332134/files-archive
-    filename: edd_fix.zip
-    md5:
-  filename_pattern: 'Subject_{subject_id:d}_{task:s}_fixations.csv'
+  - content: precomputed_events
+    source:
+      url: https://zenodo.org/api/records/13332134/files-archive
+      filename: edd_fix.zip
+      md5:
+    filename_pattern: 'Subject_{subject_id:d}_{task:s}_fixations.csv'
 
 experiment:
   screen_width_px: 1680
