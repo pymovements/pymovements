@@ -97,12 +97,11 @@ class WritingSystem:
                 directionality='top-to-bottom',
             )
     """
+    AXES: ClassVar[type] = Literal['horizontal', 'vertical']
+    LININGS: ClassVar[type] = Literal['top-to-bottom', 'left-to-right', 'right-to-left']
+    DIRECTIONALITIES: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
 
-    axis: Literal['horizontal', 'vertical'] = 'horizontal'
-    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
-    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
-
-    DESCRIPTORS: ClassVar[dict[str, dict[str, str]]] = {
+    DESCRIPTORS: ClassVar[dict[str, dict[str, AXES | LININGS | DIRECTIONALITIES]]] = {
         'left-to-right': {
             'axis': 'horizontal', 'directionality': 'left-to-right', 'lining': 'top-to-bottom',
         },
@@ -119,6 +118,10 @@ class WritingSystem:
             'axis': 'vertical', 'directionality': 'top-to-bottom', 'lining': 'left-to-right',
         },
     }
+
+    directionality: Directionalities = 'left-to-right'
+    axis: Axes = 'horizontal'
+    lining: Linings = 'top-to-bottom'
 
     @staticmethod
     def from_descriptor(descriptor: str) -> WritingSystem:
@@ -176,7 +179,9 @@ class TextStimulus:
         Name for the column that specifies the unique trial id.
         (default: None)
     writing_system: WritingSystem | str
-        Writing system of the text.
+        Writing system of the text. If ``writing_system`` is a string,
+        :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
+        (default: ``'left-to-right'``)
     """
 
     def __init__(
@@ -337,8 +342,9 @@ class TextStimulus:
             Name of column that specifies the unique trial id.
             (default: None)
         writing_system: WritingSystem | str
-            Writing system of the text. See :py:class:`~pymovements.stimulus.TextStimulus`
-            for details. (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
+            Writing system of the text. If ``writing_system`` is a string,
+            :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
+            (default: ``'left-to-right'``)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
