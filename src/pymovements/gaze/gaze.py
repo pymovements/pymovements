@@ -560,10 +560,7 @@ class Gaze:
         if transform_method.__name__ == 'downsample':
             downsample_factor = kwargs.pop('factor')
             self.samples = self.samples.select(
-                transforms.downsample(
-                    factor=downsample_factor,
-                    **kwargs,
-                ),
+                transforms.downsample(factor=downsample_factor, **kwargs),
             )
 
             # sampling rate
