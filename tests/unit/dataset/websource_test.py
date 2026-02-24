@@ -30,7 +30,6 @@ from pymovements.dataset.websource import _download_file
 from pymovements.dataset.websource import _DownloadProgressBar
 from pymovements.dataset.websource import _get_redirected_url
 from pymovements.dataset.websource import WebSource
-# Additional imports for moved tests
 
 
 def test_websource_init():
