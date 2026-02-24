@@ -779,7 +779,7 @@ def save_events(
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
-                f'unsupported file format "{extension}".Supported formats are: {valid_extensions}',
+                f'unsupported file format "{extension}". Supported formats are: {valid_extensions}',
             )
 
 
