@@ -268,7 +268,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
 
 @pytest.mark.parametrize(
-    'bad_x, bad_y',
+    ('bad_x', 'bad_y'),
     [
         (np.inf, 0.0),
         (np.nan, 0.0),
