@@ -83,13 +83,16 @@ def download_dataset(
     if not definition.resources:
         raise AttributeError('resources must be specified to download a dataset.')
 
-    for resource in resources:
+    for resource in definition.resources:
+        if resource.source is None:
+            continue  # resource has no downloadable source
+            
         if not definition.mirrors:
             mirrors = None
         else:
             mirrors = definition.mirrors.get(resource.content, None)
 
-        if not mirrors and resource.source is not None:
+        if not mirrors:
             resource.source.download(paths.downloads, verbose=verbose)
         else:
             _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
