@@ -348,6 +348,7 @@ class Events:
         --------
         Let's create some events with different names first:
 
+        >>> import pymovements as pm
         >>> events = pm.Events(
         ...     names=[
         ...         'fixation', 'fixation.idt', 'fixation.ivt', 'fixation.eyelink',
