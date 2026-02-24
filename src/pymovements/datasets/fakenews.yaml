@@ -23,6 +23,6 @@ experiment:
   screen_height_px: 1080
   screen_width_cm: 52.7
   screen_height_cm: 29.6
-  distance_cm:
-  origin:
+  distance_cm: null
+  origin: null
   sampling_rate: 600

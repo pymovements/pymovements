@@ -13,5 +13,5 @@ resources:
       read_csv_kwargs:
         separator: "\t"
       trial_columns:
-      - book_name
-      - screen_id
+        - book_name
+        - screen_id

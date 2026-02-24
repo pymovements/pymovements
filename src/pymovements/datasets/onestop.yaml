@@ -1,7 +1,6 @@
 name: OneStop
 
-long_name: 'OneStop: A 360-Participant English Eye Tracking Dataset with Different
-  Reading Regimes'
+long_name: 'OneStop: A 360-Participant English Eye Tracking Dataset with Different Reading Regimes'
 
 resources:
   - content: precomputed_events

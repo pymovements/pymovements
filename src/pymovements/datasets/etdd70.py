@@ -126,7 +126,6 @@ class ETDD70(DatasetDefinition):
                     'source': {
                         'url': 'https://zenodo.org/api/records/13332134/files-archive',
                         'filename': 'edd_raw.zip',
-                        'md5': None,  # type: ignore
                     },
                     'filename_pattern': r'Subject_{subject_id:d}_{task:s}_raw.csv',
                     'load_kwargs': {
@@ -142,7 +141,6 @@ class ETDD70(DatasetDefinition):
                     'source': {
                         'url': 'https://zenodo.org/api/records/13332134/files-archive',
                         'filename': 'edd_fix.zip',
-                        'md5': None,  # type: ignore
                     },
                     'filename_pattern': r'Subject_{subject_id:d}_{task:s}_fixations.csv',
                 },

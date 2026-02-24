@@ -27,19 +27,19 @@ resources:
           - "READING[.]STOP"
           - "JUDO[.]STOP"
           column: "task"
-          value:
+          value: null
         - 'TRIALID (?P<trial_id>\d+)'
         - pattern: 'TRIAL_RESULT'
           column: "trial_id"
-          value:
+          value: null
         - 'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
         - pattern: 'READING[.]STOP'
           column: "screen_id"
-          value:
+          value: null
         - 'SYNCTIME.P(?P<point_id>\d+)'
         - pattern: 'P\d[.]STOP'
           column: "point_id"
-          value:
+          value: null
       schema:
         trial_id: !polars.Int64
         screen_id: !polars.Int64

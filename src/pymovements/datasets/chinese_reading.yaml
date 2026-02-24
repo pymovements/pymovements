@@ -5,7 +5,6 @@ resources:
     source:
       url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a'
       filename: Raw Data.txt
-      md5:
     filename_pattern: 'Raw Data.txt'
     load_kwargs:
       trial_columns: ['Subject', 'Sentence_ID']
@@ -16,7 +15,6 @@ resources:
     source:
       url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip='
       filename: chinese_reading_measures.zip
-      md5:
     filename_pattern: '{measure_type:s} Measures.xlsx'
     load_kwargs:
       read_excel_kwargs:

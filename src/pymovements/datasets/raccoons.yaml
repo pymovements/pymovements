@@ -17,7 +17,7 @@ resources:
         - 'TRIALID (?P<trial_index0>\d+)'
         - pattern: "TRIAL_RESULT"
           column: "trial_index0"
-          value:
+          value: null
       encoding: "latin-1"
 
   - content: precomputed_events

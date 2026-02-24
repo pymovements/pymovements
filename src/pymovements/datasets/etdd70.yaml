@@ -7,7 +7,6 @@ resources:
     source:
       url: https://zenodo.org/api/records/13332134/files-archive
       filename: edd_raw.zip
-      md5:
     filename_pattern: 'Subject_{subject_id:d}_{task:s}_raw.csv'
     load_kwargs:
       time_column: 'time'
@@ -18,14 +17,13 @@ resources:
     source:
       url: https://zenodo.org/api/records/13332134/files-archive
       filename: edd_fix.zip
-      md5:
     filename_pattern: 'Subject_{subject_id:d}_{task:s}_fixations.csv'
 
 experiment:
   screen_width_px: 1680
   screen_height_px: 1050
-  screen_width_cm:
-  screen_height_cm:
+  screen_width_cm: null
+  screen_height_cm: null
   distance_cm: 65  # in the paper it is written (60-70cm)
   origin: 'center'
   sampling_rate: 250

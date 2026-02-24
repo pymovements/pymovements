@@ -21,7 +21,6 @@ resources:
     source:
       url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip="
       filename: "FixationReports.zip"
-      md5:
     filename_pattern: 'FIX_report_P{subject_id:d}.txt'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -29,18 +28,17 @@ resources:
       read_csv_kwargs:
         separator: "\t"
         null_values:
-        - "."
-        - "UNDEFINEDnull"
+          - "."
+          - "UNDEFINEDnull"
         infer_schema_length: 100000
         truncate_ragged_lines: true
         decimal_comma: true
-        quote_char:
+        quote_char: null
 
   - content: precomputed_reading_measures
     source:
       url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip="
       filename: "ReadingMeasures.zip"
-      md5:
     filename_pattern: 'P{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
