@@ -3683,7 +3683,7 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
-        assert False, 'unknown gaze_type'
+        raise AssertionError('unknown gaze_type')
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
     assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
@@ -3741,7 +3741,7 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
             position_columns=['x_left', 'y_left', 'x_right', 'y_right'],
         )
     else:
-        assert False, 'unknown gaze_type'
+        raise AssertionError('unknown gaze_type')
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
     assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])

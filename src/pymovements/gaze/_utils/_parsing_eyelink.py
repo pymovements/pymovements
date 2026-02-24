@@ -747,9 +747,14 @@ def parse_eyelink(
                 samples['pupil_right'].append(pupil_right)
 
                 if not blinking and all(
-                    not np.isnan(val) for val in (
-                        x_left_pix, y_left_pix, pupil_left,
-                        x_right_pix, y_right_pix, pupil_right,
+                    not np.isnan(val)
+                    for val in (
+                        x_left_pix,
+                        y_left_pix,
+                        pupil_left,
+                        x_right_pix,
+                        y_right_pix,
+                        pupil_right,
                     )
                 ):
                     num_valid_samples += 1

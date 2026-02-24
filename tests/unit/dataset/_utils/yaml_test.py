@@ -31,9 +31,8 @@ def test_type_constructor_assertion_error(make_text_file):
     """
     yaml.add_multi_constructor('!', type_constructor, yaml.SafeLoader)
     yaml_file = make_text_file(filename='test_yaml_file', body=yaml_content)
-    with pytest.raises(ValueError) as excinfo:
-        with open(yaml_file, encoding='utf-8') as f:
-            yaml.safe_load(f)
+    with pytest.raises(ValueError) as excinfo, open(yaml_file, encoding='utf-8') as f:
+        yaml.safe_load(f)
     (msg,) = excinfo.value.args
     assert msg == "Unknown node=ScalarNode(tag='!test', value='')"
 
@@ -44,9 +43,8 @@ def test_module_name_not_found_error(make_text_file):
     """
     yaml.add_multi_constructor('!', type_constructor, yaml.SafeLoader)
     yaml_file = make_text_file(filename='test_yaml_file', body=yaml_content)
-    with pytest.raises(ModuleNotFoundError) as excinfo:
-        with open(yaml_file, encoding='utf-8') as f:
-            yaml.safe_load(f)
+    with pytest.raises(ModuleNotFoundError) as excinfo, open(yaml_file, encoding='utf-8') as f:
+        yaml.safe_load(f)
     (msg,) = excinfo.value.args
     assert msg == "No module named 'pm'"
 
@@ -57,8 +55,7 @@ def test_unknown_attribute_error(make_text_file):
     """
     yaml.add_multi_constructor('!', type_constructor, yaml.SafeLoader)
     yaml_file = make_text_file(filename='test_yaml_file', body=yaml_content)
-    with pytest.raises(ValueError) as excinfo:
-        with open(yaml_file, encoding='utf-8') as f:
-            yaml.safe_load(f)
+    with pytest.raises(ValueError) as excinfo, open(yaml_file, encoding='utf-8') as f:
+        yaml.safe_load(f)
     (msg,) = excinfo.value.args
     assert msg == 'Unknown type: notexisting for module yaml'

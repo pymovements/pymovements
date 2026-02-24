@@ -539,11 +539,13 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
     ('events_df', 'gaze_df', 'padding', 'expected'),
     [
         pytest.param(
-            pl.DataFrame({
-                'name': ['blink'],
-                'onset': pl.Series([200], dtype=pl.Int64),
-                'offset': pl.Series([300], dtype=pl.Int64),
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['blink'],
+                    'onset': pl.Series([200], dtype=pl.Int64),
+                    'offset': pl.Series([300], dtype=pl.Int64),
+                }
+            ),
             pl.DataFrame({'time': pl.Series(range(0, 500, 50), dtype=pl.Int64)}),
             50,
             # times: 0, 50, 100, 150, 200, 250, 300, 350, 400, 450
@@ -552,11 +554,13 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             id='symmetric_padding_50',
         ),
         pytest.param(
-            pl.DataFrame({
-                'name': ['blink'],
-                'onset': pl.Series([200], dtype=pl.Int64),
-                'offset': pl.Series([300], dtype=pl.Int64),
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['blink'],
+                    'onset': pl.Series([200], dtype=pl.Int64),
+                    'offset': pl.Series([300], dtype=pl.Int64),
+                }
+            ),
             pl.DataFrame({'time': pl.Series(range(0, 500, 50), dtype=pl.Int64)}),
             (100, 50),
             # padded range: 100-350 inclusive
@@ -564,11 +568,13 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             id='asymmetric_padding',
         ),
         pytest.param(
-            pl.DataFrame({
-                'name': ['blink'],
-                'onset': pl.Series([2], dtype=pl.Int64),
-                'offset': pl.Series([5], dtype=pl.Int64),
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['blink'],
+                    'onset': pl.Series([2], dtype=pl.Int64),
+                    'offset': pl.Series([5], dtype=pl.Int64),
+                }
+            ),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             0,
             # Same as no padding
@@ -576,11 +582,13 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             id='zero_padding',
         ),
         pytest.param(
-            pl.DataFrame({
-                'name': ['blink'],
-                'onset': pl.Series([2], dtype=pl.Int64),
-                'offset': pl.Series([5], dtype=pl.Int64),
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['blink'],
+                    'onset': pl.Series([2], dtype=pl.Int64),
+                    'offset': pl.Series([5], dtype=pl.Int64),
+                }
+            ),
             pl.DataFrame({'time': np.arange(10, dtype=np.int64)}),
             2,
             # padded range: 0-7 inclusive
@@ -588,16 +596,20 @@ def test_segmentation2events_trialized(segmentation, name, trial_columns, expect
             id='padding_extends_to_boundary',
         ),
         pytest.param(
-            pl.DataFrame({
-                'name': ['blink', 'blink'],
-                'onset': pl.Series([2, 1], dtype=pl.Int64),
-                'offset': pl.Series([3, 3], dtype=pl.Int64),
-                'trial': [1, 2],
-            }),
-            pl.DataFrame({
-                'time': pl.Series([0, 1, 2, 3, 0, 1, 2, 3, 4], dtype=pl.Int64),
-                'trial': [1, 1, 1, 1, 2, 2, 2, 2, 2],
-            }),
+            pl.DataFrame(
+                {
+                    'name': ['blink', 'blink'],
+                    'onset': pl.Series([2, 1], dtype=pl.Int64),
+                    'offset': pl.Series([3, 3], dtype=pl.Int64),
+                    'trial': [1, 2],
+                }
+            ),
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 1, 2, 3, 0, 1, 2, 3, 4], dtype=pl.Int64),
+                    'trial': [1, 1, 1, 1, 2, 2, 2, 2, 2],
+                }
+            ),
             1,
             # Trial 1: event 2-3, padded 1-4 → [0:F, 1:T, 2:T, 3:T]
             # Trial 2: event 1-3, padded 0-4 → [0:T, 1:T, 2:T, 3:T, 4:T]
@@ -617,42 +629,50 @@ def test_events2segmentation_padding(events_df, gaze_df, padding, expected):
 
 
 def test_events2segmentation_negative_padding_raises():
-    events_df = pl.DataFrame({
-        'name': ['blink'],
-        'onset': pl.Series([2], dtype=pl.Int64),
-        'offset': pl.Series([5], dtype=pl.Int64),
-    })
+    events_df = pl.DataFrame(
+        {
+            'name': ['blink'],
+            'onset': pl.Series([2], dtype=pl.Int64),
+            'offset': pl.Series([5], dtype=pl.Int64),
+        }
+    )
     with pytest.raises(ValueError, match='non-negative'):
         events2segmentation(events_df, name='blink', padding=-1)
 
 
 def test_events2segmentation_negative_tuple_padding_raises():
-    events_df = pl.DataFrame({
-        'name': ['blink'],
-        'onset': pl.Series([2], dtype=pl.Int64),
-        'offset': pl.Series([5], dtype=pl.Int64),
-    })
+    events_df = pl.DataFrame(
+        {
+            'name': ['blink'],
+            'onset': pl.Series([2], dtype=pl.Int64),
+            'offset': pl.Series([5], dtype=pl.Int64),
+        }
+    )
     with pytest.raises(ValueError, match='non-negative'):
         events2segmentation(events_df, name='blink', padding=(1, -2))
 
 
 def test_events2segmentation_invalid_padding_type_raises():
-    events_df = pl.DataFrame({
-        'name': ['blink'],
-        'onset': pl.Series([2], dtype=pl.Int64),
-        'offset': pl.Series([5], dtype=pl.Int64),
-    })
+    events_df = pl.DataFrame(
+        {
+            'name': ['blink'],
+            'onset': pl.Series([2], dtype=pl.Int64),
+            'offset': pl.Series([5], dtype=pl.Int64),
+        }
+    )
     with pytest.raises(TypeError, match='padding should be a number or a two-dimensional tuple'):
         events2segmentation(events_df, name='blink', padding='invalid')
 
 
 def test_events2segmentation_padding_causes_overlap_warning():
     # Two events that are separate but overlap when padded
-    events_df = pl.DataFrame({
-        'name': ['blink', 'blink'],
-        'onset': pl.Series([2, 7], dtype=pl.Int64),
-        'offset': pl.Series([3, 8], dtype=pl.Int64),
-    })
+    events_df = pl.DataFrame(
+        {
+            'name': ['blink', 'blink'],
+            'onset': pl.Series([2, 7], dtype=pl.Int64),
+            'offset': pl.Series([3, 8], dtype=pl.Int64),
+        }
+    )
     gaze_df = pl.DataFrame({'time': np.arange(12, dtype=np.int64)})
 
     # Without padding: no overlap (3 < 7)

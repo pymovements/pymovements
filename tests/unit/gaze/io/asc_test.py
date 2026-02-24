@@ -571,7 +571,6 @@ def test_from_asc_example_file_raises_exception(
             ),
             id='binocular_1kHz_nonstandard_resolution',
         ),
-
         pytest.param(
             'eyelink_binocular_example.asc',
             # asc file was not recorded by SR Research software but misses required header

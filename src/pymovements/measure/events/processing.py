@@ -199,7 +199,8 @@ class EventSamplesProcessor:
             event_samples = samples.lazy().filter(
                 pl.col('time').is_between(event['onset'], event['offset']),
                 *[
-                    pl.col(column).is_null() if event_keys[column] is None
+                    pl.col(column).is_null()
+                    if event_keys[column] is None
                     else pl.col(column) == event_keys[column]
                     for column in _identifiers
                 ],

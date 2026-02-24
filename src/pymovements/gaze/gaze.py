@@ -528,7 +528,7 @@ class Gaze:
 
             gaze_split = Gaze(
                 samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
-                events=grouped_events.get(key, None),
+                events=grouped_events.get(key),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
                 metadata=metadata_split,
@@ -1025,10 +1025,10 @@ class Gaze:
         )
 
     def nullify_event_samples(
-            self,
-            name: str,
-            *,
-            padding: float | tuple[float, float] = (25, 25),
+        self,
+        name: str,
+        *,
+        padding: float | tuple[float, float] = (25, 25),
     ) -> None:
         """Set gaze sample values to null during detected events.
 
@@ -1099,16 +1099,16 @@ class Gaze:
             preserve_columns.update(self.trial_columns)
 
         # Nullify all non-preserved columns where the event mask is True
-        null_columns = [
-            col for col in self.samples.columns if col not in preserve_columns
-        ]
+        null_columns = [col for col in self.samples.columns if col not in preserve_columns]
 
         self.samples = self.samples.with_columns(mask_expr)
 
-        self.samples = self.samples.with_columns([
-            polars.when(polars.col(name)).then(None).otherwise(polars.col(col)).alias(col)
-            for col in null_columns
-        ])
+        self.samples = self.samples.with_columns(
+            [
+                polars.when(polars.col(name)).then(None).otherwise(polars.col(col)).alias(col)
+                for col in null_columns
+            ]
+        )
 
         self.samples = self.samples.drop(name)
 

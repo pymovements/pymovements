@@ -87,12 +87,14 @@ def test_download_file_https_failure(tmp_path, verbose):
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
-    with mock.patch(
-        'pymovements.dataset._utils._downloads._download_url',
-        side_effect=OSError(),
+    with (
+        mock.patch(
+            'pymovements.dataset._utils._downloads._download_url',
+            side_effect=OSError(),
+        ),
+        pytest.raises(OSError),
     ):
-        with pytest.raises(OSError):
-            download_file(url, tmp_path, filename, md5, verbose=verbose)
+        download_file(url, tmp_path, filename, md5, verbose=verbose)
 
 
 def test_download_file_http_failure(tmp_path):
@@ -100,12 +102,14 @@ def test_download_file_http_failure(tmp_path):
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
-    with mock.patch(
-        'pymovements.dataset._utils._downloads._download_url',
-        side_effect=OSError(),
+    with (
+        mock.patch(
+            'pymovements.dataset._utils._downloads._download_url',
+            side_effect=OSError(),
+        ),
+        pytest.raises(OSError),
     ):
-        with pytest.raises(OSError):
-            download_file(url, tmp_path, filename, md5)
+        download_file(url, tmp_path, filename, md5)
 
 
 @pytest.mark.network

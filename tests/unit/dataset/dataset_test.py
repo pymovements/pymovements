@@ -477,10 +477,7 @@ def mock_toy(
     gaze_sample_resource_definition = ResourceDefinition(
         content='gaze',
         filename_pattern=r'{subject_id:d}.' + raw_fileformat,
-        filename_pattern_schema_overrides=filename_format_schema_overrides.get(
-            'gaze',
-            None,
-        ),
+        filename_pattern_schema_overrides=filename_format_schema_overrides.get('gaze'),
         load_kwargs={
             'time_column': 'time',
             'time_unit': 'ms',
@@ -589,8 +586,7 @@ def mock_toy(
         content='precomputed_events',
         filename_pattern=r'{subject_id:d}.' + raw_fileformat,
         filename_pattern_schema_overrides=filename_format_schema_overrides.get(
-            'precomputed_events',
-            None,
+            'precomputed_events'
         ),
     )
     resource_definitions.append(precomputed_events_resource_definition)
@@ -629,8 +625,7 @@ def mock_toy(
         content='precomputed_reading_measures',
         filename_pattern=r'{subject_id:d}.' + raw_fileformat,
         filename_pattern_schema_overrides=filename_format_schema_overrides.get(
-            'precomputed_reading_measures',
-            None,
+            'precomputed_reading_measures'
         ),
     )
     resource_definitions.append(precomputed_rm_resource_definition)

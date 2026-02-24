@@ -324,7 +324,7 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             ],
         )
 
-    assert False, f'unknown dataset_definition fixture {request.param}'
+    raise AssertionError(f'unknown dataset_definition fixture {request.param}')
 
 
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
