@@ -350,7 +350,7 @@ class Events:
 
         >>> import pymovements as pm
         >>> events = pm.Events(
-        ...     names=[
+        ...     name=[
         ...         'fixation', 'fixation.idt', 'fixation.ivt', 'fixation.eyelink',
         ...         'saccade', 'saccade', 'microsaccade', 'microsaccade',
         ...     ],
