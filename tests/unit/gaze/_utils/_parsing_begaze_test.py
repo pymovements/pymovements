@@ -1016,16 +1016,7 @@ def test_parse_begaze_optional_columns_harmonized(
         'Pupil Confidence',
         'L Event Info',
     ]
-    values = [
-        '10000000100',
-        'SMP',
-        '1',
-        '10.0',
-        '20.0',
-        '3.0',
-        '1',
-        'Fixation',
-    ]
+    values = ['10000000100', 'SMP', '1', '10.0', '20.0', '3.0', '1', 'Fixation']
     if include_stimulus:
         assert stimulus_header is not None
         base_cols.append(stimulus_header)
