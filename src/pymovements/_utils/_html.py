@@ -117,7 +117,7 @@ def repr_html(attrs: list[str] | None = None) -> Callable[[T], T]:
     """
 
     def decorator(cls: T) -> T:
-        cls._repr_html_ = lambda self: _obj_html(self, attrs)
+        cls._repr_html_ = lambda self: _obj_html(self, attrs)  # type: ignore[attr-defined]
         return cls
 
     return decorator

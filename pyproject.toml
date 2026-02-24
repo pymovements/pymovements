@@ -115,6 +115,31 @@ omit = [
 [tool.doc8]
 max-line-length = 100
 
+[tool.mypy]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+disable_error_code = ["override"]
+
+[[tool.mypy.overrides]]
+module = "scipy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "deprecated.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+check_untyped_defs = false
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "docs.*"
+check_untyped_defs = false
+disallow_untyped_defs = false
+
 [tool.pytest.ini_options]
 addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
 doctest_optionflags = "NORMALIZE_WHITESPACE"

@@ -72,9 +72,9 @@ class DeprecatedMetaClass(type):
         if alias is not None:
 
             def new(cls: type, *args: Any, **kwargs: Any) -> type:
-                alias = cls._DeprecatedMetaClass__alias
-                version_deprecated = cls._DeprecatedMetaClass__version_deprecated
-                version_removed = cls._DeprecatedMetaClass__version_removed
+                alias = cls._DeprecatedMetaClass__alias  # type: ignore[attr-defined]
+                version_deprecated = cls._DeprecatedMetaClass__version_deprecated  # type: ignore[attr-defined]
+                version_removed = cls._DeprecatedMetaClass__version_removed  # type: ignore[attr-defined]
 
                 warn(
                     f'{cls.__name__} has been renamed to {alias.__name__} '
@@ -118,7 +118,7 @@ class DeprecatedMetaClass(type):
         """
         if subclass is cls:
             return True
-        return issubclass(subclass, cls._DeprecatedMetaClass__alias)
+        return issubclass(subclass, cls._DeprecatedMetaClass__alias)  # type: ignore[attr-defined]
 
     def __instancecheck__(cls, instance: Any) -> bool:
         """Check if is instance of deprecated class.
