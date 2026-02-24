@@ -700,7 +700,7 @@ def parse_eyelink(
                     f"File '{filepath}' may be corrupted. Data-loss metrics may be incorrect.",
                 )
             else:
-                block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)  # type: ignore[arg-type]
+                block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
                 current_sampling_rate = recording_config[-1].get('sampling_rate')
                 total_recording_duration += block_duration
                 if current_sampling_rate:
