@@ -249,10 +249,7 @@ def from_csv(
     samples = pl.read_csv(file, **read_csv_kwargs)
     if column_map is not None:
         samples = samples.rename(
-            {
-                key: column_map[key]
-                for key in [key for key in column_map.keys() if key in samples.columns]
-            }
+            {key: column_map[key] for key in [key for key in column_map if key in samples.columns]}
         )
 
     if add_columns is not None:
@@ -726,10 +723,7 @@ def from_ipc(
 
     if column_map is not None:
         samples = samples.rename(
-            {
-                key: column_map[key]
-                for key in [key for key in column_map.keys() if key in samples.columns]
-            }
+            {key: column_map[key] for key in [key for key in column_map if key in samples.columns]}
         )
 
     if add_columns is not None:
