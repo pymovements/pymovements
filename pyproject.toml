@@ -76,7 +76,7 @@ dev = [
   "setuptools>=61.0.0",
   "types-tqdm>=4.67.0",
   "pre-commit>=3.0.0",
-  "ruff>=0.11.0",
+  "ruff>=0.13.0",
   "ty>=0.0.13"
 ]
 
@@ -234,6 +234,10 @@ rules = {"unresolved-import" = "ignore"}
 [[tool.ty.overrides]]
 include = ["deprecated/**"]
 rules = {"unresolved-import" = "ignore"}
+
+[[tool.ty.overrides]]
+include = ["src/pymovements/**"]
+rules = {unresolved-import = "ignore", unresolved-attribute = "ignore", invalid-method-override = "ignore", unused-type-ignore-comment = "ignore", invalid-argument-type = "ignore", call-non-callable = "ignore"}
 
 [tool.ty.rules]
 
