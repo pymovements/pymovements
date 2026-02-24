@@ -30,7 +30,6 @@ from pymovements.dataset._utils._archives import extract_archive
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
-from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import _download_file
 from pymovements.exceptions import UnknownFileType
 
