@@ -95,7 +95,7 @@ def download_dataset(
         if not mirrors:
             resource.source.download(paths.downloads, verbose=verbose)
         else:
-            _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
+            _download_resource_with_legacy_mirrors(mirrors, resource, paths.downloads, verbose)
 
     if extract:
         extract_dataset(
