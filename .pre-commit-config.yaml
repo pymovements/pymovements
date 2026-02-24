@@ -11,8 +11,8 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.2
     hooks:
-      # Lint and fix (with import sorting via I rules)
-      - id: ruff
+      # Lint and fix
+      - id: ruff-check
         args: [ --fix, --show-fixes ]
       # Format
       - id: ruff-format
