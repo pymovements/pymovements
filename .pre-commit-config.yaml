@@ -30,7 +30,7 @@ repos:
 
   # Type checking
   - repo: local
-    hooks: # https://github.com/astral-sh/ty/issues/269 TODO: choose hook working on pre-commit.com
+    hooks:
       - id: ty-check
         name: ty-check
         language: python
