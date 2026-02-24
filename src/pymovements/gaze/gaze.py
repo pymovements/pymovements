@@ -1653,22 +1653,10 @@ class Gaze:
             # AUTO preference: cyclops -> mono -> right -> left
             if req_eye == 'auto':
                 pair = (
-                    direct_pair(
-                        cx,
-                        cy,
-                    )
-                    or direct_pair(
-                        mono_x,
-                        mono_y,
-                    )
-                    or direct_pair(
-                        rx,
-                        ry,
-                    )
-                    or direct_pair(
-                        lx,
-                        ly,
-                    )
+                    direct_pair(cx, cy)
+                    or direct_pair(mono_x, mono_y)
+                    or direct_pair(rx, ry)
+                    or direct_pair(lx, ly)
                 )
                 if pair is not None:
                     return 'direct', pair, None
