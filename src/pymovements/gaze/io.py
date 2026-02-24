@@ -785,7 +785,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         experiment.eyetracker.right = asc_right_eye
 
     # Mount configuration
-    parsed_mount = metadata.get('mount_configuration', {}).get(['mount_type'])
+    parsed_mount = metadata.get('mount_configuration', {}).get('mount_type')
     if parsed_mount is None:
         warnings.warn('No mount configuration found.')
     else:
