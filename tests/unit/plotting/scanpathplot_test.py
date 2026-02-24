@@ -286,13 +286,7 @@ def test_scanpathplot_filter_events_plots_expected_circles(
 def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    scanpathplot(
-        gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path / 'test.svg',
-        ),
-    )
+    scanpathplot(gaze=gaze, show=False, savepath=str(tmp_path / 'test.svg'))
 
     mock.assert_called_once()
 

@@ -175,10 +175,7 @@ def test_heatmap_save(args, position_column_mapping, monkeypatch, tmp_path):
 
     position_column = position_column_mapping[args[1]]
     heatmap(
-        args[0],
-        position_column=position_column,
-        show=False,
-        savepath=str(tmp_path / 'test.svg'),
+        args[0], position_column=position_column, show=False, savepath=str(tmp_path / 'test.svg')
     )
 
     mock.assert_called_once()

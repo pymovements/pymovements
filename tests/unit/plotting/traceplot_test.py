@@ -191,13 +191,7 @@ def test_traceplot_noshow(gaze, monkeypatch):
 def test_traceplot_save(gaze, monkeypatch, tmp_path):
     mock = Mock()
     monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    pm.plotting.traceplot(
-        gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path / 'test.svg',
-        ),
-    )
+    pm.plotting.traceplot(gaze=gaze, show=False, savepath=str(tmp_path / 'test.svg'))
 
     mock.assert_called_once()
 
