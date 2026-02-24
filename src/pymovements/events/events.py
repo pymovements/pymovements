@@ -376,6 +376,7 @@ class Events:
         └──────────────────┴───────┴────────┴──────────┘
 
         All fixations:
+
         >>> events.filter_by_name('fixation')
         shape: (4, 4)
         ┌──────────────────┬───────┬────────┬──────────┐
@@ -390,6 +391,7 @@ class Events:
         └──────────────────┴───────┴────────┴──────────┘
 
         Exact match for fixation:
+
         >>> events.filter_by_name('^fixation$')
         shape: (1, 4)
         ┌──────────┬───────┬────────┬──────────┐
@@ -401,6 +403,7 @@ class Events:
         └──────────┴───────┴────────┴──────────┘
 
         Prefix match:
+
         >>> events.filter_by_name('^fixation_')
         shape: (3, 4)
         ┌──────────────────┬───────┬────────┬──────────┐
@@ -414,6 +417,7 @@ class Events:
         └──────────────────┴───────┴────────┴──────────┘
 
         Suffix match:
+
         >>> events.filter_by_name('ivt$')
         shape: (1, 4)
         ┌──────────────┬───────┬────────┬──────────┐
@@ -425,6 +429,7 @@ class Events:
         └──────────────┴───────┴────────┴──────────┘
 
         All saccade variants:
+
         >>> events.filter_by_name('saccade')
         shape: (4, 4)
         ┌──────────────┬───────┬────────┬──────────┐
@@ -439,6 +444,7 @@ class Events:
         └──────────────┴───────┴────────┴──────────┘
 
         Only microsaccades:
+
         >>> events.filter_by_name('microsaccade')
         shape: (2, 4)
         ┌──────────────┬───────┬────────┬──────────┐
@@ -451,6 +457,7 @@ class Events:
         └──────────────┴───────┴────────┴──────────┘
 
         Exact match for saccade:
+
         >>> events.filter_by_name('^saccade$')
         shape: (2, 4)
         ┌─────────┬───────┬────────┬──────────┐
