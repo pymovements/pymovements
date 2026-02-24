@@ -337,7 +337,7 @@ class Events:
         return list(event_property_columns)
 
     def filter_by_name(self, pattern: str) -> pl.DataFrame:
-        r"""Filter events by name using a name or regular expression.
+        """Filter events by name using a name or regular expression.
 
         Parameters
         ----------
@@ -351,43 +351,115 @@ class Events:
         >>> import pymovements as pm
         >>> events = pm.Events(
         ...     name=[
-        ...         'fixation', 'fixation.idt', 'fixation.ivt', 'fixation.eyelink',
-        ...         'saccade', 'saccade', 'microsaccade', 'microsaccade',
+        ...         'saccade', 'fixation', 'fixation_idt', 'fixation_ivt', 'fixation_eyelink',
+        ...         'microsaccade', 'microsaccade', 'saccade',
         ...     ],
-        ...     onsets=[100, 101, 99, 100, 90, 115, 145, 175],
-        ...     offsets=[177, 178, 175, 175, 100, 124, 157, 199],
+        ...     onsets=[90, 99, 99, 100, 101, 115, 145, 175],
+        ...     offsets=[100, 176, 175, 178, 175, 124, 157, 199],
         ... )
-        >>> print(events)
-        shape
+        >>> events
+        shape: (8, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ saccade          ┆ 90    ┆ 100    ┆ 10       │
+        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        │ microsaccade     ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade     ┆ 145   ┆ 157    ┆ 12       │
+        │ saccade          ┆ 175   ┆ 199    ┆ 24       │
+        └──────────────────┴───────┴────────┴──────────┘
 
         All fixations:
         >>> events.filter_by_name('fixation')
-        shape
+        shape: (4, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        └──────────────────┴───────┴────────┴──────────┘
 
         Exact match for fixation:
         >>> events.filter_by_name('^fixation$')
-        shape
+        shape: (1, 4)
+        ┌──────────┬───────┬────────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════╪═══════╪════════╪══════════╡
+        │ fixation ┆ 99    ┆ 176    ┆ 77       │
+        └──────────┴───────┴────────┴──────────┘
 
         Prefix match:
-        >>> events.filter_by_name('^fixation\\.$')
-        shape
+        >>> events.filter_by_name('^fixation_')
+        shape: (3, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        └──────────────────┴───────┴────────┴──────────┘
 
         Suffix match:
         >>> events.filter_by_name('ivt$')
-        shape
+        shape: (1, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ fixation_ivt ┆ 100   ┆ 178    ┆ 78       │
+        └──────────────┴───────┴────────┴──────────┘
 
         All saccade variants:
         >>> events.filter_by_name('saccade')
-        Events
+        shape: (4, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ saccade      ┆ 90    ┆ 100    ┆ 10       │
+        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
+        │ saccade      ┆ 175   ┆ 199    ┆ 24       │
+        └──────────────┴───────┴────────┴──────────┘
 
         Only microsaccades:
         >>> events.filter_by_name('microsaccade')
-        Events
+        shape: (2, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
+        └──────────────┴───────┴────────┴──────────┘
 
         Exact match for saccade:
         >>> events.filter_by_name('^saccade$')
-        Events
-
+        shape: (2, 4)
+        ┌─────────┬───────┬────────┬──────────┐
+        │ name    ┆ onset ┆ offset ┆ duration │
+        │ ---     ┆ ---   ┆ ---    ┆ ---      │
+        │ str     ┆ i64   ┆ i64    ┆ i64      │
+        ╞═════════╪═══════╪════════╪══════════╡
+        │ saccade ┆ 90    ┆ 100    ┆ 10       │
+        │ saccade ┆ 175   ┆ 199    ┆ 24       │
+        └─────────┴───────┴────────┴──────────┘
 
         Returns
         -------
