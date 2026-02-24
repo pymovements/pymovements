@@ -1,0 +1,3 @@
+Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampling Rate,Stimulus Type
+:py:class:`~pymovements.datasets.ToyDataset`,X,,,1,1,1000 Hz,"Text (documents), Random Dots"
+:py:class:`~pymovements.datasets.ToyDatasetEyeLink`,X,,,1,1,1000 Hz,Text (documents)

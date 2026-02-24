@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -136,9 +136,9 @@ def test_pos2vel_init_raises_error(kwargs, exception, msg_substrings):
                 'degree': 1, 'padding': None, 'sampling_rate': 1, 'n_components': 2,
             },
             pl.Series('position', [[1, 1]], pl.List(pl.Float64)),
-            pl.exceptions.ComputeError,
-            ('',),
-            id='no_padding_input_shorter_than_window_length_raises_panicexception',
+            ValueError,
+            ('If mode is \'interp\', window_length must be less than or equal to the size of x',),
+            id='no_padding_input_shorter_than_window_length_raises_valueerror',
         ),
     ],
 )
@@ -165,7 +165,6 @@ def test_pos2vel_raises_error(kwargs, series, exception, msg_substrings):
             pl.Series('position', [], pl.List(pl.Float64)),
             pl.Series('velocity', [], pl.List(pl.Float64)),
             id='empty_series_raises_compute_error',
-            marks=pytest.mark.xfail(reason='#475'),
         ),
         pytest.param(
             {

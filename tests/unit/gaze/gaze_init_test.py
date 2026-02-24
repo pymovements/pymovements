@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,21 +17,23 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test GazeDataFrame initialization."""
+"""Test Gaze initialization."""
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements import Events
+from pymovements import Experiment
+from pymovements import Gaze
 
 
 @pytest.mark.parametrize(
-    ('init_kwargs', 'expected_frame', 'expected_n_components'),
+    ('init_kwargs', 'expected_samples', 'expected_n_components'),
     [
         pytest.param(
             {
-                'data': pl.DataFrame(),
+                'samples': pl.DataFrame(),
             },
             pl.DataFrame(schema={}),
             None,
@@ -40,7 +42,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'abc': pl.Int64}),
+                'samples': pl.DataFrame(schema={'abc': pl.Int64}),
             },
             pl.DataFrame(schema={'abc': pl.Int64}),
             None,
@@ -49,7 +51,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'abc': pl.Int64}),
+                'samples': pl.DataFrame(schema={'abc': pl.Int64}),
                 'pixel_columns': [],
                 'position_columns': [],
                 'velocity_columns': [],
@@ -62,7 +64,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'pixel_columns': ['x', 'y'],
             },
             pl.DataFrame(schema={'pixel': pl.List(pl.Float64)}),
@@ -72,7 +74,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64}),
                 'pixel_columns': ['x', 'y'],
             },
             pl.DataFrame(schema={'abc': pl.Int64, 'pixel': pl.List(pl.Float64)}),
@@ -82,7 +84,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr': pl.Float64, 'yr': pl.Float64, 'xl': pl.Float64, 'yl': pl.Float64,
                     },
@@ -96,7 +98,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x_right': pl.Float64, 'y_right': pl.Float64,
                         'x_left': pl.Float64, 'y_left': pl.Float64,
@@ -114,7 +116,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'pixel_columns': ['x', 'y'],
@@ -130,6 +132,25 @@ import pymovements as pm
         pytest.param(
             {
                 'data': pl.from_dict(
+                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
+                ),
+                'pixel_columns': ['x', 'y'],
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56]]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*data.*samples.*:DeprecationWarning',
+            ),
+            id='deprecated_data_argument',
+        ),
+
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
                     {'abc': [1], 'x': [1.23], 'y': [4.56]},
                     schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
                 ),
@@ -145,7 +166,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'xl': [1.2], 'yl': [3.4], 'xr': [5.6], 'yr': [7.8]},
                     schema={'xl': pl.Float64, 'yl': pl.Float64, 'xr': pl.Float64, 'yr': pl.Float64},
                 ),
@@ -161,7 +182,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'x_right': [0.1], 'y_right': [0.2],
                         'x_left': [0.3], 'y_left': [0.4],
@@ -187,7 +208,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'position_columns': ['x', 'y'],
             },
             pl.DataFrame(schema={'position': pl.List(pl.Float64)}),
@@ -197,7 +218,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64}),
                 'position_columns': ['x', 'y'],
             },
             pl.DataFrame(
@@ -211,7 +232,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr': pl.Float64, 'yr': pl.Float64, 'xl': pl.Float64, 'yl': pl.Float64,
                     },
@@ -225,7 +246,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x_right': pl.Float64, 'y_right': pl.Float64,
                         'x_left': pl.Float64, 'y_left': pl.Float64,
@@ -243,7 +264,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'position_columns': ['x', 'y'],
@@ -258,7 +279,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'abc': [1], 'x': [1.23], 'y': [4.56]},
                     schema={'abc': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
                 ),
@@ -274,7 +295,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'xl': [1.2], 'yl': [3.4], 'xr': [5.6], 'yr': [7.8]},
                     schema={'xl': pl.Float64, 'yl': pl.Float64, 'xr': pl.Float64, 'yr': pl.Float64},
                 ),
@@ -290,7 +311,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'x_right': [0.1], 'y_right': [0.2],
                         'x_left': [0.3], 'y_left': [0.4],
@@ -316,7 +337,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
                 'velocity_columns': ['x_vel', 'y_vel'],
             },
             pl.DataFrame(schema={'velocity': pl.List(pl.Float64)}),
@@ -326,7 +347,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'abc': pl.Int64, 'x_vel': pl.Float64, 'y_vel': pl.Float64,
                     },
@@ -344,7 +365,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr_vel': pl.Float64, 'yr_vel': pl.Float64,
                         'xl_vel': pl.Float64, 'yl_vel': pl.Float64,
@@ -359,7 +380,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x_right_vel': pl.Float64, 'y_right_vel': pl.Float64,
                         'x_left_vel': pl.Float64, 'y_left_vel': pl.Float64,
@@ -379,7 +400,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x_vel': [1.23], 'y_vel': [4.56]},
                     schema={'x_vel': pl.Float64, 'y_vel': pl.Float64},
                 ),
@@ -395,7 +416,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'abc': [1], 'x_vel': [1.23], 'y_vel': [4.56]},
                     schema={'abc': pl.Int64, 'x_vel': pl.Float64, 'y_vel': pl.Float64},
                 ),
@@ -411,7 +432,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'xl_vel': [1.2], 'yl_vel': [3.4],
                         'xr_vel': [5.6], 'yr_vel': [7.8],
@@ -433,7 +454,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'x_right_vel': [0.1], 'y_right_vel': [0.2],
                         'x_left_vel': [0.3], 'y_left_vel': [0.4],
@@ -461,7 +482,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
                 'acceleration_columns': ['x_acc', 'y_acc'],
             },
             pl.DataFrame(schema={'acceleration': pl.List(pl.Float64)}),
@@ -471,7 +492,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'abc': pl.Int64, 'x_acc': pl.Float64, 'y_acc': pl.Float64,
                     },
@@ -489,7 +510,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr_acc': pl.Float64, 'yr_acc': pl.Float64,
                         'xl_acc': pl.Float64, 'yl_acc': pl.Float64,
@@ -504,7 +525,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x_right_acc': pl.Float64, 'y_right_acc': pl.Float64,
                         'x_left_acc': pl.Float64, 'y_left_acc': pl.Float64,
@@ -524,7 +545,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x_acc': [1.23], 'y_acc': [4.56]},
                     schema={'x_acc': pl.Float64, 'y_acc': pl.Float64},
                 ),
@@ -540,7 +561,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'abc': [1], 'x_acc': [1.23], 'y_acc': [4.56]},
                     schema={'abc': pl.Int64, 'x_acc': pl.Float64, 'y_acc': pl.Float64},
                 ),
@@ -556,7 +577,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'xl_acc': [1.2], 'yl_acc': [3.4],
                         'xr_acc': [5.6], 'yr_acc': [7.8],
@@ -578,7 +599,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'x_right_acc': [0.1], 'y_right_acc': [0.2],
                         'x_left_acc': [0.3], 'y_left_acc': [0.4],
@@ -606,7 +627,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'x_pix': [0.1], 'y_pix': [0.2],
                         'x_dva': [1.1], 'y_dva': [1.2],
@@ -645,7 +666,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'x_right_pos_pix': [0.1], 'y_right_pos_pix': [0.2],
                         'x_left_pos_pix': [0.3], 'y_left_pos_pix': [0.4],
@@ -716,7 +737,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1.0, 1.5, 2.],
                         'x': [0., 1., 2.],
@@ -741,7 +762,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
                         'x': [0., 1., 2.],
@@ -766,7 +787,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1.0, 1.1, 1.2],
                         'x': [0., 1., 2.],
@@ -791,7 +812,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1.0005, 1.001, 1.0015],
                         'x': [0., 1., 2.],
@@ -816,7 +837,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
                         'x': [0., 1., 2.],
@@ -827,7 +848,7 @@ import pymovements as pm
                 'pixel_columns': ['x', 'y'],
                 'time_unit': 'step',
                 'time_column': 'time',
-                'experiment': pm.Experiment(
+                'experiment': Experiment(
                     screen_width_px=1,
                     screen_width_cm=1,
                     screen_height_px=1,
@@ -849,7 +870,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23, 2.34, 3.45], 'y': [4.56, 5.67, 6.78]},
                     schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
@@ -865,12 +886,12 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23, 2.34, 3.45], 'y': [4.56, 5.67, 6.78]},
                     schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'position_columns': ['x', 'y'],
-                'experiment': pm.Experiment(1024, 768, 38, 30, None, 'center', 100),
+                'experiment': Experiment(1024, 768, 38, 30, None, 'center', 100),
             },
             pl.from_dict(
                 {'time': [0, 10, 20], 'position': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
@@ -882,12 +903,12 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23, 2.34, 3.45], 'y': [4.56, 5.67, 6.78]},
                     schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'position_columns': ['x', 'y'],
-                'experiment': pm.Experiment(1024, 768, 38, 30, None, 'center', 1000),
+                'experiment': Experiment(1024, 768, 38, 30, None, 'center', 1000),
             },
             pl.from_dict(
                 {'time': [0, 1, 2], 'position': [[1.23, 4.56], [2.34, 5.67], [3.45, 6.78]]},
@@ -899,7 +920,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
                         'pixel_x': [0., 1., 2.],
@@ -922,7 +943,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
                         'position_x': [0., 1., 2.],
@@ -945,7 +966,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
                         'velocity_x': [0., 1., 2.],
@@ -968,7 +989,7 @@ import pymovements as pm
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {
                         'time': [1, 2, 3],
                         'acceleration_x': [0., 1., 2.],
@@ -992,20 +1013,39 @@ import pymovements as pm
             2,
             id='df_auto_columns_acceleration',
         ),
+
     ],
 )
-def test_init_gaze_dataframe_has_expected_attrs(init_kwargs, expected_frame, expected_n_components):
-    gaze = pm.GazeDataFrame(**init_kwargs)
-    assert_frame_equal(gaze.frame, expected_frame)
+def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
+    gaze = Gaze(**init_kwargs)
+    assert_frame_equal(gaze.samples, expected_samples)
     assert gaze.n_components == expected_n_components
 
 
+@pytest.mark.parametrize(
+    ('init_kwargs', 'expected_experiment'),
+    [
+        pytest.param(
+            {
+                'experiment': Experiment(sampling_rate=1000),
+            },
+            Experiment(sampling_rate=1000),
+            id='experiment',
+        ),
+    ],
+)
+def test_init_gaze_has_expected_experiment(init_kwargs, expected_experiment):
+    gaze = Gaze(**init_kwargs)
+    assert gaze.experiment == expected_experiment
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
 @pytest.mark.parametrize(
     ('init_kwargs', 'expected_trial_columns'),
     [
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     data={'trial': [1]},
                     schema={'trial': pl.Int64},
                 ),
@@ -1017,7 +1057,7 @@ def test_init_gaze_dataframe_has_expected_attrs(init_kwargs, expected_frame, exp
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     data={'trial': [1]},
                     schema={'trial': pl.Int64},
                 ),
@@ -1029,7 +1069,7 @@ def test_init_gaze_dataframe_has_expected_attrs(init_kwargs, expected_frame, exp
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     data={'trial': [1]},
                     schema={'trial': pl.Int64},
                 ),
@@ -1041,7 +1081,7 @@ def test_init_gaze_dataframe_has_expected_attrs(init_kwargs, expected_frame, exp
 
         pytest.param(
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'group': [2], 'trial': [1]},
                     schema={'group': pl.Int64, 'trial': pl.Int64},
                 ),
@@ -1053,8 +1093,8 @@ def test_init_gaze_dataframe_has_expected_attrs(init_kwargs, expected_frame, exp
 
     ],
 )
-def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_trial_columns):
-    gaze = pm.GazeDataFrame(**init_kwargs)
+def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_columns):
+    gaze = Gaze(**init_kwargs)
     assert gaze.trial_columns == expected_trial_columns
 
 
@@ -1063,7 +1103,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
     [
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'pixel_columns': 1,
             },
             TypeError,
@@ -1073,7 +1113,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'pixel_columns': 'x',
             },
             TypeError,
@@ -1083,7 +1123,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'pixel_columns': [0, 1],
             },
             TypeError,
@@ -1094,7 +1134,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'pixel_columns': ['x'],
             },
             ValueError,
@@ -1104,7 +1144,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr': pl.Float64, 'yr': pl.Float64, 'xl': pl.Float64, 'yl': pl.Float64,
                     },
@@ -1118,7 +1158,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr': pl.Float64, 'yr': pl.Float64,
                         'xl': pl.Float64, 'yl': pl.Float64,
@@ -1134,7 +1174,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'abc': pl.Int64,
                         'xr': pl.Float64, 'yr': pl.Float64,
@@ -1151,7 +1191,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Int64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Int64}),
                 'pixel_columns': ['x', 'y'],
             },
             ValueError,
@@ -1162,17 +1202,17 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64}),
                 'pixel_columns': ['x', 'y'],
             },
             pl.exceptions.ColumnNotFoundError,
-            'column y from pixel_columns is not available in dataframe',
+            'column y from pixel_columns is not available in samples dataframe',
             id='pixel_columns_missing_column',
         ),
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'position_columns': 1,
             },
             TypeError,
@@ -1182,7 +1222,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'position_columns': 'x',
             },
             TypeError,
@@ -1192,7 +1232,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'position_columns': [0, 1],
             },
             TypeError,
@@ -1203,7 +1243,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
                 'position_columns': ['x'],
             },
             ValueError,
@@ -1213,7 +1253,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr': pl.Float64, 'yr': pl.Float64, 'xl': pl.Float64, 'yl': pl.Float64,
                     },
@@ -1227,7 +1267,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr': pl.Float64, 'yr': pl.Float64,
                         'xl': pl.Float64, 'yl': pl.Float64,
@@ -1243,7 +1283,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'abc': pl.Int64,
                         'xr': pl.Float64, 'yr': pl.Float64,
@@ -1260,7 +1300,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Int64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Int64}),
                 'position_columns': ['x', 'y'],
             },
             ValueError,
@@ -1271,17 +1311,17 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x': pl.Float64}),
                 'position_columns': ['x', 'y'],
             },
             pl.exceptions.ColumnNotFoundError,
-            'column y from position_columns is not available in dataframe',
+            'column y from position_columns is not available in samples dataframe',
             id='position_columns_missing_column',
         ),
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
                 'velocity_columns': 1,
             },
             TypeError,
@@ -1291,7 +1331,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
                 'velocity_columns': 'x_vel',
             },
             TypeError,
@@ -1301,7 +1341,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
                 'velocity_columns': [0, 1],
             },
             TypeError,
@@ -1312,7 +1352,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Float64}),
                 'velocity_columns': ['x_vel'],
             },
             ValueError,
@@ -1322,7 +1362,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr_vel': pl.Float64, 'yr_vel': pl.Float64,
                         'xl_vel': pl.Float64, 'yl_vel': pl.Float64,
@@ -1337,7 +1377,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr_vel': pl.Float64, 'yr_vel': pl.Float64,
                         'xl_vel': pl.Float64, 'yl_vel': pl.Float64,
@@ -1353,7 +1393,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'abc': pl.Int64,
                         'xr_vel': pl.Float64, 'yr_vel': pl.Float64,
@@ -1372,7 +1412,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Int64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64, 'y_vel': pl.Int64}),
                 'velocity_columns': ['x_vel', 'y_vel'],
             },
             ValueError,
@@ -1383,17 +1423,17 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_vel': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_vel': pl.Float64}),
                 'velocity_columns': ['x_vel', 'y_vel'],
             },
             pl.exceptions.ColumnNotFoundError,
-            'column y_vel from velocity_columns is not available in dataframe',
+            'column y_vel from velocity_columns is not available in samples dataframe',
             id='velocity_columns_missing_column',
         ),
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
                 'acceleration_columns': 1,
             },
             TypeError,
@@ -1403,7 +1443,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
                 'acceleration_columns': 'x_acc',
             },
             TypeError,
@@ -1413,7 +1453,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
                 'acceleration_columns': [0, 1],
             },
             TypeError,
@@ -1424,7 +1464,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Float64}),
                 'acceleration_columns': ['x_acc'],
             },
             ValueError,
@@ -1434,7 +1474,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr_acc': pl.Float64, 'yr_acc': pl.Float64,
                         'xl_acc': pl.Float64, 'yl_acc': pl.Float64,
@@ -1449,7 +1489,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'xr_acc': pl.Float64, 'yr_acc': pl.Float64,
                         'xl_acc': pl.Float64, 'yl_acc': pl.Float64,
@@ -1465,7 +1505,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'abc': pl.Int64,
                         'xr_acc': pl.Float64, 'yr_acc': pl.Float64,
@@ -1484,7 +1524,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Int64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64, 'y_acc': pl.Int64}),
                 'acceleration_columns': ['x_acc', 'y_acc'],
             },
             ValueError,
@@ -1495,17 +1535,17 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(schema={'x_acc': pl.Float64}),
+                'samples': pl.DataFrame(schema={'x_acc': pl.Float64}),
                 'acceleration_columns': ['x_acc', 'y_acc'],
             },
             pl.exceptions.ColumnNotFoundError,
-            'column y_acc from acceleration_columns is not available in dataframe',
+            'column y_acc from acceleration_columns is not available in samples dataframe',
             id='acceleration_columns_missing_column',
         ),
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x': pl.Float64, 'y': pl.Float64,
                         'xr': pl.Float64, 'yr': pl.Float64,
@@ -1522,7 +1562,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x': pl.Float64, 'y': pl.Float64,
                         'time': pl.Float64,
@@ -1539,7 +1579,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x': pl.Float64, 'y': pl.Float64,
                         'trial': pl.Int64, 'time': pl.Float64,
@@ -1555,7 +1595,7 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x': pl.Float64, 'y': pl.Float64,
                         'time': pl.Float64, 'bar': pl.Int64,
@@ -1565,13 +1605,13 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
                 'trial_columns': ['foo', 'bar'],
             },
             KeyError,
-            'trial_columns missing in data: foo',
-            id='trial_columns_not_in_data',
+            'trial_columns missing in samples: foo',
+            id='trial_columns_not_in_samples',
         ),
 
         pytest.param(
             {
-                'data': pl.DataFrame(
+                'samples': pl.DataFrame(
                     schema={
                         'x': pl.Float64, 'y': pl.Float64,
                         'time': pl.Float64,
@@ -1588,11 +1628,22 @@ def test_init_gaze_dataframe_has_expected_trial_columns(init_kwargs, expected_tr
             id='time_unit_unsupported',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.DataFrame(),
+                'data': pl.DataFrame(),
+            },
+            ValueError,
+            'The arguments "samples" and "data" are mutually exclusive.',
+            marks=pytest.mark.filterwarnings('ignore:.*data.*samples.*:DeprecationWarning'),
+            id='samples_data_mutually_exclusive',
+        ),
+
     ],
 )
-def test_gaze_dataframe_init_exceptions(init_kwargs, exception, exception_msg):
+def test_gaze_init_exceptions(init_kwargs, exception, exception_msg):
     with pytest.raises(exception) as excinfo:
-        pm.GazeDataFrame(**init_kwargs)
+        Gaze(**init_kwargs)
 
     msg, = excinfo.value.args
     assert msg == exception_msg
@@ -1604,10 +1655,10 @@ def test_gaze_copy_init_has_same_n_components():
     Refers to issue #514.
     """
     df_orig = pl.from_numpy(np.zeros((3, 1000)), orient='col', schema=['t', 'x', 'y'])
-    gaze = pm.GazeDataFrame(df_orig, position_columns=['x', 'y'], time_column='t')
+    gaze = Gaze(df_orig, position_columns=['x', 'y'], time_column='t')
 
-    df_copy = gaze.frame.clone()
-    gaze_copy = pm.GazeDataFrame(df_copy)
+    df_copy = gaze.samples.clone()
+    gaze_copy = Gaze(df_copy)
 
     assert gaze.n_components == gaze_copy.n_components
 
@@ -1618,57 +1669,114 @@ def test_gaze_copy_init_has_same_n_components():
         pytest.param(
             None,
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'position_columns': ['x', 'y'],
             },
-            id='data_with_no_events',
+            id='samples_with_no_events',
         ),
 
         pytest.param(
-            pm.EventDataFrame(),
+            Events(),
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'position_columns': ['x', 'y'],
             },
-            id='data_empty_events',
+            id='samples_empty_events',
         ),
 
         pytest.param(
-            pm.EventDataFrame(),
+            Events(),
             {},
-            id='no_data_empty_events',
+            id='no_samples_empty_events',
         ),
 
         pytest.param(
-            pm.EventDataFrame(name='saccade', onsets=[0], offsets=[10]),
+            Events(name='saccade', onsets=[0], offsets=[10]),
             {},
-            id='no_data_with_saccades',
+            id='no_samples_with_saccades',
         ),
 
         pytest.param(
-            pm.EventDataFrame(name='fixation', onsets=[100], offsets=[910]),
+            Events(name='fixation', onsets=[100], offsets=[910]),
             {
-                'data': pl.from_dict(
+                'samples': pl.from_dict(
                     {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
                 ),
                 'position_columns': ['x', 'y'],
             },
-            id='data_with_fixations',
+            id='samples_with_fixations',
         ),
     ],
 )
 def test_gaze_init_events(events, init_kwargs):
     if events is None:
-        expected_events = pm.EventDataFrame().frame
+        expected_events = Events().frame
     else:
         expected_events = events.frame
 
-    gaze = pm.GazeDataFrame(events=events, **init_kwargs)
+    gaze = Gaze(events=events, **init_kwargs)
 
     assert_frame_equal(gaze.events.frame, expected_events)
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
+
+
+@pytest.mark.parametrize(
+    ('metadata', 'expected_metadata'),
+    [
+        pytest.param(None, {}, id='None'),
+        pytest.param({'test': 'value'}, {'test': 'value'}, id='dict'),
+    ],
+)
+def test_gaze_has_correct_metadata(metadata, expected_metadata):
+    gaze = Gaze(metadata=metadata)
+    assert gaze.metadata == expected_metadata
+
+
+def test_gaze_init_warnings():
+    with pytest.warns(UserWarning) as record:
+        Gaze(samples=pl.from_dict({'a': [1, 2, 3]}))
+
+    expected_msg_prefix = 'Gaze contains samples but no components could be inferred.'
+
+    assert len(record) == 1
+    assert record[0].message.args[0].startswith(expected_msg_prefix)
+
+
+@pytest.mark.parametrize(
+    'init_kwargs',
+    [
+        pytest.param(
+            {'data': pl.DataFrame()},
+            id='data',
+        ),
+    ],
+)
+def test_gaze_init_parameter_is_deprecated(init_kwargs):
+    with pytest.warns(DeprecationWarning):
+        Gaze(**init_kwargs)
+
+
+@pytest.mark.parametrize(
+    'init_kwargs',
+    [
+        pytest.param(
+            {'data': pl.DataFrame()},
+            id='data',
+        ),
+    ],
+)
+def test_gaze_init_parameter_is_removed(init_kwargs, assert_deprecation_is_removed):
+    with pytest.raises(DeprecationWarning) as info:
+        Gaze(**init_kwargs)
+
+    assert_deprecation_is_removed(
+        function_name=f'Gaze init argument {list(init_kwargs.keys())[0]}',
+        warning_message=info.value.args[0],
+        scheduled_version='0.28.0',
+
+    )

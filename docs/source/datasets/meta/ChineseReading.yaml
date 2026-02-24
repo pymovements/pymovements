@@ -1,0 +1,19 @@
+name: ChineseReading
+resources:
+- content: precomputed_events
+  filename: Raw Data.txt
+  url: https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a
+  filename_pattern: Raw Data.txt
+  load_kwargs:
+    trial_columns:
+    - Subject
+    - Sentence_ID
+    read_csv_kwargs:
+      separator: "\t"
+- content: precomputed_reading_measures
+  filename: chinese_reading_measures.zip
+  url: https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip=
+  filename_pattern: '{measure_type:s} Measures.xlsx'
+  load_kwargs:
+    read_excel_kwargs:
+      sheet_name: Sheet 1

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,20 +20,23 @@
 """Provides the Screen class."""
 from __future__ import annotations
 
+from dataclasses import asdict
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 
+from pymovements._utils import _checks
+from pymovements._utils._html import repr_html
 from pymovements.gaze import transforms_numpy
-from pymovements.utils import checks
-from pymovements.utils import decorators
 
 
-@decorators.auto_str
+@repr_html()
+@dataclass
 class Screen:
     """Screen class for holding screen properties.
 
-     Also transforms pixel coordinates to degrees of visual angle.
-
-    Parameters
+    Attributes
     ----------
     width_px: int | None
         Screen width in pixels. (default: None)
@@ -45,11 +48,11 @@ class Screen:
         Screen height in centimeters. (default: None)
     distance_cm: float | None
         Eye-to-screen distance in centimeters. If None, a `distance_column` must be provided
-        in the `DatasetDefinition` or `GazeDataFrame`, which contains the eye-to-screen
+        in the `DatasetDefinition` or `Gaze`, which contains the eye-to-screen
         distance for each sample in millimeters. (default: None)
     origin: str | None
         Specifies the screen location of the origin of the pixel
-        coordinate system. (default: 'upper left')
+        coordinate system. (default: None)
 
     Examples
     --------
@@ -62,8 +65,8 @@ class Screen:
     ...     origin='upper left',
     ... )
     >>> print(screen)
-    Screen(width_px=1280, height_px=1024, width_cm=38.00,
-    height_cm=30.00, distance_cm=68.00, origin=upper left)
+    Screen(width_px=1280, height_px=1024, width_cm=38.0,
+    height_cm=30.0, distance_cm=68.0, origin='upper left')
 
     We can also access the screen boundaries in degrees of visual angle. This only works if the
     `distance_cm` attribute is specified.
@@ -79,36 +82,29 @@ class Screen:
 
     """
 
-    def __init__(
-            self,
-            width_px: int | None = None,
-            height_px: int | None = None,
-            width_cm: float | None = None,
-            height_cm: float | None = None,
-            distance_cm: float | None = None,
-            origin: str | None = 'upper left',
-    ):
-        if width_px is not None:
-            checks.check_is_greater_than_zero(width_px=width_px)
-        self.width_px = width_px
+    width_px: int | None = None
+    height_px: int | None = None
+    width_cm: float | None = None
+    height_cm: float | None = None
+    distance_cm: float | None = None
+    origin: str | None = None
 
-        if height_px is not None:
-            checks.check_is_greater_than_zero(height_px=height_px)
-        self.height_px = height_px
+    def __post_init__(self) -> None:
+        """Check fields for validity."""
+        if self.width_px is not None:
+            _checks.check_is_greater_than_zero(width_px=self.width_px)
 
-        if width_cm is not None:
-            checks.check_is_greater_than_zero(width_cm=width_cm)
-        self.width_cm = width_cm
+        if self.height_px is not None:
+            _checks.check_is_greater_than_zero(height_px=self.height_px)
 
-        if height_cm is not None:
-            checks.check_is_greater_than_zero(height_cm=height_cm)
-        self.height_cm = height_cm
+        if self.width_cm is not None:
+            _checks.check_is_greater_than_zero(width_cm=self.width_cm)
 
-        if distance_cm is not None:
-            checks.check_is_greater_than_zero(distance_cm=distance_cm)
-        self.distance_cm = distance_cm
+        if self.height_cm is not None:
+            _checks.check_is_greater_than_zero(height_cm=self.height_cm)
 
-        self.origin = origin
+        if self.distance_cm is not None:
+            _checks.check_is_greater_than_zero(distance_cm=self.distance_cm)
 
     @property
     def x_max_dva(self) -> float:
@@ -122,7 +118,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        checks.check_is_not_none(origin=self.origin)
+        _checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -147,7 +143,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        checks.check_is_not_none(origin=self.origin)
+        _checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -172,7 +168,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        checks.check_is_not_none(origin=self.origin)
+        _checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -197,7 +193,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        checks.check_is_not_none(origin=self.origin)
+        _checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return float(
@@ -271,7 +267,7 @@ class Screen:
         self._check_numerical_attribute('distance_cm')
         assert self.distance_cm is not None
 
-        checks.check_is_not_none(origin=self.origin)
+        _checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
         return transforms_numpy.pix2deg(
@@ -285,6 +281,35 @@ class Screen:
     def _check_numerical_attribute(self, key: str) -> None:
         """Check if numerical attribute is not None and greater than zero."""
         value = getattr(self, key, None)
-        checks.check_is_not_none(**{key: value})
+        _checks.check_is_not_none(**{key: value})
         assert isinstance(value, (int, float))
-        checks.check_is_greater_than_zero(**{key: value})
+        _checks.check_is_greater_than_zero(**{key: value})
+
+    def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
+        """Convert the Screen instance into a dictionary.
+
+        Parameters
+        ----------
+        exclude_none: bool
+            Exclude attributes that are either ``None`` or that are objects that evaluate to
+            ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
+            ``int``, and ``float`` are not excluded.
+
+        Returns
+        -------
+        dict[str, Any]
+            Screen as dictionary.
+        """
+        _dict = asdict(self)
+
+        # Delete fields that evaluate to False (False, None, [], {})
+        if exclude_none:
+            for key, value in list(_dict.items()):
+                if not isinstance(value, (bool, int, float)) and not value:
+                    del _dict[key]
+
+        return _dict
+
+    def __bool__(self) -> bool:
+        """Return True if the screen has data defined, else False."""
+        return not all(not value for value in self.__dict__.values())

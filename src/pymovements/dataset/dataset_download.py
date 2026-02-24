@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,32 +21,40 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Sequence
+from pathlib import Path
 from urllib.error import URLError
+from warnings import warn
 
+from pymovements.dataset._utils._archives import extract_archive
+from pymovements.dataset._utils._downloads import download_file
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
-from pymovements.utils.archives import extract_archive
-from pymovements.utils.downloads import download_file
+from pymovements.dataset.resources import ResourceDefinition
+from pymovements.dataset.resources import ResourceDefinitions
+from pymovements.exceptions import UnknownFileType
 
 
 def download_dataset(
         definition: DatasetDefinition,
         paths: DatasetPaths,
+        *,
         extract: bool = True,
         remove_finished: bool = False,
+        resume: bool = True,
         verbose: bool = True,
 ) -> None:
     """Download dataset resources.
 
     This downloads all resources of the dataset. Per default this also extracts all archives
     into :py:meth:`Dataset.paths.raw`,
-    To save space on your device you can remove the archive files after
+    To save space on your device, you can remove the archive files after
     successful extraction with ``remove_finished=True``.
 
     If a corresponding file already exists in the local system, its checksum is calculated and
     checked against the expected checksum.
     Downloading will be evaded if the integrity of the existing file can be verified.
-    If the existing file does not match the expected checksum it is overwritten with the
+    If the existing file does not match the expected checksum, it is overwritten with the
     downloaded new file.
 
     Parameters
@@ -59,6 +67,9 @@ def download_dataset(
         Extract dataset archive files. (default: True)
     remove_finished: bool
         Remove archive files after extraction. (default: False)
+    resume: bool
+        Resume previous extraction by skipping existing files.
+        Checks for correct size of existing files but not integrity. (default: True)
     verbose: bool
         If True, show progress of download and print status messages for integrity checking and
         file extraction. (default: True)
@@ -70,145 +81,29 @@ def download_dataset(
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
-    if definition.has_files['gaze']:
-        if len(definition.mirrors['gaze']) == 0:
-            raise AttributeError('number of mirrors must not be zero to download dataset')
+    if not definition.resources:
+        raise AttributeError('resources must be specified to download a dataset.')
 
-        if len(definition.resources['gaze']) == 0:
-            raise AttributeError('number of gaze_resources must not be zero to download dataset')
+    for content in ('gaze', 'precomputed_events', 'precomputed_reading_measures'):
+        if definition.resources.has_content(content):
+            if not definition.mirrors:
+                mirrors = None
+            else:
+                mirrors = definition.mirrors.get(content, None)
 
-        paths.raw.mkdir(parents=True, exist_ok=True)
-
-        for resource in definition.resources['gaze']:
-            success = False
-
-            for mirror_idx, mirror in enumerate(definition.mirrors['gaze']):
-
-                url = f'{mirror}{resource["resource"]}'
-
-                try:
-                    download_file(
-                        url=url,
-                        dirpath=paths.downloads,
-                        filename=resource['filename'],
-                        md5=resource['md5'],
-                        verbose=verbose,
-                    )
-                    success = True
-
-                # pylint: disable=overlapping-except
-                except (URLError, OSError, RuntimeError) as error:
-                    # Error downloading the resource, try next mirror
-                    if mirror_idx < len(definition.mirrors['gaze']) - 1:
-                        print(f'Failed to download:\n{error}\nTrying next mirror.')
-                    continue
-
-                # downloading the resource was successful, we don't need to try another mirror
-                break
-
-            if not success:
-                raise RuntimeError(
-                    f"downloading resource {resource['resource']} failed for all mirrors.",
-                )
-
-    if definition.has_files['precomputed_events']:
-        if len(definition.mirrors['precomputed_events']) == 0:
-            raise AttributeError(
-                'number of precomputed mirrors must not be zero to download dataset',
+            _download_resources(
+                mirrors=mirrors,
+                resources=definition.resources.filter(content),
+                target_dirpath=paths.downloads,
+                verbose=verbose,
             )
-
-        if len(definition.resources['precomputed_events']) == 0:
-            raise AttributeError(
-                'number of precomputed_event_resources must not be zero to download dataset',
-            )
-
-        paths.precomputed_events.mkdir(parents=True, exist_ok=True)
-
-        for resource in definition.resources['precomputed_events']:
-            success = False
-
-            for mirror_idx, mirror in enumerate(definition.mirrors['precomputed_events']):
-
-                url = f'{mirror}{resource["resource"]}'
-
-                try:
-                    download_file(
-                        url=url,
-                        dirpath=paths.downloads,
-                        filename=resource['filename'],
-                        md5=resource['md5'],
-                        verbose=verbose,
-                    )
-                    success = True
-
-                # pylint: disable=overlapping-except
-                except (URLError, OSError, RuntimeError) as error:
-                    # Error downloading the resource, try next mirror
-                    if mirror_idx < len(definition.mirrors['precomputed_events']) - 1:
-                        print(f'Failed to download:\n{error}\nTrying next mirror.')
-                    continue
-
-                # downloading the resource was successful, we don't need to try another mirror
-                break
-
-            if not success:
-                raise RuntimeError(
-                    f"downloading resource {resource['resource']} "
-                    'failed for all mirrors.',
-                )
-
-    if definition.has_files['precomputed_reading_measures']:
-        if len(definition.mirrors['precomputed_reading_measures']) == 0:
-            raise AttributeError(
-                'number of precomputed mirrors must not be zero to download dataset',
-            )
-
-        if len(definition.resources['precomputed_reading_measures']) == 0:
-            raise AttributeError(
-                'number of precomputed_reading_measures resources '
-                'must not be zero to download dataset',
-            )
-
-        paths.precomputed_reading_measures.mkdir(parents=True, exist_ok=True)
-
-        for resource in definition.resources['precomputed_reading_measures']:
-            success = False
-
-            for mirror_idx, mirror in enumerate(definition.mirrors['precomputed_reading_measures']):
-
-                url = f'{mirror}{resource["resource"]}'
-
-                try:
-                    download_file(
-                        url=url,
-                        dirpath=paths.downloads,
-                        filename=resource['filename'],
-                        md5=resource['md5'],
-                        verbose=verbose,
-                    )
-                    success = True
-
-                # pylint: disable=overlapping-except
-                except (URLError, OSError, RuntimeError) as error:
-                    # Error downloading the resource, try next mirror
-                    if mirror_idx < len(definition.mirrors['precomputed_reading_measures']) - 1:
-                        print(f'Failed to download:\n{error}\nTrying next mirror.')
-                    continue
-
-                # downloading the resource was successful, we don't need to try another mirror
-                break
-
-            if not success:
-                raise RuntimeError(
-                    f"downloading resource {resource['resource']} "
-                    'failed for all mirrors.',
-                )
 
     if extract:
         extract_dataset(
             definition=definition,
             paths=paths,
             remove_finished=remove_finished,
+            resume=resume,
             verbose=verbose,
         )
 
@@ -216,8 +111,10 @@ def download_dataset(
 def extract_dataset(
         definition: DatasetDefinition,
         paths: DatasetPaths,
+        *,
         remove_finished: bool = False,
         remove_top_level: bool = True,
+        resume: bool = True,
         verbose: int = 1,
 ) -> None:
     """Extract downloaded dataset archive files.
@@ -232,58 +129,160 @@ def extract_dataset(
         Remove archive files after extraction. (default: False)
     remove_top_level: bool
         If ``True``, remove the top-level directory if it has only one child. (default: True)
+    resume: bool
+        Resume previous extraction by skipping existing files.
+        Checks for correct size of existing files but not integrity. (default: True)
     verbose: int
         Verbosity levels: (1) Print messages for extracting each dataset resource without printing
         messages for recursive archives. (2) Print messages for extracting each dataset resource and
         each recursive archive extract. (default: 1)
     """
-    if definition.has_files['gaze'] and definition.extract['gaze']:
-        paths.raw.mkdir(parents=True, exist_ok=True)
-        for resource in definition.resources['gaze']:
-            source_path = paths.downloads / resource['filename']
-            destination_path = paths.raw
+    content_dirnames = {
+        'gaze': 'raw',
+        'precomputed_events': 'precomputed_events',
+        'precomputed_reading_measures': 'precomputed_reading_measures',
+    }
 
-            extract_archive(
-                source_path=source_path,
-                destination_path=destination_path,
-                recursive=True,
-                remove_finished=remove_finished,
-                remove_top_level=remove_top_level,
+    for content, content_directory in content_dirnames.items():
+        if definition.resources.has_content(content):
+            destination_dirpath = getattr(paths, content_directory)
+            destination_dirpath.mkdir(parents=True, exist_ok=True)
+            for resource in definition.resources.filter(content):
+                source_path = paths.downloads / resource.filename
+
+                try:
+                    extract_archive(
+                        source_path=source_path,
+                        destination_path=destination_dirpath,
+                        recursive=True,
+                        remove_finished=remove_finished,
+                        remove_top_level=remove_top_level,
+                        resume=resume,
+                        verbose=verbose,
+                    )
+                except UnknownFileType:  # just copy file to target if not an archive.
+                    shutil.copy(source_path, destination_dirpath / resource.filename)
+
+
+def _download_resources(
+        mirrors: Sequence[str] | None,
+        resources: ResourceDefinitions,
+        target_dirpath: Path,
+        verbose: bool,
+) -> None:
+    """Download resources."""
+    for resource in resources:
+        if not mirrors:
+            _download_resource(resource, target_dirpath, verbose)
+        else:
+            _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
+
+
+def _download_resource(
+        resource: ResourceDefinition,
+        target_dirpath: Path,
+        verbose: bool,
+) -> None:
+    """Download resource without mirrors."""
+    if resource.url is None:
+        raise AttributeError('Resource.url must not be None')
+    if resource.filename is None:
+        raise AttributeError('Resource.filename must not be None')
+
+    try:
+        download_file(
+            url=resource.url,
+            dirpath=target_dirpath,
+            filename=resource.filename,
+            md5=resource.md5,
+            verbose=verbose,
+        )
+
+    # pylint: disable=overlapping-except
+    except (URLError, OSError, RuntimeError) as error:
+        if not resource.mirrors:
+            raise RuntimeError(f"Downloading resource {resource.url} failed.") from error
+
+        warn(UserWarning(f'Downloading resource {resource.url} failed. Trying mirror.'))
+
+        success = _download_resource_from_mirrors(
+            mirrors=resource.mirrors,
+            filename=resource.filename,
+            md5=resource.md5,
+            target_dirpath=target_dirpath,
+            verbose=verbose,
+        )
+
+        if not success:
+            raise RuntimeError(
+                f"Downloading resource {resource.filename} failed for all mirrors.",
+            ) from error
+
+
+def _download_resource_from_mirrors(
+        mirrors: list[str],
+        filename: str,
+        md5: str | None,
+        target_dirpath: Path,
+        verbose: bool,
+) -> bool:
+    """Download resource from mirrors."""
+    for mirror_idx, mirror_url in enumerate(mirrors, start=1):
+        try:
+            download_file(
+                url=mirror_url,
+                dirpath=target_dirpath,
+                filename=filename,
+                md5=md5,
                 verbose=verbose,
             )
+            return True  # Download successful, exit loop
+        # pylint: disable=overlapping-except
+        except (URLError, OSError, RuntimeError) as error:
+            msg = f'Downloading resource from mirror {mirror_url} failed.'
+            if mirror_idx < len(mirrors):
+                msg = msg + f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).'
+            warning = UserWarning(msg)
+            warning.__cause__ = error
+            warn(warning)
+            # Try the next mirror
+    return False  # All mirrors failed
 
-    if definition.has_files['precomputed_events']:
-        paths.precomputed_events.mkdir(parents=True, exist_ok=True)
-        for resource in definition.resources['precomputed_events']:
-            source_path = paths.downloads / resource['filename']
-            destination_path = paths.precomputed_events
 
-            if definition.extract['precomputed_events']:
-                extract_archive(
-                    source_path=source_path,
-                    destination_path=destination_path,
-                    recursive=True,
-                    remove_finished=remove_finished,
-                    remove_top_level=remove_top_level,
-                    verbose=verbose,
+def _download_resource_with_legacy_mirrors(
+        mirrors: Sequence[str],
+        resource: ResourceDefinition,
+        target_dirpath: Path,
+        verbose: bool,
+) -> None:
+    """Download resource with mirrors."""
+    if resource.url is None:
+        raise AttributeError('Resource.url must not be None')
+    if resource.filename is None:
+        raise AttributeError('Resource.filename must not be None')
+
+    for mirror_idx, mirror in enumerate(mirrors, start=1):
+        mirror_url = f'{mirror}{resource.url}'
+        try:
+            download_file(
+                url=mirror_url,
+                dirpath=target_dirpath,
+                filename=resource.filename,
+                md5=resource.md5,
+                verbose=verbose,
+            )
+            return  # Download successful
+        # pylint: disable=overlapping-except
+        except (URLError, OSError, RuntimeError) as error:
+            # Error downloading the resource, try next mirror
+            if mirror_idx < len(mirrors):
+                warning = UserWarning(
+                    f'Downloading resource from mirror {mirror_url} failed.'
+                    f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
                 )
-            else:
-                shutil.copy(source_path, destination_path / resource['filename'])
+                warning.__cause__ = error
+                warn(warning)
 
-    if definition.has_files['precomputed_reading_measures']:
-        paths.precomputed_reading_measures.mkdir(parents=True, exist_ok=True)
-        for resource in definition.resources['precomputed_reading_measures']:
-            source_path = paths.downloads / resource['filename']
-            destination_path = paths.precomputed_reading_measures
-
-            if definition.extract['precomputed_reading_measures']:
-                extract_archive(
-                    source_path=source_path,
-                    destination_path=destination_path,
-                    recursive=True,
-                    remove_finished=remove_finished,
-                    remove_top_level=remove_top_level,
-                    verbose=verbose,
-                )
-            else:
-                shutil.move(source_path, destination_path / resource['filename'])
+    raise RuntimeError(
+        f"Downloading resource {resource.url} failed for all mirrors.",
+    )

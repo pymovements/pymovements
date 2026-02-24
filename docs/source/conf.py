@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('src'))))
 # -- Project information -----------------------------------------------------
 
 project = 'pymovements'
-copyright = '2022-2023 The pymovements Project Authors'
+copyright = '2022-2025 The pymovements Project Authors'
 author = 'The pymovements Project Authors'
 
 
@@ -59,18 +59,25 @@ author = 'The pymovements Project Authors'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
+    'sphinx.ext.extlinks',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
     'sphinx.ext.mathjax',
-    'sphinx.ext.extlinks',
+    'sphinx.ext.napoleon',
     'sphinx_copybutton',
     'sphinx_design',
     'sphinx_favicon',
     'sphinx_mdinclude',
     'sphinxcontrib.datatemplates',
     'sphinxcontrib.bibtex',
-    'nbsphinx',
+    'myst_nb',  # load after `sphinx_mdinclude` to suppress extension error ('.md' registration)
 ]
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.ipynb': 'myst-nb',
+    '.myst': 'myst-nb',
+    '.md': 'markdown',
+}
 
 
 def config_inited_handler(app, config):
@@ -90,12 +97,117 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 # exclude_patterns = []
+suppress_warnings = [
+    'myst.header',
+]
 
 
 copybutton_prompt_text = r'>>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: '
 copybutton_prompt_is_regexp = True
 copybutton_line_continuation_character = '\\'
 copybutton_here_doc_delimiter = 'EOT'
+
+# -- Options for cross-references ---------------------------------------------------
+
+# Help Napoleon resolve common short type names in docstrings
+napoleon_type_aliases = {
+    # Builtins / stdlib typing shorthands
+    'Sequence': 'collections.abc.Sequence',
+    'Iterable': 'collections.abc.Iterable',
+    'Callable': 'collections.abc.Callable',
+
+    # Datetime
+    'datetime': 'datetime.datetime',
+
+    # Filesystem paths
+    'Path': 'pathlib.Path',
+
+    # NumPy core
+    'ndarray': 'numpy.ndarray',
+    'np.ndarray': 'numpy.ndarray',
+    'DTypeLike': 'numpy.typing.DTypeLike',
+
+    # Pandas
+    'pd.DataFrame': 'pandas.DataFrame',
+
+    # Matplotlib common types
+    'plt.Figure': 'matplotlib.figure.Figure',
+    'plt.Axes': 'matplotlib.axes.Axes',
+    'colors.Colormap': 'matplotlib.colors.Colormap',
+    'colors.Normalize': 'matplotlib.colors.Normalize',
+
+    # Polars (broken intersphinx)
+    'pl.DataFrame': 'polars.DataFrame',
+    'pl.Series': 'polars.Series',
+    'pl.Expr': 'polars.Expr',
+}
+
+nitpicky = True
+# Patterns for ignoring nitpicky cross-ref warnings. The regex matches the TARGET only,
+# not the full warning message. Keep these as narrow as possible.
+# See: https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-nitpick_ignore_regex
+nitpick_ignore_regex = [
+    # pathlib Path types used in type hints/docstrings which are not resolvable in our docs
+    (r'py:class', r'^(?:pathlib\._local\.)?Path$'),
+
+    # Numpy shorthand types that are usually written as np.X but not resolvable
+    (r'py:class', r'^np\..*'),
+
+    # Polars types referenced with either pl.X or fully qualified polars.*
+    # Context: polars intersphinx mapping is broken, https://github.com/pola-rs/polars/issues/7027
+    (r'py:(class|mod)', r'^(?:pl|polars)(?:\..*)?$'),
+
+    # Allow explicit pandas shorthand in RST roles that napoleon cannot rewrite
+    (r'py:class', r'^pd\.DataFrame$'),
+
+    # Matplotlib pyplot short alias references like plt.X
+    (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
+
+    # Our docs might reference a plain "transforms.func" symbol coming from context
+    (r'py:(func|meth|mod)', r'^transforms\..*'),
+
+    # Shorthand alias used in docs for our own package
+    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
+
+    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
+    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+
+    # Modules referenced in text but not importable via intersphinx targets
+    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
+
+    # Custom exception names mentioned in text but not importable as a symbol
+    (r'py:exc', r'^UnknownMeasure$'),
+    (r'py:exc', r'^\.\.\s+deprecated:$'),
+
+
+    # Matplotlib color types referenced in plotting API
+    (
+        r'py:class',
+        r'^(?:colors\.Colormap|colors\.Normalize|LinearSegmentedColormapType|Normalize)$',
+    ),
+
+    # Project-internal typing aliases used only in docs
+    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
+    # Fully-qualified generic forms that appear in docstrings
+    (
+        r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
+        r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
+    ),
+
+    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
+    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
+    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
+    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
+
+    # Internal helper functions referenced in docs text
+    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
+
+    # Residual autosummary cross-refs to attributes/methods on our high-level classes
+    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+
+    # Odd matplotlib reference seen in deprecated utils.plotting docs
+    (r'py:class', r'^matplotlib\.pyplot\.figure$'),
+]
 
 
 # -- Options for autosummary -------------------------------------------------
@@ -118,23 +230,38 @@ html_css_files = [
 
 html_theme_options = {
     'navigation_with_keys': False,
-    'external_links': [
-        {
-            'name': 'Contributing',
-            'url': 'https://github.com/aeye-lab/pymovements/blob/main/CONTRIBUTING.md',
-        },
-    ],
+    'sidebar_includehidden': True,
     'icon_links': [
         {
             'name': 'GitHub',
-            'url': 'https://github.com/aeye-lab/pymovements',
+            'url': 'https://github.com/pymovements/pymovements',
             'icon': 'fa-brands fa-github',
         },
     ],
     'logo': {
-        'image_light': 'https://raw.githubusercontent.com/aeye-lab/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
-        'image_dark': 'https://raw.githubusercontent.com/aeye-lab/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
+        'image_light': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
+        'image_dark': 'https://raw.githubusercontent.com/pymovements/pymovements/main/docs/source/_static/logo.svg',  # noqa: E501
     },
+}
+
+# -- MyST configuration --------------------------------------------------
+# https://myst-nb.readthedocs.io/en/latest/configuration.html
+
+myst_links_external_new_tab = True
+
+nb_execution_timeout = 60
+nb_execution_mode = 'auto'
+nb_execution_show_tb = True
+
+# -- Intersphinx options -------------------------------------------------
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable', None),
+    'polars': ('https://docs.pola.rs/api/python/stable', None),
+    'feather': ('https://arrow.apache.org/docs/', None),
+    'matplotlib': ('https://matplotlib.org/stable', None),
 }
 
 # -- Options for favicons
@@ -142,10 +269,6 @@ html_theme_options = {
 favicons = [
     {'href': 'icon.svg'},
 ]
-
-# -- Options for juypter notebooks
-
-nbsphinx_execute = 'auto'
 
 
 # -- Options for BibTeX ------------------------------------------------------
@@ -157,7 +280,7 @@ bibtex_reference_style = 'author_year'
 class AuthorYearLabelStyle(BaseLabelStyle):
     def format_labels(self, sorted_entries):
         for entry in sorted_entries:
-            yield f'[{entry.persons["author"][0].last_names[0]} et al., {entry.fields["year"]}]'
+            yield f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
 
 
 class AuthorYearStyle(PlainStyle):
@@ -185,14 +308,14 @@ REVISION = getrev()
 
 extlinks = {
     'repo': (
-        f'https://github.com/aeye-lab/pymovements/blob/{REVISION}/%s',
+        f'https://github.com/pymovements/pymovements/blob/{REVISION}/%s',
         '%s',
     ),
 }
 
 LINKCODE_URL = (
-    f'https://github.com/aeye-lab/pymovements/blob/{REVISION}'
-    '/src/{filepath}#L{linestart}-L{linestop}'
+    f'https://github.com/pymovements/pymovements/blob/{REVISION}'
+    '/src/pymovements/{filepath}#L{linestart}-L{linestop}'
 )
 
 
@@ -217,7 +340,7 @@ def linkcode_resolve(domain, info):
             return None
 
     try:
-        modpath = importlib.resources.require(topmodulename)[0].location
+        modpath = importlib.resources.files(topmodulename)
         filepath = os.path.relpath(inspect.getsourcefile(obj), modpath)
         if filepath is None:
             return

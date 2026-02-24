@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,72 +17,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides gaze related functionality.
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree:
-   :template: class.rst
-
-    pymovements.gaze.Experiment
-    pymovements.gaze.EyeTracker
-    pymovements.gaze.Screen
-    pymovements.gaze.GazeDataFrame
-
-.. rubric:: Transformations
-
-.. autosummary::
-   :toctree:
-
-   pymovements.gaze.transforms.center_origin
-   pymovements.gaze.transforms.downsample
-   pymovements.gaze.transforms.norm
-   pymovements.gaze.transforms.pix2deg
-   pymovements.gaze.transforms.deg2pix
-   pymovements.gaze.transforms.pos2acc
-   pymovements.gaze.transforms.pos2vel
-   pymovements.gaze.transforms.savitzky_golay
-
-.. rubric:: Input / Output
-
-.. autosummary::
-    :toctree:
-
-    pymovements.gaze.from_asc
-    pymovements.gaze.from_csv
-    pymovements.gaze.from_ipc
-
-.. rubric:: Integration
-
-.. autosummary::
-    :toctree:
-
-    pymovements.gaze.from_numpy
-    pymovements.gaze.from_pandas
-
-.. rubric:: Numpy Transformations
-
-.. autosummary::
-   :toctree:
-
-   pymovements.gaze.transforms_numpy.pix2deg
-   pymovements.gaze.transforms_numpy.pos2acc
-   pymovements.gaze.transforms_numpy.pos2vel
-   pymovements.gaze.transforms_numpy.norm
-   pymovements.gaze.transforms_numpy.split
-   pymovements.gaze.transforms_numpy.downsample
-   pymovements.gaze.transforms_numpy.consecutive
-
-"""
+"""Provides gaze related functionality."""
 from pymovements.gaze import transforms
 from pymovements.gaze import transforms_numpy
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.eyetracker import EyeTracker
+from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.gaze_dataframe import GazeDataFrame
 from pymovements.gaze.integration import from_numpy
 from pymovements.gaze.integration import from_pandas
 from pymovements.gaze.io import from_asc
+from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.gaze.screen import Screen
@@ -93,11 +38,13 @@ __all__ = [
     'EyeTracker',
     'from_numpy',
     'from_pandas',
+    'Gaze',
     'GazeDataFrame',
     'Screen',
     'transforms_numpy',
     'transforms',
     'from_asc',
+    'from_begaze',
     'from_csv',
     'from_ipc',
 ]

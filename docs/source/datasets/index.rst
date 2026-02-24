@@ -1,0 +1,58 @@
+==========
+ Datasets
+==========
+
+**Please cite the respective paper for every dataset that you use in your research.**
+
+Download your dataset and load it into memory with these few lines of code:
+
+.. code-block:: python
+
+    import pymovements as pm
+
+    # Initialize the dataset object with its name
+    # Specify your local directory for saving and loading data
+    dataset = pm.Dataset(name='EMTeC', path='path/to/your/data/directory')
+
+    # Download the dataset and extract all archives.
+    dataset.download()
+
+    # Load the dataset into memory for processing
+    dataset.load()
+
+.. grid::
+    :gutter: 5
+
+    .. grid-item-card::
+
+        **Are you missing a dataset?**
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        Check out this guide on how to contribute datasets to the library:
+
+        .. button-ref:: contributing_datasets
+            :color: primary
+            :shadow:
+
+            Contributing Datasets
+
+-----------------
+ Public Datasets
+-----------------
+
+.. csv-table::
+   :file: public_datasets.csv
+   :widths: 45, 5, 5, 5, 5, 5, 5, 5
+   :header-rows: 1
+
+------------------
+ Example Datasets
+------------------
+
+.. csv-table::
+   :file: example_datasets.csv
+   :widths: 45, 5, 5, 5, 5, 5, 5, 5
+   :header-rows: 1
+
+.. datatemplate:yaml:: datasets.yaml
+   :template: datasets.rst

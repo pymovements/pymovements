@@ -1,20 +1,17 @@
-{{ fullname | escape | underline}}
+{{ objname | escape | underline}}
 
 .. currentmodule:: {{ module }}
 
-.. autoclass:: {{ fullname }}
+.. autoclass:: {{ objname }}
 
    {% block methods %}
-   .. automethod:: __init__
-      :noindex:
-
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
       :toctree:
    {% for item in methods %}
-      ~{{ fullname }}.{{ item }}
+      ~{{ objname }}.{{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
@@ -25,7 +22,7 @@
 
    .. autosummary::
    {% for item in attributes %}
-      ~{{ fullname }}.{{ item }}
+      ~{{ objname }}.{{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}

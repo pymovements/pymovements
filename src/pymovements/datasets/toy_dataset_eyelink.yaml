@@ -1,0 +1,61 @@
+name: "ToyDatasetEyeLink"
+
+long_name: "pymovements Toy Dataset EyeLink"
+
+resources:
+  - content: gaze
+    url: "https://github.com/pymovements/pymovements-toy-dataset-eyelink/archive/refs/heads/main.zip"
+    filename: "pymovements-toy-dataset-eyelink.zip"
+    md5: "966c0b6aefe61f32942366ed719454d3"
+    filename_pattern: 'subject_{subject_id:d}_session_{session_id:d}.asc'
+    filename_pattern_schema_overrides:
+      subject_id: !int
+      session_id: !int
+    load_kwargs:
+      trial_columns:
+        - task
+        - trial_id
+      patterns:
+        - pattern: 'SYNCTIME_READING_SCREEN'
+          column: "task"
+          value: "reading"
+        - pattern: 'SYNCTIME_JUDO'
+          column: "task"
+          value: "judo"
+        - pattern:
+          - "READING[.]STOP"
+          - "JUDO[.]STOP"
+          column: "task"
+          value: null
+        - 'TRIALID (?P<trial_id>\d+)'
+        - pattern: 'TRIAL_RESULT'
+          column: "trial_id"
+          value: null
+        - 'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
+        - pattern: 'READING[.]STOP'
+          column: "screen_id"
+          value: null
+        - 'SYNCTIME.P(?P<point_id>\d+)'
+        - pattern: 'P\d[.]STOP'
+          column: "point_id"
+          value: null
+      schema:
+        trial_id: !polars.Int64
+        screen_id: !polars.Int64
+        point_id: !polars.Int64
+        task: !polars.Utf8
+      encoding: 'ascii'
+
+experiment:
+  screen_width_px: 1280
+  screen_height_px: 1024
+  screen_width_cm: 38
+  screen_height_cm: 30.2
+  distance_cm: 68
+  origin: "upper left"
+  eyetracker:
+    sampling_rate: 1000.0
+    left: true
+    right: false
+    model: "EyeLink Portable Duo"
+    vendor: "EyeLink"

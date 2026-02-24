@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,26 +22,28 @@ import shutil
 
 import pytest
 
-import pymovements as pm
+from pymovements.dataset import Dataset
+from pymovements.dataset import DatasetLibrary
 
 
 @pytest.mark.parametrize(
     'dataset_name',
-    list(pm.dataset.DatasetLibrary.definitions.keys()),
+    list(DatasetLibrary.definitions.keys()),
 )
 def test_public_dataset_processing(dataset_name, tmp_path):
     # Initialize dataset.
     dataset_path = tmp_path / dataset_name
-    dataset = pm.Dataset(dataset_name, path=dataset_path)
+    dataset = Dataset(dataset_name, path=dataset_path)
 
     # Download and load in dataset.
     dataset.download()
     dataset.load()
 
     # Do some basic transformations.
-    if dataset.definition.has_files['gaze']:
+    if dataset.definition.resources.has_content('gaze'):
         if 'pixel' in dataset.gaze[0].columns:
-            dataset.pix2deg()
+            if dataset.gaze[0].experiment.screen.height_cm is not None:
+                dataset.pix2deg()
         dataset.pos2vel()
         dataset.pos2acc()
 
@@ -49,6 +51,8 @@ def test_public_dataset_processing(dataset_name, tmp_path):
             assert 'position' in gaze.columns
             assert 'velocity' in gaze.columns
             assert 'acceleration' in gaze.columns
-            assert len(set(gaze.trial_columns)) == len(gaze.trial_columns)
+
+            if gaze.trial_columns is not None:
+                assert len(set(gaze.trial_columns)) == len(gaze.trial_columns)
 
         shutil.rmtree(dataset_path, ignore_errors=True)

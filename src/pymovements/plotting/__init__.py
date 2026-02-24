@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,19 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides plotting related functionality.
-
-.. rubric:: Functions
-
-.. autosummary::
-   :toctree:
-   :recursive:
-
-    pymovements.plotting.heatmap
-    pymovements.plotting.main_sequence_plot
-    pymovements.plotting.traceplot
-    pymovements.plotting.tsplot
-"""
+"""Provides plotting related functionality."""
 from pymovements.plotting.heatmap import heatmap
 from pymovements.plotting.main_sequence_plot import main_sequence_plot
 from pymovements.plotting.scanpathplot import scanpathplot

@@ -4,8 +4,6 @@ Please include a clear and concise description of the change and which issue is 
 Please also include excepted improvements, relevant motivation and context.
 List any dependencies that are required for this change.
 
-Fixes #
-
 ## Implemented changes
 
 Insert a description of the changes implemented in the pull request.
@@ -13,13 +11,6 @@ Insert a description of the changes implemented in the pull request.
 - [ ] Change 1
 - [ ] Change 2
 - [ ] Change 3
-
-## Type of change
-
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change is or requires a documentation update
 
 ## How Has This Been Tested?
 
@@ -29,6 +20,32 @@ Please also list any relevant details for your test configuration
 
 - [ ] Test A
 - [ ] Test B
+
+## Type of change
+
+Remove irrelevant items:
+- Bug fix
+- New functionality
+- Performance improvement
+- New dataset
+- Breaking change
+- Documentation update
+
+## Context
+
+Resolves #
+
+#### related issues:
+- #
+
+#### required by:
+- #
+
+#### requires:
+- [ ] #
+
+#### conflicts with:
+- #
 
 ## Checklist:
 

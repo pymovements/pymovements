@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,15 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test basic preprocessing on various gaze files."""
-import os.path
-
 import pytest
 
-import pymovements as pm
+from pymovements import DatasetLibrary
+from pymovements import Experiment
+from pymovements import EyeTracker
+from pymovements import gaze as gaze_module
+from pymovements import ResourceDefinition
 
 
 @pytest.fixture(
-    name='gaze_from_kwargs',
+    name='init_kwargs',
     params=[
         'csv_monocular',
         'csv_binocular',
@@ -44,145 +46,171 @@ import pymovements as pm
         'gazebase_vr',
         'judo1000',
         'potec',
+        'raccoons',
     ],
 )
-def fixture_gaze_init_kwargs(request):
+def fixture_init_kwargs(request, make_example_file):
     init_param_dict = {
         'csv_monocular': {
-            'file': 'tests/files/monocular_example.csv',
-            'time_column': 'time',
-            'time_unit': 'ms',
-            'pixel_columns': ['x_left_pix', 'y_left_pix'],
-            'experiment': pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'file': make_example_file('monocular_example.csv'),
+            'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'definition': ResourceDefinition(
+                content='gaze',
+                load_kwargs={
+                    'time_column': 'time',
+                    'time_unit': 'ms',
+                    'pixel_columns': ['x_left_pix', 'y_left_pix'],
+                },
+            ),
         },
         'csv_binocular': {
-            'file': 'tests/files/binocular_example.csv',
-            'time_column': 'time',
-            'time_unit': 'ms',
-            'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
-            'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
-            'experiment': pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'file': make_example_file('binocular_example.csv'),
+            'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'definition': ResourceDefinition(
+                content='gaze',
+                load_kwargs={
+                    'time_column': 'time',
+                    'time_unit': 'ms',
+                    'pixel_columns': ['x_left_pix', 'y_left_pix', 'x_right_pix', 'y_right_pix'],
+                    'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
+                },
+            ),
         },
         'ipc_monocular': {
-            'file': 'tests/files/monocular_example.feather',
-            'experiment': pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'file': make_example_file('monocular_example.feather'),
+            'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'definition': ResourceDefinition(content='gaze'),
         },
         'ipc_binocular': {
-            'file': 'tests/files/binocular_example.feather',
-            'experiment': pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'file': make_example_file('binocular_example.feather'),
+            'experiment': Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            'definition': ResourceDefinition(content='gaze'),
         },
         'eyelink_monocular': {
-            'file': 'tests/files/eyelink_monocular_example.asc',
-            'experiment': pm.datasets.ToyDatasetEyeLink().experiment,
+            'file': make_example_file('eyelink_monocular_example.asc'),
+            'experiment': DatasetLibrary.get('ToyDatasetEyeLink').experiment,
+            'definition': DatasetLibrary.get('ToyDatasetEyeLink').resources[0],
         },
         'eyelink_monocular_2khz': {
-            'file': 'tests/files/eyelink_monocular_2khz_example.asc',
-            'experiment': pm.Experiment(
+            'file': make_example_file('eyelink_monocular_2khz_example.asc'),
+            'experiment': Experiment(
                 1280, 1024, 38, 30.2, 68, 'upper left',
-                eyetracker=pm.EyeTracker(
+                eyetracker=EyeTracker(
                     sampling_rate=2000.0, left=True, right=False,
                     model='EyeLink Portable Duo', vendor='EyeLink',
                 ),
             ),
+            'definition': ResourceDefinition(content='gaze'),
         },
         'eyelink_monocular_no_dummy': {
-            'file': 'tests/files/eyelink_monocular_no_dummy_example.asc',
-            'experiment': pm.Experiment(
+            'file': make_example_file('eyelink_monocular_no_dummy_example.asc'),
+            'experiment': Experiment(
                 1920, 1080, 38, 30.2, 68, 'upper left',
-                eyetracker=pm.EyeTracker(
+                eyetracker=EyeTracker(
                     sampling_rate=500.0, left=True, right=False,
                     model='EyeLink 1000 Plus', vendor='EyeLink',
                 ),
             ),
+            'definition': ResourceDefinition(content='gaze'),
         },
         'didec': {
-            'file': 'tests/files/didec_example.txt',
-            'time_column': pm.datasets.DIDEC().time_column,
-            'time_unit': pm.datasets.DIDEC().time_unit,
-            'pixel_columns': pm.datasets.DIDEC().pixel_columns,
-            'experiment': pm.datasets.DIDEC().experiment,
-            **pm.datasets.DIDEC().custom_read_kwargs['gaze'],
+            'file': make_example_file('didec_example.txt'),
+            'experiment': DatasetLibrary.get('DIDEC').experiment,
+            'definition': DatasetLibrary.get('DIDEC').resources[0],
         },
         'emtec': {
-            'file': 'tests/files/emtec_example.csv',
-            'time_column': pm.datasets.EMTeC().time_column,
-            'time_unit': pm.datasets.EMTeC().time_unit,
-            'pixel_columns': pm.datasets.EMTeC().pixel_columns,
-            'experiment': pm.datasets.EMTeC().experiment,
-            **pm.datasets.EMTeC().custom_read_kwargs['gaze'],
+            'file': make_example_file('emtec_example.csv'),
+            'experiment': DatasetLibrary.get('EMTeC').experiment,
+            'definition': DatasetLibrary.get('EMTeC').resources[0],
         },
         'hbn': {
-            'file': 'tests/files/hbn_example.csv',
-            'time_column': pm.datasets.HBN().time_column,
-            'time_unit': pm.datasets.HBN().time_unit,
-            'pixel_columns': pm.datasets.HBN().pixel_columns,
-            'experiment': pm.datasets.HBN().experiment,
+            'file': make_example_file('hbn_example.csv'),
+            'experiment': DatasetLibrary.get('HBN').experiment,
+            'definition': DatasetLibrary.get('HBN').resources[0],
         },
         'sbsat': {
-            'file': 'tests/files/sbsat_example.csv',
-            'time_column': pm.datasets.SBSAT().time_column,
-            'time_unit': pm.datasets.SBSAT().time_unit,
-            'pixel_columns': pm.datasets.SBSAT().pixel_columns,
-            'experiment': pm.datasets.SBSAT().experiment,
-            'trial_columns': pm.datasets.SBSAT().trial_columns,
-            **pm.datasets.SBSAT().custom_read_kwargs['gaze'],
+            'file': make_example_file('sbsat_example.csv'),
+            'experiment': DatasetLibrary.get('SBSAT').experiment,
+            'definition': DatasetLibrary.get('SBSAT').resources[0],
         },
         'gaze_on_faces': {
-            'file': 'tests/files/gaze_on_faces_example.csv',
-            'time_column': pm.datasets.GazeOnFaces().time_column,
-            'time_unit': pm.datasets.GazeOnFaces().time_unit,
-            'pixel_columns': pm.datasets.GazeOnFaces().pixel_columns,
-            'experiment': pm.datasets.GazeOnFaces().experiment,
-            **pm.datasets.GazeOnFaces().custom_read_kwargs['gaze'],
+            'file': make_example_file('gaze_on_faces_example.csv'),
+            'experiment': DatasetLibrary.get('GazeOnFaces').experiment,
+            'definition': DatasetLibrary.get('GazeOnFaces').resources[0],
         },
         'gazebase': {
-            'file': 'tests/files/gazebase_example.csv',
-            'time_column': pm.datasets.GazeBase().time_column,
-            'time_unit': pm.datasets.GazeBase().time_unit,
-            'position_columns': pm.datasets.GazeBase().position_columns,
-            'experiment': pm.datasets.GazeBase().experiment,
+            'file': make_example_file('gazebase_example.csv'),
+            'experiment': DatasetLibrary.get('GazeBase').experiment,
+            'definition': DatasetLibrary.get('GazeBase').resources[0],
         },
         'gazebase_vr': {
-            'file': 'tests/files/gazebase_vr_example.csv',
-            'time_column': pm.datasets.GazeBaseVR().time_column,
-            'time_unit': pm.datasets.GazeBaseVR().time_unit,
-            'position_columns': pm.datasets.GazeBaseVR().position_columns,
-            'experiment': pm.datasets.GazeBaseVR().experiment,
+            'file': make_example_file('gazebase_vr_example.csv'),
+            'experiment': DatasetLibrary.get('GazeBaseVR').experiment,
+            'definition': DatasetLibrary.get('GazeBaseVR').resources[0],
         },
         'judo1000': {
-            'file': 'tests/files/judo1000_example.csv',
-            'time_column': pm.datasets.JuDo1000().time_column,
-            'time_unit': pm.datasets.JuDo1000().time_unit,
-            'pixel_columns': pm.datasets.JuDo1000().pixel_columns,
-            'experiment': pm.datasets.JuDo1000().experiment,
-            **pm.datasets.JuDo1000().custom_read_kwargs['gaze'],
+            'file': make_example_file('judo1000_example.csv'),
+            'experiment': DatasetLibrary.get('JuDo1000').experiment,
+            'definition': DatasetLibrary.get('JuDo1000').resources[0],
         },
         'potec': {
-            'file': 'tests/files/potec_example.tsv',
-            'time_column': pm.datasets.PoTeC().time_column,
-            'time_unit': pm.datasets.PoTeC().time_unit,
-            'pixel_columns': pm.datasets.PoTeC().pixel_columns,
-            'experiment': pm.datasets.PoTeC().experiment,
-            **pm.datasets.PoTeC().custom_read_kwargs['gaze'],
+            'file': make_example_file('potec_example.tsv'),
+            'experiment': DatasetLibrary.get('PoTeC').experiment,
+            'definition': DatasetLibrary.get('PoTeC').resources[0],
+        },
+        'raccoons': {
+            'file': make_example_file('raccoons.asc'),
+            'experiment': DatasetLibrary.get('RaCCooNS').experiment,
+            'definition': DatasetLibrary.get('RaCCooNS').resources[0],
         },
 
     }
     yield init_param_dict[request.param]
 
 
-def test_gaze_file_processing(gaze_from_kwargs):
+def test_gaze_file_processing(init_kwargs):
     # Load in gaze file.
-    file_extension = os.path.splitext(gaze_from_kwargs['file'])[1]
+    file_extension = init_kwargs['file'].suffix
     gaze = None
-    if file_extension in {'.csv', '.tsv', '.txt'}:
-        gaze = pm.gaze.from_csv(**gaze_from_kwargs)
+
+    resource_definition = init_kwargs['definition']
+
+    # Load in gaze file.
+    if resource_definition.load_function is not None:
+        load_function_name = resource_definition.load_function
+    elif file_extension in {'.csv', '.tsv', '.txt'}:
+        load_function_name = 'from_csv'
     elif file_extension in {'.feather', '.ipc'}:
-        gaze = pm.gaze.from_ipc(**gaze_from_kwargs)
+        load_function_name = 'from_ipc'
     elif file_extension == '.asc':
-        gaze = pm.gaze.from_asc(**gaze_from_kwargs)
+        load_function_name = 'from_asc'
+    else:
+        load_function_name = 'from_csv'
+
+    if load_function_name == 'from_csv':
+        load_function = gaze_module.from_csv
+    elif load_function_name == 'from_ipc':
+        load_function = gaze_module.from_ipc
+    elif load_function_name == 'from_asc':
+        load_function = gaze_module.from_asc
+    elif load_function_name == 'from_begaze':
+        load_function = gaze_module.from_begaze
+    else:
+        load_function = gaze_module.from_csv
+
+    if resource_definition.load_kwargs is None:
+        load_kwargs = {}
+    else:
+        load_kwargs = resource_definition.load_kwargs
+
+    gaze = load_function(
+        file=init_kwargs['file'],
+        experiment=init_kwargs['experiment'],
+        **load_kwargs,
+    )
 
     assert gaze is not None
-    assert gaze.frame.height > 0
+    assert gaze.samples.height > 0
 
     # Do some basic transformations.
     if 'pixel' in gaze.columns:

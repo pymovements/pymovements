@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,16 +20,21 @@
 """Provides the Experiment class."""
 from __future__ import annotations
 
+from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+import yaml
 
+from pymovements._utils import _checks
+from pymovements._utils._html import repr_html
 from pymovements.gaze import transforms_numpy
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
-from pymovements.utils import checks
 
 
+@repr_html()
 class Experiment:
     """Experiment class for holding experiment properties.
 
@@ -45,30 +50,34 @@ class Experiment:
         Screen height in centimeters. (default: None)
     distance_cm: float | None
         Eye-to-screen distance in centimeters. If None, a `distance_column` must be provided
-        in the `DatasetDefinition` or `GazeDataFrame`, which contains the eye-to-screen
+        in the `DatasetDefinition` or `Gaze`, which contains the eye-to-screen
         distance for each sample in millimeters. (default: None)
     origin: str | None
         Specifies the screen location of the origin of the pixel coordinate system.
-        (default: 'upper left')
+        (default: None)
     sampling_rate: float | None
         Sampling rate in Hz. (default: None)
-    eyetracker : EyeTracker | None
-        EyeTracker object for experiment. (default: None)
+    screen: Screen | None
+        Scree object for experiment. Mutually exclusive with explicit screen arguments.
+        (default: None)
+    eyetracker: EyeTracker | None
+        EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
 
     Examples
     --------
     >>> experiment = Experiment(
     ...     screen_width_px=1280,
     ...     screen_height_px=1024,
-    ...     screen_width_cm=38,
-    ...     screen_height_cm=30,
-    ...     distance_cm=68,
+    ...     screen_width_cm=38.0,
+    ...     screen_height_cm=30.0,
+    ...     distance_cm=68.0,
     ...     origin='upper left',
     ...     sampling_rate=1000.0,
     ... )
     >>> print(experiment)
-    Experiment(sampling_rate=1000.00, screen=Screen(width_px=1280, height_px=1024, width_cm=38,
-    height_cm=30, distance_cm=68, origin=upper left), eyetracker=None)
+    Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
+     distance_cm=68.0, origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
+      right=None, model=None, version=None, vendor=None, mount=None))
 
     We can also access the screen boundaries in degrees of visual angle via the
     :py:attr:`~pymovements.gaze.Screen` object. This only works if the
@@ -91,44 +100,121 @@ class Experiment:
             screen_width_cm: float | None = None,
             screen_height_cm: float | None = None,
             distance_cm: float | None = None,
-            origin: str | None = 'upper left',
+            origin: str | None = None,
             sampling_rate: float | None = None,
+            *,
+            screen: Screen | None = None,
             eyetracker: EyeTracker | None = None,
     ):
-        self.screen = Screen(
-            width_px=screen_width_px,
-            height_px=screen_height_px,
-            width_cm=screen_width_cm,
-            height_cm=screen_height_cm,
-            distance_cm=distance_cm,
-            origin=origin,
-        )
+        _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
+        _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
+        _checks.check_is_mutual_exclusive(screen_width_cm=screen_width_cm, screen=screen)
+        _checks.check_is_mutual_exclusive(screen_height_cm=screen_height_cm, screen=screen)
+        _checks.check_is_mutual_exclusive(distance_cm=distance_cm, screen=screen)
+        _checks.check_is_mutual_exclusive(origin=origin, screen=screen)
+        _checks.check_is_mutual_exclusive(sampling_rate=sampling_rate, eyetracker=eyetracker)
 
-        checks.check_is_mutual_exclusive(sampling_rate=sampling_rate, eyetracker=eyetracker)
+        if screen is None:
+            screen = Screen(
+                width_px=screen_width_px,
+                height_px=screen_height_px,
+                width_cm=screen_width_cm,
+                height_cm=screen_height_cm,
+                distance_cm=distance_cm,
+                origin=origin,
+            )
+        self.screen = screen
 
+        if eyetracker is None:
+            eyetracker = EyeTracker(sampling_rate=sampling_rate)
         self.eyetracker = eyetracker
 
-        self._sampling_rate = sampling_rate
+        if self.sampling_rate is not None:
+            _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
 
-        checks.check_is_not_none(sampling_rate=self.sampling_rate)
-        assert self.sampling_rate is not None
+    @staticmethod
+    def from_dict(dictionary: dict[str, Any]) -> Experiment:
+        """Create an Experiment instance from a dictionary.
 
-        checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
+        Parameters
+        ----------
+        dictionary : dict[str, Any]
+            A dictionary containing Experiment parameters.
+
+        Notes
+        -----
+        The dictionary may contain nested dictionaries for 'screen' and 'eyetracker'.
+        These will be automatically converted into Screen and EyeTracker instances.
+
+        Examples
+        --------
+        Passing a flat dictionary:
+
+        >>> experiment = Experiment.from_dict({
+        ...     "screen_width_px": 1280,
+        ...     "screen_height_px": 1024,
+        ...     "screen_width_cm": 38.0,
+        ...     "screen_height_cm": 30.0,
+        ...     "distance_cm": 68.0,
+        ...     "sampling_rate": 1000.0,
+        ... })
+        >>> print(experiment)
+        Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
+                                 distance_cm=68.0, origin=None),
+                   eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
+                                        model=None, version=None, vendor=None, mount=None))
+
+        The same result using nested dictionaries for `screen` and `eyetracker`:
+
+        >>> experiment = Experiment.from_dict({
+        ...     "screen": {
+        ...         "width_px": 1280,
+        ...         "height_px": 1024,
+        ...         "width_cm": 38.0,
+        ...         "height_cm": 30.0,
+        ...         "distance_cm": 68.0,
+        ...         "origin": "upper left"
+        ...     },
+        ...     "eyetracker": {
+        ...         "sampling_rate": 1000.0
+        ...     }
+        ... })
+        >>> print(experiment)
+        Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
+                                 distance_cm=68.0, origin='upper left'),
+                   eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
+                                        model=None, version=None, vendor=None, mount=None))
+
+        Returns
+        -------
+        Experiment
+            An initialized Experiment instance.
+        """
+        dictionary = deepcopy(dictionary)
+        screen = None
+        eyetracker = None
+
+        if 'screen' in dictionary:
+            screen = Screen(**dictionary.pop('screen'))
+
+        if 'eyetracker' in dictionary:
+            eyetracker = EyeTracker(**dictionary.pop('eyetracker'))
+
+        return Experiment(
+            **dictionary,
+            screen=screen,
+            eyetracker=eyetracker,
+        )
 
     @property
     def sampling_rate(self) -> float | None:
         """Get sampling rate of experiment."""
-        if self._sampling_rate is not None:
-            return self._sampling_rate
-
-        assert self.eyetracker is not None
-
         return self.eyetracker.sampling_rate
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate: float | None = None) -> None:
         """Set sampling rate of experiment."""
-        self._sampling_rate = sampling_rate
+        self.eyetracker.sampling_rate = sampling_rate
 
     def pos2vel(
             self,
@@ -158,7 +244,7 @@ class Experiment:
         Raises
         ------
         ValueError
-            If selected method is invalid, input array is too short for the
+            If the selected method is invalid, the input array is too short for the
             selected method or the sampling rate is below zero
 
         Examples
@@ -189,17 +275,64 @@ class Experiment:
             arr=arr, sampling_rate=self.sampling_rate, method=method, **kwargs,
         )
 
-    def __str__(self: Any) -> str:
-        """Print experiment."""
+    def __eq__(self: Experiment, other: Experiment) -> bool:
+        """Compare equality to other Experiment."""
+        return self.screen == other.screen and self.eyetracker == other.eyetracker
 
-        def shorten(value: Any) -> str:
-            if isinstance(value, float):
-                value = f'{value:.2f}'
-            return value
+    def to_dict(
+        self, *, exclude_none: bool = True,
+    ) -> dict[str, Any | dict[str, str | float | None]]:
+        """Convert the experiment instance into a dictionary.
 
-        attributes = ''
-        for key, value in vars(self).items():
-            if not key.startswith('_'):
-                attributes += ', ' + f'{key}={shorten(value)}'
+        Parameters
+        ----------
+        exclude_none: bool
+            Exclude attributes that are either ``None`` or that are objects that evaluate to
+            ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
+            ``int``, and ``float`` are not excluded.
 
-        return f'{type(self).__name__}(sampling_rate={shorten(self.sampling_rate)}{attributes})'
+        Returns
+        -------
+        dict[str, Any | dict[str, str | float | None]]
+            Experiment as a dictionary.
+        """
+        data: dict[str, dict[str, str | float | None]] = {}
+
+        if self.eyetracker or not exclude_none:
+            data['eyetracker'] = self.eyetracker.to_dict(exclude_none=exclude_none)
+        if self.screen or not exclude_none:
+            data['screen'] = self.screen.to_dict(exclude_none=exclude_none)
+
+        return data
+
+    def __str__(self: Experiment) -> str:
+        """Return Experiment string."""
+        return (
+            f"{type(self).__name__}(screen={self.screen}, "
+            f"eyetracker={self.eyetracker})"
+        )
+
+    def __bool__(self) -> bool:
+        """Return True if the experiment has data defined, else False."""
+        return not all(not value for value in self.__dict__.values())
+
+    def to_yaml(
+        self,
+        path: str | Path,
+        *,
+        exclude_none: bool = True,
+    ) -> None:
+        """Save an experiment to a YAML file.
+
+        Parameters
+        ----------
+        path: str | Path
+            Path where to save the YAML file to.
+        exclude_none: bool
+            Exclude attributes that are either ``None`` or that are objects that evaluate to
+            ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
+            ``int``, and ``float`` are not excluded.
+        """
+        data = self.to_dict(exclude_none=exclude_none)
+        with open(path, 'w', encoding='utf-8') as f:
+            yaml.dump(data, f, sort_keys=False)

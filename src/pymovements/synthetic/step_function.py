@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ def step_function(
         values: list[float | tuple[float, ...]],
         start_value: float | tuple[float, ...] = 0,
         noise: float = 0,
+        dtype: np.typing.DTypeLike = np.float64,
 ) -> np.ndarray:
     """Create a synthetic eye gaze by using a simple step function.
 
@@ -47,6 +48,8 @@ def step_function(
     noise: float
         If greater than zero, gaussian noise is scaled according to value and superimposed on the
         output array. (default: 0)
+    dtype: np.typing.DTypeLike
+        The desired data type of the output array. (default: np.float64)
 
     Returns
     -------
@@ -56,8 +59,9 @@ def step_function(
     Raises
     ------
     ValueError
-        If steps not sorted in ascending order or length of steps not equal to length of values. If
-        noise is negative.
+        If ``steps`` are not sorted in ascending order or
+        length of ``steps`` not equal to the length of values.
+        If noise is negative.
 
     Examples
     --------
@@ -67,7 +71,7 @@ def step_function(
     ...     values=[1., 2., 3.],
     ...     start_value=0,
     ... )
-    array([0., 0., 1., 1., 1., 2., 2., 2., 2., 3.], dtype=float32)
+    array([0., 0., 1., 1., 1., 2., 2., 2., 2., 3.])
 
     >>> # multi-channel example
     >>> step_function(
@@ -85,7 +89,7 @@ def step_function(
            [ 3.,  4.],
            [ 3.,  4.],
            [ 3.,  4.],
-           [ 3.,  4.]], dtype=float32)
+           [ 3.,  4.]])
     """
     # Check that steps and values have equal length.
     if len(steps) != len(values):
@@ -133,8 +137,8 @@ def step_function(
     else:
         arr = np.tile(start_value, (length, 1))
 
-    # change type of elements to float32, to allow np.nan
-    arr = np.array(arr, dtype=np.float32)
+    # create array of requested dtype.
+    arr = np.array(arr, dtype=dtype)
 
     # Iterate through all steps except the last.
     for begin, end, value in zip(steps[:-1], steps[1:], values[:-1]):
