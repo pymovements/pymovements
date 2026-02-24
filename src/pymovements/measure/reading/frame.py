@@ -21,14 +21,15 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pandas as pd
 import polars as pl
 from tqdm import tqdm
 
-from pymovements.stimulus import text
-
+import pymovements as pm
 from pymovements._utils._html import repr_html
+from pymovements.stimulus import text
 
 
 @repr_html()
@@ -42,18 +43,32 @@ class ReadingMeasures:
     """
 
     def __init__(self, reading_measure_df: pl.DataFrame | None = None) -> None:
-        self.frame = reading_measure_df
+        self.frame: list[pd.DataFrame] | pl.DataFrame
         if reading_measure_df is None:
             self.frame = []
+        else:
+            self.frame = reading_measure_df
 
-    def process_dataset(self, dataset, aoi_dict, save_path) -> int:
-        """Process dataset.
+    def process_dataset(
+        self, dataset: pm.Dataset,
+        aoi_dict: dict[str, str | Path], save_path: str | Path | None,
+    ) -> int:
+        """Map fixations to AOIs and compute reading measures for an entire dataset.
 
         Parameters
         ----------
-        dataset: pm.Dataset
-            ...
+        dataset : pm.Dataset
+            The dataset containing the events to be processed.
+        aoi_dict : dict[str, str | Path]
+            A dictionary mapping text IDs to their corresponding AOI file paths.
+        save_path : str | Path | None
+            The directory path where the computed reading measures CSV files will be saved.
+            If ``None``, no files are saved to disk.
 
+        Returns
+        -------
+        int
+            Returns 0 upon successful processing of the dataset.
         """
         for event_idx in tqdm(range(len(dataset.events))):
             tmp_df = dataset.events[event_idx]
@@ -108,8 +123,7 @@ class ReadingMeasures:
             fixations_df: pd.DataFrame,
             aoi_df: pd.DataFrame,
     ) -> pd.DataFrame:
-        """
-        Computes reading measures from fixation sequences.
+        """Compute reading measures from fixation sequences.
 
         Parameters
         ----------
@@ -158,7 +172,7 @@ class ReadingMeasures:
         right_most_word, cur_fix_word_idx, next_fix_word_idx, next_fix_dur = -1, -1, -1, -1
 
         # Iterate over fixation data.
-        for index, fixation in fixations_df.iterrows():
+        for _, fixation in fixations_df.iterrows():
             try:
                 aoi = int(fixation['aoi']) - 1
             except ValueError:
@@ -177,8 +191,7 @@ class ReadingMeasures:
             if next_fix_dur == 0:
                 next_fix_word_idx = cur_fix_word_idx
 
-            if right_most_word < cur_fix_word_idx:
-                right_most_word = cur_fix_word_idx
+            right_most_word = max(right_most_word, cur_fix_word_idx)
 
             if cur_fix_word_idx == -1:
                 continue
@@ -214,7 +227,8 @@ class ReadingMeasures:
                 word_dict[cur_fix_word_idx]['SL_out'] = next_fix_word_idx - cur_fix_word_idx
 
         # Finalize reading measures.
-        for word_indices, word_rm in sorted(word_dict.items()):
+        rm_df = pd.DataFrame()
+        for _, word_rm in sorted(word_dict.items()):
             if word_rm['FFD'] == word_rm['FPRT']:
                 word_rm['SFD'] = word_rm['FFD']
             word_rm['RRT'] = word_rm['TFT'] - word_rm['FPRT']
@@ -224,10 +238,6 @@ class ReadingMeasures:
             word_rm['Fix'] = int(word_rm['TFT'] > 0)
             word_rm['RPD_inc'] = word_rm['RPD_exc'] + word_rm['RBRT']
 
-            # Create or append to DataFrame.
-            if word_indices == 0:
-                rm_df = pd.DataFrame([word_rm])
-            else:
-                rm_df = pd.concat([rm_df, pd.DataFrame([word_rm])])
+            rm_df = pd.concat([rm_df, pd.DataFrame([word_rm])])
 
         return rm_df
