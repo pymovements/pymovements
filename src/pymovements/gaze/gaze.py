@@ -1594,7 +1594,7 @@ class Gaze:
         # (by unnesting) or keep list columns intact and extract per-row. By default,
         # preserve_structure=True attempts to unnest.
         if preserve_structure:
-            with suppress(Warning, ValueError, AttributeError):
+            with suppress(Warning, ValueError, AttributeError):  # tolerate common cases
                 self.unnest()
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
