@@ -84,19 +84,16 @@ def download_dataset(
     if not definition.resources:
         raise AttributeError('resources must be specified to download a dataset.')
 
-    for content in ('gaze', 'precomputed_events', 'precomputed_reading_measures'):
-        if definition.resources.has_content(content):
-            if not definition.mirrors:
-                mirrors = None
-            else:
-                mirrors = definition.mirrors.get(content, None)
+    for resource in resources:
+        if not definition.mirrors:
+            mirrors = None
+        else:
+            mirrors = definition.mirrors.get(resource.content, None)
 
-            _download_resources(
-                mirrors=mirrors,
-                resources=definition.resources.filter(content),
-                target_dirpath=paths.downloads,
-                verbose=verbose,
-            )
+        if not mirrors and resource.source is not None:
+            resource.source.download(paths.downloads, verbose=verbose)
+        else:
+            _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
 
     if extract:
         extract_dataset(
@@ -162,32 +159,6 @@ def extract_dataset(
                     )
                 except UnknownFileType:  # just copy file to target if not an archive.
                     shutil.copy(source_path, destination_dirpath / resource.filename)
-
-
-def _download_resources(
-        mirrors: Sequence[str] | None,
-        resources: ResourceDefinitions,
-        target_dirpath: Path,
-        verbose: bool,
-) -> None:
-    """Download resources."""
-    for resource in resources:
-        if not mirrors:
-            _download_resource(resource, target_dirpath, verbose)
-        else:
-            _download_resource_with_legacy_mirrors(mirrors, resource, target_dirpath, verbose)
-
-
-def _download_resource(
-        resource: ResourceDefinition,
-        target_dirpath: Path,
-        verbose: bool,
-) -> None:
-    """Download resource."""
-    if resource.source is None:
-        raise AttributeError('Resource.source must not be None')
-
-    resource.source.download(target_dirpath, verbose=verbose)
 
 
 def _download_resource_with_legacy_mirrors(
