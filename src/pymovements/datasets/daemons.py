@@ -108,9 +108,11 @@ class DAEMONS(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/ztgna/',
-                    'filename': 'eye_movement.zip',
-                    'md5': '2779b4c140a0b1e3c9976488994f08f3',
+                    'source': {
+                        'url': 'https://osf.io/download/ztgna/',
+                        'filename': 'eye_movement.zip',
+                        'md5': '2779b4c140a0b1e3c9976488994f08f3',
+                    },
                     'filename_pattern': r'SAC_{data_split:s}.csv',
                     'filename_pattern_schema_overrides': {'data_split': str},
                     'load_kwargs': {'read_csv_kwargs': {'null_values': ['NA']}},

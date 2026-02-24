@@ -3,35 +3,38 @@ name: "GGTG"
 long_name: 'Gaze-Guided Text Generation'
 
 resources:
-  - content: gaze
+- content: gaze
+  source:
     url: https://osf.io/download/wdeq7/
     filename: "samples.zip"
     md5: e26d81a46b7ffcdc3d0e8a0f069020c3
-    filename_pattern: '{subject_id}.csv'
-    load_kwargs:
-      trial_columns:
-      - stimulus
-      pixel_columns:
-      - pixel_x
-      - pixel_y
+  filename_pattern: '{subject_id}.csv'
+  load_kwargs:
+    trial_columns:
+    - stimulus
+    pixel_columns:
+    - pixel_x
+    - pixel_y
 
-  - content: precomputed_events
+- content: precomputed_events
+  source:
     url: https://osf.io/download/dvkwg/
     filename: "fixations.zip"
     md5: 9d8c7f84442671876c2190958c8bd0dc
-    filename_pattern: '{subject_id}.csv'
-    load_kwargs:
-      trial_columns:
-      - stimulus
+  filename_pattern: '{subject_id}.csv'
+  load_kwargs:
+    trial_columns:
+    - stimulus
 
-  - content: precomputed_reading_measures
+- content: precomputed_reading_measures
+  source:
     url: https://osf.io/download/udmrk/
     filename: "measures.zip"
     md5: 63d33923d04f56c95a3d52e5b89a4ebd
-    filename_pattern: '{subject_id}.csv'
-    load_kwargs:
-      trial_columns:
-      - stimulus
+  filename_pattern: '{subject_id}.csv'
+  load_kwargs:
+    trial_columns:
+    - stimulus
 
 experiment:
   screen_width_px: 1100

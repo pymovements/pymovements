@@ -3,17 +3,18 @@ name: "TECO"
 long_name: 'Tsukuba Eye-tracking Corpus'
 
 resources:
-  - content: precomputed_reading_measures
+- content: precomputed_reading_measures
+  source:
     url: "https://osf.io/download/xmt3k/"
     filename: "wordmeasure_v1.csv"
     md5: "61502321a757c0ffee01c0047b29a22b"
-    filename_pattern: "wordmeasure_v1.csv"
-    load_kwargs:
-      trial_columns:
-      - book
-      - subjectid
-      - textid
-      read_csv_kwargs:
-        encoding: "utf8-lossy"
-        null_values:
-          - NA
+  filename_pattern: "wordmeasure_v1.csv"
+  load_kwargs:
+    trial_columns:
+    - book
+    - subjectid
+    - textid
+    read_csv_kwargs:
+      encoding: "utf8-lossy"
+      null_values:
+      - NA

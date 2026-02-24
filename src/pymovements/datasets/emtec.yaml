@@ -3,58 +3,61 @@ name: "EMTeC"
 long_name: 'Eye movements on Machine-generated Texts Corpus'
 
 resources:
-  - content: gaze
+- content: gaze
+  source:
     url: "https://osf.io/download/374sk/"
     filename: "subject_level_data.zip"
     md5: "dca99e47ef43f3696acec4fd70967750"
-    filename_pattern: 'ET_{subject_id:d}.csv'
-    filename_pattern_schema_overrides:
-      subject_id: !int
-    load_kwargs:
-      trial_columns: ['item_id']
-      time_column: 'time'
-      time_unit: 'ms'
-      pixel_columns: ['x', 'y']
-      read_csv_kwargs:
-        separator: "\t"
-        columns:
-          - "item_id"
-          - "TRIAL_ID"
-          - "Trial_Index_"
-          - "model"
-          - "decoding_strategy"
-          - "time"
-          - "x"
-          - "y"
-          - "pupil_right"
-        schema_overrides:
-          item_id: !polars.Utf8
-          TRIAL_ID: !polars.Int64
-          Trial_Index_: !polars.Int64
-          model: !polars.Utf8
-          decoding_strategy: !polars.Utf8
-          time: !polars.Int64
-          x: !polars.Float32
-          y: !polars.Float32
-          pupil_right: !polars.Float32
+  filename_pattern: 'ET_{subject_id:d}.csv'
+  filename_pattern_schema_overrides:
+    subject_id: !int
+  load_kwargs:
+    trial_columns: ['item_id']
+    time_column: 'time'
+    time_unit: 'ms'
+    pixel_columns: ['x', 'y']
+    read_csv_kwargs:
+      separator: "\t"
+      columns:
+      - "item_id"
+      - "TRIAL_ID"
+      - "Trial_Index_"
+      - "model"
+      - "decoding_strategy"
+      - "time"
+      - "x"
+      - "y"
+      - "pupil_right"
+      schema_overrides:
+        item_id: !polars.Utf8
+        TRIAL_ID: !polars.Int64
+        Trial_Index_: !polars.Int64
+        model: !polars.Utf8
+        decoding_strategy: !polars.Utf8
+        time: !polars.Int64
+        x: !polars.Float32
+        y: !polars.Float32
+        pupil_right: !polars.Float32
 
-  - content: precomputed_events
+- content: precomputed_events
+  source:
     url: "https://osf.io/download/2hs8p/"
     filename: "fixations.csv"
     md5: "5e05a364a1d8a044d8b36506aa91437e"
-    filename_pattern: "fixations.csv"
-    load_kwargs:
-      read_csv_kwargs:
-        separator: "\t"
+  filename_pattern: "fixations.csv"
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
 
-  - content: precomputed_reading_measures
+- content: precomputed_reading_measures
+  source:
     url: "https://osf.io/download/s4ny8/"
     filename: "reading_measures.csv"
     md5: "56880f50af20682558065ac2d26be827"
-    filename_pattern: "reading_measures.csv"
-    load_kwargs:
-      read_csv_kwargs:
-        separator: "\t"
+  filename_pattern: "reading_measures.csv"
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
 
 experiment:
   screen_width_px: 1280

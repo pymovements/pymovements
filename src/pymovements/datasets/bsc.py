@@ -109,9 +109,11 @@ class BSC(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/xfe4s/',
-                    'filename': 'BSC.EMD.zip',
-                    'md5': 'c7118bfe48c91264d69c45d347f11416',
+                    'source': {
+                        'url': 'https://osf.io/download/xfe4s/',
+                        'filename': 'BSC.EMD.zip',
+                        'md5': 'c7118bfe48c91264d69c45d347f11416',
+                    },
                     'filename_pattern': 'BSC.EMD.txt',
                     'load_kwargs': {
                         'trial_columns': ['book_name', 'screen_id'],
