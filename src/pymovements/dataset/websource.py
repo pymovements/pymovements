@@ -1,3 +1,22 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 # Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,6 +45,8 @@ utility functions without changing their behavior.
 """
 from __future__ import annotations
 
+import hashlib
+import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,9 +55,8 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 from warnings import warn
 
-import hashlib
-import urllib.request
 from tqdm.auto import tqdm
+
 from pymovements._version import __version__
 
 USER_AGENT: str = f"pymovements/{__version__}"
@@ -292,10 +312,10 @@ class WebSource:
         """Create a `WebSource` from a dictionary."""
         # Accept both with and without explicit keys; default to None when missing
         return WebSource(
-            url=data.get("url"),
-            filename=data.get("filename"),
-            md5=data.get("md5"),
-            mirrors=data.get("mirrors"),
+            url=data.get('url'),
+            filename=data.get('filename'),
+            md5=data.get('md5'),
+            mirrors=data.get('mirrors'),
         )
 
     def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
@@ -308,7 +328,10 @@ class WebSource:
             return {k: v for k, v in payload.items() if v is not None}
         return payload
 
-    def download(self, target_dir: Path | str, *, exist_ok: bool = True, verbose: bool = True) -> Path:
+    def download(
+        self, target_dir: Path | str, *, exist_ok: bool = True,
+        verbose: bool = True,
+    ) -> Path:
         """Download this resource into `target_dir`.
 
         Tries the primary `url` first, then any `mirrors` in order. Integrity is
@@ -325,12 +348,15 @@ class WebSource:
             parsed = urlparse(self.url)
             candidate = Path(parsed.path).name
             if not candidate:
-                raise ValueError("Unable to infer filename from URL; please provide `filename`.")
+                raise ValueError('Unable to infer filename from URL; please provide `filename`.')
             filename = candidate
 
         # Attempt primary URL
         try:
-            return _download_file(url=self.url, dirpath=dirpath, filename=filename, md5=self.md5, verbose=verbose)
+            return _download_file(
+                url=self.url, dirpath=dirpath,
+                filename=filename, md5=self.md5, verbose=verbose,
+            )
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as primary_error:
             # No mirrors to try
@@ -353,7 +379,8 @@ class WebSource:
                 except (URLError, OSError, RuntimeError) as mirror_error:
                     msg = f"Downloading resource from mirror {mirror_url} failed."
                     if mirror_idx < len(self.mirrors):
-                        msg = msg + f" Trying next mirror ({len(self.mirrors) - mirror_idx} remaining)."
+                        msg = msg + \
+                            f" Trying next mirror ({len(self.mirrors) - mirror_idx} remaining)."
                     warning = UserWarning(msg)
                     warning.__cause__ = mirror_error
                     warn(warning)
@@ -361,4 +388,5 @@ class WebSource:
 
             # If we are here, all mirrors failed
             raise RuntimeError(
-                f"Downloading resource {filename} failed for all mirrors.") from primary_error
+                f"Downloading resource {filename} failed for all mirrors.",
+            ) from primary_error

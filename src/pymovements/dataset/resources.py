@@ -91,7 +91,7 @@ class ResourceDefinition:
                     UserWarning(
                         "Both 'source' and deprecated fields ('filename', 'url', 'mirrors', 'md5') "
                         "were provided. 'source' will take precedence and deprecated fields will "
-                        "be ignored. Deprecated fields will be removed in v0.32.0.",
+                        'be ignored. Deprecated fields will be removed in v0.32.0.',
                     ),
                 )
             return
@@ -101,7 +101,7 @@ class ResourceDefinition:
                 DeprecationWarning(
                     "Fields 'filename', 'url', 'mirrors', 'md5' are deprecated since v0.27.0. "
                     "Please use 'source' (type 'WebSource') instead. "
-                    "These fields will be removed in v0.32.0.",
+                    'These fields will be removed in v0.32.0.',
                 ),
             )
             self.source = WebSource(

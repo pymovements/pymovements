@@ -35,7 +35,7 @@ resources:
 
 - content: precomputed_events
   source:
-    url: 
+    url:
       https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv
     filename: 18sat_fixfinal.csv
     md5: 4cf3212a71e6fc2fbe7041ce7c691927

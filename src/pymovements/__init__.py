@@ -66,7 +66,7 @@ __all__ = [
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
-        'WebSource',
+    'WebSource',
 
     'events',
     'Events',

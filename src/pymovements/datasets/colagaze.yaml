@@ -5,7 +5,7 @@ long_name: 'Corpus of Eye Movements for Linguistic Acceptability'
 resources:
 - content: gaze
   source:
-    url: 
+    url:
       https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/67e14ce0f392601163f33215/?zip=
     filename: "raw_data.zip"
     md5:
@@ -15,7 +15,7 @@ resources:
 
 - content: precomputed_events
   source:
-    url: 
+    url:
       https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e0b41987c157db5204d3b/?zip=
     filename: "fixations.zip"
     md5:
@@ -25,7 +25,7 @@ resources:
 
 - content: precomputed_reading_measures
   source:
-    url: 
+    url:
       https://files.osf.io/v1/resources/gj2uk/providers/osfstorage/678e045672fc74248add6338/?zip=
     filename: "measures.zip"
     md5:
