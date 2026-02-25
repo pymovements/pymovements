@@ -15,6 +15,13 @@ description: |
 
   Check the respective paper for details :cite:p:`GazeOnFaces`.
 
+  Warning
+  -------
+  This dataset currently cannot be fully processed by ``pymovements`` due to an error during
+  archive extraction.
+
+  See issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__ for reference.
+
 resources:
   - content: gaze
     url: "https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip="
