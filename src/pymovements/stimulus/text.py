@@ -57,7 +57,10 @@ class WritingSystem:
         For vertical text, this is typically 'left-to-right' or 'right-to-left'.
         (default: 'top-to-bottom')
     DESCRIPTORS: ClassVar[tuple[str, ...]]
-        Valid descriptor strings for :meth:`from_descriptor`.
+        Valid descriptor strings for :meth:`from_descriptor`:
+
+        - ``'left-to-right'``, ``ltr``
+        - ``'right-to-left'``, ``rtl``
 
     Examples
     --------
