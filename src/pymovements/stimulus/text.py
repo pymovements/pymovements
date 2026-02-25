@@ -95,6 +95,7 @@ class WritingSystem:
             lining='left-to-right',
         )
     """
+
     directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
     _: KW_ONLY
     axis: Literal['horizontal', 'vertical'] = 'horizontal'
@@ -111,6 +112,11 @@ class WritingSystem:
     def from_descriptor(descriptor: str) -> WritingSystem:
         """Create a WritingSystem instance from a descriptor string.
 
+        Mapping is as follows:
+
+        - ``left-to-right``, ``ltr``: vertical left to right
+        - ``right-to-left``, ``rtl``: vertical right to left
+
         Parameters
         ----------
         descriptor: str
@@ -120,14 +126,34 @@ class WritingSystem:
         -------
         WritingSystem
             The corresponding WritingSystem instance.
+
+        Examples
+        --------
+
+        Vertical left to right:
+
+        >>>  WritingSystem.from_descpriptor('left-to-right')
+        WritingSystem(directionality: 'left-to-right', axis='horizontal', lining='top-to-bottom') 
+
+        Abbreviations are also supported:
+
+        >>>  WritingSystem.from_descpriptor('ltr')
+        WritingSystem(directionality: 'left-to-right', axis='horizontal', lining='top-to-bottom') 
+
+        and
+        
+        >>>  WritingSystem.from_descpriptor('rtl')
+        WritingSystem(directionality: 'right-to-left', axis='horizontal', lining='top-to-bottom') 
+        
+        
         """
         if descriptor in {'left-to-right', 'ltr'}:
             return WritingSystem(
-                axis='horizontal', directionality='left-to-right', lining='top-to-bottom',
+                directionality='left-to-right', axis='horizontal', lining='top-to-bottom',
             )
         if descriptor in {'right-to-left', 'rtl'}:
             return WritingSystem(
-                axis='horizontal', directionality='right-to-left', lining='top-to-bottom',
+                directionality='right-to-left', axis='horizontal', lining='top-to-bottom',
             )
         raise ValueError(
             f"Unknown descriptor '{descriptor}'. "
