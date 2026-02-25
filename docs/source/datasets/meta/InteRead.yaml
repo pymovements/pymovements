@@ -1,5 +1,23 @@
 name: InteRead
 long_name: Interrupted Reading dataset
+description: 'InteRead dataset :cite:p:`InteRead`.
+
+
+  This dataset includes monocular eye tracking data in an interrupted reading task.
+
+  Automatic interruption occurred during a reading task and participants continued
+
+  reading after the pause.
+
+  Eye movements are recorded at a sampling frequency of 1200Hz with a video-based
+  eye tracker.
+
+  Provided data are raw gaze samples and precomputed event files both in pixel coordinates.
+
+
+  For more details, check the paper :cite:p:`InteRead`.
+
+  '
 resources:
 - content: gaze
   filename: resampled_gaze.csv.zip

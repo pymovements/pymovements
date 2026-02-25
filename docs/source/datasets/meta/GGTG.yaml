@@ -1,5 +1,25 @@
 name: GGTG
 long_name: Gaze-Guided Text Generation
+description: 'GGTG dataset :cite:p:`GGTG`.
+
+
+  This dataset includes eye-tracking data from native (P13-24) and non-native (P01-P12)
+  speakers
+
+  of English reading multi-page texts generated via gaze-guided text generation. Eye
+  movements
+
+  are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000 Plus eye
+  tracker and
+
+  are provided as pixel coordinates.
+
+
+  Check the respective paper :cite:p:`GGTG` and the `OSF repository <https://osf.io/rhgbk/>`__
+
+  for details.
+
+  '
 resources:
 - content: gaze
   filename: samples.zip

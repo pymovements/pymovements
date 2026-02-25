@@ -1,5 +1,19 @@
 name: "CopCo"
 
+description: |
+  CopCo dataset :cite:p:`CopCoL1Hollenstein`.
+
+  This dataset includes monocular eye tracking data from a single participant in a single
+  session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
+  eye tracker and are provided as pixel coordinates.
+
+  The participant is instructed to read texts and answer questions.
+
+  The dataset includes the data from three papers:
+      the L1 data: :cite:p:`CopCoL1Hollenstein`,
+      the L1 data with dylsexia: :cite:p:`CopCoL1DysBjornsdottir`,
+      the L2 data: :cite:p:`CopCoL2`,
+
 long_name: 'Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading'
 
 resources:

@@ -1,5 +1,11 @@
 name: UCL
 long_name: University College London corpus
+description: "UCL dataset :cite:p:`UCL`.\n\n  UCL is a dataset of word-by-word reading\
+  \ times collected through\n  self-paced reading and eye-tracking experiments to\
+  \ evaluate\n  computational psycholinguistic models of English sentence comprehension.\n\
+  \  361 sentences from narrative sources, ensuring they were understandable without\
+  \ context,\n  and recorded reading times from participants using both methods.\n\
+  \n  For more details check out the original paper :cite:p:`UCL`.\n"
 resources:
 - content: precomputed_events
   filename: UCL_events.zip

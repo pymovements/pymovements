@@ -2,6 +2,17 @@ name: "FakeNewsPerception"
 
 long_name:  'Fake News Perception Eye Tracking Corpus'
 
+description: |
+  FakeNewsPerception dataset :cite:p:`FakeNewsPerception`.
+
+  FakeNewsPerception dataset consists of eye movements during reading,
+  perceived believability scores, and questionnaires including Cognitive Reflection Test (CRT)
+  and News-Find-Me (NFM) perception, collected from 25 participants with 60 news items.
+  Eye movements are recorded to provide objective measures
+  of information processing during news reading.
+
+  For more details see :cite:p:`FakeNewsPerception`.
+
 resources:
   - content: precomputed_events
     url: "https://dataverse.harvard.edu/api/access/datafile/4200164"

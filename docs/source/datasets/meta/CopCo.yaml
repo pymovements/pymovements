@@ -1,5 +1,12 @@
 name: CopCo
 long_name: Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading
+description: "CopCo dataset :cite:p:`CopCoL1Hollenstein`.\n\nThis dataset includes\
+  \ monocular eye tracking data from a single participant in a single\nsession. Eye\
+  \ movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000\n\
+  eye tracker and are provided as pixel coordinates.\n\nThe participant is instructed\
+  \ to read texts and answer questions.\n\nThe dataset includes the data from three\
+  \ papers:\n    the L1 data: :cite:p:`CopCoL1Hollenstein`,\n    the L1 data with\
+  \ dylsexia: :cite:p:`CopCoL1DysBjornsdottir`,\n    the L2 data: :cite:p:`CopCoL2`,\n"
 resources:
 - content: gaze
   filename: csvs.zip

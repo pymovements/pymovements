@@ -1,5 +1,38 @@
 name: GazeBase
 long_name: GazeBase dataset
+description: 'GazeBase dataset :cite:p:`GazeBase`.
+
+
+  This dataset includes monocular (left eye) eye tracking data from 322 participants
+  captured over
+
+  a period of 37 months. Participants attended up to 9 rounds during this time frame,
+  with each
+
+  round consisting of two contiguous sessions.
+
+
+  Eye movements are recorded at a sampling frequency of 1000 Hz using an EyeLink 1000
+  video-based
+
+  eye tracker and are provided as positional data in degrees of visual angle.
+
+
+  In each of the two sessions per round, participants are instructed to complete a
+  series of
+
+  tasks, including a fixation task (FIX), a horizontal saccade task (HSS), a random
+  saccade task
+
+  (RAN), a reading task (TEX), two free viewing video tasks (VD1 and VD2) and a gaze-driven
+  gaming
+
+  task (BLG).
+
+
+  Check the respective paper for details :cite:p:`GazeBase`.
+
+  '
 resources:
 - content: gaze
   filename: GazeBase_v2_0.zip

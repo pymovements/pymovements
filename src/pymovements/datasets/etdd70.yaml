@@ -2,6 +2,21 @@ name: ETDD70
 
 long_name: 'Eye-Tracking Dyslexia Dataset'
 
+description: |
+  Eye-Tracking Dyslexia Dataset (ETDD70) :cite:p:`ETDD70`.
+
+  This dataset includes binocular eye tracking data from 70 Czech children age 9-10.
+  Eye movements are recorded at a sampling frequency of 250 Hz eye tracker and
+  precomputed events are reported.
+
+  Each participant is instructed to read three texts:
+    - Task called Syllables contains 90 syllables arranged in a 9 x 10 matrix
+    - Task called MeaningfulText consists of a passage about
+      a young boy who watches a squirrel from his window.
+    - Task called PseudoText comprises fictional, meaningless words.
+
+  Check the respective paper for details :cite:p:`ETDD70`.
+
 resources:
   - content: gaze
     url: https://zenodo.org/api/records/13332134/files-archive

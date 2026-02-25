@@ -2,6 +2,17 @@ name: "DIDEC"
 
 long_name: 'Dutch Image Description and Eye-tracking Corpus'
 
+description: |
+  DIDEC dataset :cite:p:`DIDEC`.
+
+  The DIDEC eye-tracking data has two different data collections, (1) for the
+  description viewing task it is more coherent than for the free-viewing task;
+  (2) variation in image descriptions. The data was collected using BeGaze eye-tracker
+  with a sampling rate of 250 Hz. The data collection contains 112 Dutch students,
+  54 students completed the free viewing task, while 58 completed the image description task.
+
+  Check the respective paper for details :cite:p:`DIDEC`.
+
 resources:
   - content: gaze
     url: "https://didec.uvt.nl/corpus/DIDEC_only_the_eyetracking_data.zip"

@@ -2,6 +2,16 @@ name: "PotsdamBingeRemotePVT"
 
 long_name: 'Potsdam Binge Remote PVT dataset'
 
+description: |
+  PotsdamBingeRemotePVT dataset :cite:p:`PotsdamBingePVT`.
+
+  This dataset includes monocular eye tracking data from 57 participants in two sessions with an
+  interval of at least one week between two sessions. Eye movements are recorded at a sampling
+  frequency of 1000 Hz using an EyeLink 1000 Plus video-based eye tracker and are provided as
+  pixel coordinates. Participants are instructed to perform a PVT trial.
+
+  Check the respective `repository <https://osf.io/qf7e6/>`_ for details.
+
 resources:
   - content: gaze
     url: "https://osf.io/download/9vbs8/"

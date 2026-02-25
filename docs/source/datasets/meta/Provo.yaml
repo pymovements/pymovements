@@ -1,5 +1,26 @@
 name: Provo
 long_name: Provo Corpus
+description: 'Provo dataset :cite:p:`Provo`.
+
+
+  The Provo Corpus, a corpus of eye-tracking data with accompanying predictability
+  norms.
+
+  The predictability norms for the Provo Corpus differ from those of other corpora.
+
+  In addition to traditional cloze scores that estimate the predictability of the
+  full
+
+  orthographic form of each word, the Provo Corpus also includes measures of the
+
+  predictability of the morphosyntactic and semantic information for each word.
+
+  This makes the Provo Corpus ideal for studying predictive processes in reading.
+
+
+  Check the respective paper for details :cite:p:`Provo`.
+
+  '
 resources:
 - content: precomputed_events
   filename: Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv
