@@ -135,18 +135,18 @@ class WritingSystem:
         --------
         Vertical left to right:
 
-        >>> WritingSystem.from_descpriptor('left-to-right')
-        WritingSystem(directionality: 'left-to-right', axis='horizontal', lining='top-to-bottom')
+        >>> WritingSystem.from_descriptor('left-to-right')
+        WritingSystem(directionality='left-to-right', axis='horizontal', lining='top-to-bottom')
 
         Abbreviations are also supported:
 
-        >>> WritingSystem.from_descpriptor('ltr')
-        WritingSystem(directionality: 'left-to-right', axis='horizontal', lining='top-to-bottom')
+        >>> WritingSystem.from_descriptor('ltr')
+        WritingSystem(directionality='left-to-right', axis='horizontal', lining='top-to-bottom')
 
         and
 
-        >>> WritingSystem.from_descpriptor('rtl')
-        WritingSystem(directionality: 'right-to-left', axis='horizontal', lining='top-to-bottom')
+        >>> WritingSystem.from_descriptor('rtl')
+        WritingSystem(directionality='right-to-left', axis='horizontal', lining='top-to-bottom')
         """
         if descriptor in {'left-to-right', 'ltr'}:
             return WritingSystem(
