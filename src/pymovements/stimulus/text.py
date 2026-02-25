@@ -47,7 +47,8 @@ class WritingSystem:
         For horizontal text, this is typically 'left-to-right' or 'right-to-left'.
         For vertical text, this is typically 'top-to-bottom'.
         Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English)
-        is not currently supported. (default: 'left-to-right')
+        is currently not supported.
+        (default: 'left-to-right')
     axis: Literal['horizontal', 'vertical']
         Primary axis along which text is laid out.
         (default: 'horizontal')
