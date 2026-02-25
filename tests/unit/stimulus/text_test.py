@@ -23,6 +23,13 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements.stimulus import text
+from pymovements.stimulus.text import WritingSystem
+
+
+HORIZONTAL_LR = WritingSystem('left-to-right', axis='horizontal', lining='top-to-bottom')
+HORIZONTAL_RL = WritingSystem('right-to-left', axis='horizontal', lining='top-to-bottom')
+VERTICAL_RL = WritingSystem('top-to-bottom', axis='vertical', lining='right-to-left')
+VERTICAL_LR = WritingSystem('top-to-bottom', axis='vertical', lining='left-to-right')
 
 
 EXPECTED_DF = polars.DataFrame(
@@ -341,36 +348,279 @@ def test_text_stimulus_splitting_different_between(filename, custom_read_kwargs,
     assert len(unique_values) == len(set(unique_values))
 
 
-@pytest.fixture(name='text_stimulus')
-def fixture_text_stimulus(make_example_file):
-    filepath = make_example_file('stimuli/toy_text_aoi.csv')
-    yield text.from_file(
-        filepath,
-        aoi_column='word',
-        start_x_column='top_left_x',
-        start_y_column='top_left_y',
-        end_x_column='bottom_left_x',
-        end_y_column='bottom_left_y',
-        page_column='page',
-    )
-
-
 @pytest.mark.parametrize(
-    ('row', 'expected_aoi'),
+    ('filename', 'writing_system', 'expected_n_lines'),
     [
         pytest.param(
-            {'x': 400, 'y': 125},
-            'A',
-            id='400,125',
+            'stimuli/toy_text_aoi.csv',
+            HORIZONTAL_LR,
+            2,
+            id='ltr_split',
         ),
         pytest.param(
-            {'x': 500, 'y': 300},
-            None,
-            id='500,300',
+            'stimuli/toy_text_aoi_rtl.csv',
+            HORIZONTAL_RL,
+            2,
+            id='rtl_split',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_rtl.csv',
+            VERTICAL_RL,
+            3,
+            id='vertical_rl_split',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_ltr.csv',
+            VERTICAL_LR,
+            3,
+            id='vertical_lr_split',
         ),
     ],
 )
-def test_text_stimulus_get_aoi(text_stimulus, row, expected_aoi):
-    aoi = text_stimulus.get_aoi(row=row, x_eye='x', y_eye='y')
+def test_text_stimulus_split_preserves_writing_mode(
+    filename,
+    writing_system,
+    expected_n_lines,
+    make_example_file,
+):
+    filepath = make_example_file(filename)
+    stimulus = text.from_file(
+        filepath,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_system=writing_system,
+    )
+
+    split_stimuli = stimulus.split(by='line_idx')
+
+    assert len(split_stimuli) == expected_n_lines
+    assert all(stimulus.writing_system == writing_system for stimulus in split_stimuli)
+
+
+@pytest.mark.parametrize(
+    ('filename', 'writing_system', 'row', 'expected_aoi'),
+    [
+        pytest.param(
+            'stimuli/toy_text_aoi.csv',
+            HORIZONTAL_LR,
+            {'x': 400, 'y': 125},
+            'A',
+            id='ltr_inside',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi.csv',
+            HORIZONTAL_LR,
+            {'x': 500, 'y': 300},
+            None,
+            id='ltr_outside',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_rtl.csv',
+            HORIZONTAL_RL,
+            {'x': 1161, 'y': 125},
+            'T',
+            id='rtl_first_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_rtl.csv',
+            HORIZONTAL_RL,
+            {'x': 1279, 'y': 125},
+            'A',
+            id='rtl_last_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_rtl.csv',
+            HORIZONTAL_RL,
+            {'x': 1280, 'y': 125},
+            None,
+            id='rtl_exclusive_end_boundary',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_rtl.csv',
+            VERTICAL_RL,
+            {'x': 1266, 'y': 125},
+            'A',
+            id='vertical_rl_first_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_rtl.csv',
+            VERTICAL_RL,
+            {'x': 1266, 'y': 140},
+            'B',
+            id='vertical_rl_second_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_rtl.csv',
+            VERTICAL_RL,
+            {'x': 1146, 'y': 125},
+            'r',
+            id='vertical_rl_third_column_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_rtl.csv',
+            VERTICAL_RL,
+            {'x': 1280, 'y': 125},
+            None,
+            id='vertical_rl_exclusive_x_end',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_ltr.csv',
+            VERTICAL_LR,
+            {'x': 401, 'y': 125},
+            'A',
+            id='vertical_lr_first_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_ltr.csv',
+            VERTICAL_LR,
+            {'x': 401, 'y': 140},
+            'B',
+            id='vertical_lr_second_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_ltr.csv',
+            VERTICAL_LR,
+            {'x': 521, 'y': 125},
+            'r',
+            id='vertical_lr_third_column_char',
+        ),
+        pytest.param(
+            'stimuli/toy_text_aoi_vertical_ltr.csv',
+            VERTICAL_LR,
+            {'x': 415, 'y': 125},
+            None,
+            id='vertical_lr_exclusive_x_end',
+        ),
+    ],
+)
+def test_text_stimulus_get_aoi_parameterized(
+    filename,
+    writing_system,
+    row,
+    expected_aoi,
+    make_example_file,
+):
+    filepath = make_example_file(filename)
+    stimulus = text.from_file(
+        filepath,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_system=writing_system,
+    )
+
+    aoi = stimulus.get_aoi(row=row, x_eye='x', y_eye='y')
 
     assert aoi['char'].first() == expected_aoi
+
+
+def test_text_stimulus_rtl_writing_mode_and_line_order(make_example_file):
+    filepath = make_example_file('stimuli/toy_text_aoi_rtl.csv')
+    text_stimulus_rtl = text.from_file(
+        filepath,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_system=HORIZONTAL_RL,
+    )
+
+    assert text_stimulus_rtl.writing_system == HORIZONTAL_RL
+
+    first_line = (
+        text_stimulus_rtl.aois
+        .filter(polars.col('line_idx') == 0)
+        .select('char', 'top_left_x')
+    )
+
+    assert first_line['char'].to_list() == ['T', 'C', 'A', 'R', 'T', 'S', 'B', 'A']
+    assert first_line['top_left_x'].to_list() == [
+        1160.0, 1175.0, 1190.0, 1205.0, 1220.0, 1235.0, 1250.0, 1265.0,
+    ]
+
+
+def test_text_stimulus_vertical_rl_writing_mode_and_line_order(make_example_file):
+    filepath = make_example_file('stimuli/toy_text_aoi_vertical_rtl.csv')
+    text_stimulus_vertical_rl = text.from_file(
+        filepath,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_system=VERTICAL_RL,
+    )
+
+    assert text_stimulus_vertical_rl.writing_system == VERTICAL_RL
+
+    first_line = (
+        text_stimulus_vertical_rl.aois
+        .filter(polars.col('line_idx') == 0)
+        .select('char', 'top_left_x', 'top_left_y')
+    )
+    line_positions = (
+        text_stimulus_vertical_rl.aois
+        .group_by('line_idx')
+        .agg(polars.col('top_left_x').first().alias('x'))
+        .sort('line_idx')
+    )
+    line_indices = sorted(text_stimulus_vertical_rl.aois['line_idx'].unique().to_list())
+
+    assert first_line['char'].to_list() == ['A', 'B', 'S', 'T', 'R', 'A', 'C', 'T']
+    assert first_line['top_left_x'].to_list() == [
+        1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0,
+    ]
+    assert first_line['top_left_y'].to_list() == [
+        122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0,
+    ]
+    assert line_indices == [0, 1, 2]
+    assert line_positions['x'].to_list() == [1265.0, 1205.0, 1145.0]
+
+
+def test_text_stimulus_vertical_lr_writing_mode_and_line_order(make_example_file):
+    filepath = make_example_file('stimuli/toy_text_aoi_vertical_ltr.csv')
+    text_stimulus_vertical_lr = text.from_file(
+        filepath,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        writing_system=VERTICAL_LR,
+    )
+
+    assert text_stimulus_vertical_lr.writing_system == VERTICAL_LR
+
+    first_line = (
+        text_stimulus_vertical_lr.aois
+        .filter(polars.col('line_idx') == 0)
+        .select('char', 'top_left_x', 'top_left_y')
+    )
+    line_positions = (
+        text_stimulus_vertical_lr.aois
+        .group_by('line_idx')
+        .agg(polars.col('top_left_x').first().alias('x'))
+        .sort('line_idx')
+    )
+    line_indices = sorted(text_stimulus_vertical_lr.aois['line_idx'].unique().to_list())
+
+    assert first_line['char'].to_list() == ['A', 'B', 'S', 'T', 'R', 'A', 'C', 'T']
+    assert first_line['top_left_x'].to_list() == [
+        400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0,
+    ]
+    assert first_line['top_left_y'].to_list() == [
+        122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0,
+    ]
+    assert line_indices == [0, 1, 2]
+    assert line_positions['x'].to_list() == [400.0, 460.0, 520.0]
