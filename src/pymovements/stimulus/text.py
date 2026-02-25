@@ -129,7 +129,6 @@ class WritingSystem:
 
         Examples
         --------
-
         Vertical left to right:
 
         >>>  WritingSystem.from_descpriptor('left-to-right')
@@ -144,8 +143,6 @@ class WritingSystem:
 
         >>>  WritingSystem.from_descpriptor('rtl')
         WritingSystem(directionality: 'right-to-left', axis='horizontal', lining='top-to-bottom')
-
-
         """
         if descriptor in {'left-to-right', 'ltr'}:
             return WritingSystem(
