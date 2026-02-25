@@ -45,6 +45,15 @@ from pymovements.gaze import from_asc
                 pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning'),
                 pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning'),
+                pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*No tracked eye information found.*:UserWarning',
+                ),
+                pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning'),
+                pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*No eye tracker software version found.*:UserWarning',
+                ),
             ],
             id='empty_file',
         ),
@@ -292,6 +301,7 @@ def test_from_asc_example_file_has_shape_and_schema(
         filename, kwargs, shape, schema, make_example_file,
 ):
     filepath = make_example_file(filename)
+
     gaze = from_asc(filepath, **kwargs)
 
     assert gaze.samples.shape == shape
@@ -445,7 +455,32 @@ def test_from_asc_example_file_raises_exception(
                     mount='Desktop',
                 ),
             ),
-            id='binocular_1kHz',
+            id='binocular_1kHz_nonstandard_resolution',
+        ),
+
+        pytest.param(
+            'eyelink_binocular_example.asc',
+            # asc file was not recorded by SR Research software but misses required header
+            # for auto-inferring if screen resolution needs to be extended or not.
+            # The following header line is needed in the source asc file for auto-inferring:
+            # ** Recorded by: libeyelink.py
+            {'encoding': 'latin1', 'extend_resolution': False},
+            Experiment(
+                screen=Screen(
+                    width_px=1920,
+                    height_px=1080,
+                ),
+                eyetracker=EyeTracker(
+                    sampling_rate=1000.0,
+                    left=True,
+                    right=True,
+                    model='EyeLink Portable Duo',
+                    version='6.14',
+                    vendor='EyeLink',
+                    mount='Desktop',
+                ),
+            ),
+            id='binocular_1kHz_force_extend',
         ),
     ],
 )
@@ -518,7 +553,7 @@ def test_from_asc_example_file_has_expected_n_components(
                 'screen_height_px': 1080,
                 'sampling_rate': 1000,
             },
-            ['Screen resolution: (1920, 1080) != (1280.0, 1024.0)'],
+            ['Screen resolution: 1920x1080 != 1280x1024'],
             id='screen_resolution',
         ),
         pytest.param(
@@ -580,13 +615,13 @@ def test_from_asc_detects_mismatches_in_experiment_metadata(
         experiment_kwargs, issues, make_example_file,
 ):
     filepath = make_example_file('eyelink_monocular_example.asc')
-    with pytest.raises(ValueError) as excinfo:
-        from_asc(filepath, experiment=Experiment(**experiment_kwargs))
+    expected_message = (
+        'Experiment metadata does not match the metadata parsed from the ASC file:\n'
+        + '\n'.join(f'- {issue}' for issue in issues)
+    )
 
-    msg, = excinfo.value.args
-    expected_msg = 'Experiment metadata does not match the metadata in the ASC file:\n'
-    expected_msg += '\n'.join(f'- {issue}' for issue in issues)
-    assert msg == expected_msg
+    with pytest.warns(UserWarning, match=expected_message):
+        from_asc(filepath, experiment=Experiment(**experiment_kwargs))
 
 
 @pytest.mark.parametrize(
@@ -812,6 +847,11 @@ def test_from_asc_example_file_has_expected_events(
 @pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
 @pytest.mark.parametrize(
     ('header', 'body', 'expected_warning', 'expected_message', 'from_asc_kwargs'),
     [
@@ -838,6 +878,11 @@ def test_from_asc_warns(
 @pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
 @pytest.mark.parametrize(
     ('body', 'messages', 'expected_data'),
     [
@@ -908,6 +953,11 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
 @pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
 def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_keyerror(
         make_text_file,
 ):

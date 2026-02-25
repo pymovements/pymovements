@@ -440,6 +440,7 @@ def parse_eyelink(
         metadata_patterns: list[dict[str, Any] | str] | None = None,
         encoding: str | None = None,
         messages: bool | Sequence[str] = False,
+        extend_resolution: bool | None = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]:
     """Parse EyeLink asc file.
 
@@ -465,6 +466,10 @@ def parse_eyelink(
         Regular expressions are only applied to the message content,
         implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
+    extend_resolution: bool | None
+        Flag indicating if the screen resolution should be extended by 1 pixel.
+        If None, the resolution is extended unless the file was recorded by libeyelink.py.
+        (default: None)
 
     Returns
     -------
@@ -666,7 +671,10 @@ def parse_eyelink(
                 # - Standard EyeLink GAZE_COORDS list the highest pixel index (0-based),
                 #   so we must increment to obtain the resolution.
                 # - PyGaze (libeyelink.py) logs exact resolution; do not increment there.
-                if not recorded_by_libeyelink:
+                # - If extend_resolution is provided, it overrides this logic.
+                if (extend_resolution is True) or (
+                    extend_resolution is None and not recorded_by_libeyelink
+                ):
                     width += 1
                     height += 1
 
