@@ -107,10 +107,11 @@ class IITB_HGC(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://huggingface.co/datasets/cfilt/IITB-HGC/'
-                    'resolve/main/IITB_HGC.jsonl?download=true',
-                    'filename': 'IITB_HGC.jsonl',
-                    'md5': 'cde5dd88534e87d9b2f1ab6e47133b5c',
+                    'source': {
+                        'url': 'https://huggingface.co/datasets/cfilt/IITB-HGC/resolve/main/IITB_HGC.jsonl?download=true',
+                        'filename': 'IITB_HGC.jsonl',
+                        'md5': 'cde5dd88534e87d9b2f1ab6e47133b5c',
+                    },
                     'filename_pattern': 'IITB_HGC.jsonl',
                     'load_kwargs': {
                         'trial_columns': ['participant_id', 'trial_id'],

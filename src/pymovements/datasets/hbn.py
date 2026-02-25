@@ -125,9 +125,11 @@ class HBN(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'data.zip',
-                    'md5': '2c523e911022ffc0eab700e34e9f7f30',
+                    'source': {
+                        'url': 'https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'data.zip',
+                        'md5': '2c523e911022ffc0eab700e34e9f7f30',
+                    },
                     'filename_pattern': r'{subject_id:12}_{video_id}.csv',
                     'filename_pattern_schema_overrides': {
                         'subject_id': str,

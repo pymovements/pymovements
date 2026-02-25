@@ -131,9 +131,11 @@ class GazeBaseVR(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://figshare.com/ndownloader/files/38844024',
-                    'filename': 'gazebasevr.zip',
-                    'md5': '048c04b00fd64347375cc8d37b451a22',
+                    'source': {
+                        'url': 'https://figshare.com/ndownloader/files/38844024',
+                        'filename': 'gazebasevr.zip',
+                        'md5': '048c04b00fd64347375cc8d37b451a22',
+                    },
                     'filename_pattern': (
                         r'S_{round_id:1d}{subject_id:d}'
                         r'_S{session_id:d}'

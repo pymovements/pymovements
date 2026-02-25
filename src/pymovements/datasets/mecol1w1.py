@@ -107,9 +107,11 @@ class MECOL1W1(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/uza8d/',
-                    'filename': 'joint_l1_fixation_version2.0.rda',
-                    'md5': '3c969a930a71cd62c67b936426dd079b',
+                    'source': {
+                        'url': 'https://osf.io/download/uza8d/',
+                        'filename': 'joint_l1_fixation_version2.0.rda',
+                        'md5': '3c969a930a71cd62c67b936426dd079b',
+                    },
                     'filename_pattern': 'joint_l1_fixation_version2.0.rda',
                     'load_kwargs': {
                         'trial_columns': ['uniform_id', 'itemid'],
@@ -118,9 +120,11 @@ class MECOL1W1(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/n5pvh/',
-                    'filename': 'sentence_data_version2.0.csv',
-                    'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
+                    'source': {
+                        'url': 'https://osf.io/download/n5pvh/',
+                        'filename': 'sentence_data_version2.0.csv',
+                        'md5': '609f82b6f45b7c98a0769c6ce14ee6e9',
+                    },
                     'filename_pattern': 'sentence_data_version2.0.csv',
                 },
             ],

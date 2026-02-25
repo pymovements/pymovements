@@ -103,17 +103,21 @@ class UCL(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'UCL_events.zip',
-                    'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
+                    'source': {
+                        'url': 'https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'UCL_events.zip',
+                        'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
+                    },
                     'filename_pattern': r'eyetracking.fix',
                     'load_kwargs': {'read_csv_kwargs': {'separator': '\t', 'null_values': ['NaN']}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'UCL_measures.zip',
-                    'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
+                    'source': {
+                        'url': 'https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'UCL_measures.zip',
+                        'md5': '77e3c0cacccb0a074a55d23aa8531ca5',
+                    },
                     'filename_pattern': r'eyetracking.RT',
                     'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },

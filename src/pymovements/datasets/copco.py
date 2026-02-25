@@ -131,9 +131,11 @@ class CopCo(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://osf.io/download/bg9r4/',
-                    'filename': 'csvs.zip',
-                    'md5': '9dc3276714397b7fccac1e179a14c52b',  # type:ignore
+                    'source': {
+                        'url': 'https://osf.io/download/bg9r4/',
+                        'filename': 'csvs.zip',
+                        'md5': '9dc3276714397b7fccac1e179a14c52b',
+                    },
                     'filename_pattern': r'P{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
                     'load_kwargs': {
@@ -145,9 +147,10 @@ class CopCo(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'FixationReports.zip',
-                    'md5': None,  # type:ignore
+                    'source': {
+                        'url': 'https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'FixationReports.zip',
+                    },
                     'filename_pattern': r'FIX_report_P{subject_id:d}.txt',
                     'filename_pattern_schema_overrides': {'subject_id': int},
                     'load_kwargs': {
@@ -163,9 +166,10 @@ class CopCo(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'ReadingMeasures.zip',
-                    'md5': None,  # type:ignore
+                    'source': {
+                        'url': 'https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'ReadingMeasures.zip',
+                    },
                     'filename_pattern': r'P{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
                 },

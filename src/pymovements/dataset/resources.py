@@ -25,12 +25,15 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import KW_ONLY
 from typing import Any
 from warnings import warn
 
 from deprecated.sphinx import deprecated
 
+from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements.dataset.websource import WebSource
 
 
 @repr_html()
@@ -42,6 +45,8 @@ class ResourceDefinition:
     ----------
     content: str
         The content type of the resource.
+    source: WebSource | None
+        The source of the downloadable resource. (default: None)
     filename: str | None
         The target filename of the downloadable resource. This may be an archive. (default: None)
     url: str | None
@@ -68,16 +73,174 @@ class ResourceDefinition:
 
     content: str
 
-    filename: str | None = None
-    url: str | None = None
-    mirrors: list[str] | None = None
-    md5: str | None = None
+    _: KW_ONLY
+
+    source: WebSource | None = None
 
     filename_pattern: str | None = None
     filename_pattern_schema_overrides: dict[str, type] | None = None
 
     load_function: str | None = None
     load_kwargs: dict[str, Any] | None = None
+
+    def __init__(
+            content: str,
+            *,
+            source: WebSource | None = None,
+            filename: str | None = None,
+            url: str | None = None,
+            mirrors: list[str] | None = None,
+            md5: str | None = None,
+            filename_pattern: str | None = None,
+            filename_pattern_schema_overrides: dict[str, type] | None = None,
+            load_function: str | None = None,
+            load_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        check_is_mutual_exclusive(source=source, filename=filename)
+        check_is_mutual_exclusive(source=source, url=url)
+        check_is_mutual_exclusive(source=source, md5=md5)
+        check_is_mutual_exclusive(source=source, mirrors=mirrors)
+
+        self.content = content
+
+        self.source = source
+        self.filename = filename
+        self.url = url
+        self.md5 = md5
+        self.mirrors = mirrors
+
+        self.filename_pattern = filename_pattern
+        self.filename_pattern_schema_overrides = filename_pattern_schema_overrides
+        self.load_function = load_function
+        self.load_kwargs = load_kwargs
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def filename(self) -> str:
+        """The target filename of the downloadable resource. This may be an archive.
+
+        .. deprecated:: v0.26.1
+        Please use ResourceDefinition.source instead.
+        This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str
+            The target filename of the downloadable resource. This may be an archive.
+        """
+        return self.source.filename if self.source else None
+
+    @filename.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def filename(self, data: str) -> None:
+        if self.source is None:
+            self.source = WebSource(url=None, filename=data)
+        else:
+            self.source.filename = data
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def url(self) -> str:
+        """The URL to the downloadable resource.
+
+        .. deprecated:: v0.26.1
+        Please use ResourceDefinition.source instead.
+        This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str
+            The URL to the downloadable resource.
+        """
+        return self.source.url if self.source else None
+
+    @url.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def filename(self, data: str) -> None:
+        if self.source is None:
+            self.source = WebSource(url=None, filename=data)
+        else:
+            self.source.filename = data
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def md5(self) -> str:
+        """The MD5 checksum of the downloadable resource.
+
+        .. deprecated:: v0.26.1
+        Please use ResourceDefinition.source instead.
+        This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str
+            The MD5 checksum of the downloadable resource.
+        """
+        return self.source.md5 if self.source else None
+
+    @md5.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def md5(self, data: str) -> None:
+        if self.source is None:
+            self.source = WebSource(url=None, md5=data)
+        else:
+            self.source.md5 = data
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def mirrors(self) -> list[str]:
+        """A list of additional mirror URLs to download the resource.
+
+        .. deprecated:: v0.26.1
+        Please use ResourceDefinition.source instead.
+        This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        list[str]
+            A list of additional mirror URLs to download the resource.
+        """
+        return self.source.mirrors if self.source else None
+
+    @mirrors.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def mirrors(self, data: list[str]) -> None:
+        if self.source is None:
+            self.source = WebSource(url=None, mirrors=data)
+        else:
+            self.source.mirrors = data
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
@@ -106,6 +269,9 @@ class ResourceDefinition:
             dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
             dictionary['url'] = url
 
+        if 'source' in dictionary and isinstance(dictionary['source'], dict):
+            dictionary['source'] = WebSource.from_dict(dictionary['source'])
+
         return ResourceDefinition(**dictionary)
 
     def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
@@ -124,6 +290,9 @@ class ResourceDefinition:
             ``dict`` representation of ``ResourceDefinition``.
         """
         data = asdict(self)
+
+        if self.source:
+            data['source'] = self.source.to_dict(exclude_none=exclude_none)
 
         # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:

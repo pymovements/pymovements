@@ -131,9 +131,11 @@ class MouseCursor(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'mousecursor.zip',
-                    'md5': '7885e8fd44f14f02f60e9f62431aea63',
+                    'source': {
+                        'url': 'https://ars.els-cdn.com/content/image/1-s2.0-S2352340921000160-mmc1.zip',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'mousecursor.zip',
+                        'md5': '7885e8fd44f14f02f60e9f62431aea63',
+                    },
                     'filename_pattern': r'Experiment {experiment_id:d}.csv',
                     'filename_pattern_schema_overrides': {
                         'experiment_id': int,

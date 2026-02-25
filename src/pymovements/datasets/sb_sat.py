@@ -130,9 +130,11 @@ class SBSAT(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://osf.io/download/jgae7/',
-                    'filename': 'sbsat_csvs.zip',
-                    'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
+                    'source': {
+                        'url': 'https://osf.io/download/jgae7/',
+                        'filename': 'sbsat_csvs.zip',
+                        'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
+                    },
                     'filename_pattern': r'msd{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
                     'load_kwargs': {
@@ -159,9 +161,11 @@ class SBSAT(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': '18sat_fixfinal.csv',
-                    'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
+                    'source': {
+                        'url': 'https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': '18sat_fixfinal.csv',
+                        'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
+                    },
                     'filename_pattern': '18sat_fixfinal.csv',
                     'load_kwargs': {'read_csv_kwargs': {'separator': ','}},
                 },

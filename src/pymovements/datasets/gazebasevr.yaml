@@ -4,9 +4,10 @@ long_name: 'GazeBaseVR dataset'
 
 resources:
   - content: gaze
-    url: "https://figshare.com/ndownloader/files/38844024"
-    filename: "gazebasevr.zip"
-    md5: "048c04b00fd64347375cc8d37b451a22"
+    source:
+      url: "https://figshare.com/ndownloader/files/38844024"
+      filename: "gazebasevr.zip"
+      md5: "048c04b00fd64347375cc8d37b451a22"
     filename_pattern: 'S_{round_id:1d}{subject_id:d}_S{session_id:d}_{task_name}.csv'
     filename_pattern_schema_overrides:
       round_id: !int

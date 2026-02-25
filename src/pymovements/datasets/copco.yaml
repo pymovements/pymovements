@@ -4,9 +4,10 @@ long_name: 'Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading'
 
 resources:
   - content: gaze
-    url: "https://osf.io/download/bg9r4/"
-    filename: "csvs.zip"
-    md5: "9dc3276714397b7fccac1e179a14c52b"
+    source:
+      url: "https://osf.io/download/bg9r4/"
+      filename: "csvs.zip"
+      md5: "9dc3276714397b7fccac1e179a14c52b"
     filename_pattern: 'P{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -17,9 +18,9 @@ resources:
       pixel_columns: ['x_right', 'y_right']
 
   - content: precomputed_events
-    url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip="
-    filename: "FixationReports.zip"
-    md5: null
+    source:
+      url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip="
+      filename: "FixationReports.zip"
     filename_pattern: 'FIX_report_P{subject_id:d}.txt'
     filename_pattern_schema_overrides:
       subject_id: !int
@@ -35,9 +36,9 @@ resources:
         quote_char: null
 
   - content: precomputed_reading_measures
-    url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip="
-    filename: "ReadingMeasures.zip"
-    md5: null
+    source:
+      url: "https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip="
+      filename: "ReadingMeasures.zip"
     filename_pattern: 'P{subject_id:d}.csv'
     filename_pattern_schema_overrides:
       subject_id: !int

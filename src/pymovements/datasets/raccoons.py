@@ -100,10 +100,11 @@ class RaCCooNS(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/'
-                    'eyetracking/ET_raw_data.zip',
-                    'filename': 'ET_raw_data.zip',
-                    'md5': '8b30241040071cee7afea367ae1e013e',
+                    'source': {
+                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip',
+                        'filename': 'ET_raw_data.zip',
+                        'md5': '8b30241040071cee7afea367ae1e013e',
+                    },
                     'filename_pattern': r'{participant_id:s}.asc',
                     'filename_pattern_schema_overrides': {'participant_id': str},
                     'load_kwargs': {
@@ -117,10 +118,11 @@ class RaCCooNS(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/'
-                    'eyetracking/ET_fix_data.tsv',
-                    'filename': 'ET_fix_data.tsv',
-                    'md5': '98dff690022d0c0555987a6d88de992b',
+                    'source': {
+                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv',
+                        'filename': 'ET_fix_data.tsv',
+                        'md5': '98dff690022d0c0555987a6d88de992b',
+                    },
                     'filename_pattern': r'ET_fix_data.tsv',
                     'filename_pattern_schema_overrides': {},
                     'load_kwargs': {
@@ -129,10 +131,11 @@ class RaCCooNS(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/'
-                    'eyetracking/ET_word_data.tsv',
-                    'filename': 'ET_word_data.tsv',
-                    'md5': 'c40886c4515c43187aba8fbc32c8c935',
+                    'source': {
+                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv',
+                        'filename': 'ET_word_data.tsv',
+                        'md5': 'c40886c4515c43187aba8fbc32c8c935',
+                    },
                     'filename_pattern': r'ET_word_data.tsv',
                     'filename_pattern_schema_overrides': {},
                     'load_kwargs': {
