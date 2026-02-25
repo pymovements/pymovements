@@ -104,8 +104,8 @@ class ResourceDefinition:
         self.content = content
 
         self.source = source
-        self.filename = filename
         self.url = url
+        self.filename = filename
         self.md5 = md5
         self.mirrors = mirrors
 
