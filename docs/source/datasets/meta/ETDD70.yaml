@@ -3,11 +3,11 @@ long_name: Eye-Tracking Dyslexia Dataset
 description: "Eye-Tracking Dyslexia Dataset (ETDD70) :cite:p:`ETDD70`.\n\nThis dataset\
   \ includes binocular eye tracking data from 70 Czech children age 9-10.\nEye movements\
   \ are recorded at a sampling frequency of 250 Hz eye tracker and\nprecomputed events\
-  \ are reported.\n\nEach participant is instructed to read three texts:\n    - Task\
-  \ called Syllables contains 90 syllables arranged in a 9 x 10 matrix\n    - Task\
-  \ called MeaningfulText consists of a passage about\n      a young boy who watches\
-  \ a squirrel from his window.\n    - Task called PseudoText comprises fictional,\
-  \ meaningless words.\n\nCheck the respective paper for details :cite:p:`ETDD70`.\n"
+  \ are reported.\n\nEach participant is instructed to read three texts:\n  - Task\
+  \ called Syllables contains 90 syllables arranged in a 9 x 10 matrix\n  - Task called\
+  \ MeaningfulText consists of a passage about\n    a young boy who watches a squirrel\
+  \ from his window.\n  - Task called PseudoText comprises fictional, meaningless\
+  \ words.\n\nCheck the respective paper for details :cite:p:`ETDD70`.\n"
 resources:
 - content: gaze
   filename: edd_raw.zip

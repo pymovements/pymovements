@@ -6,7 +6,10 @@ description: "GazeOnFaces dataset :cite:p:`GazeOnFaces`.\n\nThis dataset include
   \ video-based eye tracker and are provided as pixel coordinates.\n\nParticipants\
   \ were sat 57 cm away from the screen (19-inch LCD monitor,\nscreen res=1280\xD7\
   1024, 60 Hz). Recordings of the eye movements of one eye in monocular\npupil/corneal\
-  \ reflection tracking mode.\n\nCheck the respective paper for details :cite:p:`GazeOnFaces`.\n"
+  \ reflection tracking mode.\n\nCheck the respective paper for details :cite:p:`GazeOnFaces`.\n\
+  \nWarning\n-------\nThis dataset currently cannot be fully processed by ``pymovements``\
+  \ due to an error during\narchive extraction.\n\nSee issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__\
+  \ for reference.\n"
 resources:
 - content: gaze
   filename: database3_sciencemuseum.zip
