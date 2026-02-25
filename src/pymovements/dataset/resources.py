@@ -114,7 +114,6 @@ class ResourceDefinition:
         self.load_function = load_function
         self.load_kwargs = load_kwargs
 
-
     @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
