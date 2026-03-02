@@ -23,13 +23,143 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Sequence
+from dataclasses import dataclass
+from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
+from typing import ClassVar
+from typing import Literal
 
 import polars as pl
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+
+
+@dataclass(frozen=True)
+class WritingSystem:
+    """Writing system specification for text stimuli.
+
+    Attributes
+    ----------
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom']
+        Direction in which text flows within a line.
+        For horizontal text, this is typically 'left-to-right' or 'right-to-left'.
+        For vertical text, this is typically 'top-to-bottom'.
+        Bidirectional/Boustrophedon scripts (e.g., Arabic with embedded English)
+        is currently not supported.
+        (default: 'left-to-right')
+    axis: Literal['horizontal', 'vertical']
+        Primary axis along which text is laid out.
+        (default: 'horizontal')
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left']
+        Direction in which lines of text are stacked.
+        For horizontal text, this is typically 'top-to-bottom'.
+        For vertical text, this is typically 'left-to-right' or 'right-to-left'.
+        (default: 'top-to-bottom')
+    DESCRIPTORS: ClassVar[tuple[str, ...]]
+        Valid descriptor strings for :meth:`from_descriptor`:
+
+        - ``'left-to-right'``, ``ltr``
+        - ``'right-to-left'``, ``rtl``
+
+    Examples
+    --------
+    Typical configurations are:
+
+    * Horizontal left-to-right (LTR)::
+
+        WritingSystem(
+            directionality='left-to-right',
+            axis='horizontal',
+            lining='top-to-bottom',
+        )
+
+    * Horizontal right-to-left (RTL)::
+
+        WritingSystem(
+            directionality='right-to-left',
+            axis='horizontal',
+            lining='top-to-bottom',
+        )
+
+    * Vertical right-to-left columns::
+
+        WritingSystem(
+            directionality='top-to-bottom',
+            axis='vertical',
+            lining='right-to-left',
+        )
+
+    * Vertical left-to-right columns::
+
+        WritingSystem(
+            directionality='top-to-bottom',
+            axis='vertical',
+            lining='left-to-right',
+        )
+    """
+
+    directionality: Literal['left-to-right', 'right-to-left', 'top-to-bottom'] = 'left-to-right'
+    _: KW_ONLY
+    axis: Literal['horizontal', 'vertical'] = 'horizontal'
+    lining: Literal['top-to-bottom', 'left-to-right', 'right-to-left'] = 'top-to-bottom'
+
+    DESCRIPTORS: ClassVar[tuple[str, ...]] = (
+        'left-to-right',
+        'ltr',
+        'right-to-left',
+        'rtl',
+    )
+
+    @staticmethod
+    def from_descriptor(descriptor: str) -> WritingSystem:
+        """Create a WritingSystem instance from a descriptor string.
+
+        Mapping is as follows:
+
+        - ``left-to-right``, ``ltr``: vertical left to right
+        - ``right-to-left``, ``rtl``: vertical right to left
+
+        Parameters
+        ----------
+        descriptor: str
+            The descriptor string. Valid values are found in ``WritingSystem.DESCRIPTORS``.
+
+        Returns
+        -------
+        WritingSystem
+            The corresponding WritingSystem instance.
+
+        Examples
+        --------
+        Vertical left to right:
+
+        >>> WritingSystem.from_descriptor('left-to-right')
+        WritingSystem(directionality='left-to-right', axis='horizontal', lining='top-to-bottom')
+
+        Abbreviations are also supported:
+
+        >>> WritingSystem.from_descriptor('ltr')
+        WritingSystem(directionality='left-to-right', axis='horizontal', lining='top-to-bottom')
+
+        and
+
+        >>> WritingSystem.from_descriptor('rtl')
+        WritingSystem(directionality='right-to-left', axis='horizontal', lining='top-to-bottom')
+        """
+        if descriptor in {'left-to-right', 'ltr'}:
+            return WritingSystem(
+                directionality='left-to-right', axis='horizontal', lining='top-to-bottom',
+            )
+        if descriptor in {'right-to-left', 'rtl'}:
+            return WritingSystem(
+                directionality='right-to-left', axis='horizontal', lining='top-to-bottom',
+            )
+        raise ValueError(
+            f"Unknown descriptor '{descriptor}'. "
+            f"Valid descriptors are: {WritingSystem.DESCRIPTORS}",
+        )
 
 
 @repr_html(['aois'])
@@ -64,6 +194,10 @@ class TextStimulus:
     trial_column: str | None
         Name for the column that specifies the unique trial id.
         (default: None)
+    writing_system: WritingSystem | str
+        Writing system of the text. If ``writing_system`` is a string,
+        :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` is used for initialization.
+        (default: ``'left-to-right'``)
     """
 
     def __init__(
@@ -79,6 +213,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
+            writing_system: WritingSystem | str = 'left-to-right',
     ) -> None:
 
         self.aois = aois.clone()
@@ -91,6 +226,11 @@ class TextStimulus:
         self.end_y_column = end_y_column
         self.page_column = page_column
         self.trial_column = trial_column
+
+        if isinstance(writing_system, str):
+            self.writing_system = WritingSystem.from_descriptor(writing_system)
+        else:
+            self.writing_system = writing_system
 
     def split(
             self,
@@ -120,8 +260,9 @@ class TextStimulus:
                 end_y_column=self.end_y_column,
                 page_column=self.page_column,
                 trial_column=self.trial_column,
+                writing_system=self.writing_system,
             )
-            for df in self.aois.partition_by(by=by, as_dict=False)
+            for df in self.aois.partition_by(by, as_dict=False)
         ]
 
     def get_aoi(
@@ -183,6 +324,7 @@ class TextStimulus:
             end_y_column: str | None = None,
             page_column: str | None = None,
             trial_column: str | None = None,
+            writing_system: WritingSystem | str = 'left-to-right',
             read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
@@ -215,6 +357,10 @@ class TextStimulus:
         trial_column: str | None
             Name of column that specifies the unique trial id.
             (default: None)
+        writing_system: WritingSystem | str
+            Writing system of the text. If ``writing_system`` is a string,
+            :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
+            (default: ``'left-to-right'``)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -249,6 +395,7 @@ class TextStimulus:
             end_y_column=end_y_column,
             page_column=page_column,
             trial_column=trial_column,
+            writing_system=writing_system,
         )
 
 
@@ -296,6 +443,7 @@ def from_file(
         page_column: str | None = None,
         trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
+        writing_system: WritingSystem | str = 'left-to-right',
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -329,6 +477,9 @@ def from_file(
         (default: None)
     custom_read_kwargs: dict[str, Any] | None
         Custom read keyword arguments for polars. (default: None)
+    writing_system: WritingSystem | str
+        Text writing system. See TextStimulus.__init__ for details.
+        (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
 
 
     Returns
@@ -348,6 +499,7 @@ def from_file(
         page_column=page_column,
         trial_column=trial_column,
         read_csv_kwargs=custom_read_kwargs,
+        writing_system=writing_system,
     )
 
 
