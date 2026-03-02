@@ -134,9 +134,11 @@ class GazeGraph(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'gaze_graph_data.zip',
-                    'md5': '181f4b79477cee6e0267482d989610b0',
+                    'source': {
+                        'url': 'https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'gaze_graph_data.zip',
+                        'md5': '181f4b79477cee6e0267482d989610b0',
+                    },
                     'filename_pattern': r'P{subject_id}_{task}.csv',
                     'filename_pattern_schema_overrides': {
                         'subject_id': int,

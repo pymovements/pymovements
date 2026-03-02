@@ -2,9 +2,10 @@ name: Provo
 long_name: Provo Corpus
 resources:
 - content: precomputed_events
-  filename: Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv
-  url: https://osf.io/download/z3eh6/
-  md5: 7aa239e51e5d78528e2430f84a23da3f
+  source:
+    url: https://osf.io/download/z3eh6/
+    filename: Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv
+    md5: 7aa239e51e5d78528e2430f84a23da3f
   filename_pattern: Provo_Corpus-Additional_Eyetracking_Data-Fixation_Report.csv
   load_kwargs:
     read_csv_kwargs:

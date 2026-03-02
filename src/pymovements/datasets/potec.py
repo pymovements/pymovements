@@ -131,9 +131,11 @@ class PoTeC(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://osf.io/download/tgd9q/',
-                    'filename': 'PoTeC.zip',
-                    'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
+                    'source': {
+                        'url': 'https://osf.io/download/tgd9q/',
+                        'filename': 'PoTeC.zip',
+                        'md5': 'cffd45039757c3777e2fd130e5d8a2ad',
+                    },
                     'filename_pattern': r'reader{subject_id:d}_{text_id}_raw_data.tsv',
                     'filename_pattern_schema_overrides': {
                         'subject_id': int,
@@ -156,9 +158,11 @@ class PoTeC(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/d8pyg/',
-                    'filename': 'fixation.zip',
-                    'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
+                    'source': {
+                        'url': 'https://osf.io/download/d8pyg/',
+                        'filename': 'fixation.zip',
+                        'md5': 'ecd9a998d07158922bb9b8cdd52f5688',
+                    },
                     'filename_pattern': r'reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv',
                     'filename_pattern_schema_overrides': {
                         'subject_id': int,
@@ -170,9 +174,11 @@ class PoTeC(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/3ywhz/',
-                    'filename': 'reading_measures.zip',
-                    'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
+                    'source': {
+                        'url': 'https://osf.io/download/3ywhz/',
+                        'filename': 'reading_measures.zip',
+                        'md5': 'efafec5ce074d8f492cc2409b6c4d9eb',
+                    },
                     'filename_pattern': r'reader{subject_id:d}_{text_id}_merged.tsv',
                     'filename_pattern_schema_overrides': {
                         'subject_id': int,

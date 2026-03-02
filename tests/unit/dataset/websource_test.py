@@ -17,17 +17,89 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements utils downloads."""
+"""Tests for WebSource and download utilities."""
 import hashlib
 import os.path
+from pathlib import Path
 from unittest import mock
+from unittest.mock import patch
 
 import pytest
 
-from pymovements.dataset._utils._downloads import _DownloadProgressBar
-from pymovements.dataset._utils._downloads import _get_redirected_url
-from pymovements.dataset._utils._downloads import download_file
+from pymovements.dataset.websource import _download_file
+from pymovements.dataset.websource import _DownloadProgressBar
+from pymovements.dataset.websource import _get_redirected_url
+from pymovements.dataset.websource import WebSource
 
+
+def test_websource_init():
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='123')
+    assert source.url == 'http://example.com/file.zip'
+    assert source.filename == 'file.zip'
+    assert source.md5 == '123'
+    assert source.mirrors is None
+
+
+def test_websource_from_dict():
+    data = {'url': 'http://example.com/file.zip', 'filename': 'file.zip', 'md5': '123'}
+    source = WebSource.from_dict(data)
+    assert source.url == 'http://example.com/file.zip'
+    assert source.filename == 'file.zip'
+    assert source.md5 == '123'
+
+
+def test_websource_to_dict():
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='123')
+    data = source.to_dict()
+    assert data == {'url': 'http://example.com/file.zip', 'filename': 'file.zip', 'md5': '123'}
+
+
+def test_websource_download_infer_filename():
+    source = WebSource(url='http://example.com/file.zip')
+    with patch('pymovements.dataset.websource._download_file') as mock_download:
+        source.download('tmp')
+        mock_download.assert_called_once_with(
+            url='http://example.com/file.zip',
+            dirpath=Path('tmp'),
+            filename='file.zip',
+            md5=None,
+            verbose=True,
+        )
+
+
+def test_websource_download_explicit_filename():
+    source = WebSource(url='http://example.com/download', filename='data.zip')
+    with patch('pymovements.dataset.websource._download_file') as mock_download:
+        source.download('tmp')
+        mock_download.assert_called_once_with(
+            url='http://example.com/download',
+            dirpath=Path('tmp'),
+            filename='data.zip',
+            md5=None,
+            verbose=True,
+        )
+
+
+def test_websource_download_with_mirrors():
+    source = WebSource(
+        url='http://primary.com/file.zip',
+        mirrors=['http://mirror1.com/file.zip', 'http://mirror2.com/file.zip'],
+    )
+    with patch('pymovements.dataset.websource._download_file') as mock_download:
+        # Fail primary, fail mirror 1, succeed mirror 2
+        mock_download.side_effect = [
+            RuntimeError('fail'),
+            RuntimeError('fail'),
+            Path('tmp/file.zip'),
+        ]
+
+        with pytest.warns(UserWarning):
+            path = source.download('tmp')
+        assert path == Path('tmp/file.zip')
+        assert mock_download.call_count == 3
+
+
+# ==== Moved tests from tests/unit/dataset/_utils/_downloads_test.py ====
 
 @pytest.mark.network
 @pytest.mark.parametrize(
@@ -42,7 +114,7 @@ def test_download_file(tmp_path, verbose):
     filename = 'pymovements-0.4.0.tar.gz'
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
-    filepath = download_file(url, tmp_path, filename, md5, verbose=verbose)
+    filepath = _download_file(url, tmp_path, filename, md5, verbose=verbose)
 
     assert filepath.exists()
     assert filepath.name == filename
@@ -58,7 +130,7 @@ def test_download_file_md5_None(tmp_path):
     url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
     filename = 'pymovements-0.4.0.tar.gz'
 
-    filepath = download_file(url, tmp_path, filename)
+    filepath = _download_file(url, tmp_path, filename)
 
     assert filepath.exists()
     assert filepath.name == filename
@@ -71,7 +143,7 @@ def test_download_file_404(tmp_path):
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
     with pytest.raises(OSError):
-        download_file(url, tmp_path, filename, md5)
+        _download_file(url, tmp_path, filename, md5)
 
 
 @pytest.mark.parametrize(
@@ -87,11 +159,11 @@ def test_download_file_https_failure(tmp_path, verbose):
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
     with mock.patch(
-        'pymovements.dataset._utils._downloads._download_url',
+        'pymovements.dataset.websource._download_url',
         side_effect=OSError(),
     ):
         with pytest.raises(OSError):
-            download_file(url, tmp_path, filename, md5, verbose=verbose)
+            _download_file(url, tmp_path, filename, md5, verbose=verbose)
 
 
 def test_download_file_http_failure(tmp_path):
@@ -100,11 +172,11 @@ def test_download_file_http_failure(tmp_path):
     md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
 
     with mock.patch(
-        'pymovements.dataset._utils._downloads._download_url',
+        'pymovements.dataset.websource._download_url',
         side_effect=OSError(),
     ):
         with pytest.raises(OSError):
-            download_file(url, tmp_path, filename, md5)
+            _download_file(url, tmp_path, filename, md5)
 
 
 @pytest.mark.network
@@ -114,7 +186,7 @@ def test_download_file_with_invalid_md5(tmp_path):
     md5 = '00000000000000000000000000000000'
 
     with pytest.raises(RuntimeError) as excinfo:
-        download_file(url, tmp_path, filename, md5)
+        _download_file(url, tmp_path, filename, md5)
 
     msg, = excinfo.value.args
     assert msg == f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "\

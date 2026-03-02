@@ -107,9 +107,11 @@ class MECOL1W2(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/4m6cr/',
-                    'filename': 'joint_fix_trimmed_l1_wave2_MinusCh_version2.0.RDA',
-                    'md5': 'fee2618005ba931ec656c319152f2e97',
+                    'source': {
+                        'url': 'https://osf.io/download/4m6cr/',
+                        'filename': 'joint_fix_trimmed_l1_wave2_MinusCh_version2.0.RDA',
+                        'md5': 'fee2618005ba931ec656c319152f2e97',
+                    },
                     'filename_pattern': 'joint_fix_trimmed_l1_wave2_MinusCh_version2.0.RDA',
                     'load_kwargs': {
                         'trial_columns': ['uniform_id', 'itemid'],
@@ -118,9 +120,11 @@ class MECOL1W2(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/f98gw/',
-                    'filename': 'joint_data_trimmed_wave2_version2.0.rda',
-                    'md5': '470f38e4756dcb77c3f6525340156ba2',
+                    'source': {
+                        'url': 'https://osf.io/download/f98gw/',
+                        'filename': 'joint_data_trimmed_wave2_version2.0.rda',
+                        'md5': '470f38e4756dcb77c3f6525340156ba2',
+                    },
                     'filename_pattern': 'joint_data_trimmed_wave2_version2.0.rda',
                     'load_kwargs': {
                         'r_dataframe_key': 'joint.data',

@@ -22,6 +22,12 @@ import pytest
 
 from pymovements import ResourceDefinition
 from pymovements import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
+
+# Ignore deprecation warnings from legacy ResourceDefinition fields during collection and most tests
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:Fields 'filename', 'url', 'mirrors', 'md5' are deprecated.*:DeprecationWarning",
+)
 
 
 @pytest.mark.parametrize(
@@ -81,43 +87,75 @@ def test_resource_is_equal(kwargs):
     ('resource1', 'resource2'),
     [
         pytest.param(
-            ResourceDefinition(content='gaze', filename='test1.csv'),
-            ResourceDefinition(content='gaze', filename='test2.csv'),
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='http://example.com/a',
+                    filename='test1.csv',
+                ),
+            ),
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='http://example.com/a',
+                    filename='test2.csv',
+                ),
+            ),
             id='different_filename',
         ),
 
         pytest.param(
-            ResourceDefinition(content='gaze', filename='test.csv'),
-            ResourceDefinition(content='precomputed_events', filename='test.csv'),
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='http://example.com/b',
+                    filename='test.csv',
+                ),
+            ),
+            ResourceDefinition(
+                content='precomputed_events',
+                source=WebSource(
+                    url='http://example.com/b',
+                    filename='test.csv',
+                ),
+            ),
             id='different_content',
         ),
 
         pytest.param(
-            ResourceDefinition(content='gaze', filename='test.csv', url='https://example.com'),
-            ResourceDefinition(content='gaze', filename='test.csv', url='https://examples.com'),
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='https://example.com',
+                    filename='test.csv',
+                ),
+            ),
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='https://examples.com',
+                    filename='test.csv',
+                ),
+            ),
             id='different_url',
         ),
 
         pytest.param(
             ResourceDefinition(
-                content='gaze', filename='test.csv', url='https://example.com',
-                mirrors=['https://this.mirror.com'],
+                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', mirrors=['https://this.mirror.com']),
             ),
             ResourceDefinition(
-                content='gaze', filename='test.csv', url='https://examples.com',
-                mirrors=['https://that.mirror.com'],
+                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', mirrors=['https://that.mirror.com']),
             ),
             id='different_mirror',
         ),
 
         pytest.param(
             ResourceDefinition(
-                content='gaze', filename='test.csv', url='https://example.com',
-                md5='abcdefgh',
+                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', md5='abcdefgh'),
             ),
             ResourceDefinition(
-                content='gaze', filename='test.csv', url='https://example.com',
-                md5='ijklmnop',
+                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', md5='ijklmnop'),
             ),
             id='different_md5',
         ),
@@ -768,3 +806,61 @@ def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecatio
         scheduled_version='0.28.0',
 
     )
+
+
+def test_resource_definition_source_only():
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source=source)
+    assert resource.source == source
+    assert resource.content == 'gaze'
+
+
+@pytest.mark.filterwarnings(
+    "default:Fields 'filename', 'url', 'mirrors', 'md5' are deprecated.*:DeprecationWarning",
+)
+def test_resource_definition_legacy_fields():
+    with pytest.warns(DeprecationWarning, match="Fields 'filename', 'url', 'mirrors', 'md5' are deprecated"):
+        resource = ResourceDefinition(
+            content='gaze',
+            url='http://example.com/file.zip',
+            filename='file.zip',
+            md5='123',
+        )
+    assert resource.source is not None
+    assert resource.source.url == 'http://example.com/file.zip'
+    assert resource.source.filename == 'file.zip'
+    assert resource.source.md5 == '123'
+
+
+def test_resource_definition_both_provided():
+    source = WebSource(url='http://example.com/source.zip', filename='source.zip')
+    with pytest.warns(UserWarning, match="Both 'source' and legacy fields"):
+        resource = ResourceDefinition(
+            content='gaze',
+            source=source,
+            url='http://example.com/legacy.zip',
+            filename='legacy.zip',
+        )
+    assert resource.source == source
+
+
+def test_resource_definition_from_dict_new():
+    data = {
+        'content': 'gaze',
+        'source': {
+            'url': 'http://example.com/file.zip',
+            'filename': 'file.zip',
+        },
+    }
+    resource = ResourceDefinition.from_dict(data)
+    assert isinstance(resource.source, WebSource)
+    assert resource.source.url == 'http://example.com/file.zip'
+
+
+def test_resource_definition_to_dict_new():
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source=source)
+    data = resource.to_dict()
+    assert data['source'] == {'url': 'http://example.com/file.zip', 'filename': 'file.zip'}
+    # asdict includes it but we might want to verify it's not in the serialized output we care about
+    assert 'url' not in data

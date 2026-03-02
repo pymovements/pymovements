@@ -21,6 +21,7 @@ in different formats.
     DatasetPaths
     ResourceDefinition
     ResourceDefinitions
+    WebSource
 
 
 .. currentmodule:: pymovements.datasets
