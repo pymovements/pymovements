@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides detection of out-of-screen gaze samples."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -30,14 +31,14 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def out_of_screen(
-        pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        *,
-        x_max: float,
-        y_max: float,
-        x_min: float = 0,
-        y_min: float = 0,
-        timesteps: list[int] | np.ndarray | None = None,
-        name: str = 'out_of_screen',
+    pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+    *,
+    x_max: float,
+    y_max: float,
+    x_min: float = 0,
+    y_min: float = 0,
+    timesteps: list[int] | np.ndarray | None = None,
+    name: str = 'out_of_screen',
 ) -> Events:
     """Detect gaze samples with pixel coordinates outside of screen boundaries.
 
@@ -100,10 +101,7 @@ def out_of_screen(
     x = pixels[:, 0]
     y = pixels[:, 1]
 
-    out_of_screen_mask = (
-        (x < x_min) | (x >= x_max)
-        | (y < y_min) | (y >= y_max)
-    )
+    out_of_screen_mask = (x < x_min) | (x >= x_max) | (y < y_min) | (y >= y_max)
 
     # Get indices of out-of-screen samples.
     candidate_indices = np.where(out_of_screen_mask)[0]

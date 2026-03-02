@@ -18,12 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test is_invalid sample measure helper."""
+
 from math import inf
 from math import nan
 
 import polars as pl
-import pytest
 from polars.testing import assert_series_equal
+import pytest
 
 from pymovements.measure.samples.measures import _is_invalid
 from pymovements.measure.samples.measures import _is_invalid_value
@@ -56,24 +57,34 @@ def test_is_invalid_value_parametrized(value, expected):
     ('data', 'dtype', 'expected'),
     [
         pytest.param(
-            [1.0, None, nan, inf, -inf, 2.0], pl.Float64,
-            [False, True, True, True, True, False], id='float64',
+            [1.0, None, nan, inf, -inf, 2.0],
+            pl.Float64,
+            [False, True, True, True, True, False],
+            id='float64',
         ),
         pytest.param(
-            [1, None, 2], pl.Int64,
-            [False, True, False], id='int64',
+            [1, None, 2],
+            pl.Int64,
+            [False, True, False],
+            id='int64',
         ),
         pytest.param(
-            ['a', None, 'b'], pl.Utf8,
-            [False, True, False], id='utf8',
+            ['a', None, 'b'],
+            pl.Utf8,
+            [False, True, False],
+            id='utf8',
         ),
         pytest.param(
-            [[1.0, 1.0], [1.0, nan], [1.0, inf], [1.0, None], None], pl.List(pl.Float64),
-            [False, True, True, True, True], id='list_float',
+            [[1.0, 1.0], [1.0, nan], [1.0, inf], [1.0, None], None],
+            pl.List(pl.Float64),
+            [False, True, True, True, True],
+            id='list_float',
         ),
         pytest.param(
-            [1.0, None, nan, inf, 2.0], None,
-            [False, True, True, True, False], id='no_dtype',
+            [1.0, None, nan, inf, 2.0],
+            None,
+            [False, True, True, True, False],
+            id='no_dtype',
         ),
     ],
 )

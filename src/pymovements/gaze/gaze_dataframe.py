@@ -23,6 +23,7 @@
    Please use :py:class:`~pymovements.Gaze` instead.
    This module will be removed in v0.28.0.
 """
+
 from __future__ import annotations
 
 import polars as pl

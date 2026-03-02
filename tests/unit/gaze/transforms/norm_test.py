@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements.gaze.transforms.norm."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_series_equal
+import pytest
 
 import pymovements as pm
 
@@ -30,28 +31,34 @@ import pymovements as pm
     [
         pytest.param(
             ('x', 'y'),
-            pl.DataFrame([
-                pl.Series('x', [], pl.Float64),
-                pl.Series('y', [], pl.Float64),
-            ]),
+            pl.DataFrame(
+                [
+                    pl.Series('x', [], pl.Float64),
+                    pl.Series('y', [], pl.Float64),
+                ]
+            ),
             pl.Series(None, [], pl.Float64),
             id='empty_series_returns_empty_series',
         ),
         pytest.param(
             ('x', 'y'),
-            pl.DataFrame([
-                pl.Series('x', [1], pl.Float64),
-                pl.Series('y', [1], pl.Float64),
-            ]),
+            pl.DataFrame(
+                [
+                    pl.Series('x', [1], pl.Float64),
+                    pl.Series('y', [1], pl.Float64),
+                ]
+            ),
             pl.Series(None, [1.41421356], pl.Float64),
             id='empty_series_returns_empty_series',
         ),
         pytest.param(
             ('x', 'y'),
-            pl.DataFrame([
-                pl.Series('x', [1, 1], pl.Float64),
-                pl.Series('y', [1, 1], pl.Float64),
-            ]),
+            pl.DataFrame(
+                [
+                    pl.Series('x', [1, 1], pl.Float64),
+                    pl.Series('y', [1, 1], pl.Float64),
+                ]
+            ),
             pl.Series(None, [1.4142, 1.4142], pl.Float64),
             id='empty_series_returns_empty_series',
         ),

@@ -18,15 +18,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides the main sequence plotting function."""
+
 from __future__ import annotations
 
 from typing import Literal
 from warnings import warn
 
+from matplotlib.collections import Collection
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-from matplotlib.collections import Collection
 from sklearn.metrics import r2_score
 
 from pymovements._utils._checks import check_is_mutual_exclusive
@@ -37,24 +38,24 @@ from pymovements.plotting._matplotlib import prepare_figure
 
 
 def main_sequence_plot(
-        events: Events | EventDataFrame | None = None,
-        *,
-        marker: str = 'o',
-        marker_size: float = 25,
-        marker_color: str = 'purple',
-        marker_alpha: float = 0.5,
-        fit: bool = True,
-        fit_measure: bool | Literal['r2', 's'] = True,
-        fit_color: str = 'red',
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        event_df: Events | EventDataFrame | None = None,
-        event_name: str = 'saccade',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-        **kwargs: Collection,
+    events: Events | EventDataFrame | None = None,
+    *,
+    marker: str = 'o',
+    marker_size: float = 25,
+    marker_color: str = 'purple',
+    marker_alpha: float = 0.5,
+    fit: bool = True,
+    fit_measure: bool | Literal['r2', 's'] = True,
+    fit_color: str = 'red',
+    figsize: tuple[int, int] = (15, 5),
+    title: str | None = None,
+    savepath: str | None = None,
+    show: bool = True,
+    event_df: Events | EventDataFrame | None = None,
+    event_name: str = 'saccade',
+    ax: plt.Axes | None = None,
+    closefig: bool | None = None,
+    **kwargs: Collection,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the saccade main sequence.
 
@@ -207,12 +208,12 @@ def main_sequence_plot(
 
             if fit_measure is True or fit_measure == 'r2':
                 val = np.round(r2_score(peak_velocities, y_pred), 3)
-                fit_label = f"R² = {val}"
+                fit_label = f'R² = {val}'
 
             elif fit_measure == 's':
                 s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
                 val = np.round(s, 3)
-                fit_label = f"S = {val}"
+                fit_label = f'S = {val}'
 
             else:
                 raise ValueError("measure must be one of: True, False, 'r2', 's'")

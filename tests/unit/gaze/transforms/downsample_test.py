@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements.gaze.transforms.downsample."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 import pymovements as pm
 
@@ -46,7 +47,7 @@ def test_downsample_init_raises_error(factor, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         pm.gaze.transforms.downsample(factor=factor)
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 

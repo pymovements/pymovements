@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements.gaze.transforms.center_origin."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 import pymovements as pm
 
@@ -36,7 +37,9 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'origin': 'lower left', 'pixel_column': 'pixel',
+                'screen_resolution': (100, 100),
+                'origin': 'lower left',
+                'pixel_column': 'pixel',
                 'n_components': 2,
             },
             ValueError,
@@ -45,7 +48,9 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'origin': 'foobar', 'pixel_column': 'pixel',
+                'screen_resolution': (100, 100),
+                'origin': 'foobar',
+                'pixel_column': 'pixel',
                 'n_components': 2,
             },
             ValueError,
@@ -58,7 +63,7 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         pm.gaze.transforms.center_origin(**kwargs)
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 
@@ -68,7 +73,9 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
     [
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'origin': 'center', 'pixel_column': 'pixel',
+                'screen_resolution': (100, 100),
+                'origin': 'center',
+                'pixel_column': 'pixel',
                 'n_components': 2,
             },
             pl.Series('pixel', [], pl.List(pl.Float64)),
@@ -77,8 +84,10 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'origin': 'center',
-                'pixel_column': 'pixel', 'output_column': 'centered',
+                'screen_resolution': (100, 100),
+                'origin': 'center',
+                'pixel_column': 'pixel',
+                'output_column': 'centered',
                 'n_components': 2,
             },
             pl.Series('pixel', [], pl.List(pl.Float64)),
@@ -87,7 +96,9 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'origin': 'center', 'pixel_column': 'pixel',
+                'screen_resolution': (100, 100),
+                'origin': 'center',
+                'pixel_column': 'pixel',
                 'n_components': 2,
             },
             pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
@@ -96,7 +107,9 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'origin': 'upper left', 'pixel_column': 'pixel',
+                'screen_resolution': (100, 100),
+                'origin': 'upper left',
+                'pixel_column': 'pixel',
                 'n_components': 2,
             },
             pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
@@ -105,7 +118,9 @@ def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'pixel_column': 'pixel', 'n_components': 2,
+                'screen_resolution': (100, 100),
+                'pixel_column': 'pixel',
+                'n_components': 2,
             },
             pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
             pl.Series('pixel', [[-49.5, 0]], pl.List(pl.Float64)),

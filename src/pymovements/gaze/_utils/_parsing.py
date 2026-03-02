@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for parsing input data."""
+
 from __future__ import annotations
 
 import re
@@ -46,9 +47,7 @@ def check_nan(sample_location: str) -> float:
     return ret
 
 
-def compile_patterns(patterns: list[dict[str, Any] | str], msg_prefix: str) -> list[
-    dict[str, Any]
-]:
+def compile_patterns(patterns: list[dict[str, Any] | str], msg_prefix: str) -> list[dict[str, Any]]:
     """Compile patterns from strings.
 
     Parameters
@@ -73,18 +72,22 @@ def compile_patterns(patterns: list[dict[str, Any] | str], msg_prefix: str) -> l
 
         if isinstance(pattern, dict):
             if isinstance(pattern['pattern'], str):
-                compiled_patterns.append({
-                    **pattern,
-                    'pattern': re.compile(msg_prefix + pattern['pattern']),
-                })
+                compiled_patterns.append(
+                    {
+                        **pattern,
+                        'pattern': re.compile(msg_prefix + pattern['pattern']),
+                    }
+                )
                 continue
 
             if isinstance(pattern['pattern'], (tuple, list)):
                 for single_pattern in pattern['pattern']:
-                    compiled_patterns.append({
-                        **pattern,
-                        'pattern': re.compile(msg_prefix + single_pattern),
-                    })
+                    compiled_patterns.append(
+                        {
+                            **pattern,
+                            'pattern': re.compile(msg_prefix + single_pattern),
+                        }
+                    )
                 continue
 
             raise ValueError(f'invalid pattern: {pattern}')
@@ -94,9 +97,7 @@ def compile_patterns(patterns: list[dict[str, Any] | str], msg_prefix: str) -> l
     return compiled_patterns
 
 
-def get_pattern_keys(compiled_patterns: list[dict[str, Any]], pattern_key: str) -> set[
-    str
-]:
+def get_pattern_keys(compiled_patterns: list[dict[str, Any]], pattern_key: str) -> set[str]:
     """Get names of capture groups or column/metadata keys."""
     keys = set()
 
@@ -104,16 +105,16 @@ def get_pattern_keys(compiled_patterns: list[dict[str, Any]], pattern_key: str) 
         if pattern_key in compiled_pattern_dict:
             keys.add(compiled_pattern_dict[pattern_key])
 
-        for key in compiled_pattern_dict['pattern'].groupindex.keys():
+        for key in compiled_pattern_dict['pattern'].groupindex:
             keys.add(key)
 
     return keys
 
 
 def _calculate_data_loss_ratio(
-        num_expected_samples: int,
-        num_valid_samples: int,
-        num_blink_samples: int,
+    num_expected_samples: int,
+    num_valid_samples: int,
+    num_blink_samples: int,
 ) -> tuple[float, float]:
     """Calculate the total data loss and data loss due to blinks.
 

@@ -18,19 +18,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Utils module for extracting archives and decompressing files."""
+
 from __future__ import annotations
 
 import bz2
+from collections.abc import Callable
 import gzip
 import lzma
 import os
+from pathlib import Path
 import shutil
 import sys
 import tarfile
-import zipfile
-from collections.abc import Callable
-from pathlib import Path
 from typing import IO
+import zipfile
 
 from tqdm import tqdm
 
@@ -39,14 +40,14 @@ from pymovements.exceptions import UnknownFileType
 
 
 def extract_archive(
-        source_path: Path,
-        destination_path: Path | None = None,
-        *,
-        recursive: bool = True,
-        remove_finished: bool = False,
-        remove_top_level: bool = True,
-        resume: bool = True,
-        verbose: int = 1,
+    source_path: Path,
+    destination_path: Path | None = None,
+    *,
+    recursive: bool = True,
+    remove_finished: bool = False,
+    remove_top_level: bool = True,
+    resume: bool = True,
+    verbose: int = 1,
 ) -> Path:
     """Extract an archive.
 
@@ -150,12 +151,12 @@ def extract_archive(
 
 
 def _extract_tar(
-        source_path: Path,
-        destination_path: Path,
-        compression: str | None,
-        *,
-        resume: bool,
-        verbose: int,
+    source_path: Path,
+    destination_path: Path,
+    compression: str | None,
+    *,
+    resume: bool,
+    verbose: int,
 ) -> None:
     """Extract a tar archive.
 
@@ -178,19 +179,19 @@ def _extract_tar(
     with tarfile.open(source_path, mode) as archive:  # type: ignore[call-overload]
         members = archive.getmembers()
         for member in tqdm(
-                members,
-                total=len(members),
-                desc='Extracting archive',
-                unit='file',
-                ncols=80,
-                disable=not verbose,
+            members,
+            total=len(members),
+            desc='Extracting archive',
+            unit='file',
+            ncols=80,
+            disable=not verbose,
         ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
                 if (
-                        os.path.exists(member_dest_path) and
-                        member.name[-4:] in _ARCHIVE_EXTRACTORS and
-                        member.size == os.path.getsize(member_dest_path)
+                    os.path.exists(member_dest_path)
+                    and member.name[-4:] in _ARCHIVE_EXTRACTORS
+                    and member.size == os.path.getsize(member_dest_path)
                 ):
                     if verbose:
                         print(f'Skipping {member.name} due to previous extraction')
@@ -202,12 +203,12 @@ def _extract_tar(
 
 
 def _extract_zip(
-        source_path: Path,
-        destination_path: Path,
-        compression: str | None,
-        *,
-        resume: bool,
-        verbose: int,
+    source_path: Path,
+    destination_path: Path,
+    compression: str | None,
+    *,
+    resume: bool,
+    verbose: int,
 ) -> None:
     """Extract a zip archive.
 
@@ -227,18 +228,18 @@ def _extract_zip(
     compression_id = _ZIP_COMPRESSION_MAP[compression] if compression else zipfile.ZIP_STORED
     with zipfile.ZipFile(source_path, 'r', compression=compression_id) as archive:
         for member in tqdm(
-                archive.filelist,
-                total=len(archive.filelist),
-                desc='Extracting archive',
-                unit='file',
-                disable=not verbose,
+            archive.filelist,
+            total=len(archive.filelist),
+            desc='Extracting archive',
+            unit='file',
+            disable=not verbose,
         ):
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
                 if (
-                    os.path.exists(member_dest_path) and
-                    member.filename[-4:] in _ARCHIVE_EXTRACTORS and
-                    member.file_size == os.path.getsize(member_dest_path)
+                    os.path.exists(member_dest_path)
+                    and member.filename[-4:] in _ARCHIVE_EXTRACTORS
+                    and member.file_size == os.path.getsize(member_dest_path)
                 ):
                     if verbose:
                         print(f'Skipping {member.filename} due to previous extraction')
@@ -308,7 +309,6 @@ def _detect_file_type(filepath: Path) -> tuple[str | None, str | None]:
     if suffix in _COMPRESSED_FILE_OPENERS:
         # Check if there are more than one suffix.
         if len(suffixes) > 1:
-
             # Check if the second last suffix refers to an archive type.
             if (suffix2 := suffixes[-2]) not in _ARCHIVE_EXTRACTORS:
                 raise UnknownFileType(
@@ -329,9 +329,9 @@ def _detect_file_type(filepath: Path) -> tuple[str | None, str | None]:
 
 
 def _decompress(
-        source_path: Path,
-        destination_path: Path | None = None,
-        remove_finished: bool = False,
+    source_path: Path,
+    destination_path: Path | None = None,
+    remove_finished: bool = False,
 ) -> Path:
     """Decompress a file.
 

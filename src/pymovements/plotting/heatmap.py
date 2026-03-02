@@ -18,13 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Heatmap module."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
+from matplotlib import colors
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import colors
 
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _set_screen_axes
@@ -34,27 +35,27 @@ from pymovements.stimulus.image import _draw_image_stimulus
 
 
 def heatmap(
-        gaze: Gaze,
-        position_column: str = 'pixel',
-        gridsize: tuple[int, int] = (10, 10),
-        cmap: colors.Colormap | str = 'jet',
-        interpolation: str = 'gaussian',
-        origin: str = 'upper',
-        figsize: tuple[float, float] = (15, 10),
-        cbar_label: str | None = None,
-        show_cbar: bool = True,
-        title: str | None = None,
-        xlabel: str | None = None,
-        ylabel: str | None = None,
-        show: bool = True,
-        savepath: str | None = None,
-        add_stimulus: bool = False,
-        path_to_image_stimulus: str | Path | None = None,
-        stimulus_origin: str = 'upper',
-        alpha: float = 1.,
-        *,
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
+    gaze: Gaze,
+    position_column: str = 'pixel',
+    gridsize: tuple[int, int] = (10, 10),
+    cmap: colors.Colormap | str = 'jet',
+    interpolation: str = 'gaussian',
+    origin: str = 'upper',
+    figsize: tuple[float, float] = (15, 10),
+    cbar_label: str | None = None,
+    show_cbar: bool = True,
+    title: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    show: bool = True,
+    savepath: str | None = None,
+    add_stimulus: bool = False,
+    path_to_image_stimulus: str | Path | None = None,
+    stimulus_origin: str = 'upper',
+    alpha: float = 1.0,
+    *,
+    ax: plt.Axes | None = None,
+    closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot a heatmap of gaze data.
 
@@ -128,8 +129,7 @@ def heatmap(
     # Check if experiment properties are available
     if not gaze.experiment:
         raise ValueError(
-            'Experiment property of Gaze is None. '
-            'Gaze must be associated with an experiment.',
+            'Experiment property of Gaze is None. Gaze must be associated with an experiment.',
         )
 
     assert gaze.experiment.sampling_rate is not None
@@ -194,7 +194,6 @@ def heatmap(
         origin=origin,
         interpolation=interpolation,
         extent=extent,
-
     )
 
     #  make heatmap values == 0 fully transparent

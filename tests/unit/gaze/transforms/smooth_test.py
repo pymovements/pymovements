@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements.gaze.transforms.smooth."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 import pymovements as pm
 
@@ -36,8 +37,8 @@ import pymovements as pm
                 'window_length': 1,
                 'padding': 'nearest',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             id='moving_average_window_length_1_returns_same_series',
         ),
         pytest.param(
@@ -47,12 +48,15 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': None,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [None, None], [1 / 2, 1 / 2],
+                'position',
+                [
+                    [None, None],
                     [1 / 2, 1 / 2],
-                ], pl.List(pl.Float64),
+                    [1 / 2, 1 / 2],
+                ],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_2_no_padding',
         ),
@@ -63,8 +67,10 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 0.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [1 / 2, 1 / 2], [1 / 2, 1 / 2]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series(
+                'position', [[0.0, 0.0], [1 / 2, 1 / 2], [1 / 2, 1 / 2]], pl.List(pl.Float64)
+            ),
             id='moving_average_window_length_2_constant_padding_0',
         ),
         pytest.param(
@@ -74,9 +80,11 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 1.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [[1 / 2, 1 / 2], [1 / 2, 1 / 2], [1 / 2, 1 / 2]], pl.List(pl.Float64),
+                'position',
+                [[1 / 2, 1 / 2], [1 / 2, 1 / 2], [1 / 2, 1 / 2]],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_2_constant_padding_1',
         ),
@@ -87,8 +95,10 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 'nearest',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [1 / 2, 1 / 2], [1 / 2, 1 / 2]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series(
+                'position', [[0.0, 0.0], [1 / 2, 1 / 2], [1 / 2, 1 / 2]], pl.List(pl.Float64)
+            ),
             id='moving_average_window_length_2_nearest_padding',
         ),
         pytest.param(
@@ -98,12 +108,15 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 'mirror',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [1 / 2, 1 / 2], [1 / 2, 1 / 2],
+                'position',
+                [
                     [1 / 2, 1 / 2],
-                ], pl.List(pl.Float64),
+                    [1 / 2, 1 / 2],
+                    [1 / 2, 1 / 2],
+                ],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_2_mirror_padding',
         ),
@@ -114,12 +127,15 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': None,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [None, None], [1 / 3, 1 / 3],
+                'position',
+                [
                     [None, None],
-                ], pl.List(pl.Float64),
+                    [1 / 3, 1 / 3],
+                    [None, None],
+                ],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_3_no_padding',
         ),
@@ -130,12 +146,15 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 0.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [1 / 3, 1 / 3], [1 / 3, 1 / 3],
+                'position',
+                [
                     [1 / 3, 1 / 3],
-                ], pl.List(pl.Float64),
+                    [1 / 3, 1 / 3],
+                    [1 / 3, 1 / 3],
+                ],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_3_constant_padding_0',
         ),
@@ -146,9 +165,11 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 1.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [[2 / 3, 2 / 3], [1 / 3, 1 / 3], [2 / 3, 2 / 3]], pl.List(pl.Float64),
+                'position',
+                [[2 / 3, 2 / 3], [1 / 3, 1 / 3], [2 / 3, 2 / 3]],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_3_constant_padding_1',
         ),
@@ -159,12 +180,15 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 'nearest',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [1 / 3, 1 / 3], [1 / 3, 1 / 3],
+                'position',
+                [
                     [1 / 3, 1 / 3],
-                ], pl.List(pl.Float64),
+                    [1 / 3, 1 / 3],
+                    [1 / 3, 1 / 3],
+                ],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_3_nearest_padding',
         ),
@@ -175,12 +199,15 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 'mirror',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [2 / 3, 2 / 3], [1 / 3, 1 / 3],
+                'position',
+                [
                     [2 / 3, 2 / 3],
-                ], pl.List(pl.Float64),
+                    [1 / 3, 1 / 3],
+                    [2 / 3, 2 / 3],
+                ],
+                pl.List(pl.Float64),
             ),
             id='moving_average_window_length_3_mirror_padding',
         ),
@@ -192,8 +219,8 @@ import pymovements as pm
                 'window_length': 1,
                 'padding': 'nearest',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             id='exponential_moving_average_window_length_1_returns_same_series',
         ),
         pytest.param(
@@ -203,12 +230,15 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': None,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [None, None], [2 / 3, 2 / 3],
+                'position',
+                [
+                    [None, None],
+                    [2 / 3, 2 / 3],
                     [2 / 9, 2 / 9],
-                ], pl.List(pl.Float64),
+                ],
+                pl.List(pl.Float64),
             ),
             id='exponential_moving_average_window_length_2_no_padding',
         ),
@@ -219,8 +249,10 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 0.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [2 / 3, 2 / 3], [2 / 9, 2 / 9]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series(
+                'position', [[0.0, 0.0], [2 / 3, 2 / 3], [2 / 9, 2 / 9]], pl.List(pl.Float64)
+            ),
             id='exponential_moving_average_window_length_2_constant_padding_0',
         ),
         pytest.param(
@@ -230,9 +262,11 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 1.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [[1 / 3, 1 / 3], [7 / 9, 7 / 9], [7 / 27, 7 / 27]], pl.List(pl.Float64),
+                'position',
+                [[1 / 3, 1 / 3], [7 / 9, 7 / 9], [7 / 27, 7 / 27]],
+                pl.List(pl.Float64),
             ),
             id='exponential_moving_average_window_length_2_constant_padding_1',
         ),
@@ -243,8 +277,10 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 'nearest',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [2 / 3, 2 / 3], [2 / 9, 2 / 9]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series(
+                'position', [[0.0, 0.0], [2 / 3, 2 / 3], [2 / 9, 2 / 9]], pl.List(pl.Float64)
+            ),
             id='exponential_moving_average_window_length_2_nearest_padding',
         ),
         pytest.param(
@@ -254,9 +290,11 @@ import pymovements as pm
                 'window_length': 2,
                 'padding': 'mirror',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [[1 / 3, 1 / 3], [7 / 9, 7 / 9], [7 / 27, 7 / 27]], pl.List(pl.Float64),
+                'position',
+                [[1 / 3, 1 / 3], [7 / 9, 7 / 9], [7 / 27, 7 / 27]],
+                pl.List(pl.Float64),
             ),
             id='exponential_moving_average_window_length_2_mirror_padding',
         ),
@@ -267,7 +305,7 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': None,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series('position', [[None, None], [None, None], [0.25, 0.25]], pl.List(pl.Float64)),
             id='exponential_moving_average_window_length_3_no_padding',
         ),
@@ -278,8 +316,8 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 0.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [0.5, 0.5], [0.25, 0.25]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [0.5, 0.5], [0.25, 0.25]], pl.List(pl.Float64)),
             id='exponential_moving_average_window_length_3_constant_padding_0',
         ),
         pytest.param(
@@ -289,7 +327,7 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 1.0,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series('position', [[0.5, 0.5], [0.75, 0.75], [0.375, 0.375]], pl.List(pl.Float64)),
             id='exponential_moving_average_window_length_3_constant_padding_1',
         ),
@@ -300,8 +338,8 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 'nearest',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [0.5, 0.5], [0.25, 0.25]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [0.5, 0.5], [0.25, 0.25]], pl.List(pl.Float64)),
             id='exponential_moving_average_window_length_3_nearest_padding',
         ),
         pytest.param(
@@ -311,9 +349,11 @@ import pymovements as pm
                 'window_length': 3,
                 'padding': 'mirror',
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [[0.25, 0.25], [0.625, 0.625], [0.3125, 0.3125]], pl.List(pl.Float64),
+                'position',
+                [[0.25, 0.25], [0.625, 0.625], [0.3125, 0.3125]],
+                pl.List(pl.Float64),
             ),
             id='exponential_moving_average_window_length_3_mirror_padding',
         ),
@@ -325,8 +365,8 @@ import pymovements as pm
                 'window_length': 2,
                 'degree': 1,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0.5, 0.5], [0.5, 0.5], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.5, 0.5], [0.5, 0.5], [0.0, 0.0]], pl.List(pl.Float64)),
             id='savitzky_golay_window_length_2_degree_1_returns_mean_of_window',
         ),
         pytest.param(
@@ -336,12 +376,15 @@ import pymovements as pm
                 'window_length': 3,
                 'degree': 1,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             pl.Series(
-                'position', [
-                    [1 / 3, 1 / 3], [1 / 3, 1 / 3],
+                'position',
+                [
                     [1 / 3, 1 / 3],
-                ], pl.List(pl.Float64),
+                    [1 / 3, 1 / 3],
+                    [1 / 3, 1 / 3],
+                ],
+                pl.List(pl.Float64),
             ),
             id='savitzky_golay_window_length_3_degree_1_returns_mean_of_window',
         ),
@@ -352,8 +395,8 @@ import pymovements as pm
                 'window_length': 3,
                 'degree': 2,
             },
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
-            pl.Series('position', [[0., 0.], [1., 1.], [0., 0.]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], pl.List(pl.Float64)),
             id='savitzky_golay_window_length_3_degree_2_returns',
         ),
     ],
@@ -400,14 +443,14 @@ def test_smooth_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         pm.gaze.transforms.smooth(**kwargs)
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring.lower() in msg.lower()
 
 
 def test_identity_returns_same_series():
     """Test if identity returns the same series."""
-    series = pl.Series('position', [[1., 1.], [2., 2.], [3., 3.]], pl.List(pl.Float64))
+    series = pl.Series('position', [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], pl.List(pl.Float64))
     series_identity = pm.gaze.transforms._identity(series)
 
     assert_frame_equal(series.to_frame(), series_identity.to_frame())

@@ -21,6 +21,7 @@
 
 This module provides a dedicated namespace for EyeLink-specific parsing logic.
 """
+
 from __future__ import annotations
 
 __all__ = [
@@ -28,22 +29,21 @@ __all__ = [
 ]
 
 import calendar
-import datetime
-import re
-
-import warnings
 from collections import defaultdict
 from collections.abc import Sequence
-
+import datetime
 from pathlib import Path
+import re
 from typing import Any
+import warnings
 
 import numpy as np
 import polars as pl
 
-from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan, _calculate_data_loss_ratio
-
+from pymovements.gaze._utils._parsing import _calculate_data_loss_ratio
+from pymovements.gaze._utils._parsing import check_nan
+from pymovements.gaze._utils._parsing import compile_patterns
+from pymovements.gaze._utils._parsing import get_pattern_keys
 
 # Define separate regex patterns for monocular and binocular cases
 EYE_TRACKING_SAMPLE_MONOCULAR = re.compile(
@@ -68,7 +68,8 @@ EYE_TRACKING_SAMPLE_BINOCULAR = re.compile(
 )
 
 EYELINK_META_REGEXES = [
-    {'pattern': re.compile(regex)} for regex in (
+    {'pattern': re.compile(regex)}
+    for regex in (
         r'\*\*\s+VERSION:\s+(?P<version_1>.*)\s+',
         (
             r'\*\*\s+DATE:\s+(?P<weekday>[A-Z,a-z]+)\s+(?P<month>[A-Z,a-z]+)'
@@ -160,9 +161,9 @@ MSG_REGEX = re.compile(
 
 
 def _check_reccfg_key(
-        recording_config: list[dict[str, Any]],
-        key: str,
-        astype: type | None = None,
+    recording_config: list[dict[str, Any]],
+    key: str,
+    astype: type | None = None,
 ) -> Any:
     """Check if the recording configs contain consistent values for the specified key and return it.
 
@@ -216,9 +217,9 @@ def _check_reccfg_key(
 
 
 def _check_samples_config_key(
-        samples_config: list[dict[str, Any]],
-        key: str,
-        astype: type | None = None,
+    samples_config: list[dict[str, Any]],
+    key: str,
+    astype: type | None = None,
 ) -> Any:
     """Check if the sample configs contain consistent values for the specified key and return it.
 
@@ -333,10 +334,10 @@ def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[
 
 
 def _match_events_with_context(
-        event_starts: list[tuple[str, str, float]],
-        event_ends: list[tuple[str, str, float, float]],
-        context_timeline: dict[float, dict[str, Any]],
-        additional_columns: set[str],
+    event_starts: list[tuple[str, str, float]],
+    event_ends: list[tuple[str, str, float, float]],
+    context_timeline: dict[float, dict[str, Any]],
+    additional_columns: set[str],
 ) -> list[dict[str, Any]]:
     """Match event starts and ends and build complete events using a stack per eye and type.
 
@@ -397,7 +398,7 @@ def _match_events_with_context(
                 # Orphaned end: no matching start
                 warnings.warn(
                     f"Missing start marker before end for event '{event_name}' "
-                    f"(onset={onset}, offset={offset}). "
+                    f'(onset={onset}, offset={offset}). '
                     'Using context from end timestamp.',
                 )
                 event_onset = onset
@@ -410,8 +411,7 @@ def _match_events_with_context(
             # Current behaviour: if it was a matched event, it uses context from the start
             # If it was unmatched, it uses context from END.
             if stack or (
-                not stack and start_ts ==
-                onset and onset in context_timeline
+                not stack and start_ts == onset and onset in context_timeline
             ):  # Case for matched (we just popped) - uses context from START
                 event_context = {}
                 for col in additional_columns:
@@ -422,25 +422,27 @@ def _match_events_with_context(
                 for col in additional_columns:
                     event_context[col] = end_context.get(col)
 
-            matched_events.append({
-                'name': f'{event_name}_eyelink',
-                'eye': eye,
-                'onset': event_onset,
-                'offset': offset,
-                **event_context,
-            })
+            matched_events.append(
+                {
+                    'name': f'{event_name}_eyelink',
+                    'eye': eye,
+                    'onset': event_onset,
+                    'offset': offset,
+                    **event_context,
+                }
+            )
 
     return matched_events
 
 
 def parse_eyelink(
-        filepath: Path | str,
-        patterns: list[dict[str, Any] | str] | None = None,
-        schema: dict[str, Any] | None = None,
-        metadata_patterns: list[dict[str, Any] | str] | None = None,
-        encoding: str | None = None,
-        messages: bool | Sequence[str] = False,
-        extend_resolution: bool | None = None,
+    filepath: Path | str,
+    patterns: list[dict[str, Any] | str] | None = None,
+    schema: dict[str, Any] | None = None,
+    metadata_patterns: list[dict[str, Any] | str] | None = None,
+    encoding: str | None = None,
+    messages: bool | Sequence[str] = False,
+    extend_resolution: bool | None = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, Any], pl.DataFrame | None]:
     """Parse EyeLink asc file.
 
@@ -509,9 +511,7 @@ def parse_eyelink(
     compiled_metadata_patterns = compile_patterns(metadata_patterns, msg_prefix)
 
     additional_columns = get_pattern_keys(compiled_patterns, 'column')
-    current_additional = {
-        additional_column: None for additional_column in additional_columns
-    }
+    current_additional = dict.fromkeys(additional_columns)
 
     samples: dict[str, list[Any]] = {
         'time': [],
@@ -553,12 +553,11 @@ def parse_eyelink(
     event_ends: list[tuple[str, str, float, float]] = []
 
     if not isinstance(messages, (bool, list)) or (
-        isinstance(messages, list)
-        and not all(isinstance(regexp, str) for regexp in messages)
+        isinstance(messages, list) and not all(isinstance(regexp, str) for regexp in messages)
     ):
         raise ValueError(
             'Make sure to pass either a bool or a list of regular expressions '
-            f"as strings. Received {messages}.",
+            f'as strings. Received {messages}.',
         )
 
     messages_list: list[list[str]] = []
@@ -582,40 +581,49 @@ def parse_eyelink(
             # consider 'LEFT' in tracked and 'RIGHT' in tracked or tracked == 'LR' or
             # tracked == 'L R': set is_binocular to True if any config indicates binocular
             is_binocular = is_binocular or (
-                ('LEFT' in tracked and 'RIGHT' in tracked) or
-                tracked == 'LR' or tracked == 'L R'
+                ('LEFT' in tracked and 'RIGHT' in tracked) or tracked == 'LR' or tracked == 'L R'
             )
 
     # Update the samples dictionary to include binocular data with correct column names if needed
     if is_binocular:
-        samples.update({
-            'x_left_pix': [],
-            'y_left_pix': [],
-            'pupil_left': [],
-            'x_right_pix': [],
-            'y_right_pix': [],
-            'pupil_right': [],
-        })
+        samples.update(
+            {
+                'x_left_pix': [],
+                'y_left_pix': [],
+                'pupil_left': [],
+                'x_right_pix': [],
+                'y_right_pix': [],
+                'pupil_right': [],
+            }
+        )
         # remove monocular-only keys to avoid mismatched column lengths
         for _k in ('x_pix', 'y_pix', 'pupil'):
             samples.pop(_k, None)
     else:
         # Ensure monocular fields are present in the samples dictionary
-        samples.update({
-            'x_pix': [],
-            'y_pix': [],
-            'pupil': [],
-        })
+        samples.update(
+            {
+                'x_pix': [],
+                'y_pix': [],
+                'pupil': [],
+            }
+        )
         # remove binocular-only keys to avoid mismatched column lengths
         for _k in (
-            'x_left_pix', 'y_left_pix', 'pupil_left',
-            'x_right_pix', 'y_right_pix', 'pupil_right',
+            'x_left_pix',
+            'y_left_pix',
+            'pupil_left',
+            'x_right_pix',
+            'y_right_pix',
+            'pupil_right',
         ):
             samples.pop(_k, None)
 
     # Reset additional columns before second pass
     for col in additional_columns:
         current_additional[col] = None
+
+    start_recording_timestamp: str | None = None
 
     # Second pass: collect events, patterns, samples, and metadata
     for line in lines:
@@ -686,16 +694,14 @@ def parse_eyelink(
         elif match := STOP_RECORDING_REGEX.match(line):
             stop_recording_timestamp = match.groupdict()['timestamp']
 
-            try:
-                # Safely obtain the sampling rate from the last recording_config entry.
-                block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
-                current_sampling_rate = recording_config[-1].get('sampling_rate')
-            except UnboundLocalError:
+            if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
                     f"File '{filepath}' may be corrupted. Data-loss metrics may be incorrect.",
                 )
-            else:  # this will only be executed if no exception was raised in the try block.
+            else:
+                block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
+                current_sampling_rate = recording_config[-1].get('sampling_rate')
                 total_recording_duration += block_duration
                 if current_sampling_rate:
                     num_expected_samples += round(
@@ -708,8 +714,8 @@ def parse_eyelink(
         # Use the appropriate regex based on the file type
         eye_tracking_sample_match = (
             EYE_TRACKING_SAMPLE_BINOCULAR.match(line)
-            if is_binocular else
-            EYE_TRACKING_SAMPLE_MONOCULAR.match(line)
+            if is_binocular
+            else EYE_TRACKING_SAMPLE_MONOCULAR.match(line)
         )
 
         if eye_tracking_sample_match:
@@ -741,9 +747,14 @@ def parse_eyelink(
                 samples['pupil_right'].append(pupil_right)
 
                 if not blinking and all(
-                    not np.isnan(val) for val in (
-                        x_left_pix, y_left_pix, pupil_left,
-                        x_right_pix, y_right_pix, pupil_right,
+                    not np.isnan(val)
+                    for val in (
+                        x_left_pix,
+                        y_left_pix,
+                        pupil_left,
+                        x_right_pix,
+                        y_right_pix,
+                        pupil_right,
                     )
                 ):
                     num_valid_samples += 1
@@ -838,7 +849,7 @@ def parse_eyelink(
             warnings.warn(
                 f'The recorded eye in the recording configuration message and'
                 f' the samples message are inconsistent: '
-                f"[{metadata['recorded_eye']}, {metadata['tracked_eye']}]"
+                f'[{metadata["recorded_eye"]}, {metadata["tracked_eye"]}]'
                 f' This could be because the -r or -l flag in edf2asc was used'
                 f' to obtain monocular data from a binocular EDF file.'
                 f' Using the value from the samples message and storing the value from'
@@ -919,20 +930,24 @@ def parse_eyelink(
     }
 
     if is_binocular:
-        gaze_schema_overrides.update({
-            'x_left_pix': pl.Float64,
-            'y_left_pix': pl.Float64,
-            'pupil_left': pl.Float64,
-            'x_right_pix': pl.Float64,
-            'y_right_pix': pl.Float64,
-            'pupil_right': pl.Float64,
-        })
+        gaze_schema_overrides.update(
+            {
+                'x_left_pix': pl.Float64,
+                'y_left_pix': pl.Float64,
+                'pupil_left': pl.Float64,
+                'x_right_pix': pl.Float64,
+                'y_right_pix': pl.Float64,
+                'pupil_right': pl.Float64,
+            }
+        )
     else:
-        gaze_schema_overrides.update({
-            'x_pix': pl.Float64,
-            'y_pix': pl.Float64,
-            'pupil': pl.Float64,
-        })
+        gaze_schema_overrides.update(
+            {
+                'x_pix': pl.Float64,
+                'y_pix': pl.Float64,
+                'pupil': pl.Float64,
+            }
+        )
 
     if schema is not None:
         gaze_schema_overrides.update(schema)
@@ -1104,7 +1119,8 @@ def _pre_process_metadata(metadata: defaultdict[str, Any]) -> dict[str, Any]:
     """
     # in case the version strings have not been found, they will be empty strings (defaultdict)
     metadata['version_number'], metadata['model'] = _parse_full_eyelink_version(
-        metadata['version_1'], metadata['version_2'],
+        metadata['version_1'],
+        metadata['version_2'],
     )
 
     if 'DISPLAY_COORDS' in metadata:

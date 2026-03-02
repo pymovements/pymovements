@@ -18,11 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests functionality of the IVT algorithm."""
+
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements import Events
 from pymovements.events import fill
@@ -78,7 +79,9 @@ from pymovements.events import fill
         pytest.param(
             {
                 'events': Events(
-                    name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
+                    name=['fixation', 'saccade'],
+                    onsets=[0, 50],
+                    offsets=[40, 100],
                 ),
                 'timesteps': np.arange(0, 100),
             },

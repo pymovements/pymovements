@@ -18,9 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test module pymovements.events.event_properties."""
+
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements.measure.events import duration
 
@@ -59,14 +60,12 @@ def test_duration_exceptions(init_kwargs, input_df, exception, message):
             pl.DataFrame(schema={'duration': pl.Int64}),
             id='empty_dataframe_results_in_empty_dataframe_with_correct_schema',
         ),
-
         pytest.param(
             {},
             pl.DataFrame({'onset': 0, 'offset': 1}, schema={'onset': pl.Int64, 'offset': pl.Int64}),
             pl.DataFrame({'duration': 1}, schema={'duration': pl.Int64}),
             id='single_event_duration',
         ),
-
         pytest.param(
             {},
             pl.DataFrame(

@@ -18,8 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements HTML representations."""
-import re
+
 from pathlib import Path
+import re
 
 import polars as pl
 import pytest
@@ -371,7 +372,9 @@ def test_attr_details_html(obj, expected_html, regex):
             r'<input id="pymovements-.*" class="pymovements-section-toggle" type="checkbox">\s*'
             r'<label for="pymovements-.*" class="pymovements-section-label">long_str_attr:'
             r'</label>\s*'
-            r'<div class="pymovements-section-inline-details">&#x27;' + 'x' * 50
+            r'<div class="pymovements-section-inline-details">&#x27;'
+            + 'x'
+            * 50
             + r'\.\.\.&#x27;</div>\s*'
             r'<div class="pymovements-section-details">&#x27;' + 'x' * 100 + r'&#x27;</div>\s*'
             r'</li>',

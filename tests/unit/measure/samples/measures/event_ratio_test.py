@@ -18,11 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test event_ratio functionality."""
+
 from __future__ import annotations
 
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 import pymovements as pm
 
@@ -93,29 +94,33 @@ class TestEventRatio:
 
         result = gaze.samples.select(gaze.measure_events_ratio(event_name))
 
-        expected = pl.DataFrame({f"event_ratio_{event_name}": [expected_ratio]})
+        expected = pl.DataFrame({f'event_ratio_{event_name}': [expected_ratio]})
         assert_frame_equal(result, expected)
 
     @pytest.mark.parametrize(
         ('samples', 'trial_columns', 'events_data', 'expected_ratios'),
         [
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 0.0, 1.0],
-                    'trial': [1, 1, 2, 2],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 0.0, 1.0],
+                        'trial': [1, 1, 2, 2],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    }
+                ),
                 ['trial'],
                 [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
                 {1: 1.0, 2: 0.0},
                 id='single_trial_with_event',
             ),
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 0.0, 1.0],
-                    'trial': [1, 1, 2, 2],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 0.0, 1.0],
+                        'trial': [1, 1, 2, 2],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    }
+                ),
                 ['trial'],
                 [
                     {'name': 'blink', 'onset': 1.0, 'offset': 1.0, 'trial': 1},
@@ -125,11 +130,13 @@ class TestEventRatio:
                 id='both_trials_with_event',
             ),
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
-                    'trial': [1, 1, 1, 2, 2, 2],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                        'trial': [1, 1, 1, 2, 2, 2],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5]],
+                    }
+                ),
                 ['trial'],
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
@@ -138,12 +145,14 @@ class TestEventRatio:
                 id='event_partial_trial',
             ),
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 0.0, 1.0],
-                    'trial': [1, 1, 2, 2],
-                    'session': [1, 1, 1, 1],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 0.0, 1.0],
+                        'trial': [1, 1, 2, 2],
+                        'session': [1, 1, 1, 1],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    }
+                ),
                 ['trial', 'session'],
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
@@ -152,11 +161,13 @@ class TestEventRatio:
                 id='multiple_trial_columns',
             ),
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 2.0, 3.0],
-                    'trial': [1, 1, 1, 1],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 2.0, 3.0],
+                        'trial': [1, 1, 1, 1],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    }
+                ),
                 ['trial'],
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
@@ -166,11 +177,13 @@ class TestEventRatio:
                 id='adjacent_events',
             ),
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 2.0, 3.0],
-                    'trial': [1, 1, 1, 1],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 2.0, 3.0],
+                        'trial': [1, 1, 1, 1],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    }
+                ),
                 ['trial'],
                 [
                     {'name': 'blink', 'onset': 0.0, 'offset': 2.0, 'trial': 1},
@@ -181,11 +194,13 @@ class TestEventRatio:
                 marks=pytest.mark.filterwarnings('ignore:Overlapping events detected'),
             ),
             pytest.param(
-                pl.DataFrame({
-                    'time': [0.0, 1.0, 2.0, 3.0],
-                    'trial': [1, 1, 1, 1],
-                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
-                }),
+                pl.DataFrame(
+                    {
+                        'time': [0.0, 1.0, 2.0, 3.0],
+                        'trial': [1, 1, 1, 1],
+                        'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                    }
+                ),
                 ['trial'],
                 [],
                 {1: 0.0},
@@ -246,7 +261,9 @@ class TestEventRatio:
             # events exist but none match name
             pytest.param(
                 lambda g: setattr(
-                    g, 'events', pm.Events(name=['saccade'], onsets=[1.0], offsets=[2.0]),
+                    g,
+                    'events',
+                    pm.Events(name=['saccade'], onsets=[1.0], offsets=[2.0]),
                 ),
                 {'event_ratio_blink': [0.0]},
                 id='no_matching_name',
@@ -304,10 +321,12 @@ class TestEventRatio:
         expected,
     ):
         """Test sampling_rate fallback logic for measure_events_ratio."""
-        samples = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
-            'pixel': [[0, 0]] * 8,
-        })
+        samples = pl.DataFrame(
+            {
+                'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+                'pixel': [[0, 0]] * 8,
+            }
+        )
         events = pm.Events(
             name=['blink', 'blink'],
             onsets=[1.0, 5.0],
@@ -318,7 +337,8 @@ class TestEventRatio:
 
         result = gaze.samples.select(
             gaze.measure_events_ratio(
-                'blink', sampling_rate=sampling_rate_arg,
+                'blink',
+                sampling_rate=sampling_rate_arg,
             ),
         )
 

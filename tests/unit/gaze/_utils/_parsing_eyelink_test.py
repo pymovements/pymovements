@@ -18,15 +18,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
+
 import datetime
 import re
-import warnings
 from typing import Any
+import warnings
 
 import numpy as np
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements.gaze._utils import _parsing_eyelink
 from pymovements.gaze._utils._parsing_eyelink import _check_patterns
@@ -129,7 +130,6 @@ PATTERNS = [
         'column': 'task',
         'value': None,
     },
-
     r'START_TRIAL_(?P<trial_id>\d+)',
     {
         'pattern': r'STOP_TRIAL',
@@ -148,14 +148,43 @@ METADATA_PATTERNS = [
 EXPECTED_GAZE_DF = pl.from_dict(
     {
         'time': [
-            10000000.0, 10000002.0, 10000004.0, 10000006.0, 10000008.0, 10000011.0, 10000014.0,
-            10000017.0, 10000019.0, 10000020.0, 10000021.0,
+            10000000.0,
+            10000002.0,
+            10000004.0,
+            10000006.0,
+            10000008.0,
+            10000011.0,
+            10000014.0,
+            10000017.0,
+            10000019.0,
+            10000020.0,
+            10000021.0,
         ],
         'x_pix': [
-            850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, 850.7, np.nan, np.nan,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            850.7,
+            np.nan,
+            np.nan,
         ],
         'y_pix': [
-            717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, 717.5, np.nan, np.nan,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            717.5,
+            np.nan,
+            np.nan,
         ],
         'pupil': [714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, 714.0, np.nan, 0.0, 0.0],
         'task': [None, 'A', None, 'B', 'B', 'B', 'B', None, None, None, None],
@@ -242,8 +271,16 @@ MESSAGES_DF = pl.DataFrame(
     data=[
         (12300, 12333, 12345, 12567, 12899, 14444, 14555, 14666, 14777, 14888),
         (
-            'TASK A', 'PRACTICE', 'TRIAL 1', 'TRIAL 2', 'TRIAL 3',
-            'TASK B', 'PRACTICE', 'TRIAL 1', 'TRIAL 2', 'TRIAL 3',
+            'TASK A',
+            'PRACTICE',
+            'TRIAL 1',
+            'TRIAL 2',
+            'TRIAL 3',
+            'TASK B',
+            'PRACTICE',
+            'TRIAL 1',
+            'TRIAL 2',
+            'TRIAL 3',
         ),
     ],
 )
@@ -309,7 +346,8 @@ def test_parse_eyelink_no_messages(make_text_file):
 def test_from_asc_metadata_patterns(filename, kwargs, expected_metadata, make_example_file):
     filepath = make_example_file(filename)
     _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
-        filepath=filepath, **kwargs,
+        filepath=filepath,
+        **kwargs,
     )
 
     for key, value in expected_metadata.items():
@@ -332,7 +370,7 @@ def test_parse_eyelink_raises_value_error(patterns, make_text_file):
             patterns=patterns,
         )
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
 
     expected_substrings = ['invalid pattern', '1']
     for substring in expected_substrings:
@@ -346,7 +384,8 @@ def test_message_example(make_text_file):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
 
     _, _, _, messages_df = _parsing_eyelink.parse_eyelink(
-        filepath, messages=True,
+        filepath,
+        messages=True,
     )
     assert_frame_equal(messages_df, MESSAGES_DF)
 
@@ -359,7 +398,8 @@ def test_message_example(make_text_file):
         pytest.param([r'^.*TRIAL.*$'], [2, 3, 4, 7, 8, 9], id='match_trials'),
         pytest.param(
             [r'^.*TRIAL.*$', r'^.*PRACTICE.*$'],
-            [1, 2, 3, 4, 6, 7, 8, 9], id='match_trials_and_practice',
+            [1, 2, 3, 4, 6, 7, 8, 9],
+            id='match_trials_and_practice',
         ),
         pytest.param([r'^.*\s3.*$'], [4, 9], id='match_trials_ending_in_whitespace_3'),
     ],
@@ -373,7 +413,8 @@ def test_message_example_filtered(make_text_file, regexps, matched_lines):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
 
     _, _, _, messages_df = _parsing_eyelink.parse_eyelink(
-        filepath, messages=regexps,
+        filepath,
+        messages=regexps,
     )
 
     if matched_lines is None:
@@ -390,9 +431,9 @@ def test_message_faulty_messages_value(make_text_file, invalid_regexps):
     filepath = make_text_file(filename='sub.asc', body=ASC_TEXT_MSGS)
 
     with pytest.raises(
-            ValueError,
-            match=r'Make sure to pass either a bool or a list of regular expressions as '
-                  r'strings\. Received',
+        ValueError,
+        match=r'Make sure to pass either a bool or a list of regular expressions as '
+        r'strings\. Received',
     ):
         _parsing_eyelink.parse_eyelink(filepath, messages=invalid_regexps)
 
@@ -401,36 +442,31 @@ def test_message_faulty_messages_value(make_text_file, invalid_regexps):
     ('metadata', 'expected_version', 'expected_model'),
     [
         pytest.param(
-            '** VERSION: EYELINK II 1\n'
-            '** EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)',
+            '** VERSION: EYELINK II 1\n** EYELINK II CL v6.12 Feb  1 2018 (EyeLink Portable Duo)',
             '6.12',
             'EyeLink Portable Duo',
             id='eye_link_portable_duo',
         ),
         pytest.param(
-            '** VERSION: EYELINK II 1\n'
-            '** EYELINK II CL v5.12 Feb  1 2018\n',
+            '** VERSION: EYELINK II 1\n** EYELINK II CL v5.12 Feb  1 2018\n',
             '5.12',
             'EyeLink 1000 Plus',
             id='eye_link_1000_plus',
         ),
         pytest.param(
-            '** VERSION: EYELINK II 1\n'
-            '** EYELINK II CL v4.12 Feb  1 2018',
+            '** VERSION: EYELINK II 1\n** EYELINK II CL v4.12 Feb  1 2018',
             '4.12',
             'EyeLink 1000',
             id='eye_link_1000_1',
         ),
         pytest.param(
-            '** VERSION: EYELINK II 1\n'
-            '** EYELINK II CL v3.12 Feb  1 2018',
+            '** VERSION: EYELINK II 1\n** EYELINK II CL v3.12 Feb  1 2018',
             '3.12',
             'EyeLink 1000',
             id='eye_link_1000_2',
         ),
         pytest.param(
-            '** VERSION: EYELINK II 1\n'
-            '** EYELINK II CL v2.12 Feb  1 2018',
+            '** VERSION: EYELINK II 1\n** EYELINK II CL v2.12 Feb  1 2018',
             '2.12',
             'EyeLink II',
             id='eye_link_II',
@@ -448,8 +484,7 @@ def test_message_faulty_messages_value(make_text_file, invalid_regexps):
             id='unknown_version_1',
         ),
         pytest.param(
-            '** VERSION: EYELINK II 1\n'
-            '** EYELINK II CL Feb  1 2018 (EyeLink Portable Duo)',
+            '** VERSION: EYELINK II 1\n** EYELINK II CL Feb  1 2018 (EyeLink Portable Duo)',
             'unknown',
             'unknown',
             id='unknown_version_2',
@@ -490,8 +525,7 @@ def test_parse_eyelink_version(make_text_file, metadata, expected_version, expec
             id='no_reccfg',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154556 RECCFG CR 2000 2 1 L\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154556 RECCFG CR 2000 2 1 L\n',
             r"Found inconsistent values for 'sampling_rate': \['1000', '2000'\]",
             id='inconsistent_sampling_rate_reccfg',
         ),
@@ -533,37 +567,41 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             'MSG	7045618 !CAL Calibration points:  \n'
             'MSG	1076158 !CAL VALIDATION HV9 R RIGHT POOR ERROR 2.40 avg. 6.03 max  '
             'OFFSET 0.19 deg. 4.2,6.3 pix.\n',
-            [{
-                'error': 'POOR ERROR',
-                'tracked_eye': 'RIGHT',
-                'num_points': '9',
-                'timestamp': '1076158',
-                'validation_score_avg': '2.40',
-                'validation_score_max': '6.03',
-            }],
-            [{
-                'num_points': '9',
-                'timestamp': '7045618',
-                'tracked_eye': 'LEFT',
-                'type': 'P-CR',
-            }],
+            [
+                {
+                    'error': 'POOR ERROR',
+                    'tracked_eye': 'RIGHT',
+                    'num_points': '9',
+                    'timestamp': '1076158',
+                    'validation_score_avg': '2.40',
+                    'validation_score_max': '6.03',
+                }
+            ],
+            [
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'LEFT',
+                    'type': 'P-CR',
+                }
+            ],
             id='cal_timestamp_with_space',
         ),
         pytest.param(
-            'MSG	7045618 !CAL\n'
-            '>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n',
+            'MSG	7045618 !CAL\n>>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n',
             [],
-            [{
-                'num_points': '9',
-                'timestamp': '7045618',
-                'tracked_eye': 'LEFT',
-                'type': 'P-CR',
-            }],
+            [
+                {
+                    'num_points': '9',
+                    'timestamp': '7045618',
+                    'tracked_eye': 'LEFT',
+                    'type': 'P-CR',
+                }
+            ],
             id='cal_timestamp_no_space_no_val',
         ),
         pytest.param(
-            'MSG	7045618 !CAL\n'
-            'MSG	7045618 !CAL\n',
+            'MSG	7045618 !CAL\nMSG	7045618 !CAL\n',
             [],
             [{'timestamp': '7045618'}],
             id='cal_timestamp_no_cal_no_val',
@@ -628,17 +666,24 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
         example_asc_monocular_path,
     )
 
-    expected_validation = [{
-        'error': 'GOOD ERROR',
-        'tracked_eye': 'LEFT',
-        'num_points': '9',
-        'timestamp': '2148587',
-        'validation_score_avg': '0.27',
-        'validation_score_max': '0.83',
-    }]
-    expected_calibration = [{
-        'num_points': '9', 'type': 'P-CR', 'tracked_eye': 'LEFT', 'timestamp': '2135819',
-    }]
+    expected_validation = [
+        {
+            'error': 'GOOD ERROR',
+            'tracked_eye': 'LEFT',
+            'num_points': '9',
+            'timestamp': '2148587',
+            'validation_score_avg': '0.27',
+            'validation_score_max': '0.83',
+        }
+    ]
+    expected_calibration = [
+        {
+            'num_points': '9',
+            'type': 'P-CR',
+            'tracked_eye': 'LEFT',
+            'timestamp': '2135819',
+        }
+    ]
 
     assert metadata['calibrations'] == expected_calibration
     assert metadata['validations'] == expected_validation
@@ -772,7 +817,10 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
 @pytest.mark.filterwarnings("ignore:Found inconsistent values for 'sampling_rate':")
 def test_parse_eyelink_data_loss_ratio(
-        make_text_file, metadata, expected_blink_ratio, expected_overall_ratio,
+    make_text_file,
+    metadata,
+    expected_blink_ratio,
+    expected_overall_ratio,
 ):
     filepath = make_text_file(filename='sub.asc', body=metadata)
 
@@ -800,8 +848,7 @@ def test_parse_eyelink_datetime(make_text_file):
     ('metadata', 'expected_mount_config'),
     [
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG BTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG BTABLER\n',
             {
                 'mount_type': 'Desktop',
                 'head_stabilization': 'stabilized',
@@ -811,8 +858,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='desktop_stabilized_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG MTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG MTABLER\n',
             {
                 'mount_type': 'Desktop',
                 'head_stabilization': 'stabilized',
@@ -822,8 +868,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='desktop_stabilized_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG RTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG RTABLER\n',
             {
                 'mount_type': 'Desktop',
                 'head_stabilization': 'remote',
@@ -833,8 +878,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='desktop_remote_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG RBTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG RBTABLER\n',
             {
                 'mount_type': 'Desktop',
                 'head_stabilization': 'remote',
@@ -844,8 +888,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='desktop_remote_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG AMTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG AMTABLER\n',
             {
                 'mount_type': 'Arm Mount',
                 'head_stabilization': 'stabilized',
@@ -855,8 +898,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='arm_stabilized_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG ABTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG ABTABLER\n',
             {
                 'mount_type': 'Arm Mount',
                 'head_stabilization': 'stabilized',
@@ -866,8 +908,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='arm_stabilized_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG ARTABLER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG ARTABLER\n',
             {
                 'mount_type': 'Arm Mount',
                 'head_stabilization': 'remote',
@@ -877,8 +918,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='arm_remote_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG ABRTABLE\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG ABRTABLE\n',
             {
                 'mount_type': 'Arm Mount',
                 'head_stabilization': 'remote',
@@ -888,8 +928,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='arm_remote_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG BTOWER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG BTOWER\n',
             {
                 'mount_type': 'Binocular Tower Mount',
                 'head_stabilization': 'stabilized',
@@ -899,8 +938,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='binocular_tower_stabilized_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG TOWER\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG TOWER\n',
             {
                 'mount_type': 'Tower Mount',
                 'head_stabilization': 'stabilized',
@@ -910,8 +948,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='tower_stabilized_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG MPRIM\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG MPRIM\n',
             {
                 'mount_type': 'Primate Mount',
                 'head_stabilization': 'stabilized',
@@ -921,8 +958,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='primate_stabilized_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG BPRIM\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG BPRIM\n',
             {
                 'mount_type': 'Primate Mount',
                 'head_stabilization': 'stabilized',
@@ -932,8 +968,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='primate_stabilized_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG MLRR\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG MLRR\n',
             {
                 'mount_type': 'Long-Range Mount',
                 'head_stabilization': 'stabilized',
@@ -944,8 +979,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='long_range_level_monocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG BLRR\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG BLRR\n',
             {
                 'mount_type': 'Long-Range Mount',
                 'head_stabilization': 'stabilized',
@@ -956,8 +990,7 @@ def test_parse_eyelink_datetime(make_text_file):
             id='long_range_angled_binocular',
         ),
         pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'MSG	2154555 ELCLCFG XXXXX\n',
+            'MSG	2154555 RECCFG CR 1000 2 1 L\nMSG	2154555 ELCLCFG XXXXX\n',
             {
                 'mount_type': 'unknown',
                 'head_stabilization': 'unknown',
@@ -1058,46 +1091,144 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
     expected_gaze = pl.from_dict(
         {
             'time': [
-                1408660.0, 1408661.0, 1408662.0, 1408667.0,
-                1408782.0, 1408783.0, 1408784.0, 1408785.0, 1408786.0,
-                1408787.0, 1408788.0, 1408789.0, 1408790.0, 1408791.0, 1408792.0,
-                1408793.0, 1408794.0, 1408795.0,
+                1408660.0,
+                1408661.0,
+                1408662.0,
+                1408667.0,
+                1408782.0,
+                1408783.0,
+                1408784.0,
+                1408785.0,
+                1408786.0,
+                1408787.0,
+                1408788.0,
+                1408789.0,
+                1408790.0,
+                1408791.0,
+                1408792.0,
+                1408793.0,
+                1408794.0,
+                1408795.0,
             ],
             'x_left_pix': [
-                964.3, 964.5, 964.9, 963.7,
-                966.9, 970.7, 974.4, 976.7, 976.7,
-                np.nan, np.nan, np.nan, np.nan, np.nan, np.nan,
-                np.nan, np.nan, np.nan,
+                964.3,
+                964.5,
+                964.9,
+                963.7,
+                966.9,
+                970.7,
+                974.4,
+                976.7,
+                976.7,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
             ],
             'y_left_pix': [
-                541.5, 542.2, 543.0, 543.1,
-                565.5, 580.5, 594.8, 604.8, 604.8,
-                np.nan, np.nan, np.nan, np.nan, np.nan, np.nan,
-                np.nan, np.nan, np.nan,
+                541.5,
+                542.2,
+                543.0,
+                543.1,
+                565.5,
+                580.5,
+                594.8,
+                604.8,
+                604.8,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
             ],
             'pupil_left': [
-                288.0, 288.0, 288.0, 288.0,
-                276.0, 271.0, 266.0, 262.0, 262.0,
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                0.0, 0.0, 0.0,
+                288.0,
+                288.0,
+                288.0,
+                288.0,
+                276.0,
+                271.0,
+                266.0,
+                262.0,
+                262.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
             ],
             'x_right_pix': [
-                960.5, 960.4, 960.3, 959.3,
-                949.4, 945.7, 942.4, 938.9, 935.1,
-                933.4, 934.1, 937.7, 941.1, 942.9, 942.9,
-                np.nan, np.nan, np.nan,
+                960.5,
+                960.4,
+                960.3,
+                959.3,
+                949.4,
+                945.7,
+                942.4,
+                938.9,
+                935.1,
+                933.4,
+                934.1,
+                937.7,
+                941.1,
+                942.9,
+                942.9,
+                np.nan,
+                np.nan,
+                np.nan,
             ],
             'y_right_pix': [
-                538.8, 539.5, 540.4, 538.6,
-                545.5, 540.8, 538.1, 540.1, 549.1,
-                568.2, 597.2, 634.5, 661.7, 675.4, 675.4,
-                np.nan, np.nan, np.nan,
+                538.8,
+                539.5,
+                540.4,
+                538.6,
+                545.5,
+                540.8,
+                538.1,
+                540.1,
+                549.1,
+                568.2,
+                597.2,
+                634.5,
+                661.7,
+                675.4,
+                675.4,
+                np.nan,
+                np.nan,
+                np.nan,
             ],
             'pupil_right': [
-                305.0, 306.0, 307.0, 306.0,
-                308.0, 308.0, 307.0, 305.0, 303.0,
-                298.0, 289.0, 276.0, 266.0, 259.0, 259.0,
-                0.0, 0.0, 0.0,
+                305.0,
+                306.0,
+                307.0,
+                306.0,
+                308.0,
+                308.0,
+                307.0,
+                305.0,
+                303.0,
+                298.0,
+                289.0,
+                276.0,
+                266.0,
+                259.0,
+                259.0,
+                0.0,
+                0.0,
+                0.0,
             ],
         },
     )
@@ -1114,9 +1245,11 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
     # dimension because of 0-based indexing, see
     # https://www.sr-research.com/support/thread-9129.html)
     assert metadata.get('resolution') == (
-        1920, 1080,
+        1920,
+        1080,
     ) or metadata.get('resolution') == (
-        1920.0, 1080.0,
+        1920.0,
+        1080.0,
     )
 
 
@@ -1306,11 +1439,7 @@ def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file
     The RECCFG line provides a sampling rate of 1000 Hz and the START/END span 1000 ms,
     so expected number of samples = 1000 and total_recording_duration_ms should be 1000.0.
     """
-    content = (
-        'MSG 0 RECCFG CR 1000 0 0 LR\n'
-        'START 0 RIGHT types\n'
-        'END 1000 types RES 0 0\n'
-    )
+    content = 'MSG 0 RECCFG CR 1000 0 0 LR\nSTART 0 RIGHT types\nEND 1000 types RES 0 0\n'
 
     p = make_text_file(filename='test_stop_recording.asc', body=content)
 
@@ -1373,7 +1502,9 @@ def test_check_reccfg_key_handles_unorderable_values_with_warning() -> None:
     ],
 )
 def test_unmatched_event_end_uses_current_context_and_warns(
-    make_text_file, event_end, event_name,
+    make_text_file,
+    event_end,
+    event_name,
 ):
     """Unmatched end events should not crash, should warn, and should preserve pattern columns.
 
@@ -1440,14 +1571,12 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
         f'START\t0 \t{samples_eye}\tSAMPLES\tEVENTS\n'
     )
 
-    body = (
-        f'EBLINK {eye} {onset}\t{offset}\t3\n'
-        f'END\t{offset + 1} \tSAMPLES\tEVENTS\tRES\t 0\t 0\n'
-    )
+    body = f'EBLINK {eye} {onset}\t{offset}\t3\nEND\t{offset + 1} \tSAMPLES\tEVENTS\tRES\t 0\t 0\n'
 
     filepath = make_text_file(
         filename=f'unmatched_no_patterns_{eye}_{onset}_{offset}.asc',
-        header=header, body=body,
+        header=header,
+        body=body,
     )
 
     with pytest.warns(UserWarning) as warn:
@@ -1476,7 +1605,9 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
 def test_reccfg_with_optional_event_filters_parses(
-    make_text_file, reccfg_line, has_event_filters,
+    make_text_file,
+    reccfg_line,
+    has_event_filters,
 ):
     """RECCFG lines with and without optional event filters should parse without error.
 
@@ -1650,15 +1781,18 @@ def test_parse_eyelink_event_end_helper(line, expected):
     [
         pytest.param(
             [{'sampling_rate': '1000'}, {'sampling_rate': '500'}],
-            True, id='inconsistent',
+            True,
+            id='inconsistent',
         ),
         pytest.param(
             [{'sampling_rate': '1000'}, {'sampling_rate': '1000'}],
-            False, id='consistent',
+            False,
+            id='consistent',
         ),
         pytest.param(
             [{'sampling_rate': '1000'}, {}],
-            False, id='one_missing',
+            False,
+            id='one_missing',
         ),
     ],
 )
@@ -1672,8 +1806,12 @@ def test_config_inconsistent_helper(config_list, expected):
     [
         pytest.param([], 'key', None, None, 'No samples configuration found.', id='empty'),
         pytest.param(
-            [{'key': '1000'}, {'key': '500'}], 'key', None, None,
-            'Found inconsistent values', id='inconsistent',
+            [{'key': '1000'}, {'key': '500'}],
+            'key',
+            None,
+            None,
+            'Found inconsistent values',
+            id='inconsistent',
         ),
         pytest.param([{'key': '1000'}], 'key', float, 1000.0, None, id='cast'),
     ],
@@ -1682,13 +1820,23 @@ def test_check_samples_config_key_helper(configs, key, astype, expected_value, e
     """Test EyeLink samples config key check."""
     if expected_warning:
         with pytest.warns(UserWarning, match=expected_warning):
-            assert _parsing_eyelink._check_samples_config_key(
-                configs, key, astype=astype,
-            ) == expected_value
+            assert (
+                _parsing_eyelink._check_samples_config_key(
+                    configs,
+                    key,
+                    astype=astype,
+                )
+                == expected_value
+            )
     else:
-        assert _parsing_eyelink._check_samples_config_key(
-            configs, key, astype=astype,
-        ) == expected_value
+        assert (
+            _parsing_eyelink._check_samples_config_key(
+                configs,
+                key,
+                astype=astype,
+            )
+            == expected_value
+        )
 
 
 @pytest.mark.parametrize(
@@ -1697,12 +1845,20 @@ def test_check_samples_config_key_helper(configs, key, astype, expected_value, e
         pytest.param([], 'key', None, None, 'No recording configuration found.', id='empty'),
         pytest.param([{'other': 'value'}], 'key', None, None, None, id='missing_key'),
         pytest.param(
-            [{'key': '1000'}, {'key': '500'}], 'key', None, None,
-            'Found inconsistent values', id='inconsistent',
+            [{'key': '1000'}, {'key': '500'}],
+            'key',
+            None,
+            None,
+            'Found inconsistent values',
+            id='inconsistent',
         ),
         pytest.param(
-            [{'key': 1000}, {'key': '500'}], 'key', None, None,
-            'Found inconsistent values', id='unorderable_inconsistent',
+            [{'key': 1000}, {'key': '500'}],
+            'key',
+            None,
+            None,
+            'Found inconsistent values',
+            id='unorderable_inconsistent',
         ),
         pytest.param([{'key': 'abc'}], 'key', float, None, None, id='cast_fail'),
     ],
@@ -1834,12 +1990,17 @@ MSG 30 GAZE_COORDS 0.00 0.00 1279.00 1023.00
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
 def test_parse_eyelink_resolution_handling(
-        make_text_file, asc_body, expected_res, expected_recorded_by, extend_resolution,
+    make_text_file,
+    asc_body,
+    expected_res,
+    expected_recorded_by,
+    extend_resolution,
 ):
     """Test EyeLink GAZE_COORDS resolution handling (increments for odd values)."""
     filepath = make_text_file('res_test.asc', body=asc_body)
     _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
-        filepath, extend_resolution=extend_resolution,
+        filepath,
+        extend_resolution=extend_resolution,
     )
     res = metadata['recording_config'][0]['resolution']
     assert res == expected_res
@@ -1879,7 +2040,7 @@ SAMPLES GAZE LEFT RATE 500.00
 START 100 LEFT SAMPLES EVENTS
 END 200 SAMPLES EVENTS RES 0 0
 """,
-            'give inconsistent values for \'sampling_rate\'',
+            "give inconsistent values for 'sampling_rate'",
             id='inconsistent_sampling_rate',
         ),
         pytest.param(
@@ -1907,10 +2068,14 @@ def test_parse_eyelink_warnings(make_text_file, asc_content, expected_warning_ma
     [
         pytest.param(['MESSAGE_.*'], ['MESSAGE_A', 'MESSAGE_B'], id='regex_list'),
         pytest.param(
-            True, [
-                'RECCFG CR 1000 2 1 L', 'MESSAGE_A',
-                'MESSAGE_B', 'OTHER',
-            ], id='bool_true',
+            True,
+            [
+                'RECCFG CR 1000 2 1 L',
+                'MESSAGE_A',
+                'MESSAGE_B',
+                'OTHER',
+            ],
+            id='bool_true',
         ),
     ],
 )
@@ -1941,7 +2106,9 @@ MSG 40 OTHER
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
 def test_parse_eyelink_messages_parameter_validation(
-        make_text_file, messages_param, expected_error_match,
+    make_text_file,
+    messages_param,
+    expected_error_match,
 ):
     """Test validation of the 'messages' parameter in parse_eyelink."""
     asc_content = 'MSG 10 RECCFG CR 1000 2 1 L'

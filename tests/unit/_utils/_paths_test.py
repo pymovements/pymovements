@@ -18,10 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements paths."""
+
 import pathlib
+from pathlib import Path
 import re
 import unittest
-from pathlib import Path
 
 import pytest
 
@@ -33,7 +34,7 @@ def test_get_filepaths_mut_excl_extension_and_regex_error():
     """Test mutually exclusive extension and regex in get_filepaths."""
     with pytest.raises(ValueError) as excinfo:
         get_filepaths(path='tmp', extension='extension', regex=re.compile('regex'))
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == 'extension and regex are mutually exclusive'
 
 
@@ -55,9 +56,9 @@ def test_get_filepaths_mut_excl_extension_and_regex_error():
     ],
 )
 def test_get_filepaths_empty_directory(
-        extension,
-        regex,
-        expected_paths,
+    extension,
+    regex,
+    expected_paths,
 ):
     assert get_filepaths(path='tmp', extension=extension, regex=regex) == expected_paths
 
@@ -93,12 +94,12 @@ def create_directory(tmp_path, sub_dirs, files):
     ],
 )
 def test_get_filepaths_expected_output(
-        extension,
-        regex,
-        tmp_path,
-        sub_dirs,
-        files,
-        expected_paths,
+    extension,
+    regex,
+    tmp_path,
+    sub_dirs,
+    files,
+    expected_paths,
 ):
     create_directory(tmp_path, sub_dirs, files)
     ret = get_filepaths(path=tmp_path, extension=extension, regex=regex)
@@ -150,11 +151,11 @@ def test_get_filepaths_expected_output(
     ],
 )
 def test_match_filepaths(
-        regex,
-        sub_dirs,
-        files,
-        expected_dicts,
-        tmp_path,
+    regex,
+    sub_dirs,
+    files,
+    expected_dicts,
+    tmp_path,
 ):
     create_directory(tmp_path, sub_dirs, files)
     result_dicts = match_filepaths(path=tmp_path, regex=regex)
@@ -177,7 +178,7 @@ def test_match_filepaths_not_exists_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError) as excinfo:
         match_filepaths(path=filepath, regex=re.compile('.*'))
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
 
     assert 'not exist' in msg
     assert str(filepath) in msg
@@ -189,7 +190,7 @@ def test_match_filepaths_no_directory_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError) as excinfo:
         match_filepaths(path=filepath, regex=re.compile('.*'))
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
 
     assert 'must point to a directory' in msg
     assert str(filepath) in msg

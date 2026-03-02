@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides dataset definitions."""
+
 from pymovements.datasets.bsc import BSC
 from pymovements.datasets.bsc2 import BSCII
 from pymovements.datasets.chinese_reading import ChineseReading
@@ -55,7 +56,6 @@ from pymovements.datasets.teco import TECO
 from pymovements.datasets.toy_dataset import ToyDataset
 from pymovements.datasets.toy_dataset_eyelink import ToyDatasetEyeLink
 from pymovements.datasets.ucl import UCL
-
 
 __all__ = [
     'BSC',

@@ -5,30 +5,40 @@ exclude: |
 
 ci:
   autoupdate_commit_msg: 'ci: pre-commit autoupdate'
-  skip: [ pylint ]
 
 repos:
-  - repo: https://github.com/asottile/add-trailing-comma
-    rev: v4.0.0
+  # Ruff + Ty integration
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.2
     hooks:
-      - id: add-trailing-comma
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
-        args: [ --py310-plus ]
-  - repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.16.0
-    hooks:
-      - id: reorder-python-imports
-        args: [ --application-directories=src, --py310-plus ]
-  - repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.16.0
-    hooks:
-      - id: reorder-python-imports
+      # Lint and fix
+      - id: ruff-check
+        args: [ --fix, --show-fixes ]
+      # Format
+      - id: ruff-format
+      # Add future annotations to src/ files (excluding __init__.py)
+      - id: ruff
+        name: ruff-add-future-annotations
         files: ^src/
-        exclude: __init__.py
-        args: [ --application-directories=src, --add-import, 'from __future__ import annotations' ]
+        exclude: __init__\.py$
+        args:
+          - --select
+          - I
+          - --fix
+          - --config
+          - 'lint.isort.required-imports = ["from __future__ import annotations"]'
+
+  # Type checking
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: ty-check
+        language: python
+        entry: ty check
+        types: [ python ]
+        args: [ --output-format=concise ]
+        pass_filenames: false
+        additional_dependencies: [ty]
   - repo: https://github.com/citation-file-format/cffconvert
     rev: 054bda51dbe278b3e86f27c890e3f3ac877d616c
     hooks:
@@ -63,26 +73,16 @@ repos:
       - id: insert-license
         args: [ --use-current-year ]
         types: [ python ]
-  - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.3
-    hooks:
-      - id: pydoclint
-        args: [ "--config=pyproject.toml" ]
+
+  # notebook support
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
-      - id: nbqa-autopep8
-      - id: nbqa-flake8
-        args: [ '--builtins=display' ]
-      - id: nbqa-isort
-        args: [ "--float-to-top" ]
-      - id: nbqa-pyupgrade
-        args: [ "--py310-plus" ]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
-    hooks:
-      - id: mypy
-        additional_dependencies: [ pandas-stubs, types-tqdm, types-PyYAML ]
+      - id: nbqa-ruff
+        args: [ --fix ]
+      - id: nbqa-ruff-format
+
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -102,65 +102,11 @@ repos:
       - id: no-commit-to-branch
       - id: requirements-txt-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.2
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.1
     hooks:
-      - id: autopep8
-  - repo: https://github.com/PyCQA/autoflake
-    rev: v2.3.3
-    hooks:
-      - id: autoflake
-  - repo: https://github.com/PyCQA/doc8
-    rev: v2.0.0
-    hooks:
-      - id: doc8
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        files: ^src/
-        args:
-          [
-            '--ignore=D107,D203,D213,D413',
-          ]
-      - id: pydocstyle
-        files: ^tests/
-        args:
-          [
-            '--ignore=D103,D107,D203,D213',
-          ]
-  - repo: https://github.com/PyCQA/pylint
-    rev: v4.0.5
-    hooks:
-      - id: pylint
-        name: pylint
-        entry: pylint
-        language: system
-        types: [ python ]
-        files: ^src/
-        args:
-          [
-            '--output-format=parseable',
-            '--rcfile=pylintrc',
-          ]
-      - id: pylint
-        name: pylint-tests-directory
-        entry: pylint
-        language: system
-        types: [ python ]
-        files: ^tests/
-        args:
-          [
-            '--output-format=parseable',
-            '--disable=missing-class-docstring',
-            '--disable=missing-function-docstring',
-            '--disable=protected-access',
-            '--rcfile=pylintrc',
-          ]
+      - id: mypy
+        additional_dependencies: [ pandas-stubs, types-tqdm, types-PyYAML ]
   - repo: local
     hooks:
       - id: write-datasets-yaml

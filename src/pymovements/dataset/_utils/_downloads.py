@@ -18,28 +18,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Utils module for downloading files."""
+
 from __future__ import annotations
 
 import hashlib
-import urllib.request
 from pathlib import Path
 from typing import Any
+import urllib.request
 
 from tqdm.auto import tqdm
 
 from pymovements._version import __version__
 
-USER_AGENT: str = f"pymovements/{__version__}"
+USER_AGENT: str = f'pymovements/{__version__}'
 
 
 def download_file(
-        url: str,
-        dirpath: Path,
-        filename: str,
-        md5: str | None = None,
-        *,
-        max_redirect_hops: int = 3,
-        verbose: bool = True,
+    url: str,
+    dirpath: Path,
+    filename: str,
+    md5: str | None = None,
+    *,
+    max_redirect_hops: int = 3,
+    verbose: bool = True,
 ) -> Path:
     """Download a file from a URL and place it in root.
 

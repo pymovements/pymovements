@@ -18,11 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements.events.Events."""
+
 from __future__ import annotations
 
 import polars as pl
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements import Events
 
@@ -48,7 +49,8 @@ def fixture_make_events():
         # adding columns afterward to not count them as non-property additional_columns
         if properties is not None:
             events.frame = events.frame.select(
-                [pl.all()] + [
+                [pl.all()]
+                + [
                     pl.int_ranges(0, 100 * len(names), 100).alias(property)
                     for property in properties
                 ],
@@ -64,37 +66,44 @@ def fixture_make_events():
     [
         pytest.param(
             {'onsets': None, 'offsets': []},
-            ValueError, ('onsets', 'offsets', 'both None', 'or', 'both not None'),
+            ValueError,
+            ('onsets', 'offsets', 'both None', 'or', 'both not None'),
             id='onsets_none_offsets_list',
         ),
         pytest.param(
             {'onsets': [], 'offsets': None},
-            ValueError, ('onsets', 'offsets', 'both None', 'or', 'both not None'),
+            ValueError,
+            ('onsets', 'offsets', 'both None', 'or', 'both not None'),
             id='onsets_list_offsets_none',
         ),
         pytest.param(
             {'onsets': [], 'offsets': [0]},
-            ValueError, ('onsets', 'offsets', 'length', 'equal'),
+            ValueError,
+            ('onsets', 'offsets', 'length', 'equal'),
             id='onsets_empty_list_offsets_single_int',
         ),
         pytest.param(
             {'onsets': [1], 'offsets': []},
-            ValueError, ('onsets', 'offsets', 'length', 'equal'),
+            ValueError,
+            ('onsets', 'offsets', 'length', 'equal'),
             id='onsets_single_int_offsets_empty_list',
         ),
         pytest.param(
             {'data': pl.DataFrame(), 'name': None, 'onsets': 1, 'offsets': None},
-            ValueError, ('data', 'onsets', 'mutually', 'exclusive'),
+            ValueError,
+            ('data', 'onsets', 'mutually', 'exclusive'),
             id='data_with_onsets_raises_mutually_exclusive',
         ),
         pytest.param(
             {'data': pl.DataFrame(), 'offsets': 1},
-            ValueError, ('data', 'offsets', 'mutually', 'exclusive'),
+            ValueError,
+            ('data', 'offsets', 'mutually', 'exclusive'),
             id='data_with_offsets_raises_mutually_exclusive',
         ),
         pytest.param(
             {'data': pl.DataFrame(), 'name': 1},
-            ValueError, ('data', 'name', 'mutually', 'exclusive'),
+            ValueError,
+            ('data', 'name', 'mutually', 'exclusive'),
             id='data_with_name_raises_mutually_exclusive',
         ),
     ],
@@ -103,7 +112,7 @@ def test_init_exceptions(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
         Events(**kwargs)
 
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     for msg_substring in msg_substrings:
         assert msg_substring in msg
 
@@ -140,15 +149,21 @@ def test_init_has_expected_length(args, kwargs, expected_length):
     ('args', 'kwargs', 'expected_name'),
     [
         pytest.param(
-            [pl.DataFrame()], {}, 'foo',
+            [pl.DataFrame()],
+            {},
+            'foo',
             id='dataframe_arg_dict_with_single_event_kwarg',
         ),
         pytest.param(
-            [], {'name': 'bar', 'onsets': [0], 'offsets': [1]}, 'bar',
+            [],
+            {'name': 'bar', 'onsets': [0], 'offsets': [1]},
+            'bar',
             id='dict_with_single_event_with_name_kwarg',
         ),
         pytest.param(
-            [], {'name': 'bar', 'onsets': [0, 1], 'offsets': [1, 2]}, 'bar',
+            [],
+            {'name': 'bar', 'onsets': [0, 1], 'offsets': [1, 2]},
+            'bar',
             id='dict_with_two_events_with_name_kwarg',
         ),
     ],
@@ -162,7 +177,9 @@ def test_init_has_correct_name(args, kwargs, expected_name):
     ('args', 'kwargs', 'expected_names'),
     [
         pytest.param(
-            [], {'name': ['foo', 'bar'], 'onsets': [0, 1], 'offsets': [1, 2]}, ['foo', 'bar'],
+            [],
+            {'name': ['foo', 'bar'], 'onsets': [0, 1], 'offsets': [1, 2]},
+            ['foo', 'bar'],
             id='dict_with_two_events_with_name_kwarg',
         ),
     ],
@@ -176,27 +193,32 @@ def test_init_has_correct_names(args, kwargs, expected_names):
     ('args', 'kwargs', 'expected_df_data'),
     [
         pytest.param(
-            [], {'onsets': [0], 'offsets': [1]},
+            [],
+            {'onsets': [0], 'offsets': [1]},
             {'name': [''], 'onset': [0], 'offset': [1], 'duration': [1]},
             id='no_arg_dict_with_single_event_kwarg',
         ),
         pytest.param(
-            [pl.DataFrame()], {},
+            [pl.DataFrame()],
+            {},
             {},
             id='dataframe_arg_no_kwargs',
         ),
         pytest.param(
-            [], {'name': 'bar', 'onsets': [0], 'offsets': [1]},
+            [],
+            {'name': 'bar', 'onsets': [0], 'offsets': [1]},
             {'name': ['bar'], 'onset': [0], 'offset': [1], 'duration': [1]},
             id='dict_with_single_named_event',
         ),
         pytest.param(
-            [], {'name': 'bar', 'onsets': [0, 2], 'offsets': [1, 3]},
+            [],
+            {'name': 'bar', 'onsets': [0, 2], 'offsets': [1, 3]},
             {'name': ['bar', 'bar'], 'onset': [0, 2], 'offset': [1, 3], 'duration': [1, 1]},
             id='dict_with_two_events_same_name',
         ),
         pytest.param(
-            [], {'name': ['foo', 'bar'], 'onsets': [0, 2], 'offsets': [1, 4]},
+            [],
+            {'name': ['foo', 'bar'], 'onsets': [0, 2], 'offsets': [1, 4]},
             {'name': ['foo', 'bar'], 'onset': [0, 2], 'offset': [1, 4], 'duration': [1, 2]},
             id='dict_with_two_differently_named_events',
         ),
@@ -213,50 +235,64 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
     ('args', 'kwargs', 'expected_df'),
     [
         pytest.param(
-            [], {'onsets': [0], 'offsets': [1]},
+            [],
+            {'onsets': [0], 'offsets': [1]},
             pl.DataFrame({'name': [''], 'onset': [0], 'offset': [1], 'duration': [1]}),
             id='no_arg_lists_with_single_event_kwarg',
         ),
         pytest.param(
-            [pl.DataFrame()], {},
+            [pl.DataFrame()],
+            {},
             pl.DataFrame(
-                {}, schema={
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64,
+                {},
+                schema={
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'duration': pl.Int64,
                 },
             ),
             id='dataframe_arg_no_kwargs',
         ),
         pytest.param(
-            [], {'name': 'bar', 'onsets': [0], 'offsets': [1]},
+            [],
+            {'name': 'bar', 'onsets': [0], 'offsets': [1]},
             pl.DataFrame({'name': ['bar'], 'onset': [0], 'offset': [1], 'duration': [1]}),
             id='lists_with_single_named_event',
         ),
         pytest.param(
-            [], {'name': 'bar', 'onsets': [0, 2], 'offsets': [1, 3]},
+            [],
+            {'name': 'bar', 'onsets': [0, 2], 'offsets': [1, 3]},
             pl.DataFrame(
                 {'name': ['bar', 'bar'], 'onset': [0, 2], 'offset': [1, 3], 'duration': [1, 1]},
             ),
             id='lists_with_two_events_same_name',
         ),
         pytest.param(
-            [], {'name': ['foo', 'bar'], 'onsets': [0, 2], 'offsets': [1, 4]},
+            [],
+            {'name': ['foo', 'bar'], 'onsets': [0, 2], 'offsets': [1, 4]},
             pl.DataFrame(
                 {'name': ['foo', 'bar'], 'onset': [0, 2], 'offset': [1, 4], 'duration': [1, 2]},
             ),
             id='lists_with_two_differently_named_events',
         ),
         pytest.param(
-            [], {'name': ['foo'], 'onsets': [0], 'offsets': [1], 'trials': [1]},
+            [],
+            {'name': ['foo'], 'onsets': [0], 'offsets': [1], 'trials': [1]},
             pl.DataFrame(
                 {'trial': [1], 'name': ['foo'], 'onset': [0], 'offset': [1], 'duration': [1]},
             ),
             id='lists_one_event_trial_column_at_start',
         ),
         pytest.param(
-            [], {
+            [],
+            {
                 'data': pl.DataFrame(
                     data={
-                        'trial': [1], 'name': ['foo'], 'onset': [0], 'offset': [1],
+                        'trial': [1],
+                        'name': ['foo'],
+                        'onset': [0],
+                        'offset': [1],
                     },
                 ),
                 'trial_columns': 'trial',
@@ -267,10 +303,14 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             id='data_one_event_trial_column_at_start',
         ),
         pytest.param(
-            [], {
+            [],
+            {
                 'data': pl.DataFrame(
                     data={
-                        'name': ['foo'], 'onset': [0], 'offset': [1], 'trial': [1],
+                        'name': ['foo'],
+                        'onset': [0],
+                        'offset': [1],
+                        'trial': [1],
                     },
                 ),
                 'trial_columns': 'trial',
@@ -281,45 +321,55 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             id='data_one_event_trial_column_enforce_start',
         ),
         pytest.param(
-            [], {
-                'data': pl.from_dict({
+            [],
+            {
+                'data': pl.from_dict(
+                    {
+                        'trial_id': [1, 1, 2],
+                        'name': ['fixation', 'saccade', 'fixation'],
+                        'onset': [100, 200, 300],
+                        'offset': [150, 250, 350],
+                        'custom_property': [1.5, 2.5, 1.5],
+                    }
+                ),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame(
+                {
                     'trial_id': [1, 1, 2],
                     'name': ['fixation', 'saccade', 'fixation'],
                     'onset': [100, 200, 300],
                     'offset': [150, 250, 350],
                     'custom_property': [1.5, 2.5, 1.5],
-                }),
-                'trial_columns': 'trial_id',
-            },
-            pl.DataFrame({
-                'trial_id': [1, 1, 2],
-                'name': ['fixation', 'saccade', 'fixation'],
-                'onset': [100, 200, 300],
-                'offset': [150, 250, 350],
-                'custom_property': [1.5, 2.5, 1.5],
-                'duration': [50, 50, 50],
-            }),
+                    'duration': [50, 50, 50],
+                }
+            ),
             id='data_with_trial_columns_preserves_custom_property',
         ),
         pytest.param(
-            [], {
-                'data': pl.from_dict({
+            [],
+            {
+                'data': pl.from_dict(
+                    {
+                        'name': ['fixation', 'saccade', 'fixation'],
+                        'onset': [100, 200, 300],
+                        'offset': [150, 250, 350],
+                        'trial_id': [1, 1, 2],
+                        'custom_property': [1.5, 2.5, 1.5],
+                    }
+                ),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame(
+                {
+                    'trial_id': [1, 1, 2],
                     'name': ['fixation', 'saccade', 'fixation'],
                     'onset': [100, 200, 300],
                     'offset': [150, 250, 350],
-                    'trial_id': [1, 1, 2],
                     'custom_property': [1.5, 2.5, 1.5],
-                }),
-                'trial_columns': 'trial_id',
-            },
-            pl.DataFrame({
-                'trial_id': [1, 1, 2],
-                'name': ['fixation', 'saccade', 'fixation'],
-                'onset': [100, 200, 300],
-                'offset': [150, 250, 350],
-                'custom_property': [1.5, 2.5, 1.5],
-                'duration': [50, 50, 50],
-            }),
+                    'duration': [50, 50, 50],
+                }
+            ),
             id='data_with_trial_columns_enforce_start_and_preserve_custom',
         ),
     ],
@@ -592,7 +642,6 @@ def test_copy_removed(assert_deprecation_is_removed):
         function_name='Events.copy()',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )
 
 
@@ -767,35 +816,40 @@ def test_split_default_no_trial_columns_raises_typeerror():
     [
         pytest.param(
             Events(
-                pl.from_dict({
-                    'trial_id': [0, 1],
-                    'name': ['fixation', 'saccade'],
-                    'onset': [0, 10],
-                    'offset': [1, 12],
-                }),
+                pl.from_dict(
+                    {
+                        'trial_id': [0, 1],
+                        'name': ['fixation', 'saccade'],
+                        'onset': [0, 10],
+                        'offset': [1, 12],
+                    }
+                ),
             ),
             'trial_id',
             {
                 (0,): Events(
-                    pl.from_dict({
-                        'trial_id': [0],
-                        'name': ['fixation'],
-                        'onset': [0],
-                        'offset': [1],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [0],
+                            'name': ['fixation'],
+                            'onset': [0],
+                            'offset': [1],
+                        }
+                    ),
                 ),
                 (1,): Events(
-                    pl.from_dict({
-                        'trial_id': [1],
-                        'name': ['saccade'],
-                        'onset': [10],
-                        'offset': [12],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'name': ['saccade'],
+                            'onset': [10],
+                            'offset': [12],
+                        }
+                    ),
                 ),
             },
             id='single_column',
         ),
-
         pytest.param(
             Events(onsets=[20, 30], offsets=[24, 40], name=['blink', 'fixation'], trials=[1, 2]),
             None,
@@ -805,7 +859,6 @@ def test_split_default_no_trial_columns_raises_typeerror():
             },
             id='single_column_default',
         ),
-
         pytest.param(
             Events(onsets=[20, 30], offsets=[24, 40], name=['blink', 'fixation'], trials=[1, None]),
             None,
@@ -815,10 +868,12 @@ def test_split_default_no_trial_columns_raises_typeerror():
             },
             id='single_column_two_trials_int_one_none',
         ),
-
         pytest.param(
             Events(
-                onsets=[20, 30], offsets=[24, 40], name=['blink', 'fixation'], trials=['A', None],
+                onsets=[20, 30],
+                offsets=[24, 40],
+                name=['blink', 'fixation'],
+                trials=['A', None],
             ),
             None,
             {
@@ -827,110 +882,128 @@ def test_split_default_no_trial_columns_raises_typeerror():
             },
             id='single_column_two_trials_str_one_none',
         ),
-
         pytest.param(
             Events(
-                pl.from_dict({
-                    'trial_id': [0, 1, 1, 2],
-                    'task_id': ['A', 'B', 'C', 'D'],
-                    'name': ['saccade', 'fixation', 'blink', 'fixation'],
-                    'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 44, 1340],
-                }),
+                pl.from_dict(
+                    {
+                        'trial_id': [0, 1, 1, 2],
+                        'task_id': ['A', 'B', 'C', 'D'],
+                        'name': ['saccade', 'fixation', 'blink', 'fixation'],
+                        'onset': [0, 1, 2, 3],
+                        'offset': [1, 2, 44, 1340],
+                    }
+                ),
             ),
             'task_id',
             {
                 ('A',): Events(
-                    pl.from_dict({
-                        'trial_id': [0],
-                        'task_id': ['A'],
-                        'name': ['saccade'],
-                        'onset': [0],
-                        'offset': [1],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [0],
+                            'task_id': ['A'],
+                            'name': ['saccade'],
+                            'onset': [0],
+                            'offset': [1],
+                        }
+                    ),
                 ),
                 ('B',): Events(
-                    pl.from_dict({
-                        'trial_id': [1],
-                        'task_id': ['B'],
-                        'name': ['fixation'],
-                        'onset': [1],
-                        'offset': [2],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'task_id': ['B'],
+                            'name': ['fixation'],
+                            'onset': [1],
+                            'offset': [2],
+                        }
+                    ),
                 ),
                 ('C',): Events(
-                    pl.from_dict({
-                        'trial_id': [1],
-                        'task_id': ['C'],
-                        'name': ['blink'],
-                        'onset': [2],
-                        'offset': [44],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'task_id': ['C'],
+                            'name': ['blink'],
+                            'onset': [2],
+                            'offset': [44],
+                        }
+                    ),
                 ),
                 ('D',): Events(
-                    pl.from_dict({
-                        'trial_id': [2],
-                        'task_id': ['D'],
-                        'name': ['fixation'],
-                        'onset': [3],
-                        'offset': [1340],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [2],
+                            'task_id': ['D'],
+                            'name': ['fixation'],
+                            'onset': [3],
+                            'offset': [1340],
+                        }
+                    ),
                 ),
             },
             id='two_columns',
         ),
-
         pytest.param(
             Events(
-                pl.from_dict({
-                    'trial_id': [0, 1, 1, 2],
-                    'task_id': ['A', 'B', 'C', 'D'],
-                    'name': ['saccade', 'fixation', 'blink', 'fixation'],
-                    'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 44, 1340],
-                }),
+                pl.from_dict(
+                    {
+                        'trial_id': [0, 1, 1, 2],
+                        'task_id': ['A', 'B', 'C', 'D'],
+                        'name': ['saccade', 'fixation', 'blink', 'fixation'],
+                        'onset': [0, 1, 2, 3],
+                        'offset': [1, 2, 44, 1340],
+                    }
+                ),
                 trial_columns=['task_id', 'trial_id'],
             ),
             None,
             {
                 ('A', 0): Events(
-                    pl.from_dict({
-                        'trial_id': [0],
-                        'task_id': ['A'],
-                        'name': ['saccade'],
-                        'onset': [0],
-                        'offset': [1],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [0],
+                            'task_id': ['A'],
+                            'name': ['saccade'],
+                            'onset': [0],
+                            'offset': [1],
+                        }
+                    ),
                     trial_columns=['task_id', 'trial_id'],
                 ),
                 ('B', 1): Events(
-                    pl.from_dict({
-                        'trial_id': [1],
-                        'task_id': ['B'],
-                        'name': ['fixation'],
-                        'onset': [1],
-                        'offset': [2],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'task_id': ['B'],
+                            'name': ['fixation'],
+                            'onset': [1],
+                            'offset': [2],
+                        }
+                    ),
                     trial_columns=['task_id', 'trial_id'],
                 ),
                 ('C', 1): Events(
-                    pl.from_dict({
-                        'trial_id': [1],
-                        'task_id': ['C'],
-                        'name': ['blink'],
-                        'onset': [2],
-                        'offset': [44],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [1],
+                            'task_id': ['C'],
+                            'name': ['blink'],
+                            'onset': [2],
+                            'offset': [44],
+                        }
+                    ),
                     trial_columns=['task_id', 'trial_id'],
                 ),
                 ('D', 2): Events(
-                    pl.from_dict({
-                        'trial_id': [2],
-                        'task_id': ['D'],
-                        'name': ['fixation'],
-                        'onset': [3],
-                        'offset': [1340],
-                    }),
+                    pl.from_dict(
+                        {
+                            'trial_id': [2],
+                            'task_id': ['D'],
+                            'name': ['fixation'],
+                            'onset': [3],
+                            'offset': [1340],
+                        }
+                    ),
                     trial_columns=['task_id', 'trial_id'],
                 ),
             },
@@ -1005,25 +1078,29 @@ def test_microsaccades_filter(make_events):
     ('init_names', 'init_properties', 'remove_properties', 'expected_columns'),
     [
         pytest.param(
-            [], ['test1'],
+            [],
+            ['test1'],
             'test1',
             ['duration'],
             id='empty',
         ),
         pytest.param(
-            ['fixation'], ['test1'],
+            ['fixation'],
+            ['test1'],
             'test1',
             ['duration'],
             id='one',
         ),
         pytest.param(
-            ['fixation'], ['test1', 'test2'],
+            ['fixation'],
+            ['test1', 'test2'],
             'test1',
             ['duration', 'test2'],
             id='one_out_of_two',
         ),
         pytest.param(
-            ['fixation'], ['test1', 'test2'],
+            ['fixation'],
+            ['test1', 'test2'],
             ['test1', 'test2'],
             ['duration'],
             id='two_out_of_two',
@@ -1031,7 +1108,11 @@ def test_microsaccades_filter(make_events):
     ],
 )
 def test_drop_event_properties_has_expected_columns(
-        init_names, init_properties, remove_properties, expected_columns, make_events,
+    init_names,
+    init_properties,
+    remove_properties,
+    expected_columns,
+    make_events,
 ):
     events = make_events(names=init_names, properties=init_properties)
     events.drop(remove_properties)
@@ -1042,21 +1123,30 @@ def test_drop_event_properties_has_expected_columns(
     ('init_names', 'init_properties', 'remove_properties', 'exception', 'message'),
     [
         pytest.param(
-            [], None,
+            [],
+            None,
             'foobar',
-            ValueError, 'foobar.*does not exist',
+            ValueError,
+            'foobar.*does not exist',
             id='empty',
         ),
         pytest.param(
-            [], None,
+            [],
+            None,
             'onset',
-            ValueError, 'onset.*belongs to the minimal schema',
+            ValueError,
+            'onset.*belongs to the minimal schema',
             id='onset',
         ),
     ],
 )
 def test_drop_event_properties_raises_exception(
-        init_names, init_properties, remove_properties, exception, message, make_events,
+    init_names,
+    init_properties,
+    remove_properties,
+    exception,
+    message,
+    make_events,
 ):
     events = make_events(names=init_names, properties=init_properties)
 
@@ -1082,9 +1172,9 @@ def test_drop_event_properties_raises_exception(
     ],
 )
 def test_unnest_location_basic(
-        locations: list[list[int | None]],
-        expected_x: list[int | None],
-        expected_y: list[int | None],
+    locations: list[list[int | None]],
+    expected_x: list[int | None],
+    expected_y: list[int | None],
 ) -> None:
     """Events.unnest splits 'location' list into 'location_x'/'location_y' and drops input.
 

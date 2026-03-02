@@ -18,11 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test functionality of the out_of_screen detection algorithm."""
+
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from polars.testing import assert_frame_equal
+import pytest
 
 from pymovements import Events
 from pymovements.events import out_of_screen
@@ -34,8 +35,10 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': None,
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             ValueError,
             id='pixels_none_raises_value_error',
@@ -43,8 +46,10 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': np.ones(100),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             ValueError,
             id='pixels_not_2d_raises_value_error',
@@ -52,8 +57,10 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': np.ones((100, 3)),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             ValueError,
             id='pixels_not_2_columns_raises_value_error',
@@ -61,8 +68,10 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': np.ones((100, 2)),
-                'x_min': 100, 'x_max': 100,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 100,
+                'x_max': 100,
+                'y_min': 0,
+                'y_max': 1080,
             },
             ValueError,
             id='x_min_equal_x_max_raises_value_error',
@@ -70,8 +79,10 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': np.ones((100, 2)),
-                'x_min': 200, 'x_max': 100,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 200,
+                'x_max': 100,
+                'y_min': 0,
+                'y_max': 1080,
             },
             ValueError,
             id='x_min_greater_than_x_max_raises_value_error',
@@ -79,8 +90,10 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': np.ones((100, 2)),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 1080, 'y_max': 0,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 1080,
+                'y_max': 0,
             },
             ValueError,
             id='y_min_greater_than_y_max_raises_value_error',
@@ -89,8 +102,10 @@ from pymovements.events import out_of_screen
             {
                 'pixels': np.ones((10, 2)),
                 'timesteps': np.arange(20, dtype=int),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             ValueError,
             id='pixels_timesteps_length_mismatch_raises_value_error',
@@ -109,8 +124,10 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[960, 540], [960, 540], [960, 540]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(),
             id='all_within_screen_no_events',
@@ -118,7 +135,8 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[0, 0], [1919.9, 1079.9], [960, 540]]),
-                'x_max': 1920, 'y_max': 1080,
+                'x_max': 1920,
+                'y_max': 1080,
             },
             Events(),
             id='on_boundary_inclusive_min_exclusive_max_no_events',
@@ -126,7 +144,8 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[0, 0], [1920, 1080], [960, 540]]),
-                'x_max': 1920, 'y_max': 1080,
+                'x_max': 1920,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -138,8 +157,10 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[-1, 540], [960, 540], [960, 540]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -151,8 +172,10 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[960, 540], [1921, 540], [960, 540]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -164,8 +187,10 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[960, -1], [960, 540], [960, 540]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -177,8 +202,10 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[960, 540], [960, 540], [960, 1081]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -189,13 +216,20 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'pixels': np.array([
-                    [-1, 540], [-1, 540], [-1, 540],
-                    [960, 540],
-                    [960, 1081], [960, 1081],
-                ]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'pixels': np.array(
+                    [
+                        [-1, 540],
+                        [-1, 540],
+                        [-1, 540],
+                        [960, 540],
+                        [960, 1081],
+                        [960, 1081],
+                    ]
+                ),
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -206,12 +240,18 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'pixels': np.array([
-                    [-1, 540], [960, 540], [960, 1081],
-                ]),
+                'pixels': np.array(
+                    [
+                        [-1, 540],
+                        [960, 540],
+                        [960, 1081],
+                    ]
+                ),
                 'timesteps': np.array([1000, 1001, 1002], dtype=int),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',
@@ -223,8 +263,10 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         pytest.param(
             {
                 'pixels': np.array([[-1, 540], [960, 540]]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
                 'name': 'noise',
             },
             Events(
@@ -236,11 +278,17 @@ def test_out_of_screen_raise_error(kwargs, expected_error):
         ),
         pytest.param(
             {
-                'pixels': np.array([
-                    [-1, -1], [2000, 2000], [-5, 2000],
-                ]),
-                'x_min': 0, 'x_max': 1920,
-                'y_min': 0, 'y_max': 1080,
+                'pixels': np.array(
+                    [
+                        [-1, -1],
+                        [2000, 2000],
+                        [-5, 2000],
+                    ]
+                ),
+                'x_min': 0,
+                'x_max': 1920,
+                'y_min': 0,
+                'y_max': 1080,
             },
             Events(
                 name='out_of_screen',

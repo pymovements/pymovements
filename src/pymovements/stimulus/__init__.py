@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to stimulus classes."""
+
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
-
 
 __all__ = [
     'ImageStimulus',

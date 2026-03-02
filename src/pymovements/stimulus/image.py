@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for the ImageDataFrame."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -108,13 +109,13 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
 
 
 def _draw_image_stimulus(
-        image_stimulus: str | Path,
-        origin: str = 'upper',
-        show: bool = False,
-        figsize: tuple[float, float] = (15, 10),
-        extent: list[float] | None = None,
-        fig: matplotlib.pyplot.figure | None = None,
-        ax: matplotlib.pyplot.Axes | None = None,
+    image_stimulus: str | Path,
+    origin: str = 'upper',
+    show: bool = False,
+    figsize: tuple[float, float] = (15, 10),
+    extent: list[float] | None = None,
+    fig: matplotlib.pyplot.figure | None = None,
+    ax: matplotlib.pyplot.Axes | None = None,
 ) -> tuple[matplotlib.pyplot.figure, matplotlib.pyplot.Axes]:
     """Draw stimulus.
 
