@@ -2,6 +2,27 @@ name: "RaCCooNS"
 
 long_name: "Radboud Coregistration Corpus of Narrative Sentences"
 
+description: |
+  RaCCooNS dataset :cite:p:`RaCCooNS`.
+
+  The Radboud Coregistration Corpus of Narrative Sentences (RaCCooNS) dataset consists
+  simultaneously recorded eye-tracking and EEG data from Dutch sentence reading,
+  aimed at studying human sentence comprehension and evaluating computational
+  language models. The dataset includes 37 participants reading 200 narrative sentences,
+  with eye movements and brain activity recorded to analyze reading behavior
+  and neural responses. The dataset provides both raw and preprocessed data,
+  including fixation-related potentials, enabling comparisons between cognitive
+  and neural processes.
+
+  Check the respective paper :cite:p:`RaCCooNS` for details.
+
+  Warning
+  -------
+  This dataset currently cannot be fully processed by ``pymovements`` due to an error during
+  parsing of individual files.
+
+  See issue `#1401 <https://github.com/pymovements/pymovements/issues/1401>`__ for reference.
+
 resources:
   - content: gaze
     url: 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip'
