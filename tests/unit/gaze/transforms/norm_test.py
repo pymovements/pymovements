@@ -62,3 +62,76 @@ def test_norm_returns(columns, df, expected_series):
         pm.gaze.transforms.norm(columns=columns).alias('norm'),
     )
     assert_series_equal(result_df['norm'], expected_series, check_names=False)
+
+
+def test_norm_returns_for_nested_columns_with_parent_column():
+    df = pl.DataFrame(
+        {
+            'velocity': [
+                {'x': 3.0, 'y': 4.0},
+                {'x': 5.0, 'y': 12.0},
+            ],
+        },
+    )
+
+    result_df = df.select(
+        pm.gaze.transforms.norm(
+            columns=('x', 'y'),
+            parent_column='velocity',
+        ).alias('norm'),
+    )
+
+    expected = pl.Series(None, [5.0, 13.0], pl.Float64)
+    assert_series_equal(result_df['norm'], expected, check_names=False)
+
+
+def test_norm_raises_for_missing_parent_column():
+    df = pl.DataFrame(
+        {
+            'velocity': [
+                {'x': 3.0, 'y': 4.0},
+            ],
+        },
+    )
+
+    with pytest.raises(pl.exceptions.ColumnNotFoundError, match='position'):
+        df.select(
+            pm.gaze.transforms.norm(
+                columns=('x', 'y'),
+                parent_column='position',
+            ).alias('norm'),
+        )
+
+
+def test_norm_raises_for_missing_field_in_parent_column():
+    df = pl.DataFrame(
+        {
+            'velocity': [
+                {'x': 3.0, 'y': 4.0},
+            ],
+        },
+    )
+
+    with pytest.raises(pl.exceptions.StructFieldNotFoundError, match='z'):
+        df.select(
+            pm.gaze.transforms.norm(
+                columns=('x', 'z'),
+                parent_column='velocity',
+            ).alias('norm'),
+        )
+
+
+def test_norm_raises_when_parent_column_is_not_struct():
+    df = pl.DataFrame(
+        {
+            'velocity': [1.0, 2.0],
+        },
+    )
+
+    with pytest.raises(pl.exceptions.PolarsError):
+        df.select(
+            pm.gaze.transforms.norm(
+                columns=('x', 'y'),
+                parent_column='velocity',
+            ).alias('norm'),
+        )
