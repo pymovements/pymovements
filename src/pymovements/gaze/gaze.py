@@ -406,7 +406,7 @@ class Gaze:
         First let's create a simple samples dataframe:
 
         >>> import numpy as np
-        >>> import polars as pl
+        >>> import polars
         >>> import pymovements as pm
         >>> samples = polars.from_dict(
         ...     {'x': range(100), 'y': range(100), 'trial': np.repeat([1, 2, 3, 4, 5], 20)},
@@ -661,7 +661,7 @@ class Gaze:
                 # without checking components to avoid raising on empty inputs.
                 if self.trial_columns is not None and self.samples.is_empty():
                     return
-                self._check_n_components()
+                _check_n_components(self.n_components)
                 kwargs['n_components'] = self.n_components
 
             if transform_method.__name__ in {'pos2vel', 'pos2acc'}:
@@ -1048,12 +1048,12 @@ class Gaze:
 
         Examples
         --------
-        >>> import polars as pl
+        >>> import polars
         >>> import pymovements as pm
         >>>
         >>> gaze = pm.Gaze(
-        ...     samples=pl.DataFrame({
-        ...         'time': pl.Series(range(6), dtype=pl.Int64),
+        ...     samples=polars.DataFrame({
+        ...         'time': polars.Series(range(6), dtype=polars.Int64),
         ...         'pixel': [[1.0, 2.0]] * 6,
         ...     }),
         ...     events=pm.Events(name='blink', onsets=[2], offsets=[3]),
@@ -1416,10 +1416,10 @@ class Gaze:
 
         Examples
         --------
-        >>> import polars as pl
+        >>> import polars
         >>> import pymovements as pm
         >>> gaze = pm.Gaze(
-        ...     samples=pl.DataFrame({
+        ...     samples=polars.DataFrame({
         ...         'time': [0, 1, 2, 3],
         ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
         ...     }),
@@ -1917,71 +1917,13 @@ class Gaze:
         Warning
             If no columns to unnest exist and none are specified.
         """
-        if input_columns is None:
-            cols = ['pixel', 'position', 'velocity', 'acceleration']
-            input_columns = [col for col in cols if col in self.samples.columns]
-
-            if len(input_columns) == 0:
-                raise Warning(
-                    'No columns to unnest. '
-                    'Please specify columns to unnest via the "input_columns" argument.',
-                )
-
-        if isinstance(input_columns, str):
-            input_columns = [input_columns]
-
-        # no support for custom output columns if more than one input column will be unnested
-        if output_columns is not None and not len(input_columns) == 1:
-            raise ValueError(
-                'You cannot specify output columns if you want to unnest more than '
-                'one input column. Please specify output suffixes or use a single '
-                'input column instead.',
-            )
-
-        check_is_mutual_exclusive(
-            output_columns=output_columns,
+        self.samples = _unnest_list_columns(
+            df=self.samples,
+            input_columns=input_columns,
             output_suffixes=output_suffixes,
+            output_columns=output_columns,
         )
 
-        self._check_n_components()
-        assert self.n_components in {2, 4, 6}
-
-        col_names = [output_columns] if output_columns is not None else []
-
-        if output_columns is None and output_suffixes is None:
-            if self.n_components == 2:
-                output_suffixes = ['_x', '_y']
-            elif self.n_components == 4:
-                output_suffixes = ['_xl', '_yl', '_xr', '_yr']
-            else:  # This must be 6 as we already have checked our n_components.
-                output_suffixes = ['_xl', '_yl', '_xr', '_yr', '_xa', '_ya']
-
-        if output_suffixes:
-            col_names = [
-                [f'{input_col}{suffix}' for suffix in output_suffixes]
-                for input_col in input_columns
-            ]
-
-        if len([
-            name for name_list in col_names for name in name_list
-        ]) != self.n_components * len(input_columns):
-            raise ValueError(
-                f'Number of output columns / suffixes ({len(col_names[0])}) '
-                f'must match number of components ({self.n_components})',
-            )
-
-        if len({name for name_list in col_names for name in name_list}) != len(
-                [name for name_list in col_names for name in name_list],
-        ):
-            raise ValueError('Output columns / suffixes must be unique')
-
-        for input_col, column_names in zip(input_columns, col_names):
-            self.samples = self.samples.with_columns(
-                [
-                    polars.col(input_col).list.get(component_id).alias(names)
-                    for component_id, names in enumerate(column_names)
-                ],
-            ).drop(input_col)
 
     def clone(self) -> Gaze:
         """Return a copy of the Gaze.
@@ -2009,33 +1951,6 @@ class Gaze:
         """
         if self.experiment is None:
             raise AttributeError('experiment must not be None for this method to work')
-
-    def _check_n_components(self) -> None:
-        """Check that n_components is either 2, 4 or 6.
-
-        Ensure that the number of gaze components is valid.
-
-        Valid configurations are:
-            - 2 components: monocular data (e.g., x and y)
-            - 4 components: binocular data (e.g., x/y for left and right eye)
-            - 6 components: binocular + cyclopean data (x/y for left, right, and cyclopean eye)
-
-        If no valid gaze columns were specified (pixel, position, etc.), raise an error
-        with a helpful message to guide proper initialization.
-
-        Raises
-        ------
-        AttributeError
-            If n_components is not 2, 4 or 6.
-        """
-        if self.n_components not in {2, 4, 6}:
-            raise AttributeError(
-                'Number of components required but no gaze components could be inferred.\n'
-                'This usually happens if you did not specify any column content'
-                ' and the content could not be autodetected from the column names. \n'
-                "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
-                " or 'acceleration_columns' explicitly during initialization.",
-            )
 
     def _check_component_columns(self, **kwargs: list[str]) -> None:
         """Check if component columns are in valid format.
@@ -2137,7 +2052,7 @@ class Gaze:
         tuple[int, int]
             Tuple of eye component indices.
         """
-        self._check_n_components()
+        _check_n_components(self.n_components)
 
         if eye == 'auto':
             # Order of inference: cyclops, right, left.
@@ -2599,25 +2514,58 @@ class Gaze:
         ValueError
             If file extension in path is not in list of valid extensions.
         """
-        gaze = self.clone()
+        samples = self.samples
         extension = path.suffix[1:]
 
-        if extension == 'csv':
-            gaze.unnest()
+        # Unnest list columns if necessary.
+        nested_columns = [
+            column for column in samples.columns
+            if samples[column].dtype == polars.List
+        ]
+        if extension == 'csv' and nested_columns:
+            samples = _unnest_list_columns(samples, nested_columns)
 
         if verbose >= 2:
             print('Saving samples to', path)
 
         if extension == 'feather':
-            gaze.samples.write_ipc(path)
+            samples.write_ipc(path)
         elif extension == 'csv':
-            gaze.samples.write_csv(path)
+            samples.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
             )
+
+
+def _check_n_components(n_components: int) -> None:
+    """Check that n_components is either 2, 4 or 6.
+
+    Ensure that the number of gaze components is valid.
+
+    Valid configurations are:
+        - 2 components: monocular data (e.g., x and y)
+        - 4 components: binocular data (e.g., x/y for left and right eye)
+        - 6 components: binocular + cyclopean data (x/y for left, right, and cyclopean eye)
+
+    If no valid gaze columns were specified (pixel, position, etc.), raise an error
+    with a helpful message to guide proper initialization.
+
+    Raises
+    ------
+    AttributeError
+        If n_components is not 2, 4 or 6.
+    """
+    if n_components not in {2, 4, 6}:
+        raise AttributeError(
+            'Number of components required but no gaze components could be inferred.\n'
+            'This usually happens if you did not specify any column content'
+            ' and the content could not be autodetected from the column names. \n'
+            "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
+            " or 'acceleration_columns' explicitly during initialization.",
+        )
 
 
 def _check_trial_columns(trial_columns: list[str] | None, samples: polars.DataFrame) -> None:
@@ -2703,3 +2651,137 @@ def _check_messages(messages: polars.DataFrame) -> None:
             raise TypeError(
                 "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
             )
+
+
+def _unnest_list_columns(
+        df: polars.DataFrame,
+        input_columns: list[str] | str,
+        *,
+        output_suffixes: list[str] | None = None,
+        output_columns: list[str] | None = None,
+) -> None | Gaze:
+    """Explode a column of type ``polars.List`` into one column for each list component.
+
+    The input column will be dropped.
+
+    Parameters
+    ----------
+    input_columns: list[str] | str | None
+        Name(s) of input column(s) to be unnested into several component columns.
+        If None all list columns 'pixel', 'position', 'velocity' and
+        'acceleration' will be unnested if existing. (default: None)
+    output_suffixes: list[str] | None
+        Suffixes to append to the column names. (default: None)
+    output_columns: list[str] | None
+        Name of the resulting tuple columns. (default: None)
+    inplace: bool
+        If ``True``, operate in place and return ``None``. If ``False``, operate out of place
+        and return a new ``Gaze`` object.
+
+    Returns
+    -------
+    None | Gaze
+        Returns ``None`` if in place operation, a new ``Gaze`` object if out of place.
+
+    Raises
+    ------
+    ValueError
+        If both output_columns and output_suffixes are specified.
+        If number of output columns / suffixes does not match number of components.
+        If output columns / suffixes are not unique.
+        If no columns to unnest exist and none are specified.
+        If output columns are specified and more than one input column is specified.
+    AttributeError
+        If number of components is not 2, 4 or 6.
+    Warning
+        If no columns to unnest exist and none are specified.
+    """
+    if input_columns is None:
+        input_columns = [column for column in df.columns if df[column].dtype == polars.List]
+
+        if len(input_columns) == 0:
+            raise Warning(
+                'No columns to unnest. '
+                'Please specify columns to unnest via the "input_columns" argument.',
+            )
+
+    if isinstance(input_columns, str):
+        input_columns = [input_columns]
+
+    check_is_mutual_exclusive(
+        output_columns=output_columns,
+        output_suffixes=output_suffixes,
+    )
+
+
+    column_map = {}
+    if output_columns:
+        # no support for custom output columns if more than one input column will be unnested
+        if not len(input_columns) == 1:
+            raise ValueError(
+                'You cannot specify output columns if you want to unnest more than '
+                'one input column. Please specify output suffixes or use a single '
+                'input column instead.',
+            )
+        if len({*output_columns}) != len(output_columns):
+            raise ValueError('Output columns must be unique')
+        column_map = {input_columns[0]: output_columns}
+
+    else:
+        if output_suffixes is None:
+            # Dynamically infer component suffixes.
+            column_map = {
+                input_column: [
+                    input_column + output_suffix
+                    for output_suffix in _infer_list_unnest_suffixes(df[input_column])
+                ]
+                for input_column in input_columns
+            }
+        else:
+            if len({*output_suffixes}) != len(output_suffixes):
+                raise ValueError('Output suffixes must be unique')
+            column_map = {
+                input_column: [input_column + output_suffix for output_suffix in output_suffixes]
+                for input_column in input_columns
+            }
+
+    for input_column, output_columns in column_map.items():
+        n_components = _infer_list_n_components(df[input_column])
+        if len(output_columns) != n_components:
+            raise ValueError(
+                f"Number of output columns for column '{input_column}' ({output_columns}) "
+                f'must match number of components ({n_components})',
+            )
+
+        df = df.with_columns(
+            [
+                polars.col(input_column).list.get(component_id).alias(output_column)
+                for component_id, output_column in enumerate(output_columns)
+            ],
+        )
+    df = df.drop(input_columns)
+    return df
+
+
+def _infer_list_n_components(series: polars.Series) -> int:
+    n_component_candidates = series.list.len().unique()
+    if len(n_component_candidates) != 1:
+        raise ValueError(
+            f"number of components inconsistent in column '{series.name}': {n_component_candidates}",
+        )
+    return n_component_candidates[0]
+
+
+def _infer_list_unnest_suffixes(series: polars.Series) -> list[str]:
+    n_components = _infer_list_n_components(series)
+    if n_components not in {2, 4, 6}:
+        raise ValueError(
+            'Inferring suffixes only possible for list lengths of 2, 4 or 6,'
+            f" but list length of column '{series.name}' is: {n_components}.",
+        )
+    if n_components == 2:
+        return ['_x', '_y']
+    elif n_components == 4:
+        return ['_xl', '_yl', '_xr', '_yr']
+    else:  # This must be 6 as we already have checked our n_components.
+        return ['_xl', '_yl', '_xr', '_yr', '_xa', '_ya']
