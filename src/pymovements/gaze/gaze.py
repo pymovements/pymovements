@@ -1924,6 +1924,7 @@ class Gaze:
             output_columns=output_columns,
         )
 
+
     def clone(self) -> Gaze:
         """Return a copy of the Gaze.
 
@@ -2712,6 +2713,7 @@ def _unnest_list_columns(
         output_suffixes=output_suffixes,
     )
 
+
     column_map = {}
     if output_columns:
         # no support for custom output columns if more than one input column will be unnested
@@ -2765,8 +2767,8 @@ def _infer_list_n_components(series: polars.Series) -> int:
     n_component_candidates = series.list.len().unique()
     if len(n_component_candidates) != 1:
         raise ValueError(
-            f"number of components inconsistent in column '{
-                series.name}': {n_component_candidates}",
+            'number of components inconsistent in column '
+            f"'{series.name}': {n_component_candidates}",
         )
     return n_component_candidates[0]
 
