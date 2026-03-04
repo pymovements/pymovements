@@ -1924,7 +1924,6 @@ class Gaze:
             output_columns=output_columns,
         )
 
-
     def clone(self) -> Gaze:
         """Return a copy of the Gaze.
 
@@ -2712,7 +2711,6 @@ def _unnest_list_columns(
         output_columns=output_columns,
         output_suffixes=output_suffixes,
     )
-
 
     column_map = {}
     if output_columns:
