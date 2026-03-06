@@ -224,9 +224,8 @@ def tsplot(
         else:
             ax.set_ylabel(channels[channel_id])
 
-    # set x label on all axes
-    # sharex=True will automatically hide those that are not on the bottom
-    for ax in axs:
+        # set x label on all axes
+        # sharex=True will automatically hide those that are not on the bottom
         ax.set_xlabel(xlabel)
 
     if title:
