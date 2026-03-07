@@ -81,13 +81,26 @@ class Screen:
     12.42...
 
     """
-
-    width_px: int | None = None
-    height_px: int | None = None
-    width_cm: float | None = None
-    height_cm: float | None = None
-    distance_cm: float | None = None
-    origin: str | None = None
+    def __init__(
+        self,
+        width_px: int | None = None,
+        height_px: int | None = None,
+        width_cm: float | None = None,
+        height_cm: float | None = None,
+        distance_cm: float | None = None,
+        origin: str | None = None,
+        *,
+        resolution: tuple[int | None, int | None] = None,
+        size: tuple[float | None, float | None] = None
+    ):
+        """Check mutual exclusivity (not done yet, add in)"""
+        _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, resolution=resolution)
+        _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, resolution=resolution)
+        _checks.check_is_mutual_exclusive(screen_width_cm=screen_width_cm, size=size)
+        _checks.check_is_mutual_exclusive(screen_height_cm=screen_height_cm, size=size)    
+        """Build the tuple from the individual px/cm arguments if not provided."""
+        self.resolution = resolution if resolution is not None else (width_px, height_px)
+        self.size = size if size is not None else (width_cm, height_cm)
 
     def __post_init__(self) -> None:
         """Check fields for validity."""
@@ -106,6 +119,54 @@ class Screen:
         if self.distance_cm is not None:
             _checks.check_is_greater_than_zero(distance_cm=self.distance_cm)
 
+    @property
+    def width_px(self) -> int | None:
+        """Get width of experiment screen in pixels."""
+        if self.resolution is not None:
+            return self.resolution[0]
+        return None
+    
+    @width_px.setter
+    def width_px(self, width_px: int | None = None) -> None:
+        """Set width of experiment screen in pixels."""
+        self.width_px = width_px
+    
+    @property
+    def height_px(self) -> int | None:
+        """Get height of experiment screen in pixels."""        
+        if self.resolution is not None:
+            return self.resolution[1]
+        return None
+    
+    @height_px.setter
+    def height_px(self, height_px: int | None = None) -> None:
+        """Set height of experiment screen in pixels."""
+        self.height_px = height_px
+
+    @property
+    def width_cm(self) -> int | None:
+        """Width of screen in cm"""
+        if self.size is not None:
+            return self.size[0]
+        return None
+    
+    @width_cm.setter
+    def width_cm(self, width_cm: int | None = None) -> None:
+        """Set width of experiment screen in cm."""
+        self.width_cm = width_cm
+        
+    @property
+    def height_cm(self) -> int | None:
+        """Get height of experiment screen in cm."""        
+        if self.size is not None:
+            return self.size[1]
+        return None
+    
+    @height_cm.setter
+    def height_cm(self, height_cm: int | None = None) -> None:
+        """Set height of experiment screen in cm."""
+        self.height_cm = height_cm
+    
     @property
     def x_max_dva(self) -> float:
         """Maximum screen x-coordinate in degrees of visual angle."""
