@@ -26,7 +26,6 @@ from unittest.mock import patch
 
 import pytest
 
-from pymovements.dataset.websource import _download_file
 from pymovements.dataset.websource import _DownloadProgressBar
 from pymovements.dataset.websource import _get_redirected_url
 from pymovements.dataset.websource import WebSource
