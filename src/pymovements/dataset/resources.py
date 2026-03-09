@@ -85,6 +85,7 @@ class ResourceDefinition:
     load_kwargs: dict[str, Any] | None = None
 
     def __init__(
+            self,
             content: str,
             *,
             source: WebSource | None = None,
