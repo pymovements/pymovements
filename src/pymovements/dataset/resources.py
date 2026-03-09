@@ -265,7 +265,7 @@ class ResourceDefinition:
             warn(
                 DeprecationWarning(
                     'from_dict() key "resource" is deprecated since version v0.23.0. '
-                    'Please use key "url" instead. '
+                    'Please use key "source" instead. '
                     'This field will be removed in v0.28.0.',
                 ),
             )
@@ -296,14 +296,15 @@ class ResourceDefinition:
         """
         data = asdict(self)
 
-        if self.source:
-            data['source'] = self.source.to_dict(exclude_none=exclude_none)
-
         # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:
             for key, value in list(data.items()):
                 if not isinstance(value, (bool, int, float)) and not value:
                     del data[key]
+
+        # Convert source object field to dictionary.
+        if 'source' in data and data['source'] is not None:
+            data['source'] = self.source.to_dict(exclude_none=exclude_none)
 
         return data
 

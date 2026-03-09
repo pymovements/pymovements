@@ -654,7 +654,7 @@ class DatasetDefinition:
                 if not isinstance(value, (bool, int, float)) and not value:
                     del data[key]
 
-        # Convert those object fields.
+        # Convert those object fields to dictionaries.
         if 'experiment' in data and data['experiment'] is not None:
             data['experiment'] = data['experiment'].to_dict(exclude_none=exclude_none)
         if 'resources' in data and data['resources'] is not None:
