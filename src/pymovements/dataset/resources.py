@@ -96,18 +96,22 @@ class ResourceDefinition:
             load_function: str | None = None,
             load_kwargs: dict[str, Any] | None = None,
     ) -> None:
-        check_is_mutual_exclusive(source=source, filename=filename)
-        check_is_mutual_exclusive(source=source, url=url)
-        check_is_mutual_exclusive(source=source, md5=md5)
-        check_is_mutual_exclusive(source=source, mirrors=mirrors)
-
         self.content = content
 
         self.source = source
-        self.url = url
-        self.filename = filename
-        self.md5 = md5
-        self.mirrors = mirrors
+        # The assignments in the following block will raise deprecation warnings if not None.
+        if url is not None:
+            check_is_mutual_exclusive(source=source, url=url)
+            self.url = url
+        if filename is not None:
+            check_is_mutual_exclusive(source=source, filename=filename)
+            self.filename = filename
+        if md5 is not None:
+            check_is_mutual_exclusive(source=source, md5=md5)
+            self.md5 = md5
+        if mirrors is not None:
+            check_is_mutual_exclusive(source=source, mirrors=mirrors)
+            self.mirrors = mirrors
 
         self.filename_pattern = filename_pattern
         self.filename_pattern_schema_overrides = filename_pattern_schema_overrides
