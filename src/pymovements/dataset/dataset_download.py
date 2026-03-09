@@ -88,7 +88,7 @@ def download_dataset(
     if not downloadable_resources:
         raise AttributeError(
             'No downloadable resources found in DatasetDefinition. '
-            'ResourceDefinition.source must be specified to download a dataset.'
+            'ResourceDefinition.source must be specified to download a dataset.',
         )
 
     for resource in downloadable_resources:
