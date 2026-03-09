@@ -84,33 +84,26 @@ class WebSource:
         return payload
 
     def download(
-        self, target_dir: Path | str, *, exist_ok: bool = True,
-        verbose: bool = True,
+            self,
+            target_dirpath: Path | str,
+            *,
+            verbose: bool = True,
     ) -> Path:
-        """Download this resource into `target_dir`.
+        """Download this resource into `target_dirpath`.
 
         Tries the primary `url` first, then any `mirrors` in order. Integrity is
         validated via MD5 when provided. Returns the local file path.
         """
-        dirpath = Path(target_dir).expanduser()
-        # `_download_file` will ensure directory exists; we still optionally create it here
-        if exist_ok:
-            dirpath.mkdir(parents=True, exist_ok=True)
+        dirpath = Path(target_dirpath).expanduser()
 
-        # Determine filename; fallback to URL basename when not explicitly set
-        filename = self.filename
-        if filename is None:
-            parsed = urlparse(self.url)
-            candidate = Path(parsed.path).name
-            if not candidate:
-                raise ValueError('Unable to infer filename from URL; please provide `filename`.')
-            filename = candidate
-
-        # Attempt primary URL
+        # Attempt downloading from primary URL.
         try:
             return _download_file(
-                url=self.url, dirpath=dirpath,
-                filename=filename, md5=self.md5, verbose=verbose,
+                url=self.url,
+                dirpath=dirpath,
+                filename=self.filename,
+                md5=self.md5,
+                verbose=verbose,
             )
         # pylint: disable=overlapping-except
         except (URLError, OSError, RuntimeError) as primary_error:
@@ -126,7 +119,7 @@ class WebSource:
                     return _download_file(
                         url=mirror_url,
                         dirpath=dirpath,
-                        filename=filename,
+                        filename=self.filename,
                         md5=self.md5,
                         verbose=verbose,
                     )
@@ -143,7 +136,7 @@ class WebSource:
 
             # If we are here, all mirrors failed
             raise RuntimeError(
-                f"Downloading resource {filename} failed for all mirrors.",
+                f"Downloading resource {self.filename} failed for all mirrors.",
             ) from primary_error
 
 
