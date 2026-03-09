@@ -77,10 +77,10 @@ class WebSource:
 
         Omits None values if `exclude_none` is True.
         """
-        payload: dict[str, Any] = asdict(self)
+        data = asdict(self)
         if exclude_none:
-            return {k: v for k, v in payload.items() if v is not None}
-        return payload
+            return {key: value for key, value in data.items() if value}
+        return data
 
     def download(
             self,

@@ -108,7 +108,7 @@ def test_websource_from_dict():
             id='url_and_mirrors',
         ),
         pytest.param(
-            WebSource(url='http://example.com/file.zip', md5='abc'),
+            WebSource(url='http://example.com/file.zip', mirrors=['http://example2.com/file.zip']),
             True,
             {'url': 'http://example.com/file.zip', 'mirrors': ['http://example2.com/file.zip']},
             id='url_and_mirrors_exclude_none',
@@ -143,13 +143,13 @@ def test_websource_from_dict():
                 'md5': 'qwer',
                 'mirrors': ['http://example3.com/file.zip'],
             },
-            id='url_and_mirrors_exclude_none',
+            id='complete_exclude_none',
         ),
     ],
 )
 def test_websource_to_dict(source, exclude_none, expected_dict):
-    data = source.to_dict()
-    assert data == expected_dict
+    data = source.to_dict(exclude_none=exclude_none)
+    assert data == expected_dict, source
 
 
 def test_websource_download_with_mirrors():
@@ -179,7 +179,7 @@ def test_websource_download_with_mirrors():
         pytest.param(True, id='verbose_true'),
     ],
 )
-def test_download_file(tmp_path, verbose):
+def test_websource_download(tmp_path, verbose):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
@@ -188,16 +188,16 @@ def test_download_file(tmp_path, verbose):
     filepath = source.download(tmp_path, verbose=verbose)
 
     assert filepath.exists()
-    assert filepath.name == filename
+    assert filepath.name == source.filename
     assert filepath.parent == tmp_path
 
     with open(filepath, 'rb') as f:
         file_bytes = f.read()
-        assert hashlib.md5(file_bytes).hexdigest() == md5
+        assert hashlib.md5(file_bytes).hexdigest() == source.md5
 
 
 @pytest.mark.network
-def test_download_file_md5_None(tmp_path):
+def test_websource_download_md5_None(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
@@ -205,11 +205,11 @@ def test_download_file_md5_None(tmp_path):
     filepath = source.download(tmp_path)
 
     assert filepath.exists()
-    assert filepath.name == filename
+    assert filepath.name == source.filename
     assert filepath.parent == tmp_path
 
 
-def test_download_file_404(tmp_path):
+def test_websource_download_404(tmp_path):
     source = WebSource(
         url='http://github.com/pymovements/pymovement/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
@@ -227,7 +227,7 @@ def test_download_file_404(tmp_path):
         pytest.param(True, id='verbose_true'),
     ],
 )
-def test_download_file_https_failure(tmp_path, verbose):
+def test_websource_download_https_failure(tmp_path, verbose):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
@@ -242,7 +242,7 @@ def test_download_file_https_failure(tmp_path, verbose):
             source.download(tmp_path, verbose=verbose)
 
 
-def test_download_file_http_failure(tmp_path):
+def test_websource_download_http_failure(tmp_path):
     source = WebSource(
         url='http://example.com/',
         filename='pymovements-0.4.0.tar.gz',
@@ -258,7 +258,7 @@ def test_download_file_http_failure(tmp_path):
 
 
 @pytest.mark.network
-def test_download_file_with_invalid_md5(tmp_path):
+def test_websource_download_with_invalid_md5(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
