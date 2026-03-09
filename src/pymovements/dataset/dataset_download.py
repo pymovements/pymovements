@@ -92,12 +92,10 @@ def download_dataset(
         )
 
     for resource in downloadable_resources:
-        if resource.source is None:
-            continue  # resource has no downloadable source
-
         if not definition.mirrors:
             mirrors = None
         else:
+            # legacy mirrors defined mirror for each content type.
             mirrors = definition.mirrors.get(resource.content, None)
 
         if not mirrors:
