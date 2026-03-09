@@ -24,6 +24,7 @@ import hashlib
 import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -54,6 +55,9 @@ class WebSource:
     """
 
     url: str
+
+    _: KW_ONLY
+
     filename: str | None = None
     md5: str | None = None
     mirrors: list[str] | None = None
