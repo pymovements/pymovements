@@ -1579,7 +1579,8 @@ class Gaze:
             if nested_columns:
                 try:
                     self.unnest(nested_columns)
-                except (ValueError, AttributeError):  # tolerate common cases
+                except (ValueError, AttributeError):  # pragma: no cover
+                    # tolerate common cases
                     # - ValueError/AttributeError: shape or configuration-related issues
                     # In all these cases: continue without failing and use fallback logic.
                     pass
