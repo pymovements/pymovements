@@ -2653,17 +2653,19 @@ def _check_messages(messages: polars.DataFrame) -> None:
 
 def _unnest_list_columns(
         df: polars.DataFrame,
-        input_columns: list[str] | str,
+        input_columns: list[str] | str | None = None,
         *,
         output_suffixes: list[str] | None = None,
         output_columns: list[str] | None = None,
-) -> None | Gaze:
+) -> polars.DataFrame:
     """Explode a column of type ``polars.List`` into one column for each list component.
 
-    The input column will be dropped.
+    The unnested columns will be dropped. from the returned data frame.
 
     Parameters
     ----------
+    df: polars.DataFrame
+        Unnest columns from that dataframe.
     input_columns: list[str] | str | None
         Name(s) of input column(s) to be unnested into several component columns.
         If None all list columns 'pixel', 'position', 'velocity' and
@@ -2672,14 +2674,11 @@ def _unnest_list_columns(
         Suffixes to append to the column names. (default: None)
     output_columns: list[str] | None
         Name of the resulting tuple columns. (default: None)
-    inplace: bool
-        If ``True``, operate in place and return ``None``. If ``False``, operate out of place
-        and return a new ``Gaze`` object.
 
     Returns
     -------
-    None | Gaze
-        Returns ``None`` if in place operation, a new ``Gaze`` object if out of place.
+    polars.DataFrame
+        Dataframe with unnested columns. Unnested columns are dropped.
 
     Raises
     ------
@@ -2723,37 +2722,35 @@ def _unnest_list_columns(
         if len({*output_columns}) != len(output_columns):
             raise ValueError('Output columns must be unique')
         column_map = {input_columns[0]: output_columns}
+    elif output_suffixes is None:
+        # Dynamically infer component suffixes.
+        column_map = {
+            input_column: [
+                input_column + output_suffix
+                for output_suffix in _infer_list_unnest_suffixes(df[input_column])
+            ]
+            for input_column in input_columns
+        }
+    else:  # explicit output_suffixes
+        if len({*output_suffixes}) != len(output_suffixes):
+            raise ValueError('Output suffixes must be unique')
+        column_map = {
+            input_column: [input_column + output_suffix for output_suffix in output_suffixes]
+            for input_column in input_columns
+        }
 
-    else:
-        if output_suffixes is None:
-            # Dynamically infer component suffixes.
-            column_map = {
-                input_column: [
-                    input_column + output_suffix
-                    for output_suffix in _infer_list_unnest_suffixes(df[input_column])
-                ]
-                for input_column in input_columns
-            }
-        else:
-            if len({*output_suffixes}) != len(output_suffixes):
-                raise ValueError('Output suffixes must be unique')
-            column_map = {
-                input_column: [input_column + output_suffix for output_suffix in output_suffixes]
-                for input_column in input_columns
-            }
-
-    for input_column, output_columns in column_map.items():
+    for input_column, _output_columns in column_map.items():
         n_components = _infer_list_n_components(df[input_column])
-        if len(output_columns) != n_components:
+        if len(_output_columns) != n_components:
             raise ValueError(
-                f"Number of output columns for column '{input_column}' ({output_columns}) "
+                f"Number of output columns for column '{input_column}' ({_output_columns}) "
                 f'must match number of components ({n_components})',
             )
 
         df = df.with_columns(
             [
                 polars.col(input_column).list.get(component_id).alias(output_column)
-                for component_id, output_column in enumerate(output_columns)
+                for component_id, output_column in enumerate(_output_columns)
             ],
         )
     df = df.drop(input_columns)
@@ -2761,6 +2758,7 @@ def _unnest_list_columns(
 
 
 def _infer_list_n_components(series: polars.Series) -> int:
+    """Dynamically infer number of list components in series."""
     n_component_candidates = series.list.len().unique()
     if len(n_component_candidates) != 1:
         raise ValueError(
@@ -2771,6 +2769,14 @@ def _infer_list_n_components(series: polars.Series) -> int:
 
 
 def _infer_list_unnest_suffixes(series: polars.Series) -> list[str]:
+    """Dynamically infer component suffixes from series.
+
+    Number of components must be either 2, 4 or 6:
+
+    - 2 components: ``_x``, ``_y``
+    - 4 components: ``_xl``, ``_yl``, ``_xr``, ``_yr``
+    - 6 components: ``_xl``, ``_yl``, ``_xr``, ``_yr``, ``_xa``, ``_ya``
+    """
     n_components = _infer_list_n_components(series)
     if n_components not in {2, 4, 6}:
         raise ValueError(
@@ -2779,7 +2785,7 @@ def _infer_list_unnest_suffixes(series: polars.Series) -> list[str]:
         )
     if n_components == 2:
         return ['_x', '_y']
-    elif n_components == 4:
+    if n_components == 4:
         return ['_xl', '_yl', '_xr', '_yr']
-    else:  # This must be 6 as we already have checked our n_components.
-        return ['_xl', '_yl', '_xr', '_yr', '_xa', '_ya']
+    # This must be 6 as we already have checked our n_components.
+    return ['_xl', '_yl', '_xr', '_yr', '_xa', '_ya']
