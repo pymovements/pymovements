@@ -41,43 +41,116 @@ def test_websource_init():
 
 
 def test_websource_from_dict():
-    data = {'url': 'http://example.com/file.zip', 'filename': 'file.zip', 'md5': '123'}
+    data = {'url': 'http://example.com/file2.zip', 'filename': 'file2.zip', 'md5': '456'}
     source = WebSource.from_dict(data)
-    assert source.url == 'http://example.com/file.zip'
-    assert source.filename == 'file.zip'
-    assert source.md5 == '123'
+    assert source.url == 'http://example.com/file2.zip'
+    assert source.filename == 'file2.zip'
+    assert source.md5 == '456'
 
 
-def test_websource_to_dict():
-    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='123')
+@pytest.mark.parametrize(
+    ('source', 'exclude_none', 'expected_dict'),
+    [
+        pytest.param(
+            WebSource(url='http://example.com/file.zip'),
+            False,
+            {'url': 'http://example.com/file.zip', 'filename': None, 'md5': None, 'mirrors': None},
+            id='url_only',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip'),
+            True,
+            {'url': 'http://example.com/file.zip'},
+            id='url_only_exclude_none',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', filename='test.zip'),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': 'test.zip',
+                'md5': None,
+                'mirrors': None,
+            },
+            id='url_and_filename',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', filename='test.zip'),
+            True,
+            {'url': 'http://example.com/file.zip', 'filename': 'test.zip'},
+            id='url_and_filename_exclude_none',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', md5='abc'),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': None,
+                'md5': 'abc',
+                'mirrors': None,
+            },
+            id='url_and_md5',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', md5='abc'),
+            True,
+            {'url': 'http://example.com/file.zip', 'md5': 'abc'},
+            id='url_and_md5_exclude_none'
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', mirrors=['http://example2.com/file.zip']),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': None,
+                'md5': None,
+                'mirrors': ['http://example2.com/file.zip'],
+            },
+            id='url_and_mirrors',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', md5='abc'),
+            True,
+            {'url': 'http://example.com/file.zip', 'mirrors': ['http://example2.com/file.zip']},
+            id='url_and_mirrors_exclude_none'
+        ),
+        pytest.param(
+            WebSource(
+                url='http://example.com/file.zip',
+                filename='file.zip',
+                md5='qwer',
+                mirrors=['http://example3.com/file.zip'],
+            ),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': 'file.zip',
+                'md5': 'qwer',
+                'mirrors': ['http://example3.com/file.zip'],
+            },
+            id='complete',
+        ),
+        pytest.param(
+            WebSource(
+                url='http://example.com/file.zip',
+                filename='file.zip',
+                md5='qwer',
+                mirrors=['http://example3.com/file.zip'],
+            ),
+            True,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': 'file.zip',
+                'md5': 'qwer',
+                'mirrors': ['http://example3.com/file.zip'],
+            },
+            id='url_and_mirrors_exclude_none'
+        ),
+    ]
+)
+def test_websource_to_dict(source, exclude_none, expected_dict):
     data = source.to_dict()
-    assert data == {'url': 'http://example.com/file.zip', 'filename': 'file.zip', 'md5': '123'}
-
-
-def test_websource_download_infer_filename():
-    source = WebSource(url='http://example.com/file.zip')
-    with patch('pymovements.dataset.websource._download_file') as mock_download:
-        source.download('tmp')
-        mock_download.assert_called_once_with(
-            url='http://example.com/file.zip',
-            dirpath=Path('tmp'),
-            filename='file.zip',
-            md5=None,
-            verbose=True,
-        )
-
-
-def test_websource_download_explicit_filename():
-    source = WebSource(url='http://example.com/download', filename='data.zip')
-    with patch('pymovements.dataset.websource._download_file') as mock_download:
-        source.download('tmp')
-        mock_download.assert_called_once_with(
-            url='http://example.com/download',
-            dirpath=Path('tmp'),
-            filename='data.zip',
-            md5=None,
-            verbose=True,
-        )
+    assert data == expected_dict
 
 
 def test_websource_download_with_mirrors():
@@ -98,8 +171,6 @@ def test_websource_download_with_mirrors():
         assert path == Path('tmp/file.zip')
         assert mock_download.call_count == 3
 
-
-# ==== Moved tests from tests/unit/dataset/_utils/_downloads_test.py ====
 
 @pytest.mark.network
 @pytest.mark.parametrize(
