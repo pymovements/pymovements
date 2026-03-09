@@ -24,11 +24,6 @@ from pymovements import ResourceDefinition
 from pymovements import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 
-# Ignore deprecation warnings from legacy ResourceDefinition fields during collection and most tests
-pytestmark = pytest.mark.filterwarnings(
-    "ignore:Fields 'filename', 'url', 'mirrors', 'md5' are deprecated.*:DeprecationWarning",
-)
-
 
 @pytest.mark.parametrize(
     'kwargs',
