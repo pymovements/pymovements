@@ -181,11 +181,12 @@ def test_websource_download_with_mirrors():
     ],
 )
 def test_download_file(tmp_path, verbose):
-    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
-    filename = 'pymovements-0.4.0.tar.gz'
-    md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
-
-    filepath = _download_file(url, tmp_path, filename, md5, verbose=verbose)
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+    filepath = source.download(tmp_path, verbose=verbose)
 
     assert filepath.exists()
     assert filepath.name == filename
@@ -198,10 +199,11 @@ def test_download_file(tmp_path, verbose):
 
 @pytest.mark.network
 def test_download_file_md5_None(tmp_path):
-    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
-    filename = 'pymovements-0.4.0.tar.gz'
-
-    filepath = _download_file(url, tmp_path, filename)
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+    )
+    filepath = source.download(tmp_path)
 
     assert filepath.exists()
     assert filepath.name == filename
@@ -209,12 +211,14 @@ def test_download_file_md5_None(tmp_path):
 
 
 def test_download_file_404(tmp_path):
-    url = 'http://github.com/pymovements/pymovement/archive/refs/tags/v0.4.0.tar.gz'
-    filename = 'pymovements-0.4.0.tar.gz'
-    md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
+    source = WebSource(
+        url='http://github.com/pymovements/pymovement/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
 
     with pytest.raises(OSError):
-        _download_file(url, tmp_path, filename, md5)
+        source.download(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -225,39 +229,45 @@ def test_download_file_404(tmp_path):
     ],
 )
 def test_download_file_https_failure(tmp_path, verbose):
-    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
-    filename = 'pymovements-0.4.0.tar.gz'
-    md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
 
     with mock.patch(
         'pymovements.dataset.websource._download_url',
         side_effect=OSError(),
     ):
         with pytest.raises(OSError):
-            _download_file(url, tmp_path, filename, md5, verbose=verbose)
+            source.download(tmp_path, verbose=verbose)
 
 
 def test_download_file_http_failure(tmp_path):
-    url = 'http://example.com/'
-    filename = 'pymovements-0.4.0.tar.gz'
-    md5 = '52bbf03a7c50ee7152ccb9d357c2bb30'
+    source = WebSource(
+        url='http://example.com/',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
 
     with mock.patch(
         'pymovements.dataset.websource._download_url',
         side_effect=OSError(),
     ):
         with pytest.raises(OSError):
-            _download_file(url, tmp_path, filename, md5)
+            source.download(tmp_path)
 
 
 @pytest.mark.network
 def test_download_file_with_invalid_md5(tmp_path):
-    url = 'https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz'
-    filename = 'pymovements-0.4.0.tar.gz'
-    md5 = '00000000000000000000000000000000'
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='00000000000000000000000000000000',
+    )
 
     with pytest.raises(RuntimeError) as excinfo:
-        _download_file(url, tmp_path, filename, md5)
+        source.download(tmp_path)
 
     msg, = excinfo.value.args
     assert msg == f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "\
