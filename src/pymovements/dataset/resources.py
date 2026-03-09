@@ -26,6 +26,7 @@ from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
+from dataclasses import replace
 from typing import Any
 from warnings import warn
 
@@ -148,7 +149,7 @@ class ResourceDefinition:
         if self.source is None:
             self.source = WebSource(url=None, filename=data)
         else:
-            self.source.filename = data
+            self.source = replace(self.source, filename=data)
 
     @property
     @deprecated(
@@ -180,7 +181,7 @@ class ResourceDefinition:
         if self.source is None:
             self.source = WebSource(url=None, filename=data)
         else:
-            self.source.filename = data
+            self.source = replace(self.source, url=data)
 
     @property
     @deprecated(
@@ -212,7 +213,7 @@ class ResourceDefinition:
         if self.source is None:
             self.source = WebSource(url=None, md5=data)
         else:
-            self.source.md5 = data
+            self.source = replace(self.source, md5=data)
 
     @property
     @deprecated(
@@ -244,7 +245,7 @@ class ResourceDefinition:
         if self.source is None:
             self.source = WebSource(url=None, mirrors=data)
         else:
-            self.source.mirrors = data
+            self.source = replace(self.source, mirrors=data)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
