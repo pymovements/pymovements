@@ -443,10 +443,13 @@ def test_gaze_unnest_no_nested_columns_warns():
     })
     gaze = pm.Gaze(samples=df)
     gaze.samples = gaze.samples.drop('pixel')
+    samples_before = gaze.samples.clone()
 
-    message = 'No columns to unnest. .*input_columns'
-    with pytest.warns(Warning, match=message):
+    message = 'No columns to unnest..*input_columns.*'
+    with pytest.warns(UserWarning, match=message):
         gaze.unnest()
+
+    assert_frame_equal(gaze.samples, samples_before)
 
 
 @pytest.mark.parametrize(

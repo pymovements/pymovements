@@ -2699,7 +2699,7 @@ def _unnest_list_columns(
         input_columns = [column for column in df.columns if df[column].dtype == polars.List]
 
         if len(input_columns) == 0:
-            raise Warning(
+            warn(
                 'No columns to unnest. '
                 'Please specify columns to unnest via the "input_columns" argument.',
             )
