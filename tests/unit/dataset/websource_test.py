@@ -95,7 +95,7 @@ def test_websource_from_dict():
             WebSource(url='http://example.com/file.zip', md5='abc'),
             True,
             {'url': 'http://example.com/file.zip', 'md5': 'abc'},
-            id='url_and_md5_exclude_none'
+            id='url_and_md5_exclude_none',
         ),
         pytest.param(
             WebSource(url='http://example.com/file.zip', mirrors=['http://example2.com/file.zip']),
@@ -112,7 +112,7 @@ def test_websource_from_dict():
             WebSource(url='http://example.com/file.zip', md5='abc'),
             True,
             {'url': 'http://example.com/file.zip', 'mirrors': ['http://example2.com/file.zip']},
-            id='url_and_mirrors_exclude_none'
+            id='url_and_mirrors_exclude_none',
         ),
         pytest.param(
             WebSource(
@@ -144,9 +144,9 @@ def test_websource_from_dict():
                 'md5': 'qwer',
                 'mirrors': ['http://example3.com/file.zip'],
             },
-            id='url_and_mirrors_exclude_none'
+            id='url_and_mirrors_exclude_none',
         ),
-    ]
+    ],
 )
 def test_websource_to_dict(source, exclude_none, expected_dict):
     data = source.to_dict()
