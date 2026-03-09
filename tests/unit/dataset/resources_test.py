@@ -409,7 +409,8 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 [
                     ResourceDefinition(
                         content='precomputed_events',
-                        source=WebSource(url=None, filename='myevents.csv')),
+                        source=WebSource(url=None, filename='myevents.csv'),
+                    ),
                 ],
             ),
             id='single_precomputed_events_resource',
@@ -541,7 +542,8 @@ def test_resources_init_expected(init_posargs, expected_resources):
                 [
                     ResourceDefinition(
                         content='precomputed_events',
-                        source=WebSource(url=None, filename='myevents.csv')),
+                        source=WebSource(url=None, filename='myevents.csv'),
+                    ),
                 ],
             ),
             [
