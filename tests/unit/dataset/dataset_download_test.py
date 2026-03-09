@@ -59,17 +59,21 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'https://example.com/test.gz.tar',
-                    'mirrors': ['https://another_example.com/test.gz.tar'],
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'mirrors': ['https://another_example.com/test.gz.tar'],
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://example.com/test_pc.gz.tar',
-                    'mirrors': ['https://another_example.com/test_pc.gz.tar'],
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_pc.gz.tar',
+                        'mirrors': ['https://another_example.com/test_pc.gz.tar'],
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -90,15 +94,19 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'test_pc.gz.tar',
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test_pc.gz.tar',
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -109,15 +117,19 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'https://example.com/test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://example.com/test_pc.gz.tar',
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_pc.gz.tar',
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -128,10 +140,12 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'https://example.com/test.gz.tar',
-                    'mirrors': ['https://another_example.com/test.gz.tar'],
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'mirrors': ['https://another_example.com/test.gz.tar'],
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -142,13 +156,15 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'https://example.com/test.gz.tar',
-                    'mirrors': [
-                        'https://mirror1.example.com/test.gz.tar',
-                        'https://mirror2.example.com/test.gz.tar',
-                    ],
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'mirrors': [
+                            'https://mirror1.example.com/test.gz.tar',
+                            'https://mirror2.example.com/test.gz.tar',
+                        ],
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -165,9 +181,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -178,9 +196,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'gaze',
-                    'url': 'https://example.com/test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -191,10 +211,12 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://example.com/test_pc.gz.tar',
-                    'mirrors': ['https://another_example.com/test_pc.gz.tar'],
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_pc.gz.tar',
+                        'mirrors': ['https://another_example.com/test_pc.gz.tar'],
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -211,9 +233,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_events',
-                    'url': 'test_pc.gz.tar',
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test_pc.gz.tar',
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -224,9 +248,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://example.com/test_pc.gz.tar',
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_pc.gz.tar',
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -237,10 +263,12 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://example.com/test_pc.gz.tar',
-                    'mirrors': ['https://another_example.com/test_pc.gz.tar'],
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_pc.gz.tar',
+                        'mirrors': ['https://another_example.com/test_pc.gz.tar'],
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -257,9 +285,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_events',
-                    'url': 'test_pc.gz.tar',
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test_pc.gz.tar',
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -270,9 +300,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://example.com/test_pc.gz.tar',
-                    'filename': 'test_pc.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_pc.gz.tar',
+                        'filename': 'test_pc.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -283,10 +315,12 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://example.com/test_rm.gz.tar',
-                    'mirrors': ['https://another_example.com/test_rm.gz.tar'],
-                    'filename': 'test_rm.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_rm.gz.tar',
+                        'mirrors': ['https://another_example.com/test_rm.gz.tar'],
+                        'filename': 'test_rm.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -303,9 +337,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'test_rm.gz.tar',
-                    'filename': 'test_rm.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test_rm.gz.tar',
+                        'filename': 'test_rm.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -316,9 +352,11 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
             resources=[
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://example.com/test_rm.gz.tar',
-                    'filename': 'test_rm.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test_rm.gz.tar',
+                        'filename': 'test_rm.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 },
             ],
         )
@@ -1420,9 +1458,11 @@ def test_dataset_download_default_extract_precomputed(
                 name='CustomPublicDataset',
                 resources=[{
                     'content': 'gaze',
-                    'url': None,
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': None,
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 }],
             ),
             AttributeError,
@@ -1434,9 +1474,11 @@ def test_dataset_download_default_extract_precomputed(
                 name='CustomPublicDataset',
                 resources=[{
                     'content': 'gaze',
-                    'url': 'https://example.com/test.gz.tar',
-                    'filename': None,
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': None,
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 }],
             ),
             AttributeError,
@@ -1448,9 +1490,11 @@ def test_dataset_download_default_extract_precomputed(
                 name='CustomPublicDataset',
                 resources=[{
                     'content': 'gaze',
-                    'url': 'test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 }],
             ),
             ValueError,
@@ -1462,9 +1506,11 @@ def test_dataset_download_default_extract_precomputed(
                 name='CustomPublicDataset',
                 resources=[{
                     'content': 'gaze',
-                    'url': 'test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 }],
             ),
             ValueError,
@@ -1476,9 +1522,11 @@ def test_dataset_download_default_extract_precomputed(
                 name='CustomPublicDataset',
                 resources=[{
                     'content': 'gaze',
-                    'url': 'test.gz.tar',
-                    'filename': 'test.gz.tar',
-                    'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    'source': {
+                        'url': 'test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
                 }],
             ),
             ValueError,
@@ -1505,9 +1553,11 @@ def test_dataset_download_raises_exception(
                 'resources': [
                     {
                         'content': 'gaze',
-                        'url': None,
-                        'filename': 'test.gz.tar',
-                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                        'source': {
+                            'url': None,
+                            'filename': 'test.gz.tar',
+                            'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                        },
                     },
                 ],
             },
@@ -1522,9 +1572,11 @@ def test_dataset_download_raises_exception(
                 'resources': [
                     {
                         'content': 'gaze',
-                        'url': 'https://example.com/test.gz.tar',
-                        'filename': None,
-                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                        'source': {
+                            'url': 'https://example.com/test.gz.tar',
+                            'filename': None,
+                            'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                        },
                     },
                 ],
             },
