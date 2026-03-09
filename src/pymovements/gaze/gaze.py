@@ -661,7 +661,7 @@ class Gaze:
                 # without checking components to avoid raising on empty inputs.
                 if self.trial_columns is not None and self.samples.is_empty():
                     return
-                _check_n_components(self.n_components)
+                self._check_n_components()
                 kwargs['n_components'] = self.n_components
 
             if transform_method.__name__ in {'pos2vel', 'pos2acc'}:
@@ -1951,6 +1951,33 @@ class Gaze:
         if self.experiment is None:
             raise AttributeError('experiment must not be None for this method to work')
 
+    def _check_n_components(self) -> None:
+        """Check that n_components is either 2, 4 or 6.
+
+        Ensure that the number of gaze components is valid.
+
+        Valid configurations are:
+            - 2 components: monocular data (e.g., x and y)
+            - 4 components: binocular data (e.g., x/y for left and right eye)
+            - 6 components: binocular + cyclopean data (x/y for left, right, and cyclopean eye)
+
+        If no valid gaze columns were specified (pixel, position, etc.), raise an error
+        with a helpful message to guide proper initialization.
+
+        Raises
+        ------
+        AttributeError
+            If n_components is not 2, 4 or 6.
+        """
+        if self.n_components not in {2, 4, 6}:
+            raise AttributeError(
+                'Number of components required but no gaze components could be inferred.\n'
+                'This usually happens if you did not specify any column content'
+                ' and the content could not be autodetected from the column names. \n'
+                "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
+                " or 'acceleration_columns' explicitly during initialization.",
+            )
+
     def _check_component_columns(self, **kwargs: list[str]) -> None:
         """Check if component columns are in valid format.
 
@@ -2051,7 +2078,7 @@ class Gaze:
         tuple[int, int]
             Tuple of eye component indices.
         """
-        _check_n_components(self.n_components)
+        self._check_n_components()
 
         if eye == 'auto':
             # Order of inference: cyclops, right, left.
@@ -2537,34 +2564,6 @@ class Gaze:
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
             )
-
-
-def _check_n_components(n_components: int) -> None:
-    """Check that n_components is either 2, 4 or 6.
-
-    Ensure that the number of gaze components is valid.
-
-    Valid configurations are:
-        - 2 components: monocular data (e.g., x and y)
-        - 4 components: binocular data (e.g., x/y for left and right eye)
-        - 6 components: binocular + cyclopean data (x/y for left, right, and cyclopean eye)
-
-    If no valid gaze columns were specified (pixel, position, etc.), raise an error
-    with a helpful message to guide proper initialization.
-
-    Raises
-    ------
-    AttributeError
-        If n_components is not 2, 4 or 6.
-    """
-    if n_components not in {2, 4, 6}:
-        raise AttributeError(
-            'Number of components required but no gaze components could be inferred.\n'
-            'This usually happens if you did not specify any column content'
-            ' and the content could not be autodetected from the column names. \n'
-            "Please specify 'pixel_columns', 'position_columns', 'velocity_columns'"
-            " or 'acceleration_columns' explicitly during initialization.",
-        )
 
 
 def _check_trial_columns(trial_columns: list[str] | None, samples: polars.DataFrame) -> None:
