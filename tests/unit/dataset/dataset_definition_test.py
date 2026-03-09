@@ -140,8 +140,9 @@ def test_dataset_definition_is_equal(init_kwargs):
             },
             ResourceDefinitions([
                 ResourceDefinition(
-                    content='gaze', filename_pattern='test.csv',
-                    url='https://example.com', mirrors=['https://mirror.com'],
+                    content='gaze',
+                    source=WebSource(url='https://example.com', mirrors=['https://mirror.com']),
+                    filename_pattern='test.csv',
                 ),
             ]),
             id='single_gaze_resource_with_url_and_mirror',
@@ -211,8 +212,12 @@ def test_dataset_definition_is_equal(init_kwargs):
                 },
             },
             ResourceDefinitions([
-                ResourceDefinition(content='gaze', url='www.example1.com'),
-                ResourceDefinition(content='precomputed_events', url='www.example2.com'),
+                ResourceDefinition(
+                    content='gaze', source=WebSource(url='www.example1.com'),
+                ),
+                ResourceDefinition(
+                    content='precomputed_events', source=WebSource(url='www.example2.com'),
+                ),
             ]),
             marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
             id='two_resources_legacy',
@@ -232,12 +237,12 @@ def test_dataset_definition_is_equal(init_kwargs):
             ResourceDefinitions([
                 ResourceDefinition(
                     content='gaze',
-                    url='www.example1.com',
+                    source=WebSource(url='www.example1.com'),
                     filename_pattern='test1.csv',
                 ),
                 ResourceDefinition(
                     content='precomputed_events',
-                    url='www.example2.com',
+                    source=WebSource(url='www.example2.com'),
                     filename_pattern='test2.csv',
                 ),
             ]),
