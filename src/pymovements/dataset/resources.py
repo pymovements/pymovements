@@ -126,6 +126,38 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.1',
     )
+    def url(self) -> str:
+        """The URL to the downloadable resource.
+
+        .. deprecated:: v0.26.1
+        Please use ResourceDefinition.source instead.
+        This property will be removed in v0.31.0.
+
+        Returns
+        -------
+        str
+            The URL to the downloadable resource.
+        """
+        return self.source.url if self.source else None
+
+    @url.setter
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
+    def url(self, data: str) -> None:
+        if self.source is None:
+            self.source = WebSource(url=None, filename=data)
+        else:
+            self.source = replace(self.source, url=data)
+
+    @property
+    @deprecated(
+        reason='Please use ResourceDefinition.source instead. '
+               'This property will be removed in v0.31.0.',
+        version='v0.26.1',
+    )
     def filename(self) -> str:
         """The target filename of the downloadable resource. This may be an archive.
 
@@ -151,38 +183,6 @@ class ResourceDefinition:
             self.source = WebSource(url=None, filename=data)
         else:
             self.source = replace(self.source, filename=data)
-
-    @property
-    @deprecated(
-        reason='Please use ResourceDefinition.source instead. '
-               'This property will be removed in v0.31.0.',
-        version='v0.26.1',
-    )
-    def url(self) -> str:
-        """The URL to the downloadable resource.
-
-        .. deprecated:: v0.26.1
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
-
-        Returns
-        -------
-        str
-            The URL to the downloadable resource.
-        """
-        return self.source.url if self.source else None
-
-    @url.setter
-    @deprecated(
-        reason='Please use ResourceDefinition.source instead. '
-               'This property will be removed in v0.31.0.',
-        version='v0.26.1',
-    )
-    def filename(self, data: str) -> None:
-        if self.source is None:
-            self.source = WebSource(url=None, filename=data)
-        else:
-            self.source = replace(self.source, url=data)
 
     @property
     @deprecated(
