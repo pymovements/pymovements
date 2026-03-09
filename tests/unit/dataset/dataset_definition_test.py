@@ -28,6 +28,7 @@ from pymovements import DatasetLibrary
 from pymovements import Experiment
 from pymovements import ResourceDefinition
 from pymovements import ResourceDefinitions
+from pymovements import WebSource
 
 
 @pytest.mark.parametrize(
@@ -98,7 +99,9 @@ def test_dataset_definition_is_equal(init_kwargs):
 
         pytest.param(
             {'resources': {'gaze': [{'resource': 'www.example.com'}]}},
-            ResourceDefinitions([ResourceDefinition(content='gaze', url='www.example.com')]),
+            ResourceDefinitions(
+                [ResourceDefinition(content='gaze', source=WebSource(url='www.example.com'))]
+            ),
             marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
             id='single_gaze_resource_legacy',
         ),
