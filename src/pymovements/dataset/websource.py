@@ -365,5 +365,3 @@ def _calculate_md5(filepath: Path, chunk_size: int = 1024 * 1024) -> str:
         for chunk in iter(lambda: f.read(chunk_size), b''):
             file_md5.update(chunk)
     return file_md5.hexdigest()
-
-
