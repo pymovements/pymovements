@@ -133,7 +133,7 @@ class WebSource:
                     warn(warning)
                     # Continue to next mirror
 
-            # If we are here, all mirrors failed
+            # If we are here, downloading failed for all mirrors.
             raise RuntimeError(
                 f"Downloading resource {self.filename} failed for all mirrors.",
             ) from primary_error
