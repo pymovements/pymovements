@@ -1575,13 +1575,14 @@ class Gaze:
         # (by unnesting) or keep list columns intact and extract per-row. By default,
         # preserve_structure=True attempts to unnest.
         if preserve_structure:
-            try:
-                self.unnest()
-            except (Warning, ValueError, AttributeError):  # tolerate common cases
-                # - Warning: nothing to unnest when no list columns exist
-                # - ValueError/AttributeError: shape or configuration-related issues
-                # In all these cases: continue without failing and use fallback logic.
-                pass
+            nested_columns = _get_nested_columns(self.samples)
+            if nested_columns:
+                try:
+                    self.unnest(nested_columns)
+                except (ValueError, AttributeError):  # tolerate common cases
+                    # - ValueError/AttributeError: shape or configuration-related issues
+                    # In all these cases: continue without failing and use fallback logic.
+                    pass
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
@@ -2544,10 +2545,7 @@ class Gaze:
         extension = path.suffix[1:]
 
         # Unnest list columns if necessary.
-        nested_columns = [
-            column for column in samples.columns
-            if samples[column].dtype == polars.List
-        ]
+        nested_columns = _get_nested_columns(samples)
         if extension == 'csv' and nested_columns:
             samples = _unnest_list_columns(samples, nested_columns)
 
@@ -2755,6 +2753,11 @@ def _unnest_list_columns(
         )
     df = df.drop(input_columns)
     return df
+
+
+def _get_nested_columns(df: polars.DataFrame) -> list[str]:
+    """Get column names of nested columns."""
+    return [column for column in df.columns if df[column].dtype == polars.List]
 
 
 def _infer_list_n_components(series: polars.Series) -> int:
