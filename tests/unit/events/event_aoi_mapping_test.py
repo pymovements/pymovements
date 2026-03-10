@@ -23,9 +23,6 @@ import pytest
 from polars.testing import assert_frame_equal
 
 import pymovements as pm
-from pymovements.events import Events
-from pymovements.stimulus.text import TextStimulus
-from pymovements.stimulus.text import WritingSystem
 
 EXPECTED_DF = {
     'char': pl.DataFrame(
