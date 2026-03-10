@@ -37,6 +37,7 @@ from pymovements._utils._html import repr_html
 
 
 @dataclass(frozen=True)
+@repr_html()
 class WritingSystem:
     """Writing system specification for text stimuli.
 

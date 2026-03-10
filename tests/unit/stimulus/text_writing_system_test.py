@@ -111,3 +111,8 @@ def test_writing_system_from_descriptor(descriptor, expected):
     assert writing_system.directionality == expected['directionality']
     assert writing_system.axis == expected['axis']
     assert writing_system.lining == expected['lining']
+
+
+def test_writing_system_from_descriptor_unknown_raises_exception():
+    with pytest.raises(ValueError, match="Unknown descriptor 'test'"):
+        WritingSystem.from_descriptor('test')
