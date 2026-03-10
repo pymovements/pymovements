@@ -102,7 +102,12 @@ def test_dataset_definition_is_equal(init_kwargs):
             ResourceDefinitions(
                 [ResourceDefinition(content='gaze', source=WebSource(url='www.example.com'))],
             ),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            marks=[
+                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
+                ),
+            ],
             id='single_gaze_resource_legacy',
         ),
 
@@ -135,6 +140,28 @@ def test_dataset_definition_is_equal(init_kwargs):
                     {
                         'content': 'gaze', 'filename_pattern': 'test.csv',
                         'url': 'https://example.com', 'mirrors': ['https://mirror.com'],
+                    },
+                ],
+            },
+            ResourceDefinitions([
+                ResourceDefinition(
+                    content='gaze',
+                    source=WebSource(url='https://example.com', mirrors=['https://mirror.com']),
+                    filename_pattern='test.csv',
+                ),
+            ]),
+            marks=pytest.mark.filterwarnings(
+                'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
+            ),
+            id='single_gaze_resource_with_url_and_mirror_deprecated',
+        ),
+
+        pytest.param(
+            {
+                'resources': [
+                    {
+                        'content': 'gaze', 'filename_pattern': 'test.csv',
+                        'source': {'url': 'https://example.com', 'mirrors': ['https://mirror.com']},
                     },
                 ],
             },
@@ -219,8 +246,32 @@ def test_dataset_definition_is_equal(init_kwargs):
                     content='precomputed_events', source=WebSource(url='www.example2.com'),
                 ),
             ]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            marks=[
+                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
+                ),
+            ],
             id='two_resources_legacy',
+        ),
+
+        pytest.param(
+            {
+                'resources': {
+                    'gaze': [{'source': {'url': 'www.example1.com'}}],
+                    'precomputed_events': [{'source': {'url': 'www.example2.com'}}],
+                },
+            },
+            ResourceDefinitions([
+                ResourceDefinition(
+                    content='gaze', source=WebSource(url='www.example1.com'),
+                ),
+                ResourceDefinition(
+                    content='precomputed_events', source=WebSource(url='www.example2.com'),
+                ),
+            ]),
+            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
+            id='two_resources_legacy_with_sources',
         ),
 
         pytest.param(
@@ -249,6 +300,9 @@ def test_dataset_definition_is_equal(init_kwargs):
             marks=[
                 pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
                 pytest.mark.filterwarnings('ignore:.*filename_format.*:DeprecationWarning'),
+                pytest.mark.filterwarnings(
+                    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
+                ),
             ],
             id='two_resources_filename_format_legacy',
         ),
@@ -513,6 +567,9 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
 
 @pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:.*has_resources.*:DeprecationWarning')
+@pytest.mark.filterwarnings(
+    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning'
+)
 @pytest.mark.parametrize(
     ('resources', 'expected_has_resources'),
     [
@@ -590,6 +647,9 @@ def test_dataset_definition_has_resources_boolean(resources, expected_has_resour
 
 @pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:.*has_resources.*:DeprecationWarning')
+@pytest.mark.filterwarnings(
+    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning'
+)
 @pytest.mark.parametrize(
     ('resources', 'expected_resources'),
     [
@@ -859,7 +919,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'resources': [
                     {
                         'content': 'gaze',
-                        'filename': None,
                         'filename_pattern': None,
                         'filename_pattern_schema_overrides': None,
                         'load_function': None,
@@ -871,9 +930,7 @@ def test_dataset_definition_has_resources_not_equal():
                                 'bar',
                             ],
                         },
-                        'md5': None,
-                        'mirrors': None,
-                        'url': None,
+                        'source': None,
                     },
                 ],
                 'time_column': None,
@@ -882,6 +939,92 @@ def test_dataset_definition_has_resources_not_equal():
                 'velocity_columns': None,
             },
             id='false_resources',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                        'source': WebSource(url='http://my.example.here'),
+                    },
+                ],
+            ),
+            True,
+            {
+                'name': '.',
+                'resources': [
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                        'source': {'url': 'http://my.example.here'},
+                    },
+                ],
+            },
+            id='true_resources_with_source',
+        ),
+
+        pytest.param(
+            DatasetDefinition(
+                resources=[
+                    {
+                        'content': 'gaze',
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': ['test', 'foo', 'bar'],
+                        },
+                        'source': WebSource(url='http://my.example.here'),
+                    },
+                ],
+            ),
+            False,
+            {
+                'acceleration_columns': None,
+                'column_map': None,
+                'custom_read_kwargs': None,
+                'distance_column': None,
+                'experiment': None,
+                'extract': None,
+                'long_name': None,
+                'mirrors': {},
+                'name': '.',
+                'pixel_columns': None,
+                'position_columns': None,
+                'resources': [
+                    {
+                        'content': 'gaze',
+                        'filename_pattern': None,
+                        'filename_pattern_schema_overrides': None,
+                        'load_function': None,
+                        'load_kwargs': {
+                            'distance_column': 'test',
+                            'position_columns': [
+                                'test',
+                                'foo',
+                                'bar',
+                            ],
+                        },
+                        'source': {
+                            'url': 'http://my.example.here',
+                            'filename': None,
+                            'md5': None,
+                            'mirrors': None,
+                        },
+                    },
+                ],
+                'time_column': None,
+                'time_unit': None,
+                'trial_columns': None,
+                'velocity_columns': None,
+            },
+            id='false_resources_with_source',
         ),
     ],
 )
