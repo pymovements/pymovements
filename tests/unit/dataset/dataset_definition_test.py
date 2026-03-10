@@ -568,7 +568,7 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
 @pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:.*has_resources.*:DeprecationWarning')
 @pytest.mark.filterwarnings(
-    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning'
+    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
 )
 @pytest.mark.parametrize(
     ('resources', 'expected_has_resources'),
@@ -648,7 +648,7 @@ def test_dataset_definition_has_resources_boolean(resources, expected_has_resour
 @pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:.*has_resources.*:DeprecationWarning')
 @pytest.mark.filterwarnings(
-    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning'
+    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
 )
 @pytest.mark.parametrize(
     ('resources', 'expected_resources'),
