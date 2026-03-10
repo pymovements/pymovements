@@ -19,7 +19,6 @@
 # SOFTWARE.
 """Tests for WebSource and download utilities."""
 import hashlib
-import os.path
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
@@ -249,7 +248,7 @@ def test_websource_download_http_failure(tmp_path):
     )
 
     with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
-        message = f'Downloading resource {source.url} failed'
+        f'Downloading resource {source.url} failed'
         with pytest.raises(RuntimeError):
             source.download(tmp_path)
 
