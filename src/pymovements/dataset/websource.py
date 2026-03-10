@@ -104,8 +104,7 @@ class WebSource:
                 md5=self.md5,
                 verbose=verbose,
             )
-        # pylint: disable=overlapping-except
-        except (URLError, OSError, RuntimeError) as primary_error:
+        except (OSError, RuntimeError) as primary_error:
             # No mirrors to try
             if not self.mirrors:
                 raise RuntimeError(f"Downloading resource {self.url} failed.") from primary_error

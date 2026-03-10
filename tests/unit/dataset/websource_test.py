@@ -216,7 +216,8 @@ def test_websource_download_404(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with pytest.raises(OSError):
+    message = f'Downloading resource {source.url} failed'
+    with pytest.raises(RuntimeError, match=message):
         source.download(tmp_path)
 
 
@@ -227,18 +228,16 @@ def test_websource_download_404(tmp_path):
         pytest.param(True, id='verbose_true'),
     ],
 )
-def test_websource_download_https_failure(tmp_path, verbose):
+def test_websource_download_os_error(verbose, tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with mock.patch(
-        'pymovements.dataset.websource._download_url',
-        side_effect=OSError(),
-    ):
-        with pytest.raises(OSError):
+    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
+        message = f'Downloading resource {source.url} failed'
+        with pytest.raises(RuntimeError, match=message):
             source.download(tmp_path, verbose=verbose)
 
 
@@ -249,11 +248,9 @@ def test_websource_download_http_failure(tmp_path):
         md5='52bbf03a7c50ee7152ccb9d357c2bb30',
     )
 
-    with mock.patch(
-        'pymovements.dataset.websource._download_url',
-        side_effect=OSError(),
-    ):
-        with pytest.raises(OSError):
+    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
+        message = f'Downloading resource {source.url} failed'
+        with pytest.raises(RuntimeError):
             source.download(tmp_path)
 
 
@@ -268,9 +265,9 @@ def test_websource_download_with_invalid_md5(tmp_path):
     with pytest.raises(RuntimeError) as excinfo:
         source.download(tmp_path)
 
-    msg, = excinfo.value.args
-    assert msg == f"File {os.path.join(tmp_path, 'pymovements-0.4.0.tar.gz')} "\
-        'not found or download corrupted.'
+    message = f"File {tmp_path / source.filename} not found or download corrupted."
+    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    assert str(excinfo.value.__cause__) == message
 
 
 @pytest.mark.network
