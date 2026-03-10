@@ -148,6 +148,7 @@ class WritingSystem:
         >>> WritingSystem.from_descriptor('rtl')
         WritingSystem(directionality='right-to-left', axis='horizontal', lining='top-to-bottom')
         """
+        descriptor = descriptor.lower()
         if descriptor in {'left-to-right', 'ltr'}:
             return WritingSystem(
                 directionality='left-to-right', axis='horizontal', lining='top-to-bottom',
