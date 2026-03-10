@@ -153,7 +153,7 @@ def extract_dataset(
             destination_dirpath = getattr(paths, content_directory)
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
-                source_path = paths.downloads / resource.filename
+                source_path = paths.downloads / resource.source.filename
 
                 try:
                     extract_archive(
@@ -166,7 +166,7 @@ def extract_dataset(
                         verbose=verbose,
                     )
                 except UnknownFileType:  # just copy file to target if not an archive.
-                    shutil.copy(source_path, destination_dirpath / resource.filename)
+                    shutil.copy(source_path, destination_dirpath / resource.source.filename)
 
 
 def _download_resource_with_legacy_mirrors(
