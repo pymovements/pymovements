@@ -64,7 +64,6 @@ class WebSource:
     @staticmethod
     def from_dict(data: dict[str, Any]) -> WebSource:
         """Create a `WebSource` from a dictionary."""
-        # Accept both with and without explicit keys. Default to None when missing.
         return WebSource(
             url=data.get('url'),
             filename=data.get('filename'),

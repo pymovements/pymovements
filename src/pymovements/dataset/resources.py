@@ -89,8 +89,8 @@ class ResourceDefinition:
             content: str,
             *,
             source: WebSource | None = None,
-            filename: str | None = None,
             url: str | None = None,
+            filename: str | None = None,
             mirrors: list[str] | None = None,
             md5: str | None = None,
             filename_pattern: str | None = None,
@@ -148,7 +148,7 @@ class ResourceDefinition:
     )
     def url(self, data: str) -> None:
         if self.source is None:
-            self.source = WebSource(url=None, filename=data)
+            self.source = WebSource(url=data)
         else:
             self.source = replace(self.source, url=data)
 
