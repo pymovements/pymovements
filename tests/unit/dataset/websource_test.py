@@ -154,6 +154,7 @@ def test_websource_to_dict(source, exclude_none, expected_dict):
 def test_websource_download_with_mirrors():
     source = WebSource(
         url='http://primary.com/file.zip',
+        filename='file.zip',
         mirrors=['http://mirror1.com/file.zip', 'http://mirror2.com/file.zip'],
     )
     with patch('pymovements.dataset.websource._download_file') as mock_download:

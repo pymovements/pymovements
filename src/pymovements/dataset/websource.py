@@ -94,6 +94,11 @@ class WebSource:
         """
         dirpath = Path(target_dirpath).expanduser()
 
+        if self.url is None:
+            raise AttributeError('WebSource.url must not be None')
+        if self.filename is None:
+            raise AttributeError('WebSource.filename must not be None')
+
         # Attempt downloading from primary URL.
         try:
             return _download_file(
