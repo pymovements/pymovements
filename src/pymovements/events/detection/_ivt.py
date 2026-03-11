@@ -82,6 +82,37 @@ def ivt(
         If velocities does not have shape (N, 2)
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
+    
+    Examples
+    --------
+    Create a synthetic velocity signal representing low-velocity fixations.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.events.detection import ivt
+    >>> velocities = step_function(length=10,
+    ...                            steps=[2, 5, 9],
+    ...                            values=[(1., 2.), (2., 3.), (3., 4.)],
+    ...                            start_value=(0., 0.))
+
+    Run fixation detection with default parameters.
+
+    >>> events = ivt(velocities)
+    >>> events
+
+    Use custom thresholds and explicit timesteps.
+
+    >>> velocities = step_function(length=300,
+    ...                            steps=[100, 200],
+    ...                            values=[(1., 1.), (2., 2.)],
+    ...                            start_value=(0., 0.))
+    >>> timesteps = np.arange(len(velocities))
+    >>> events = ivt(velocities,
+    ...              timesteps=timesteps,
+    ...              minimum_duration=50,
+    ...              velocity_threshold=1.5,
+    ...              include_nan=True)
+    >>> events
     """
     velocities = np.array(velocities)
 
