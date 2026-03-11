@@ -97,7 +97,6 @@ import pymovements as pm
             pl.DataFrame({
                 'xl': [.1], 'yl': [.2], 'xr': [.3], 'yr': [.4], 'xa': [.5], 'ya': [.6],
             }),
-            marks=pytest.mark.xfail(reason='test'),
             id='df_single_row_six_pixel_columns',
         ),
 
