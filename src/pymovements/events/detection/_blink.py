@@ -160,10 +160,6 @@ def blink(
         exceeds_mask = abs_diff > delta
         candidate_mask = candidate_mask | exceeds_mask
 
-    print(delta)
-    print(abs_diff)
-    print(candidate_mask)
-
     # Stage 3: Combine blinks with less than minimum time gap in-between.
     if minimum_gap > 0:
         candidate_mask = _merge_blink_candidates(
@@ -177,11 +173,6 @@ def blink(
         return Events(name=name, onsets=[], offsets=[])
 
     candidates = consecutive(arr=candidate_indices)
-
-    print([
-        (c[-1], c[0], timesteps[c[-1]] - timesteps[c[0]])
-        for c in candidates
-    ])
 
     # Filter all candidates by duration (in unit of timesteps array).
     if minimum_duration:
