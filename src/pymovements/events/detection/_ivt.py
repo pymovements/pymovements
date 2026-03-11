@@ -82,7 +82,7 @@ def ivt(
         If velocities does not have shape (N, 2)
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
-    
+
     Examples
     --------
     Create a synthetic velocity signal representing low-velocity fixations.

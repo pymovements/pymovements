@@ -89,7 +89,7 @@ def microsaccades(
     ValueError
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
-    
+
     Examples
     --------
     Create a synthetic velocity signal representing micro-saccades.
