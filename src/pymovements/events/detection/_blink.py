@@ -34,43 +34,31 @@ def blink(
         *,
         timesteps: list[int] | np.ndarray | None = None,
         delta: float | None = None,
-        max_value_run: int = 3,
-        nas_around_run: int = 2,
         minimum_duration: int = 50,
         maximum_duration: int | None = 500,
+        minimum_gap: int = 5,
+        minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int = 2,
         name: str = 'blink',
 ) -> Events:
-    """Detect blinks from the pupil signal using a two-stage algorithm.
+    """Detect blinks from the pupil signal.
 
-    The detection algorithm adapts the differential approach of Hershman et al. (2018) [1]_
-    as implemented in PupilPre (Kyröläinen et al., 2019) [2]_.
+    The blink detection algorithm consists of three main stages. The implementation is inspired by
+    :cite:p:`PupilPre, which adapts the velocity-based method described in :cite:p:`Hershman2018`.
 
-    **Stage 1 — Flagging:** Samples are flagged when the pupil value is NaN or zero (common
-    blink indicators in eye-tracking data), or when the absolute difference between consecutive
-    pupil samples exceeds a ``delta`` threshold. If ``delta`` is ``None``, it is automatically
-    estimated as 5 times the 95th percentile of valid absolute differences.
+    **Stage 1 — Flag pupil loss:** All samples where the pupil value is NaN or zero (common
+    blink indicators in eye-tracking data) are candidate_mask as blink candidates.
 
-    **Stage 2 — Island absorption:** Short runs of unflagged samples that are surrounded by
-    flagged samples are absorbed into the flagged region. A run is absorbed if its length is
-    at most ``max_value_run`` and there are at least ``nas_around_run`` flagged samples on
-    each side.
+    **Stage 2 — Flag abrupt pupil changes:**: Each sample i+1 is masked as blink candidate if the
+    absolute difference between consecutive pupil samples i, i+1 exceeds a ``delta`` threshold.
+    If ``delta`` is ``None``, it is automatically estimated as 5 times the 95th percentile of valid
+    absolute differences (non-zero, not NaN) .
 
-    Consecutive flagged samples are then grouped into blink events. Events with duration
-    outside the ``[minimum_duration, maximum_duration]`` range are discarded. Following
-    Nyström et al. (2024) [3]_, typical blinks last 50–500 ms.
+    **Stage 3 — Combine blink candidates:** Combine consecutive blinks with a time gap lower than
+    the specified ``minimum_gap``. Blinks are only combined if the candidates before and after the
+    short gap have a ``minimum_candidate_duration_to_absorb_gap``.
 
-    References
-    ----------
-    .. [1] Hershman, R., Henik, A., & Cohen, N. (2018). A novel blink detection method based
-       on pupillometry noise. *Behavior Research Methods*, 50(1), 107–114.
-       https://doi.org/10.3758/s13428-017-1008-1
-    .. [2] Kyröläinen, A.-J., Porretta, V., van Rij, J., & Järvikivi, J. (2019).
-       PupilPre: Tools for Preprocessing Pupil Size Data (R package).
-       https://CRAN.R-project.org/package=PupilPre
-    .. [3] Nyström, M., Andersson, R., Niehorster, D. C., Hessels, R. S., & Hooge, I. T. C.
-       (2024). What is a blink? Classifying and characterizing blinks in eye openness signals.
-       *Behavior Research Methods*, 56, 3280–3299.
-       https://doi.org/10.3758/s13428-023-02333-9
+    Blink events shorter than ``minimum_duration`` and longer than maximum_duration are discarded.
+    Following :cite:p:`Nystrom2024` typical blinks last 50–500 ms.
 
     Parameters
     ----------
@@ -85,12 +73,6 @@ def blink(
         Threshold on absolute pupil difference for flagging rapid changes. If None, it is
         auto-estimated as ``5 * np.nanpercentile(abs_diff, 95)`` from valid absolute
         differences. (default: None)
-    max_value_run: int
-        Maximum length of an unflagged run to be absorbed during island absorption.
-        Set to 0 to disable absorption. (default: 3)
-    nas_around_run: int
-        Minimum number of flagged samples required on each side of an unflagged run
-        for it to be absorbed. (default: 2)
     minimum_duration: int
         Minimum blink duration. The duration is specified in the units used in ``timesteps``.
         If ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
@@ -99,6 +81,14 @@ def blink(
         Maximum blink duration. The duration is specified in the units used in ``timesteps``.
         If ``timesteps`` is None, then ``maximum_duration`` is specified in numbers of samples.
         Set to None to disable the upper bound. (default: 500)
+    minimum_gap: int
+        Minimum time gap in-between two blinks. Blinks that have a smaller time gap are combined
+        into a single event. The duration is specified in the units used in ``timesteps``. If
+        ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
+        (default: 100)
+    minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int
+        Minimum number of candidate_mask samples required on each side of an unflagged run
+        for it to be absorbed. (default: 2)
     name: str
         Name for detected events in Events. (default: 'blink')
 
@@ -134,9 +124,9 @@ def blink(
             f'delta must be positive, but got {delta}',
         )
 
-    if minimum_duration < 1:
+    if minimum_duration < 0:
         raise ValueError(
-            f'minimum_duration must be at least 1, but got {minimum_duration}',
+            f'minimum_duration must be positive, but got {minimum_duration}',
         )
 
     if maximum_duration is not None:
@@ -153,49 +143,57 @@ def blink(
     if len(pupil) == 0:
         return Events(name=name, onsets=[], offsets=[])
 
-    # Stage 1: Flagging
-    flagged = np.isnan(pupil) | (pupil == 0)
+    # Stage 1: Flag all samples with pupil loss as blink candidates.
+    candidate_mask = np.isnan(pupil) | (pupil == 0)
 
-    abs_diff = np.abs(np.diff(pupil))
-    # NaN diffs (from NaN pupil values) should not trigger delta flagging on their own;
-    # those samples are already flagged above.
-    valid_diffs = abs_diff[~np.isnan(abs_diff)]
+    # Stage 2: Flag pupil changes that exceed delta threshold.
+    # Compute absolute sample differences. Prepend nan sample to preserve array shape.
+    abs_diff = np.abs(np.diff(pupil, prepend=np.nan))
 
-    if delta is None and len(valid_diffs) > 0:
-        delta = 5.0 * np.nanpercentile(valid_diffs, 95)
+    # NaN diff values (from NaN pupil values) are ignored for calculating delta.
+    valid_diff = abs_diff[~np.isnan(abs_diff)]
+    if delta is None and len(valid_diff) > 0:
+        delta = 5.0 * np.nanpercentile(valid_diff, 95)
 
-    if delta is not None and len(valid_diffs) > 0:
+    if delta is not None and len(valid_diff) > 0:
         # Flag sample i+1 if abs(pupil[i+1] - pupil[i]) > delta
-        diff_flag = np.zeros(len(pupil), dtype=bool)
-        exceeds = abs_diff > delta
-        # Replace NaN comparisons with False
-        exceeds = np.where(np.isnan(abs_diff), False, exceeds)
-        diff_flag[1:] |= exceeds
-        diff_flag[:-1] |= exceeds
-        flagged |= diff_flag
+        exceeds_mask = abs_diff > delta
+        candidate_mask = candidate_mask | exceeds_mask
 
-    # Stage 2: Island absorption
-    if max_value_run > 0:
-        flagged = _absorb_islands(flagged, max_value_run, nas_around_run)
+    print(delta)
+    print(abs_diff)
+    print(candidate_mask)
 
-    # Group consecutive flagged samples into events
-    candidate_indices = np.where(flagged)[0]
+    # Stage 3: Combine blinks with less than minimum time gap in-between.
+    if minimum_gap > 0:
+        candidate_mask = _merge_blink_candidates(
+            candidate_mask, minimum_gap, minimum_candidate_duration_to_absorb_gap,
+        )
+
+    # Group consecutive candidate_mask samples into events
+    candidate_indices = np.where(candidate_mask)[0]
 
     if len(candidate_indices) == 0:
         return Events(name=name, onsets=[], offsets=[])
 
     candidates = consecutive(arr=candidate_indices)
 
-    # Filter by duration using timestep units (ms when timesteps are in ms)
-    filtered = []
-    for c in candidates:
-        duration = timesteps[c[-1]] - timesteps[c[0]]
-        if duration < minimum_duration:
-            continue
-        if maximum_duration is not None and duration > maximum_duration:
-            continue
-        filtered.append(c)
-    candidates = filtered
+    print([
+        (c[-1], c[0], timesteps[c[-1]] - timesteps[c[0]])
+        for c in candidates
+    ])
+
+    # Filter all candidates by duration (in unit of timesteps array).
+    if minimum_duration:
+        candidates = [
+            c_indices for c_indices in candidates
+            if minimum_duration <= timesteps[c_indices[-1]] - timesteps[c_indices[0]]
+        ]
+    if maximum_duration:
+        candidates = [
+            c_indices for c_indices in candidates
+            if timesteps[c_indices[-1]] - timesteps[c_indices[0]] <= maximum_duration
+        ]
 
     if len(candidates) == 0:
         return Events(name=name, onsets=[], offsets=[])
@@ -206,54 +204,62 @@ def blink(
     return Events(name=name, onsets=onsets, offsets=offsets)
 
 
-def _absorb_islands(
-        flagged: np.ndarray,
-        max_value_run: int,
-        nas_around_run: int,
+def _merge_blink_candidates(
+        candidate_mask: np.ndarray,
+        minimum_gap: int,
+        minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int,
 ) -> np.ndarray:
-    """Absorb short unflagged runs surrounded by flagged samples.
+    """Absorb short unflagged runs surrounded by masked samples.
 
     Parameters
     ----------
-    flagged: np.ndarray
+    candidate_mask: np.ndarray
         Boolean array of flagged samples.
-    max_value_run: int
+    minimum_gap: int
         Maximum length of an unflagged run to absorb.
-    nas_around_run: int
+    minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int
         Minimum flagged samples required on each side.
 
     Returns
     -------
     np.ndarray
-        Updated boolean flagged array with absorbed islands.
+        Updated blink candidate mask where minimum gaps are absorbed by surrounding blinks.
     """
-    flagged = flagged.copy()
-    n = len(flagged)
+    if isinstance(minimum_candidate_duration_to_absorb_gap, int):
+        minimum_candidate_duration_to_absorb_gap = (
+            minimum_candidate_duration_to_absorb_gap, minimum_candidate_duration_to_absorb_gap,
+        )
+
+    candidate_mask = candidate_mask.copy()
+    n = len(candidate_mask)
 
     # Find runs of unflagged samples
-    unflagged_indices = np.where(~flagged)[0]
+    unflagged_indices = np.where(~candidate_mask)[0]
     if len(unflagged_indices) == 0:
-        return flagged
+        return candidate_mask
 
     runs = consecutive(arr=unflagged_indices)
 
     for run in runs:
         run_len = len(run)
-        if run_len > max_value_run:
+        if run_len > minimum_gap:
             continue
 
         start = run[0]
         end = run[-1]
 
-        # Count flagged samples before this run
-        before_start = max(0, start - nas_around_run)
-        flagged_before = np.sum(flagged[before_start:start])
+        # Count candidate_mask samples before this run
+        before_start = max(0, start - minimum_candidate_duration_to_absorb_gap[0])
+        flagged_before = np.sum(candidate_mask[before_start:start])
 
-        # Count flagged samples after this run
-        after_end = min(n, end + 1 + nas_around_run)
-        flagged_after = np.sum(flagged[end + 1:after_end])
+        # Count candidate_mask samples after this run
+        after_end = min(n, end + 1 + minimum_candidate_duration_to_absorb_gap[1])
+        flagged_after = np.sum(candidate_mask[end + 1:after_end])
 
-        if flagged_before >= nas_around_run and flagged_after >= nas_around_run:
-            flagged[run] = True
+        if (
+                flagged_before >= minimum_candidate_duration_to_absorb_gap[0]
+                and flagged_after >= minimum_candidate_duration_to_absorb_gap[1]
+        ):
+            candidate_mask[run] = True
 
-    return flagged
+    return candidate_mask

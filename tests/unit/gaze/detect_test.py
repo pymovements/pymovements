@@ -909,7 +909,7 @@ from pymovements.synthetic import step_function
         pytest.param(
             'blink',
             {
-                'max_value_run': 0,
+                'minimum_gap': 0,
                 'minimum_duration': 1,
                 'maximum_duration': None,
             },
@@ -934,7 +934,7 @@ from pymovements.synthetic import step_function
         pytest.param(
             'blink',
             {
-                'max_value_run': 0,
+                'minimum_gap': 0,
                 'minimum_duration': 1,
                 'maximum_duration': None,
             },
