@@ -159,6 +159,11 @@ def blink(
                 'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of length 2'
                 f' but is {len(minimum_candidate_duration_to_absorb_gap)}',
             )
+    else:
+        raise TypeError(
+            'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int'
+            f' but is {repr(minimum_candidate_duration_to_absorb_gap)}',
+        )
 
     if len(pupil) == 0:
         return Events(name=name, onsets=[], offsets=[])
