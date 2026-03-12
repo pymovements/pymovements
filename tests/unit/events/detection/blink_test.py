@@ -107,6 +107,15 @@ from pymovements.events.detection._library import EventDetectionLibrary
         pytest.param(
             {
                 'pupil': np.ones(10),
+                'minimum_candidate_duration_to_absorb_gap': False,
+            },
+            TypeError,
+            'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int',
+            id='minimum_candidate_duration_to_absorb_gap_bool_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
                 'minimum_candidate_duration_to_absorb_gap': 'test',
             },
             TypeError,
