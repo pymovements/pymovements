@@ -59,8 +59,8 @@ def blink(
     the specified ``minimum_gap``. Blinks are only combined if the candidates before and after the
     short gap have a ``minimum_candidate_duration_to_absorb_gap``.
 
-    Blink events shorter than ``minimum_duration`` and longer than maximum_duration are discarded.
-    Following :cite:p:`Nystrom2024` typical blinks last 50–500 ms.
+    Blink events shorter than ``minimum_duration`` and longer than ``maximum_duration`` are
+    discarded. Following :cite:p:`Nystrom2024` typical blinks last 50–500 ms.
 
     Parameters
     ----------
