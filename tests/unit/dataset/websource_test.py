@@ -1,0 +1,316 @@
+# Copyright (c) 2023-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Tests for WebSource and download utilities."""
+import hashlib
+from pathlib import Path
+from unittest import mock
+from unittest.mock import patch
+
+import pytest
+
+from pymovements.dataset.websource import _DownloadProgressBar
+from pymovements.dataset.websource import _get_redirected_url
+from pymovements.dataset.websource import WebSource
+
+
+def test_websource_init():
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='123')
+    assert source.url == 'http://example.com/file.zip'
+    assert source.filename == 'file.zip'
+    assert source.md5 == '123'
+    assert source.mirrors is None
+
+
+def test_websource_from_dict():
+    data = {'url': 'http://example.com/file2.zip', 'filename': 'file2.zip', 'md5': '456'}
+    source = WebSource.from_dict(data)
+    assert source.url == 'http://example.com/file2.zip'
+    assert source.filename == 'file2.zip'
+    assert source.md5 == '456'
+
+
+@pytest.mark.parametrize(
+    ('source', 'exclude_none', 'expected_dict'),
+    [
+        pytest.param(
+            WebSource(url='http://example.com/file.zip'),
+            False,
+            {'url': 'http://example.com/file.zip', 'filename': None, 'md5': None, 'mirrors': None},
+            id='url_only',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip'),
+            True,
+            {'url': 'http://example.com/file.zip'},
+            id='url_only_exclude_none',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', filename='test.zip'),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': 'test.zip',
+                'md5': None,
+                'mirrors': None,
+            },
+            id='url_and_filename',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', filename='test.zip'),
+            True,
+            {'url': 'http://example.com/file.zip', 'filename': 'test.zip'},
+            id='url_and_filename_exclude_none',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', md5='abc'),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': None,
+                'md5': 'abc',
+                'mirrors': None,
+            },
+            id='url_and_md5',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', md5='abc'),
+            True,
+            {'url': 'http://example.com/file.zip', 'md5': 'abc'},
+            id='url_and_md5_exclude_none',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', mirrors=['http://example2.com/file.zip']),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': None,
+                'md5': None,
+                'mirrors': ['http://example2.com/file.zip'],
+            },
+            id='url_and_mirrors',
+        ),
+        pytest.param(
+            WebSource(url='http://example.com/file.zip', mirrors=['http://example2.com/file.zip']),
+            True,
+            {'url': 'http://example.com/file.zip', 'mirrors': ['http://example2.com/file.zip']},
+            id='url_and_mirrors_exclude_none',
+        ),
+        pytest.param(
+            WebSource(
+                url='http://example.com/file.zip',
+                filename='file.zip',
+                md5='qwer',
+                mirrors=['http://example3.com/file.zip'],
+            ),
+            False,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': 'file.zip',
+                'md5': 'qwer',
+                'mirrors': ['http://example3.com/file.zip'],
+            },
+            id='complete',
+        ),
+        pytest.param(
+            WebSource(
+                url='http://example.com/file.zip',
+                filename='file.zip',
+                md5='qwer',
+                mirrors=['http://example3.com/file.zip'],
+            ),
+            True,
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': 'file.zip',
+                'md5': 'qwer',
+                'mirrors': ['http://example3.com/file.zip'],
+            },
+            id='complete_exclude_none',
+        ),
+    ],
+)
+def test_websource_to_dict(source, exclude_none, expected_dict):
+    data = source.to_dict(exclude_none=exclude_none)
+    assert data == expected_dict, source
+
+
+def test_websource_download_with_mirrors():
+    source = WebSource(
+        url='http://primary.com/file.zip',
+        filename='file.zip',
+        mirrors=['http://mirror1.com/file.zip', 'http://mirror2.com/file.zip'],
+    )
+    with patch('pymovements.dataset.websource._download_file') as mock_download:
+        # Fail primary, fail mirror 1, succeed mirror 2
+        mock_download.side_effect = [
+            RuntimeError('fail'),
+            RuntimeError('fail'),
+            Path('tmp/file.zip'),
+        ]
+
+        with pytest.warns(UserWarning):
+            path = source.download('tmp')
+        assert path == Path('tmp/file.zip')
+        assert mock_download.call_count == 3
+
+
+@pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+def test_websource_download(tmp_path, verbose):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+    filepath = source.download(tmp_path, verbose=verbose)
+
+    assert filepath.exists()
+    assert filepath.name == source.filename
+    assert filepath.parent == tmp_path
+
+    with open(filepath, 'rb') as f:
+        file_bytes = f.read()
+        assert hashlib.md5(file_bytes).hexdigest() == source.md5
+
+
+@pytest.mark.network
+def test_websource_download_md5_None(tmp_path):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+    )
+    filepath = source.download(tmp_path)
+
+    assert filepath.exists()
+    assert filepath.name == source.filename
+    assert filepath.parent == tmp_path
+
+
+def test_websource_download_404(tmp_path):
+    source = WebSource(
+        url='http://github.com/pymovements/pymovement/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    message = f'Downloading resource {source.url} failed'
+    with pytest.raises(RuntimeError, match=message):
+        source.download(tmp_path)
+
+
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+def test_websource_download_os_error(verbose, tmp_path):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
+        message = f'Downloading resource {source.url} failed'
+        with pytest.raises(RuntimeError, match=message):
+            source.download(tmp_path, verbose=verbose)
+
+
+def test_websource_download_http_failure(tmp_path):
+    source = WebSource(
+        url='http://example.com/',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
+        f'Downloading resource {source.url} failed'
+        with pytest.raises(RuntimeError):
+            source.download(tmp_path)
+
+
+@pytest.mark.network
+def test_websource_download_with_invalid_md5(tmp_path):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='00000000000000000000000000000000',
+    )
+
+    with pytest.raises(RuntimeError) as excinfo:
+        source.download(tmp_path)
+
+    message = f"File {tmp_path / source.filename} not found or download corrupted."
+    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    assert str(excinfo.value.__cause__) == message
+
+
+@pytest.mark.network
+def test__get_redirected_url():
+    url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
+    expected_url = 'https://codeload.github.com/pymovements/pymovements/tar.gz/refs/tags/v0.4.0'
+
+    final_url = _get_redirected_url(url)
+
+    assert final_url == expected_url
+
+
+@pytest.mark.network
+def test__get_redirected_url_with_redirects():
+    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
+    expected_final_url = 'https://codeload.github.com/pymovements/pymovements/zip/main'
+
+    final_url = _get_redirected_url(url)
+
+    assert final_url == expected_final_url
+
+
+@pytest.mark.network
+def test__get_redirected_url_with_redirects_max_hops():
+    url = 'https://github.com/pymovements/pymovements/archive/master.zip'
+
+    with pytest.raises(RuntimeError) as excinfo:
+        _get_redirected_url(url, max_hops=0)
+
+    msg, = excinfo.value.args
+    assert msg == 'Request to '\
+        'https://github.com/pymovements/pymovements/archive/master.zip '\
+        'exceeded 0 redirects. The last redirect points to '\
+        'https://codeload.github.com/pymovements/pymovements/zip/main.'
+
+
+def test__DownloadProgressBar_tsize_not_None():
+    download_progress_bar = _DownloadProgressBar()
+    assert download_progress_bar.n == 0
+    assert download_progress_bar.total is None
+    download_progress_bar.update_to()
+    assert download_progress_bar.n == 1
+    assert download_progress_bar.total is None
+    download_progress_bar.update_to(tsize=100)
+    assert download_progress_bar.n == 1
+    assert download_progress_bar.total == 100

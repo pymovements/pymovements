@@ -108,9 +108,11 @@ class Gaze4Hate(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/dbshf/',
-                    'filename': 'gaze4hate_sentence_reading_fix_report.csv',
-                    'md5': 'c8cc645d1fad659f9442d61795da5481',
+                    'source': {
+                        'url': 'https://osf.io/download/dbshf/',
+                        'filename': 'gaze4hate_sentence_reading_fix_report.csv',
+                        'md5': 'c8cc645d1fad659f9442d61795da5481',
+                    },
                     'filename_pattern': 'gaze4hate_sentence_reading_fix_report.csv',
                     'load_kwargs': {
                         'trial_columns': ['pno', 'sno'],
@@ -119,9 +121,11 @@ class Gaze4Hate(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/fgdjw/',
-                    'filename': 'gaze4hate_sentence_reading_IA_report.csv',
-                    'md5': 'e09e791e7d31d6ac3c69cd862d139c57',
+                    'source': {
+                        'url': 'https://osf.io/download/fgdjw/',
+                        'filename': 'gaze4hate_sentence_reading_IA_report.csv',
+                        'md5': 'e09e791e7d31d6ac3c69cd862d139c57',
+                    },
                     'filename_pattern': 'gaze4hate_sentence_reading_IA_report.csv',
                     'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
