@@ -30,13 +30,14 @@ from pymovements.events.detection._library import EventDetectionLibrary
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_error'),
+    ('kwargs', 'expected_error', 'expected_message'),
     [
         pytest.param(
             {
                 'pupil': np.ones((10, 2)),
             },
             ValueError,
+            r'pupil must be a 1D array, but got array with shape \(10, 2\)',
             id='2d_pupil_raises_value_error',
         ),
         pytest.param(
@@ -45,6 +46,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'timesteps': np.arange(20, dtype=int),
             },
             ValueError,
+            'The sequences "pupil" and "timesteps" must be of equal length.',
             id='pupil_timesteps_length_mismatch_raises_value_error',
         ),
         pytest.param(
@@ -53,6 +55,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'delta': -1.0,
             },
             ValueError,
+            'delta must be positive, but got -1.0',
             id='negative_delta_raises_value_error',
         ),
         pytest.param(
@@ -61,6 +64,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'delta': 0.0,
             },
             ValueError,
+            'delta must be positive, but got 0.0',
             id='zero_delta_raises_value_error',
         ),
         pytest.param(
@@ -69,6 +73,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'minimum_duration': -1,
             },
             ValueError,
+            'minimum_duration must not be negative, but got -1',
             id='negative_minimum_duration_raises_value_error',
         ),
         pytest.param(
@@ -77,6 +82,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'maximum_duration': 0,
             },
             ValueError,
+            'maximum_duration must be positive or None, but got 0',
             id='zero_maximum_duration_raises_value_error',
         ),
         pytest.param(
@@ -85,6 +91,7 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'maximum_duration': -1,
             },
             ValueError,
+            'maximum_duration must be positive or None, but got -1',
             id='negative_maximum_duration_raises_value_error',
         ),
         pytest.param(
@@ -94,13 +101,41 @@ from pymovements.events.detection._library import EventDetectionLibrary
                 'maximum_duration': 50,
             },
             ValueError,
+            'maximum_duration must be >= minimum_duration',
             id='maximum_less_than_minimum_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidate_duration_to_absorb_gap': 'test',
+            },
+            TypeError,
+            'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int',
+            id='minimum_candidate_duration_to_absorb_gap_str_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidate_duration_to_absorb_gap': (1, 'test'),
+            },
+            TypeError,
+            'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int',
+            id='minimum_candidate_duration_to_absorb_gap_str_tuple_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidate_duration_to_absorb_gap': (1, 2, 3),
+            },
+            ValueError,
+            'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of length 2',
+            id='minimum_candidate_duration_to_absorb_gap_length_3_raises_value_error',
         ),
     ],
 )
-def test_blink_raise_error(kwargs, expected_error):
+def test_blink_raise_error(kwargs, expected_error, expected_message):
     """Test if blink raises expected error."""
-    with pytest.raises(expected_error):
+    with pytest.raises(expected_error, match=expected_message):
         blink(**kwargs)
 
 
@@ -192,6 +227,25 @@ def test_blink_raise_error(kwargs, expected_error):
             },
             Events(name='blink', onsets=[10], offsets=[172]),
             id='island_absorption_merges_nearby_events',
+        ),
+        pytest.param(
+            # Two NaN blinks with a 3-sample gap — absorbed when minimum_gap=3.
+            # Region 1: 10..89, gap: 90,91,92, Region 2: 93..172.
+            # Not absorbed because left region shorter than minimum candidate duration.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'minimum_gap': 3,
+                'minimum_candidate_duration_to_absorb_gap': (15, 2),
+            },
+            Events(name='blink', onsets=[10], offsets=[172]),
+            id='island_absorption_left_canidate_too_short',
         ),
         pytest.param(
             # Same layout but absorption disabled — two separate blink events.

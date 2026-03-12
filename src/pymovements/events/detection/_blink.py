@@ -20,6 +20,8 @@
 """Provides detection of blinks from the pupil signal."""
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from pymovements._utils import _checks
@@ -99,6 +101,8 @@ def blink(
 
     Raises
     ------
+    TypeError
+        If minimum_candidate_duration_to_absorb_gap neither int nor tuple[int].
     ValueError
         If pupil is not 1D.
         If pupil and timesteps have different lengths.
@@ -126,18 +130,34 @@ def blink(
 
     if minimum_duration < 0:
         raise ValueError(
-            f'minimum_duration must be positive, but got {minimum_duration}',
+            f'minimum_duration must not be negative, but got {minimum_duration}',
         )
 
     if maximum_duration is not None:
         if maximum_duration < 1:
             raise ValueError(
-                f'maximum_duration must be at least 1, but got {maximum_duration}',
+                f'maximum_duration must be positive or None, but got {maximum_duration}',
             )
         if maximum_duration < minimum_duration:
             raise ValueError(
                 f'maximum_duration must be >= minimum_duration, but got '
                 f'maximum_duration={maximum_duration} < minimum_duration={minimum_duration}',
+            )
+
+    if isinstance(minimum_candidate_duration_to_absorb_gap, int):
+        minimum_candidate_duration_to_absorb_gap = (
+            minimum_candidate_duration_to_absorb_gap, minimum_candidate_duration_to_absorb_gap,
+        )
+    elif isinstance(minimum_candidate_duration_to_absorb_gap, Sequence):
+        if not all(isinstance(d, int) for d in minimum_candidate_duration_to_absorb_gap):
+            raise TypeError(
+                'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int'
+                f' but is {repr(minimum_candidate_duration_to_absorb_gap)}',
+            )
+        if len(minimum_candidate_duration_to_absorb_gap) != 2:
+            raise ValueError(
+                'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of length 2'
+                f' but is {len(minimum_candidate_duration_to_absorb_gap)}',
             )
 
     if len(pupil) == 0:
@@ -198,7 +218,7 @@ def blink(
 def _merge_blink_candidates(
         candidate_mask: np.ndarray,
         minimum_gap: int,
-        minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int,
+        minimum_candidate_duration_to_absorb_gap: tuple[int, int],
 ) -> np.ndarray:
     """Absorb short unflagged runs surrounded by masked samples.
 
@@ -208,7 +228,7 @@ def _merge_blink_candidates(
         Boolean array of flagged samples.
     minimum_gap: int
         Maximum length of an unflagged run to absorb.
-    minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int
+    minimum_candidate_duration_to_absorb_gap: tuple[int, int]
         Minimum flagged samples required on each side.
 
     Returns
@@ -216,11 +236,6 @@ def _merge_blink_candidates(
     np.ndarray
         Updated blink candidate mask where minimum gaps are absorbed by surrounding blinks.
     """
-    if isinstance(minimum_candidate_duration_to_absorb_gap, int):
-        minimum_candidate_duration_to_absorb_gap = (
-            minimum_candidate_duration_to_absorb_gap, minimum_candidate_duration_to_absorb_gap,
-        )
-
     candidate_mask = candidate_mask.copy()
     n = len(candidate_mask)
 
