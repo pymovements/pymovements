@@ -43,7 +43,7 @@ def blink(
     """Detect blinks from the pupil signal.
 
     The blink detection algorithm consists of three main stages. The implementation is inspired by
-    :cite:p:`PupilPre, which adapts the velocity-based method described in :cite:p:`Hershman2018`.
+    :cite:p:`PupilPre`, which adapts the velocity-based method described in :cite:p:`Hershman2018`.
 
     **Stage 1 — Flag pupil loss:** All samples where the pupil value is NaN or zero (common
     blink indicators in eye-tracking data) are candidate_mask as blink candidates.
