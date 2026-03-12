@@ -89,6 +89,37 @@ def microsaccades(
     ValueError
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
+
+    Examples
+    --------
+    Create a synthetic velocity signal representing micro-saccades.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.events.detection import microsaccades
+    >>> velocities = step_function(length=10,
+    ...                            steps=[2, 5, 9],
+    ...                            values=[(0.5, 0.5), (1.0, 1.0), (0.2, 0.2)],
+    ...                            start_value=(0., 0.))
+
+    Run microsaccade detection with default parameters.
+
+    >>> events = microsaccades(velocities)
+    >>> events
+
+    Use custom thresholds and explicit timesteps.
+
+    >>> velocities = step_function(length=300,
+    ...                            steps=[50, 150, 250],
+    ...                            values=[(0.1, 0.1), (0.5, 0.5), (1.0, 1.0)],
+    ...                            start_value=(0., 0.))
+    >>> timesteps = np.arange(len(velocities))
+    >>> events = microsaccades(velocities,
+    ...                        timesteps=timesteps,
+    ...                        minimum_duration=10,
+    ...                        threshold_factor=4,
+    ...                        include_nan=True)
+    >>> events
     """
     velocities = np.array(velocities)
 

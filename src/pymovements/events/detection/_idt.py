@@ -96,13 +96,41 @@ def idt(
         A dataframe with detected fixations as rows.
 
     Raises
-    ------
+    -------
     TypeError
         If minimum_duration is not of type ``int`` or timesteps
     ValueError
         If positions is not shaped (N, 2)
         If dispersion_threshold is not greater than 0
         If duration_threshold is not greater than 0
+
+    Examples
+    --------
+    Create a synthetic step signal representing gaze segments.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.events.detection import idt
+    >>> positions = step_function(length=10, steps=[2, 5, 9],
+    ...                           values=[(1., 2.), (2., 3.), (3., 4.)],
+    ...                           start_value=(0., 0.))
+
+    Run fixation detection.
+
+    >>> events = idt(positions)
+    >>> events
+
+    Use custom thresholds.
+
+    >>> positions = step_function(length=300, steps=[100, 200],
+    ...                           values=[(1., 1.), (2., 2.)],
+    ...                           start_value=(0., 0.))
+    >>> timesteps = np.arange(len(positions))
+    >>> events = idt(positions, timesteps=timesteps,
+    ...              minimum_duration=50,
+    ...              dispersion_threshold=0.5)
+    >>> events
+
     """
     positions = np.array(positions)
 
