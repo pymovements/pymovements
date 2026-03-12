@@ -2,6 +2,15 @@ name: IITB_HGC
 
 long_name: 'IITB-Hallucination Gaze Corpus'
 
+description: |
+ IITB-Hallucination Gaze Corpus :cite:p:`IITB_HGC`.
+
+  This dataset includes monocular eye tracking data from 5 participants in a single
+  session. Recording both eyes at 2000 Hz, each participant reads 500 generated paragraphs
+  and judges whether it was hallucinated or not.
+
+  Check the respective paper for details :cite:p:`IITB_HGC`.
+
 resources:
   - content: precomputed_events
     url: https://huggingface.co/datasets/cfilt/IITB-HGC/resolve/main/IITB_HGC.jsonl?download=true
