@@ -39,7 +39,7 @@ def blink(
         minimum_duration: int = 50,
         maximum_duration: int | None = 500,
         minimum_gap: int = 5,
-        minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int = 2,
+        minimum_candidates_around_gap: tuple[int, int] | int = 2,
         name: str = 'blink',
 ) -> Events:
     """Detect blinks from the pupil signal.
@@ -70,11 +70,13 @@ def blink(
     timesteps: list[int] | np.ndarray | None
         shape (N,)
         Corresponding continuous 1D timestep time series. If None, sample-based timesteps are
-        assumed. (default: None)
+        assumed.
+        (default: None)
     delta: float | None
         Threshold on absolute pupil difference for flagging rapid changes. If None, it is
         auto-estimated as ``5 * np.nanpercentile(abs_diff, 95)`` from valid absolute
-        differences. (default: None)
+        differences.
+        (default: None)
     minimum_duration: int
         Minimum blink duration. The duration is specified in the units used in ``timesteps``.
         If ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
@@ -82,15 +84,19 @@ def blink(
     maximum_duration: int | None
         Maximum blink duration. The duration is specified in the units used in ``timesteps``.
         If ``timesteps`` is None, then ``maximum_duration`` is specified in numbers of samples.
-        Set to None to disable the upper bound. (default: 500)
+        Set to None to disable the upper bound.
+        (default: 500)
     minimum_gap: int
         Minimum time gap in-between two blinks. Blinks that have a smaller time gap are combined
         into a single event. The duration is specified in the units used in ``timesteps``. If
         ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
         (default: 100)
-    minimum_candidate_duration_to_absorb_gap: tuple[int, int] | int
-        Minimum number of candidate_mask samples required on each side of an unflagged run
-        for it to be absorbed. (default: 2)
+    minimum_candidates_around_gap: tuple[int, int] | int
+        Minimum number of candidate samples required on each side of a gap for it to be absorbed. If
+        a tuple is provided the values are used for the number of left and right candidates
+        respectively. If an integer is provided the number of candidate samples required is
+        symmetric.
+        (default: (2, 2))
     name: str
         Name for detected events in Events. (default: 'blink')
 
@@ -144,25 +150,25 @@ def blink(
                 f'maximum_duration={maximum_duration} < minimum_duration={minimum_duration}',
             )
 
-    if isinstance(minimum_candidate_duration_to_absorb_gap, int):
-        minimum_candidate_duration_to_absorb_gap = (
-            minimum_candidate_duration_to_absorb_gap, minimum_candidate_duration_to_absorb_gap,
+    if isinstance(minimum_candidates_around_gap, int):
+        minimum_candidates_around_gap = (
+            minimum_candidates_around_gap, minimum_candidates_around_gap,
         )
-    elif isinstance(minimum_candidate_duration_to_absorb_gap, Sequence):
-        if not all(isinstance(d, int) for d in minimum_candidate_duration_to_absorb_gap):
+    elif isinstance(minimum_candidates_around_gap, Sequence):
+        if not all(isinstance(d, int) for d in minimum_candidates_around_gap):
             raise TypeError(
-                'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int'
-                f' but is {repr(minimum_candidate_duration_to_absorb_gap)}',
+                'minimum_candidates_around_gap must be an int or a sequence of int'
+                f' but is {repr(minimum_candidates_around_gap)}',
             )
-        if len(minimum_candidate_duration_to_absorb_gap) != 2:
+        if len(minimum_candidates_around_gap) != 2:
             raise ValueError(
-                'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of length 2'
-                f' but is {len(minimum_candidate_duration_to_absorb_gap)}',
+                'minimum_candidates_around_gap must be an int or a sequence of length 2'
+                f' but is {len(minimum_candidates_around_gap)}',
             )
     else:
         raise TypeError(
-            'minimum_candidate_duration_to_absorb_gap must be an int or a sequence of int'
-            f' but is {repr(minimum_candidate_duration_to_absorb_gap)}',
+            'minimum_candidates_around_gap must be an int or a sequence of int'
+            f' but is {repr(minimum_candidates_around_gap)}',
         )
 
     if len(pupil) == 0:
@@ -188,7 +194,7 @@ def blink(
     # Stage 3: Combine blinks with less than minimum time gap in-between.
     if minimum_gap > 0:
         candidate_mask = _merge_blink_candidates(
-            candidate_mask, minimum_gap, minimum_candidate_duration_to_absorb_gap,
+            candidate_mask, minimum_gap, minimum_candidates_around_gap,
         )
 
     # Group consecutive candidate_mask samples into events
