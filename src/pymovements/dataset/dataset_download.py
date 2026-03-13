@@ -84,7 +84,7 @@ def download_dataset(
     if not definition.resources:
         raise AttributeError('resources must be specified to download a dataset.')
 
-    for content in ('gaze', 'precomputed_events', 'precomputed_reading_measures'):
+    for content in ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'ImageStimulus', 'TextStimulus'):
         if definition.resources.has_content(content):
             if not definition.mirrors:
                 mirrors = None
