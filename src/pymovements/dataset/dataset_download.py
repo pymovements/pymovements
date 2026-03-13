@@ -142,7 +142,7 @@ def extract_dataset(
         'precomputed_events': 'precomputed_events',
         'precomputed_reading_measures': 'precomputed_reading_measures',
         'ImageStimulus': 'stimuli',
-        'TextStimulus': 'stimuli    
+        'TextStimulus': 'stimuli',   
     }
 
     for content, content_directory in content_dirnames.items():
