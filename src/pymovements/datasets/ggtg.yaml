@@ -44,6 +44,12 @@ resources:
       trial_columns:
       - stimulus
 
+  - content: ImageStimulus
+    url: https://osf.io/download/3y9q2/
+    filename: "stimulus_imgs.zip"
+    md5: b481ea115040766809becac82830df51
+    filename_pattern: "{trial_name}-{condition}.{type}.{page_nr}.png"
+
 experiment:
   screen_width_px: 1100
   screen_height_px: 900
