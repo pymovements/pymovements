@@ -846,7 +846,8 @@ def test_load_gaze_samples_csv_file(
     file = DatasetFile(path=filepath, definition=resource_definition)
 
     gaze = load_gaze_file(
-        file=file, dataset_definition=DatasetDefinition(**definition_dict),
+        file=file,
+        dataset_definition=DatasetDefinition(**definition_dict),
     )
     assert gaze == expected_gaze
 
@@ -885,7 +886,8 @@ def test_load_precomputed_rm_file(target_filename, make_example_file):
     file = DatasetFile(path=filepath, definition=resource_definition)
 
     reading_measure = load_precomputed_reading_measure_file(
-        file, dataset_definition=DatasetDefinition(),
+        file,
+        dataset_definition=DatasetDefinition(),
     )
     expected_df = pl.read_csv(filepath)
 

@@ -830,7 +830,8 @@ def resample(
             return dt
 
         numeric_columns = [
-            c for c in columns
+            c
+            for c in columns
             if issubclass(
                 (bd if isinstance(bd := _base_dtype(samples.schema[c]), type) else type(bd)),
                 NumericType,

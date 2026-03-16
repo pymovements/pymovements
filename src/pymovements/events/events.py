@@ -181,7 +181,8 @@ class Events:
         if self.trial_columns is not None:
             # Keep any additional columns beyond trial and minimal schema columns
             other_cols = [
-                col for col in self.frame.columns
+                col
+                for col in self.frame.columns
                 if col not in self.trial_columns and col not in self._minimal_schema
             ]
             self.frame = self.frame.select(

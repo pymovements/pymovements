@@ -72,7 +72,8 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:
                     groupdict['datetime'] = datetime.datetime.strptime(
-                        groupdict['date'].strip(), '%d.%m.%Y %H:%M:%S',
+                        groupdict['date'].strip(),
+                        '%d.%m.%Y %H:%M:%S',
                     )
                 except ValueError:
                     # Keep original string if parsing fails
