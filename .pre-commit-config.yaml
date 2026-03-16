@@ -7,17 +7,13 @@ ci:
   autoupdate_commit_msg: 'ci: pre-commit autoupdate'
 
 repos:
-  # Ruff + Ty integration
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.2
     hooks:
-      # Lint and fix
-      - id: ruff-check
+      - id: ruff-check  # lint and fix
         args: [ --fix, --show-fixes ]
-      # Format
-      - id: ruff-format
-      # Add future annotations to src/ files (excluding __init__.py)
-      - id: ruff
+      - id: ruff-format  # formatting autochanges
+      - id: ruff  # add future annotations to src/ files (excluding __init__.py)
         name: ruff-add-future-annotations
         files: ^src/
         exclude: __init__\.py$
@@ -27,18 +23,6 @@ repos:
           - --fix
           - --config
           - 'lint.isort.required-imports = ["from __future__ import annotations"]'
-
-  # Type checking
-  - repo: local
-    hooks:
-      - id: ty-check
-        name: ty-check
-        language: python
-        entry: ty check
-        types: [ python ]
-        args: [ --output-format=concise ]
-        pass_filenames: false
-        additional_dependencies: [ty]
   - repo: https://github.com/citation-file-format/cffconvert
     rev: 054bda51dbe278b3e86f27c890e3f3ac877d616c
     hooks:
@@ -49,19 +33,15 @@ repos:
     rev: v2.4.1
     hooks:
       - id: codespell
+  - repo: https://github.com/dannysepler/rm_unneeded_f_str
+    rev: v0.2.0
+    hooks:
+      - id: rm-unneeded-f-str
   - repo: https://github.com/datarootsio/databooks
     rev: 1.3.10
     hooks:
       - id: databooks-meta
         args: [ "--cell-meta-keep=tags", "--cell-fields-keep=id"]
-  - repo: https://github.com/pappasam/toml-sort
-    rev: v0.24.3
-    hooks:
-      - id: toml-sort-fix
-  - repo: https://github.com/dannysepler/rm_unneeded_f_str
-    rev: v0.2.0
-    hooks:
-      - id: rm-unneeded-f-str
   - repo: https://github.com/kynan/nbstripout
     rev: 0.9.1
     hooks:
@@ -73,16 +53,21 @@ repos:
       - id: insert-license
         args: [ --use-current-year ]
         types: [ python ]
-
-  # notebook support
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1
     hooks:
-      - id: nbqa-ruff
+      - id: nbqa-ruff  # notebook linting
         args: [ --fix ]
       - id: nbqa-ruff-format
-
-
+  - repo: https://github.com/pappasam/toml-sort
+    rev: v0.24.3
+    hooks:
+      - id: toml-sort-fix
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [ pandas-stubs, types-tqdm, types-PyYAML ]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -102,11 +87,16 @@ repos:
       - id: no-commit-to-branch
       - id: requirements-txt-fixer
       - id: trailing-whitespace
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+  - repo: local
     hooks:
-      - id: mypy
-        additional_dependencies: [ pandas-stubs, types-tqdm, types-PyYAML ]
+      - id: ty-check  # type checking
+        name: ty-check
+        language: python
+        entry: ty check
+        types: [ python ]
+        args: [ --output-format=concise ]
+        pass_filenames: false
+        additional_dependencies: [ty]
   - repo: local
     hooks:
       - id: write-datasets-yaml
