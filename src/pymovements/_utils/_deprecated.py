@@ -65,16 +65,16 @@ class DeprecatedMetaClass(type):
         **kwargs: Any,
     ) -> DeprecatedMetaClass:
         """Create a new deprecated class."""
-        alias = classdict.get('_DeprecatedMetaClass__alias')  # type: ignore[attr-defined]
-        version_deprecated = classdict.get('_DeprecatedMetaClass__version_deprecated')  # type: ignore[attr-defined]
-        version_removed = classdict.get('_DeprecatedMetaClass__version_removed')  # type: ignore[attr-defined]
+        alias = classdict.get('_DeprecatedMetaClass__alias')
+        version_deprecated = classdict.get('_DeprecatedMetaClass__version_deprecated')
+        version_removed = classdict.get('_DeprecatedMetaClass__version_removed')
 
         if alias is not None:
 
             def new(cls: type, *args: Any, **kwargs: Any) -> type:
-                alias = cls._DeprecatedMetaClass__alias
-                version_deprecated = cls._DeprecatedMetaClass__version_deprecated
-                version_removed = cls._DeprecatedMetaClass__version_removed
+                alias = cls._DeprecatedMetaClass__alias  # type: ignore[attr-defined]
+                version_deprecated = cls._DeprecatedMetaClass__version_deprecated  # type: ignore[attr-defined]
+                version_removed = cls._DeprecatedMetaClass__version_removed  # type: ignore[attr-defined]
 
                 warn(
                     f'{cls.__name__} has been renamed to {alias.__name__} '
