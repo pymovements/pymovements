@@ -21,8 +21,10 @@
 
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
+from pymovements.stimulus.text import WritingSystem
 
 __all__ = [
     'ImageStimulus',
     'TextStimulus',
+    'WritingSystem',
 ]

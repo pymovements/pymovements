@@ -1688,6 +1688,22 @@ def test_gaze_save_empty_experiment_true_save(tmp_path):
         )
 
 
+def test_gaze_save_samples_csv_no_warning_without_nested_columns(tmp_path):
+    gaze = _create_gaze()
+    gaze.unnest()
+
+    assert not any(gaze.samples[column].dtype == pl.List for column in gaze.samples.columns)
+
+    gaze.save(
+        dirpath=tmp_path,
+        save_samples=True,
+        save_events=False,
+        save_experiment=False,
+        verbose=1,
+        extension='csv',
+    )
+
+
 def test_transform_early_return_on_empty_grouped_frames():
     # Create an empty samples frame with only the trial column so grouping yields no groups
     samples = pl.DataFrame(schema={'trial': pl.Int64})
