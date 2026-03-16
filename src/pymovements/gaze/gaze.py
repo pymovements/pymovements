@@ -1201,17 +1201,11 @@ class Gaze:
                 # Create filter expression for selecting respective group rows.
                 if len(self.trial_columns) == 1:
                     group_filter_expression = (
-                        polars.col(
-                            self.trial_columns[0],
-                        )
-                        == group_identifier[0]
+                        polars.col(self.trial_columns[0]) == group_identifier[0]
                     )
                 else:
                     group_filter_expression = (
-                        polars.col(
-                            self.trial_columns[0],
-                        )
-                        == group_identifier[0]
+                        polars.col(self.trial_columns[0]) == group_identifier[0]
                     )
                     for name, value in zip(self.trial_columns[1:], group_identifier[1:]):
                         group_filter_expression = group_filter_expression & (
@@ -1595,6 +1589,9 @@ class Gaze:
         # preserve_structure=True attempts to unnest.
         if preserve_structure:
             with suppress(Warning, ValueError, AttributeError):  # tolerate common cases
+                # - Warning: nothing to unnest when no list columns exist
+                # - ValueError/AttributeError: shape or configuration-related issues
+                # In all these cases: continue without failing and use fallback logic.
                 self.unnest()
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
@@ -1767,9 +1764,8 @@ class Gaze:
                 )
         else:
             # Fallback: extract coordinates from list columns per-row without unnesting
-            source_col = (
-                'pixel' if (gaze_type == 'pixel' and 'pixel' in self.samples.columns) else None
-            )
+            use_pixel_column = gaze_type == 'pixel' and 'pixel' in self.samples.columns
+            source_col = 'pixel' if use_pixel_column else None
             if (
                 source_col is None
                 and gaze_type == 'position'

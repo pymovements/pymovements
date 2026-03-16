@@ -830,8 +830,7 @@ def resample(
             return dt
 
         numeric_columns = [
-            c
-            for c in columns
+            c for c in columns
             if issubclass(
                 (bd if isinstance(bd := _base_dtype(samples.schema[c]), type) else type(bd)),
                 NumericType,
@@ -851,13 +850,8 @@ def resample(
 
     # Resample data by datetime column, create milliseconds time column and drop datetime column
     samples = (
-        samples.upsample(
-            time_column='datetime',
-            every=f'{resample_step_us}us',
-        )
-        .with_columns(
-            pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
-        )
+        samples.upsample(time_column='datetime', every=f'{resample_step_us}us')
+        .with_columns(pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'))
         .drop('datetime')
     )
 

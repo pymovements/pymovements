@@ -348,12 +348,7 @@ def mock_toy(
             raise ValueError(f'invalid value for eyes: {eyes}')
 
         if remote:
-            gaze = gaze.with_columns(
-                [
-                    pl.lit(680.0).alias('distance'),
-                ]
-            )
-
+            gaze = gaze.with_columns([pl.lit(680.0).alias('distance')])
             distance_column = 'distance'
             distance_cm = None
         else:

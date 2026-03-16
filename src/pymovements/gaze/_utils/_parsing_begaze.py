@@ -72,8 +72,7 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
                 # BeGaze Date format: 'DD.MM.YYYY HH:MM:SS'
                 try:
                     groupdict['datetime'] = datetime.datetime.strptime(
-                        groupdict['date'].strip(),
-                        '%d.%m.%Y %H:%M:%S',
+                        groupdict['date'].strip(), '%d.%m.%Y %H:%M:%S',
                     )
                 except ValueError:
                     # Keep original string if parsing fails
@@ -310,7 +309,9 @@ def parse_begaze(
 
     def has_eye_columns(eye: str) -> bool:
         # Only require X/Y columns - pupil diameter may be absent in some exports (e.g. DIDEC)
-        return f'{eye} POR X [px]' in header_idx and f'{eye} POR Y [px]' in header_idx
+        has_x_coordinate = f'{eye} POR X [px]' in header_idx
+        has_y_coordinate = f'{eye} POR Y [px]' in header_idx
+        return has_x_coordinate and has_y_coordinate
 
     if not has_eye_columns(selected_eye):
         # fall back to the other eye if available and inform the user once
@@ -446,9 +447,10 @@ def parse_begaze(
         y_pix = check_nan(y_s)
         pupil = check_nan(pupil_s)
 
-        pupil_conf_s = (
-            parts[header_idx['Pupil Confidence']] if 'Pupil Confidence' in header_idx else None
-        )
+        if 'Pupil Confidence' in header_idx:
+            pupil_conf_s = parts[header_idx['Pupil Confidence']]
+        else:
+            pupil_conf_s = None
 
         event = parse_event_for_eye(parts, selected_eye, header_idx)
         # Handle blink samples: override with NaNs for positions and 0.0 for pupil
