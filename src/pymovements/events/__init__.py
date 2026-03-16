@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides event related functionality."""
+
 from pymovements.events.detection import blink
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
@@ -33,7 +34,7 @@ from pymovements.events.segmentation import events2segmentation
 from pymovements.events.segmentation import events2timeratio
 from pymovements.events.segmentation import segmentation2events
 
-
+# fmt: off
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',

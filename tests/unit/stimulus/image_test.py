@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Image stimulus class."""
+
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -61,9 +62,7 @@ def test_image_stimulus_from_files(path):
 )
 @pytest.mark.parametrize(
     ('stimulus_id'),
-    (
-        pytest.param(0, id='stimulus_id_0'),
-    ),
+    [pytest.param(0, id='stimulus_id_0')],
 )
 @pytest.mark.parametrize(
     ('origin'),

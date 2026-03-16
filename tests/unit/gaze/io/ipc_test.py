@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from IPC/feather."""
+
 import pytest
 
 from pymovements.gaze import from_ipc
@@ -94,7 +95,10 @@ def test_shapes(filename, kwargs, shape, make_example_file):
     ],
 )
 def test_from_ipc_parameter_is_deprecated(
-        filename, kwargs, make_example_file, assert_deprecation_is_removed,
+    filename,
+    kwargs,
+    make_example_file,
+    assert_deprecation_is_removed,
 ):
     filepath = make_example_file(filename)
 
@@ -105,5 +109,4 @@ def test_from_ipc_parameter_is_deprecated(
         function_name=f'keyword argument {list(kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version='0.29.0',
-
     )

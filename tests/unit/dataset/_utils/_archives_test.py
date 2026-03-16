@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements utils archives."""
+
 import bz2
 import gzip
 import lzma
@@ -37,18 +38,23 @@ def test_extract_archive_wrong_suffix():
     """Test unsupported suffix for extract_archive()."""
     with pytest.raises(RuntimeError) as excinfo:
         extract_archive(pathlib.Path('test.jpg'))
-    msg, = excinfo.value.args
-    assert msg == """Unsupported compression or archive type: '.jpg'.
+    (msg,) = excinfo.value.args
+    assert (
+        msg
+        == """Unsupported compression or archive type: '.jpg'.
 Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz', '.zip']'."""
+    )
 
 
 def test_detect_file_type_no_suffixes():
     """Test extract_archive() for no files with suffix."""
     with pytest.raises(RuntimeError) as excinfo:
         extract_archive(pathlib.Path('test'))
-    msg, = excinfo.value.args
-    assert msg == "File 'test' has no suffixes that could be used to "\
+    (msg,) = excinfo.value.args
+    assert (
+        msg == "File 'test' has no suffixes that could be used to "
         'detect the archive type or compression.'
+    )
 
 
 @pytest.fixture(
@@ -118,9 +124,8 @@ def fixture_archive(request, make_text_file):
         with tarfile.TarFile.open(archive_path, 'w') as fp:
             fp.add(filepath, arcname=os.path.join(top_level_directory, filepath.name))
 
-    elif (
-        (compression is not None and extension == 'tar') or
-        (compression in {'tbz', 'tbz2', 'tgz'})
+    elif (compression is not None and extension == 'tar') or (
+        compression in {'tbz', 'tbz2', 'tgz'}
     ):
         if compression in {'tbz', 'tbz2'}:
             compression = 'bz2'
@@ -210,7 +215,9 @@ def fixture_unsupported_archive(request, make_text_file):
     ('recursive', 'remove_finished', 'remove_top_level', 'expected_files'),
     [
         pytest.param(
-            False, False, False,
+            False,
+            False,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -218,7 +225,9 @@ def fixture_unsupported_archive(request, make_text_file):
             id='recursive_false_remove_finished_false',
         ),
         pytest.param(
-            False, True, False,
+            False,
+            True,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -226,7 +235,9 @@ def fixture_unsupported_archive(request, make_text_file):
             id='recursive_false_remove_finished_true',
         ),
         pytest.param(
-            True, False, False,
+            True,
+            False,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -237,7 +248,9 @@ def fixture_unsupported_archive(request, make_text_file):
             id='recursive_true_remove_finished_false',
         ),
         pytest.param(
-            True, True, False,
+            True,
+            True,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive'),
@@ -247,7 +260,9 @@ def fixture_unsupported_archive(request, make_text_file):
             id='recursive_true_remove_finished_true',
         ),
         pytest.param(
-            False, False, True,
+            False,
+            False,
+            True,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -255,7 +270,9 @@ def fixture_unsupported_archive(request, make_text_file):
             id='recursive_false_remove_top_level_true',
         ),
         pytest.param(
-            True, False, True,
+            True,
+            False,
+            True,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -267,11 +284,11 @@ def fixture_unsupported_archive(request, make_text_file):
     ],
 )
 def test_extract_archive_destination_path_None(
-        recursive,
-        remove_finished,
-        remove_top_level,
-        expected_files,
-        archive,
+    recursive,
+    remove_finished,
+    remove_top_level,
+    expected_files,
+    archive,
 ):
     extract_archive(
         source_path=archive,
@@ -280,9 +297,7 @@ def test_extract_archive_destination_path_None(
         remove_finished=remove_finished,
         remove_top_level=remove_top_level,
     )
-    result_files = {
-        str(file.relative_to(archive.parent)) for file in archive.parent.rglob('*')
-    }
+    result_files = {str(file.relative_to(archive.parent)) for file in archive.parent.rglob('*')}
 
     expected_files = set(expected_files)
     if not remove_finished:
@@ -300,7 +315,9 @@ def test_extract_archive_destination_path_None(
     ],
 )
 def test_extract_compressed_file_destination_path_None(
-        recursive, remove_finished, compressed_file,
+    recursive,
+    remove_finished,
+    compressed_file,
 ):
     extract_archive(
         source_path=compressed_file,
@@ -333,9 +350,9 @@ def test_extract_compressed_file_destination_path_None(
     ],
 )
 def test_extract_unsupported_archive_destination_path_None(
-        recursive,
-        remove_finished,
-        unsupported_archive,
+    recursive,
+    remove_finished,
+    unsupported_archive,
 ):
     with pytest.raises(RuntimeError) as excinfo:
         extract_archive(
@@ -344,16 +361,21 @@ def test_extract_unsupported_archive_destination_path_None(
             recursive=recursive,
             remove_finished=remove_finished,
         )
-    msg, = excinfo.value.args
-    assert msg == """Unsupported compression or archive type: '.jpg.xz'.
+    (msg,) = excinfo.value.args
+    assert (
+        msg
+        == """Unsupported compression or archive type: '.jpg.xz'.
 Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz', '.zip']'."""
+    )
 
 
 @pytest.mark.parametrize(
     ('recursive', 'remove_finished', 'remove_top_level', 'expected_files'),
     [
         pytest.param(
-            False, False, False,
+            False,
+            False,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -361,7 +383,9 @@ Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz',
             id='recursive_false_remove_finished_false',
         ),
         pytest.param(
-            False, True, False,
+            False,
+            True,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -369,7 +393,9 @@ Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz',
             id='recursive_false_remove_finished_true',
         ),
         pytest.param(
-            True, False, False,
+            True,
+            False,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive'),
@@ -380,7 +406,9 @@ Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz',
             id='recursive_true_remove_finished_false',
         ),
         pytest.param(
-            True, True, False,
+            True,
+            True,
+            False,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive'),
@@ -390,7 +418,9 @@ Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz',
             id='recursive_true_remove_finished_true',
         ),
         pytest.param(
-            False, False, True,
+            False,
+            False,
+            True,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive.zip'),
@@ -398,7 +428,9 @@ Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz',
             id='recursive_false_remove_top_level_true',
         ),
         pytest.param(
-            True, False, True,
+            True,
+            False,
+            True,
             (
                 'toplevel',
                 os.path.join('toplevel', 'recursive'),
@@ -410,12 +442,12 @@ Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz',
     ],
 )
 def test_extract_archive_destination_path_not_None(
-        recursive,
-        remove_finished,
-        remove_top_level,
-        archive,
-        tmp_path,
-        expected_files,
+    recursive,
+    remove_finished,
+    remove_top_level,
+    archive,
+    tmp_path,
+    expected_files,
 ):
     destination_path = tmp_path / pathlib.Path('tmpfoo')
     extract_archive(
@@ -445,10 +477,10 @@ def test_extract_archive_destination_path_not_None(
     ],
 )
 def test_extract_compressed_file_destination_path_not_None(
-        recursive,
-        remove_finished,
-        compressed_file,
-        tmp_path,
+    recursive,
+    remove_finished,
+    compressed_file,
+    tmp_path,
 ):
     destination_filename = 'tmpfoo'
     destination_path = tmp_path / pathlib.Path(destination_filename)
@@ -483,10 +515,10 @@ def test_extract_compressed_file_destination_path_not_None(
     ],
 )
 def test_extract_unsupported_archive_destination_path_not_None(
-        recursive,
-        remove_finished,
-        unsupported_archive,
-        tmp_path,
+    recursive,
+    remove_finished,
+    unsupported_archive,
+    tmp_path,
 ):
     destination_path = tmp_path / pathlib.Path('tmpfoo')
     with pytest.raises(RuntimeError) as excinfo:
@@ -496,15 +528,18 @@ def test_extract_unsupported_archive_destination_path_not_None(
             recursive=recursive,
             remove_finished=remove_finished,
         )
-    msg, = excinfo.value.args
-    assert msg == """Unsupported compression or archive type: '.jpg.xz'.
+    (msg,) = excinfo.value.args
+    assert (
+        msg
+        == """Unsupported compression or archive type: '.jpg.xz'.
 Supported suffixes are: '['.bz2', '.gz', '.tar', '.tbz', '.tbz2', '.tgz', '.xz', '.zip']'."""
+    )
 
 
 def test_decompress_unknown_compression_suffix():
     with pytest.raises(RuntimeError) as excinfo:
         _decompress(pathlib.Path('test.zip.zip'))
-    msg, = excinfo.value.args
+    (msg,) = excinfo.value.args
     assert msg == "Couldn't detect a compression from suffix .zip."
 
 
@@ -549,14 +584,14 @@ def test_decompress_unknown_compression_suffix():
     ],
 )
 def test_extract_archive_destination_path_not_None_no_remove_top_level_no_remove_finished_twice(
-        verbose,
-        recursive,
-        remove_top_level,
-        archive,
-        tmp_path,
-        resume,
-        expected_files,
-        capsys,
+    verbose,
+    recursive,
+    remove_top_level,
+    archive,
+    tmp_path,
+    resume,
+    expected_files,
+    capsys,
 ):
     destination_path = tmp_path / pathlib.Path('tmp')
     extract_archive(

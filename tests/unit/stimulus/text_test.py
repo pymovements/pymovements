@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
+
 from dataclasses import replace
 
 import polars as pl
@@ -32,14 +33,16 @@ from pymovements.stimulus import WritingSystem
 @pytest.fixture(name='sample_aoi_dataframe')
 def fixture_sample_aoi_dataframe():
     """Create a sample AOI dataframe for testing."""
-    return pl.DataFrame({
-        'aoi': ['word1', 'word2', 'word3'],
-        'x_min': [0, 100, 200],
-        'y_min': [0, 0, 0],
-        'width': [100, 100, 100],
-        'height': [50, 50, 50],
-        'page': [1, 1, 2],
-    })
+    return pl.DataFrame(
+        {
+            'aoi': ['word1', 'word2', 'word3'],
+            'x_min': [0, 100, 200],
+            'y_min': [0, 0, 0],
+            'width': [100, 100, 100],
+            'height': [50, 50, 50],
+            'page': [1, 1, 2],
+        }
+    )
 
 
 HORIZONTAL_LR = WritingSystem('left-to-right', axis='horizontal', lining='top-to-bottom')
@@ -704,15 +707,18 @@ def test_text_stimulus_rtl_writing_mode_and_line_order(make_example_file):
 
     assert text_stimulus_rtl.writing_system == HORIZONTAL_RL
 
-    first_line = (
-        text_stimulus_rtl.aois
-        .filter(pl.col('line_idx') == 0)
-        .select('char', 'top_left_x')
-    )
+    first_line = text_stimulus_rtl.aois.filter(pl.col('line_idx') == 0).select('char', 'top_left_x')
 
     assert first_line['char'].to_list() == ['T', 'C', 'A', 'R', 'T', 'S', 'B', 'A']
     assert first_line['top_left_x'].to_list() == [
-        1160.0, 1175.0, 1190.0, 1205.0, 1220.0, 1235.0, 1250.0, 1265.0,
+        1160.0,
+        1175.0,
+        1190.0,
+        1205.0,
+        1220.0,
+        1235.0,
+        1250.0,
+        1265.0,
     ]
 
 
@@ -731,14 +737,11 @@ def test_text_stimulus_vertical_rl_writing_mode_and_line_order(make_example_file
 
     assert text_stimulus_vertical_rl.writing_system == VERTICAL_RL
 
-    first_line = (
-        text_stimulus_vertical_rl.aois
-        .filter(pl.col('line_idx') == 0)
-        .select('char', 'top_left_x', 'top_left_y')
+    first_line = text_stimulus_vertical_rl.aois.filter(pl.col('line_idx') == 0).select(
+        'char', 'top_left_x', 'top_left_y'
     )
     line_positions = (
-        text_stimulus_vertical_rl.aois
-        .group_by('line_idx')
+        text_stimulus_vertical_rl.aois.group_by('line_idx')
         .agg(pl.col('top_left_x').first().alias('x'))
         .sort('line_idx')
     )
@@ -746,10 +749,24 @@ def test_text_stimulus_vertical_rl_writing_mode_and_line_order(make_example_file
 
     assert first_line['char'].to_list() == ['A', 'B', 'S', 'T', 'R', 'A', 'C', 'T']
     assert first_line['top_left_x'].to_list() == [
-        1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0, 1265.0,
+        1265.0,
+        1265.0,
+        1265.0,
+        1265.0,
+        1265.0,
+        1265.0,
+        1265.0,
+        1265.0,
     ]
     assert first_line['top_left_y'].to_list() == [
-        122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0,
+        122.0,
+        140.0,
+        158.0,
+        176.0,
+        194.0,
+        212.0,
+        230.0,
+        248.0,
     ]
     assert line_indices == [0, 1, 2]
     assert line_positions['x'].to_list() == [1265.0, 1205.0, 1145.0]
@@ -770,14 +787,11 @@ def test_text_stimulus_vertical_lr_writing_mode_and_line_order(make_example_file
 
     assert text_stimulus_vertical_lr.writing_system == VERTICAL_LR
 
-    first_line = (
-        text_stimulus_vertical_lr.aois
-        .filter(pl.col('line_idx') == 0)
-        .select('char', 'top_left_x', 'top_left_y')
+    first_line = text_stimulus_vertical_lr.aois.filter(pl.col('line_idx') == 0).select(
+        'char', 'top_left_x', 'top_left_y'
     )
     line_positions = (
-        text_stimulus_vertical_lr.aois
-        .group_by('line_idx')
+        text_stimulus_vertical_lr.aois.group_by('line_idx')
         .agg(pl.col('top_left_x').first().alias('x'))
         .sort('line_idx')
     )
@@ -785,10 +799,24 @@ def test_text_stimulus_vertical_lr_writing_mode_and_line_order(make_example_file
 
     assert first_line['char'].to_list() == ['A', 'B', 'S', 'T', 'R', 'A', 'C', 'T']
     assert first_line['top_left_x'].to_list() == [
-        400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0,
+        400.0,
+        400.0,
+        400.0,
+        400.0,
+        400.0,
+        400.0,
+        400.0,
+        400.0,
     ]
     assert first_line['top_left_y'].to_list() == [
-        122.0, 140.0, 158.0, 176.0, 194.0, 212.0, 230.0, 248.0,
+        122.0,
+        140.0,
+        158.0,
+        176.0,
+        194.0,
+        212.0,
+        230.0,
+        248.0,
     ]
     assert line_indices == [0, 1, 2]
     assert line_positions['x'].to_list() == [400.0, 460.0, 520.0]

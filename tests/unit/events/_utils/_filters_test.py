@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements filters."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -36,14 +37,19 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans
                     [0, 1, 2, 3, 4],
                     [5, 6, 7, 8],
                 ],
-                'values': np.array([
-                    (np.nan, np.nan), (0, 0),
-                    (0, 0), (0, 0),
-                    (np.nan, np.nan),
-                    (np.nan, np.nan),
-                    (0, 0), (0, 0),
-                    (0, 0),
-                ]),
+                'values': np.array(
+                    [
+                        (np.nan, np.nan),
+                        (0, 0),
+                        (0, 0),
+                        (0, 0),
+                        (np.nan, np.nan),
+                        (np.nan, np.nan),
+                        (0, 0),
+                        (0, 0),
+                        (0, 0),
+                    ]
+                ),
             },
             {'values_filter': [np.array([1, 2, 3]), np.array([6, 7, 8])]},
             id='test_filters',
@@ -51,14 +57,18 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans
         pytest.param(
             {
                 'candidates': [[0, 1, 2, 3, 4, 5, 6, 7]],
-                'values': np.array([
-                    (0, 0),
-                    (0, 0), (0, 0),
-                    (np.nan, np.nan),
-                    (np.nan, np.nan),
-                    (0, 0), (0, 0),
-                    (0, 0),
-                ]),
+                'values': np.array(
+                    [
+                        (0, 0),
+                        (0, 0),
+                        (0, 0),
+                        (np.nan, np.nan),
+                        (np.nan, np.nan),
+                        (0, 0),
+                        (0, 0),
+                        (0, 0),
+                    ]
+                ),
             },
             {'values_split': [np.array([0, 1, 2]), np.array([5, 6, 7])]},
             id='test_events_split',

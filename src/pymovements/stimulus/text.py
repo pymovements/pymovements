@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module for the TextDataFrame."""
+
 from __future__ import annotations
 
 import math
@@ -152,15 +153,19 @@ class WritingSystem:
         descriptor = descriptor.lower()
         if descriptor in {'left-to-right', 'ltr'}:
             return WritingSystem(
-                directionality='left-to-right', axis='horizontal', lining='top-to-bottom',
+                directionality='left-to-right',
+                axis='horizontal',
+                lining='top-to-bottom',
             )
         if descriptor in {'right-to-left', 'rtl'}:
             return WritingSystem(
-                directionality='right-to-left', axis='horizontal', lining='top-to-bottom',
+                directionality='right-to-left',
+                axis='horizontal',
+                lining='top-to-bottom',
             )
         raise ValueError(
             f"Unknown descriptor '{descriptor}'. "
-            f"Valid descriptors are: {WritingSystem.DESCRIPTORS}",
+            f'Valid descriptors are: {WritingSystem.DESCRIPTORS}',
         )
 
 
@@ -203,21 +208,20 @@ class TextStimulus:
     """
 
     def __init__(
-            self,
-            aois: pl.DataFrame,
-            *,
-            aoi_column: str,
-            start_x_column: str,
-            start_y_column: str,
-            width_column: str | None = None,
-            height_column: str | None = None,
-            end_x_column: str | None = None,
-            end_y_column: str | None = None,
-            page_column: str | None = None,
-            trial_column: str | None = None,
-            writing_system: WritingSystem | str = 'left-to-right',
+        self,
+        aois: pl.DataFrame,
+        *,
+        aoi_column: str,
+        start_x_column: str,
+        start_y_column: str,
+        width_column: str | None = None,
+        height_column: str | None = None,
+        end_x_column: str | None = None,
+        end_y_column: str | None = None,
+        page_column: str | None = None,
+        trial_column: str | None = None,
+        writing_system: WritingSystem | str = 'left-to-right',
     ) -> None:
-
         self.aois = aois.clone()
         self.aoi_column = aoi_column
         self.width_column = width_column
@@ -235,8 +239,8 @@ class TextStimulus:
             self.writing_system = writing_system
 
     def split(
-            self,
-            by: str | Sequence[str],
+        self,
+        by: str | Sequence[str],
     ) -> list[TextStimulus]:
         """Split the AOI df.
 
@@ -268,11 +272,11 @@ class TextStimulus:
         ]
 
     def get_aoi(
-            self,
-            *,
-            row: pl.DataFrame.row,
-            x_eye: str,
-            y_eye: str,
+        self,
+        *,
+        row: pl.DataFrame.row,
+        x_eye: str,
+        y_eye: str,
     ) -> pl.DataFrame:
         """Return the AOI that contains the given gaze row.
 
@@ -315,19 +319,19 @@ class TextStimulus:
 
     @staticmethod
     def from_csv(
-            path: str | Path,
-            *,
-            aoi_column: str,
-            start_x_column: str,
-            start_y_column: str,
-            width_column: str | None = None,
-            height_column: str | None = None,
-            end_x_column: str | None = None,
-            end_y_column: str | None = None,
-            page_column: str | None = None,
-            trial_column: str | None = None,
-            writing_system: WritingSystem | str = 'left-to-right',
-            read_csv_kwargs: dict[str, Any] | None = None,
+        path: str | Path,
+        *,
+        aoi_column: str,
+        start_x_column: str,
+        start_y_column: str,
+        width_column: str | None = None,
+        height_column: str | None = None,
+        end_x_column: str | None = None,
+        end_y_column: str | None = None,
+        page_column: str | None = None,
+        trial_column: str | None = None,
+        writing_system: WritingSystem | str = 'left-to-right',
+        read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
 
@@ -408,7 +412,7 @@ def _is_number(v: Any) -> bool:
 
 def _empty_aoi_like(df: pl.DataFrame) -> pl.DataFrame:
     """Create a single-row AOI DataFrame with None for each column of df."""
-    return pl.from_dict({col: None for col in df.columns})
+    return pl.from_dict(dict.fromkeys(df.columns))
 
 
 def _extract_valid_xy_or_none(
@@ -424,8 +428,7 @@ def _extract_valid_xy_or_none(
     y_val = row.get(y_eye)
     if not (_is_number(x_val) and _is_number(y_val)):
         warnings.warn(
-            f'Invalid eye coordinates (x={x_val}, y={y_val}) for AOI lookup. '
-            'Returning no match.',
+            f'Invalid eye coordinates (x={x_val}, y={y_val}) for AOI lookup. Returning no match.',
             UserWarning,
         )
         return None
@@ -433,19 +436,19 @@ def _extract_valid_xy_or_none(
 
 
 def from_file(
-        aoi_path: str | Path,
-        *,
-        aoi_column: str,
-        start_x_column: str,
-        start_y_column: str,
-        width_column: str | None = None,
-        height_column: str | None = None,
-        end_x_column: str | None = None,
-        end_y_column: str | None = None,
-        page_column: str | None = None,
-        trial_column: str | None = None,
-        custom_read_kwargs: dict[str, Any] | None = None,
-        writing_system: WritingSystem | str = 'left-to-right',
+    aoi_path: str | Path,
+    *,
+    aoi_column: str,
+    start_x_column: str,
+    start_y_column: str,
+    width_column: str | None = None,
+    height_column: str | None = None,
+    end_x_column: str | None = None,
+    end_y_column: str | None = None,
+    page_column: str | None = None,
+    trial_column: str | None = None,
+    custom_read_kwargs: dict[str, Any] | None = None,
+    writing_system: WritingSystem | str = 'left-to-right',
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -506,10 +509,10 @@ def from_file(
 
 
 def _get_aoi(
-        aoi_dataframe: TextStimulus,
-        row: pl.DataFrame.row,
-        x_eye: str,
-        y_eye: str,
+    aoi_dataframe: TextStimulus,
+    row: pl.DataFrame.row,
+    x_eye: str,
+    y_eye: str,
 ) -> pl.DataFrame:
     """Given eye movement and aoi dataframe, return aoi.
 
@@ -567,28 +570,25 @@ def _get_aoi(
         x_val, y_val = xy
 
         aoi = row_aois.filter(
-            (row_aois[aoi_dataframe.start_x_column] <= x_val) &
-            (
-                x_val <
-                row_aois[aoi_dataframe.start_x_column] +
-                row_aois[aoi_dataframe.width_column]
-            ) &
-            (row_aois[aoi_dataframe.start_y_column] <= y_val) &
-            (
-                y_val <
-                row_aois[aoi_dataframe.start_y_column] +
-                row_aois[aoi_dataframe.height_column]
+            (row_aois[aoi_dataframe.start_x_column] <= x_val)
+            & (
+                x_val
+                < row_aois[aoi_dataframe.start_x_column] + row_aois[aoi_dataframe.width_column]
+            )
+            & (row_aois[aoi_dataframe.start_y_column] <= y_val)
+            & (
+                y_val
+                < row_aois[aoi_dataframe.start_y_column] + row_aois[aoi_dataframe.height_column]
             ),
         )
 
         if aoi.is_empty():
-            aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
+            aoi.extend(pl.from_dict(dict.fromkeys(aoi.columns)))
             return aoi
         # If multiple AOIs overlap, warn
         if aoi.height > 1:
             warnings.warn(
-                'Multiple AOIs matched this point '
-                f'(x={x_val}, y={y_val}).',
+                f'Multiple AOIs matched this point (x={x_val}, y={y_val}).',
                 UserWarning,
             )
         return aoi
@@ -606,22 +606,22 @@ def _get_aoi(
 
         aoi = row_aois.filter(
             # x-coordinate: within bounding box
-            (row_aois[aoi_dataframe.start_x_column] <= x_val) &
-            (x_val < row_aois[aoi_dataframe.end_x_column]) &
+            (row_aois[aoi_dataframe.start_x_column] <= x_val)
+            & (x_val < row_aois[aoi_dataframe.end_x_column])
+            &
             # y-coordinate: within bounding box
-            (row_aois[aoi_dataframe.start_y_column] <= y_val) &
-            (y_val < row_aois[aoi_dataframe.end_y_column]),
+            (row_aois[aoi_dataframe.start_y_column] <= y_val)
+            & (y_val < row_aois[aoi_dataframe.end_y_column]),
         )
 
         if aoi.is_empty():
-            aoi.extend(pl.from_dict({col: None for col in aoi.columns}))
+            aoi.extend(pl.from_dict(dict.fromkeys(aoi.columns)))
             return aoi
 
         # If multiple AOIs overlap, warn
         if aoi.height > 1:
             warnings.warn(
-                'Multiple AOIs matched this point '
-                f'(x={x_val}, y={y_val}).',
+                f'Multiple AOIs matched this point (x={x_val}, y={y_val}).',
                 UserWarning,
             )
 

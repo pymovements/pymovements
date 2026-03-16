@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test dataset library."""
+
 import glob
 from pathlib import Path
 from unittest import mock
@@ -62,7 +63,7 @@ def test_raise_value_error_get_non_existent_dataset():
     with pytest.raises(KeyError) as exc_info:
         DatasetLibrary.get('NonExistent')
 
-    msg, = exc_info.value.args
+    (msg,) = exc_info.value.args
     error_msg_snippets = [
         'NonExistent',
         'not found in DatasetLibrary',

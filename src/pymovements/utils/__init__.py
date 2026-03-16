@@ -23,8 +23,8 @@
 .. deprecated:: v0.22.0
    This module will be removed in v0.27.0.
 """
-from pymovements.utils import plotting
 
+from pymovements.utils import plotting
 
 __all__ = [
     'plotting',

@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides detection of blinks from the pupil signal."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -32,15 +33,15 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def blink(
-        pupil: list[float] | np.ndarray,
-        *,
-        timesteps: list[int] | np.ndarray | None = None,
-        delta: float | None = None,
-        minimum_duration: int = 50,
-        maximum_duration: int | None = 500,
-        minimum_gap: int = 5,
-        minimum_candidates_around_gap: tuple[int, int] | int = 2,
-        name: str = 'blink',
+    pupil: list[float] | np.ndarray,
+    *,
+    timesteps: list[int] | np.ndarray | None = None,
+    delta: float | None = None,
+    minimum_duration: int = 50,
+    maximum_duration: int | None = 500,
+    minimum_gap: int = 5,
+    minimum_candidates_around_gap: tuple[int, int] | int = 2,
+    name: str = 'blink',
 ) -> Events:
     """Detect blinks from the pupil signal.
 
@@ -152,7 +153,8 @@ def blink(
 
     if isinstance(minimum_candidates_around_gap, int):
         minimum_candidates_around_gap = (
-            minimum_candidates_around_gap, minimum_candidates_around_gap,
+            minimum_candidates_around_gap,
+            minimum_candidates_around_gap,
         )
     elif isinstance(minimum_candidates_around_gap, Sequence):
         if not all(isinstance(d, int) for d in minimum_candidates_around_gap):
@@ -194,7 +196,9 @@ def blink(
     # Stage 3: Combine blinks with less than minimum time gap in-between.
     if minimum_gap > 0:
         candidate_mask = _merge_blink_candidates(
-            candidate_mask, minimum_gap, minimum_candidates_around_gap,
+            candidate_mask,
+            minimum_gap,
+            minimum_candidates_around_gap,
         )
 
     # Group consecutive candidate_mask samples into events
@@ -208,12 +212,14 @@ def blink(
     # Filter all candidates by duration (in unit of timesteps array).
     if minimum_duration:
         candidates = [
-            c_indices for c_indices in candidates
+            c_indices
+            for c_indices in candidates
             if minimum_duration <= timesteps[c_indices[-1]] - timesteps[c_indices[0]]
         ]
     if maximum_duration:
         candidates = [
-            c_indices for c_indices in candidates
+            c_indices
+            for c_indices in candidates
             if timesteps[c_indices[-1]] - timesteps[c_indices[0]] <= maximum_duration
         ]
 
@@ -227,9 +233,9 @@ def blink(
 
 
 def _merge_blink_candidates(
-        candidate_mask: np.ndarray,
-        minimum_gap: int,
-        minimum_candidate_duration_to_absorb_gap: tuple[int, int],
+    candidate_mask: np.ndarray,
+    minimum_gap: int,
+    minimum_candidate_duration_to_absorb_gap: tuple[int, int],
 ) -> np.ndarray:
     """Absorb short unflagged runs surrounded by masked samples.
 
@@ -271,11 +277,11 @@ def _merge_blink_candidates(
 
         # Count candidate_mask samples after this run
         after_end = min(n, end + 1 + minimum_candidate_duration_to_absorb_gap[1])
-        flagged_after = np.sum(candidate_mask[end + 1:after_end])
+        flagged_after = np.sum(candidate_mask[end + 1 : after_end])
 
         if (
-                flagged_before >= minimum_candidate_duration_to_absorb_gap[0]
-                and flagged_after >= minimum_candidate_duration_to_absorb_gap[1]
+            flagged_before >= minimum_candidate_duration_to_absorb_gap[0]
+            and flagged_after >= minimum_candidate_duration_to_absorb_gap[1]
         ):
             candidate_mask[run] = True
 

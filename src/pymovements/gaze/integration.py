@@ -18,14 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Module to create a Gaze from a numpy array."""
+
 from __future__ import annotations
 
 import warnings
 from typing import Literal
 
-import numpy as np
-import pandas as pd
-import polars as pl
+import numpy
+import pandas
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events.events import Events
@@ -34,28 +35,28 @@ from pymovements.gaze.gaze import Gaze
 
 
 def from_numpy(
-        samples: np.ndarray | None = None,
-        experiment: Experiment | None = None,
-        events: Events | None = None,
-        *,
-        trial: np.ndarray | None = None,
-        time: np.ndarray | None = None,
-        pixel: np.ndarray | None = None,
-        position: np.ndarray | None = None,
-        velocity: np.ndarray | None = None,
-        acceleration: np.ndarray | None = None,
-        distance: np.ndarray | None = None,
-        schema: list[str] | None = None,
-        orient: Literal['col', 'row'] = 'col',
-        trial_columns: str | list[str] | None = None,
-        time_column: str | None = None,
-        time_unit: str | None = None,
-        pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
-        velocity_columns: list[str] | None = None,
-        acceleration_columns: list[str] | None = None,
-        distance_column: str | None = None,
-        data: np.ndarray | None = None,
+    samples: numpy.ndarray | None = None,
+    experiment: Experiment | None = None,
+    events: Events | None = None,
+    *,
+    trial: numpy.ndarray | None = None,
+    time: numpy.ndarray | None = None,
+    pixel: numpy.ndarray | None = None,
+    position: numpy.ndarray | None = None,
+    velocity: numpy.ndarray | None = None,
+    acceleration: numpy.ndarray | None = None,
+    distance: numpy.ndarray | None = None,
+    schema: list[str] | None = None,
+    orient: Literal['col', 'row'] = 'col',
+    trial_columns: str | list[str] | None = None,
+    time_column: str | None = None,
+    time_unit: str | None = None,
+    pixel_columns: list[str] | None = None,
+    position_columns: list[str] | None = None,
+    velocity_columns: list[str] | None = None,
+    acceleration_columns: list[str] | None = None,
+    distance_column: str | None = None,
+    data: numpy.ndarray | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a numpy array.
 
@@ -71,25 +72,25 @@ def from_numpy(
 
     Parameters
     ----------
-    samples: np.ndarray | None
+    samples: numpy.ndarray | None
         Two-dimensional samples data represented as a numpy ndarray. (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
-    trial: np.ndarray | None
+    trial: numpy.ndarray | None
         Array of trial identifiers for each timestep. (default: None)
-    time: np.ndarray | None
+    time: numpy.ndarray | None
         Array of timestamps. (default: None)
-    pixel: np.ndarray | None
+    pixel: numpy.ndarray | None
         Array of gaze pixel positions. (default: None)
-    position: np.ndarray | None
+    position: numpy.ndarray | None
         Array of gaze positions in degrees of visual angle. (default: None)
-    velocity: np.ndarray | None
+    velocity: numpy.ndarray | None
         Array of gaze velocities in degrees of visual angle per second. (default: None)
-    acceleration: np.ndarray | None
+    acceleration: numpy.ndarray | None
         Array of gaze accelerations in degrees of visual angle per square second. (default: None)
-    distance: np.ndarray | None
+    distance: numpy.ndarray | None
         Array of eye-to-screen distances in millimeters. (default: None)
     schema: list[str] | None
         A list of column names. (default: None)
@@ -121,7 +122,7 @@ def from_numpy(
         in the samples data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
-    data: np.ndarray | None
+    data: numpy.ndarray | None
         Two-dimensional samples data represented as a numpy ndarray. (default: None)
         .. deprecated:: v0.23.0
         Please use ``samples`` instead. This field will be removed in v0.28.0.
@@ -138,7 +139,7 @@ def from_numpy(
     >>> import numpy as np
     >>> import pymovements as pm
     >>>
-    >>> arr = np.zeros((3, 100))
+    >>> arr = numpy.zeros((3, 100))
     >>> arr.shape
     (3, 100)
 
@@ -255,7 +256,7 @@ def from_numpy(
 
     if samples is not None:
         return Gaze(
-            samples=pl.from_numpy(data=samples, schema=schema, orient=orient),
+            samples=polars.from_numpy(data=samples, schema=schema, orient=orient),
             experiment=experiment,
             events=events,
             trial_columns=trial_columns,
@@ -269,64 +270,67 @@ def from_numpy(
         )
 
     # Initialize with an empty DataFrame, as every column specifier could be None.
-    sample_components: list[pl.DataFrame] = [pl.DataFrame()]
+    sample_components: list[polars.DataFrame] = [polars.DataFrame()]
 
     trial_columns = None
     if trial is not None:
-        sample_component = pl.from_numpy(data=trial, schema=['trial'], orient=orient)
+        sample_component = polars.from_numpy(data=trial, schema=['trial'], orient=orient)
         sample_components.append(sample_component)
         trial_columns = 'trial'
 
     time_column = None
     if time is not None:
-        sample_component = pl.from_numpy(data=time, schema=['time'], orient=orient)
+        sample_component = polars.from_numpy(data=time, schema=['time'], orient=orient)
         sample_components.append(sample_component)
         time_column = 'time'
 
     pixel_columns = None
     if pixel is not None:
-        sample_component = pl.from_numpy(
-            data=pixel, orient=orient,
+        sample_component = polars.from_numpy(
+            data=pixel,
+            orient=orient,
         ).select(
-            pl.all().name.prefix('pixel_'),
+            polars.all().name.prefix('pixel_'),
         )
         sample_components.append(sample_component)
         pixel_columns = sample_component.columns
 
     position_columns = None
     if position is not None:
-        sample_component = pl.from_numpy(
-            data=position, orient=orient,
+        sample_component = polars.from_numpy(
+            data=position,
+            orient=orient,
         ).select(
-            pl.all().name.prefix('position_'),
+            polars.all().name.prefix('position_'),
         )
         sample_components.append(sample_component)
         position_columns = sample_component.columns
 
     velocity_columns = None
     if velocity is not None:
-        sample_component = pl.from_numpy(
-            data=velocity, orient=orient,
+        sample_component = polars.from_numpy(
+            data=velocity,
+            orient=orient,
         ).select(
-            pl.all().name.prefix('velocity_'),
+            polars.all().name.prefix('velocity_'),
         )
         sample_components.append(sample_component)
         velocity_columns = sample_component.columns
 
     acceleration_columns = None
     if acceleration is not None:
-        sample_component = pl.from_numpy(data=acceleration, orient=orient)
-        sample_component = sample_component.select(pl.all().name.prefix('acceleration_'))
+        sample_component = polars.from_numpy(data=acceleration, orient=orient)
+        sample_component = sample_component.select(polars.all().name.prefix('acceleration_'))
         sample_components.append(sample_component)
         acceleration_columns = sample_component.columns
 
     distance_column = None
     if distance is not None:
-        sample_component = pl.from_numpy(data=distance, schema=['distance'], orient=orient)
+        sample_component = polars.from_numpy(data=distance, schema=['distance'], orient=orient)
         sample_components.append(sample_component)
         distance_column = 'distance'
 
-    samples = pl.concat(sample_components, how='horizontal')
+    samples = polars.concat(sample_components, how='horizontal')
     return Gaze(
         samples=samples,
         experiment=experiment,
@@ -343,25 +347,25 @@ def from_numpy(
 
 
 def from_pandas(
-        samples: pd.DataFrame,
-        experiment: Experiment | None = None,
-        events: Events | None = None,
-        *,
-        trial_columns: str | list[str] | None = None,
-        time_column: str | None = None,
-        time_unit: str | None = None,
-        pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
-        velocity_columns: list[str] | None = None,
-        acceleration_columns: list[str] | None = None,
-        distance_column: str | None = None,
-        data: pd.DataFrame | None = None,
+    samples: pandas.DataFrame,
+    experiment: Experiment | None = None,
+    events: Events | None = None,
+    *,
+    trial_columns: str | list[str] | None = None,
+    time_column: str | None = None,
+    time_unit: str | None = None,
+    pixel_columns: list[str] | None = None,
+    position_columns: list[str] | None = None,
+    velocity_columns: list[str] | None = None,
+    acceleration_columns: list[str] | None = None,
+    distance_column: str | None = None,
+    data: pandas.DataFrame | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a pandas DataFrame.
 
     Parameters
     ----------
-    samples: pd.DataFrame
+    samples: pandas.DataFrame
         Gaze samples represented as a pandas DataFrame.
     experiment : Experiment | None
         The experiment definition. (default: None)
@@ -392,7 +396,7 @@ def from_pandas(
         in the input data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
-    data: pd.DataFrame | None
+    data: pandas.DataFrame | None
         Gaze samples represented as a pandas DataFrame.
         .. deprecated:: v0.23.0
         Please use ``samples`` instead. This field will be removed in v0.28.0. (default: None)
@@ -414,7 +418,7 @@ def from_pandas(
         samples = data
 
     return Gaze(
-        samples=pl.from_pandas(data=samples),
+        samples=polars.from_pandas(data=samples),
         experiment=experiment,
         events=events,
         trial_columns=trial_columns,

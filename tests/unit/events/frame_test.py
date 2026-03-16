@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests deprecated EventDataFrame alias for Events."""
+
 import pytest
 
 from pymovements import EventDataFrame
@@ -26,22 +27,21 @@ from pymovements import Events
 
 @pytest.fixture(name='events_subclass')
 def fixture_events_subclass():
-    class EventsSubclass(Events):
-        ...
+    class EventsSubclass(Events): ...
+
     yield EventsSubclass
 
 
 @pytest.fixture(name='event_df_subclass')
 def fixture_event_df_subclass():
-    class EventDataFrameSubclass(EventDataFrame):
-        ...
+    class EventDataFrameSubclass(EventDataFrame): ...
+
     yield EventDataFrameSubclass
 
 
 @pytest.fixture(name='event_df_subsubclass')
 def fixture_event_df_subsubclass(event_df_subclass):
-    class EventDataFrameSubSubclass(event_df_subclass):
-        ...
+    class EventDataFrameSubSubclass(event_df_subclass): ...
 
     yield EventDataFrameSubSubclass
 
@@ -134,26 +134,26 @@ def test_is_event_df_deprecated():
 def test_is_event_df_subclass_deprecated():
     # pylint: disable=unused-variable
     with pytest.raises(DeprecationWarning):
-        class AnotherEventDataFrameSubclass(EventDataFrame):
-            ...
+
+        class AnotherEventDataFrameSubclass(EventDataFrame): ...
 
 
 def test_is_event_df_dubplicate_subclass_deprecated():
     # pylint: disable=unused-variable
     with pytest.raises(DeprecationWarning):
-        class AnotherEventDataFrameSubclass(EventDataFrame):
-            ...
+
+        class AnotherEventDataFrameSubclass(EventDataFrame): ...
 
 
 def test_is_event_df_subsubclass_deprecated():
     # pylint: disable=unused-variable
     with pytest.raises(DeprecationWarning):
-        class YetAnotherEventDataFrameSubclass(EventDataFrame):
-            ...
+
+        class YetAnotherEventDataFrameSubclass(EventDataFrame): ...
 
         with pytest.raises(DeprecationWarning):
-            class AnotherEventDataFrameSubSubclass(YetAnotherEventDataFrameSubclass):
-                ...
+
+            class AnotherEventDataFrameSubSubclass(YetAnotherEventDataFrameSubclass): ...
 
 
 def test_is_event_df_removed(assert_deprecation_is_removed):
@@ -164,5 +164,4 @@ def test_is_event_df_removed(assert_deprecation_is_removed):
         function_name='EventDataFrame',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )

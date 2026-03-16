@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides functions for calculating event properties."""
+
 from __future__ import annotations
 
 from collections.abc import Callable

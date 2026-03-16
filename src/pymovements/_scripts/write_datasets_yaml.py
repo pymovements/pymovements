@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Write datasets.yaml for DatasetLibrary."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,8 +27,8 @@ import yaml
 
 
 def main(
-        datasets_dirpath: str | Path = './src/pymovements/datasets',
-        datasets_yaml_filename: str = 'datasets.yaml',
+    datasets_dirpath: str | Path = './src/pymovements/datasets',
+    datasets_yaml_filename: str = 'datasets.yaml',
 ) -> int:
     """Write datasets yaml file for DatasetLibrary.
 
@@ -48,7 +49,8 @@ def main(
 
     dataset_filename_stems = sorted(
         [
-            filepath.stem for filepath in datasets_dirpath.glob('*.yaml')
+            filepath.stem
+            for filepath in datasets_dirpath.glob('*.yaml')
             if filepath.name != datasets_yaml_filename  # Ignore datasets.yaml file.
         ],
     )

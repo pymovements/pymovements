@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+
 import polars as pl
 import pytest
 
@@ -39,7 +40,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape',
         ),
-
         pytest.param(
             'monocular_example.csv',
             {
@@ -53,7 +53,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_auto_column_detect',
         ),
-
         pytest.param(
             'monocular_example.csv',
             {
@@ -67,7 +66,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Int64, 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_add_columns',
         ),
-
         pytest.param(
             'binocular_example.csv',
             {
@@ -80,7 +78,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Int64, 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
             id='csv_bino_shape',
         ),
-
         pytest.param(
             'binocular_example.csv',
             {
@@ -100,7 +97,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Int64, 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
             id='csv_bino_shape_auto_column_detect',
         ),
-
         pytest.param(
             'missing_values_example.csv',
             {
@@ -113,7 +109,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Int64, 'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64)},
             id='csv_missing_values',
         ),
-
         pytest.param(
             'gaze_on_faces_example.csv',
             {
@@ -124,7 +119,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
             id='gaze_on_faces_example',
         ),
-
         pytest.param(
             'gazebase_example.csv',
             {
@@ -133,13 +127,16 @@ from pymovements.gaze import from_csv
             },
             (10, 7),
             {
-                'time': pl.Int64, 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
-                'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32,
+                'time': pl.Int64,
+                'validity': pl.Int64,
+                'dP': pl.Float32,
+                'lab': pl.Int64,
+                'x_target_pos': pl.Float32,
+                'y_target_pos': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
             id='gazebase_example',
         ),
-
         pytest.param(
             'gazebase_vr_example.csv',
             {
@@ -149,14 +146,19 @@ from pymovements.gaze import from_csv
             (10, 11),
             {
                 'time': pl.Float32,
-                'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32, 'z_target_pos': pl.Float32,
-                'clx': pl.Float32, 'cly': pl.Float32, 'clz': pl.Float32,
-                'crx': pl.Float32, 'cry': pl.Float32, 'crz': pl.Float32,
+                'x_target_pos': pl.Float32,
+                'y_target_pos': pl.Float32,
+                'z_target_pos': pl.Float32,
+                'clx': pl.Float32,
+                'cly': pl.Float32,
+                'clz': pl.Float32,
+                'crx': pl.Float32,
+                'cry': pl.Float32,
+                'crz': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
             id='gazebase_vr_example',
         ),
-
         pytest.param(
             'hbn_example.csv',
             {
@@ -167,7 +169,6 @@ from pymovements.gaze import from_csv
             {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
             id='hbn_example',
         ),
-
         pytest.param(
             'judo1000_example.csv',
             {
@@ -176,12 +177,13 @@ from pymovements.gaze import from_csv
             },
             (10, 4),
             {
-                'trial_id': pl.Int64, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'trial_id': pl.Int64,
+                'point_id': pl.Int64,
+                'time': pl.Int64,
+                'pixel': pl.List(pl.Float32),
             },
             id='judo1000_example',
         ),
-
         pytest.param(
             'potec_example.tsv',
             {
@@ -190,11 +192,12 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Int64, 'pupil_diameter': pl.Float32, 'pixel': pl.List(pl.Float32),
+                'time': pl.Int64,
+                'pupil_diameter': pl.Float32,
+                'pixel': pl.List(pl.Float32),
             },
             id='potec_example',
         ),
-
         pytest.param(
             'potec_example.tsv',
             {
@@ -212,12 +215,13 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Int64, 'pupil_diameter': pl.Float64, 'pixel': pl.List(pl.Float64),
+                'time': pl.Int64,
+                'pupil_diameter': pl.Float64,
+                'pixel': pl.List(pl.Float64),
             },
             marks=pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning'),
             id='potec_example_deprecated_kwargs',
         ),
-
         pytest.param(
             'sbsat_example.csv',
             {
@@ -226,15 +230,22 @@ from pymovements.gaze import from_csv
             },
             (10, 5),
             {
-                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Int64,
-                'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
+                'book_name': pl.String,
+                'screen_id': pl.Int64,
+                'time': pl.Int64,
+                'pupil_left': pl.Float32,
+                'pixel': pl.List(pl.Float32),
             },
             id='sbsat_example',
         ),
     ],
 )
 def test_from_csv_gaze_has_expected_shape_and_columns(
-        filename, kwargs, expected_shape, expected_schema, make_example_file,
+    filename,
+    kwargs,
+    expected_shape,
+    expected_schema,
+    make_example_file,
 ):
     filepath = make_example_file(filename)
     gaze = from_csv(file=filepath, **kwargs)
@@ -257,7 +268,10 @@ def test_from_csv_gaze_has_expected_shape_and_columns(
     ],
 )
 def test_from_asc_parameter_is_deprecated(
-        filename, kwargs, make_example_file, assert_deprecation_is_removed,
+    filename,
+    kwargs,
+    make_example_file,
+    assert_deprecation_is_removed,
 ):
     filepath = make_example_file(filename)
 
@@ -268,7 +282,6 @@ def test_from_asc_parameter_is_deprecated(
         function_name=f'keyword argument {list(kwargs.keys())[0]}',
         warning_message=info.value.args[0],
         scheduled_version='0.29.0',
-
     )
 
 
