@@ -73,7 +73,7 @@ class DeprecatedMetaClass(type):
 
             def new(cls: type, *args: Any, **kwargs: Any) -> type:
                 # fmt: off
-                alias = getattr(cls, '_DeprecatedMetaClass__alias')
+                alias = getattr(cls, '_DeprecatedMetaClass__alias')  # fmt: skip
                 version_deprecated = getattr(cls, '_DeprecatedMetaClass__version_deprecated')
                 version_removed = getattr(cls, '_DeprecatedMetaClass__version_removed')
                 # fmt: on
