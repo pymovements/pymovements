@@ -65,9 +65,9 @@ class DeprecatedMetaClass(type):
         **kwargs: Any,
     ) -> DeprecatedMetaClass:
         """Create a new deprecated class."""
-        alias = classdict.get('_DeprecatedMetaClass__alias')
-        version_deprecated = classdict.get('_DeprecatedMetaClass__version_deprecated')
-        version_removed = classdict.get('_DeprecatedMetaClass__version_removed')
+        alias = classdict.get('_DeprecatedMetaClass__alias')  # type: ignore[attr-defined]
+        version_deprecated = classdict.get('_DeprecatedMetaClass__version_deprecated')  # type: ignore[attr-defined]
+        version_removed = classdict.get('_DeprecatedMetaClass__version_removed')  # type: ignore[attr-defined]
 
         if alias is not None:
 
@@ -118,7 +118,7 @@ class DeprecatedMetaClass(type):
         """
         if subclass is cls:
             return True
-        return issubclass(subclass, cls._DeprecatedMetaClass__alias)
+        return issubclass(subclass, cls._DeprecatedMetaClass__alias)  # type: ignore[attr-defined]
 
     def __instancecheck__(cls, instance: Any) -> bool:
         """Check if is instance of deprecated class.
