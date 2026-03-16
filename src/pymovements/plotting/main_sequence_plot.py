@@ -24,10 +24,10 @@ from __future__ import annotations
 from typing import Literal
 from warnings import warn
 
-from matplotlib.collections import Collection
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+from matplotlib.collections import Collection
 from sklearn.metrics import r2_score
 
 from pymovements._utils._checks import check_is_mutual_exclusive

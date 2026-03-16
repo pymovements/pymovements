@@ -21,9 +21,9 @@
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Sequence
 from pathlib import Path
-import shutil
 from urllib.error import URLError
 from warnings import warn
 

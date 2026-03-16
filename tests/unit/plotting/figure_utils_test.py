@@ -27,8 +27,8 @@ These focus on covering specific branches that were previously missed:
 
 from __future__ import annotations
 
-from unittest.mock import Mock
 import warnings
+from unittest.mock import Mock
 
 import matplotlib.pyplot as plt
 import numpy as np

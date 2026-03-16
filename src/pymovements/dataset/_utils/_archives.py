@@ -22,16 +22,16 @@
 from __future__ import annotations
 
 import bz2
-from collections.abc import Callable
 import gzip
 import lzma
 import os
-from pathlib import Path
 import shutil
 import sys
 import tarfile
-from typing import IO
 import zipfile
+from collections.abc import Callable
+from pathlib import Path
+from typing import IO
 
 from tqdm import tqdm
 

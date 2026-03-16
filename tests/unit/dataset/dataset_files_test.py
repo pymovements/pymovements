@@ -23,13 +23,13 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 import polars as pl
-from polars.testing import assert_frame_equal
 import pyreadr
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import DatasetDefinition
 from pymovements import Experiment

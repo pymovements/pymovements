@@ -21,8 +21,8 @@
 
 import numpy as np
 import polars as pl
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import Gaze
 

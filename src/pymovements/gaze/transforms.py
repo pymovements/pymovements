@@ -28,8 +28,8 @@ from typing import TypeVar
 
 import numpy as np
 import polars as pl
-from polars.datatypes.classes import NumericType
 import scipy
+from polars.datatypes.classes import NumericType
 
 from pymovements._utils import _checks
 

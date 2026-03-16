@@ -22,21 +22,21 @@
 # pylint: disable=too-many-lines
 from __future__ import annotations
 
+import inspect
+import math
 from collections.abc import Callable
 from collections.abc import Sequence
 from contextlib import suppress
 from copy import deepcopy
-import inspect
-import math
 from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import overload
 from warnings import warn
 
-from deprecated.sphinx import deprecated
 import numpy as np
 import polars
+from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements._utils._checks import check_is_mutual_exclusive

@@ -20,8 +20,8 @@
 """Test all functions in pymovements.events.microsaccades."""
 
 import numpy as np
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.events import microsaccades

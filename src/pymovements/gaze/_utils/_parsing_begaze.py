@@ -31,13 +31,13 @@ __all__ = [
     'parse_begaze',
 ]
 
-from collections import defaultdict
 import contextlib
 import datetime
-from pathlib import Path
 import re
-from typing import Any
 import warnings
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl

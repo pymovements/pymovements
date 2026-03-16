@@ -21,19 +21,19 @@
 
 from __future__ import annotations
 
+import os
+import re
+import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import replace
-import os
 from pathlib import Path
-import re
-import shutil
 from unittest.mock import Mock
 
 import numpy as np
 import polars as pl
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import __version__
 from pymovements import Dataset

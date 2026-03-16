@@ -23,8 +23,8 @@ import filecmp
 from pathlib import Path
 
 import polars as pl
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 
 def test_testfiles_dirpath_has_files(testfiles_dirpath):

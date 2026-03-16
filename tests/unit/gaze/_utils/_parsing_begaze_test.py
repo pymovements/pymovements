@@ -19,15 +19,15 @@
 # SOFTWARE.
 """Tests pymovements asc to csv processing - BeGaze."""
 
-from collections.abc import Callable
 import datetime
+from collections.abc import Callable
 from math import nan
 from typing import Any
 
 import numpy as np
 import polars as pl
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.gaze import io
 from pymovements.gaze._utils import _parsing_begaze

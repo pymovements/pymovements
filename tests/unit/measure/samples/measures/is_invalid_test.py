@@ -23,8 +23,8 @@ from math import inf
 from math import nan
 
 import polars as pl
-from polars.testing import assert_series_equal
 import pytest
+from polars.testing import assert_series_equal
 
 from pymovements.measure.samples.measures import _is_invalid
 from pymovements.measure.samples.measures import _is_invalid_value

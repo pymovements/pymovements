@@ -21,10 +21,10 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
-import logging
 from pathlib import Path
 from typing import Any
 from warnings import warn

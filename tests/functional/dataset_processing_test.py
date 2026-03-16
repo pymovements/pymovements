@@ -19,8 +19,8 @@
 # SOFTWARE.
 """Test basic preprocessing on various datasets."""
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import polars as pl
 import pytest

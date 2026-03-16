@@ -22,8 +22,8 @@
 from pathlib import Path
 from unittest.mock import Mock
 
-from matplotlib import pyplot
 import pytest
+from matplotlib import pyplot
 
 from pymovements.stimulus.image import _draw_image_stimulus
 

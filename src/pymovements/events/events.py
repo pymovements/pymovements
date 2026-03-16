@@ -26,9 +26,9 @@ from typing import Any
 from typing import Literal
 from typing import overload
 
-from deprecated.sphinx import deprecated
 import numpy as np
 import polars as pl
+from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements._utils import _checks

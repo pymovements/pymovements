@@ -21,12 +21,12 @@
 
 from unittest.mock import Mock
 
-from matplotlib import figure
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
+from matplotlib import figure
 
 import pymovements as pm
 

@@ -19,8 +19,8 @@
 # SOFTWARE.
 """Test pymovements HTML representations."""
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 import polars as pl
 import pytest

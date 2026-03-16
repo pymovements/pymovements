@@ -20,8 +20,8 @@
 """Test Text stimulus class."""
 
 import polars
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.stimulus import text
 

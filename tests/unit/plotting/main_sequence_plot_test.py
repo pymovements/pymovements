@@ -27,10 +27,10 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import polars as pl
 import pytest
+from matplotlib.lines import Line2D
 
 import pymovements as pm
 

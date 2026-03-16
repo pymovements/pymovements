@@ -29,14 +29,14 @@ from typing import Literal
 from typing import TypeAlias
 from warnings import warn
 
+import matplotlib.pyplot as plt
+import numpy as np
+import PIL.Image
 from matplotlib import colors
 from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import FancyArrowPatch
-import matplotlib.pyplot as plt
-import numpy as np
-import PIL.Image
 
 from pymovements.gaze.experiment import Screen
 

@@ -23,9 +23,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from matplotlib import colors
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import colors
 
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _set_screen_axes

@@ -21,10 +21,10 @@
 
 from __future__ import annotations
 
+import pathlib
 from collections.abc import Callable
 from html import escape
 from itertools import islice
-import pathlib
 from typing import TypeVar
 from uuid import uuid4
 

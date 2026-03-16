@@ -22,9 +22,9 @@
 from __future__ import annotations
 
 import math
+import warnings
 from pathlib import Path
 from typing import Any
-import warnings
 
 import polars as pl
 

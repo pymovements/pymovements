@@ -219,7 +219,7 @@ ignore = [
 force-single-line = true # Each import on separate line
 order-by-type = false
 known-first-party = ["pymovements"] # Match --application-directories=src
-force-sort-within-sections = true # Ensure consistent ordering
+force-sort-within-sections = false # sort straight-style imports before from-style imports
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [

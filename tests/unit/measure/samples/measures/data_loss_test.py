@@ -21,14 +21,14 @@
 
 from __future__ import annotations
 
+import re
 from math import inf
 from math import nan
-import re
 
 import numpy as np
 import polars as pl
-from polars.testing import assert_frame_equal
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.measure import data_loss
 

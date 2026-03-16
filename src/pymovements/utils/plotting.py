@@ -27,10 +27,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from deprecated.sphinx import deprecated
-from matplotlib import colors
 import matplotlib.pyplot as plt
 import numpy as np
+from deprecated.sphinx import deprecated
+from matplotlib import colors
 
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap

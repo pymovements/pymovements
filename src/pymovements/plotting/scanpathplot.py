@@ -24,11 +24,11 @@ from __future__ import annotations
 import math
 from warnings import warn
 
-from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
 import polars as pl
+from matplotlib.patches import Circle
 
 from pymovements.events import EventDataFrame
 from pymovements.events import Events

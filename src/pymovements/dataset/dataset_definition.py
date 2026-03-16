@@ -30,8 +30,8 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
-from deprecated.sphinx import deprecated
 import yaml
+from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
 from pymovements.dataset._utils._yaml import reverse_substitute_types
