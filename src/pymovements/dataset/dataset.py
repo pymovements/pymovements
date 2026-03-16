@@ -359,8 +359,7 @@ class Dataset:
         """
         self._check_fileinfo()
         reading_measure_files = [
-            file
-            for file in self._files
+            file for file in self._files
             if file.definition.content == 'precomputed_reading_measures'
         ]
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
