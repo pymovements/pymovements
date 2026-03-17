@@ -907,5 +907,5 @@ class Events:
         if verbose:
             print(
                 f"Merged {number_of_events} '{name}' events "
-                f'into {len(events)} events with max_gap={max_gap} ms.'
+                f'into {len(events)} events with max_gap={max_gap} ms.',
             )
