@@ -265,6 +265,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'acceleration_columns': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
+                'description': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,
@@ -299,6 +300,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'acceleration_columns': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
+                'description': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -348,6 +350,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'acceleration_columns': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
+                'description': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -390,6 +393,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'acceleration_columns': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
+                'description': None,
                 'distance_column': None,
                 'experiment': {
                     'eyetracker': {
@@ -711,6 +715,7 @@ def test_dataset_definition_has_resources_not_equal():
             {
                 'name': '.',
                 'long_name': None,
+                'description': None,
                 'mirrors': {},
                 'resources': [],
                 'experiment': None,
@@ -735,6 +740,7 @@ def test_dataset_definition_has_resources_not_equal():
             {
                 'name': '.',
                 'long_name': None,
+                'description': None,
                 'mirrors': {},
                 'resources': [],
                 'experiment': None,
@@ -759,6 +765,7 @@ def test_dataset_definition_has_resources_not_equal():
             {
                 'name': '.',
                 'long_name': None,
+                'description': None,
                 'mirrors': {},
                 'resources': [],
                 'experiment': {
@@ -840,6 +847,7 @@ def test_dataset_definition_has_resources_not_equal():
                 'acceleration_columns': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
+                'description': None,
                 'distance_column': None,
                 'experiment': None,
                 'extract': None,

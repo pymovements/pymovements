@@ -1,4 +1,17 @@
 name: ChineseReading
+description: 'ChineseReading dataset :cite:p:`ChineseReading`.
+
+
+  This dataset includes eye tracking data from more than 300 participants recorded
+  in a single
+
+  session. Precomputed events and word-level reading measures are reported.
+
+  Each participant is instructed to read several sentences.
+
+  Check the respective paper for details :cite:p:`ChineseReading`.
+
+  '
 resources:
 - content: precomputed_events
   filename: Raw Data.txt

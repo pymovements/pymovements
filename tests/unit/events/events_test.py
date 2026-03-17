@@ -944,16 +944,49 @@ def test_split_as_dict_returns_expected_dict(events, by, expected_splits):
     assert splits == expected_splits
 
 
+def test_filter_by_name_literal_substring(make_events):
+    events = make_events(['fixation.ivt', 'fixation', 'saccade.ivt', 'blink'])
+    out = events.filter_by_name('fixation')
+    assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
+
+
 def test_fixations_filter(make_events):
     events = make_events(['fixation', 'fixation_ivt', 'saccade', 'blink'])
     out = events.fixations
     assert set(out['name'].to_list()) == {'fixation', 'fixation_ivt'}
 
 
+def test_filter_by_name_prefix_regex(make_events):
+    events = make_events(['fixation.ivt', 'fixation', 'saccade.ivt', 'blink'])
+    out = events.filter_by_name(r'^fixation')
+    assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
+
+
+def test_filter_by_name_missing_column_raises_column_not_found_error(make_events):
+    events = make_events(['microsaccade', 'microsaccade_x', 'saccade'])
+    events.frame = events.frame.drop('name')
+    expected_msg = "Events frame is missing the 'name' column."
+
+    with pytest.raises(ValueError, match=expected_msg):
+        events.filter_by_name('saccade')
+
+
 def test_saccades_filter(make_events):
     events = make_events(['saccade', 'saccade_algo', 'fixation'])
     out = events.saccades
     assert set(out['name'].to_list()) == {'saccade', 'saccade_algo'}
+
+
+def test_filter_by_name_exact_match_regex(make_events):
+    events = make_events(['fixation.ivt', 'fixation', 'fixation_ivt', 'saccade'])
+    out = events.filter_by_name(r'^fixation\.ivt$')
+    assert out['name'].to_list() == ['fixation.ivt']
+
+
+def test_filter_by_name_no_matches(make_events):
+    events = make_events(['fixation', 'saccade'])
+    out = events.filter_by_name(r'^blink$')
+    assert out.height == 0
 
 
 def test_blinks_filter(make_events):
