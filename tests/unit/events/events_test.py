@@ -1133,23 +1133,171 @@ def test_unnest_location_absent_is_noop() -> None:
             pl.DataFrame(
                 {
                     'name': [
-                        'fixation', 'fixation', 'fixation', 'blink', 'saccade',
-                        'blink', 'fixation', 'fixation', 'fixation', 'fixation',
+                        'fixation',
+                        'fixation',
+                        'fixation',
+                        'blink',
+                        'saccade',
+                        'blink',
+                        'fixation',
+                        'fixation',
+                        'fixation',
+                        'fixation',
                     ],
                     'onset': [0, 2, 5, 13, 21, 22, 30, 40, 53, 73],
                     'offset': [1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
                     'other_col': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
                     'other_col_2': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
                 },
-
             ),
-
         ),
     ],
 )
-def test_merge_subsequent_close_events(events, max_gap):
-
+def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=True)
     assert (max_gap + len(events.frame)) == 10, \
         f"Expected {10 - max_gap} events after merging," + \
         f" but got {len(events.frame)} for max_gap={max_gap}"
+
+
+@pytest.mark.parametrize('verbose', [True, False])
+@pytest.mark.parametrize(
+    ('events', 'max_gap', 'result_frame'),
+    [
+        pytest.param(
+            Events(),
+            6,
+            Events().frame,
+            id='empty_events',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation'],
+                        'onset': [0],
+                        'offset': [1],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'duration': [1],
+                },
+            ),
+            id='single_event_left_unchanged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation'],
+                        'onset': [0, 3],
+                        'offset': [1, 5],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [5],
+                    'duration': [5],
+                },
+            ),
+            id='two_events_small_gap_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation'],
+                        'onset': [0, 103],
+                        'offset': [1, 105],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 103],
+                    'offset': [1, 105],
+                    'duration': [1, 2],
+                },
+            ),
+            id='two_events_big_gap_not_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation', 'fixation'],
+                        'onset': [0, 4, 103],
+                        'offset': [1, 10, 105],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 103],
+                    'offset': [10, 105],
+                    'duration': [10, 2],
+                },
+            ),
+            id='three_events_small_gap_two_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation', 'fixation'],
+                        'onset': [0, 4, 13],
+                        'offset': [1, 10, 15],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [15],
+                    'duration': [15],
+                },
+            ),
+            id='three_events_small_gap_three_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'saccade', 'fixation'],
+                        'onset': [0, 2, 5],
+                        'offset': [1, 4, 12],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 2],
+                    'offset': [12, 4],
+                    'duration': [12, 2],
+                },
+            ),
+            id='three_events_small_gap_two_merged_inbetween',
+        ),
+    ],
+)
+def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
+    events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
+    assert_frame_equal(events.frame, result_frame)
