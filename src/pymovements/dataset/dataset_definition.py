@@ -58,6 +58,9 @@ class DatasetDefinition:
         The name of the dataset. (default: '.')
     long_name: str | None
         The entire name of the dataset. (default: None)
+    description: str | None
+        A fulltext description of the dataset.
+        (default: None)
     mirrors: dict[str, Sequence[str]]
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: {})
@@ -172,6 +175,9 @@ class DatasetDefinition:
         The name of the dataset. (default: '.')
     long_name: str | None
         The entire name of the dataset. (default: None)
+    description: str | None
+        A fulltext description of the dataset.
+        (default: None)
     has_files: dict[str, bool] | None
         Indicate whether the dataset contains 'gaze', 'precomputed_events', and
         'precomputed_reading_measures'. (default: None)
@@ -298,6 +304,8 @@ class DatasetDefinition:
 
     long_name: str | None = None
 
+    description: str | None = None
+
     mirrors: dict[str, Sequence[str]] = field(default_factory=dict)
 
     resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
@@ -324,6 +332,7 @@ class DatasetDefinition:
             name: str = '.',
             *,
             long_name: str | None = None,
+            description: str | None = None,
             has_files: dict[str, bool] | None = None,
             mirrors: dict[str, Sequence[str]] | None = None,
             resources: ResourceDefinitions | ResourcesLike | None = None,
@@ -344,6 +353,7 @@ class DatasetDefinition:
     ) -> None:
         self.name = name
         self.long_name = long_name
+        self.description = description
 
         self.experiment = experiment
 

@@ -1,5 +1,25 @@
 name: MouseCursor
 long_name: Mouse Cursor dataset
+description: 'MouseCursor dataset :cite:p:`MouseCursor`.
+
+
+  The paper presents a dataset for comparing two types of eye tracking:
+
+  smooth (vestibulo-ocular reflex or VOR-based) and saccadic eye tracking.
+
+  Data were collected using a head-mounted infrared camera system that adjusted
+
+  the mouse cursor based on pupil position.
+
+  The experiments involved two participants completing tasks to either position the
+
+  cursor within target areas or move it to a target location as quickly as possible.
+
+  The dataset is intended to help researchers evaluate and compare eye tracking methods
+
+  without needing to build the system themselves.
+
+  '
 resources:
 - content: gaze
   filename: mousecursor.zip
