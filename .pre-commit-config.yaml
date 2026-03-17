@@ -1,6 +1,6 @@
 default_language_version:
     python: python3.10
-    
+
 exclude: |
   (?x)^(
     src/pymovements/_version.py

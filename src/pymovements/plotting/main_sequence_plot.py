@@ -207,12 +207,12 @@ def main_sequence_plot(
 
             if fit_measure is True or fit_measure == 'r2':
                 val = np.round(r2_score(peak_velocities, y_pred), 3)
-                fit_label = f"R² = {val}"
+                fit_label = f'R² = {val}'
 
             elif fit_measure == 's':
                 s = np.sqrt(np.sum(residuals**2) / (len(residuals) - 2))
                 val = np.round(s, 3)
-                fit_label = f"S = {val}"
+                fit_label = f'S = {val}'
 
             else:
                 raise ValueError("measure must be one of: True, False, 'r2', 's'")
