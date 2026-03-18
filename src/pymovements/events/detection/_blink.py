@@ -131,7 +131,9 @@ def blink(
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
         _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
-    timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
+    else:
+        timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
+    timesteps = numpy.array(timesteps)
 
     if delta is not None and delta <= 0:
         raise ValueError(
