@@ -29,7 +29,7 @@ from tqdm.auto import tqdm
 
 from pymovements._version import __version__
 
-USER_AGENT: str = f"pymovements/{__version__}"
+USER_AGENT: str = f'pymovements/{__version__}'
 
 
 def download_file(

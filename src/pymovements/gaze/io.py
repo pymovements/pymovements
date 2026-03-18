@@ -754,8 +754,8 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         if experiment_resolution not in {(None, None), parsed_resolution}:
             issues.append(
                 'Screen resolution: '
-                f"{experiment_resolution[0]}x{experiment_resolution[1]} != "
-                f"{parsed_resolution[0]}x{parsed_resolution[1]}",
+                f'{experiment_resolution[0]}x{experiment_resolution[1]} != '
+                f'{parsed_resolution[0]}x{parsed_resolution[1]}',
             )
         experiment.screen.width_px, experiment.screen.height_px = parsed_resolution
 
@@ -766,7 +766,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
     else:
         if experiment.eyetracker.sampling_rate not in {None, parsed_sampling_rate}:
             issues.append(
-                f"Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}",
+                f'Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}',
             )
         experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
@@ -808,7 +808,7 @@ def _fill_experiment_from_parsing_eyelink_metadata(
         warnings.warn('No eye tracker model found.')
     else:
         if experiment.eyetracker.model not in {None, parsed_model}:
-            issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {parsed_model}")
+            issues.append(f'Eye tracker model: {experiment.eyetracker.model} != {parsed_model}')
         experiment.eyetracker.model = parsed_model
 
     # Eye tracker software version
@@ -862,16 +862,16 @@ def _fill_experiment_from_parsing_begaze_metadata(
         experiment.eyetracker.left = left_parsed
     elif experiment.eyetracker.left != left_parsed:
         warnings.warn(
-            f"BeGaze metadata suggests left tracked={left_parsed} but experiment has "
-            f"{experiment.eyetracker.left}; keeping experiment value.",
+            f'BeGaze metadata suggests left tracked={left_parsed} but experiment has '
+            f'{experiment.eyetracker.left}; keeping experiment value.',
         )
 
     if experiment.eyetracker.right is None:
         experiment.eyetracker.right = right_parsed
     elif experiment.eyetracker.right != right_parsed:
         warnings.warn(
-            f"BeGaze metadata suggests right tracked={right_parsed} but experiment has "
-            f"{experiment.eyetracker.right}; keeping experiment value.",
+            f'BeGaze metadata suggests right tracked={right_parsed} but experiment has '
+            f'{experiment.eyetracker.right}; keeping experiment value.',
         )
 
     # BeGaze headers typically do not include screen resolution in a standard way; if present as
@@ -886,15 +886,15 @@ def _fill_experiment_from_parsing_begaze_metadata(
             experiment.screen.width_px = int(width)
         elif width is not None and experiment.screen.width_px not in (None, int(width)):
             warnings.warn(
-                f"BeGaze metadata screen width={width} differs from experiment value "
-                f"{experiment.screen.width_px}; keeping experiment value.",
+                f'BeGaze metadata screen width={width} differs from experiment value '
+                f'{experiment.screen.width_px}; keeping experiment value.',
             )
         if experiment.screen.height_px is None and height is not None:
             experiment.screen.height_px = int(height)
         elif height is not None and experiment.screen.height_px not in (None, int(height)):
             warnings.warn(
-                f"BeGaze metadata screen height={height} differs from experiment value "
-                f"{experiment.screen.height_px}; keeping experiment value.",
+                f'BeGaze metadata screen height={height} differs from experiment value '
+                f'{experiment.screen.height_px}; keeping experiment value.',
             )
 
     return experiment

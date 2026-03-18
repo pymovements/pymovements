@@ -308,8 +308,8 @@ class Experiment:
     def __str__(self: Experiment) -> str:
         """Return Experiment string."""
         return (
-            f"{type(self).__name__}(screen={self.screen}, "
-            f"eyetracker={self.eyetracker})"
+            f'{type(self).__name__}(screen={self.screen}, '
+            f'eyetracker={self.eyetracker})'
         )
 
     def __bool__(self) -> bool:

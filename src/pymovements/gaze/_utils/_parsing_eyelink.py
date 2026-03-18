@@ -397,7 +397,7 @@ def _match_events_with_context(
                 # Orphaned end: no matching start
                 warnings.warn(
                     f"Missing start marker before end for event '{event_name}' "
-                    f"(onset={onset}, offset={offset}). "
+                    f'(onset={onset}, offset={offset}). '
                     'Using context from end timestamp.',
                 )
                 event_onset = onset
@@ -558,7 +558,7 @@ def parse_eyelink(
     ):
         raise ValueError(
             'Make sure to pass either a bool or a list of regular expressions '
-            f"as strings. Received {messages}.",
+            f'as strings. Received {messages}.',
         )
 
     messages_list: list[list[str]] = []

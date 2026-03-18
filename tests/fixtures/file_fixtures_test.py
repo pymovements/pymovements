@@ -52,7 +52,7 @@ def test_make_text_file_accepts_relative_path_object(make_text_file):
     p = make_text_file(Path('nested') / 'custom.txt', header='H', body='B')
     assert p.name == 'custom.txt'
     assert p.parent.name == 'nested'
-    print(f"dir in parent: {p.parent}")
+    print(f'dir in parent: {p.parent}')
     assert p.exists()
     assert p.read_text(encoding='utf-8') == 'HB'
 
