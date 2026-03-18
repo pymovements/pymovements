@@ -59,7 +59,7 @@ resources:
         - IA_RIGHT
       end_y_column:
         - IA_BOTTOM
-        -
+        
   - content: TextStimulus
     url: https://osf.io/download/dnfby/
     filename: "AOI_coordinates_counterbalance_2.csv"
