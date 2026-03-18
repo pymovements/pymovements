@@ -238,7 +238,7 @@ def norm(
         if all(isinstance(component, int) for component in components):  # assume pl.List column
             x = pl.col(column).list.get(components[0])
             y = pl.col(column).list.get(components[1])
-        elif all(isinstance(component, str) for component in components):  # assume pl.struct column
+        elif all(isinstance(component, str) for component in components):  # assume pl.Struct column
             x = pl.col(column).struct.field(components[0])
             y = pl.col(column).struct.field(components[1])
         else:
