@@ -97,15 +97,32 @@ def microsaccades(
     >>> import numpy as np
     >>> from pymovements.synthetic import step_function
     >>> from pymovements.events.detection import microsaccades
-    >>> velocities = step_function(length=10,
+    >>> velocities = step_function(length=300,
     ...                            steps=[2, 5, 9],
     ...                            values=[(0.5, 0.5), (1.0, 1.0), (0.2, 0.2)],
     ...                            start_value=(0., 0.))
+
+    Add some noise to add some variance or thresholds computations will fail
+
+    >>> velocities += np.random.normal(0, 0.05, velocities.shape)
 
     Run microsaccade detection with default parameters.
 
     >>> events = microsaccades(velocities)
     >>> events
+    shape: (6, 4)
+    ┌─────────┬───────┬────────┬──────────┐
+    │ name    ┆ onset ┆ offset ┆ duration │
+    │ ---     ┆ ---   ┆ ---    ┆ ---      │
+    │ str     ┆ i64   ┆ i64    ┆ i64      │
+    ╞═════════╪═══════╪════════╪══════════╡
+    │ saccade ┆ 2     ┆ 55     ┆ 53       │
+    │ saccade ┆ 57    ┆ 133    ┆ 76       │
+    │ saccade ┆ 135   ┆ 182    ┆ 47       │
+    │ saccade ┆ 184   ┆ 205    ┆ 21       │
+    │ saccade ┆ 219   ┆ 254    ┆ 35       │
+    │ saccade ┆ 256   ┆ 299    ┆ 43       │
+    └─────────┴───────┴────────┴──────────┘
 
     Use custom thresholds and explicit timesteps.
 
@@ -120,6 +137,14 @@ def microsaccades(
     ...                        threshold_factor=4,
     ...                        include_nan=True)
     >>> events
+    shape: (1, 4)
+    ┌─────────┬───────┬────────┬──────────┐
+    │ name    ┆ onset ┆ offset ┆ duration │
+    │ ---     ┆ ---   ┆ ---    ┆ ---      │
+    │ str     ┆ i64   ┆ i64    ┆ i64      │
+    ╞═════════╪═══════╪════════╪══════════╡
+    │ saccade ┆ 250   ┆ 299    ┆ 49       │
+    └─────────┴───────┴────────┴──────────┘
     """
     velocities = np.array(velocities)
 

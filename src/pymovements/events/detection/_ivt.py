@@ -90,7 +90,7 @@ def ivt(
     >>> import numpy as np
     >>> from pymovements.synthetic import step_function
     >>> from pymovements.events.detection import ivt
-    >>> velocities = step_function(length=10,
+    >>> velocities = step_function(length=1000,
     ...                            steps=[2, 5, 9],
     ...                            values=[(1., 2.), (2., 3.), (3., 4.)],
     ...                            start_value=(0., 0.))
@@ -99,6 +99,14 @@ def ivt(
 
     >>> events = ivt(velocities)
     >>> events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 0     ┆ 999    ┆ 999      │
+    └──────────┴───────┴────────┴──────────┘
 
     Use custom thresholds and explicit timesteps.
 
@@ -113,6 +121,14 @@ def ivt(
     ...              velocity_threshold=1.5,
     ...              include_nan=True)
     >>> events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 0     ┆ 199    ┆ 199      │
+    └──────────┴───────┴────────┴──────────┘
     """
     velocities = np.array(velocities)
 

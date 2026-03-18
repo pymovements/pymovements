@@ -96,7 +96,7 @@ def idt(
         A dataframe with detected fixations as rows.
 
     Raises
-    -------
+    ------
     TypeError
         If minimum_duration is not of type ``int`` or timesteps
     ValueError
@@ -119,6 +119,14 @@ def idt(
 
     >>> events = idt(positions)
     >>> events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 80    ┆ 999    ┆ 919      │
+    └──────────┴───────┴────────┴──────────┘
 
     Use custom thresholds.
 
@@ -130,6 +138,16 @@ def idt(
     ...              minimum_duration=50,
     ...              dispersion_threshold=0.5)
     >>> events
+    shape: (3, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 0     ┆ 100    ┆ 100      │
+    │ fixation ┆ 101   ┆ 200    ┆ 99       │
+    │ fixation ┆ 201   ┆ 299    ┆ 98       │
+    └──────────┴───────┴────────┴──────────┘
 
     """
     positions = np.array(positions)
