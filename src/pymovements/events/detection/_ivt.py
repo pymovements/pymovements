@@ -51,10 +51,10 @@ def ivt(
 
     Parameters
     ----------
-    velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray
+    velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Corresponding continuous 2D velocity time series.
-    timesteps: list[int] | numpy.ndarray | None
+    timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)

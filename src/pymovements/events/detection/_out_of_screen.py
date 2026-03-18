@@ -48,7 +48,7 @@ def out_of_screen(
 
     Parameters
     ----------
-    pixels: list[list[float]] | list[tuple[float, float]] | numpy.ndarray
+    pixels: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Continuous 2D pixel coordinate time series. The first column is the x coordinate
         and the second column is the y coordinate.
@@ -60,7 +60,7 @@ def out_of_screen(
         Minimum valid x pixel coordinate (inclusive). (default: 0)
     y_min: float
         Minimum valid y pixel coordinate (inclusive). (default: 0)
-    timesteps: list[int] | numpy.ndarray | None
+    timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
