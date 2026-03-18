@@ -242,14 +242,16 @@ def norm(
             x = pl.col(column).struct.field(components[0])
             y = pl.col(column).struct.field(components[1])
         else:
-            dtypes = (type(components[0]), type(components[1]))
             raise TypeError(
-                f'component elements must be either of type int or str but they are {dtypes}',
+                "elements of 'components' must be either of type int or str but they are "
+                f'({type(components[0]).__name__}, {type(components[1]).__name__})',
             )
     elif column is not None:  # not a sequence, unexpected type
-        raise TypeError(f"'components' must be a sequence but is of type {type(components)}")
+        raise TypeError(
+            f"'components' must be a sequence but is of type {type(components).__name__}",
+        )
     else:
-        raise TypeError("either 'column' or 'columns' must be provided but both are None")
+        raise TypeError("either column or columns must be provided but both are None")
     return (x.pow(2) + y.pow(2)).sqrt()
 
 

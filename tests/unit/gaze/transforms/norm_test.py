@@ -153,3 +153,33 @@ def test_norm_raises_when_parent_column_is_not_struct():
                 components=('x', 'y'),
             ).alias('norm'),
         )
+
+
+def test_norm_raises_when_components_not_length_2():
+    message = 'components must be of length 2 but is 3'
+    with pytest.raises(ValueError, match=message):
+        pm.gaze.transforms.norm(column='velocity', components=('x', 'y', 'z'))
+
+
+@pytest.mark.parametrize(
+    'components',
+    [
+        pytest.param((0.1, 0.2), id='tuple_float'),
+        pytest.param((1, 'x'), id='tuple_mixed'),
+    ],
+)
+def test_norm_raises_when_component_elements_unexpected_type(components):
+    message = "elements of 'components' must be either of type int or str but they are"
+    with pytest.raises(TypeError, match=message):
+        pm.gaze.transforms.norm(column='velocity', components=components)
+
+def test_norm_raises_when_components_unexpected_type():
+    message = "'components' must be a sequence but is of type float"
+    with pytest.raises(TypeError, match=message):
+        pm.gaze.transforms.norm(column='velocity', components=0.1)
+
+
+def test_norm_raises_when_column_and_columns_are_none():
+    message = 'either column or columns must be provided but both are None'
+    with pytest.raises(TypeError, match=message):
+        pm.gaze.transforms.norm(column=None, columns=None)
