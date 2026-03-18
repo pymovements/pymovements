@@ -1,5 +1,13 @@
 name: ChineseReading
 
+description: |
+  ChineseReading dataset :cite:p:`ChineseReading`.
+
+  This dataset includes eye tracking data from more than 300 participants recorded in a single
+  session. Precomputed events and word-level reading measures are reported.
+  Each participant is instructed to read several sentences.
+  Check the respective paper for details :cite:p:`ChineseReading`.
+
 resources:
   - content: precomputed_events
     url: 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a'

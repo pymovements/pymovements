@@ -683,7 +683,7 @@ def load_stimulus_file(
         valid_content_types = ['ImageStimulus', 'TextStimulus']
         raise ValueError(
             f"Could not infer load function from content type '{file.definition.content}'. "
-            f"Supported stimulus content types are: {valid_content_types}.",
+            f'Supported stimulus content types are: {valid_content_types}.',
         )
 
     load_kwargs = deepcopy(file.definition.load_kwargs)
@@ -911,7 +911,7 @@ def take_subset(
                 # The pragma directive should be removed after the removal of fileinfo from Dataset.
                 raise ValueError(
                     f'subset key {metadata_key} must exist as metadata key in DatasetFile. '
-                    f"Available metadata: {file.metadata}",
+                    f'Available metadata: {file.metadata}',
                 )
 
         if isinstance(metadata_value, (bool, float, int, str)):

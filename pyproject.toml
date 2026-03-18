@@ -167,6 +167,7 @@ filterwarnings = [
 ]
 markers = ["network: mark a test as requiring network access"]
 testpaths = ['tests', 'src']
+xfail_strict = true
 
 [tool.setuptools.package-data]
 pymovements = ["datasets/*.yaml"]

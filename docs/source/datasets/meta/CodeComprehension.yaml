@@ -1,5 +1,20 @@
 name: CodeComprehension
 long_name: Code Comprehension dataset
+description: 'CodeComprehension dataset :cite:p:`CodeComprehension`.
+
+
+  This dataset includes eye-tracking-while-code-reading data from a participant in
+  a single
+
+  session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an
+
+  EyeLink 1000 eye tracker and are provided as pixel coordinates.
+
+
+  The participant is instructed to read the code snippet and answer a code comprehension
+  question.
+
+  '
 resources:
 - content: precomputed_events
   filename: data.zip
