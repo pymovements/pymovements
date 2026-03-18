@@ -131,6 +131,20 @@ class CoLAGaze(DatasetDefinition):
                         'filename_pattern': 'raw_measures_for_features{subject_id:d}.csv',
                         'filename_pattern_schema_overrides': {'subject_id': int},
                     },
+                    {
+                        'content': 'TextStimulus',
+                        'url': 'https://osf.io/download/78zdf/',
+                        'filename': 'AOI_coordinates_counterbalance_1.csv',
+                        'md5': None,  # type: ignore
+                        'filename_pattern': 'AOI_coordinates_counterbalance_1.csv'
+                    },
+                    {
+                        'content': 'TextStimulus',
+                        'url': 'https://osf.io/download/dnfby/',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'AOI_coordinates_counterbalance_2.csv',
+                        'md5': None,  # type: ignore
+                        'filename_pattern': 'AOI_coordinates_counterbalance_2.csv'
+                    },
             ],
         ),
     )
