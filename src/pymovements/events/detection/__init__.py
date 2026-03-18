@@ -25,12 +25,14 @@
    :toctree:
    :recursive:
 
+    pymovements.events.blink
     pymovements.events.fill
     pymovements.events.idt
     pymovements.events.ivt
     pymovements.events.microsaccades
 
 """
+from pymovements.events.detection._blink import blink
 from pymovements.events.detection._fill import fill
 from pymovements.events.detection._idt import idt
 from pymovements.events.detection._ivt import ivt
@@ -43,6 +45,7 @@ __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',
 
+    'blink',
     'fill',
     'idt',
     'ivt',

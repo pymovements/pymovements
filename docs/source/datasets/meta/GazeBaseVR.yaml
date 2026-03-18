@@ -1,5 +1,16 @@
 name: GazeBaseVR
 long_name: GazeBaseVR dataset
+description: "GazeBaseVR dataset :cite:p:`GazeBaseVR`.\n\nThis dataset includes binocular\
+  \ plus additional cyclopian eye tracking data from 407\nparticipants captured over\
+  \ a 26-month period. Participants attended up to 3 rounds during this\ntime frame,\
+  \ with each round consisting of two contiguous sessions.\n\nEye movements are recorded\
+  \ at a sampling frequency of 250 Hz a using SensoMotoric\nInstrument\u2019s (SMI\u2019\
+  s) tethered ET VR head-mounted display based on the\nHTC Vive (hereon called the\
+  \ ET-HMD) eye tracker and are provided as\npositional data in degrees of visual\
+  \ angle.\n\nIn each of the two sessions per round, participants are instructed to\
+  \ complete a series of\ntasks, a vergence task (VRG), a smooth pursuit task (PUR),\
+  \ a video viewing task (VID),\na reading task (TEX), and a random saccade task (RAN).\n\
+  \nCheck the respective paper for details :cite:p:`GazeBaseVR`.\n"
 resources:
 - content: gaze
   filename: gazebasevr.zip

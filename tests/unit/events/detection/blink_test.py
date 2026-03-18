@@ -1,0 +1,445 @@
+# Copyright (c) 2022-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Test functionality of the blink detection algorithm."""
+from __future__ import annotations
+
+import numpy as np
+import pytest
+from polars.testing import assert_frame_equal
+
+from pymovements import Events
+from pymovements.events import blink
+from pymovements.events.detection._library import EventDetectionLibrary
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'expected_error', 'expected_message'),
+    [
+        pytest.param(
+            {
+                'pupil': np.ones((10, 2)),
+            },
+            ValueError,
+            r'pupil must be a 1D array, but got array with shape \(10, 2\)',
+            id='2d_pupil_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'timesteps': np.arange(20, dtype=int),
+            },
+            ValueError,
+            'The sequences "pupil" and "timesteps" must be of equal length.',
+            id='pupil_timesteps_length_mismatch_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'delta': -1.0,
+            },
+            ValueError,
+            'delta must be positive, but got -1.0',
+            id='negative_delta_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'delta': 0.0,
+            },
+            ValueError,
+            'delta must be positive, but got 0.0',
+            id='zero_delta_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_duration': -1,
+            },
+            ValueError,
+            'minimum_duration must not be negative, but got -1',
+            id='negative_minimum_duration_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'maximum_duration': 0,
+            },
+            ValueError,
+            'maximum_duration must be positive or None, but got 0',
+            id='zero_maximum_duration_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'maximum_duration': -1,
+            },
+            ValueError,
+            'maximum_duration must be positive or None, but got -1',
+            id='negative_maximum_duration_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_duration': 100,
+                'maximum_duration': 50,
+            },
+            ValueError,
+            'maximum_duration must be >= minimum_duration',
+            id='maximum_less_than_minimum_raises_value_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidates_around_gap': None,
+            },
+            TypeError,
+            'minimum_candidates_around_gap must be an int or a sequence of int',
+            id='minimum_candidate_duration_to_absorb_gap_none_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidates_around_gap': 'test',
+            },
+            TypeError,
+            'minimum_candidates_around_gap must be an int or a sequence of int',
+            id='minimum_candidate_duration_to_absorb_gap_str_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidates_around_gap': (1, 'test'),
+            },
+            TypeError,
+            'minimum_candidates_around_gap must be an int or a sequence of int',
+            id='minimum_candidate_duration_to_absorb_gap_str_tuple_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pupil': np.ones(10),
+                'minimum_candidates_around_gap': (1, 2, 3),
+            },
+            ValueError,
+            'minimum_candidates_around_gap must be an int or a sequence of length 2',
+            id='minimum_candidate_duration_to_absorb_gap_length_3_raises_value_error',
+        ),
+    ],
+)
+def test_blink_raise_error(kwargs, expected_error, expected_message):
+    """Test if blink raises expected error."""
+    with pytest.raises(expected_error, match=expected_message):
+        blink(**kwargs)
+
+
+@pytest.mark.parametrize(
+    ('kwargs', 'expected'),
+    [
+        pytest.param(
+            {
+                'pupil': np.full(200, 500.0),
+                'timesteps': np.arange(200, dtype=int),
+            },
+            Events(),
+            id='constant_pupil_no_blinks',
+        ),
+        pytest.param(
+            # Zero-pupil blink: 80 samples. Auto-delta also flags the transition 0->500 at step 90,
+            # expanding the blink by 1 sample on the right side.
+            # Flagged region: samples 10..90, duration = 80.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 0.0),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+            },
+            Events(name='blink', onsets=[10], offsets=[90]),
+            id='zero_pupil_detected_as_blink',
+        ),
+        pytest.param(
+            # NaN blink: 80 samples. NaN diffs are excluded from delta flagging,
+            # so only the NaN samples themselves are candidate_mask.
+            # Flagged region: samples 10..89, duration = 79.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+            },
+            Events(name='blink', onsets=[10], offsets=[89]),
+            id='nan_pupil_detected_as_blink',
+        ),
+        pytest.param(
+            # NaN blink with explicit timesteps starting at 1000.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(1000, 1200, dtype=int),
+            },
+            Events(name='blink', onsets=[1010], offsets=[1089]),
+            id='with_explicit_timesteps',
+        ),
+        pytest.param(
+            # Two NaN blinks of 80 ms each, separated by 100 good samples.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(100, 500.0),
+                    np.full(80, np.nan),
+                    np.full(30, 500.0),
+                ]),
+                'timesteps': np.arange(300, dtype=int),
+                'minimum_gap': 0,
+            },
+            Events(name='blink', onsets=[10, 190], offsets=[89, 269]),
+            id='two_separate_blinks',
+        ),
+        pytest.param(
+            # Two NaN blinks with a 3-sample gap — absorbed when minimum_gap=3.
+            # Region 1: 10..89, gap: 90,91,92, Region 2: 93..172.
+            # After absorption: single event 10..172, duration = 162.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'minimum_gap': 3,
+                'minimum_candidates_around_gap': 2,
+            },
+            Events(name='blink', onsets=[10], offsets=[172]),
+            id='island_absorption_merges_nearby_events',
+        ),
+        pytest.param(
+            # Two NaN blinks with a 3-sample gap — absorbed when minimum_gap=3.
+            # Region 1: 10..89, gap: 90,91,92, Region 2: 93..172.
+            # Not absorbed because left region shorter than minimum candidate duration.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'minimum_gap': 3,
+                'minimum_candidates_around_gap': (15, 2),
+            },
+            Events(name='blink', onsets=[10], offsets=[172]),
+            id='island_absorption_left_canidate_too_short',
+        ),
+        pytest.param(
+            # Same layout but absorption disabled — two separate blink events.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(3, 500.0),
+                    np.full(80, np.nan),
+                    np.full(27, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'minimum_gap': 0,
+            },
+            Events(name='blink', onsets=[10, 93], offsets=[89, 172]),
+            id='max_value_run_0_disables_absorption',
+        ),
+        pytest.param(
+            # 30 ms NaN blink — below default minimum_duration=50, filtered out.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(31, np.nan),
+                    np.full(159, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'minimum_gap': 0,
+            },
+            Events(),
+            id='minimum_duration_filters_short_events',
+        ),
+        pytest.param(
+            # 600 ms NaN blink — above default maximum_duration=500, filtered out.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(601, np.nan),
+                    np.full(89, 500.0),
+                ]),
+                'timesteps': np.arange(700, dtype=int),
+                'minimum_gap': 0,
+            },
+            Events(),
+            id='maximum_duration_filters_long_events',
+        ),
+        pytest.param(
+            # maximum_duration=None disables upper bound — 600 ms blink passes.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(601, np.nan),
+                    np.full(89, 500.0),
+                ]),
+                'timesteps': np.arange(700, dtype=int),
+                'minimum_gap': 0,
+                'maximum_duration': None,
+                'minimum_duration': 1,
+            },
+            Events(name='blink', onsets=[10], offsets=[610]),
+            id='maximum_duration_none_disables_upper_bound',
+        ),
+        pytest.param(
+            {
+                'pupil': np.array([], dtype=float),
+            },
+            Events(),
+            id='empty_input_no_events',
+        ),
+        pytest.param(
+            # All NaN, 100 samples = 99 ms duration.
+            {
+                'pupil': np.full(100, np.nan),
+                'timesteps': np.arange(100, dtype=int),
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(name='blink', onsets=[0], offsets=[99]),
+            id='all_nan_single_blink_event',
+        ),
+        pytest.param(
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, np.nan),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'name': 'my_blink',
+            },
+            Events(name='my_blink', onsets=[10], offsets=[89]),
+            id='custom_name_parameter',
+        ),
+        pytest.param(
+            # Explicit delta with all-NaN pupil — valid_diffs is empty so delta
+            # flagging is skipped, but NaN flagging still catches everything.
+            {
+                'pupil': np.full(100, np.nan),
+                'timesteps': np.arange(100, dtype=int),
+                'delta': 10.0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(name='blink', onsets=[0], offsets=[99]),
+            id='explicit_delta_all_nan_no_valid_diffs',
+        ),
+        pytest.param(
+            # Single-sample pupil — duration is 0 so it is filtered by minimum_duration=1.
+            {
+                'pupil': np.array([np.nan]),
+                'timesteps': np.array([0], dtype=int),
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(),
+            id='single_nan_sample_filtered_by_duration',
+        ),
+        pytest.param(
+            # Explicit delta with valid (non-NaN) data — exercises the delta flagging path.
+            # The large jump from 500 to 100 (diff=400 > delta=50) flags the
+            # transition samples. With minimum_gap=0, only the two edge
+            # transitions are candidate_mask as separate short events.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 100.0),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'delta': 50.0,
+                'minimum_duration': 0,
+                'maximum_duration': None,
+                'minimum_gap': 0,
+            },
+            Events(name='blink', onsets=[10, 90], offsets=[10, 90]),
+            id='explicit_delta_with_valid_diffs',
+        ),
+        pytest.param(
+            # Explicit delta with valid (non-NaN) data — exercises the delta flagging path.
+            # The large jump from 500 to 100 (diff=400 > delta=50) flags the
+            # transition samples. With minimum_gap=0, only the two edge
+            # transitions are candidate_mask as separate short events.
+            {
+                'pupil': np.concatenate([
+                    np.full(10, 500.0),
+                    np.full(80, 100.0),
+                    np.full(110, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'delta': 50.0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+                'minimum_gap': 0,
+            },
+            Events(name='blink', onsets=[10, 90], offsets=[10, 90]),
+            id='explicit_delta_with_valid_diffs_xfail',
+            marks=pytest.mark.xfail(reason='#TODO'),
+        ),
+        pytest.param(
+            # Short unflagged gap at the start of the array — not enough candidate_mask
+            # samples before it, so absorption is rejected (False branch of
+            # _merge_blink_candidates line 256).
+            {
+                'pupil': np.concatenate([
+                    np.full(2, 500.0),
+                    np.full(80, np.nan),
+                    np.full(118, 500.0),
+                ]),
+                'timesteps': np.arange(200, dtype=int),
+                'minimum_gap': 3,
+                'minimum_candidates_around_gap': 2,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            Events(name='blink', onsets=[2], offsets=[81]),
+            id='absorption_rejected_at_boundary',
+        ),
+    ],
+)
+def test_blink_detects_events(kwargs, expected):
+    """Test if blink correctly detects blink events."""
+    events = blink(**kwargs)
+
+    assert_frame_equal(events.frame, expected.frame)
+
+
+def test_blink_registered_in_library():
+    """Test that blink is registered in EventDetectionLibrary."""
+    assert 'blink' in EventDetectionLibrary.methods

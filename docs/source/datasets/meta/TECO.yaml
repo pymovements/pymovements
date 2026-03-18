@@ -1,5 +1,26 @@
 name: TECO
 long_name: Tsukuba Eye-tracking Corpus
+description: 'TECO dataset :cite:p:`TECO`.
+
+
+  The Tsukuba Eye-tracking Corpus (TECO) provides eye-tracking data from 41 Japanese
+
+  learners of English, who read 30 English passages with a total of over 410,000 tokens.
+
+
+  This dataset includes detailed eye-movement measures such as skipping,
+
+  first fixation duration, and regression, offering insights into the cognitive processes
+
+  underlying second-language reading. TECO also examines the impact of lexical and
+  reader factors,
+
+  like word length and reading proficiency, on eye-tracking behavior.
+
+
+  The dataset aims to support research on L2 reading comprehension.
+
+  '
 resources:
 - content: precomputed_reading_measures
   filename: wordmeasure_v1.csv

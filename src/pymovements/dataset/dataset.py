@@ -239,8 +239,8 @@ class Dataset:
         """
         if len(data) != len(self.gaze):
             raise ValueError(
-                f"Number of events ({len(data)}) does not match "
-                f"number of gazes ({len(self.gaze)}).",
+                f'Number of events ({len(data)}) does not match '
+                f'number of gazes ({len(self.gaze)}).',
             )
         for gaze, ev in zip(self.gaze, data):
             gaze.events = ev
