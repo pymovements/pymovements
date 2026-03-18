@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import numpy as np
+import numpy
 
 from pymovements._utils import _checks
 from pymovements.events.detection._library import register_event_detection
@@ -32,9 +32,9 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def blink(
-        pupil: list[float] | np.ndarray,
+        pupil: list[float] | numpy.ndarray | polars.Series,
         *,
-        timesteps: list[int] | np.ndarray | None = None,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         delta: float | None = None,
         minimum_duration: int = 50,
         maximum_duration: int | None = 500,
@@ -64,17 +64,17 @@ def blink(
 
     Parameters
     ----------
-    pupil: list[float] | np.ndarray
+    pupil: list[float] | numpy.ndarray | polars.Series
         shape (N,)
         Continuous 1D pupil size time series (e.g., diameter or area).
-    timesteps: list[int] | np.ndarray | None
+    timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N,)
         Corresponding continuous 1D timestep time series. If None, sample-based timesteps are
         assumed.
         (default: None)
     delta: float | None
         Threshold on absolute pupil difference for flagging rapid changes. If None, it is
-        auto-estimated as ``5 * np.nanpercentile(abs_diff, 95)`` from valid absolute
+        auto-estimated as ``5 * numpy.nanpercentile(abs_diff, 95)`` from valid absolute
         differences.
         (default: None)
     minimum_duration: int
@@ -116,18 +116,23 @@ def blink(
         If minimum_duration is not positive.
         If maximum_duration is not positive or less than minimum_duration.
     """
-    pupil = np.array(pupil, dtype=float)
+    if isinstance(pupil, polars.Series):
+        pupil = pupil.to_numpy()
+    else:
+        pupil = numpy.array(pupil, dtype=float)
 
     if pupil.ndim != 1:
         raise ValueError(
             f'pupil must be a 1D array, but got array with shape {pupil.shape}',
         )
 
-    if timesteps is not None:
-        timesteps = np.array(timesteps)
+    if isinstance(timesteps, polars.Series):
+        timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
         _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
     else:
-        timesteps = np.arange(len(pupil), dtype=np.int64)
+        timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
 
     if delta is not None and delta <= 0:
         raise ValueError(
@@ -175,16 +180,16 @@ def blink(
         return Events(name=name, onsets=[], offsets=[])
 
     # Stage 1: Flag all samples with pupil loss as blink candidates.
-    candidate_mask = np.isnan(pupil) | (pupil == 0)
+    candidate_mask = numpy.isnan(pupil) | (pupil == 0)
 
     # Stage 2: Flag pupil changes that exceed delta threshold.
     # Compute absolute sample differences. Prepend nan sample to preserve array shape.
-    abs_diff = np.abs(np.diff(pupil, prepend=np.nan))
+    abs_diff = numpy.abs(numpy.diff(pupil, prepend=numpy.nan))
 
     # NaN diff values (from NaN pupil values) are ignored for calculating delta.
-    valid_diff = abs_diff[~np.isnan(abs_diff)]
+    valid_diff = abs_diff[~numpy.isnan(abs_diff)]
     if delta is None and len(valid_diff) > 0:
-        delta = 5.0 * np.nanpercentile(valid_diff, 95)
+        delta = 5.0 * numpy.nanpercentile(valid_diff, 95)
 
     if delta is not None and len(valid_diff) > 0:
         # Flag sample i+1 if abs(pupil[i+1] - pupil[i]) > delta
@@ -198,7 +203,7 @@ def blink(
         )
 
     # Group consecutive candidate_mask samples into events
-    candidate_indices = np.where(candidate_mask)[0]
+    candidate_indices = numpy.where(candidate_mask)[0]
 
     if len(candidate_indices) == 0:
         return Events(name=name, onsets=[], offsets=[])
@@ -227,15 +232,15 @@ def blink(
 
 
 def _merge_blink_candidates(
-        candidate_mask: np.ndarray,
+        candidate_mask: numpy.ndarray,
         minimum_gap: int,
         minimum_candidate_duration_to_absorb_gap: tuple[int, int],
-) -> np.ndarray:
+) -> numpy.ndarray:
     """Absorb short unflagged runs surrounded by masked samples.
 
     Parameters
     ----------
-    candidate_mask: np.ndarray
+    candidate_mask: numpy.ndarray
         Boolean array of flagged samples.
     minimum_gap: int
         Maximum length of an unflagged run to absorb.
@@ -244,14 +249,14 @@ def _merge_blink_candidates(
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Updated blink candidate mask where minimum gaps are absorbed by surrounding blinks.
     """
     candidate_mask = candidate_mask.copy()
     n = len(candidate_mask)
 
     # Find runs of unflagged samples
-    unflagged_indices = np.where(~candidate_mask)[0]
+    unflagged_indices = numpy.where(~candidate_mask)[0]
     if len(unflagged_indices) == 0:
         return candidate_mask
 
@@ -267,11 +272,11 @@ def _merge_blink_candidates(
 
         # Count candidate_mask samples before this run
         before_start = max(0, start - minimum_candidate_duration_to_absorb_gap[0])
-        flagged_before = np.sum(candidate_mask[before_start:start])
+        flagged_before = numpy.sum(candidate_mask[before_start:start])
 
         # Count candidate_mask samples after this run
         after_end = min(n, end + 1 + minimum_candidate_duration_to_absorb_gap[1])
-        flagged_after = np.sum(candidate_mask[end + 1:after_end])
+        flagged_after = numpy.sum(candidate_mask[end + 1:after_end])
 
         if (
                 flagged_before >= minimum_candidate_duration_to_absorb_gap[0]

@@ -50,8 +50,8 @@ def dispersion(positions: list[list[float]] | np.ndarray) -> float:
 
 @register_event_detection
 def idt(
-        positions: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        timesteps: list[int] | np.ndarray | None = None,
+        positions: list[list[float]] | list[tuple[float, float]] | np.ndarray | polars.Series,
+        timesteps: list[int] | np.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
@@ -104,13 +104,18 @@ def idt(
         If dispersion_threshold is not greater than 0
         If duration_threshold is not greater than 0
     """
-    positions = np.array(positions)
-
+    if isinstance(positions, polars.Series):
+        positions = np.vstack([positions.list.get(0), positions.list.get(1)]).transpose()
+    else:
+        positions = np.array(positions)
     _checks.check_shapes(positions=positions)
 
     if timesteps is None:
         timesteps = np.arange(len(positions), dtype=np.int64)
-    timesteps = np.array(timesteps).flatten()
+    elif isinstance(timesteps, polars.Series):
+        timesteps = timesteps.to_numpy()
+    else:
+        timesteps = np.array(timesteps).flatten()
 
     # Check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)

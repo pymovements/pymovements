@@ -30,13 +30,13 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def out_of_screen(
-        pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+        pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray | polars.Series,
         *,
         x_max: float,
         y_max: float,
         x_min: float = 0,
         y_min: float = 0,
-        timesteps: list[int] | np.ndarray | None = None,
+        timesteps: list[int] | np.ndarray | polars.Series | None = None,
         name: str = 'out_of_screen',
 ) -> Events:
     """Detect gaze samples with pixel coordinates outside of screen boundaries.
@@ -78,8 +78,10 @@ def out_of_screen(
         If x_min >= x_max.
         If y_min >= y_max.
     """
-    pixels = np.array(pixels)
-
+    if isinstance(pixels, polars.Series):
+        pixels = np.vstack([pixels.list.get(0), pixels.list.get(1)]).transpose()
+    else:
+        pixels = np.array(pixels)
     _checks.check_shapes(pixels=pixels)
 
     if x_min >= x_max:
@@ -93,7 +95,10 @@ def out_of_screen(
 
     if timesteps is None:
         timesteps = np.arange(len(pixels), dtype=np.int64)
-    timesteps = np.array(timesteps)
+    elif isinstance(timesteps, polars.Series):
+        timesteps = timesteps.to_numpy()
+    else:
+        timesteps = np.array(timesteps).flatten()
     _checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
     # A sample is out-of-screen if x or y is outside the screen boundaries.

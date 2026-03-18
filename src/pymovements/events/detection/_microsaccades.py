@@ -33,8 +33,8 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def microsaccades(
-        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        timesteps: list[int] | np.ndarray | None = None,
+        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray | polars.Series,
+        timesteps: list[int] | np.ndarray | polars.Series | None = None,
         minimum_duration: int = 6,
         threshold: np.ndarray | tuple[float, float] | str = 'engbert2015',
         threshold_factor: float = 6,
@@ -90,11 +90,17 @@ def microsaccades(
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
     """
-    velocities = np.array(velocities)
+    if isinstance(velocities, polars.Series):
+        velocities = np.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
+    else:
+        velocities = np.array(velocities)
 
     if timesteps is None:
         timesteps = np.arange(len(velocities), dtype=np.int64)
-    timesteps = np.array(timesteps)
+    elif isinstance(timesteps, polars.Series):
+        timesteps = timesteps.to_numpy()
+    else:
+        timesteps = np.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if isinstance(threshold, str):

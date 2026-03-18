@@ -32,8 +32,8 @@ from pymovements.gaze.transforms_numpy import norm
 
 @register_event_detection
 def ivt(
-        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        timesteps: list[int] | np.ndarray | None = None,
+        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray | polars.Series,
+        timesteps: list[int] | np.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
@@ -83,8 +83,10 @@ def ivt(
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
     """
-    velocities = np.array(velocities)
-
+    if isinstance(velocities, polars.Series):
+        velocities = np.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
+    else:
+        velocities = np.array(velocities)
     _checks.check_shapes(velocities=velocities)
 
     if velocity_threshold is None:
@@ -94,7 +96,10 @@ def ivt(
 
     if timesteps is None:
         timesteps = np.arange(len(velocities), dtype=np.int64)
-    timesteps = np.array(timesteps)
+    elif isinstance(timesteps, polars.Series):
+        timesteps = timesteps.to_numpy()
+    else:
+        timesteps = np.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     # Get all indices with norm-velocities below threshold.

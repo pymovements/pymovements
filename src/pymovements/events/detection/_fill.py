@@ -30,7 +30,7 @@ from pymovements.gaze.transforms_numpy import consecutive
 @register_event_detection
 def fill(
         events: Events,
-        timesteps: list[int] | np.ndarray,
+        timesteps: list[int] | np.ndarray | polars.Series,
         minimum_duration: int = 1,
         name: str = 'unclassified',
 ) -> Events:
@@ -40,7 +40,7 @@ def fill(
     ----------
     events: Events
         The already detected events.
-    timesteps: list[int] | np.ndarray
+    timesteps: list[int] | np.ndarray | polars.Series
         shape (N, )
         Continuous 1D timestep time series.
     minimum_duration: int
@@ -54,7 +54,10 @@ def fill(
     Events
         A dataframe with detected fixations as rows.
     """
-    timesteps = np.array(timesteps)
+    if isinstance(timesteps, polars.Series):
+        timesteps = timesteps.to_numpy()
+    else:
+        timesteps = np.array(timesteps)
 
     # Create binary mask where each existing event is marked.
     events_mask = np.zeros(len(timesteps), dtype=bool)
