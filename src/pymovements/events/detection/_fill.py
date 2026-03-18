@@ -57,8 +57,7 @@ def fill(
     """
     if isinstance(timesteps, polars.Series):
         timesteps = timesteps.to_numpy()
-    else:
-        timesteps = numpy.array(timesteps)
+    timesteps = numpy.array(timesteps)
 
     # Create binary mask where each existing event is marked.
     events_mask = numpy.zeros(len(timesteps), dtype=bool)

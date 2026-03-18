@@ -86,8 +86,7 @@ def ivt(
     """
     if isinstance(velocities, polars.Series):
         velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
-    else:
-        velocities = numpy.array(velocities)
+    velocities = numpy.array(velocities)
     _checks.check_shapes(velocities=velocities)
 
     if velocity_threshold is None:
@@ -99,8 +98,7 @@ def ivt(
         timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     elif isinstance(timesteps, polars.Series):
         timesteps = timesteps.to_numpy()
-    else:
-        timesteps = numpy.array(timesteps).flatten()
+    timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     # Get all indices with norm-velocities below threshold.

@@ -81,8 +81,7 @@ def out_of_screen(
     """
     if isinstance(pixels, polars.Series):
         pixels = numpy.vstack([pixels.list.get(0), pixels.list.get(1)]).transpose()
-    else:
-        pixels = numpy.array(pixels)
+    pixels = numpy.array(pixels)
     _checks.check_shapes(pixels=pixels)
 
     if x_min >= x_max:
@@ -98,8 +97,7 @@ def out_of_screen(
         timesteps = numpy.arange(len(pixels), dtype=numpy.int64)
     elif isinstance(timesteps, polars.Series):
         timesteps = timesteps.to_numpy()
-    else:
-        timesteps = numpy.array(timesteps).flatten()
+    timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
     # A sample is out-of-screen if x or y is outside the screen boundaries.

@@ -107,16 +107,14 @@ def idt(
     """
     if isinstance(positions, polars.Series):
         positions = numpy.vstack([positions.list.get(0), positions.list.get(1)]).transpose()
-    else:
-        positions = numpy.array(positions)
+    positions = numpy.array(positions)
     _checks.check_shapes(positions=positions)
 
     if timesteps is None:
         timesteps = numpy.arange(len(positions), dtype=numpy.int64)
     elif isinstance(timesteps, polars.Series):
         timesteps = timesteps.to_numpy()
-    else:
-        timesteps = numpy.array(timesteps).flatten()
+    timesteps = numpy.array(timesteps).flatten()
 
     # Check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)

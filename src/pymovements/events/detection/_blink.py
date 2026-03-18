@@ -119,8 +119,7 @@ def blink(
     """
     if isinstance(pupil, polars.Series):
         pupil = pupil.to_numpy()
-    else:
-        pupil = numpy.array(pupil, dtype=float)
+    pupil = numpy.array(pupil, dtype=float)
 
     if pupil.ndim != 1:
         raise ValueError(
@@ -132,8 +131,7 @@ def blink(
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
         _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
-    else:
-        timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
+    timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
 
     if delta is not None and delta <= 0:
         raise ValueError(
