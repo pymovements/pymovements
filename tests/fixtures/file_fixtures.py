@@ -259,7 +259,7 @@ def _validate_filename(filename: str | Path) -> Path:
     Returns a Path relative to current directory (to be joined with tmp_path).
     """
     if not isinstance(filename, (str, Path)):
-        raise TypeError(f"filename must be a str or Path, got {type(filename).__name__}")
+        raise TypeError(f'filename must be a str or Path, got {type(filename).__name__}')
 
     if isinstance(filename, str) and filename.startswith('~'):
         raise ValueError("filename must be a relative path; '~' (home) is not allowed")

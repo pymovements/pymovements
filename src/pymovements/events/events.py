@@ -272,13 +272,13 @@ class Events:
             if column not in existing_columns:
                 raise ValueError(
                     f"The column '{column}' does not exist and thus cannot be removed. "
-                    f"Available columns to remove: {available_columns}.",
+                    f'Available columns to remove: {available_columns}.',
                 )
             if column in minimal_schema:
                 raise ValueError(
                     f"The column '{column}' cannot be removed "
                     'because it belongs to the minimal schema (onset, offset, name). '
-                    f"Available columns to remove: {available_columns}.",
+                    f'Available columns to remove: {available_columns}.',
                 )
         for column in columns:
             self.frame = self.frame.drop(column)

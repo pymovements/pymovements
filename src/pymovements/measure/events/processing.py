@@ -181,7 +181,7 @@ class EventSamplesProcessor:
         if len(events) == 0:
             measure_columns = [measure.meta.output_name() for measure in self.measures]
             warn(
-                f"No events available for processing. Creating empty columns for {measure_columns}",
+                f'No events available for processing. Creating empty columns for {measure_columns}',
             )
 
             # run measures on empty samples data frame.
@@ -233,19 +233,19 @@ def _check_measures(
         if not isinstance(measures[0], str):
             raise TypeError(
                 f'First item of tuple must be a string, '
-                f"but received {type(measures[0])}.",
+                f'but received {type(measures[0])}.',
             )
         if not isinstance(measures[1], dict):
             raise TypeError(
                 'Second item of tuple must be a dictionary, '
-                f"but received {type(measures[1])}.",
+                f'but received {type(measures[1])}.',
             )
     elif isinstance(measures, list):
         for measure in measures:
             if not isinstance(measure, (str, tuple)):
                 raise TypeError(
                     'Each item in the list must be either a string or a tuple, '
-                    f"but received {type(measure)}.",
+                    f'but received {type(measure)}.',
                 )
             if isinstance(measure, tuple):
                 if len(measure) != 2:
@@ -263,5 +263,5 @@ def _check_measures(
     else:
         raise TypeError(
             'measures must be of type str, tuple, or list, '
-            f"but received {type(measures)}.",
+            f'but received {type(measures)}.',
         )

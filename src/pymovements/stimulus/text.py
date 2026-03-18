@@ -160,7 +160,7 @@ class WritingSystem:
             )
         raise ValueError(
             f"Unknown descriptor '{descriptor}'. "
-            f"Valid descriptors are: {WritingSystem.DESCRIPTORS}",
+            f'Valid descriptors are: {WritingSystem.DESCRIPTORS}',
         )
 
 
