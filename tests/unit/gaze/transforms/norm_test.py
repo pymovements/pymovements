@@ -57,14 +57,32 @@ import pymovements as pm
         ),
     ],
 )
-def test_norm_returns(columns, df, expected_series):
+def test_norm_of_two_columns_returns(columns, df, expected_series):
     result_df = df.select(
         pm.gaze.transforms.norm(columns=columns).alias('norm'),
     )
     assert_series_equal(result_df['norm'], expected_series, check_names=False)
 
 
-def test_norm_returns_for_nested_columns_with_parent_column():
+def test_norm_of_list_column_returns():
+    df = pl.DataFrame(
+        {
+            'velocity': [[3.0, 4.0], [5.0, 12.0]],
+        },
+    )
+
+    result_df = df.select(
+        pm.gaze.transforms.norm(
+            column='velocity',
+            components=(0, 1),
+        ).alias('norm'),
+    )
+
+    expected = pl.Series(None, [5.0, 13.0], pl.Float64)
+    assert_series_equal(result_df['norm'], expected, check_names=False)
+
+
+def test_norm_of_struct_column_returns():
     df = pl.DataFrame(
         {
             'velocity': [
@@ -76,8 +94,8 @@ def test_norm_returns_for_nested_columns_with_parent_column():
 
     result_df = df.select(
         pm.gaze.transforms.norm(
-            columns=('x', 'y'),
-            parent_column='velocity',
+            column='velocity',
+            components=('x', 'y'),
         ).alias('norm'),
     )
 
@@ -97,8 +115,8 @@ def test_norm_raises_for_missing_parent_column():
     with pytest.raises(pl.exceptions.ColumnNotFoundError, match='position'):
         df.select(
             pm.gaze.transforms.norm(
-                columns=('x', 'y'),
-                parent_column='position',
+                column='position',
+                components=('x', 'y'),
             ).alias('norm'),
         )
 
@@ -115,8 +133,8 @@ def test_norm_raises_for_missing_field_in_parent_column():
     with pytest.raises(pl.exceptions.StructFieldNotFoundError, match='z'):
         df.select(
             pm.gaze.transforms.norm(
-                columns=('x', 'z'),
-                parent_column='velocity',
+                column='velocity',
+                components=('x', 'z'),
             ).alias('norm'),
         )
 
@@ -131,7 +149,7 @@ def test_norm_raises_when_parent_column_is_not_struct():
     with pytest.raises(pl.exceptions.PolarsError):
         df.select(
             pm.gaze.transforms.norm(
-                columns=('x', 'y'),
-                parent_column='velocity',
+                column='velocity',
+                components=('x', 'y'),
             ).alias('norm'),
         )
