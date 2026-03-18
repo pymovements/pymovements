@@ -2190,7 +2190,7 @@ class Gaze:
                     'eye_components must not be None if passing pixel to event detection',
                 )
 
-            kwargs['pixels'] = samples.get_column('pixels').list.gather(eye_components)
+            kwargs['pixels'] = samples.get_column('pixel').list.gather(eye_components)
 
         if 'pupil' in method_args and 'pupil' not in kwargs:
             if 'pupil' not in samples.columns:
