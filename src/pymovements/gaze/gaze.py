@@ -32,7 +32,6 @@ from typing import Literal
 from typing import overload
 from warnings import warn
 
-import numpy as np
 import polars
 from deprecated.sphinx import deprecated
 from tqdm import tqdm

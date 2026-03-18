@@ -92,7 +92,8 @@ def fill(
     candidates = consecutive(arr=candidate_indices)
 
     if len(candidates) == 1 and numpy.array_equal(
-            candidates[0], numpy.array([], dtype=numpy.int64)):
+            candidates[0], numpy.array([], dtype=numpy.int64),
+    ):
         return Events()
 
     # Filter all candidates by minimum duration.
