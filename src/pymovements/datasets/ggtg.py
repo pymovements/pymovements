@@ -128,7 +128,7 @@ class GGTG(DatasetDefinition):
                    'url': 'https://osf.io/download/3y9q2/',
                    'filename': 'stimulus_imgs.zip',
                    'md5': 'b481ea115040766809becac82830df51',
-                   'filename_pattern': '{trial_name}-{condition}.{type}.{page_nr}.png',
+                   'filename_pattern': '{stimulus}.png',
                },
             ],
         ),
