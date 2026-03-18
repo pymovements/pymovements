@@ -251,7 +251,7 @@ def norm(
             f"'components' must be a sequence but is of type {type(components).__name__}",
         )
     else:
-        raise TypeError("either column or columns must be provided but both are None")
+        raise TypeError('either column or columns must be provided but both are None')
     return (x.pow(2) + y.pow(2)).sqrt()
 
 

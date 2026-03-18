@@ -173,6 +173,7 @@ def test_norm_raises_when_component_elements_unexpected_type(components):
     with pytest.raises(TypeError, match=message):
         pm.gaze.transforms.norm(column='velocity', components=components)
 
+
 def test_norm_raises_when_components_unexpected_type():
     message = "'components' must be a sequence but is of type float"
     with pytest.raises(TypeError, match=message):
