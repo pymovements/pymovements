@@ -20,7 +20,8 @@
 """Provides the implementation of the I-VT algorithm."""
 from __future__ import annotations
 
-import numpy as np
+import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events._utils._filters import filter_candidates_remove_nans
@@ -32,8 +33,8 @@ from pymovements.gaze.transforms_numpy import norm
 
 @register_event_detection
 def ivt(
-        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray | polars.Series,
-        timesteps: list[int] | np.ndarray | polars.Series | None = None,
+        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
@@ -50,10 +51,10 @@ def ivt(
 
     Parameters
     ----------
-    velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray
         shape (N, 2)
         Corresponding continuous 2D velocity time series.
-    timesteps: list[int] | np.ndarray | None
+    timesteps: list[int] | numpy.ndarray | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
@@ -65,7 +66,7 @@ def ivt(
         Threshold for a point to be classified as a fixation. If the
         velocity is below the threshold, the point is classified as a fixation. (default: 20.0)
     include_nan: bool
-        Indicator, whether we want to split events on missing/corrupt value (np.nan)
+        Indicator, whether we want to split events on missing/corrupt value (numpy.nan)
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
@@ -84,9 +85,9 @@ def ivt(
         If velocity threshold is not greater than 0.
     """
     if isinstance(velocities, polars.Series):
-        velocities = np.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
+        velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     else:
-        velocities = np.array(velocities)
+        velocities = numpy.array(velocities)
     _checks.check_shapes(velocities=velocities)
 
     if velocity_threshold is None:
@@ -95,11 +96,11 @@ def ivt(
         raise ValueError('velocity threshold must be greater than 0')
 
     if timesteps is None:
-        timesteps = np.arange(len(velocities), dtype=np.int64)
+        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     elif isinstance(timesteps, polars.Series):
         timesteps = timesteps.to_numpy()
     else:
-        timesteps = np.array(timesteps).flatten()
+        timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     # Get all indices with norm-velocities below threshold.
@@ -108,10 +109,10 @@ def ivt(
 
     # Add nans to candidates if desired.
     if include_nan:
-        candidate_mask = np.logical_or(candidate_mask, np.isnan(velocities).any(axis=1))
+        candidate_mask = numpy.logical_or(candidate_mask, numpy.isnan(velocities).any(axis=1))
 
     # Get indices of true values in candidate mask.
-    candidate_indices = np.where(candidate_mask)[0]
+    candidate_indices = numpy.where(candidate_mask)[0]
 
     # Get all fixation candidates by grouping all consecutive indices.
     candidates = consecutive(arr=candidate_indices)

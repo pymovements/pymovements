@@ -22,7 +22,8 @@ from __future__ import annotations
 
 from collections.abc import Sized
 
-import numpy as np
+import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events._utils._filters import filter_candidates_remove_nans
@@ -33,10 +34,10 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def microsaccades(
-        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray | polars.Series,
-        timesteps: list[int] | np.ndarray | polars.Series | None = None,
+        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 6,
-        threshold: np.ndarray | tuple[float, float] | str = 'engbert2015',
+        threshold: numpy.ndarray | tuple[float, float] | str = 'engbert2015',
         threshold_factor: float = 6,
         minimum_threshold: float = 1e-10,
         include_nan: bool = False,
@@ -53,10 +54,10 @@ def microsaccades(
 
     Parameters
     ----------
-    velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray
         shape (N, 2)
         x and y velocities of N samples in chronological order
-    timesteps: list[int] | np.ndarray | None
+    timesteps: list[int] | numpy.ndarray | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
@@ -64,7 +65,7 @@ def microsaccades(
         Minimum saccade duration. The duration is specified in the units used in ``timesteps``.
          If ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
          (default: 6)
-    threshold: np.ndarray | tuple[float, float] | str
+    threshold: numpy.ndarray | tuple[float, float] | str
         If tuple of floats then use this as explicit elliptic threshold. If str, then use
         a data-driven velocity threshold method. See :func:`~events.engbert.compute_threshold` for
         a reference of valid methods. (default: 'engbert2015')
@@ -74,7 +75,7 @@ def microsaccades(
         minimal threshold value. Raises ValueError if calculated threshold is too low.
         (default: 1e-10)
     include_nan: bool
-        Indicator, whether we want to split events on missing/corrupt value (np.nan)
+        Indicator, whether we want to split events on missing/corrupt value (numpy.nan)
         (default: False)
     name: str
         Name for detected events in Events. (default: 'saccade')
@@ -91,16 +92,16 @@ def microsaccades(
         If passed `threshold` is either not two-dimensional or not a supported method.
     """
     if isinstance(velocities, polars.Series):
-        velocities = np.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
+        velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     else:
-        velocities = np.array(velocities)
+        velocities = numpy.array(velocities)
 
     if timesteps is None:
-        timesteps = np.arange(len(velocities), dtype=np.int64)
+        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     elif isinstance(timesteps, polars.Series):
         timesteps = timesteps.to_numpy()
     else:
-        timesteps = np.array(timesteps).flatten()
+        timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if isinstance(threshold, str):
@@ -108,7 +109,7 @@ def microsaccades(
     else:
         if isinstance(threshold, Sized) and len(threshold) != 2:
             raise ValueError('threshold must be either string or two-dimensional')
-        threshold = np.array(threshold)
+        threshold = numpy.array(threshold)
 
     if (threshold < minimum_threshold).any():
         raise ValueError(
@@ -120,14 +121,14 @@ def microsaccades(
     radius = threshold * threshold_factor
 
     # If value is greater than 1, point lies outside the ellipse.
-    candidate_mask = np.greater(np.sum(np.power(velocities / radius, 2), axis=1), 1)
+    candidate_mask = numpy.greater(numpy.sum(numpy.power(velocities / radius, 2), axis=1), 1)
 
     # Add nans to candidates if desired.
     if include_nan:
-        candidate_mask = np.logical_or(candidate_mask, np.isnan(velocities).any(axis=1))
+        candidate_mask = numpy.logical_or(candidate_mask, numpy.isnan(velocities).any(axis=1))
 
     # Get indices of true values in candidate mask.
-    candidate_indices = np.where(candidate_mask)[0]
+    candidate_indices = numpy.where(candidate_mask)[0]
 
     # Get all saccade candidates by grouping all consecutive indices.
     candidates = consecutive(arr=candidate_indices)
@@ -153,7 +154,7 @@ def microsaccades(
     return events
 
 
-def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarray:
+def compute_threshold(arr: numpy.ndarray, method: str = 'engbert2015') -> numpy.ndarray:
     """Determine threshold by computing variation.
 
     The following methods are supported:
@@ -165,14 +166,14 @@ def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarra
 
     Parameters
     ----------
-    arr : np.ndarray
+    arr : numpy.ndarray
         Array for which threshold is to be computed.
     method : str
         Method for threshold computation. (default: 'engbert2015')
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         Threshold values for horizontal and vertical direction.
 
     Raises
@@ -181,27 +182,27 @@ def compute_threshold(arr: np.ndarray, method: str = 'engbert2015') -> np.ndarra
         If passed method is not supported.
     """
     if method == 'std':
-        thx = np.nanstd(arr[:, 0])
-        thy = np.nanstd(arr[:, 1])
+        thx = numpy.nanstd(arr[:, 0])
+        thy = numpy.nanstd(arr[:, 1])
 
     elif method == 'mad':
-        thx = np.nanmedian(np.absolute(arr[:, 0] - np.nanmedian(arr[:, 0])))
-        thy = np.nanmedian(np.absolute(arr[:, 1] - np.nanmedian(arr[:, 1])))
+        thx = numpy.nanmedian(numpy.absolute(arr[:, 0] - numpy.nanmedian(arr[:, 0])))
+        thy = numpy.nanmedian(numpy.absolute(arr[:, 1] - numpy.nanmedian(arr[:, 1])))
 
     elif method == 'engbert2003':
-        thx = np.sqrt(
-            np.nanmedian(np.power(arr[:, 0], 2)) - np.power(np.nanmedian(arr[:, 0]), 2),
+        thx = numpy.sqrt(
+            numpy.nanmedian(numpy.power(arr[:, 0], 2)) - numpy.power(numpy.nanmedian(arr[:, 0]), 2),
         )
-        thy = np.sqrt(
-            np.nanmedian(np.power(arr[:, 1], 2)) - np.power(np.nanmedian(arr[:, 1]), 2),
+        thy = numpy.sqrt(
+            numpy.nanmedian(numpy.power(arr[:, 1], 2)) - numpy.power(numpy.nanmedian(arr[:, 1]), 2),
         )
 
     elif method == 'engbert2015':
-        thx = np.sqrt(np.nanmedian(np.power(arr[:, 0] - np.nanmedian(arr[:, 0]), 2)))
-        thy = np.sqrt(np.nanmedian(np.power(arr[:, 1] - np.nanmedian(arr[:, 1]), 2)))
+        thx = numpy.sqrt(numpy.nanmedian(numpy.power(arr[:, 0] - numpy.nanmedian(arr[:, 0]), 2)))
+        thy = numpy.sqrt(numpy.nanmedian(numpy.power(arr[:, 1] - numpy.nanmedian(arr[:, 1]), 2)))
 
     else:
         valid_methods = ['std', 'mad', 'engbert2003', 'engbert2015']
         raise ValueError(f'Method "{method}" not implemented. Valid methods: {valid_methods}')
 
-    return np.array([thx, thy])
+    return numpy.array([thx, thy])

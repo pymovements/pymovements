@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events.detection._library import register_event_detection
