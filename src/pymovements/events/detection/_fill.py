@@ -91,7 +91,8 @@ def fill(
     # Get all fixation candidates by grouping all consecutive indices.
     candidates = consecutive(arr=candidate_indices)
 
-    if len(candidates) == 1 and numpy.array_equal(candidates[0], numpy.array([], dtype=numpy.int64)):
+    if len(candidates) == 1 and numpy.array_equal(
+            candidates[0], numpy.array([], dtype=numpy.int64)):
         return Events()
 
     # Filter all candidates by minimum duration.
