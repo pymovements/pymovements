@@ -26,7 +26,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.events import blink
-from pymovements.events.detection._library import EventDetectionLibrary
+from pymovements.events.detection.library import EventDetectionLibrary
 
 
 @pytest.mark.parametrize(
