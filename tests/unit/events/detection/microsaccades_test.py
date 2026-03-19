@@ -86,6 +86,16 @@ from pymovements.synthetic import step_function
             'threshold does not provide enough variance as required by min_threshold',
             id='low_variance_pitch_threshold_raise_runtime_error',
         ),
+        pytest.param(
+            {
+                'velocities': pl.repeat((1, 2), 100, eager=True),
+                'threshold': 1.0,
+                'timesteps': pl.repeat('b', 10, eager=True),
+            },
+            TypeError,
+            r'timesteps dtype must be float or int but is String',
+            id='timesteps_str_raises_type_error',
+        ),
     ],
 )
 def test_microsaccades_raises_error(kwargs, expected_error, expected_message):

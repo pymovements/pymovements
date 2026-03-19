@@ -105,24 +105,33 @@ def idt(
         If dispersion_threshold is not greater than 0
         If duration_threshold is not greater than 0
     """
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(positions, polars.Series):
+        if not isinstance(positions.dtype, polars.List):
+            raise TypeError(f'positions dtype must be List but is {positions.dtype}')
+        if not (positions.list.len() == 2).all():
+            list_lengths = positions.list.len().unique().to_list()
+            raise ValueError(f'positions must be 2D list but list lengths are: {list_lengths}')
         positions = numpy.vstack([positions.list.get(0), positions.list.get(1)]).transpose()
     positions = numpy.array(positions)
     _checks.check_shapes(positions=positions)
 
-    if timesteps is None:
-        timesteps = numpy.arange(len(positions), dtype=numpy.int64)
-    elif isinstance(timesteps, polars.Series):
+    if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
         timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
+        timesteps = numpy.arange(len(positions), dtype=numpy.int64)
     timesteps = numpy.array(timesteps).flatten()
+    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     # Check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)
     if numpy.any((timesteps - timesteps_int) != 0):
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
-
-    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')

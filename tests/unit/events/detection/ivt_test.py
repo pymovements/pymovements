@@ -297,7 +297,8 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
         pytest.param(
             {
                 'positions': pl.from_numpy(
-                    step_function(length=100, steps=[0], values=[(0, 0)]), schema=['x', 'y'],
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
                 ).select(pl.concat_list(['x', 'y']).alias('position')),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
@@ -312,7 +313,8 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
         pytest.param(
             {
                 'positions': pl.from_numpy(
-                    step_function(length=100, steps=[0], values=[(0, 0)]), schema=['x', 'y'],
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
                 ).select(pl.concat_list(['x', 'y']).alias('position')),
                 'velocity_threshold': 1,
                 'minimum_duration': 1,
@@ -390,7 +392,8 @@ def test_ivt_detects_fixations_numpy(kwargs, expected):
         pytest.param(
             {
                 'positions': pl.from_numpy(
-                    step_function(length=100, steps=[0], values=[(0, 0)]), schema=['x', 'y'],
+                    step_function(length=100, steps=[0], values=[(0, 0)]),
+                    schema=['x', 'y'],
                 ).select(pl.concat_list(['x', 'y']).alias('position')),
                 'timesteps': pl.arange(1000, 1100, 1, eager=True),
                 'velocity_threshold': 1,
