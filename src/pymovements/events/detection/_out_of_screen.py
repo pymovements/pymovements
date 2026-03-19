@@ -74,6 +74,8 @@ def out_of_screen(
 
     Raises
     ------
+    TypeError
+        If pixels is a polars Series and dtype not List
     ValueError
         If pixels is None or does not have shape (N, 2).
         If x_min >= x_max.

@@ -87,6 +87,8 @@ def microsaccades(
 
     Raises
     ------
+    TypeError
+        If velocities is a polars Series and dtype not List
     ValueError
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.

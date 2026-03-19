@@ -99,6 +99,7 @@ def idt(
     Raises
     ------
     TypeError
+        If pixels is a polars Series and dtype not List
         If minimum_duration is not of type ``int`` or timesteps
     ValueError
         If positions is not shaped (N, 2)

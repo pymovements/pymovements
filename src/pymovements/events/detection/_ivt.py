@@ -78,6 +78,8 @@ def ivt(
 
     Raises
     ------
+    TypeError
+        If velocities is a polars Series and dtype not List
     ValueError
         If velocities is None
         If velocities does not have shape (N, 2)
