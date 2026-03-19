@@ -56,6 +56,9 @@ def fill(
         A dataframe with detected fixations as rows.
     """
     if isinstance(timesteps, polars.Series):
+        numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
         timesteps = timesteps.to_numpy()
     timesteps = numpy.array(timesteps)
 

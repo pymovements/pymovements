@@ -125,6 +125,17 @@ from pymovements.events import out_of_screen
         pytest.param(
             {
                 'pixels': pl.repeat((1, 1), 10, eager=True),
+                'timesteps': pl.repeat('b', 10, eager=True),
+                'x_min': 0, 'x_max': 1920,
+                'y_min': 0, 'y_max': 1080,
+            },
+            TypeError,
+            r'timesteps dtype must be float or int but is String',
+            id='timesteps_str_raises_type_error',
+        ),
+        pytest.param(
+            {
+                'pixels': pl.repeat((1, 1), 10, eager=True),
                 'timesteps': pl.arange(20, eager=True),
                 'x_min': 0, 'x_max': 1920,
                 'y_min': 0, 'y_max': 1080,
