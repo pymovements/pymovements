@@ -60,8 +60,8 @@ jobs:
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
 
-  notify-slack:
-    name: Notify on Slack
+  notify-channels:
+    name: Notify on Channels
 
     if: ${{ !github.event.release.prerelease }}
     needs: publish-to-pypi
@@ -80,3 +80,8 @@ jobs:
         uses: amendx/slackbot-release@1.0.1
         with:
           slack_webhook_url: ${{ secrets.SLACK_DILI_WEBHOOK_URL }}
+      - name: Notify on Discord
+        uses: SethCohen/github-releases-to-discord@v1
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          username: "Release Changelog"
