@@ -117,7 +117,11 @@ def blink(
         If minimum_duration is not positive.
         If maximum_duration is not positive or less than minimum_duration.
     """
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+
     if isinstance(pupil, polars.Series):
+        if not isinstance(pupil.dtype, numeric_dtypes):
+            raise TypeError(f'pupil dtype must be float or int but is {pupil.dtype}')
         pupil = pupil.to_numpy()
     pupil = numpy.array(pupil, dtype=float)
 
@@ -127,13 +131,15 @@ def blink(
         )
 
     if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
         timesteps = timesteps.to_numpy()
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
-        _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
     else:
         timesteps = numpy.arange(len(pupil), dtype=numpy.int64)
     timesteps = numpy.array(timesteps)
+    _checks.check_is_length_matching(pupil=pupil, timesteps=timesteps)
 
     if delta is not None and delta <= 0:
         raise ValueError(
