@@ -27,7 +27,7 @@ import polars
 
 from pymovements._utils import _checks
 from pymovements.events._utils._filters import filter_candidates_remove_nans
-from pymovements.events.detection._library import register_event_detection
+from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import consecutive
 
