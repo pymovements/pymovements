@@ -91,14 +91,25 @@ def microsaccades(
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
     """
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(velocities, polars.Series):
+        if not isinstance(velocities.dtype, polars.List):
+            raise TypeError(f'velocities dtype must be List but is {velocities.dtype}')
+        if not (velocities.list.len() == 2).all():
+            list_lengths = velocities.list.len().unique().to_list()
+            raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
         velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     velocities = numpy.array(velocities)
+    _checks.check_shapes(velocities=velocities)
 
-    if timesteps is None:
-        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
-    elif isinstance(timesteps, polars.Series):
+    if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
         timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
+        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
