@@ -71,25 +71,6 @@ class ImageStimulus:
         """
         return ImageStimulus(images=[Path(path)])
         
-    def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
-    """Load image stimulus from file.
-
-    Parameters
-    ----------
-    path:  str | Path
-        Path to directory with image stimulus files.
-    filename_format:  str
-        Format of the image stimulus file names.
-
-    Returns
-    -------
-    ImageStimulus
-        Returns the image stimulus file.
-    """
-    filenames = get_filepaths(path, regex=curly_to_regex(filename_format))
-    return ImageStimulus(list(filenames))
-
-
 
 def from_file(image_path: str | Path) -> ImageStimulus:
     """Load image stimulus from file.
