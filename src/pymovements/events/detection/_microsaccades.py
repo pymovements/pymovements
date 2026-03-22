@@ -96,47 +96,148 @@ def microsaccades(
 
     >>> import numpy as np
     >>> from pymovements.synthetic import step_function
-    >>> from pymovements.events.detection import microsaccades
+    >>> from pymovements.gaze import from_numpy
     >>> velocities = step_function(length=300,
     ...                            steps=[2, 5, 9],
     ...                            values=[(0.5, 0.5), (1.0, 1.0), (0.2, 0.2)],
     ...                            start_value=(0., 0.))
 
-    Add some noise to add some variance or thresholds computations will fail
+    Add some noise to add some variance or thresholds computations will fail.
 
     >>> velocities += np.random.normal(0, 0.05, velocities.shape)
+    >>> velocities[:5]
+    array([[-0.03990129,  0.01342791],
+        [-0.00378185,  0.02678406],
+        [ 0.49074404,  0.59871354],
+        [ 0.52055413,  0.58679182],
+        [ 0.49687307,  0.58573704]])
+    
+    Add a time column.
+
+    >>> t = np.arange(len(velocities))
+    >>> t[:5]
+    array([0, 1, 2, 3, 4])
+
+    >>> velocities_with_time = np.column_stack([t, velocities])
+    >>> velocities_with_time[:5]
+    array([[ 0.00000000e+00, -3.99012905e-02,  1.34279127e-02],
+        [ 1.00000000e+00, -3.78184847e-03,  2.67840633e-02],
+        [ 2.00000000e+00,  4.90744040e-01,  5.98713545e-01],
+        [ 3.00000000e+00,  5.20554130e-01,  5.86791824e-01],
+        [ 4.00000000e+00,  4.96873067e-01,  5.85737036e-01]])
+    
+    Create a Gaze object.
+
+    >>> schema = ['t', 'x', 'y']
+    >>> gaze = from_numpy(
+    ...     velocities_with_time.T,
+    ...     schema=schema,
+    ...     time_column='t',
+    ...     time_unit='ms',
+    ...     velocity_columns=['x', 'y'])
+    >>> gaze
+    shape: (300, 2)
+    ┌──────┬───────────────────────┐
+    │ time ┆ velocity              │
+    │ ---  ┆ ---                   │
+    │ i64  ┆ list[f64]             │
+    ╞══════╪═══════════════════════╡
+    │ 0    ┆ [-0.039901, 0.013428] │
+    │ 1    ┆ [-0.003782, 0.026784] │
+    │ 2    ┆ [0.490744, 0.598714]  │
+    │ 3    ┆ [0.520554, 0.586792]  │
+    │ 4    ┆ [0.496873, 0.585737]  │
+    │ …    ┆ …                     │
+    │ 295  ┆ [0.220113, 0.177396]  │
+    │ 296  ┆ [0.315485, 0.166594]  │
+    │ 297  ┆ [0.130767, 0.165127]  │
+    │ 298  ┆ [0.081878, 0.186075]  │
+    │ 299  ┆ [0.286671, 0.246629]  │
+    └──────┴───────────────────────┘
 
     Run microsaccade detection with default parameters.
 
-    >>> events = microsaccades(velocities)
-    >>> events
-    shape: (6, 4)
+    >>> gaze.detect("microsaccades")
+    >>> gaze.events
+    shape: (17, 4)
     ┌─────────┬───────┬────────┬──────────┐
     │ name    ┆ onset ┆ offset ┆ duration │
     │ ---     ┆ ---   ┆ ---    ┆ ---      │
     │ str     ┆ i64   ┆ i64    ┆ i64      │
     ╞═════════╪═══════╪════════╪══════════╡
-    │ saccade ┆ 2     ┆ 55     ┆ 53       │
-    │ saccade ┆ 57    ┆ 133    ┆ 76       │
-    │ saccade ┆ 135   ┆ 182    ┆ 47       │
-    │ saccade ┆ 184   ┆ 205    ┆ 21       │
-    │ saccade ┆ 219   ┆ 254    ┆ 35       │
-    │ saccade ┆ 256   ┆ 299    ┆ 43       │
+    │ saccade ┆ 2     ┆ 8      ┆ 6        │
+    │ saccade ┆ 15    ┆ 32     ┆ 17       │
+    │ saccade ┆ 39    ┆ 53     ┆ 14       │
+    │ saccade ┆ 55    ┆ 61     ┆ 6        │
+    │ saccade ┆ 63    ┆ 78     ┆ 15       │
+    │ …       ┆ …     ┆ …      ┆ …        │
+    │ saccade ┆ 211   ┆ 219    ┆ 8        │
+    │ saccade ┆ 221   ┆ 229    ┆ 8        │
+    │ saccade ┆ 231   ┆ 239    ┆ 8        │
+    │ saccade ┆ 249   ┆ 285    ┆ 36       │
+    │ saccade ┆ 287   ┆ 296    ┆ 9        │
     └─────────┴───────┴────────┴──────────┘
 
-    Use custom thresholds and explicit timesteps.
+    Use custom thresholds.
 
     >>> velocities = step_function(length=300,
     ...                            steps=[50, 150, 250],
     ...                            values=[(0.1, 0.1), (0.5, 0.5), (1.0, 1.0)],
     ...                            start_value=(0., 0.))
-    >>> timesteps = np.arange(len(velocities))
-    >>> events = microsaccades(velocities,
-    ...                        timesteps=timesteps,
-    ...                        minimum_duration=10,
-    ...                        threshold_factor=4,
-    ...                        include_nan=True)
-    >>> events
+    >>> velocities[:5]
+    array([[0., 0.],
+        [0., 0.],
+        [0., 0.],
+        [0., 0.],
+        [0., 0.]])
+
+    Add a time column.
+
+    >>> t = np.arange(len(velocities))  
+    >>> t[:5]
+    array([0, 1, 2, 3, 4])
+
+    >>> velocities_with_time = np.column_stack([t, velocities])
+    >>> velocities_with_time[:5]
+    array([[0., 0., 0.],
+        [1., 0., 0.],
+        [2., 0., 0.],
+        [3., 0., 0.],
+        [4., 0., 0.]])
+
+    Create a Gaze object
+
+    >>> schema = ['t', 'x', 'y']
+    >>> gaze = from_numpy(
+    ...     velocities_with_time.T,
+    ...     schema=schema,
+    ...     time_column='t',
+    ...     time_unit='ms',
+    ...     velocity_columns=['x', 'y'])
+    >>> gaze
+    shape: (300, 2)
+    ┌──────┬────────────┐
+    │ time ┆ velocity   │
+    │ ---  ┆ ---        │
+    │ i64  ┆ list[f64]  │
+    ╞══════╪════════════╡
+    │ 0    ┆ [0.0, 0.0] │
+    │ 1    ┆ [0.0, 0.0] │
+    │ 2    ┆ [0.0, 0.0] │
+    │ 3    ┆ [0.0, 0.0] │
+    │ 4    ┆ [0.0, 0.0] │
+    │ …    ┆ …          │
+    │ 295  ┆ [1.0, 1.0] │
+    │ 296  ┆ [1.0, 1.0] │
+    │ 297  ┆ [1.0, 1.0] │
+    │ 298  ┆ [1.0, 1.0] │
+    │ 299  ┆ [1.0, 1.0] │
+    └──────┴────────────┘
+
+    Run microsaccade detection with custom parameters.
+
+    >>> gaze.detect("microsaccades", minimum_duration=10,threshold_factor=4,include_nan=True)
+    >>> gaze.events
     shape: (1, 4)
     ┌─────────┬───────┬────────┬──────────┐
     │ name    ┆ onset ┆ offset ┆ duration │
