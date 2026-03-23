@@ -34,7 +34,7 @@ from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
 
 
-@repr_html()
+@repr_html(['eyetracker', 'screen'])
 class Experiment:
     """Experiment class for holding experiment properties.
 
