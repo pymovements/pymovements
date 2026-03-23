@@ -249,8 +249,7 @@ def test_websource_download_http_failure(tmp_path):
     )
 
     with mock.patch('pymovements.dataset.websource._download_url', side_effect=OSError()):
-        f'Downloading resource {source.url} failed'
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
             source.download(tmp_path)
 
 

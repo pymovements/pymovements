@@ -48,10 +48,29 @@ class ResourceDefinition:
         The content type of the resource.
     source: WebSource | None
         The source of the downloadable resource. (default: None)
-    filename: str | None
-        The target filename of the downloadable resource. This may be an archive. (default: None)
+    filename_pattern: str | None
+        The filename pattern of the resource files. Named groups will
+        be parsed as metadata will appear in the `fileinfo` dataframe. (default: None)
+    filename_pattern_schema_overrides: dict[str, type] | None
+        If named groups are present in the `filename_pattern`, this specifies their particular
+        datatypes. (default: None)
+    load_function: str | None
+        The name of the function used to load the data files. If None, the function is determined
+        by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
+    load_kwargs: dict[str, Any] | None
+        A dictionary of additional keyword arguments that are passed to the ``load_function``.
+        (default: None)
+
+    Parameters
+    ----------
+    content: str
+        The content type of the resource.
+    source: WebSource | None
+        The source of the downloadable resource. (default: None)
     url: str | None
         The URL to the downloadable resource. (default: None)
+    filename: str | None
+        The target filename of the downloadable resource. This may be an archive. (default: None)
     mirrors: list[str] | None
         An optional list of additional mirror URLs to download the resource. If downloading the
         resource from :py:attr:`~pymovements.ResourceDefinition.url` fails, these mirror URLs are
@@ -135,7 +154,7 @@ class ResourceDefinition:
 
         Returns
         -------
-        str
+        str | None
             The URL to the downloadable resource.
         """
         return self.source.url if self.source else None
@@ -167,7 +186,7 @@ class ResourceDefinition:
 
         Returns
         -------
-        str
+        str | None
             The target filename of the downloadable resource. This may be an archive.
         """
         return self.source.filename if self.source else None
@@ -199,7 +218,7 @@ class ResourceDefinition:
 
         Returns
         -------
-        str
+        str | None
             The MD5 checksum of the downloadable resource.
         """
         return self.source.md5 if self.source else None
@@ -231,7 +250,7 @@ class ResourceDefinition:
 
         Returns
         -------
-        list[str]
+        list[str] | None
             A list of additional mirror URLs to download the resource.
         """
         return self.source.mirrors if self.source else None
