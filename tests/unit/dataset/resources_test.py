@@ -973,7 +973,7 @@ def test_resource_definition_source_and_legacy_field_raises_exception(init_kwarg
     source = WebSource(url='http://example.com/source.zip', filename='source.zip')
     message = 'source.* are mutually exclusive'
     with pytest.raises(ValueError, match=message):
-        resource = ResourceDefinition(source=source, **init_kwargs)
+        ResourceDefinition(source=source, **init_kwargs)
 
 
 def test_resource_definition_from_dict_new():
