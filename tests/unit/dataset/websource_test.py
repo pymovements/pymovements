@@ -314,3 +314,205 @@ def test__DownloadProgressBar_tsize_not_None():
     download_progress_bar.update_to(tsize=100)
     assert download_progress_bar.n == 1
     assert download_progress_bar.total == 100
+
+
+@mock.patch('pymovements.dataset.websource._download_file')
+@pytest.mark.parametrize('side_effect', [OSError, RuntimeError])
+def test_websource_download_fail(
+        mock_download_file,
+        side_effect,
+        tmp_path,
+):
+    websource = WebSource(
+        url='https://example.com/test.gz.tar',
+        filename='test.gz.tar',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    mock_download_file.side_effect = side_effect
+
+    with pytest.raises(
+        RuntimeError,
+        match='Downloading resource https://example.com/test.gz.tar failed.',
+    ):
+        websource.download(tmp_path)
+
+    mock_download_file.assert_has_calls([
+        mock.call(
+            url='https://example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+    ])
+
+
+@mock.patch('pymovements.dataset.websource._download_file')
+@pytest.mark.parametrize('side_effect', [OSError, RuntimeError])
+@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
+def test_websource_download_mirror_fail(
+        mock_download_file,
+        side_effect,
+        tmp_path,
+):
+    websource = WebSource(
+        url='https://example.com/test.gz.tar',
+        mirrors=['https://mirror.example.com/test.gz.tar'],
+        filename='test.gz.tar',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    mock_download_file.side_effect = side_effect
+
+    with pytest.raises(
+        RuntimeError,
+        match='Downloading resource test.gz.tar failed for all mirrors',
+    ):
+        websource.download(tmp_path)
+
+    mock_download_file.assert_has_calls([
+        mock.call(
+            url='https://example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+        mock.call(
+            url='https://mirror.example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+    ])
+
+
+@mock.patch('pymovements.dataset.websource._download_file')
+@pytest.mark.parametrize('side_effect', [OSError, RuntimeError])
+@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
+def test_websource_download_fail_two_mirrors(
+        mock_download_file,
+        tmp_path,
+        side_effect,
+):
+    websource = WebSource(
+        url='https://example.com/test.gz.tar',
+        mirrors=[
+            'https://mirror1.example.com/test.gz.tar',
+            'https://mirror2.example.com/test.gz.tar',
+        ],
+        filename='test.gz.tar',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    mock_download_file.side_effect = side_effect
+
+    with pytest.raises(
+        RuntimeError,
+        match='Downloading resource test.gz.tar failed for all mirrors',
+    ):
+        websource.download(tmp_path)
+
+    mock_download_file.assert_has_calls([
+        mock.call(
+            url='https://example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+        mock.call(
+            url='https://mirror1.example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+        mock.call(
+            url='https://mirror2.example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+    ])
+
+
+@mock.patch('pymovements.dataset.websource._download_file')
+@pytest.mark.parametrize('side_effect', [OSError, RuntimeError])
+@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
+def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_path):
+    websource = WebSource(
+        url='https://example.com/test.gz.tar',
+        mirrors=['https://mirror.example.com/test.gz.tar'],
+        filename='test.gz.tar',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    mock_download_file.side_effect = [side_effect(), None]
+
+    websource.download(tmp_path)
+
+    mock_download_file.assert_has_calls([
+        mock.call(
+            url='https://example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+        mock.call(
+            url='https://mirror.example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+    ])
+
+
+@mock.patch('pymovements.dataset.websource._download_file')
+@pytest.mark.parametrize('side_effect', [OSError, RuntimeError])
+@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
+def test_websource_download_first_of_two_mirrors_gaze_fails(
+        mock_download_file, side_effect, tmp_path,
+):
+    websource = WebSource(
+        url='https://example.com/test.gz.tar',
+        mirrors=[
+            'https://mirror1.example.com/test.gz.tar',
+            'https://mirror2.example.com/test.gz.tar',
+        ],
+        filename='test.gz.tar',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    mock_download_file.side_effect = [side_effect(), side_effect(), None]
+
+    websource.download(tmp_path)
+
+    mock_download_file.assert_has_calls([
+        mock.call(
+            url='https://example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+        mock.call(
+            url='https://mirror1.example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+        mock.call(
+            url='https://mirror2.example.com/test.gz.tar',
+            dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+            verbose=True,
+        ),
+    ])
