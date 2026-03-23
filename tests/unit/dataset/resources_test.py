@@ -433,15 +433,15 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
     assert ResourceDefinition.from_dict(resource_dict) == expected_resource
 
 
+@pytest.mark.filterwarnings('ignore:.*ResourceDefinition.source.*:DeprecationWarning')
 @pytest.mark.parametrize(
-    ('definition', 'attribute', 'value', 'expected_definition', 'scheduled_version'),
+    ('definition', 'attribute', 'value', 'expected_definition'),
     [
         pytest.param(
             ResourceDefinition(content='gaze', source=WebSource(url='https://example.com')),
             'url',
             'https://test.com',
             ResourceDefinition(content='gaze', source=WebSource(url='https://test.com')),
-            '0.31.0',
             id='url_overwrite',
         ),
         pytest.param(
@@ -449,7 +449,6 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
             'url',
             'https://example.com',
             ResourceDefinition(content='gaze', source=WebSource(url='https://example.com')),
-            '0.31.0',
             id='url_create_source',
         ),
         pytest.param(
@@ -463,7 +462,6 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 content='gaze',
                 source=WebSource(url='https://example.com', filename='test2.csv'),
             ),
-            '0.31.0',
             id='filename_overwrite',
         ),
         pytest.param(
@@ -474,7 +472,6 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 content='gaze',
                 source=WebSource(url=None, filename='test.csv'),  # type: ignore[arg-type]
             ),
-            '0.31.0',
             id='filename_create_source',
         ),
         pytest.param(
@@ -488,7 +485,6 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 content='gaze',
                 source=WebSource(url='https://example.com', md5='abcdefgh'),
             ),
-            '0.31.0',
             id='md5_overwrite',
         ),
         pytest.param(
@@ -499,7 +495,6 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 content='gaze',
                 source=WebSource(url=None, md5='abcdefgh'),  # type: ignore[arg-type]
             ),
-            '0.31.0',
             id='md5_create_source',
         ),
         pytest.param(
@@ -519,7 +514,6 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                     mirrors=['mirror1.example.com', 'mirror2.example.com'],
                 ),
             ),
-            '0.31.0',
             id='mirrors_overwrite',
         ),
         pytest.param(
@@ -532,22 +526,102 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                     mirrors=['mirror1.example.com', 'mirror2.example.com'],
                 ),
             ),
+            id='mirrors_create_source',
+        ),
+    ],
+)
+def test_resource_set_source_attribute(
+        definition,
+        attribute,
+        value,
+        expected_definition,
+):
+    setattr(definition, attribute, value)
+    assert definition == expected_definition
+
+
+@pytest.mark.parametrize(
+    ('definition', 'attribute', 'value', 'scheduled_version'),
+    [
+        pytest.param(
+            ResourceDefinition(content='gaze', source=WebSource(url='https://example.com')),
+            'url',
+            'https://test.com',
+            '0.31.0',
+            id='url_overwrite',
+        ),
+        pytest.param(
+            ResourceDefinition(content='gaze'),
+            'url',
+            'https://example.com',
+            '0.31.0',
+            id='url_create_source',
+        ),
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='https://example.com', filename='test.csv'),
+            ),
+            'filename',
+            'test2.csv',
+            '0.31.0',
+            id='filename_overwrite',
+        ),
+        pytest.param(
+            ResourceDefinition(content='gaze'),
+            'filename',
+            'test.csv',
+            '0.31.0',
+            id='filename_create_source',
+        ),
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='https://example.com', md5='qwert'),
+            ),
+            'md5',
+            'abcdefgh',
+            '0.31.0',
+            id='md5_overwrite',
+        ),
+        pytest.param(
+            ResourceDefinition(content='gaze'),
+            'md5',
+            'abcdefgh',
+            '0.31.0',
+            id='md5_create_source',
+        ),
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='https://example.com',
+                    mirrors=['mirror.example.com'],
+                ),
+            ),
+            'mirrors',
+            ['mirror1.example.com', 'mirror2.example.com'],
+            '0.31.0',
+            id='mirrors_overwrite',
+        ),
+        pytest.param(
+            ResourceDefinition(content='gaze'),
+            'mirrors',
+            ['mirror1.example.com', 'mirror2.example.com'],
             '0.31.0',
             id='mirrors_create_source',
         ),
     ],
 )
-def test_resource_set_source_attribute_is_deprecated(
+def test_resource_set_attribute_is_deprecated(
         definition,
         attribute,
         value,
-        expected_definition,
         scheduled_version,
         assert_deprecation_is_removed,
 ):
     with pytest.raises(DeprecationWarning) as info:
         setattr(definition, attribute, value)
-        assert definition == expected_definition
 
     assert_deprecation_is_removed(
         function_name=f'ResourceDefinition.{attribute}',
@@ -556,37 +630,73 @@ def test_resource_set_source_attribute_is_deprecated(
     )
 
 
+@pytest.mark.filterwarnings('ignore:.*ResourceDefinition.source.*:DeprecationWarning')
 @pytest.mark.parametrize(
-    ('attribute', 'expected_value', 'scheduled_version'),
+    ('attribute', 'expected_value'),
     [
         pytest.param(
             'url',
             'http://my.example.com',
-            '0.31.0',
             id='url',
         ),
         pytest.param(
             'filename',
             'test.tsv',
-            '0.31.0',
             id='filename',
         ),
         pytest.param(
             'md5',
             'zuiop',
-            '0.31.0',
             id='md5',
         ),
         pytest.param(
             'mirrors',
             ['http://mirror.example.com'],
+            id='mirrors',
+        ),
+    ],
+)
+def test_resource_get_source_attribute(attribute, expected_value):
+    definition = ResourceDefinition(
+        content='gaze',
+        source=WebSource(
+            url='http://my.example.com',
+            filename='test.tsv',
+            md5='zuiop',
+            mirrors=['http://mirror.example.com'],
+        ),
+    )
+    value = getattr(definition, attribute)
+    assert value == expected_value
+
+
+@pytest.mark.parametrize(
+    ('attribute', 'scheduled_version'),
+    [
+        pytest.param(
+            'url',
+            '0.31.0',
+            id='url',
+        ),
+        pytest.param(
+            'filename',
+            '0.31.0',
+            id='filename',
+        ),
+        pytest.param(
+            'md5',
+            '0.31.0',
+            id='md5',
+        ),
+        pytest.param(
+            'mirrors',
             '0.31.0',
             id='mirrors',
         ),
     ],
 )
 def test_resource_get_attribute_is_deprecated(
-        attribute, expected_value, scheduled_version, assert_deprecation_is_removed,
+        attribute, scheduled_version, assert_deprecation_is_removed,
 ):
     definition = ResourceDefinition(
         content='gaze',
@@ -598,8 +708,7 @@ def test_resource_get_attribute_is_deprecated(
         ),
     )
     with pytest.raises(DeprecationWarning) as info:
-        value = getattr(definition, attribute)
-        assert value == expected_value
+        getattr(definition, attribute)
 
     assert_deprecation_is_removed(
         function_name=f'ResourceDefinition.{attribute}',
