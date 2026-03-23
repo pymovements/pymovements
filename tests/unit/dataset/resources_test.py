@@ -290,11 +290,12 @@ def test_resource_is_not_equal(resource1, resource2):
         pytest.param(
             {
                 'content': 'gaze',
+                'source': {'url': 'https://example.com'},
                 'filename': 'test.csv',
             },
             ResourceDefinition(
                 content='gaze',
-                source=WebSource(url=None, filename='test.csv'),
+                source=WebSource(url='https://example.com', filename='test.csv'),
             ),
             marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
             id='content_filename_deprecated',
@@ -897,22 +898,34 @@ def test_resource_definition_source_only():
     [
         pytest.param(
             {'content': 'gaze', 'url': 'http://example.com/file.zip'},
-            ResourceDefinition(content='gaze', source=WebSource(url='http://example.com/file.zip')),
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='http://example.com/file.zip'),
+            ),
             id='url',
         ),
         pytest.param(
-            {'content': 'gaze', 'filename': 'file.zip'},
-            ResourceDefinition(content='gaze', source=WebSource(url=None, filename='file.zip')),
+            {'content': 'gaze', 'url': 'http://example.com/file.zip', 'filename': 'file.zip'},
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+            ),
             id='filename',
         ),
         pytest.param(
-            {'content': 'gaze', 'md5': 'abcdefg'},
-            ResourceDefinition(content='gaze', source=WebSource(url=None, md5='abcdefg')),
+            {'content': 'gaze', 'url': 'http://example.com/file.zip', 'md5': 'abcdefg'},
+            ResourceDefinition(
+                content='gaze', source=WebSource(url='http://example.com/file.zip', md5='abcdefg'),
+            ),
             id='md5',
         ),
         pytest.param(
-            {'content': 'gaze', 'mirrors': ['http://a.de']},
-            ResourceDefinition(content='gaze', source=WebSource(url=None, mirrors=['http://a.de'])),
+            {'content': 'gaze', 'url': 'http://example.com/file.zip', 'mirrors': ['http://a.de']},
+            ResourceDefinition(
+                content='gaze', source=WebSource(
+                    url='http://example.com/file.zip', mirrors=['http://a.de'],
+                ),
+            ),
             id='mirrors',
         ),
     ],
