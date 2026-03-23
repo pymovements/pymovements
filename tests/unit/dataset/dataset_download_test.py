@@ -423,6 +423,23 @@ def test_paths(init_path, expected_paths, dataset_definition):
     assert dataset.paths.downloads == expected_paths['downloads']
 
 
+@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
+def test_dataset_download_no_sources_raises(tmp_path):
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    dataset_definition = DatasetDefinition(
+        name='test',
+        resources=[{'content': 'gaze', 'filename_pattern': 'test.csv'}]
+    )
+    dataset = Dataset(dataset_definition, path=paths)
+
+    message = (
+        'No downloadable resources found in DatasetDefinition. '
+        'ResourceDefinition.source must be specified to download a dataset.'
+    )
+    with pytest.raises(AttributeError, match=message):
+        dataset.download()
+
+
 @mock.patch('pymovements.dataset.dataset_download._download_file')
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
