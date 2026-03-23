@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.events import microsaccades
-from pymovements.events.detection._microsaccades import compute_threshold
+from pymovements.events.detection.microsaccades import compute_threshold
 from pymovements.synthetic import step_function
 
 

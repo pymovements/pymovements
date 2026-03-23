@@ -1,0 +1,22 @@
+name: Welcome first-time contributor
+
+on:
+  pull_request_target:
+    types: opened
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: plbstl/first-contribution@v4.2.0
+        with:
+          pr-opened-msg: |
+            Welcome @{fc-author} to the pymovements community! 🎉
+
+            Thank you for your first pull request, we appreciate your contribution a lot.
+
+            Please make sure to read our [contributing guide](https://pymovements.readthedocs.io/en/latest/contributing/index.html).
+
+            Feel encouraged to add yourself to the list of authors in our [`CITATION.cff`](https://github.com/pymovements/pymovements/blob/main/CITATION.cff).

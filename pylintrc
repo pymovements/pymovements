@@ -40,10 +40,6 @@ load-plugins=
 # number of processors available to use.
 jobs=1
 
-# When enabled, pylint would attempt to guess common misconfiguration and emit
-# user-friendly hints instead of false-positive error messages.
-suggestion-mode=yes
-
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
 unsafe-load-any-extension=no
@@ -54,7 +50,7 @@ unsafe-load-any-extension=no
 extension-pkg-allow-list=
 
 # Minimum supported python version
-py-version = 3.9.0
+py-version = 3.10.0
 
 # Control the amount of potential inferred values when inferring a single
 # object. This can help the performance when dealing with large functions or

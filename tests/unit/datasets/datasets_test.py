@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,6 +19,8 @@
 # SOFTWARE.
 """Test public dataset definitions."""
 from __future__ import annotations
+
+import string
 
 import pytest
 
@@ -50,6 +52,7 @@ from pymovements import DatasetLibrary
         pytest.param(pm.datasets.IITB_HGC, 'IITB_HGC', id='IITB_HGC'),
         pytest.param(pm.datasets.JuDo1000, 'JuDo1000', id='JuDo1000'),
         pytest.param(pm.datasets.MECOL1W1, 'MECOL1W1', id='MECOL1W1'),
+        pytest.param(pm.datasets.MECOL1W2, 'MECOL1W2', id='MECOL1W2'),
         pytest.param(pm.datasets.MECOL2W1, 'MECOL2W1', id='MECOL2W1'),
         pytest.param(pm.datasets.MECOL2W2, 'MECOL2W2', id='MECOL2W2'),
         pytest.param(pm.datasets.MouseCursor, 'MouseCursor', id='MouseCursor'),
@@ -66,6 +69,7 @@ from pymovements import DatasetLibrary
             id='PotsdamBingeWearablePVT',
         ),
         pytest.param(pm.datasets.Provo, 'Provo', id='Provo'),
+        pytest.param(pm.datasets.RaCCooNS, 'RaCCooNS', id='RaCCooNS'),
         pytest.param(pm.datasets.SBSAT, 'SBSAT', id='SBSAT'),
         pytest.param(pm.datasets.TECO, 'TECO', id='TECO'),
         pytest.param(pm.datasets.ToyDataset, 'ToyDataset', id='ToyDataset'),
@@ -77,5 +81,16 @@ def test_public_dataset_registered(definition, dataset_name):
     assert dataset_name in DatasetLibrary.names()
     definition_from_library = DatasetLibrary.get(dataset_name)
 
-    # simple equal between objects does not work as classes have different names.
-    assert definition().to_dict() == definition_from_library.to_dict()
+    # simple equal between objects does not work as inheriting classes have different names.
+    # Don't include description in equality check. We will get rid of the python class soon anyway.
+    yaml_dict = {k: v for k, v in definition_from_library.to_dict().items() if k != 'description'}
+    assert definition().to_dict() == yaml_dict
+
+    assert isinstance(definition_from_library.description, str)
+
+    # ignore whitespace differences
+    whitespace = {ord(c): None for c in string.whitespace}
+    yaml_description = definition_from_library.description.translate(whitespace)
+    class_docstring = definition.__doc__.split('Attributes')[0].translate(whitespace)
+
+    assert yaml_description == class_docstring

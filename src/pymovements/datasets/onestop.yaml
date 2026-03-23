@@ -2,18 +2,39 @@ name: OneStop
 
 long_name: 'OneStop: A 360-Participant English Eye Tracking Dataset with Different Reading Regimes'
 
+description: |
+  OneStop dataset :cite:p:`OneStop`.
+
+  OneStop Eye Movements (in short OneStop) is an English corpus of eye movements
+  in reading with 360 L1 participants, 2.6 million word tokens and 152 hours of
+  eye tracking data recorded with an EyeLink 1000 Plus eye tracker.
+  OneStop comprises four sub-corpora with eye movement recordings from paragraph reading.
+
+  To filter the data by reading regime or trial type, use the following column values:
+
+  For ordinary reading trials, set question_preview to False.
+  For information seeking trials, set question_preview to True.
+  To exclude repeated reading trials, set repeated_reading_trial to False.
+  To include only repeated reading trials, set repeated_reading_trial to True.
+  To exclude practice trials, set practice_trial to False.
+
+  For more information please consult :cite:p:`OneStop`.
+
 resources:
   - content: precomputed_events
     url: https://osf.io/download/dq935/
     filename: fixations_Paragraph.csv.zip
     md5: 3d3b6a3794a50e174e025f43735674bd
     filename_pattern: fixations_Paragraph.csv
+    load_kwargs:
+      read_csv_kwargs:
+        null_values: '.'
+
   - content: precomputed_reading_measures
     url: https://osf.io/download/4ajc8/
     filename: ia_Paragraph.csv.zip
     md5: 9b9548e49efdc7dbf63d4f3a5dc3af22
     filename_pattern: ia_Paragraph.csv
-
-custom_read_kwargs:
-  precomputed_events: {'null_values': '.'}
-  precomputed_reading_measures: {'null_values': '.'}
+    load_kwargs:
+      read_csv_kwargs:
+        null_values: '.'

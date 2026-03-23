@@ -38,6 +38,7 @@ setup.
 .. currentmodule:: pymovements.gaze
 
 .. rubric:: Input / Output
+    :name: gaze-io
 
 .. autosummary::
     :toctree: api

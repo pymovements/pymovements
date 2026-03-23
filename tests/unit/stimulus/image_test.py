@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,20 @@ from unittest.mock import Mock
 import pytest
 from matplotlib import pyplot
 
-import pymovements as pm
+from pymovements.stimulus.image import from_file
+from pymovements.stimulus.image import from_files
 
 
 @pytest.mark.parametrize(
     ('image_path'),
     (
-        pytest.param('tests/files/pexels-zoorg-1000498.jpg', id='image_path_str'),
-        pytest.param(Path('tests/files/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
+        pytest.param('tests/files/stimuli/pexels-zoorg-1000498.jpg', id='image_path_str'),
+        pytest.param(Path('tests/files/stimuli/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
     ),
 )
 def test_image_stimulus_from_file(image_path):
-    image_stimulus = pm.stimulus.image.from_file(image_path)
-    assert image_stimulus.images[0].as_posix() == 'tests/files/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+    assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
 
 
 @pytest.mark.parametrize(
@@ -47,15 +48,15 @@ def test_image_stimulus_from_file(image_path):
     ),
 )
 def test_image_stimulus_from_files(path):
-    image_stimulus = pm.stimulus.image.from_files(path, r'{book_name}-{page_num}-{line_num}.jpg')
-    assert image_stimulus.images[0].as_posix() == 'tests/files/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_files(path, r'{book_name}-{page_num}-{line_num}.jpg')
+    assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
 
 
 @pytest.mark.parametrize(
     ('image_path'),
     (
-        pytest.param('tests/files/pexels-zoorg-1000498.jpg', id='image_path_str'),
-        pytest.param(Path('tests/files/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
+        pytest.param('tests/files/stimuli/pexels-zoorg-1000498.jpg', id='image_path_str'),
+        pytest.param(Path('tests/files/stimuli/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
     ),
 )
 @pytest.mark.parametrize(
@@ -74,8 +75,8 @@ def test_image_stimulus_from_files(path):
 def test_not_showing_image_stimulus_from_file(image_path, stimulus_id, origin, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(pyplot, 'show', mock)
-    image_stimulus = pm.stimulus.image.from_file(image_path)
-    assert image_stimulus.images[0].as_posix() == 'tests/files/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+    assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus.show(stimulus_id, origin)
     pyplot.close()
     mock.assert_called_once()

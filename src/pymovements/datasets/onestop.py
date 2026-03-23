@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -63,15 +64,16 @@ class OneStop(DatasetDefinition):
         - `md5`: The MD5 checksum of the respective file.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    custom_read_kwargs: dict[str, Any]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -96,11 +98,15 @@ class OneStop(DatasetDefinition):
 
     name: str = 'OneStop'
 
-    long_name: str = 'OneStop: A 360-Participant English Eye Tracking Dataset with Different '\
-        'Reading Regimes'
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
+    long_name: str = (
+        'OneStop: A 360-Participant English Eye Tracking Dataset with '
+        'Different Reading Regimes'
+    )
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'precomputed_events',
@@ -108,6 +114,7 @@ class OneStop(DatasetDefinition):
                     'filename': 'fixations_Paragraph.csv.zip',
                     'md5': '3d3b6a3794a50e174e025f43735674bd',
                     'filename_pattern': 'fixations_Paragraph.csv',
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': '.'}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -115,6 +122,7 @@ class OneStop(DatasetDefinition):
                     'filename': 'ia_Paragraph.csv.zip',
                     'md5': '9b9548e49efdc7dbf63d4f3a5dc3af22',
                     'filename_pattern': 'ia_Paragraph.csv',
+                    'load_kwargs': {'read_csv_kwargs': {'null_values': '.'}},
                 },
             ],
         ),
@@ -124,9 +132,4 @@ class OneStop(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    custom_read_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {
-            'precomputed_events': {'null_values': '.'},
-            'precomputed_reading_measures': {'null_values': '.'},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

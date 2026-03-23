@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,9 +21,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+import yaml
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
@@ -32,7 +34,7 @@ from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
 
 
-@repr_html()
+@repr_html(['eyetracker', 'screen'])
 class Experiment:
     """Experiment class for holding experiment properties.
 
@@ -55,10 +57,10 @@ class Experiment:
         (default: None)
     sampling_rate: float | None
         Sampling rate in Hz. (default: None)
-    screen : Screen | None
+    screen: Screen | None
         Scree object for experiment. Mutually exclusive with explicit screen arguments.
         (default: None)
-    eyetracker : EyeTracker | None
+    eyetracker: EyeTracker | None
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
 
     Examples
@@ -242,7 +244,7 @@ class Experiment:
         Raises
         ------
         ValueError
-            If selected method is invalid, input array is too short for the
+            If the selected method is invalid, the input array is too short for the
             selected method or the sampling rate is below zero
 
         Examples
@@ -292,7 +294,7 @@ class Experiment:
         Returns
         -------
         dict[str, Any | dict[str, str | float | None]]
-            Experiment as dictionary.
+            Experiment as a dictionary.
         """
         data: dict[str, dict[str, str | float | None]] = {}
 
@@ -305,8 +307,32 @@ class Experiment:
 
     def __str__(self: Experiment) -> str:
         """Return Experiment string."""
-        return f'{type(self).__name__}(screen={self.screen}, eyetracker={self.eyetracker})'
+        return (
+            f'{type(self).__name__}(screen={self.screen}, '
+            f'eyetracker={self.eyetracker})'
+        )
 
     def __bool__(self) -> bool:
         """Return True if the experiment has data defined, else False."""
         return not all(not value for value in self.__dict__.values())
+
+    def to_yaml(
+        self,
+        path: str | Path,
+        *,
+        exclude_none: bool = True,
+    ) -> None:
+        """Save an experiment to a YAML file.
+
+        Parameters
+        ----------
+        path: str | Path
+            Path where to save the YAML file to.
+        exclude_none: bool
+            Exclude attributes that are either ``None`` or that are objects that evaluate to
+            ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
+            ``int``, and ``float`` are not excluded.
+        """
+        data = self.to_dict(exclude_none=exclude_none)
+        with open(path, 'w', encoding='utf-8') as f:
+            yaml.dump(data, f, sort_keys=False)

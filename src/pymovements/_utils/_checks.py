@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -163,7 +163,7 @@ def check_is_length_matching(**kwargs: Sized) -> None:
     Raises
     ------
     ValueError
-        If both sequences are of equal length , or if number of keyword arguments is not 2.
+        If both sequences are of equal length, or if number of keyword arguments is not 2.
     """
     check_two_kwargs(**kwargs)
 
@@ -252,7 +252,7 @@ def check_is_greater_than_zero(**kwargs: float | int) -> None:
 
 
 def check_is_positive_value(**kwargs: float | int) -> None:
-    """Check if all passed values are have a value greater or equal to zero.
+    """Check if all passed values are having a value greater or equal to zero.
 
     Parameters
     ----------

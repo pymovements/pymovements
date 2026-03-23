@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -59,8 +59,9 @@ def step_function(
     Raises
     ------
     ValueError
-        If steps not sorted in ascending order or length of steps not equal to length of values. If
-        noise is negative.
+        If ``steps`` are not sorted in ascending order or
+        length of ``steps`` not equal to the length of values.
+        If noise is negative.
 
     Examples
     --------

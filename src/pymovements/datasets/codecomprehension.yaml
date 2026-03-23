@@ -2,6 +2,15 @@ name: CodeComprehension
 
 long_name: "Code Comprehension dataset"
 
+description: |
+  CodeComprehension dataset :cite:p:`CodeComprehension`.
+
+  This dataset includes eye-tracking-while-code-reading data from a participant in a single
+  session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an
+  EyeLink 1000 eye tracker and are provided as pixel coordinates.
+
+  The participant is instructed to read the code snippet and answer a code comprehension question.
+
 resources:
   - content: precomputed_events
     url: "https://zenodo.org/records/11123101/files/Predicting%20Code%20Comprehension%20Package.zip?download=1"
@@ -10,9 +19,8 @@ resources:
     filename_pattern: 'fix_report_P{subject_id:s}.txt'
     filename_pattern_schema_overrides:
       subject_id: !polars.Utf8
-
-custom_read_kwargs:
-  precomputed_events:
-    separator: "\t"
-    null_values: "."
-    quote_char: '"'
+    load_kwargs:
+      read_csv_kwargs:
+        separator: "\t"
+        null_values: "."
+        quote_char: '"'

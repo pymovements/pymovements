@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,11 +34,13 @@ from pymovements.datasets.gaze_graph import GazeGraph
 from pymovements.datasets.gaze_on_faces import GazeOnFaces
 from pymovements.datasets.gazebase import GazeBase
 from pymovements.datasets.gazebasevr import GazeBaseVR
+from pymovements.datasets.ggtg import GGTG
 from pymovements.datasets.hbn import HBN
 from pymovements.datasets.iitb_hgc import IITB_HGC
 from pymovements.datasets.interead import InteRead
 from pymovements.datasets.judo1000 import JuDo1000
 from pymovements.datasets.mecol1w1 import MECOL1W1
+from pymovements.datasets.mecol1w2 import MECOL1W2
 from pymovements.datasets.mecol2w1 import MECOL2W1
 from pymovements.datasets.mecol2w2 import MECOL2W2
 from pymovements.datasets.mousecursor import MouseCursor
@@ -47,6 +49,7 @@ from pymovements.datasets.potec import PoTeC
 from pymovements.datasets.potsdam_binge_remote_pvt import PotsdamBingeRemotePVT
 from pymovements.datasets.potsdam_binge_wearable_pvt import PotsdamBingeWearablePVT
 from pymovements.datasets.provo import Provo
+from pymovements.datasets.raccoons import RaCCooNS
 from pymovements.datasets.sb_sat import SBSAT
 from pymovements.datasets.teco import TECO
 from pymovements.datasets.toy_dataset import ToyDataset
@@ -71,12 +74,14 @@ __all__ = [
     'GazeBaseVR',
     'GazeGraph',
     'GazeOnFaces',
+    'GGTG',
     'HBN',
     'IITB_HGC',
     'InteRead',
     'JuDo1000',
     'MouseCursor',
     'MECOL1W1',
+    'MECOL1W2',
     'MECOL2W1',
     'MECOL2W2',
     'OneStop',
@@ -84,6 +89,7 @@ __all__ = [
     'PotsdamBingeRemotePVT',
     'PotsdamBingeWearablePVT',
     'Provo',
+    'RaCCooNS',
     'SBSAT',
     'TECO',
     'ToyDataset',

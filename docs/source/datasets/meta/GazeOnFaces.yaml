@@ -1,0 +1,43 @@
+name: GazeOnFaces
+long_name: GazeOnFaces dataset
+description: "GazeOnFaces dataset :cite:p:`GazeOnFaces`.\n\nThis dataset includes\
+  \ monocular eye tracking data from single participants in a single\nsession. Eye\
+  \ movements are recorded at a sampling frequency of 60 Hz\nusing an EyeLink 1000\
+  \ video-based eye tracker and are provided as pixel coordinates.\n\nParticipants\
+  \ were sat 57 cm away from the screen (19-inch LCD monitor,\nscreen res=1280\xD7\
+  1024, 60 Hz). Recordings of the eye movements of one eye in monocular\npupil/corneal\
+  \ reflection tracking mode.\n\nCheck the respective paper for details :cite:p:`GazeOnFaces`.\n\
+  \nWarning\n-------\nThis dataset currently cannot be fully processed by ``pymovements``\
+  \ due to an error during\narchive extraction.\n\nSee issue `#1346 <https://github.com/pymovements/pymovements/issues/1346>`__\
+  \ for reference.\n"
+resources:
+- content: gaze
+  filename: database3_sciencemuseum.zip
+  url: https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=
+  filename_pattern: gaze_sub{sub_id:d}_trial{trial_id:d}.csv
+  filename_pattern_schema_overrides:
+    sub_id: '!int'
+    trial_id: '!int'
+  load_kwargs:
+    pixel_columns:
+    - x
+    - y
+    read_csv_kwargs:
+      separator: ','
+      has_header: false
+      new_columns:
+      - x
+      - y
+      schema_overrides:
+      - '!polars.datatypes.classes.Float32'
+      - '!polars.datatypes.classes.Float32'
+experiment:
+  eyetracker:
+    sampling_rate: 60
+  screen:
+    width_px: 1280
+    height_px: 1024
+    width_cm: 38
+    height_cm: 30
+    distance_cm: 57
+    origin: center

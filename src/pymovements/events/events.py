@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
+from typing import Literal
+from typing import overload
 
 import numpy as np
 import polars as pl
@@ -30,7 +32,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.events.properties import duration
+from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
 
@@ -51,10 +53,10 @@ class Events:
         List of onsets. (default: None)
     offsets: list[int | float] | np.ndarray | None
         List of offsets. (default: None)
-    trials: list[int | float | str] | np.ndarray | None
+    trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
-        List of trial columns in passed dataframe.
+        List of trial columns in the passed dataframe.
 
     Attributes
     ----------
@@ -106,7 +108,7 @@ class Events:
             name: str | list[str] | None = None,
             onsets: list[int | float] | np.ndarray | None = None,
             offsets: list[int | float] | np.ndarray | None = None,
-            trials: list[int | float | str] | np.ndarray | None = None,
+            trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
@@ -176,9 +178,16 @@ class Events:
 
         self.frame = pl.DataFrame(data=data_dict, schema_overrides=self._minimal_schema)
 
-        # Ensure column order: trial columns, name, onset, offset.
+        # Ensure column order: trial columns, then minimal schema, keeping all other columns.
         if self.trial_columns is not None:
-            self.frame = self.frame.select([*self.trial_columns, *self._minimal_schema.keys()])
+            # Keep any additional columns beyond trial and minimal schema columns
+            other_cols = [
+                col for col in self.frame.columns
+                if col not in self.trial_columns and col not in self._minimal_schema
+            ]
+            self.frame = self.frame.select(
+                [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
+            )
 
         # Convert to int if possible.
         all_decimals = self.frame.select(
@@ -234,6 +243,46 @@ class Events:
         """
         self.frame = self.frame.join(event_properties, on=join_on, how='left')
 
+    def drop(
+            self,
+            columns: str | list[str],
+    ) -> None:
+        """Remove columns from the events data frame.
+
+        Notes
+        -----
+        The minimal schema columns ``name``, ``onset`` and ``offset`` cannot be removed.
+
+        Parameters
+        ----------
+        columns: str | list[str]
+            The columns in the event data frame to remove.
+
+        Raises
+        ------
+        ValueError
+            If ``columns`` do not exist in the event dataframe or it is not allowed to remove them.
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+        existing_columns = set(self.frame.columns)
+        minimal_schema = set(self._minimal_schema)
+        for column in columns:
+            available_columns = existing_columns - minimal_schema
+            if column not in existing_columns:
+                raise ValueError(
+                    f"The column '{column}' does not exist and thus cannot be removed. "
+                    f'Available columns to remove: {available_columns}.',
+                )
+            if column in minimal_schema:
+                raise ValueError(
+                    f"The column '{column}' cannot be removed "
+                    'because it belongs to the minimal schema (onset, offset, name). '
+                    f'Available columns to remove: {available_columns}.',
+                )
+        for column in columns:
+            self.frame = self.frame.drop(column)
+
     def add_trial_column(
             self,
             column: str | list[str],
@@ -287,6 +336,198 @@ class Events:
         event_property_columns -= set(self._additional_columns)
         return list(event_property_columns)
 
+    def filter_by_name(self, name: str) -> pl.DataFrame:
+        """Filter events by name.
+
+        Parameters
+        ----------
+        name : str
+            Filter events that contain that string in the ``name`` column.
+            Supports regular expressions.
+
+        Examples
+        --------
+        Let's create some events with different names first:
+
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     name=[
+        ...         'saccade', 'fixation', 'fixation_idt', 'fixation_ivt', 'fixation_eyelink',
+        ...         'microsaccade', 'microsaccade', 'saccade',
+        ...     ],
+        ...     onsets=[90, 99, 99, 100, 101, 115, 145, 175],
+        ...     offsets=[100, 176, 175, 178, 175, 124, 157, 199],
+        ... )
+        >>> events
+        shape: (8, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ saccade          ┆ 90    ┆ 100    ┆ 10       │
+        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        │ microsaccade     ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade     ┆ 145   ┆ 157    ┆ 12       │
+        │ saccade          ┆ 175   ┆ 199    ┆ 24       │
+        └──────────────────┴───────┴────────┴──────────┘
+
+        All fixations:
+
+        >>> events.filter_by_name('fixation')
+        shape: (4, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        └──────────────────┴───────┴────────┴──────────┘
+
+        Exact match for fixation:
+
+        >>> events.filter_by_name('^fixation$')
+        shape: (1, 4)
+        ┌──────────┬───────┬────────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════╪═══════╪════════╪══════════╡
+        │ fixation ┆ 99    ┆ 176    ┆ 77       │
+        └──────────┴───────┴────────┴──────────┘
+
+        Prefix match:
+
+        >>> events.filter_by_name('^fixation_')
+        shape: (3, 4)
+        ┌──────────────────┬───────┬────────┬──────────┐
+        │ name             ┆ onset ┆ offset ┆ duration │
+        │ ---              ┆ ---   ┆ ---    ┆ ---      │
+        │ str              ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════════╪═══════╪════════╪══════════╡
+        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
+        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
+        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
+        └──────────────────┴───────┴────────┴──────────┘
+
+        Suffix match:
+
+        >>> events.filter_by_name('ivt$')
+        shape: (1, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ fixation_ivt ┆ 100   ┆ 178    ┆ 78       │
+        └──────────────┴───────┴────────┴──────────┘
+
+        All saccade variants:
+
+        >>> events.filter_by_name('saccade')
+        shape: (4, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ saccade      ┆ 90    ┆ 100    ┆ 10       │
+        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
+        │ saccade      ┆ 175   ┆ 199    ┆ 24       │
+        └──────────────┴───────┴────────┴──────────┘
+
+        Only microsaccades:
+
+        >>> events.filter_by_name('microsaccade')
+        shape: (2, 4)
+        ┌──────────────┬───────┬────────┬──────────┐
+        │ name         ┆ onset ┆ offset ┆ duration │
+        │ ---          ┆ ---   ┆ ---    ┆ ---      │
+        │ str          ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════════╪═══════╪════════╪══════════╡
+        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
+        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
+        └──────────────┴───────┴────────┴──────────┘
+
+        Exact match for saccade:
+
+        >>> events.filter_by_name('^saccade$')
+        shape: (2, 4)
+        ┌─────────┬───────┬────────┬──────────┐
+        │ name    ┆ onset ┆ offset ┆ duration │
+        │ ---     ┆ ---   ┆ ---    ┆ ---      │
+        │ str     ┆ i64   ┆ i64    ┆ i64      │
+        ╞═════════╪═══════╪════════╪══════════╡
+        │ saccade ┆ 90    ┆ 100    ┆ 10       │
+        │ saccade ┆ 175   ┆ 199    ┆ 24       │
+        └─────────┴───────┴────────┴──────────┘
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame containing matching events.
+        """
+        if 'name' not in self.frame.columns:
+            raise ValueError("Events frame is missing the 'name' column.")
+
+        return self.frame.filter(pl.col('name').str.contains(name))
+
+    @property
+    def fixations(self) -> pl.DataFrame:
+        """Fixation events.
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame containing all fixation events, i.e., rows where
+            ``name`` starts with ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``,
+            ``"fixation_eyelink"``).
+        """
+        return self.filter_by_name('fixation')
+
+    @property
+    def saccades(self) -> pl.DataFrame:
+        """Saccade events.
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame containing all saccade events, i.e., rows where
+            ``name`` starts with ``"saccade"`` (e.g., ``"saccade"``, ``"saccade_algo"``).
+        """
+        return self.filter_by_name('saccade')
+
+    @property
+    def blinks(self) -> pl.DataFrame:
+        """Blink events.
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame containing all blink events, i.e., rows where
+            ``name`` starts with ``"blink"`` (e.g., ``"blink"``, ``"blink_detectorX"``).
+        """
+        return self.filter_by_name('blink')
+
+    @property
+    def microsaccades(self) -> pl.DataFrame:
+        """Microsaccade events.
+
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame containing all microsaccade events, i.e., rows where
+            ``name`` starts with ``"microsaccade"`` (e.g., ``"microsaccade"``).
+        """
+        return self.filter_by_name('microsaccade')
+
     def clone(self) -> Events:
         """Return a copy of an Events object.
 
@@ -319,42 +560,61 @@ class Events:
         """
         return self.clone()
 
-    def split(self, by: Sequence[str] | None = None) -> list[Events]:
+    @overload
+    def split(
+            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
+    ) -> list[Events]:
+        ...
+
+    @overload
+    def split(
+            self, by: str | Sequence[str] | None = None, *, as_dict: Literal[True],
+    ) -> dict[tuple[Any, ...], Events]:
+        ...
+
+    def split(
+            self,
+            by: str | Sequence[str] | None = None,
+            *,
+            as_dict: bool = False,
+    ) -> list[Events] | dict[tuple[Any, ...], Events]:
         """Split the Events into multiple frames based on specified column(s).
 
         Parameters
         ----------
-        by: Sequence[str] | None
+        by: str | Sequence[str] | None
             Column name(s) to split the Events by. If a single string is provided,
             it will be used as a single column name. If a list is provided, the Events
             will be split by unique combinations of values in all specified columns.
             If None, uses trial_columns. (default: None)
+        as_dict: bool
+            Return a dictionary instead of a list. The dictionary keys are tuples of the distinct
+            group values that identify each group split. (default: False)
 
         Returns
         -------
-        list[Events]
-            A list of new Events instances, each containing a partition of the
-            original data with all metadata and configurations preserved.
+        list[Events] | dict[tuple[Any, ...], Events]
+            A collection of new Events instances, each containing a partition of the original data
+            with all metadata and configurations preserved.
         """
         # Use trial_columns if by is None
         if by is None:
+            if self.trial_columns is None:
+                raise TypeError("Either 'by' or 'Events.trial_columns' must be specified")
             by = self.trial_columns
-            if by is None:
-                raise TypeError("Either 'by' or 'self.trial_columns' must be specified")
 
-        event_pl_df_list = list(self.frame.partition_by(by=by))
+        event_dfs = self.frame.partition_by(by=by, as_dict=as_dict)
 
-        # Ensure column order: trial columns, name, onset, offset.
-        if self.trial_columns is not None:
-            event_pl_df_list = [
-                frame.select([*self.trial_columns, *self._minimal_schema.keys()])
-                for frame in event_pl_df_list
-            ]
+        if as_dict:
+            # keys are tuples of the unique values of the columns specified in `by`.
+            return {
+                key: Events(frame, trial_columns=self.trial_columns)
+                for key, frame in event_dfs.items()
+            }
+
         return [
-            Events(
-                frame,
-                trial_columns=self.trial_columns,
-            ) for frame in event_pl_df_list
+            Events(frame, trial_columns=self.trial_columns)
+            for frame in event_dfs
         ]
 
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
@@ -402,21 +662,155 @@ class Events:
                 ],
             ).drop(input_col)
 
-    def map_to_aois(self, aoi_dataframe: TextStimulus) -> None:
-        """Map events to aois.
+    def map_to_aois(
+            self,
+            aoi_dataframe: TextStimulus,
+            *,
+            preserve_structure: bool = True,
+            verbose: bool = True,
+    ) -> None:
+        """Map events to AOIs, ignoring non-fixations.
+
+        This function computes AOI membership only for rows whose ``name`` starts with
+        ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``). Rows that are not fixations
+        are left unchanged and receive ``None`` values for all AOI columns. The original order
+        and number of rows are preserved.
+
+        Schema handling:
+
+        - If ``preserve_structure=True`` (default), we mirror legacy behavior when a list
+          ``location`` column exists: derive ``location_x``/``location_y`` and drop ``location``.
+          This keeps downstream expectations about flat component columns.
+        - If ``preserve_structure=False``, no unnesting/derivation occurs and the original
+          ``location`` list column is preserved. Coordinates are extracted per-row without
+          altering the frame.
+
+        AOI columns used for trial/page keys in the stimulus (``trial_column``/``page_column``)
+        are not appended to the events, as they are dropped by ``TextStimulus.get_aoi`` to avoid
+        duplicate columns during concatenation.
 
         Parameters
         ----------
         aoi_dataframe: TextStimulus
-            Text dataframe to map fixation to.
+            Text stimulus defining AOI rectangles.
+        preserve_structure: bool
+            Control whether to derive component columns and drop the list column as described
+            above. Default: True.
+        verbose : bool
+            If ``True``, show a progress bar. (default: True)
+
+        Raises
+        ------
+        ValueError
+            If ``aoi_dataframe`` does not have either ``width_column`` or ``end_x_column`` defined.
+        ValueError
+            If the events frame is empty.
         """
-        self.unnest()
-        aois = [
-            aoi_dataframe.get_aoi(row=row, x_eye='location_x', y_eye='location_y')
-            for row in tqdm(self.frame.iter_rows(named=True))
-        ]
-        aoi_df = pl.concat(aois)
+        # Validate AOI configuration early
+        if aoi_dataframe.width_column is None and aoi_dataframe.end_x_column is None:
+            raise ValueError(
+                'either TextStimulus.width or TextStimulus.end_x_column must be defined',
+            )
+        # Raise when no rows to concat
+        if self.frame.height == 0:
+            raise ValueError('cannot concat empty list')
+
+        # Backward-compatibility: derive component coordinates if only a list column exists.
+        if preserve_structure and 'location' in self.frame.columns and (
+            'location_x' not in self.frame.columns or 'location_y' not in self.frame.columns
+        ):
+            self.frame = self.frame.with_columns(
+                [
+                    pl.col('location').list.get(0).alias('location_x'),
+                    pl.col('location').list.get(1).alias('location_y'),
+                ],
+            ).drop('location')
+
+        # AOI output columns mirror the stimulus columns, but skip columns that already exist
+        # in the Events frame (e.g., trial/page) to avoid duplicate-column errors on concat.
+        existing_cols = set(self.frame.columns)
+        aoi_columns: list[str] = [c for c in aoi_dataframe.aois.columns if c not in existing_cols]
+
+        # Build a stable dtype schema for the AOI columns to avoid concat SchemaError when
+        # mixing empty rows (all None) with real AOI rows (strings/floats, etc.).
+        aoi_schema: dict[str, pl.PolarsDataType] = (
+            {col: aoi_dataframe.aois.schema[col] for col in aoi_columns}
+            if aoi_columns else {}
+        )
+
+        def _empty_aoi_row() -> pl.DataFrame:
+            # Create one row of all-None cast to expected AOI dtypes
+            return pl.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
+
+        out_rows: list[pl.DataFrame] = []
+        for row in tqdm(
+                self.frame.iter_rows(named=True),
+                total=len(self.frame),
+                desc='Mapping events to AOIs',
+                unit='event',
+                ncols=80,
+                disable=not verbose,
+        ):
+            name_val = row.get('name')
+            is_fix = isinstance(name_val, str) and name_val.startswith('fixation')
+            if not is_fix:
+                out_rows.append(_empty_aoi_row())
+                continue
+
+            # Extract coordinates - support either pre-existing component columns or list column
+            x = row.get('location_x')
+            y = row.get('location_y')
+            if x is None or y is None:
+                loc = row.get('location')
+                if isinstance(loc, (list, tuple)) and len(loc) >= 2:
+                    x, y = loc[0], loc[1]
+
+            if x is None or y is None:
+                out_rows.append(_empty_aoi_row())
+                continue
+
+            # Create a shallow copy with temporary keys for AOI lookup
+            tmp_row = dict(row)
+            tmp_row['__x'] = x
+            tmp_row['__y'] = y
+
+            try:
+                aoi_row = aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y')
+            except (KeyError, TypeError):  # tolerate common lookup/type errors per row
+                aoi_row = _empty_aoi_row()
+            else:
+                # Project to the selected AOI columns and fill any missing ones with None
+                if aoi_columns:
+                    present = [c for c in aoi_columns if c in aoi_row.columns]
+                    missing = [c for c in aoi_columns if c not in aoi_row.columns]
+                    aoi_row = aoi_row.select(
+                        [pl.col(c) for c in present] + [pl.lit(None).alias(c) for c in missing],
+                    )
+                    # Cast to the stable AOI schema to ensure consistent dtypes across rows
+                    aoi_row = aoi_row.cast(aoi_schema)
+                else:
+                    # No AOI columns are to be appended (all already exist in the Events frame).
+                    # Keep row count but contribute zero columns to avoid duplicate-column errors.
+                    aoi_row = aoi_row.select([])
+            out_rows.append(aoi_row)
+
+        aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
         self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
+
+        # Backward-compatibility: some pipelines expect that a prior unnest removed the
+        # original 'location' list column and kept only component columns. We avoid unnesting,
+        # but if component columns already exist, we drop the original list column to preserve
+        # legacy schema without altering coordinates.
+        if preserve_structure and 'location' in self.frame.columns and (
+            'location_x' in self.frame.columns or 'location_y' in self.frame.columns
+        ):
+            self.frame = self.frame.drop('location')
+
+    def __eq__(self, other: Events) -> bool:
+        """Check equality between this and another :py:cls:`~pymovements.Events` object."""
+        frames_equal = self.frame.equals(other.frame, null_equal=True)
+        trial_columns_equal = self.trial_columns == other.trial_columns
+        return frames_equal and trial_columns_equal
 
     def __str__(self: Any) -> str:
         """Return string representation of event dataframe."""
@@ -425,3 +819,93 @@ class Events:
     def __repr__(self) -> str:
         """Return string representation of event dataframe."""
         return self.__str__()
+
+    def merge_subsequent_close_events(
+            self,
+            name: str = 'fixation',
+            max_gap: int | float = 50,
+            verbose: bool = False,
+    ) -> None:
+        """Merge subsequent events if they are separated by a gap smaller than a threshold.
+
+        Parameters
+        ----------
+        name: str
+            The name of the events to be merged. (default: 'fixation')
+
+        max_gap: int | float
+            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 75)
+
+        verbose: bool
+            If ``True``, print the number of events merged and the resulting number of events.
+
+        Examples
+        --------
+        Let's create some example events first:
+
+        >>> events = Events(
+        ...     name='fixation',
+        ...     onsets=[0, 2, 5, 13, 21, 22, 30, 40, 53, 73],
+        ...     offsets=[1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
+        ... )
+        >>> events.frame.shape
+        (10, 4)
+
+        Merging all events with particular name with a gap smaller than 10 ms:
+
+        >>> events.merge_subsequent_close_events(name='fixation', max_gap=10)
+        >>> events.frame
+        shape: (1, 4)
+        ┌──────────┬───────┬────────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════╪═══════╪════════╪══════════╡
+        │ fixation ┆ 0     ┆ 90     ┆ 90       │
+        └──────────┴───────┴────────┴──────────┘
+
+        This combined all the smaller events into a single event with longer duration.
+
+        """
+        # Step 1: Filter events of the specified type and sort by onset
+        events = self.frame.filter(pl.col('name') == name).sort('onset')
+        # set aside other events to merge them back later
+        other = self.frame.filter(pl.col('name') != name)
+
+        number_of_events = len(events)
+
+        # Step 2: Calculate the gap between the current onset and the previous offset
+        events = events.with_columns(gap=pl.col('onset') - pl.col('offset').shift(1))
+
+        # Step 3: Create a 'group' identifier for merging
+        events = events.with_columns(
+            # calculate when gap is null or > max_gap
+            (pl.col('gap').is_null() | (pl.col('gap') > max_gap))
+            .cast(pl.Int64)
+            # cumulative sum (of ones) in 'group' to assign a unique group number
+            # to each sequence of events to be merged
+            .cum_sum()
+            # the group identifier is the same for events that are close enough to be merged,
+            # and different for events that are not close enough to be merged
+            .alias('group'),
+        )
+
+        # Step 4: Aggregate events by group to merge them
+        events = events.group_by('group').agg([
+            # all columns from the first group element except offset and duration
+            pl.exclude(['offset', 'duration']).first(),
+            # the offset of the merged event is the last offset in the group
+            pl.col('offset').last().alias('offset'),
+        ]).drop(['group', 'gap'])  # we don't need the group and gap columns anymore
+        # the duration of the merged event is the last offset minus the first onset in the group
+        events = events.with_columns(duration().alias('duration'))
+
+        # Step 5: concatenate new events
+        events = events.select(self.frame.columns)  # reorder columns to match original frame
+        self.frame = pl.concat([events, other]).sort('onset')
+
+        if verbose:
+            print(
+                f"Merged {number_of_events} '{name}' events "
+                f'into {len(events)} events with max_gap={max_gap} ms.',
+            )

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
@@ -34,9 +35,9 @@ class InteRead(DatasetDefinition):
     """InteRead dataset :cite:p:`InteRead`.
 
     This dataset includes monocular eye tracking data in an interrupted reading task.
-    Automatic interruption occured during a reading task and participants continued
+    Automatic interruption occurred during a reading task and participants continued
     reading after the pause.
-    Eye movements are recorded at a sampling frequency of 1200Hz with video-based eye tracker.
+    Eye movements are recorded at a sampling frequency of 1200Hz with a video-based eye tracker.
     Provided data are raw gaze samples and precomputed event files both in pixel coordinates.
 
     For more details, check the paper :cite:p:`InteRead`.
@@ -60,40 +61,40 @@ class InteRead(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
-
+        (default: None)
 
     Examples
     --------
@@ -118,10 +119,12 @@ class InteRead(DatasetDefinition):
 
     name: str = 'InteRead'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Interrupted Reading dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
@@ -129,6 +132,12 @@ class InteRead(DatasetDefinition):
                     'filename': 'resampled_gaze.csv.zip',
                     'md5': '06b2cdff1827086fa125a703ee9d4324',
                     'filename_pattern': r'resampled_gaze.csv',
+                    'load_kwargs': {
+                        'trial_columns': ['participant_id', 'page_id', 'interruption_state'],
+                        'time_column': '',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -157,30 +166,14 @@ class InteRead(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'participant_id',
-            'page_id',
-            'interruption_state',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    time_column: str = ''
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(
-        default_factory=lambda: [
-            'x',
-            'y',
-        ],
-    )
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {},
-            'precomputed_events': {},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

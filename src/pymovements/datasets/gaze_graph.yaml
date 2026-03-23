@@ -2,6 +2,21 @@ name: "GazeGraph"
 
 long_name: 'GazeGraph dataset'
 
+description: |
+  GazeGraph dataset :cite:p:`GazeGraph`.
+
+  The dataset is collected from eight subjects (four female and four male,
+  aged between 24 and 35) using the Pupil Core eye tracker. During data collection,
+  the subjects wear the eye tracker and sit in front of the computer screen
+  (a 34-inch display) at a distance of approximately 50cm. We conduct the
+  manufacturer's default on-screen five-point calibration for each of
+  the subjects.
+  Note that we have done only one calibration per subject, and the subjects
+  can move their heads and upper bodies freely during the experiment.
+  The gaze is recorded at a 30Hz sampling rate.
+
+  Check the respective paper for details :cite:p:`GazeGraph`.
+
 resources:
   - content: gaze
     url: "https://codeload.github.com/GazeGraphResource/GazeGraph/zip/refs/heads/master"
@@ -11,6 +26,19 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
       task: !str
+    load_kwargs:
+      time_column: null
+      time_unit: null
+      pixel_columns: ['x', 'y']
+      read_csv_kwargs:
+        separator: ","
+        has_header: false
+        new_columns:
+          - "x"
+          - "y"
+        schema_overrides:
+          - !polars.Float32
+          - !polars.Float32
 
 experiment:
   screen_width_px: 3440
@@ -20,25 +48,3 @@ experiment:
   distance_cm: 50
   origin: "center"
   sampling_rate: 30
-
-# TODO
-time_column: null
-
-time_unit: null
-
-pixel_columns:
-  - "x"
-  - "y"
-
-column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    separator: ","
-    has_header: false
-    new_columns:
-      - "x"
-      - "y"
-    schema_overrides:
-      - !polars.Float32
-      - !polars.Float32

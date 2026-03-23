@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -36,7 +37,7 @@ class EMTeC(DatasetDefinition):
     """EMTeC dataset :cite:p:`EMTeC`.
 
     This dataset includes eye-tracking data from 107 native speakers of English reading
-    machine generated texts.  Eye movements are recorded at a sampling frequency of 1,000 Hz
+    machine-generated texts.  Eye movements are recorded at a sampling frequency of 1,000 Hz
     using an EyeLink 1000 eye tracker and are provided as pixel coordinates.
 
     Check the respective paper for details :cite:p:`EMTeC`.
@@ -60,36 +61,37 @@ class EMTeC(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -114,10 +116,12 @@ class EMTeC(DatasetDefinition):
 
     name: str = 'EMTeC'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Eye movements on Machine-generated Texts Corpus'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
                 {
                     'content': 'gaze',
@@ -126,6 +130,37 @@ class EMTeC(DatasetDefinition):
                     'md5': 'dca99e47ef43f3696acec4fd70967750',
                     'filename_pattern': r'ET_{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'trial_columns': ['item_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x', 'y'],
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'columns': [
+                                'item_id',
+                                'TRIAL_ID',
+                                'Trial_Index_',
+                                'model',
+                                'decoding_strategy',
+                                'time',
+                                'x',
+                                'y',
+                                'pupil_right',
+                            ],
+                            'schema_overrides': {
+                                'item_id': pl.Utf8,
+                                'TRIAL_ID': pl.Int64,
+                                'Trial_Index_': pl.Int64,
+                                'model': pl.Utf8,
+                                'decoding_strategy': pl.Utf8,
+                                'time': pl.Int64,
+                                'x': pl.Float32,
+                                'y': pl.Float32,
+                                'pupil_right': pl.Float32,
+                            },
+                        },
+                    },
                 },
                 {
                     'content': 'precomputed_events',
@@ -133,6 +168,7 @@ class EMTeC(DatasetDefinition):
                     'filename': 'fixations.csv',
                     'md5': '5e05a364a1d8a044d8b36506aa91437e',
                     'filename_pattern': r'fixations.csv',
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
@@ -140,6 +176,7 @@ class EMTeC(DatasetDefinition):
                     'filename': 'reading_measures.csv',
                     'md5': '56880f50af20682558065ac2d26be827',
                     'filename_pattern': r'reading_measures.csv',
+                    'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
             ],
         ),
@@ -161,42 +198,12 @@ class EMTeC(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(default_factory=lambda: ['item_id'])
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x', 'y'])
+    pixel_columns: list[str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda: {
-            'gaze': {
-                'separator': '\t',
-                'columns': [
-                    'item_id',
-                    'TRIAL_ID',
-                    'Trial_Index_',
-                    'model',
-                    'decoding_strategy',
-                    'time',
-                    'x',
-                    'y',
-                    'pupil_right',
-                ],
-                'schema_overrides': {
-                    'item_id': pl.Utf8,
-                    'TRIAL_ID': pl.Int64,
-                    'Trial_Index_': pl.Int64,
-                    'model': pl.Utf8,
-                    'decoding_strategy': pl.Utf8,
-                    'time': pl.Int64,
-                    'x': pl.Float32,
-                    'y': pl.Float32,
-                    'pupil_right': pl.Float32,
-                },
-            },
-            'precomputed_events': {'separator': '\t'},
-            'precomputed_reading_measures': {'separator': '\t'},
-        },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

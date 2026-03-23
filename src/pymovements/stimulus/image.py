@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -55,6 +55,22 @@ class ImageStimulus:
         """
         _draw_image_stimulus(self.images[stimulus_id], origin=origin, show=True)
 
+    @staticmethod
+    def from_file(path: str | Path) -> ImageStimulus:
+        """Load image stimulus from file.
+
+        Parameters
+        ----------
+        path:  str | Path
+            Path to image file to be read.
+
+        Returns
+        -------
+        ImageStimulus
+            Returns an ImageStimulus initialized with the image stimulus file.
+        """
+        return ImageStimulus(images=[Path(path)])
+
 
 def from_file(image_path: str | Path) -> ImageStimulus:
     """Load image stimulus from file.
@@ -69,10 +85,7 @@ def from_file(image_path: str | Path) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    if isinstance(image_path, str):
-        image_path = Path(image_path)
-
-    return ImageStimulus(images=[image_path])
+    return ImageStimulus.from_file(path=image_path)
 
 
 def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
@@ -90,15 +103,8 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
     ImageStimulus
         Returns the image stimulus file.
     """
-    filenames = get_filepaths(
-        path,
-        regex=curly_to_regex(filename_format),
-    )
-    image_stimuli = []
-    for filename in filenames:
-        image_stimuli.append(filename)
-
-    return ImageStimulus(image_stimuli)
+    filenames = get_filepaths(path, regex=curly_to_regex(filename_format))
+    return ImageStimulus(list(filenames))
 
 
 def _draw_image_stimulus(
@@ -134,7 +140,14 @@ def _draw_image_stimulus(
     fig: matplotlib.pyplot.figure
     ax: matplotlib.pyplot.Axes
     """
-    img = PIL.Image.open(image_stimulus)
+    try:
+        img = PIL.Image.open(image_stimulus)
+    except PIL.UnidentifiedImageError as exception:
+        raise ValueError(
+            f"Unsupported image file '{image_stimulus}'. "
+            "Use 'PIL.features.pilinfo()' to get an overview of supported types.",
+        ) from exception
+
     if not fig:
         fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
     assert ax

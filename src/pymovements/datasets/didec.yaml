@@ -2,6 +2,17 @@ name: "DIDEC"
 
 long_name: 'Dutch Image Description and Eye-tracking Corpus'
 
+description: |
+  DIDEC dataset :cite:p:`DIDEC`.
+
+  The DIDEC eye-tracking data has two different data collections, (1) for the
+  description viewing task it is more coherent than for the free-viewing task;
+  (2) variation in image descriptions. The data was collected using BeGaze eye-tracker
+  with a sampling rate of 250 Hz. The data collection contains 112 Dutch students,
+  54 students completed the free viewing task, while 58 completed the image description task.
+
+  Check the respective paper for details :cite:p:`DIDEC`.
+
 resources:
   - content: gaze
     url: "https://didec.uvt.nl/corpus/DIDEC_only_the_eyetracking_data.zip"
@@ -15,6 +26,11 @@ resources:
       participant: !int
       session: !int
       trial: !int
+    load_function: from_begaze
+    load_kwargs:
+      trial_columns: ['Stimulus']
+      encoding: ascii
+      prefer_eye: L
 
 experiment:
   screen_width_px: 1680
@@ -23,40 +39,4 @@ experiment:
   screen_height_cm: 29.7
   distance_cm: 70
   origin: "upper left"
-  sampling_rate: 1000
-
-trial_columns:
-  - "Stimulus"
-
-time_column: "Time"
-
-time_unit: "ms"
-
-pixel_columns:
-  - "L POR X [px]"
-  - "L POR Y [px]"
-  - "R POR X [px]"
-  - "R POR Y [px]"
-
-column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    separator: "\t"
-    skip_rows: 43
-    has_header: false
-    new_columns:
-      - "Time"
-      - "Type"
-      - "Trial"
-      - "L POR X [px]"
-      - "L POR Y [px]"
-      - "R POR X [px]"
-      - "R POR Y [px]"
-      - "Timing"
-      - "Pupil Confidence"
-      - "L Plane"
-      - "R Plane"
-      - "L Event Info"
-      - "R Event Info"
-      - "Stimulus"
+  sampling_rate: 250

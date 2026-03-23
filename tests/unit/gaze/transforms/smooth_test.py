@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -379,7 +379,7 @@ def test_smooth_returns(kwargs, series, expected_df):
                 'window_length': 3,
             },
             ValueError,
-            "Unkown method 'invalid_method'. Supported methods are: ",
+            "Unknown method 'invalid_method'. Supported methods are: ",
             id='invalid_method_raises_value_error',
         ),
         pytest.param(

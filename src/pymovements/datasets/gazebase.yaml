@@ -2,6 +2,23 @@ name: "GazeBase"
 
 long_name: "GazeBase dataset"
 
+description: |
+  GazeBase dataset :cite:p:`GazeBase`.
+
+  This dataset includes monocular (left eye) eye tracking data from 322 participants captured over
+  a period of 37 months. Participants attended up to 9 rounds during this time frame, with each
+  round consisting of two contiguous sessions.
+
+  Eye movements are recorded at a sampling frequency of 1000 Hz using an EyeLink 1000 video-based
+  eye tracker and are provided as positional data in degrees of visual angle.
+
+  In each of the two sessions per round, participants are instructed to complete a series of
+  tasks, including a fixation task (FIX), a horizontal saccade task (HSS), a random saccade task
+  (RAN), a reading task (TEX), two free viewing video tasks (VD1 and VD2) and a gaze-driven gaming
+  task (BLG).
+
+  Check the respective paper for details :cite:p:`GazeBase`.
+
 resources:
   - content: gaze
     url: "https://figshare.com/ndownloader/files/27039812"
@@ -12,6 +29,25 @@ resources:
       round_id: !int
       subject_id: !int
       session_id: !int
+    load_kwargs:
+      time_column: 'n'
+      time_unit: 'ms'
+      position_columns: ['x', 'y']
+      column_map:
+        val: "validity"
+        xT: "x_target_pos"
+        yT: "y_target_pos"
+      read_csv_kwargs:
+        null_values: "NaN"
+        schema_overrides:
+          n: !polars.Int64
+          x: !polars.Float32
+          y: !polars.Float32
+          val: !polars.Int64
+          dP: !polars.Float32
+          lab: !polars.Int64
+          xT: !polars.Float32
+          yT: !polars.Float32
 
 experiment:
   screen_width_px: 1680
@@ -21,29 +57,3 @@ experiment:
   distance_cm: 55
   origin: "upper left"
   sampling_rate: 1000
-
-time_column: "n"
-
-time_unit: "ms"
-
-position_columns:
-  - "x"
-  - "y"
-
-column_map:
-  val: "validity"
-  xT: "x_target_pos"
-  yT: "y_target_pos"
-
-custom_read_kwargs:
-  gaze:
-    null_values: "NaN"
-    schema_overrides:
-      n: !polars.Int64
-      x: !polars.Float32
-      y: !polars.Float32
-      val: !polars.Int64
-      dP: !polars.Float32
-      lab: !polars.Int64
-      xT: !polars.Float32
-      yT: !polars.Float32

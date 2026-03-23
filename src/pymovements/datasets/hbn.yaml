@@ -2,6 +2,18 @@ name: "HBN"
 
 long_name: 'Healthy Brain Network dataset'
 
+description: |
+  HBN dataset :cite:p:`HBN`.
+
+  This dataset consists of recordings from children
+  watching four different age-appropriate videos: (1) an
+  educational video clip (Fun with Fractals), (2) a short animated
+  film (The Present), (3) a short clip of an animated film (Despicable Me),
+  and (4) a trailer for a feature-length movie (Diary of a Wimpy Kid).
+  The eye gaze was recorded at a sampling rate of 120 Hz.
+
+  Check the respective paper for details :cite:p:`HBN`.
+
 resources:
   - content: gaze
     url: "https://files.osf.io/v1/resources/qknuv/providers/osfstorage/651190031e76a453918a9971"
@@ -11,6 +23,20 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !str
       video_id: !str
+    load_kwargs:
+      time_column: 'time'
+      time_unit: 'step'
+      pixel_columns: ['x_pix', 'y_pix']
+      read_csv_kwargs:
+        separator: ","
+        columns:
+          - "time"
+          - "x_pix"
+          - "y_pix"
+        schema_overrides:
+          time: !polars.Int64
+          x_pix: !polars.Float32
+          y_pix: !polars.Float32
 
 experiment:
   screen_width_px: 800
@@ -20,25 +46,3 @@ experiment:
   distance_cm: 63.5
   origin: "center"
   sampling_rate: 120
-
-time_column: "time"
-
-time_unit: "step"
-
-pixel_columns:
-  - "x_pix"
-  - "y_pix"
-
-column_map: {}
-
-custom_read_kwargs:
-  gaze:
-    separator: ","
-    columns:
-      - "time"
-      - "x_pix"
-      - "y_pix"
-    schema_overrides:
-      time: !polars.Int64
-      x_pix: !polars.Float32
-      y_pix: !polars.Float32

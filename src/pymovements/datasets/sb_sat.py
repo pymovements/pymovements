@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import KW_ONLY
 from typing import Any
 
 import polars as pl
@@ -35,7 +36,7 @@ from pymovements.gaze.experiment import Experiment
 class SBSAT(DatasetDefinition):
     """SB-SAT dataset :cite:p:`SB-SAT`.
 
-    This dataset includes monocular eye tracking data from a single participants in a single
+    This dataset includes monocular eye tracking data from a single participant in a single
     session. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000
     eye tracker and are provided as pixel coordinates.
 
@@ -62,39 +63,40 @@ class SBSAT(DatasetDefinition):
         The experiment definition.
 
     filename_format: dict[str, str] | None
-        Regular expression which will be matched before trying to load the file. Namedgroups will
+        Regular expression, which will be matched before trying to load the file. Namedgroups will
         appear in the `fileinfo` dataframe.
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None
         If named groups are present in the `filename_format`, this makes it possible to cast
         specific named groups to a particular datatype.
 
-    trial_columns: list[str]
+    trial_columns: list[str] | None
             The name of the trial columns in the input data frame. If the list is empty or None,
             the input data frame is assumed to contain only one trial. If the list is not empty,
-            the input data frame is assumed to contain multiple trials and the transformation
+            the input data frame is assumed to contain multiple trials, and the transformation
             methods will be applied to each trial separately.
 
-    time_column: str
+    time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``.
 
-    time_unit: str
+    time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
         'step' the experiment definition must be specified. All timestamps will be converted to
         milliseconds.
 
-    pixel_columns: list[str]
+    pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
         column will not be created.
 
-    column_map: dict[str, str]
+    column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
 
-    custom_read_kwargs: dict[str, dict[str, Any]]
+    custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function.
+        (default: None)
 
     Examples
     --------
@@ -119,26 +121,50 @@ class SBSAT(DatasetDefinition):
 
     name: str = 'SBSAT'
 
+    _: KW_ONLY  # all fields below can only be passed as a positional argument.
+
     long_name: str = 'Stony Brook SAT reading fixation dataset'
 
     resources: ResourceDefinitions = field(
-        default_factory=lambda: ResourceDefinitions.from_dicts(
+        default_factory=lambda: ResourceDefinitions(
             [
-                        {
-                            'content': 'gaze',
-                            'url': 'https://osf.io/download/jgae7/',
-                            'filename': 'sbsat_csvs.zip',
-                            'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
-                            'filename_pattern': r'msd{subject_id:d}.csv',
-                            'filename_pattern_schema_overrides': {'subject_id': int},
+                {
+                    'content': 'gaze',
+                    'url': 'https://osf.io/download/jgae7/',
+                    'filename': 'sbsat_csvs.zip',
+                    'md5': 'a6ef1fb0ecced683cdb489c3bd3e1a5c',
+                    'filename_pattern': r'msd{subject_id:d}.csv',
+                    'filename_pattern_schema_overrides': {'subject_id': int},
+                    'load_kwargs': {
+                        'trial_columns': ['book_name', 'screen_id'],
+                        'time_column': 'time',
+                        'time_unit': 'ms',
+                        'pixel_columns': ['x_left', 'y_left'],
+                        'read_csv_kwargs': {
+                            'separator': '\t',
+                            'columns': [
+                                'time', 'book_name', 'screen_id',
+                                'x_left', 'y_left', 'pupil_left',
+                            ],
+                            'schema_overrides': {
+                                'time': pl.Int64,
+                                'book_name': pl.Utf8,
+                                'screen_id': pl.Int64,
+                                'x_left': pl.Float32,
+                                'y_left': pl.Float32,
+                                'pupil_left': pl.Float32,
+                            },
                         },
-                        {
-                            'content': 'precomputed_events',
-                            'url': 'https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv',  # noqa: E501 # pylint: disable=line-too-long
-                            'filename': '18sat_fixfinal.csv',
-                            'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
-                            'filename_pattern': '18sat_fixfinal.csv',
-                        },
+                    },
+                },
+                {
+                    'content': 'precomputed_events',
+                    'url': 'https://raw.githubusercontent.com/ahnchive/SB-SAT/master/fixation/18sat_fixfinal.csv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename': '18sat_fixfinal.csv',
+                    'md5': '4cf3212a71e6fc2fbe7041ce7c691927',
+                    'filename_pattern': '18sat_fixfinal.csv',
+                    'load_kwargs': {'read_csv_kwargs': {'separator': ','}},
+                },
             ],
         ),
     )
@@ -159,36 +185,14 @@ class SBSAT(DatasetDefinition):
 
     filename_format_schema_overrides: dict[str, dict[str, type]] | None = None
 
-    trial_columns: list[str] = field(
-        default_factory=lambda: [
-            'book_name',
-            'screen_id',
-        ],
-    )
+    trial_columns: list[str] | None = None
 
-    time_column: str = 'time'
+    time_column: str | None = None
 
-    time_unit: str = 'ms'
+    time_unit: str | None = None
 
-    pixel_columns: list[str] = field(default_factory=lambda: ['x_left', 'y_left'])
+    pixel_columns: list[str] | None = None
 
-    column_map: dict[str, str] = field(default_factory=lambda: {})
+    column_map: dict[str, str] | None = None
 
-    custom_read_kwargs: dict[str, dict[str, Any]] = field(
-        default_factory=lambda:
-            {
-                'gaze': {
-                    'separator': '\t',
-                    'columns': ['time', 'book_name', 'screen_id', 'x_left', 'y_left', 'pupil_left'],
-                    'schema_overrides': {
-                        'time': pl.Int64,
-                        'book_name': pl.Utf8,
-                        'screen_id': pl.Int64,
-                        'x_left': pl.Float32,
-                        'y_left': pl.Float32,
-                        'pupil_left': pl.Float32,
-                    },
-                },
-                'precomputed_events': {'separator': ','},
-            },
-    )
+    custom_read_kwargs: dict[str, dict[str, Any]] | None = None

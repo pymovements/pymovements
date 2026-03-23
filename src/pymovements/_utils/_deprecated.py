@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ class DeprecatedMetaClass(type):
             *args: Any,
             **kwargs: Any,
     ) -> DeprecatedMetaClass:
-        """Create new deprecated class."""
+        """Create a new deprecated class."""
         alias = classdict.get('_DeprecatedMetaClass__alias')
         version_deprecated = classdict.get('_DeprecatedMetaClass__version_deprecated')
         version_removed = classdict.get('_DeprecatedMetaClass__version_removed')
@@ -75,9 +75,9 @@ class DeprecatedMetaClass(type):
                 version_removed = getattr(cls, '_DeprecatedMetaClass__version_removed')
 
                 warn(
-                    f"{cls.__name__} has been renamed to {alias.__name__} "
-                    f"in {version_deprecated} "
-                    f"and will be removed in {version_removed}.",
+                    f'{cls.__name__} has been renamed to {alias.__name__} '
+                    f'in {version_deprecated} '
+                    f'and will be removed in {version_removed}.',
                     DeprecationWarning, stacklevel=2,
                 )
 
@@ -97,9 +97,9 @@ class DeprecatedMetaClass(type):
 
             if alias is not None:
                 warn(
-                    f"{mcs.__name__} has been renamed to {alias.__name__} "
-                    f"in {version_deprecated} "
-                    f"and will be removed in {version_removed}.",
+                    f'{mcs.__name__} has been renamed to {alias.__name__} '
+                    f'in {version_deprecated} '
+                    f'and will be removed in {version_removed}.',
                     DeprecationWarning, stacklevel=2,
                 )
 

@@ -15,7 +15,4 @@ Provides utility helper functions.
     :nosignatures:
     :template: module.rst
 
-    archives
-    downloads
-    parsing
-    paths
+    plotting

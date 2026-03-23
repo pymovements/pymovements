@@ -1,0 +1,74 @@
+name: PoTeC
+long_name: Potsdam Textbook Corpus
+description: "PoTeC dataset :cite:p:`PoTeC`.\n\nThe Potsdam Textbook Corpus (PoTeC)\
+  \ is a naturalistic eye-tracking-while-reading\ncorpus containing data from 75 participants\
+  \ reading 12 scientific texts.\nPoTeC is the first naturalistic eye-tracking-while-reading\
+  \ corpus that contains\neye-movements from domain-experts as well as novices in\
+  \ a within-participant\nmanipulation: It is based on a 2\xD72\xD72 fully crossed\
+  \ factorial design which includes\nthe participants' level of study and the participants'\
+  \ discipline of study as\nbetween-subject factors and the text domain as a within-subject\
+  \ factor. The\nparticipants' reading comprehension was assessed by a series of text\
+  \ comprehension\nquestions, and their domain knowledge was tested by text-independent\n\
+  background questions for each of the texts. The materials are annotated for a\n\
+  variety of linguistic features at different levels. We envision PoTeC to be used\n\
+  for a wide range of studies, including but not limited to analyses of expert and\n\
+  non-expert reading strategies.\n\nThe corpus and all the accompanying data at all\n\
+  stages of the preprocessing pipeline and all code used to preprocess the data are\n\
+  made available via `GitHub. <https://github.com/DiLi-Lab/PoTeC>`_\n"
+resources:
+- content: gaze
+  filename: PoTeC.zip
+  url: https://osf.io/download/tgd9q/
+  md5: cffd45039757c3777e2fd130e5d8a2ad
+  filename_pattern: reader{subject_id:d}_{text_id}_raw_data.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+  load_kwargs:
+    time_column: time
+    time_unit: ms
+    pixel_columns:
+    - x
+    - y
+    read_csv_kwargs:
+      schema_overrides:
+        time: '!polars.datatypes.classes.Int64'
+        x: '!polars.datatypes.classes.Float32'
+        y: '!polars.datatypes.classes.Float32'
+        pupil_diameter: '!polars.datatypes.classes.Float32'
+      separator: "\t"
+- content: precomputed_events
+  filename: fixation.zip
+  url: https://osf.io/download/d8pyg/
+  md5: ecd9a998d07158922bb9b8cdd52f5688
+  filename_pattern: reader{subject_id:d}_{text_id}_uncorrected_fixations.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
+      null_values: .
+- content: precomputed_reading_measures
+  filename: reading_measures.zip
+  url: https://osf.io/download/3ywhz/
+  md5: efafec5ce074d8f492cc2409b6c4d9eb
+  filename_pattern: reader{subject_id:d}_{text_id}_merged.tsv
+  filename_pattern_schema_overrides:
+    subject_id: '!int'
+    text_id: '!str'
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
+      null_values: .
+      infer_schema_length: 10000
+experiment:
+  eyetracker:
+    sampling_rate: 1000
+  screen:
+    width_px: 1680
+    height_px: 1050
+    width_cm: 47.5
+    height_cm: 30
+    distance_cm: 65
+    origin: upper left
