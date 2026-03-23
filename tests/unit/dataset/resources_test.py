@@ -143,20 +143,32 @@ def test_resource_is_equal(kwargs):
 
         pytest.param(
             ResourceDefinition(
-                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', mirrors=['https://this.mirror.com']),
+                content='gaze',
+                source=WebSource(
+                    url='https://example.com',
+                    filename='test.csv',
+                    mirrors=['https://this.mirror.com'],
+                ),
             ),
             ResourceDefinition(
-                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', mirrors=['https://that.mirror.com']),
+                content='gaze',
+                source=WebSource(
+                    url='https://example.com',
+                    filename='test.csv',
+                    mirrors=['https://that.mirror.com'],
+                ),
             ),
             id='different_mirror',
         ),
 
         pytest.param(
             ResourceDefinition(
-                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', md5='abcdefgh'),
+                content='gaze',
+                source=WebSource(url='https://example.com', filename='test.csv', md5='abcdefgh'),
             ),
             ResourceDefinition(
-                content='gaze', source=WebSource(url='https://example.com', filename='test.csv', md5='ijklmnop'),
+                content='gaze',
+                source=WebSource(url='https://example.com', filename='test.csv', md5='ijklmnop'),
             ),
             id='different_md5',
         ),

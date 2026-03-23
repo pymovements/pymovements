@@ -108,7 +108,7 @@ class IITB_HGC(DatasetDefinition):
                 {
                     'content': 'precomputed_events',
                     'source': {
-                        'url': 'https://huggingface.co/datasets/cfilt/IITB-HGC/resolve/main/IITB_HGC.jsonl?download=true',
+                        'url': 'https://huggingface.co/datasets/cfilt/IITB-HGC/resolve/main/IITB_HGC.jsonl?download=true',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'IITB_HGC.jsonl',
                         'md5': 'cde5dd88534e87d9b2f1ab6e47133b5c',
                     },

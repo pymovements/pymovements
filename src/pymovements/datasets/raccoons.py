@@ -101,7 +101,7 @@ class RaCCooNS(DatasetDefinition):
                 {
                     'content': 'gaze',
                     'source': {
-                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip',
+                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_raw_data.zip',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'ET_raw_data.zip',
                         'md5': '8b30241040071cee7afea367ae1e013e',
                     },
@@ -119,7 +119,7 @@ class RaCCooNS(DatasetDefinition):
                 {
                     'content': 'precomputed_events',
                     'source': {
-                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv',
+                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_fix_data.tsv',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'ET_fix_data.tsv',
                         'md5': '98dff690022d0c0555987a6d88de992b',
                     },
@@ -132,7 +132,7 @@ class RaCCooNS(DatasetDefinition):
                 {
                     'content': 'precomputed_reading_measures',
                     'source': {
-                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv',
+                        'url': 'https://data.ru.nl/api/collectionfiles/ru/id/ru_395469/files/download/eyetracking/ET_word_data.tsv',  # noqa: E501 # pylint: disable=line-too-long
                         'filename': 'ET_word_data.tsv',
                         'md5': 'c40886c4515c43187aba8fbc32c8c935',
                     },
