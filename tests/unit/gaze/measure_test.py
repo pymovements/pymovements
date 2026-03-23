@@ -356,7 +356,7 @@ def my_test_measure(column: str) -> pl.Expr:
                 ),
             },
             'data_loss',
-            {'column': 'A', 'sampling_rate': 1000, 'unit': 'time'},
+            {'column': 'A', 'unit': 'time'},
             pl.DataFrame(data={'data_loss_time': [0.001]}),
             id='data_loss_time_sampling_rate_sourced_from_experiment',
         ),
