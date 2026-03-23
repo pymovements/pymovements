@@ -428,7 +428,7 @@ def test_dataset_download_no_sources_raises(tmp_path):
     paths = DatasetPaths(root=tmp_path, dataset='.')
     dataset_definition = DatasetDefinition(
         name='test',
-        resources=[{'content': 'gaze', 'filename_pattern': 'test.csv'}]
+        resources=[{'content': 'gaze', 'filename_pattern': 'test.csv'}],
     )
     dataset = Dataset(dataset_definition, path=paths)
 

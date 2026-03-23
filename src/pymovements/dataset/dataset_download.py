@@ -176,7 +176,7 @@ def _download_resource_with_legacy_mirrors(
         verbose: bool,
 ) -> None:
     """Download resource with mirrors."""
-    if resource.source.url is None:
+    if resource.source is None or resource.source.url is None:
         raise AttributeError('WebSource.url must not be None')
     if resource.source.filename is None:
         raise AttributeError('WebSource.filename must not be None')

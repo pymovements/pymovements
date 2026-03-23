@@ -143,12 +143,12 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def url(self) -> str | None:
         """The URL to the downloadable resource.
 
-        .. deprecated:: v0.26.1
+        .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
         This property will be removed in v0.31.0.
 
@@ -163,7 +163,7 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def url(self, data: str) -> None:
         if self.source is None:
@@ -175,12 +175,12 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def filename(self) -> str | None:
         """The target filename of the downloadable resource. This may be an archive.
 
-        .. deprecated:: v0.26.1
+        .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
         This property will be removed in v0.31.0.
 
@@ -195,7 +195,7 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def filename(self, data: str) -> None:
         if self.source is None:
@@ -207,12 +207,12 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def md5(self) -> str | None:
         """The MD5 checksum of the downloadable resource.
 
-        .. deprecated:: v0.26.1
+        .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
         This property will be removed in v0.31.0.
 
@@ -227,7 +227,7 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def md5(self, data: str) -> None:
         if self.source is None:
@@ -239,12 +239,12 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def mirrors(self) -> list[str] | None:
         """A list of additional mirror URLs to download the resource.
 
-        .. deprecated:: v0.26.1
+        .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
         This property will be removed in v0.31.0.
 
@@ -259,7 +259,7 @@ class ResourceDefinition:
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
-        version='v0.26.1',
+        version='v0.26.2',
     )
     def mirrors(self, data: list[str]) -> None:
         if self.source is None:
