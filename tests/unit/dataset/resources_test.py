@@ -302,12 +302,11 @@ def test_resource_is_not_equal(resource1, resource2):
         pytest.param(
             {
                 'content': 'gaze',
-                'source': {'url': 'https://example.com'},
                 'filename': 'test.csv',
             },
             ResourceDefinition(
                 content='gaze',
-                source=WebSource(url='https://example.com', filename='test.csv'),
+                source=WebSource(url=None, filename='test.csv'),  # type: ignore[arg-type]
             ),
             marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
             id='content_filename_deprecated',
