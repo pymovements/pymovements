@@ -126,7 +126,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.1',
     )
-    def url(self) -> str:
+    def url(self) -> str | None:
         """The URL to the downloadable resource.
 
         .. deprecated:: v0.26.1
@@ -158,7 +158,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.1',
     )
-    def filename(self) -> str:
+    def filename(self) -> str | None:
         """The target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.1
@@ -180,7 +180,7 @@ class ResourceDefinition:
     )
     def filename(self, data: str) -> None:
         if self.source is None:
-            self.source = WebSource(url=None, filename=data)
+            self.source = WebSource(url=None, filename=data)  # type: ignore[arg-type]
         else:
             self.source = replace(self.source, filename=data)
 
@@ -190,7 +190,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.1',
     )
-    def md5(self) -> str:
+    def md5(self) -> str | None:
         """The MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.1
@@ -212,7 +212,7 @@ class ResourceDefinition:
     )
     def md5(self, data: str) -> None:
         if self.source is None:
-            self.source = WebSource(url=None, md5=data)
+            self.source = WebSource(url=None, md5=data)  # type: ignore[arg-type]
         else:
             self.source = replace(self.source, md5=data)
 
@@ -222,7 +222,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.1',
     )
-    def mirrors(self) -> list[str]:
+    def mirrors(self) -> list[str] | None:
         """A list of additional mirror URLs to download the resource.
 
         .. deprecated:: v0.26.1
@@ -244,7 +244,7 @@ class ResourceDefinition:
     )
     def mirrors(self, data: list[str]) -> None:
         if self.source is None:
-            self.source = WebSource(url=None, mirrors=data)
+            self.source = WebSource(url=None, mirrors=data)  # type: ignore[arg-type]
         else:
             self.source = replace(self.source, mirrors=data)
 
@@ -304,7 +304,7 @@ class ResourceDefinition:
                     del data[key]
 
         # Convert source object field to dictionary.
-        if 'source' in data and data['source'] is not None:
+        if 'source' in data and data['source'] is not None and self.source is not None:
             data['source'] = self.source.to_dict(exclude_none=exclude_none)
 
         return data

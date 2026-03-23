@@ -65,7 +65,7 @@ class WebSource:
     def from_dict(data: dict[str, Any]) -> WebSource:
         """Create a `WebSource` from a dictionary."""
         return WebSource(
-            url=data.get('url'),
+            url=data.get('url'),  # type: ignore[arg-type]
             filename=data.get('filename'),
             md5=data.get('md5'),
             mirrors=data.get('mirrors'),
