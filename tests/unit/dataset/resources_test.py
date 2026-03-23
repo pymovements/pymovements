@@ -438,11 +438,31 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
     ('definition', 'attribute', 'value', 'expected_definition'),
     [
         pytest.param(
+            ResourceDefinition(content='gaze', source=WebSource(url='https://example.com')),
+            'url',
+            'https://test.com',
+            ResourceDefinition(content='gaze', source=WebSource(url='https://test.com')),
+            id='url_overwrite',
+        ),
+        pytest.param(
             ResourceDefinition(content='gaze'),
             'url',
             'https://example.com',
             ResourceDefinition(content='gaze', source=WebSource(url='https://example.com')),
-            id='url',
+            id='url_create_source',
+        ),
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='https://example.com', filename='test.csv'),
+            ),
+            'filename',
+            'test2.csv',
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='https://example.com', filename='test2.csv'),
+            ),
+            id='filename_overwrite',
         ),
         pytest.param(
             ResourceDefinition(content='gaze'),
@@ -452,7 +472,20 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 content='gaze',
                 source=WebSource(url=None, filename='test.csv'),  # type: ignore[arg-type]
             ),
-            id='filename',
+            id='filename_create_source',
+        ),
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='https://example.com', md5='qwert'),
+            ),
+            'md5',
+            'abcdefgh',
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(url='https://example.com', md5='abcdefgh'),
+            ),
+            id='md5_overwrite',
         ),
         pytest.param(
             ResourceDefinition(content='gaze'),
@@ -462,7 +495,26 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                 content='gaze',
                 source=WebSource(url=None, md5='abcdefgh'),  # type: ignore[arg-type]
             ),
-            id='md5',
+            id='md5_create_source',
+        ),
+        pytest.param(
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='https://example.com',
+                    mirrors=['mirror.example.com'],
+                ),
+            ),
+            'mirrors',
+            ['mirror1.example.com', 'mirror2.example.com'],
+            ResourceDefinition(
+                content='gaze',
+                source=WebSource(
+                    url='https://example.com',
+                    mirrors=['mirror1.example.com', 'mirror2.example.com'],
+                ),
+            ),
+            id='mirrors_overwrite',
         ),
         pytest.param(
             ResourceDefinition(content='gaze'),
@@ -474,14 +526,13 @@ def test_resource_from_dict_expected(resource_dict, expected_resource):
                     mirrors=['mirror1.example.com', 'mirror2.example.com'],
                 ),
             ),
-            id='mirrors',
+            id='mirrors_create_source',
         ),
     ],
 )
 def test_resource_set_source_attribute_deprecated(
         definition, attribute, value, expected_definition,
 ):
-    definition = ResourceDefinition(content='gaze')
     setattr(definition, attribute, value)
 
     assert definition == expected_definition
