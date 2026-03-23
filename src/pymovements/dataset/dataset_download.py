@@ -178,6 +178,11 @@ def _download_resource_with_legacy_mirrors(
     """Download resource with mirrors."""
     if resource.source is None:
         raise AttributeError('Resource.source must not be None')
+    if resource.source.url is None:
+        raise AttributeError('WebSource.url must not be None')
+    if resource.source.filename is None:
+        raise AttributeError('WebSource.filename must not be None')
+
 
     for mirror_idx, mirror in enumerate(mirrors, start=1):
         mirror_url = f'{mirror}{resource.source.url}'

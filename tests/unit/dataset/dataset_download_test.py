@@ -428,7 +428,7 @@ def test_paths(init_path, expected_paths, dataset_definition):
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomGazeOnlyLegacyMirror', 'CustomGazeOnlySingleMirror'],
+    ['CustomGazeOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_both_mirrors_fail_gaze_only(
@@ -469,86 +469,8 @@ def test_dataset_download_both_mirrors_fail_gaze_only(
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
-    'dataset_definition', ['CustomGazeOnlyTwoMirrors'], indirect=['dataset_definition'],
-)
-def test_dataset_download_three_mirrors_fail_gaze_only(
-        mock_download_file,
-        tmp_path,
-        dataset_definition,
-):
-    paths = DatasetPaths(root=tmp_path, dataset='.')
-    dataset = Dataset(dataset_definition, path=paths)
-
-    mock_download_file.side_effect = OSError
-
-    with pytest.raises(
-        RuntimeError,
-        match='Downloading resource test.gz.tar failed for all mirrors',
-    ):
-        dataset.download()
-
-    mock_download_file.assert_has_calls([
-        mock.call(
-            url='https://example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-        mock.call(
-            url='https://mirror1.example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-        mock.call(
-            url='https://mirror2.example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-    ])
-
-
-@mock.patch('pymovements.dataset.dataset_download._download_file')
-@pytest.mark.parametrize(
-    'dataset_definition', ['CustomGazeOnlyNoMirror'], indirect=['dataset_definition'],
-)
-def test_dataset_download_without_mirrors_fail_gaze_only(
-        mock_download_file,
-        tmp_path,
-        dataset_definition,
-):
-    paths = DatasetPaths(root=tmp_path, dataset='.')
-    dataset = Dataset(dataset_definition, path=paths)
-
-    mock_download_file.side_effect = OSError
-
-    with pytest.raises(
-        RuntimeError,
-        match='Downloading resource https://example.com/test.gz.tar failed.',
-    ):
-        dataset.download()
-
-    mock_download_file.assert_has_calls([
-        mock.call(
-            url='https://example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-    ])
-
-
-@mock.patch('pymovements.dataset.dataset_download._download_file')
-@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
-@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
-@pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomPrecomputedOnlyLegacyMirror', 'CustomPrecomputedOnlySingleMirror'],
+    ['CustomPrecomputedOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_precomputed_events_both_mirrors_fail(
@@ -586,42 +508,11 @@ def test_dataset_download_precomputed_events_both_mirrors_fail(
 
 
 @mock.patch('pymovements.dataset.dataset_download._download_file')
-@pytest.mark.parametrize(
-    'dataset_definition', ['CustomPrecomputedOnlyNoMirror'], indirect=['dataset_definition'],
-)
-def test_dataset_download_precomputed_events_without_mirrors_fail(
-        mock_download_file,
-        tmp_path,
-        dataset_definition,
-):
-    mock_download_file.side_effect = OSError()
-
-    paths = DatasetPaths(root=tmp_path, dataset='.')
-    dataset = Dataset(dataset_definition, path=paths)
-
-    with pytest.raises(
-        RuntimeError,
-        match='Downloading resource https://example.com/test_pc.gz.tar failed.',
-    ):
-        dataset.download()
-
-    mock_download_file.assert_has_calls([
-        mock.call(
-            url='https://example.com/test_pc.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test_pc.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-    ])
-
-
-@mock.patch('pymovements.dataset.dataset_download._download_file')
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomPrecomputedRMOnlyLegacyMirror', 'CustomPrecomputedRMOnlySingleMirror'],
+    ['CustomPrecomputedRMOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_precomputed_reading_measures_both_mirrors_fail(
@@ -659,42 +550,11 @@ def test_dataset_download_precomputed_reading_measures_both_mirrors_fail(
 
 
 @mock.patch('pymovements.dataset.dataset_download._download_file')
-@pytest.mark.parametrize(
-    'dataset_definition', ['CustomPrecomputedRMOnlyNoMirror'], indirect=['dataset_definition'],
-)
-def test_dataset_download_precomputed_reading_measures_without_mirrors_fail(
-        mock_download_file,
-        tmp_path,
-        dataset_definition,
-):
-    mock_download_file.side_effect = OSError()
-
-    paths = DatasetPaths(root=tmp_path, dataset='.')
-    dataset = Dataset(dataset_definition, path=paths)
-
-    with pytest.raises(
-        RuntimeError,
-        match='Downloading resource https://example.com/test_rm.gz.tar failed.',
-    ):
-        dataset.download()
-
-    mock_download_file.assert_has_calls([
-        mock.call(
-            url='https://example.com/test_rm.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test_rm.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-    ])
-
-
-@mock.patch('pymovements.dataset.dataset_download._download_file')
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomGazeAndPrecomputedLegacyMirror', 'CustomGazeAndPrecomputedSingleMirror'],
+    ['CustomGazeAndPrecomputedLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_precomputed_and_gaze_both_mirrors_fail(
@@ -731,41 +591,11 @@ def test_dataset_download_precomputed_and_gaze_both_mirrors_fail(
 
 
 @mock.patch('pymovements.dataset.dataset_download._download_file')
-@pytest.mark.parametrize(
-    'dataset_definition', ['CustomGazeAndPrecomputedNoMirror'], indirect=['dataset_definition'],
-)
-def test_dataset_download_precomputed_and_gaze_without_mirrors_fail(
-        mock_download_file,
-        tmp_path,
-        dataset_definition,
-):
-    mock_download_file.side_effect = OSError()
-
-    paths = DatasetPaths(root=tmp_path, dataset='.')
-    dataset = Dataset(dataset_definition, path=paths)
-
-    with pytest.raises(
-        RuntimeError,
-        match='Downloading resource https://example.com/test.gz.tar failed.',
-    ):
-        dataset.download()
-    mock_download_file.assert_has_calls([
-        mock.call(
-            url='https://example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-    ])
-
-
-@mock.patch('pymovements.dataset.dataset_download._download_file')
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomGazeOnlyLegacyMirror', 'CustomGazeOnlySingleMirror'],
+    ['CustomGazeOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_first_mirror_gaze_fails(mock_download_file, tmp_path, dataset_definition):
@@ -797,48 +627,8 @@ def test_dataset_download_first_mirror_gaze_fails(mock_download_file, tmp_path, 
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
-    'dataset_definition', ['CustomGazeOnlyTwoMirrors'], indirect=['dataset_definition'],
-)
-def test_dataset_download_first_of_two_mirrors_gaze_fails(
-        mock_download_file, tmp_path, dataset_definition,
-):
-    mock_download_file.side_effect = [OSError(), OSError(), None]
-
-    paths = DatasetPaths(root=tmp_path, dataset='.')
-    dataset = Dataset(dataset_definition, path=paths)
-    dataset.download(extract=False)
-
-    mock_download_file.assert_has_calls([
-        mock.call(
-            url='https://example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-        mock.call(
-            url='https://mirror1.example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-        mock.call(
-            url='https://mirror2.example.com/test.gz.tar',
-            dirpath=tmp_path / 'downloads',
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            verbose=True,
-        ),
-    ])
-
-
-@mock.patch('pymovements.dataset.dataset_download._download_file')
-@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
-@pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
-@pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomPrecomputedOnlyLegacyMirror', 'CustomPrecomputedOnlySingleMirror'],
+    ['CustomPrecomputedOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_first_mirror_precomputed_fails(
@@ -872,7 +662,7 @@ def test_dataset_download_first_mirror_precomputed_fails(
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomPrecomputedRMOnlyLegacyMirror', 'CustomPrecomputedRMOnlySingleMirror'],
+    ['CustomPrecomputedRMOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_first_mirror_precomputed_fails_rm(
@@ -906,7 +696,7 @@ def test_dataset_download_first_mirror_precomputed_fails_rm(
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    ['CustomGazeAndPrecomputedLegacyMirror', 'CustomGazeAndPrecomputedSingleMirror'],
+    ['CustomGazeAndPrecomputedLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_first_mirror_fails(mock_download_file, tmp_path, dataset_definition):
@@ -954,12 +744,7 @@ def test_dataset_download_first_mirror_fails(mock_download_file, tmp_path, datas
     'dataset_definition',
     [
         'CustomGazeOnlyLegacyMirror',
-        'CustomGazeOnlySingleMirror',
-        'CustomGazeOnlyTwoMirrors',
-        'CustomGazeOnlyNoMirror',
         'CustomGazeAndPrecomputedLegacyMirror',
-        'CustomGazeAndPrecomputedSingleMirror',
-        'CustomGazeAndPrecomputedNoMirror',
     ],
     indirect=['dataset_definition'],
 )
@@ -988,11 +773,7 @@ def test_dataset_download_file_not_found(mock_download_file, tmp_path, dataset_d
 @pytest.mark.filterwarnings('ignore:Downloading resource .* failed.*:UserWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomPrecomputedOnlyLegacyMirror',
-        'CustomPrecomputedOnlySingleMirror',
-        'CustomPrecomputedOnlyNoMirror',
-    ],
+    ['CustomPrecomputedOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_file_precomputed_not_found(
@@ -1021,15 +802,7 @@ def test_dataset_download_file_precomputed_not_found(
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomGazeOnlyLegacyMirror',
-        'CustomGazeOnlySingleMirror',
-        'CustomGazeOnlyTwoMirrors',
-        'CustomGazeOnlyNoMirror',
-        'CustomGazeAndPrecomputedLegacyMirror',
-        'CustomGazeAndPrecomputedSingleMirror',
-        'CustomGazeAndPrecomputedNoMirror',
-    ],
+    ['CustomGazeOnlyLegacyMirror', 'CustomGazeAndPrecomputedLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_no_extract(mock_download_file, tmp_path, dataset_definition):
@@ -1054,11 +827,7 @@ def test_dataset_download_no_extract(mock_download_file, tmp_path, dataset_defin
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomPrecomputedOnlyLegacyMirror',
-        'CustomPrecomputedOnlySingleMirror',
-        'CustomPrecomputedOnlyNoMirror',
-    ],
+    ['CustomPrecomputedOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_precomputed_no_extract(mock_download_file, tmp_path, dataset_definition):
@@ -1083,11 +852,7 @@ def test_dataset_download_precomputed_no_extract(mock_download_file, tmp_path, d
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomPrecomputedRMOnlyLegacyMirror',
-        'CustomPrecomputedRMOnlySingleMirror',
-        'CustomPrecomputedRMOnlyNoMirror',
-    ],
+    ['CustomPrecomputedRMOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_precomputed_no_extract_rm(
@@ -1380,11 +1145,7 @@ def test_dataset_extract_remove_finished_false_precomputed(
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomGazeAndPrecomputedLegacyMirror',
-        'CustomGazeAndPrecomputedSingleMirror',
-        'CustomGazeAndPrecomputedNoMirror',
-    ],
+    ['CustomGazeAndPrecomputedLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_default_extract_both(
@@ -1401,11 +1162,7 @@ def test_dataset_download_default_extract_both(
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomGazeOnlyLegacyMirror',
-        'CustomGazeOnlySingleMirror',
-        'CustomGazeOnlyNoMirror',
-    ],
+    ['CustomGazeOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_default_extract_gaze(
@@ -1425,11 +1182,7 @@ def test_dataset_download_default_extract_gaze(
 @pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 @pytest.mark.parametrize(
     'dataset_definition',
-    [
-        'CustomPrecomputedOnlySingleMirror',
-        'CustomPrecomputedOnlyLegacyMirror',
-        'CustomPrecomputedOnlyNoMirror',
-    ],
+    ['CustomPrecomputedOnlyLegacyMirror'],
     indirect=['dataset_definition'],
 )
 def test_dataset_download_default_extract_precomputed(
@@ -1466,7 +1219,7 @@ def test_dataset_download_default_extract_precomputed(
                 }],
             ),
             AttributeError,
-            'Resource.url must not be None',
+            'WebSource.url must not be None',
             id='url_none',
         ),
         pytest.param(
@@ -1482,7 +1235,7 @@ def test_dataset_download_default_extract_precomputed(
                 }],
             ),
             AttributeError,
-            'Resource.filename must not be None',
+            'WebSource.filename must not be None',
             id='filename_none',
         ),
         pytest.param(
@@ -1562,7 +1315,7 @@ def test_dataset_download_raises_exception(
                 ],
             },
             AttributeError,
-            'Resource.url must not be None',
+            'WebSource.url must not be None',
             id='url_none',
         ),
         pytest.param(
@@ -1581,7 +1334,7 @@ def test_dataset_download_raises_exception(
                 ],
             },
             AttributeError,
-            'Resource.filename must not be None',
+            'WebSource.filename must not be None',
             id='filename_none',
         ),
     ],
