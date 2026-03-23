@@ -23,6 +23,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements import Experiment
 from pymovements import Gaze
 
 
@@ -309,6 +310,71 @@ def my_test_measure(column: str) -> pl.Expr:
             {'column': 'A'},
             pl.DataFrame(data={'my_measure': [4]}),
             id='null_ratio_int_column_no_nulls',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
+                        'A': [1000, 1001, 1002, 1003, None],
+                        'time': [0, 1, 2, 3, 4],
+                    },
+                    schema={'A': pl.Int64, 'time': pl.Int64},
+                ),
+            },
+            'data_loss',
+            {'column': 'A', 'sampling_rate': 1000},
+            pl.DataFrame(data={'data_loss_ratio': [0.2]}),
+            id='data_loss_ratio_explicit_sampling_rate',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
+                        'A': [1000, 1001, 1002, 1003, None],
+                        'time': [0, 1, 2, 3, 4],
+                    },
+                    schema={'A': pl.Int64, 'time': pl.Int64},
+                ),
+            },
+            'data_loss',
+            {'column': 'A', 'sampling_rate': 1000, 'unit': 'time'},
+            pl.DataFrame(data={'data_loss_time': [0.001]}),
+            id='data_loss_time_explicit_sampling_rate',
+        ),
+
+        pytest.param(
+            {
+                'experiment': Experiment(sampling_rate=1000),
+                'samples': pl.from_dict(
+                    data={
+                        'A': [1000, 1001, 1002, 1003, None],
+                        'time': [0, 1, 2, 3, 4],
+                    },
+                    schema={'A': pl.Int64, 'time': pl.Int64},
+                ),
+            },
+            'data_loss',
+            {'column': 'A', 'sampling_rate': 1000, 'unit': 'time'},
+            pl.DataFrame(data={'data_loss_time': [0.001]}),
+            id='data_loss_time_sampling_rate_sourced_from_experiment',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
+                        'A': [1000, 1001, 1002, 1003, None],
+                        't': [0, 1, 2, 3, 4],
+                    },
+                    schema={'A': pl.Int64, 't': pl.Int64},
+                ),
+            },
+            'data_loss',
+            {'column': 'A', 'time_column': 't', 'sampling_rate': 1000},
+            pl.DataFrame(data={'data_loss_ratio': [0.2]}),
+            id='data_loss_explicit_time_column',
         ),
     ],
 )
