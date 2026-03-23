@@ -206,5 +206,5 @@ def _download_resource_with_legacy_mirrors(
                 warn(warning)
 
     raise RuntimeError(
-        f"Downloading resource {resource.source.url} failed for all mirrors.",
+        f'Downloading resource {resource.source.url} failed for all mirrors.',
     )

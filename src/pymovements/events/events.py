@@ -272,13 +272,13 @@ class Events:
             if column not in existing_columns:
                 raise ValueError(
                     f"The column '{column}' does not exist and thus cannot be removed. "
-                    f"Available columns to remove: {available_columns}.",
+                    f'Available columns to remove: {available_columns}.',
                 )
             if column in minimal_schema:
                 raise ValueError(
                     f"The column '{column}' cannot be removed "
                     'because it belongs to the minimal schema (onset, offset, name). '
-                    f"Available columns to remove: {available_columns}.",
+                    f'Available columns to remove: {available_columns}.',
                 )
         for column in columns:
             self.frame = self.frame.drop(column)
@@ -819,3 +819,93 @@ class Events:
     def __repr__(self) -> str:
         """Return string representation of event dataframe."""
         return self.__str__()
+
+    def merge_subsequent_close_events(
+            self,
+            name: str = 'fixation',
+            max_gap: int | float = 50,
+            verbose: bool = False,
+    ) -> None:
+        """Merge subsequent events if they are separated by a gap smaller than a threshold.
+
+        Parameters
+        ----------
+        name: str
+            The name of the events to be merged. (default: 'fixation')
+
+        max_gap: int | float
+            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 75)
+
+        verbose: bool
+            If ``True``, print the number of events merged and the resulting number of events.
+
+        Examples
+        --------
+        Let's create some example events first:
+
+        >>> events = Events(
+        ...     name='fixation',
+        ...     onsets=[0, 2, 5, 13, 21, 22, 30, 40, 53, 73],
+        ...     offsets=[1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
+        ... )
+        >>> events.frame.shape
+        (10, 4)
+
+        Merging all events with particular name with a gap smaller than 10 ms:
+
+        >>> events.merge_subsequent_close_events(name='fixation', max_gap=10)
+        >>> events.frame
+        shape: (1, 4)
+        ┌──────────┬───────┬────────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64      │
+        ╞══════════╪═══════╪════════╪══════════╡
+        │ fixation ┆ 0     ┆ 90     ┆ 90       │
+        └──────────┴───────┴────────┴──────────┘
+
+        This combined all the smaller events into a single event with longer duration.
+
+        """
+        # Step 1: Filter events of the specified type and sort by onset
+        events = self.frame.filter(pl.col('name') == name).sort('onset')
+        # set aside other events to merge them back later
+        other = self.frame.filter(pl.col('name') != name)
+
+        number_of_events = len(events)
+
+        # Step 2: Calculate the gap between the current onset and the previous offset
+        events = events.with_columns(gap=pl.col('onset') - pl.col('offset').shift(1))
+
+        # Step 3: Create a 'group' identifier for merging
+        events = events.with_columns(
+            # calculate when gap is null or > max_gap
+            (pl.col('gap').is_null() | (pl.col('gap') > max_gap))
+            .cast(pl.Int64)
+            # cumulative sum (of ones) in 'group' to assign a unique group number
+            # to each sequence of events to be merged
+            .cum_sum()
+            # the group identifier is the same for events that are close enough to be merged,
+            # and different for events that are not close enough to be merged
+            .alias('group'),
+        )
+
+        # Step 4: Aggregate events by group to merge them
+        events = events.group_by('group').agg([
+            # all columns from the first group element except offset and duration
+            pl.exclude(['offset', 'duration']).first(),
+            # the offset of the merged event is the last offset in the group
+            pl.col('offset').last().alias('offset'),
+        ]).drop(['group', 'gap'])  # we don't need the group and gap columns anymore
+        # the duration of the merged event is the last offset minus the first onset in the group
+        events = events.with_columns(duration().alias('duration'))
+
+        # Step 5: concatenate new events
+        events = events.select(self.frame.columns)  # reorder columns to match original frame
+        self.frame = pl.concat([events, other]).sort('onset')
+
+        if verbose:
+            print(
+                f"Merged {number_of_events} '{name}' events "
+                f'into {len(events)} events with max_gap={max_gap} ms.',
+            )

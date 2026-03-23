@@ -18,13 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides event related functionality."""
+from pymovements.events.detection import blink
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
 from pymovements.events.detection import ivt
 from pymovements.events.detection import microsaccades
 from pymovements.events.detection import out_of_screen
-from pymovements.events.detection._library import EventDetectionLibrary
-from pymovements.events.detection._library import register_event_detection
+from pymovements.events.detection.library import EventDetectionLibrary
+from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
@@ -36,6 +37,7 @@ from pymovements.events.segmentation import segmentation2events
 __all__ = [
     'EventDetectionLibrary',
     'register_event_detection',
+    'blink',
     'fill',
     'idt',
     'ivt',
