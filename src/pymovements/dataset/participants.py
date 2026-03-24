@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import field
@@ -50,7 +51,7 @@ class Participants:
     def load(
             path: Path | str,
             #*,
-            #metadata: Path | str | dict[str, Any] | None = None,  # if path or string: load side car json, if None: check for 'participants.json'
+            metadata: Path | str | dict[str, Any] | None = None,
             separator: str = '\t',
             rename: dict[str, str] | None = None,
             read_csv_kwargs: dict[str, Any] | None = None,
@@ -62,6 +63,11 @@ class Participants:
         path: Path | str
             If this points to a directory, assume file to be named `participants.tsv` inside that
             directory.
+        metadata: Path | str | dict[str, Any] | None
+            Additional metadata. Can be directly passed as a dictionary. If path or string: load
+            metadata from json file. if None: check for directory for existing 'participants.json'
+            and load metadata if available.
+            (default: None)
         separator: str
             Separator in the tabular data file.
             (default: ``\t``)
@@ -96,7 +102,22 @@ class Participants:
         if rename:
             data = data.rename(rename)
 
-        return Participants(data)
+        if metadata is None:
+            # Detect if there's a corresponding json file in the directory
+            candidate_path = path.parent / f'{path.stem}.json'
+            if candidate_path.is_file():
+                metadata = candidate_path
+
+        if isinstance(metadata, (Path, str)):
+            metadata_path = Path(metadata)
+            if metadata_path.parent == Path('.'):
+                # Assume relative path dir directory of data file.
+                metadata_path = path.parent / metadata_path
+
+            with open(metadata_path, encoding='utf-8') as opened_file:
+                metadata = json.load(opened_file)
+
+        return Participants(data, metadata)
 
     '''
     def save(

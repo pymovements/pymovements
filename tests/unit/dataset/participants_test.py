@@ -51,43 +51,6 @@ def test_participants_init_data_raises(data, expected_exception, expected_messag
 
 
 @pytest.mark.parametrize(
-    ('data', 'metadata', 'expected_data'),
-    [
-        pytest.param(
-            pl.DataFrame({'participant_id': [1]}),
-            None,
-            pl.DataFrame(
-                {'participant_id': ['1']},
-                schema={'participant_id': pl.String},
-            ),
-            id='autocast_participant_id_to_string'
-        ),
-        pytest.param(
-            pl.DataFrame({'participant_id': ['1'], 'age': ['21.3']}),
-            None,
-            pl.DataFrame(
-                {'participant_id': ['1'], 'age': [21.3]},
-                schema={'participant_id': pl.String, 'age': pl.Float64},
-            ),
-            id='autocast_age_column_to_float',
-        ),
-        pytest.param(
-            pl.DataFrame({'participant_id': ['1'], 'age': ['21']}),
-            {'age': {'Format': 'integer'}},
-            pl.DataFrame(
-                {'participant_id': ['1'], 'age': [21]},
-                schema={'participant_id': pl.String, 'age': pl.Int64},
-            ),
-            id='cast_age_column_to_int',
-        ),
-    ],
-)
-def test_participants_init_casts_from_metadata(data, metadata, expected_data):
-    participants = Participants(data, metadata)
-    assert_frame_equal(participants.data, expected_data)
-
-
-@pytest.mark.parametrize(
     'data',
     [
         pl.DataFrame({'participant_id': ['1']}),
@@ -158,3 +121,85 @@ def test_participants_load_and_rename_data_from_file(
 
     assert_frame_equal(participants.data, expected_data)
 
+
+@pytest.mark.parametrize(
+    ('data', 'expected_data'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': [1]}),
+            pl.DataFrame(
+                {'participant_id': ['1']},
+                schema={'participant_id': pl.String},
+            ),
+            id='autocast_participant_id_to_string'
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': ['21.3']}),
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': [21.3]},
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            id='autocast_age_column_to_float',
+        ),
+    ],
+)
+def test_participants_init_autocasts(data, expected_data):
+    participants = Participants(data)
+    assert_frame_equal(participants.data, expected_data)
+
+
+@pytest.mark.parametrize(
+    ('data', 'metadata', 'expected_data'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': ['21']}),
+            {'age': {'Format': 'integer'}},
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': [21]},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            id='cast_age_column_to_int',
+        ),
+    ],
+)
+class TestParticipantsCastsFromMetadata:
+    def test_participants_init_casts_from_metadata(self, data, metadata, expected_data):
+        participants = Participants(data, metadata)
+        assert_frame_equal(participants.data, expected_data)
+
+    def test_participants_load_casts_from_metadata_dict(
+            self, data, metadata, expected_data, make_csv_file,
+    ):
+        path = make_csv_file('participants.tsv', data, separator='\t')
+        participants = Participants.load(path, metadata=metadata)
+        assert_frame_equal(participants.data, expected_data)
+
+    def test_participants_load_casts_from_metadata_path(
+            self, data, metadata, expected_data, make_csv_file, make_json_file,
+    ):
+        tsv_path = make_csv_file('participants.tsv', data, separator='\t')
+        json_path = make_json_file('participants.json', metadata)
+
+        participants = Participants.load(tsv_path, metadata=json_path)
+
+        assert_frame_equal(participants.data, expected_data)
+
+    def test_participants_load_casts_from_metadata_filename(
+            self, data, metadata, expected_data, make_csv_file, make_json_file,
+    ):
+        tsv_path = make_csv_file('participants.tsv', data, separator='\t')
+        make_json_file(tsv_path.parent / 'test_participants.json', metadata)
+
+        participants = Participants.load(tsv_path, metadata='test_participants.json')
+
+        assert_frame_equal(participants.data, expected_data)
+
+    def test_participants_load_casts_from_metadata_implicit(
+            self, data, metadata, expected_data, make_csv_file, make_json_file,
+    ):
+        tsv_path = make_csv_file('participants.tsv', data, separator='\t')
+        make_json_file(tsv_path.parent / 'participants.json', metadata)
+
+        participants = Participants.load(tsv_path)
+
+        assert_frame_equal(participants.data, expected_data)
