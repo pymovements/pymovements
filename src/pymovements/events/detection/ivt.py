@@ -176,6 +176,14 @@ def ivt(
     >>> t[:5]
     array([0, 1, 2, 3, 4])
 
+    >>> velocities_with_time = np.column_stack([t, velocities])
+    >>> velocities_with_time[:5]
+    array([[0., 0., 0.],
+       [1., 0., 0.],
+       [2., 1., 2.],
+       [3., 1., 2.],
+       [4., 1., 2.]])
+
     Create a Gaze object.
 
     >>> schema = ['t', 'x', 'y']
