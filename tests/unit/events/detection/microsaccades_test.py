@@ -24,7 +24,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.events import microsaccades
-from pymovements.events.detection._microsaccades import compute_threshold
+from pymovements.events.detection.microsaccades import compute_threshold
 from pymovements.synthetic import step_function
 
 
