@@ -194,7 +194,7 @@ def microsaccades(
 
     Add a time column.
 
-    >>> t = np.arange(len(velocities))  
+    >>> t = np.arange(len(velocities))
     >>> t[:5]
     array([0, 1, 2, 3, 4])
 

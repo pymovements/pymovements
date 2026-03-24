@@ -120,10 +120,10 @@ def idt(
        [1., 2.],
        [1., 2.],
        [1., 2.]])
-    
+
     Add a time column.
 
-    >>> t = np.arange(len(positions))  
+    >>> t = np.arange(len(positions))
     >>> t[:5]
     array([0, 1, 2, 3, 4])
 
@@ -134,7 +134,7 @@ def idt(
        [2., 1., 2.],
        [3., 1., 2.],
        [4., 1., 2.]])
-    
+
     Create a Gaze object.
 
     >>> schema = ['t', 'x', 'y']
@@ -177,7 +177,7 @@ def idt(
     ╞══════════╪═══════╪════════╪══════════╡
     │ fixation ┆ 9     ┆ 109    ┆ 100      │
     └──────────┴───────┴────────┴──────────┘
-    
+
 
     Use custom thresholds.
 
@@ -193,7 +193,7 @@ def idt(
 
     Add a time column.
 
-    >>> t = np.arange(len(positions))  
+    >>> t = np.arange(len(positions))
     >>> t[:5]
     array([0, 1, 2, 3, 4])
 
@@ -204,7 +204,7 @@ def idt(
        [2., 0., 0.],
        [3., 0., 0.],
        [4., 0., 0.]])
-    
+
     Create a Gaze object.
 
     >>> schema = ['t', 'x', 'y']
