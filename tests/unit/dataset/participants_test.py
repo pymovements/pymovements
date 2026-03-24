@@ -1,3 +1,5 @@
+import json
+from copy import deepcopy
 
 import polars as pl
 import pytest
@@ -205,16 +207,15 @@ class TestParticipantsCastsFromMetadata:
         assert_frame_equal(participants.data, expected_data)
 
 
-def test_participants_data_save_to_filepath(tmp_path):
+def test_participants_save_data_to_filepath(tmp_path):
     data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
     participants = Participants(data)
 
     save_path = tmp_path / 'test_participants.tsv'
     participants.save(save_path)
 
-    saved_data = pl.read_csv(save_path, separator='\t')
-
     assert save_path.is_file()
+    saved_data = pl.read_csv(save_path, separator='\t')
     assert_frame_equal(saved_data, data)
 
 
@@ -222,40 +223,87 @@ def test_participants_data_save_to_filepath(tmp_path):
     'separator',
     ['\t', ','],
 )
-def test_participants_data_save_to_filepath_custom_separator(separator, tmp_path):
+def test_participants_save_data_to_filepath_custom_separator(separator, tmp_path):
     data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
     participants = Participants(data)
 
     save_path = tmp_path / 'test_participants.tsv'
     participants.save(save_path, separator=separator)
 
-    saved_data = pl.read_csv(save_path, separator=separator)
-
     assert save_path.is_file()
+    saved_data = pl.read_csv(save_path, separator=separator)
     assert_frame_equal(saved_data, data)
 
 
-def test_participants_data_save_write_csv_kwargs_precedence_over_separator(tmp_path):
+def test_participants_save_data_write_csv_kwargs_precedence_over_separator(tmp_path):
     data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
     participants = Participants(data)
 
     save_path = tmp_path / 'test_participants.tsv'
     participants.save(save_path, separator=',', write_csv_kwargs={'separator': '\t'})
 
-    saved_data = pl.read_csv(save_path, separator='\t')
-
     assert save_path.is_file()
+    saved_data = pl.read_csv(save_path, separator='\t')
     assert_frame_equal(saved_data, data)
 
 
-def test_participants_data_save_to_dirpath(tmp_path):
+def test_participants_save_data_to_dirpath(tmp_path):
     data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
     participants = Participants(data)
 
     participants.save(tmp_path)
 
     save_path = tmp_path / 'participants.tsv'
-    saved_data = pl.read_csv(save_path, separator='\t')
 
     assert save_path.is_file()
+    saved_data = pl.read_csv(save_path, separator='\t')
     assert_frame_equal(saved_data, data)
+
+
+@pytest.mark.parametrize(
+    'participants',
+    [
+        Participants(
+            data=pl.DataFrame({'participant_id': [1], 'age': [21]}),
+            metadata={
+                'participant_id': {'Description': 'id of the participant', 'Format': 'string'},
+                'age': {'Description': 'age of the participant', 'Format': 'integer', 'Units': 'year'},
+            },
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    'encoding', ['utf-8', 'ascii'],
+)
+class TestParticipantsSaveMetadata:
+    def test_participants_save_metadata_to_dirpath(self, participants, encoding, tmp_path):
+        metadata = deepcopy(participants.metadata)
+        participants.save(tmp_path, metadata_encoding=encoding)
+
+        save_path = tmp_path / 'participants.json'
+        assert save_path.is_file()
+        with open(save_path, encoding=encoding) as opened_file:
+            saved_metadata = json.load(opened_file)
+        assert saved_metadata == metadata
+
+    def test_participants_save_metadata_to_filepath(self, participants, encoding, tmp_path):
+        metadata = deepcopy(participants.metadata)
+        metadata_path = tmp_path / 'test_participants.json'
+        participants.save(tmp_path, metadata_path=metadata_path, metadata_encoding=encoding)
+
+        save_path = metadata_path
+        assert save_path.is_file()
+        with open(save_path, encoding=encoding) as opened_file:
+            saved_metadata = json.load(opened_file)
+        assert saved_metadata == metadata
+
+    def test_participants_save_metadata_to_relative_path(self, participants, encoding, tmp_path):
+        metadata = deepcopy(participants.metadata)
+        metadata_filename = 'test_participants.json'
+        participants.save(tmp_path, metadata_path=metadata_filename, metadata_encoding=encoding)
+
+        save_path = tmp_path / metadata_filename
+        assert save_path.is_file()
+        with open(save_path, encoding=encoding) as opened_file:
+            saved_metadata = json.load(opened_file)
+        assert saved_metadata == metadata

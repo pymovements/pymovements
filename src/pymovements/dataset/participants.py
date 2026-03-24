@@ -127,10 +127,10 @@ class Participants:
         self,
         path: Path | str,
         *,
-        #metadata_path: Path | str | None = None,  # if None: 'participants.json',
+        metadata_path: Path | str = 'participants.json',
         separator: str = '\t',
         write_csv_kwargs: dict[str, Any] | None = None,
-        #verify_bids: bool = True,
+        metadata_encoding: str = 'utf-8',
     ) -> None:
         """Save participants data including metadata.
 
@@ -151,8 +151,17 @@ class Participants:
         if write_csv_kwargs is None:
             write_csv_kwargs = {'separator': separator}
         else:
+            # **write_csv_kwargs takes precedence over explicit separator argument.
             write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
         self.data.write_csv(data_path, **write_csv_kwargs)
+
+        metadata_path = Path(metadata_path)
+        if metadata_path.parent == Path('.'):
+            # Assume path is relative to directory of data file.
+            metadata_path = dir_path / metadata_path
+        # Save metadata to json file.
+        with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:
+            metadata = json.dump(self.metadata, opened_file)
 
 
 def _infer_metadata_column_format(metadata, data):
