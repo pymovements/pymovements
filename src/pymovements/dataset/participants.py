@@ -50,23 +50,25 @@ class Participants:
     @staticmethod
     def load(
             path: Path | str,
-            #*,
             metadata: Path | str | dict[str, Any] | None = None,
+            *,
             separator: str = '\t',
             rename: dict[str, str] | None = None,
             read_csv_kwargs: dict[str, Any] | None = None,
+            metadata_encoding: str = 'utf-8',
     ) -> 'Participants':
         """Load participant data from participant files.
 
         Parameters
         ----------
         path: Path | str
-            If this points to a directory, assume file to be named `participants.tsv` inside that
+            If this points to a directory, assume file with name `participants.tsv` inside that
             directory.
         metadata: Path | str | dict[str, Any] | None
             Additional metadata. Can be directly passed as a dictionary. If path or string: load
-            metadata from json file. if None: check for directory for existing 'participants.json'
-            and load metadata if available.
+            metadata from json file. If a relative path given, path is assumed to be relative to
+            parent of ``path``. If None: check for ``path`` parent directory for existing
+            ``participants.json`` and load metadata if available.
             (default: None)
         separator: str
             Separator in the tabular data file.
@@ -86,7 +88,11 @@ class Participants:
         """
         path = Path(path)
         if path.is_dir():
-            path = path / 'participants.tsv'
+            dir_path = path
+            data_path = path / 'participants.tsv'
+        else:
+            dir_path = path.parent
+            data_path = path
 
         if read_csv_kwargs is None:
             read_csv_kwargs = {'separator': separator}
@@ -94,43 +100,59 @@ class Participants:
             # **read_csv_kwargs takes precedence over explicit separator argument.
             read_csv_kwargs = {'separator': separator, **read_csv_kwargs}
 
-        data = polars.read_csv(
-            path,
-            **read_csv_kwargs
-        )
+        data = polars.read_csv(data_path, **read_csv_kwargs)
 
         if rename:
             data = data.rename(rename)
 
         if metadata is None:
             # Detect if there's a corresponding json file in the directory
-            candidate_path = path.parent / f'{path.stem}.json'
+            candidate_path = dir_path / f'{data_path.stem}.json'
             if candidate_path.is_file():
                 metadata = candidate_path
 
         if isinstance(metadata, (Path, str)):
             metadata_path = Path(metadata)
             if metadata_path.parent == Path('.'):
-                # Assume relative path dir directory of data file.
-                metadata_path = path.parent / metadata_path
+                # Assume path is relative to directory of data file.
+                metadata_path = dir_path / metadata_path
 
-            with open(metadata_path, encoding='utf-8') as opened_file:
+            # Load metadata from json file.
+            with open(metadata_path, encoding=metadata_encoding) as opened_file:
                 metadata = json.load(opened_file)
 
         return Participants(data, metadata)
 
-    '''
     def save(
         self,
-        path: Path | str,  # if directory: append`/ 'participants.tsv'`,
+        path: Path | str,
         *,
-        write_csv_kwargs: dict[str, Any] | None = None,  # if None and tsv suffix: add separator
-        metadata_path: Path | str | None = None,  # if None: 'participants.json',
-        verify_bids: bool = True,
-    ) -> Path:
-    """Save participant data."""
-        ...
-    '''
+        #metadata_path: Path | str | None = None,  # if None: 'participants.json',
+        separator: str = '\t',
+        write_csv_kwargs: dict[str, Any] | None = None,
+        #verify_bids: bool = True,
+    ) -> None:
+        """Save participants data including metadata.
+
+        Parameters
+        ----------
+        path: Path | str
+            Save participants data to this path. If this is a directory, use ``participants.tsv`` as
+            filename.
+        """
+        path = Path(path)
+        if path.is_dir():
+            dir_path = path
+            data_path = path / 'participants.tsv'
+        else:
+            dir_path = path.parent
+            data_path = path
+
+        if write_csv_kwargs is None:
+            write_csv_kwargs = {'separator': separator}
+        else:
+            write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
+        self.data.write_csv(data_path, **write_csv_kwargs)
 
 
 def _infer_metadata_column_format(metadata, data):

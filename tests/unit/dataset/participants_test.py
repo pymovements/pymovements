@@ -203,3 +203,59 @@ class TestParticipantsCastsFromMetadata:
         participants = Participants.load(tsv_path)
 
         assert_frame_equal(participants.data, expected_data)
+
+
+def test_participants_data_save_to_filepath(tmp_path):
+    data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
+    participants = Participants(data)
+
+    save_path = tmp_path / 'test_participants.tsv'
+    participants.save(save_path)
+
+    saved_data = pl.read_csv(save_path, separator='\t')
+
+    assert save_path.is_file()
+    assert_frame_equal(saved_data, data)
+
+
+@pytest.mark.parametrize(
+    'separator',
+    ['\t', ','],
+)
+def test_participants_data_save_to_filepath_custom_separator(separator, tmp_path):
+    data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
+    participants = Participants(data)
+
+    save_path = tmp_path / 'test_participants.tsv'
+    participants.save(save_path, separator=separator)
+
+    saved_data = pl.read_csv(save_path, separator=separator)
+
+    assert save_path.is_file()
+    assert_frame_equal(saved_data, data)
+
+
+def test_participants_data_save_write_csv_kwargs_precedence_over_separator(tmp_path):
+    data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
+    participants = Participants(data)
+
+    save_path = tmp_path / 'test_participants.tsv'
+    participants.save(save_path, separator=',', write_csv_kwargs={'separator': '\t'})
+
+    saved_data = pl.read_csv(save_path, separator='\t')
+
+    assert save_path.is_file()
+    assert_frame_equal(saved_data, data)
+
+
+def test_participants_data_save_to_dirpath(tmp_path):
+    data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
+    participants = Participants(data)
+
+    participants.save(tmp_path)
+
+    save_path = tmp_path / 'participants.tsv'
+    saved_data = pl.read_csv(save_path, separator='\t')
+
+    assert save_path.is_file()
+    assert_frame_equal(saved_data, data)
