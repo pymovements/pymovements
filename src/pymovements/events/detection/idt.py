@@ -25,7 +25,7 @@ import numpy as np
 from pymovements._utils import _checks
 from pymovements.events._utils._filters import events_split_nans
 from pymovements.events._utils._filters import filter_candidates_remove_nans
-from pymovements.events.detection._library import register_event_detection
+from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 
 

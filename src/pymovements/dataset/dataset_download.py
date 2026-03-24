@@ -201,7 +201,7 @@ def _download_resource(
     # pylint: disable=overlapping-except
     except (URLError, OSError, RuntimeError) as error:
         if not resource.mirrors:
-            raise RuntimeError(f"Downloading resource {resource.url} failed.") from error
+            raise RuntimeError(f'Downloading resource {resource.url} failed.') from error
 
         warn(UserWarning(f'Downloading resource {resource.url} failed. Trying mirror.'))
 
@@ -215,7 +215,7 @@ def _download_resource(
 
         if not success:
             raise RuntimeError(
-                f"Downloading resource {resource.filename} failed for all mirrors.",
+                f'Downloading resource {resource.filename} failed for all mirrors.',
             ) from error
 
 
@@ -284,5 +284,5 @@ def _download_resource_with_legacy_mirrors(
                 warn(warning)
 
     raise RuntimeError(
-        f"Downloading resource {resource.url} failed for all mirrors.",
+        f'Downloading resource {resource.url} failed for all mirrors.',
     )

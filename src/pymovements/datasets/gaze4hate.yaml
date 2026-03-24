@@ -2,6 +2,15 @@ name: Gaze4Hate
 
 long_name: "Gaze4Hate dataset"
 
+description: |
+  Gaze4Hate dataset :cite:p:`Gaze4Hate`.
+
+  This dataset includes monocular eye tracking data from 43 participants annotating sentences for
+  hate speech. Eye movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink
+  1000 Plus eye tracker and are provided as pixel coordinates.
+
+  Check the respective paper for details :cite:p:`Gaze4Hate`.
+
 resources:
   - content: precomputed_events
     url: https://osf.io/download/dbshf/
