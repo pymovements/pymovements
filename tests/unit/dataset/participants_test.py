@@ -8,7 +8,6 @@ from pymovements import Participants
 @pytest.mark.parametrize(
     'data',
     [
-        pl.DataFrame({'participant_id': [1]}),
         pl.DataFrame({'participant_id': ['1']}),
     ]
 )
@@ -52,10 +51,47 @@ def test_participants_init_data_raises(data, expected_exception, expected_messag
 
 
 @pytest.mark.parametrize(
+    ('data', 'metadata', 'expected_data'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': [1]}),
+            None,
+            pl.DataFrame(
+                {'participant_id': ['1']},
+                schema={'participant_id': pl.String},
+            ),
+            id='autocast_participant_id_to_string'
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': ['21.3']}),
+            None,
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': [21.3]},
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            id='autocast_age_column_to_float',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': ['21']}),
+            {'age': {'Format': 'integer'}},
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': [21]},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            id='cast_age_column_to_int',
+        ),
+    ],
+)
+def test_participants_init_casts_from_metadata(data, metadata, expected_data):
+    participants = Participants(data, metadata)
+    assert_frame_equal(participants.data, expected_data)
+
+
+@pytest.mark.parametrize(
     'data',
     [
         pl.DataFrame({'participant_id': ['1']}),
-        pl.DataFrame({'participant_id': ['1'], 'age': [21]}),
+        pl.DataFrame({'participant_id': ['1'], 'age': [21.0]}),
     ]
 )
 def test_participants_load_data_from_tsv(data, make_csv_file):

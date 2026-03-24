@@ -40,6 +40,9 @@ class Participants:
         if data.columns[0] != 'participant_id' :
             raise ValueError("first column in data must be named 'participant_id'")
 
+        metadata = _infer_metadata_column_format(metadata, data)
+        data = _cast_columns_to_metadata_format(data, metadata)
+
         self.data = data
         self.metadata = metadata
 
@@ -51,7 +54,6 @@ class Participants:
             separator: str = '\t',
             rename: dict[str, str] | None = None,
             read_csv_kwargs: dict[str, Any] | None = None,
-            schema: dict[str, polars.DataType] | None = None,
     ) -> 'Participants':
         """Load participant data from participant files.
 
@@ -94,14 +96,6 @@ class Participants:
         if rename:
             data = data.rename(rename)
 
-        if schema is None:
-            schema = {}
-        else:
-            schema = deepcopy(schema)
-        if 'participant_id' not in schema and 'participant_id' in data.columns:
-            schema = {'participant_id': polars.String}
-        data = data.cast(schema)
-
         return Participants(data)
 
     '''
@@ -116,3 +110,73 @@ class Participants:
     """Save participant data."""
         ...
     '''
+
+
+def _infer_metadata_column_format(metadata, data):
+    if metadata:
+        # metadata may be changed and updated, work on copy
+        metadata = deepcopy(metadata)
+    else:
+        metadata = {}
+
+    for column in data.columns:
+        if column not in metadata:
+            metadata[column] = {}
+
+        if 'Format' not in metadata[column]:
+            # infer format from BIDS specification or use polars datatypes of data columns
+            if column == 'participant_id':
+                metadata[column]['Format'] = 'string'
+            elif column == 'age':
+                metadata[column]['Format'] = 'number'
+            else:
+                # convert polars datatype to bids format descriptor
+                metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)
+
+    return metadata
+
+
+def _cast_columns_to_metadata_format(data, metadata):
+    schema_overrides = {}
+    for column in data.columns:
+        format = metadata.get(column, {}).get('Format', None)
+        if format:
+            schema_overrides[column] = _bids_format_to_polars_datatype(format)
+    data = data.cast(schema_overrides)
+    return data
+
+
+def _bids_format_to_polars_datatype(format: str) -> polars.DataType:
+    mapping = {
+        'string': polars.String,
+        'number': polars.Float64,
+        'integer': polars.Int64,
+        'bool': polars.Boolean,
+        'index': polars.UInt64,
+        'label': polars.String,
+    }
+
+    if format in mapping:
+        return mapping[format]
+
+    raise ValueError(
+        f"unknown bids format descriptor '{format}'. Known formats: {list(mapping.keys())}",
+    )
+
+
+def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
+    mapping = {
+        polars.String: 'string',
+        polars.Float64: 'number',
+        polars.Int64: 'integer',
+        polars.Boolean: 'bool',
+        polars.UInt64: 'index',
+    }
+
+    if dtype in mapping:
+        return mapping[dtype]
+
+    raise ValueError(
+        f"polars datatype '{dtype}' has no mapping to bids format descriptor. "
+        f'Supported polars datatypes are: {list(mapping.keys())}',
+    )
