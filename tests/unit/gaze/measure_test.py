@@ -382,3 +382,31 @@ def test_measure_samples(gaze_init_kwargs, measure, kwargs, expected):
     gaze = Gaze(**gaze_init_kwargs)
     df = gaze.measure_samples(measure, **kwargs)
     assert_frame_equal(df, expected)
+
+
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
+@pytest.mark.parametrize(
+    ('gaze_init_kwargs', 'measure', 'kwargs', 'expected_exception', 'message'),
+    [
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
+                        'A': [1000, 1001, 1002, 1003, None],
+                        'time': [0, 1, 2, 3, 4],
+                    },
+                    schema={'A': pl.Int64, 'time': pl.Int64},
+                ),
+            },
+            'data_loss',
+            {'column': 'A', 'unit': 'time'},
+            TypeError,
+            "data_loss.* missing 1 required keyword-only argument: 'sampling_rate'",
+            id='data_loss_sampling_rate_missing_experiment',
+        ),
+    ],
+)
+def test_measure_samples_raises(gaze_init_kwargs, measure, kwargs, expected_exception, message):
+    gaze = Gaze(**gaze_init_kwargs)
+    with pytest.raises(expected_exception, match=message):
+        gaze.measure_samples(measure, **kwargs)
