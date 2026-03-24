@@ -97,7 +97,7 @@ def microsaccades(
     >>> import numpy as np
     >>> from pymovements.synthetic import step_function
     >>> from pymovements.gaze import from_numpy
-    >>> np.random.seed(42) 
+    >>> np.random.seed(42)
     >>> velocities = step_function(length=300,
     ...                            steps=[2, 5, 9],
     ...                            values=[(0.5, 0.5), (1.0, 1.0), (0.2, 0.2)],
@@ -112,7 +112,7 @@ def microsaccades(
        [ 0.48829233,  0.48829315],
        [ 0.57896064,  0.53837174],
        [ 0.47652628,  0.527128  ]])
-    
+
     Add a time column.
 
     >>> t = np.arange(len(velocities))
@@ -126,7 +126,7 @@ def microsaccades(
        [ 2.        ,  0.48829233,  0.48829315],
        [ 3.        ,  0.57896064,  0.53837174],
        [ 4.        ,  0.47652628,  0.527128  ]])
-    
+
     Create a Gaze object.
 
     >>> schema = ['t', 'x', 'y']
