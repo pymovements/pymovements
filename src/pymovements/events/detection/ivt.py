@@ -100,10 +100,10 @@ def ivt(
        [1., 2.],
        [1., 2.],
        [1., 2.]])
-    
+
     Add a time column.
 
-    >>> t = np.arange(len(velocities))  
+    >>> t = np.arange(len(velocities))
     >>> t[:5]
     array([0, 1, 2, 3, 4])
 
@@ -114,7 +114,7 @@ def ivt(
        [2., 1., 2.],
        [3., 1., 2.],
        [4., 1., 2.]])
-    
+
     Create a Gaze object.
 
     >>> schema = ['t', 'x', 'y']
@@ -169,7 +169,7 @@ def ivt(
        [0., 0.],
        [0., 0.],
        [0., 0.]])
-    
+
     Add a time column.
 
     >>> t = np.arange(len(velocities))

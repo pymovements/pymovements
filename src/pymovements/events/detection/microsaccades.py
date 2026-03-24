@@ -111,7 +111,7 @@ def microsaccades(
         [ 0.49074404,  0.59871354],
         [ 0.52055413,  0.58679182],
         [ 0.49687307,  0.58573704]])
-    
+
     Add a time column.
 
     >>> t = np.arange(len(velocities))
@@ -125,7 +125,7 @@ def microsaccades(
         [ 2.00000000e+00,  4.90744040e-01,  5.98713545e-01],
         [ 3.00000000e+00,  5.20554130e-01,  5.86791824e-01],
         [ 4.00000000e+00,  4.96873067e-01,  5.85737036e-01]])
-    
+
     Create a Gaze object.
 
     >>> schema = ['t', 'x', 'y']
@@ -193,7 +193,7 @@ def microsaccades(
 
     Add a time column.
 
-    >>> t = np.arange(len(velocities))  
+    >>> t = np.arange(len(velocities))
     >>> t[:5]
     array([0, 1, 2, 3, 4])
 
