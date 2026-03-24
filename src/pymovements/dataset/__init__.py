@@ -33,7 +33,7 @@ __all__ = [
     'DatasetDefinition',
     'DatasetLibrary',
     'DatasetPaths',
-    'participants',
+    'Participants',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',

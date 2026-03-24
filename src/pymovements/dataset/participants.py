@@ -1,7 +1,27 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+from __future__ import annotations
+
 import json
 from copy import deepcopy
 from dataclasses import dataclass
-from dataclasses import field
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +58,7 @@ class Participants:
     ):
         if 'participant_id' not in data.columns:
             raise ValueError("data must have column named 'participant_id'")
-        if data.columns[0] != 'participant_id' :
+        if data.columns[0] != 'participant_id':
             raise ValueError("first column in data must be named 'participant_id'")
 
         metadata = _infer_metadata_column_format(metadata, data)
@@ -56,7 +76,7 @@ class Participants:
             rename: dict[str, str] | None = None,
             read_csv_kwargs: dict[str, Any] | None = None,
             metadata_encoding: str = 'utf-8',
-    ) -> 'Participants':
+    ) -> Participants:
         """Load participant data from participant files.
 
         Parameters
@@ -161,10 +181,13 @@ class Participants:
             metadata_path = dir_path / metadata_path
         # Save metadata to json file.
         with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:
-            metadata = json.dump(self.metadata, opened_file)
+            json.dump(self.metadata, opened_file)
 
 
-def _infer_metadata_column_format(metadata, data):
+def _infer_metadata_column_format(
+        metadata: dict[str, Any],
+        data: polars.DataFrame,
+) -> dict[str, Any]:
     if metadata:
         # metadata may be changed and updated, work on copy
         metadata = deepcopy(metadata)
@@ -188,7 +211,10 @@ def _infer_metadata_column_format(metadata, data):
     return metadata
 
 
-def _cast_columns_to_metadata_format(data, metadata):
+def _cast_columns_to_metadata_format(
+        data: polars.DataFrame,
+        metadata: dict[str, Any],
+) -> polars.DataFrame:
     schema_overrides = {}
     for column in data.columns:
         format = metadata.get(column, {}).get('Format', None)

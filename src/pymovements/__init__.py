@@ -33,8 +33,8 @@ from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
-from pymovements.dataset import register_dataset
 from pymovements.dataset import Participants
+from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
 from pymovements.events import EventDataFrame

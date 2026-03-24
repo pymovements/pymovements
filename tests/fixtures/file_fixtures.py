@@ -24,6 +24,7 @@ import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
@@ -107,12 +108,11 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
     def _make_text_file(
             filename: str | Path, header: str = '', body: str = '\n', encoding: str = 'utf-8',
     ) -> Path:
-        relative_filepath = _validate_filename(filename)
-        content = header + body
-        filepath = tmp_path / relative_filepath
+        filepath = _make_filepath(tmp_path, filename)
         # assure parent directory exists
         filepath.parent.mkdir(parents=True, exist_ok=True)
         # write contents to a file
+        content = header + body
         filepath.write_text(content, encoding=encoding)
         return filepath
     return _make_text_file
@@ -271,7 +271,7 @@ def fixture_make_json_file(tmp_path: Path) -> Callable:
             filename: str | Path,
             data: dict[str, Any],
             *,
-            encoding='utf-8',
+            encoding: str = 'utf-8',
     ) -> Path:
         r"""Make a csv file with optional header.
 

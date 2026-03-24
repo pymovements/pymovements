@@ -1,3 +1,22 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 import json
 from copy import deepcopy
 
@@ -7,11 +26,12 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Participants
 
+
 @pytest.mark.parametrize(
     'data',
     [
         pl.DataFrame({'participant_id': ['1']}),
-    ]
+    ],
 )
 def test_participants_init_data(data):
     participants = Participants(data)
@@ -49,7 +69,7 @@ def test_participants_init_data(data):
 )
 def test_participants_init_data_raises(data, expected_exception, expected_message):
     with pytest.raises(expected_exception, match=expected_message):
-        participants = Participants(data)
+        Participants(data)
 
 
 @pytest.mark.parametrize(
@@ -57,7 +77,7 @@ def test_participants_init_data_raises(data, expected_exception, expected_messag
     [
         pl.DataFrame({'participant_id': ['1']}),
         pl.DataFrame({'participant_id': ['1'], 'age': [21.0]}),
-    ]
+    ],
 )
 def test_participants_load_data_from_tsv(data, make_csv_file):
     filename = 'participants.tsv'
@@ -72,7 +92,7 @@ def test_participants_load_data_from_tsv(data, make_csv_file):
     'data',
     [
         pl.DataFrame({'participant_id': ['1']}),
-    ]
+    ],
 )
 def test_participants_load_data_from_csv(data, make_csv_file):
     filename = 'participants.csv'
@@ -99,7 +119,7 @@ def test_participants_load_missing_participant_id_raises(make_csv_file):
     path = make_csv_file('participants.tsv', pl.DataFrame({'a': [1, 2]}), separator='\t')
 
     with pytest.raises(ValueError, match='participant_id'):
-        participants = Participants.load(path)
+        Participants.load(path)
 
 
 @pytest.mark.parametrize(
@@ -111,7 +131,7 @@ def test_participants_load_missing_participant_id_raises(make_csv_file):
             pl.DataFrame({'participant_id': ['1']}),
             id='subject_id_to_participant_id',
         ),
-    ]
+    ],
 )
 def test_participants_load_and_rename_data_from_file(
         source_data, rename, expected_data, make_csv_file,
@@ -133,7 +153,7 @@ def test_participants_load_and_rename_data_from_file(
                 {'participant_id': ['1']},
                 schema={'participant_id': pl.String},
             ),
-            id='autocast_participant_id_to_string'
+            id='autocast_participant_id_to_string',
         ),
         pytest.param(
             pl.DataFrame({'participant_id': ['1'], 'age': ['21.3']}),
@@ -267,7 +287,9 @@ def test_participants_save_data_to_dirpath(tmp_path):
             data=pl.DataFrame({'participant_id': [1], 'age': [21]}),
             metadata={
                 'participant_id': {'Description': 'id of the participant', 'Format': 'string'},
-                'age': {'Description': 'age of the participant', 'Format': 'integer', 'Units': 'year'},
+                'age': {
+                    'Description': 'age of the participant', 'Format': 'integer', 'Units': 'year',
+                },
             },
         ),
     ],
