@@ -52,7 +52,7 @@ def test_make_example_file_returns_copy(filename, make_example_file, testfiles_d
     'filename',
     [
         pytest.param('nested/custom.txt', id='str'),
-        pytest.param(Path('nested') / 'custom.txt', id='object')
+        pytest.param(Path('nested') / 'custom.txt', id='object'),
     ],
 )
 def test_make_text_file_accepts_relative_path(filename, make_text_file):
