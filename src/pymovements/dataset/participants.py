@@ -63,7 +63,7 @@ class Participants:
         if data.columns[0] != 'participant_id':
             raise ValueError("first column in data must be named 'participant_id'")
 
-        metadata = _infer_metadata_column_format(metadata, data)
+        metadata = _infer_metadata_column_format(data, metadata)
         data = _cast_columns_to_metadata_format(data, metadata)
 
         self.data = data
@@ -144,9 +144,11 @@ class Participants:
 
             # Load metadata from json file.
             with open(metadata_path, encoding=metadata_encoding) as opened_file:
-                metadata = json.load(opened_file)
+                metadata_dict = json.load(opened_file)
+        else:
+            metadata_dict = metadata
 
-        return Participants(data, metadata)
+        return Participants(data, metadata_dict)
 
     def save(
         self,
@@ -204,8 +206,8 @@ class Participants:
 
 
 def _infer_metadata_column_format(
-        metadata: dict[str, Any],
         data: polars.DataFrame,
+        metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Infer bids format of each column in data and update metadata."""
     if metadata:
