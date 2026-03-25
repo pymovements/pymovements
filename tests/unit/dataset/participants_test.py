@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+"""Unit tests of Participants class functionality."""
 import json
 from copy import deepcopy
 
@@ -120,7 +121,7 @@ def test_participants_init_data_raises(data, expected_exception, expected_messag
         ),
     ],
 )
-def test_participants_init_data_raises(data, metadata, expected_exception, expected_message):
+def test_participants_init_metadata_raises(data, metadata, expected_exception, expected_message):
     with pytest.raises(expected_exception, match=expected_message):
         Participants(data, metadata)
 
