@@ -262,8 +262,7 @@ def fixture_make_json_file(tmp_path: Path) -> Callable:
     Returns
     -------
     Callable
-        Function that takes a filename, a data frame, an optional header, and optional keyword
-        arguments to be passed to :py:class:`polars.write_csv`.
+        Function that takes a filename, a dictionary, and an optional encoding.
         Returns the path to the created file. The file is saved into a temporary directory.
 
     """
@@ -273,17 +272,18 @@ def fixture_make_json_file(tmp_path: Path) -> Callable:
             *,
             encoding: str = 'utf-8',
     ) -> Path:
-        r"""Make a csv file with optional header.
+        r"""Make a json file with optional header.
 
-        This is the actual function called when using the ``make_csv_file`` fixture.
+        This is the actual function called when using the ``make_json_file`` fixture.
 
         Parameters
         ----------
         filename: str | Path
-            Make csv file with this filename. Can also be a relative path.
-        data: pl.DataFrame
-            Write this data frame into csv file.
-
+            Make json file with this filename. Can also be a relative path.
+        data: dict[str, Any]
+            Write this data frame into json file.
+        encoding: str
+            Use this encoding for writing json file.
 
         Returns
         -------
