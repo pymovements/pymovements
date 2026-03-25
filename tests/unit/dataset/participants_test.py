@@ -61,7 +61,7 @@ def test_participants_init_data(data):
             {'participant_id': {'Format': 'string'}, 'test': {'Format': 'number'}},
             id='number',
         ),
-    ]
+    ],
 )
 def test_participants_init_infers_correct_format(data, expected_metadata):
     participants = Participants(data)
