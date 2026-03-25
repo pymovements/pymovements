@@ -44,9 +44,10 @@ class Participants:
     ----------
     data: polars.DataFrame
         The participant data conforming to BIDS (i.e., first column must be named participant_id).
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
         Additional metadata on participant data conforming to BIDS side car json files.
-        (default: ``{}``)
+        If ``None``, initialize an empty dictionary.
+        (default: ``None``)
     """
 
     data: polars.DataFrame
