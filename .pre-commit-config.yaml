@@ -126,7 +126,7 @@ repos:
         files: ^tests/
         args:
           [
-            '--ignore=D103,D107,D203,D213',
+            '--ignore=D101,D102,D103,D107,D203,D213',
           ]
   - repo: https://github.com/PyCQA/pylint
     rev: v4.0.5
