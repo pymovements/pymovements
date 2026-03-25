@@ -58,9 +58,22 @@ def test_participants_init_data(data):
             id='integer',
         ),
         pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['1'], 'test': [42]},
+                schema={'participant_id': pl.String, 'test': pl.UInt64},
+            ),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'index'}},
+            id='index',
+        ),
+        pytest.param(
             pl.DataFrame({'participant_id': ['1'], 'test': [6.7]}),
             {'participant_id': {'Format': 'string'}, 'test': {'Format': 'number'}},
             id='number',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'test': ['a']}),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'string'}},
+            id='string',
         ),
     ],
 )
