@@ -237,24 +237,22 @@ def _bids_format_to_polars_datatype(format: str) -> polars.DataType:
     if format in mapping:
         return mapping[format]
 
-    raise ValueError(
+    raise TypeError(
         f"unknown bids format descriptor '{format}'. Known formats: {list(mapping.keys())}",
     )
 
 
 def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
-    mapping = {
-        polars.String: 'string',
-        polars.Float64: 'number',
-        polars.Int64: 'integer',
-        polars.Boolean: 'bool',
-        polars.UInt64: 'index',
-    }
+    if dtype.is_unsigned_integer():
+        return 'index'
+    if dtype.is_integer():
+        return 'integer'
+    if dtype.is_numeric():
+        return 'number'
+    if dtype == polars.String:
+        return 'string'
 
-    if dtype in mapping:
-        return mapping[dtype]
-
-    raise ValueError(
-        f"polars datatype '{dtype}' has no mapping to bids format descriptor. "
-        f'Supported polars datatypes are: {list(mapping.keys())}',
+    raise TypeError(
+        f'polars datatype {dtype} has no mapping to bids format descriptor. '
+        f'Supported polars datatypes are: Integer, Float, String',
     )

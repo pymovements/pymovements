@@ -39,6 +39,36 @@ def test_participants_init_data(data):
 
 
 @pytest.mark.parametrize(
+    ('data', 'expected_metadata'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1']}),
+            {'participant_id': {'Format': 'string'}},
+            id='participant_id_string',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': [21]}),
+            {'participant_id': {'Format': 'string'}, 'age': {'Format': 'number'}},
+            id='age_number',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'test': [42]}),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'integer'}},
+            id='integer',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'test': [6.7]}),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'number'}},
+            id='number',
+        ),
+    ]
+)
+def test_participants_init_infers_correct_format(data, expected_metadata):
+    participants = Participants(data)
+    assert participants.metadata == expected_metadata
+
+
+@pytest.mark.parametrize(
     ('data', 'expected_exception', 'expected_message'),
     [
         pytest.param(
@@ -65,11 +95,34 @@ def test_participants_init_data(data):
             "data must have column named 'participant_id'",
             id='subject_id_not_participant_id',
         ),
+        pytest.param(
+            pl.DataFrame({'participant_id': [1], 'test': [(1, 2)]}),
+            TypeError,
+            'polars datatype List(Int64) has no mapping to bids format descriptor',
+            id='list_format_not_supported',
+        ),
     ],
 )
 def test_participants_init_data_raises(data, expected_exception, expected_message):
     with pytest.raises(expected_exception, match=expected_message):
         Participants(data)
+
+
+@pytest.mark.parametrize(
+    ('data', 'metadata', 'expected_exception', 'expected_message'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': [1], 'test': 1}),
+            {'test': {'Format': 'test'}},
+            TypeError,
+            "unknown bids format descriptor 'test'",
+            id='unknown_bids_format',
+        ),
+    ],
+)
+def test_participants_init_data_raises(data, metadata, expected_exception, expected_message):
+    with pytest.raises(expected_exception, match=expected_message):
+        Participants(data, metadata)
 
 
 @pytest.mark.parametrize(
