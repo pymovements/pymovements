@@ -101,7 +101,8 @@ def test_participants_init_infers_correct_format(data, expected_metadata):
 )
 def test_participants_init_no_metadata_infer(data):
     participants = Participants(data, infer_metadata=False)
-    assert participants.metadata == {}
+    assert isinstance(participants.metadata, dict)
+    assert not participants.metadata
 
 
 @pytest.mark.parametrize(
