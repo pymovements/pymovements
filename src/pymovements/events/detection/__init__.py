@@ -36,6 +36,7 @@ from pymovements.events.detection.blink import blink
 from pymovements.events.detection.fill import fill
 from pymovements.events.detection.idt import idt
 from pymovements.events.detection.ivt import ivt
+from pymovements.events.detection.ihmm import ihmm
 from pymovements.events.detection.library import EventDetectionLibrary
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.detection.microsaccades import microsaccades
@@ -51,4 +52,5 @@ __all__ = [
     'ivt',
     'microsaccades',
     'out_of_screen',
+    'ihmm',
 ]

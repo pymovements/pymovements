@@ -22,6 +22,7 @@ from pymovements.events.detection import blink
 from pymovements.events.detection import fill
 from pymovements.events.detection import idt
 from pymovements.events.detection import ivt
+from pymovements.events.detection import ihmm
 from pymovements.events.detection import microsaccades
 from pymovements.events.detection import out_of_screen
 from pymovements.events.detection.library import EventDetectionLibrary
@@ -46,6 +47,7 @@ __all__ = [
     'events2segmentation',
     'events2timeratio',
     'segmentation2events',
+    'ihmm',
 
     'PrecomputedEventDataFrame',
     'Events',
