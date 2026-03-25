@@ -99,7 +99,7 @@ def test_participants_init_infers_correct_format(data, expected_metadata):
         pytest.param(
             pl.DataFrame({'participant_id': [1], 'test': [(1, 2)]}),
             TypeError,
-            'polars datatype List(Int64) has no mapping to bids format descriptor',
+            r'polars datatype List\(Int64\) has no mapping to bids format descriptor',
             id='list_format_not_supported',
         ),
     ],
