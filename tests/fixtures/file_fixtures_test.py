@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test file fixtures."""
 import filecmp
+import json
 from pathlib import Path
 
 import polars as pl
@@ -59,12 +60,11 @@ def test_make_text_file_accepts_relative_path(filename, make_text_file):
     p = make_text_file(filename, header='H', body='B')
     assert p.name == 'custom.txt'
     assert p.parent.name == 'nested'
-    print(f'dir in parent: {p.parent}')
     assert p.exists()
     assert p.read_text(encoding='utf-8') == 'HB'
 
 
-def test_make_text_file_accepts_absolute_paths(tmp_path, make_text_file):
+def test_make_text_file_accepts_absolute_path(tmp_path, make_text_file):
     p = make_text_file(tmp_path / 'test.txt', header='h', body='b')
     assert p.name == 'test.txt'
     assert p.parent == tmp_path
@@ -162,3 +162,41 @@ def test_make_csv_file(filename, data, header, kwargs, read_kwargs, make_csv_fil
     else:
         assert written_header == header + '\n'
     assert_frame_equal(written_data, data)
+
+
+@pytest.mark.parametrize(
+    'data',
+    [
+        pytest.param({'a': 1, 'b': 'B', 'C': 5.0}, id='flat_dict'),
+        pytest.param([1, 'a', [1, 2], {'a': 1, 'b': [6, 7]}], id='nested_list'),
+    ]
+)
+@pytest.mark.parametrize('encoding', ['utf-8', 'ascii'])
+def test_make_json_file_writes_correct_data(data, encoding, make_json_file):
+    filepath = make_json_file('test.json', data, encoding=encoding)
+
+    assert filepath.exists()
+    with open(filepath, 'r', encoding=encoding) as opened_file:
+        saved_data = json.load(opened_file)
+    assert saved_data == data
+
+
+@pytest.mark.parametrize(
+    'filename',
+    [
+        pytest.param('nested/custom.json', id='str'),
+        pytest.param(Path('nested') / 'custom.json', id='object')
+    ],
+)
+def test_make_json_file_accepts_relative_path(filename, make_json_file):
+    filepath = make_json_file(filename, data=[1, 2, 3])
+    assert filepath.name == 'custom.json'
+    assert filepath.parent.name == 'nested'
+    assert filepath.exists()
+
+
+def test_make_json_file_accepts_absolute_path(tmp_path, make_json_file):
+    filepath = make_json_file(tmp_path / 'test.json', data={'A': 1})
+    assert filepath.name == 'test.json'
+    assert filepath.parent == tmp_path
+    assert filepath.exists()
