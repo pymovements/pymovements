@@ -169,14 +169,14 @@ def test_make_csv_file(filename, data, header, kwargs, read_kwargs, make_csv_fil
     [
         pytest.param({'a': 1, 'b': 'B', 'C': 5.0}, id='flat_dict'),
         pytest.param([1, 'a', [1, 2], {'a': 1, 'b': [6, 7]}], id='nested_list'),
-    ]
+    ],
 )
 @pytest.mark.parametrize('encoding', ['utf-8', 'ascii'])
 def test_make_json_file_writes_correct_data(data, encoding, make_json_file):
     filepath = make_json_file('test.json', data, encoding=encoding)
 
     assert filepath.exists()
-    with open(filepath, 'r', encoding=encoding) as opened_file:
+    with open(filepath, encoding=encoding) as opened_file:
         saved_data = json.load(opened_file)
     assert saved_data == data
 
@@ -185,7 +185,7 @@ def test_make_json_file_writes_correct_data(data, encoding, make_json_file):
     'filename',
     [
         pytest.param('nested/custom.json', id='str'),
-        pytest.param(Path('nested') / 'custom.json', id='object')
+        pytest.param(Path('nested') / 'custom.json', id='object'),
     ],
 )
 def test_make_json_file_accepts_relative_path(filename, make_json_file):
