@@ -8,7 +8,7 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 
-
+'''
 def dispersion(positions: list[list[float]] | np.ndarray) -> float:
     """Compute the dispersion of a group of consecutive points in a 2D position time series.
 
@@ -25,8 +25,67 @@ def dispersion(positions: list[list[float]] | np.ndarray) -> float:
     float
         Dispersion of the group of points.
     """
-    return sum(np.nanmax(positions, axis=0) - np.nanmin(positions, axis=0))
+    return sum(np.nanmax(positions, axis=0) - np.nanmin(positions, axis=0))'''
 
+class HMM:
+
+    # TODO: some string representation method? To inspect states and so on
+
+    def __init__(self,states,mu,sigma,initial_state,transition_matrix):
+
+        # TODO: implement different initializations outside/inside
+
+        self.states = states
+
+        self.initial_state = np.log(initial_state)
+
+        self.mu=mu
+
+        self.sigma = sigma
+
+        self.transition_matrix = np.log(transition_matrix)
+        
+        return
+    
+    def viterbi(self, velocities):
+
+        prob = np.zeros() # define exact shape
+        prev = np.array([])
+        
+        
+
+        return
+    
+
+'''
+function Viterbi(states, init, trans, emit, obs) is
+    input states: S hidden states
+    input init: initial probabilities of each state
+    input trans: S × S transition matrix
+    input emit: S × O emission matrix
+    input obs: sequence of T observations
+
+    prob ← T × S matrix of zeroes
+    prev ← empty T × S matrix
+    for each state s in states do
+        prob[0][s] = init[s] * emit[s][obs[0]]
+
+    for t = 1 to T - 1 inclusive do // t = 0 has been dealt with already
+        for each state s in states do
+            for each state r in states do
+                new_prob ← prob[t - 1][r] * trans[r][s] * emit[s][obs[t]]
+                if new_prob > prob[t][s] then
+                    prob[t][s] ← new_prob
+                    prev[t][s] ← r
+
+    path ← empty array of length T
+    path[T - 1] ← the state s with maximum prob[T - 1][s]
+    for t = T - 2 to 0 inclusive do
+        path[t] ← prev[t + 1][path[t + 1]]
+
+    return path
+end
+'''
 
 @register_event_detection
 def ihmm(
@@ -83,6 +142,13 @@ def ihmm(
 
 
     # Init 2 state HMM
+    hmm = HMM(states=2,mu=[],sigma=[],initial_state=[],transition_matrix=[])
+
+    # inference the hmm 
+
+    states = hmm.viterbi(velocities=velocities)
+
+    # collapse states
 
     
 
