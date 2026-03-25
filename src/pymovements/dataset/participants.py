@@ -48,6 +48,9 @@ class Participants:
         Additional metadata on participant data conforming to BIDS side car json files.
         If ``None``, initialize an empty dictionary.
         (default: ``None``)
+    infer_metadata: bool
+        Infer metadata column format descriptors from ``data``.
+        (default: ``True``)
     """
 
     data: polars.DataFrame
@@ -57,13 +60,21 @@ class Participants:
             self,
             data: polars.DataFrame,
             metadata: dict[str, Any] | None = None,
+            *,
+            infer_metadata: bool = True,
     ):
         if 'participant_id' not in data.columns:
             raise ValueError("data must have column named 'participant_id'")
         if data.columns[0] != 'participant_id':
             raise ValueError("first column in data must be named 'participant_id'")
 
-        metadata = _infer_metadata_column_format(data, metadata)
+        if metadata:
+            # metadata may be changed and updated, work on copy
+            metadata = deepcopy(metadata)
+        else:
+            metadata = {}
+        if infer_metadata:
+            metadata = _infer_metadata_column_format(data, metadata)
         data = _cast_columns_to_metadata_format(data, metadata)
 
         self.data = data
@@ -207,15 +218,9 @@ class Participants:
 
 def _infer_metadata_column_format(
         data: polars.DataFrame,
-        metadata: dict[str, Any] | None = None,
+        metadata: dict[str, Any],
 ) -> dict[str, Any]:
     """Infer bids format of each column in data and update metadata."""
-    if metadata:
-        # metadata may be changed and updated, work on copy
-        metadata = deepcopy(metadata)
-    else:
-        metadata = {}
-
     for column in data.columns:
         if column not in metadata:
             metadata[column] = {}

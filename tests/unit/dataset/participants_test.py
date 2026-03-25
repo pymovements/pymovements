@@ -83,6 +83,28 @@ def test_participants_init_infers_correct_format(data, expected_metadata):
 
 
 @pytest.mark.parametrize(
+    'data',
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1']}),
+            id='participant_id',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': [21]}),
+            id='age',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'test': ['a']}),
+            id='string',
+        ),
+    ],
+)
+def test_participants_init_no_metadata_infer(data):
+    participants = Participants(data, infer_metadata=False)
+    assert participants.metadata == {}
+
+
+@pytest.mark.parametrize(
     ('data', 'expected_exception', 'expected_message'),
     [
         pytest.param(
