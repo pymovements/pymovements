@@ -37,21 +37,30 @@ class HMM:
 
         self.states = states
 
-        self.initial_state = np.log(initial_state)
+        self.init = np.log(initial_state)
 
         self.mu=mu
 
         self.sigma = sigma
 
-        self.transition_matrix = np.log(transition_matrix)
+        self.trans = np.log(transition_matrix)
+
+        self.emit = [] # TODO: initialize properly
         
         return
     
     def viterbi(self, velocities):
 
-        prob = np.zeros() # define exact shape
-        prev = np.array([])
-        
+        # init step
+
+        prob = np.zeros(shape=(len(velocities),self.states)) 
+        prev = []
+
+        for s in range(self.states):
+            prob[0][s] = self.initial_state[s] * self.emit[s][velocities[0]] # TODO: check indeces for velocities[0]
+
+        # main loop
+
         
 
         return
