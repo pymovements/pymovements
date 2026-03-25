@@ -226,6 +226,20 @@ class TestParticipantsCastsFromMetadata:
 
         assert_frame_equal(participants.data, expected_data)
 
+    def test_participants_load_kwargs_take_precedence(
+            self, data, metadata, expected_data, make_csv_file, make_json_file,
+    ):
+        tsv_path = make_csv_file('participants.tsv', data, separator='\t')
+        make_json_file(tsv_path.parent / 'participants.json', metadata)
+
+        participants = Participants.load(
+            tsv_path,
+            separator=',',
+            read_csv_kwargs={'separator': '\t'},  # takes precedence over explicit separator
+        )
+
+        assert_frame_equal(participants.data, expected_data)
+
 
 def test_participants_save_data_to_filepath(tmp_path):
     data = pl.DataFrame({'participant_id': [1], 'age': [21.0]})
