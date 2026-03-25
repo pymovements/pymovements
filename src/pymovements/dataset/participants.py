@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+""""Participants module."""
 from __future__ import annotations
 
 import json
@@ -100,6 +101,9 @@ class Participants:
             Pass these additional keyword arguments to :py:func:`polars.read_csv`.
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
+        metadata_encoding: str
+            Use this encoding for writing the metadata json file.
+            (default: ``utf-8``)
 
         Returns
         -------
@@ -159,6 +163,20 @@ class Participants:
         path: Path | str
             Save participants data to this path. If this is a directory, use ``participants.tsv`` as
             filename.
+        metadata_path:  Path | str
+            Save metadata json to this path. If this is a relative path it is assumed to be relative
+            to the directory specified by ``path``.
+            (default: ``participants.json``)
+        separator: str
+            Separator in the tabular data file.
+            (default: ``\t``)
+        write_csv_kwargs: dict[str, Any] | None
+            Pass these additional keyword arguments to :py:func:`polars.write_csv`.
+            Takes precedence over the ``separator`` argument.
+            (default: ``None``)
+        metadata_encoding: str
+            Use this encoding for loading the metadata json file.
+            (default: ``utf-8``)
         """
         path = Path(path)
         if path.is_dir():
@@ -188,6 +206,7 @@ def _infer_metadata_column_format(
         metadata: dict[str, Any],
         data: polars.DataFrame,
 ) -> dict[str, Any]:
+    """Infer bids format of each column in data and update metadata."""
     if metadata:
         # metadata may be changed and updated, work on copy
         metadata = deepcopy(metadata)
@@ -215,16 +234,18 @@ def _cast_columns_to_metadata_format(
         data: polars.DataFrame,
         metadata: dict[str, Any],
 ) -> polars.DataFrame:
+    """"Cast columns in data according to column bids format specified in metadata."""
     schema_overrides = {}
     for column in data.columns:
-        format = metadata.get(column, {}).get('Format', None)
-        if format:
-            schema_overrides[column] = _bids_format_to_polars_datatype(format)
+        bids_format = metadata.get(column, {}).get('Format', None)
+        if bids_format:
+            schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
     data = data.cast(schema_overrides)
     return data
 
 
-def _bids_format_to_polars_datatype(format: str) -> polars.DataType:
+def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:
+    """Infer polars datatype from bids format descriptor."""
     mapping = {
         'string': polars.String,
         'number': polars.Float64,
@@ -234,15 +255,16 @@ def _bids_format_to_polars_datatype(format: str) -> polars.DataType:
         'label': polars.String,
     }
 
-    if format in mapping:
-        return mapping[format]
+    if bids_format in mapping:
+        return mapping[bids_format]
 
     raise TypeError(
-        f"unknown bids format descriptor '{format}'. Known formats: {list(mapping.keys())}",
+        f"unknown bids format descriptor '{bids_format}'. Known formats: {list(mapping.keys())}",
     )
 
 
 def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
+    """Infer bids format descriptor from polars datatype."""
     if dtype.is_unsigned_integer():
         return 'index'
     if dtype.is_integer():
