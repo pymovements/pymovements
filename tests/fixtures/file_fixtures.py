@@ -312,6 +312,9 @@ def _make_filepath(tmp_path: Path, filename: str | Path) -> Path:
     if not isinstance(filename, (str, Path)):
         raise TypeError(f'filename must be a str or Path, got {type(filename).__name__}')
 
+    if isinstance(filename, str) and filename.startswith('~'):
+        raise ValueError("filename must be an absolute or relative path; '~' (home) is not allowed")
+
     filepath = Path(filename)
     # On Windows, p.drive captures drive letters; p.anchor is non-empty for absolute paths
     if filepath.is_absolute() or filepath.anchor or getattr(filepath, 'drive', None):

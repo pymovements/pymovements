@@ -48,13 +48,28 @@ def test_make_example_file_returns_copy(filename, make_example_file, testfiles_d
     assert filecmp.cmp(fixture_filepath, testfiles_filepath)  # same content
 
 
-def test_make_text_file_accepts_relative_path_object(make_text_file):
-    p = make_text_file(Path('nested') / 'custom.txt', header='H', body='B')
+@pytest.mark.parametrize(
+    'filename',
+    [
+        pytest.param('nested/custom.txt', id='str'),
+        pytest.param(Path('nested') / 'custom.txt', id='object')
+    ],
+)
+def test_make_text_file_accepts_relative_path(filename, make_text_file):
+    p = make_text_file(filename, header='H', body='B')
     assert p.name == 'custom.txt'
     assert p.parent.name == 'nested'
     print(f'dir in parent: {p.parent}')
     assert p.exists()
     assert p.read_text(encoding='utf-8') == 'HB'
+
+
+def test_make_text_file_accepts_absolute_paths(tmp_path, make_text_file):
+    p = make_text_file(tmp_path / 'test.txt', header='h', body='b')
+    assert p.name == 'test.txt'
+    assert p.parent == tmp_path
+    assert p.exists()
+    assert p.read_text(encoding='utf-8') == 'hb'
 
 
 def test_make_text_file_rejects_non_pathlike(make_text_file):
@@ -90,13 +105,6 @@ def test_make_text_file_overwrites_existing(make_text_file):
     p2 = make_text_file('same.txt', header='C', body='D')
     assert p2 == p1
     assert p1.read_text(encoding='utf-8') == 'CD'
-
-
-def test_make_text_file_rejects_absolute_paths(make_text_file):
-    with pytest.raises(ValueError, match='relative path'):
-        make_text_file(Path('/absolute.txt'), header='h', body='b')
-    with pytest.raises(ValueError, match='relative path'):
-        make_text_file('/absolute.txt', header='h', body='b')
 
 
 def test_make_text_file_rejects_tilde_home(make_text_file):
