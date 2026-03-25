@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-""""Participants module."""
+"""Participants module."""
 from __future__ import annotations
 
 import json
@@ -78,7 +78,7 @@ class Participants:
             read_csv_kwargs: dict[str, Any] | None = None,
             metadata_encoding: str = 'utf-8',
     ) -> Participants:
-        """Load participant data from participant files.
+        r"""Load participant data from participant files.
 
         Parameters
         ----------
@@ -156,7 +156,7 @@ class Participants:
         write_csv_kwargs: dict[str, Any] | None = None,
         metadata_encoding: str = 'utf-8',
     ) -> None:
-        """Save participants data including metadata.
+        r"""Save participants data including metadata.
 
         Parameters
         ----------
@@ -234,7 +234,7 @@ def _cast_columns_to_metadata_format(
         data: polars.DataFrame,
         metadata: dict[str, Any],
 ) -> polars.DataFrame:
-    """"Cast columns in data according to column bids format specified in metadata."""
+    """Cast columns in data according to column bids format specified in metadata."""
     schema_overrides = {}
     for column in data.columns:
         bids_format = metadata.get(column, {}).get('Format', None)
