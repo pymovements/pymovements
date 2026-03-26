@@ -20,7 +20,8 @@
 """Provides the implementation of the event fill function."""
 from __future__ import annotations
 
-import numpy as np
+import numpy
+import polars
 
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -30,7 +31,7 @@ from pymovements.gaze.transforms_numpy import consecutive
 @register_event_detection
 def fill(
         events: Events,
-        timesteps: list[int] | np.ndarray,
+        timesteps: list[int] | numpy.ndarray | polars.Series,
         minimum_duration: int = 1,
         name: str = 'unclassified',
 ) -> Events:
@@ -40,7 +41,7 @@ def fill(
     ----------
     events: Events
         The already detected events.
-    timesteps: list[int] | np.ndarray
+    timesteps: list[int] | numpy.ndarray | polars.Series
         shape (N, )
         Continuous 1D timestep time series.
     minimum_duration: int
@@ -54,27 +55,32 @@ def fill(
     Events
         A dataframe with detected fixations as rows.
     """
-    timesteps = np.array(timesteps)
+    if isinstance(timesteps, polars.Series):
+        numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+        timesteps = timesteps.to_numpy()
+    timesteps = numpy.array(timesteps)
 
     # Create binary mask where each existing event is marked.
-    events_mask = np.zeros(len(timesteps), dtype=bool)
+    events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
     for row in events.frame.iter_rows(named=True):
-        if row['onset'] > np.max(timesteps):  # event onset after last timestep
+        if row['onset'] > numpy.max(timesteps):  # event onset after last timestep
             continue
 
-        if row['offset'] - 1 < np.min(timesteps):  # event offset before first timestep
+        if row['offset'] - 1 < numpy.min(timesteps):  # event offset before first timestep
             continue
 
-        if row['onset'] < np.min(timesteps):  # event onset before first timestep
+        if row['onset'] < numpy.min(timesteps):  # event onset before first timestep
             idx_onset = 0
         else:
-            idx_onset = np.where(timesteps == row['onset'])[0][0]
+            idx_onset = numpy.where(timesteps == row['onset'])[0][0]
 
-        if row['offset'] > np.max(timesteps):  # event offset after last timestep
+        if row['offset'] > numpy.max(timesteps):  # event offset after last timestep
             idx_offset = len(timesteps) - 1
         else:
-            idx_offset = np.where(timesteps == row['offset'] - 1)[0][0]
+            idx_offset = numpy.where(timesteps == row['offset'] - 1)[0][0]
 
         events_mask[idx_onset:idx_offset + 1] = True
 
@@ -82,12 +88,14 @@ def fill(
     candidate_mask = ~events_mask
 
     # Get indices of true values in candidate mask.
-    candidate_indices = np.where(candidate_mask)[0]
+    candidate_indices = numpy.where(candidate_mask)[0]
 
     # Get all fixation candidates by grouping all consecutive indices.
     candidates = consecutive(arr=candidate_indices)
 
-    if len(candidates) == 1 and np.array_equal(candidates[0], np.array([], dtype=np.int64)):
+    if len(candidates) == 1 and numpy.array_equal(
+            candidates[0], numpy.array([], dtype=numpy.int64),
+    ):
         return Events()
 
     # Filter all candidates by minimum duration.

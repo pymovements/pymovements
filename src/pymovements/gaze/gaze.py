@@ -32,7 +32,6 @@ from typing import Literal
 from typing import overload
 from warnings import warn
 
-import numpy as np
 import polars
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
@@ -2174,12 +2173,7 @@ class Gaze:
                     'eye_components must not be None if passing position to event detection',
                 )
 
-            kwargs['positions'] = np.vstack(
-                [
-                    samples.get_column('position').list.get(eye_component)
-                    for eye_component in eye_components
-                ],
-            ).transpose()
+            kwargs['positions'] = samples.get_column('position').list.gather(eye_components)
 
         if 'velocities' in method_args:
             if 'velocity' not in samples.columns:
@@ -2193,12 +2187,7 @@ class Gaze:
                     'eye_components must not be None if passing velocity to event detection',
                 )
 
-            kwargs['velocities'] = np.vstack(
-                [
-                    samples.get_column('velocity').list.get(eye_component)
-                    for eye_component in eye_components
-                ],
-            ).transpose()
+            kwargs['velocities'] = samples.get_column('velocity').list.gather(eye_components)
 
         if 'pixels' in method_args and 'pixels' not in kwargs:
             if 'pixel' not in samples.columns:
@@ -2212,12 +2201,7 @@ class Gaze:
                     'eye_components must not be None if passing pixel to event detection',
                 )
 
-            kwargs['pixels'] = np.vstack(
-                [
-                    samples.get_column('pixel').list.get(eye_component)
-                    for eye_component in eye_components
-                ],
-            ).transpose()
+            kwargs['pixels'] = samples.get_column('pixel').list.gather(eye_components)
 
         if 'pupil' in method_args and 'pupil' not in kwargs:
             if 'pupil' not in samples.columns:
@@ -2229,9 +2213,9 @@ class Gaze:
             if isinstance(pupil_series.dtype, polars.List):
                 # Binocular: [left, right] — pick eye based on eye_components
                 eye_idx = 1 if eye_components and eye_components[0] in {2, 3} else 0
-                kwargs['pupil'] = pupil_series.list.get(eye_idx).to_numpy()
+                kwargs['pupil'] = pupil_series.list.get(eye_idx)
             else:
-                kwargs['pupil'] = pupil_series.to_numpy()
+                kwargs['pupil'] = pupil_series
 
         if method.__name__ == 'out_of_screen' and self.experiment is not None:
             if 'x_min' not in kwargs:
@@ -2247,7 +2231,7 @@ class Gaze:
             kwargs['events'] = events
 
         if 'timesteps' in method_args and 'time' in samples.columns:
-            kwargs['timesteps'] = samples.get_column('time').to_numpy()
+            kwargs['timesteps'] = samples.get_column('time')
 
         return kwargs
 
