@@ -1356,7 +1356,7 @@ class Gaze:
         if 'time_column' in method_args and 'time_column' not in kwargs:
             kwargs['time_column'] = 'time'
         if 'sampling_rate' in method_args and 'sampling_rate' not in kwargs:
-            if self.experiment:
+            if self.experiment and self.experiment.sampling_rate is not None:
                 kwargs['sampling_rate'] = self.experiment.sampling_rate
 
         if self.trial_columns is None:
