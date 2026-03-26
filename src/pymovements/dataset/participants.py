@@ -31,7 +31,7 @@ import polars
 
 @dataclass
 class Participants:
-    """Participant table with additional metdadata.
+    """Participant table with additional metadadata.
 
     Attributes
     ----------
