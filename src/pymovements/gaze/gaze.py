@@ -1345,7 +1345,7 @@ class Gaze:
         if isinstance(method, str):
             method = SampleMeasureLibrary.get(method)
 
-        # Automatically infer eye to use for event detection.
+        # Automatically infer optional method arguments from experiment.
         method_args = (
             inspect.getfullargspec(method).args
             + inspect.getfullargspec(method).kwonlyargs
