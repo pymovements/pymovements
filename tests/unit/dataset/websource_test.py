@@ -315,6 +315,34 @@ def test__DownloadProgressBar_tsize_not_None():
     assert download_progress_bar.total == 100
 
 
+@pytest.mark.parametrize(
+    ('websource', 'expected_exception', 'expected_msg'),
+    [
+        pytest.param(
+            WebSource(url=None),
+            AttributeError,
+            'WebSource.url must not be None',
+            id='url_none',
+        ),
+        pytest.param(
+            WebSource(url='https://example.com/test.gz.tar', filename=None),
+            AttributeError,
+            'WebSource.filename must not be None',
+            id='filename_none',
+        ),
+        pytest.param(
+            WebSource(url='test.gz.tar', filename='test.gz.tar'),
+            ValueError,
+            'unknown url type: ',
+            id='no_http_resource_gaze',
+        ),
+    ],
+)
+def test_websource_download_raises_exception(websource, expected_exception, expected_msg, tmp_path):
+    with pytest.raises(expected_exception, match=expected_msg):
+        websource.download(tmp_path)
+
+
 @mock.patch('pymovements.dataset.websource._download_file')
 @pytest.mark.parametrize('side_effect', [OSError, RuntimeError])
 def test_websource_download_fail(

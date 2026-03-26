@@ -1275,7 +1275,7 @@ def test_dataset_download_default_extract_precomputed(
             DatasetDefinition(
                 name='CustomPublicDataset',
                 resources=[{
-                    'content': 'gaze',
+                    'content': 'precomputed_events',
                     'source': {
                         'url': 'test.gz.tar',
                         'filename': 'test.gz.tar',
@@ -1291,7 +1291,7 @@ def test_dataset_download_default_extract_precomputed(
             DatasetDefinition(
                 name='CustomPublicDataset',
                 resources=[{
-                    'content': 'gaze',
+                    'content': 'precomputed_reading_measures',
                     'source': {
                         'url': 'test.gz.tar',
                         'filename': 'test.gz.tar',
