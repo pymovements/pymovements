@@ -82,6 +82,149 @@ def ivt(
         If velocities does not have shape (N, 2)
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
+
+    Examples
+    --------
+    Create a synthetic velocity signal representing low-velocity fixations.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.gaze import from_numpy
+    >>> velocities = step_function(length=1000,
+    ...                            steps=[2, 5, 9],
+    ...                            values=[(1., 2.), (2., 3.), (3., 4.)],
+    ...                            start_value=(0., 0.))
+    >>> velocities[:5]
+    array([[0., 0.],
+       [0., 0.],
+       [1., 2.],
+       [1., 2.],
+       [1., 2.]])
+
+    Add a time column.
+
+    >>> t = np.arange(len(velocities))
+    >>> t[:5]
+    array([0, 1, 2, 3, 4])
+
+    >>> velocities_with_time = np.column_stack([t, velocities])
+    >>> velocities_with_time[:5]
+    array([[0., 0., 0.],
+       [1., 0., 0.],
+       [2., 1., 2.],
+       [3., 1., 2.],
+       [4., 1., 2.]])
+
+    Create a Gaze object.
+
+    >>> schema = ['t', 'x', 'y']
+    >>> gaze = from_numpy(
+    ...     velocities_with_time.T,
+    ...     schema=schema,
+    ...     time_column='t',
+    ...     time_unit='ms',
+    ...     velocity_columns=['x', 'y'])
+    >>> gaze
+    shape: (1_000, 2)
+    ┌──────┬────────────┐
+    │ time ┆ velocity   │
+    │ ---  ┆ ---        │
+    │ i64  ┆ list[f64]  │
+    ╞══════╪════════════╡
+    │ 0    ┆ [0.0, 0.0] │
+    │ 1    ┆ [0.0, 0.0] │
+    │ 2    ┆ [1.0, 2.0] │
+    │ 3    ┆ [1.0, 2.0] │
+    │ 4    ┆ [1.0, 2.0] │
+    │ …    ┆ …          │
+    │ 995  ┆ [3.0, 4.0] │
+    │ 996  ┆ [3.0, 4.0] │
+    │ 997  ┆ [3.0, 4.0] │
+    │ 998  ┆ [3.0, 4.0] │
+    │ 999  ┆ [3.0, 4.0] │
+    └──────┴────────────┘
+
+    Run saccade detection with default parameters.
+
+    >>> gaze.detect("ivt")
+    >>> gaze.events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 0     ┆ 999    ┆ 999      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Use custom thresholds.
+
+    >>> velocities = step_function(length=300,
+    ...                            steps=[100, 200],
+    ...                            values=[(1., 1.), (2., 2.)],
+    ...                            start_value=(0., 0.))
+    >>> velocities[:5]
+    array([[0., 0.],
+       [0., 0.],
+       [0., 0.],
+       [0., 0.],
+       [0., 0.]])
+
+    Add a time column.
+
+    >>> t = np.arange(len(velocities))
+    >>> t[:5]
+    array([0, 1, 2, 3, 4])
+
+    >>> velocities_with_time = np.column_stack([t, velocities])
+    >>> velocities_with_time[:5]
+    array([[0., 0., 0.],
+       [1., 0., 0.],
+       [2., 0., 0.],
+       [3., 0., 0.],
+       [4., 0., 0.]])
+
+    Create a Gaze object.
+
+    >>> schema = ['t', 'x', 'y']
+    >>> gaze = from_numpy(
+    ...     velocities_with_time.T,
+    ...     schema=schema,
+    ...     time_column='t',
+    ...     time_unit='ms',
+    ...     velocity_columns=['x', 'y'])
+    >>> gaze
+    shape: (300, 2)
+    ┌──────┬────────────┐
+    │ time ┆ velocity   │
+    │ ---  ┆ ---        │
+    │ i64  ┆ list[f64]  │
+    ╞══════╪════════════╡
+    │ 0    ┆ [0.0, 0.0] │
+    │ 1    ┆ [0.0, 0.0] │
+    │ 2    ┆ [0.0, 0.0] │
+    │ 3    ┆ [0.0, 0.0] │
+    │ 4    ┆ [0.0, 0.0] │
+    │ …    ┆ …          │
+    │ 295  ┆ [2.0, 2.0] │
+    │ 296  ┆ [2.0, 2.0] │
+    │ 297  ┆ [2.0, 2.0] │
+    │ 298  ┆ [2.0, 2.0] │
+    │ 299  ┆ [2.0, 2.0] │
+    └──────┴────────────┘
+
+    Run saccade detection with custom parameters.
+
+    >>> gaze.detect("ivt",minimum_duration = 50,velocity_threshold=1.5,include_nan=True)
+    >>> gaze.events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 0     ┆ 199    ┆ 199      │
+    └──────────┴───────┴────────┴──────────┘
     """
     velocities = np.array(velocities)
 
