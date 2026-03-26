@@ -53,6 +53,11 @@ def test_participants_init_data(data):
             id='age_number',
         ),
         pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'test': [True]}),
+            {'participant_id': {'Format': 'string'}, 'test': {'Format': 'bool'}},
+            id='bool',
+        ),
+        pytest.param(
             pl.DataFrame({'participant_id': ['1'], 'test': [42]}),
             {'participant_id': {'Format': 'string'}, 'test': {'Format': 'integer'}},
             id='integer',

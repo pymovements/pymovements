@@ -279,6 +279,8 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
         return 'integer'
     if dtype.is_numeric():
         return 'number'
+    if dtype == polars.Boolean:
+        return 'bool'
     if dtype == polars.String:
         return 'string'
 
