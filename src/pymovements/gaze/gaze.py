@@ -1345,8 +1345,19 @@ class Gaze:
         if isinstance(method, str):
             method = SampleMeasureLibrary.get(method)
 
-        if 'column_dtype' in inspect.getfullargspec(method).args:
+        # Automatically infer optional method arguments from experiment.
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
+
+        if 'column_dtype' in method_args and 'column_dtype' not in kwargs:
             kwargs['column_dtype'] = self.samples[kwargs['column']].dtype
+        if 'time_column' in method_args and 'time_column' not in kwargs:
+            kwargs['time_column'] = 'time'
+        if 'sampling_rate' in method_args and 'sampling_rate' not in kwargs:
+            if self.experiment and self.experiment.sampling_rate is not None:
+                kwargs['sampling_rate'] = self.experiment.sampling_rate
 
         if self.trial_columns is None:
             return self.samples.select(method(**kwargs))
