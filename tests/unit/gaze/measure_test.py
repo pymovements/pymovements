@@ -404,6 +404,23 @@ def test_measure_samples(gaze_init_kwargs, measure, kwargs, expected):
             "data_loss.* missing 1 required keyword-only argument: 'sampling_rate'",
             id='data_loss_sampling_rate_missing_experiment',
         ),
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    data={
+                        'A': [1000, 1001, 1002, 1003, None],
+                        'time': [0, 1, 2, 3, 4],
+                    },
+                    schema={'A': pl.Int64, 'time': pl.Int64},
+                ),
+                'experiment': Experiment(sampling_rate=None),
+            },
+            'data_loss',
+            {'column': 'A', 'unit': 'time'},
+            TypeError,
+            "data_loss.* missing 1 required keyword-only argument: 'sampling_rate'",
+            id='data_loss_sampling_rate_missing_experiment',
+        ),
     ],
 )
 def test_measure_samples_raises(gaze_init_kwargs, measure, kwargs, expected_exception, message):
