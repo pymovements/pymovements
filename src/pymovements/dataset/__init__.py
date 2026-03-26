@@ -23,6 +23,7 @@ from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_library import register_dataset
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.participants import Participants
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 
@@ -32,6 +33,7 @@ __all__ = [
     'DatasetDefinition',
     'DatasetLibrary',
     'DatasetPaths',
+    'Participants',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
