@@ -319,7 +319,7 @@ def test__DownloadProgressBar_tsize_not_None():
     ('websource', 'expected_exception', 'expected_msg'),
     [
         pytest.param(
-            WebSource(url=None),
+            WebSource(url=None),  # type: ignore[arg-type]
             AttributeError,
             'WebSource.url must not be None',
             id='url_none',
