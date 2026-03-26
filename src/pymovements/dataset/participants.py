@@ -28,8 +28,11 @@ from typing import Any
 
 import polars
 
+from pymovements._utils._html import repr_html
+
 
 @dataclass
+@repr_html()
 class Participants:
     """Participant table with additional metadadata.
 
