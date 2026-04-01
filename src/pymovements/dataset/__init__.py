@@ -25,6 +25,7 @@ from pymovements.dataset.dataset_library import register_dataset
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
 
 
 __all__ = [
@@ -35,4 +36,5 @@ __all__ = [
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
+    'WebSource',
 ]
