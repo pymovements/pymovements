@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from typing import overload
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -34,6 +35,54 @@ from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
+
+
+@overload
+def main_sequence_plot(
+        events: Events | EventDataFrame | None = None,
+        *,
+        marker: str = 'o',
+        marker_size: float = 25,
+        marker_color: str = 'purple',
+        marker_alpha: float = 0.5,
+        fit: bool = True,
+        fit_measure: bool | Literal['r2', 's'] = True,
+        fit_color: str = 'red',
+        figsize: tuple[int, int] = (15, 5),
+        title: str | None = None,
+        savepath: str | None = None,
+        show: Literal[True] = True,
+        event_df: Events | EventDataFrame | None = None,
+        event_name: str = 'saccade',
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+        **kwargs: Collection,
+) -> None:
+    ...
+
+
+@overload
+def main_sequence_plot(
+        events: Events | EventDataFrame | None = None,
+        *,
+        marker: str = 'o',
+        marker_size: float = 25,
+        marker_color: str = 'purple',
+        marker_alpha: float = 0.5,
+        fit: bool = True,
+        fit_measure: bool | Literal['r2', 's'] = True,
+        fit_color: str = 'red',
+        figsize: tuple[int, int] = (15, 5),
+        title: str | None = None,
+        savepath: str | None = None,
+        show: Literal[False],
+        event_df: Events | EventDataFrame | None = None,
+        event_name: str = 'saccade',
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+        **kwargs: Collection,
+) -> tuple[plt.Figure, plt.Axes]:
+    ...
 
 
 def main_sequence_plot(
@@ -55,7 +104,7 @@ def main_sequence_plot(
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
         **kwargs: Collection,
-) -> tuple[plt.Figure, plt.Axes]:
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot the saccade main sequence.
 
     Parameters
@@ -103,8 +152,8 @@ def main_sequence_plot(
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes]
-        The created or provided figure and axes.
+    tuple[plt.Figure, plt.Axes] | None
+        The created or provided figure and axes. Returns ``None`` if ``show`` is ``True``.
 
     Raises
     ------
@@ -238,4 +287,6 @@ def main_sequence_plot(
         func_name='main_sequence_plot',
     )
 
+    if show:
+        return None
     return fig, ax

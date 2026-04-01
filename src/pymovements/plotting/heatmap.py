@@ -38,8 +38,8 @@ from pymovements.stimulus.image import _draw_image_stimulus
 @overload
 def heatmap(
         gaze: Gaze,
-        *,
         position_column: str = 'pixel',
+        *,
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
@@ -65,8 +65,8 @@ def heatmap(
 @overload
 def heatmap(
         gaze: Gaze,
-        *,
         position_column: str = 'pixel',
+        *,
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
@@ -91,8 +91,8 @@ def heatmap(
 
 def heatmap(
         gaze: Gaze,
-        *,
         position_column: str = 'pixel',
+        *,
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',

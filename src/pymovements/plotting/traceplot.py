@@ -20,6 +20,9 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
+from typing import Literal
+from typing import overload
+
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
@@ -32,9 +35,62 @@ from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 
+@overload
 def traceplot(
         gaze: Gaze,
         position_column: str = 'pixel',
+        *,
+        cval: np.ndarray | None = None,
+        cmap: matplotlib.colors.Colormap | None = None,
+        cmap_norm: matplotlib.colors.Normalize | str | None = None,
+        cmap_segmentdata: LinearSegmentedColormapType | None = None,
+        cbar_label: str | None = None,
+        show_cbar: bool = False,
+        padding: float | None = None,
+        pad_factor: float | None = 0.05,
+        figsize: tuple[int, int] = (15, 5),
+        title: str | None = None,
+        savepath: str | None = None,
+        show: Literal[True] = True,
+        add_stimulus: bool = False,
+        path_to_image_stimulus: str | None = None,
+        stimulus_origin: str = 'upper',
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> None:
+    ...
+
+
+@overload
+def traceplot(
+        gaze: Gaze,
+        position_column: str = 'pixel',
+        *,
+        cval: np.ndarray | None = None,
+        cmap: matplotlib.colors.Colormap | None = None,
+        cmap_norm: matplotlib.colors.Normalize | str | None = None,
+        cmap_segmentdata: LinearSegmentedColormapType | None = None,
+        cbar_label: str | None = None,
+        show_cbar: bool = False,
+        padding: float | None = None,
+        pad_factor: float | None = 0.05,
+        figsize: tuple[int, int] = (15, 5),
+        title: str | None = None,
+        savepath: str | None = None,
+        show: Literal[False],
+        add_stimulus: bool = False,
+        path_to_image_stimulus: str | None = None,
+        stimulus_origin: str = 'upper',
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
+    ...
+
+
+def traceplot(
+        gaze: Gaze,
+        position_column: str = 'pixel',
+        *,
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
         cmap_norm: matplotlib.colors.Normalize | str | None = None,
@@ -50,10 +106,9 @@ def traceplot(
         add_stimulus: bool = False,
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
-        *,
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
-) -> tuple[plt.Figure, plt.Axes]:
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot eye gaze trace from positional data.
 
     Parameters
@@ -100,8 +155,8 @@ def traceplot(
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes]
-        The created or provided figure and axes.
+    tuple[plt.Figure, plt.Axes] | None
+        The created or provided figure and axes. Returns ``None`` if ``show`` is ``True``.
 
     Raises
     ------
@@ -161,4 +216,6 @@ def traceplot(
         func_name='traceplot',
     )
 
+    if show:
+        return None
     return fig, ax

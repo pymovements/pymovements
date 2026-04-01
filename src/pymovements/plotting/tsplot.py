@@ -21,6 +21,8 @@
 from __future__ import annotations
 
 import math
+from typing import Literal
+from typing import overload
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -32,9 +34,60 @@ from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 
 
+@overload
 def tsplot(
         gaze: Gaze,
         channels: list[str] | None = None,
+        *,
+        xlabel: str | None = None,
+        n_cols: int | None = None,
+        n_rows: int | None = None,
+        rotate_ylabels: bool = True,
+        share_y: bool = True,
+        zero_centered_yaxis: bool = True,
+        line_color: tuple[int, int, int] | str = 'k',
+        line_width: int = 1,
+        show_grid: bool = True,
+        show_yticks: bool = True,
+        figsize: tuple[int, int] = (15, 5),
+        title: str | None = None,
+        savepath: str | None = None,
+        show: Literal[True] = True,
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> None:
+    ...
+
+
+@overload
+def tsplot(
+        gaze: Gaze,
+        channels: list[str] | None = None,
+        *,
+        xlabel: str | None = None,
+        n_cols: int | None = None,
+        n_rows: int | None = None,
+        rotate_ylabels: bool = True,
+        share_y: bool = True,
+        zero_centered_yaxis: bool = True,
+        line_color: tuple[int, int, int] | str = 'k',
+        line_width: int = 1,
+        show_grid: bool = True,
+        show_yticks: bool = True,
+        figsize: tuple[int, int] = (15, 5),
+        title: str | None = None,
+        savepath: str | None = None,
+        show: Literal[False],
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
+    ...
+
+
+def tsplot(
+        gaze: Gaze,
+        channels: list[str] | None = None,
+        *,
         xlabel: str | None = None,
         n_cols: int | None = None,
         n_rows: int | None = None,
@@ -49,10 +102,9 @@ def tsplot(
         title: str | None = None,
         savepath: str | None = None,
         show: bool = True,
-        *,
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
-) -> tuple[plt.Figure, plt.Axes]:
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot time series with each channel getting a separate subplot.
 
     Parameters
@@ -98,8 +150,9 @@ def tsplot(
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes]
+    tuple[plt.Figure, plt.Axes] | None
         The created or provided figure and the primary axes (the first subplot).
+        Returns ``None`` if ``show`` is ``True``.
 
     Raises
     ------
@@ -239,4 +292,6 @@ def tsplot(
         func_name='tsplot',
     )
 
+    if show:
+        return None
     return fig, axs[0]
