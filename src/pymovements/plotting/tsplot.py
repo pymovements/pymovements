@@ -277,8 +277,9 @@ def tsplot(
         else:
             ax.set_ylabel(channels[channel_id])
 
-    # print x label on the last axis (bottom-most in a column)
-    axs[-1].set_xlabel(xlabel)
+        # set x label on all axes
+        # share_y=True will automatically hide those that are not on the bottom
+        ax.set_xlabel(xlabel)
 
     if title:
         axs[0].set_title(title)
