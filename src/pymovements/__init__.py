@@ -37,6 +37,7 @@ from pymovements.dataset import Participants
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.exceptions import UnknownFileType
@@ -67,6 +68,7 @@ __all__ = [
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
+    'WebSource',
 
     'events',
     'Events',
