@@ -12,8 +12,9 @@ description: "GazeOnFaces dataset :cite:p:`GazeOnFaces`.\n\nThis dataset include
   \ for reference.\n"
 resources:
 - content: gaze
-  filename: database3_sciencemuseum.zip
-  url: https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=
+  source:
+    url: https://files.osf.io/v1/resources/akxd8/providers/osfstorage/?zip=
+    filename: database3_sciencemuseum.zip
   filename_pattern: gaze_sub{sub_id:d}_trial{trial_id:d}.csv
   filename_pattern_schema_overrides:
     sub_id: '!int'

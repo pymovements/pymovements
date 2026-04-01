@@ -10,8 +10,9 @@ description: "Eye-Tracking Dyslexia Dataset (ETDD70) :cite:p:`ETDD70`.\n\nThis d
   \ words.\n\nCheck the respective paper for details :cite:p:`ETDD70`.\n"
 resources:
 - content: gaze
-  filename: edd_raw.zip
-  url: https://zenodo.org/api/records/13332134/files-archive
+  source:
+    url: https://zenodo.org/api/records/13332134/files-archive
+    filename: edd_raw.zip
   filename_pattern: Subject_{subject_id:d}_{task:s}_raw.csv
   load_kwargs:
     time_column: time
@@ -22,8 +23,9 @@ resources:
     - gaze_x_right
     - gaze_y_right
 - content: precomputed_events
-  filename: edd_fix.zip
-  url: https://zenodo.org/api/records/13332134/files-archive
+  source:
+    url: https://zenodo.org/api/records/13332134/files-archive
+    filename: edd_fix.zip
   filename_pattern: Subject_{subject_id:d}_{task:s}_fixations.csv
 experiment:
   eyetracker:

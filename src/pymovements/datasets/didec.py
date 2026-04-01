@@ -127,9 +127,11 @@ class DIDEC(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://didec.uvt.nl/corpus/DIDEC_only_the_eyetracking_data.zip',
-                    'filename': 'DIDEC_only_the_eyetracking_data.zip',
-                    'md5': 'd572b0b41828986ca48a2fcf6966728a',
+                    'source': {
+                        'url': 'https://didec.uvt.nl/corpus/DIDEC_only_the_eyetracking_data.zip',
+                        'filename': 'DIDEC_only_the_eyetracking_data.zip',
+                        'md5': 'd572b0b41828986ca48a2fcf6966728a',
+                    },
                     'filename_pattern': (
                         r'Ruud_exp{experiment:d}_'
                         r'list{list:d}_v{version:d}_'
