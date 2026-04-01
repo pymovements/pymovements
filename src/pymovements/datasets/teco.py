@@ -110,9 +110,11 @@ class TECO(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/xmt3k/',
-                    'filename': 'wordmeasure_v1.csv',
-                    'md5': '61502321a757c0ffee01c0047b29a22b',
+                    'source': {
+                        'url': 'https://osf.io/download/xmt3k/',
+                        'filename': 'wordmeasure_v1.csv',
+                        'md5': '61502321a757c0ffee01c0047b29a22b',
+                    },
                     'filename_pattern': 'wordmeasure_v1.csv',
                     'load_kwargs': {
                         'trial_columns': ['book', 'subjectid', 'textid'],

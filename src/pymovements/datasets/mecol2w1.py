@@ -107,9 +107,11 @@ class MECOL2W1(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/8rygu/',
-                    'filename': 'joint_l2_fixation_trimmed_report_2.0.rda',
-                    'md5': '1ff32c5823eb70c22bab725499fbbf87',
+                    'source': {
+                        'url': 'https://osf.io/download/8rygu/',
+                        'filename': 'joint_l2_fixation_trimmed_report_2.0.rda',
+                        'md5': '1ff32c5823eb70c22bab725499fbbf87',
+                    },
                     'filename_pattern': 'joint_l2_fixation_trimmed_report_2.0.rda',
                     'load_kwargs': {
                         'trial_columns': ['uniform_id', 'itemid'],
@@ -118,9 +120,11 @@ class MECOL2W1(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/re7uy/',
-                    'filename': 'joint_data_l2_trimmed_version2.0.rda',
-                    'md5': '3d10225781faf413467104dcc4e071e0',
+                    'source': {
+                        'url': 'https://osf.io/download/re7uy/',
+                        'filename': 'joint_data_l2_trimmed_version2.0.rda',
+                        'md5': '3d10225781faf413467104dcc4e071e0',
+                    },
                     'filename_pattern': 'joint_data_l2_trimmed_version2.0.rda',
                     'load_kwargs': {'r_dataframe_key': 'joint.data'},
                 },
