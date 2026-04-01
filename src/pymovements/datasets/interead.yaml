@@ -2,11 +2,23 @@ name: "InteRead"
 
 long_name: "Interrupted Reading dataset"
 
+description: |
+  InteRead dataset :cite:p:`InteRead`.
+
+  This dataset includes monocular eye tracking data in an interrupted reading task.
+  Automatic interruption occurred during a reading task and participants continued
+  reading after the pause.
+  Eye movements are recorded at a sampling frequency of 1200Hz with a video-based eye tracker.
+  Provided data are raw gaze samples and precomputed event files both in pixel coordinates.
+
+  For more details, check the paper :cite:p:`InteRead`.
+
 resources:
   - content: gaze
-    url: "https://osf.io/download/6ju3x/"
-    filename: "resampled_gaze.csv.zip"
-    md5: "06b2cdff1827086fa125a703ee9d4324"
+    source:
+      url: "https://osf.io/download/6ju3x/"
+      filename: "resampled_gaze.csv.zip"
+      md5: "06b2cdff1827086fa125a703ee9d4324"
     filename_pattern: 'resampled_gaze.csv'
     load_kwargs:
       trial_columns: ['participant_id', 'page_id', 'interruption_state']
@@ -15,9 +27,10 @@ resources:
       pixel_columns: ['x', 'y']
 
   - content: precomputed_events
-    url: "https://osf.io/download/85ckh/"
-    filename: "resumption_fixation.csv"
-    md5: "44edb7c58318ad76af1fa6f1bc1f1ceb"
+    source:
+      url: "https://osf.io/download/85ckh/"
+      filename: "resumption_fixation.csv"
+      md5: "44edb7c58318ad76af1fa6f1bc1f1ceb"
     filename_pattern: 'resumption_fixation.csv'
 
 experiment:

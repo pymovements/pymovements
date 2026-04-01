@@ -89,7 +89,7 @@ class DatasetLibrary:
         if name not in cls.definitions:
             raise KeyError(
                 f"Dataset '{name}' not found in DatasetLibrary. "
-                f"Available datasets: {sorted(cls.definitions.keys())}",
+                f'Available datasets: {sorted(cls.definitions.keys())}',
             )
         return deepcopy(cls.definitions[name])
 

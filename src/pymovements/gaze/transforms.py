@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Sequence
 from functools import partial
 from typing import Any
 from typing import TypeVar
@@ -193,8 +194,10 @@ def downsample(
 
 @register_transform
 def norm(
+        column: str | None = None,
         *,
-        columns: tuple[str, str],
+        components: tuple[int, int] | tuple[str, str] = (0, 1),
+        columns: tuple[str, str] | None = None,
 ) -> pl.Expr:
     r"""Take the norm of a 2D series.
 
@@ -203,16 +206,52 @@ def norm(
 
     Parameters
     ----------
-    columns: tuple[str, str]
-        Columns to take norm of.
+    column: str | None
+        Take the norm of the ``components`` of this column with nested data (list or struct).
+        This argumment is mutually exclusive with the ``columns`` argument.
+        (default: ``None``)
+    components: tuple[int, int] | tuple[str, str]
+        If ``column`` is provided, take the norm of these two components in the specified nested
+        ``column``. If the tuple elements are of type ``int`` the nested column dtype is to be
+        assumed as ``polars.List`` and child elements with that indices are used for taking the
+        norm. If the tuple elements are of type ``str`` the nested column dtype is to be assumed as
+        ``polars.Struct`` and the fields with these names are used for taking the norm.
+        (default: ``(0, 1)``)
+    columns: tuple[str, str] | None
+        Two columns to take the norm of. This is mutually exclusive with the ``column`` argument.
+        (default: ``None``)
 
     Returns
     -------
     pl.Expr
         The respective polars expression.
     """
-    x = pl.col(columns[0])
-    y = pl.col(columns[1])
+    _checks.check_is_mutual_exclusive(column=column, columns=columns)
+
+    if columns is not None:  # norm of two columns
+        x = pl.col(columns[0])
+        y = pl.col(columns[1])
+    elif column is not None and isinstance(components, Sequence):
+        if len(components) != 2:
+            raise ValueError(f'components must be of length 2 but is {len(components)}')
+
+        if all(isinstance(component, int) for component in components):  # assume pl.List column
+            x = pl.col(column).list.get(components[0])
+            y = pl.col(column).list.get(components[1])
+        elif all(isinstance(component, str) for component in components):  # assume pl.Struct column
+            x = pl.col(column).struct.field(components[0])
+            y = pl.col(column).struct.field(components[1])
+        else:
+            raise TypeError(
+                "elements of 'components' must be either of type int or str but they are "
+                f'({type(components[0]).__name__}, {type(components[1]).__name__})',
+            )
+    elif column is not None:  # not a sequence, unexpected type
+        raise TypeError(
+            f"'components' must be a sequence but is of type {type(components).__name__}",
+        )
+    else:
+        raise TypeError('either column or columns must be provided but both are None')
     return (x.pow(2) + y.pow(2)).sqrt()
 
 
