@@ -21,6 +21,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
+from typing import overload
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,9 +35,64 @@ from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
 
 
+@overload
 def heatmap(
         gaze: Gaze,
         position_column: str = 'pixel',
+        *,
+        gridsize: tuple[int, int] = (10, 10),
+        cmap: colors.Colormap | str = 'jet',
+        interpolation: str = 'gaussian',
+        origin: str = 'upper',
+        figsize: tuple[float, float] = (15, 10),
+        cbar_label: str | None = None,
+        show_cbar: bool = True,
+        title: str | None = None,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        show: Literal[True] = True,
+        savepath: str | None = None,
+        add_stimulus: bool = False,
+        path_to_image_stimulus: str | Path | None = None,
+        stimulus_origin: str = 'upper',
+        alpha: float = 1.,
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> None:
+    ...
+
+
+@overload
+def heatmap(
+        gaze: Gaze,
+        position_column: str = 'pixel',
+        *,
+        gridsize: tuple[int, int] = (10, 10),
+        cmap: colors.Colormap | str = 'jet',
+        interpolation: str = 'gaussian',
+        origin: str = 'upper',
+        figsize: tuple[float, float] = (15, 10),
+        cbar_label: str | None = None,
+        show_cbar: bool = True,
+        title: str | None = None,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        show: Literal[False],
+        savepath: str | None = None,
+        add_stimulus: bool = False,
+        path_to_image_stimulus: str | Path | None = None,
+        stimulus_origin: str = 'upper',
+        alpha: float = 1.,
+        ax: plt.Axes | None = None,
+        closefig: bool | None = None,
+) -> tuple[plt.Figure, plt.Axes]:
+    ...
+
+
+def heatmap(
+        gaze: Gaze,
+        position_column: str = 'pixel',
+        *,
         gridsize: tuple[int, int] = (10, 10),
         cmap: colors.Colormap | str = 'jet',
         interpolation: str = 'gaussian',
@@ -52,10 +109,9 @@ def heatmap(
         path_to_image_stimulus: str | Path | None = None,
         stimulus_origin: str = 'upper',
         alpha: float = 1.,
-        *,
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
-) -> tuple[plt.Figure, plt.Axes]:
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot a heatmap of gaze data.
 
     The heatmap displays the distribution of gaze positions across the experiment screen
@@ -111,8 +167,8 @@ def heatmap(
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes]
-        The created or provided figure and axes.
+    tuple[plt.Figure, plt.Axes] | None
+        The created or provided figure and axes. Returns ``None`` if ``show`` is ``True``.
 
     Raises
     ------
@@ -227,4 +283,6 @@ def heatmap(
         func_name='heatmap',
     )
 
+    if show:
+        return None
     return fig, ax
