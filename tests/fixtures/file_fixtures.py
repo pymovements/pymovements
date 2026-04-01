@@ -20,9 +20,11 @@
 """Provide fixtures to securely make files from examples in ``tests/files``."""
 from __future__ import annotations
 
+import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
@@ -106,12 +108,11 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
     def _make_text_file(
             filename: str | Path, header: str = '', body: str = '\n', encoding: str = 'utf-8',
     ) -> Path:
-        relative_filepath = _validate_filename(filename)
-        content = header + body
-        filepath = tmp_path / relative_filepath
+        filepath = _make_filepath(tmp_path, filename)
         # assure parent directory exists
         filepath.parent.mkdir(parents=True, exist_ok=True)
         # write contents to a file
+        content = header + body
         filepath.write_text(content, encoding=encoding)
         return filepath
     return _make_text_file
@@ -124,7 +125,7 @@ def fixture_make_csv_file(tmp_path: Path) -> Callable:
     Parameters
     ----------
     tmp_path : Path
-        Temporary directory where files are copied to. Built-in fixture.
+        Temporary directory where file is written to. Built-in fixture.
 
     Returns
     -------
@@ -221,8 +222,7 @@ def fixture_make_csv_file(tmp_path: Path) -> Callable:
             Path to csv file.
 
         """
-        relative_filepath = _validate_filename(filename)
-        filepath = tmp_path / relative_filepath
+        filepath = _make_filepath(tmp_path, filename)
         # assure parent directory exists
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -250,7 +250,58 @@ def fixture_make_csv_file(tmp_path: Path) -> Callable:
     return _make_csv_file
 
 
-def _validate_filename(filename: str | Path) -> Path:
+@pytest.fixture(name='make_json_file', scope='function')
+def fixture_make_json_file(tmp_path: Path) -> Callable:
+    """Make a json file.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where file is written to. Built-in fixture.
+
+    Returns
+    -------
+    Callable
+        Function that takes a filename, a dictionary, and an optional encoding.
+        Returns the path to the created file. The file is saved into a temporary directory.
+
+    """
+    def _make_json_file(
+            filename: str | Path,
+            data: dict[str, Any],
+            *,
+            encoding: str = 'utf-8',
+    ) -> Path:
+        r"""Make a json file with optional header.
+
+        This is the actual function called when using the ``make_json_file`` fixture.
+
+        Parameters
+        ----------
+        filename: str | Path
+            Make json file with this filename. Can also be a relative path.
+        data: dict[str, Any]
+            Write this data frame into json file.
+        encoding: str
+            Use this encoding for writing json file.
+
+        Returns
+        -------
+        Path
+            Path to json file.
+
+        """
+        filepath = _make_filepath(tmp_path, filename)
+        # assure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(filepath, mode='x', encoding=encoding) as opened_file:
+            json.dump(data, opened_file)
+        return filepath
+    return _make_json_file
+
+
+def _make_filepath(tmp_path: Path, filename: str | Path) -> Path:
     """Ensure filename is a relative path.
 
     Accepts str or Path. Rejects other types with TypeError.
@@ -262,10 +313,12 @@ def _validate_filename(filename: str | Path) -> Path:
         raise TypeError(f'filename must be a str or Path, got {type(filename).__name__}')
 
     if isinstance(filename, str) and filename.startswith('~'):
-        raise ValueError("filename must be a relative path; '~' (home) is not allowed")
+        raise ValueError("filename must be an absolute or relative path; '~' (home) is not allowed")
 
-    path = Path(filename)
+    filepath = Path(filename)
     # On Windows, p.drive captures drive letters; p.anchor is non-empty for absolute paths
-    if path.is_absolute() or path.anchor or getattr(path, 'drive', ''):
-        raise ValueError('filename must be a relative path without drive or root')
-    return path
+    if filepath.is_absolute() or filepath.anchor or getattr(filepath, 'drive', None):
+        # If absolute path given, use this as filepath and ignore tmp_path.
+        return filepath
+    # Assume relative path to tmp_path
+    return tmp_path / filepath
