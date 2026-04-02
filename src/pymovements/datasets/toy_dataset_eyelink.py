@@ -143,7 +143,7 @@ class ToyDatasetEyeLink(DatasetDefinition):
                         'trial_columns': ['task', 'trial_id'],
                         'patterns': [
                             {
-                                'pattern': 'SYNCTIME_READING_SCREEN',
+                                'pattern': 'SYNCTIME_READING',
                                 'column': 'task',
                                 'value': 'reading',
                             },
