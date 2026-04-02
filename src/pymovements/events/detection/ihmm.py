@@ -178,7 +178,15 @@ def ihmm(
 
 
     # Init 2 state HMM
-    hmm = HMM(states=2,mu=[],sigma=[],initial_state=[],transition_matrix=[])
+
+    states = 2
+    mu = [1.0, 10.0]     
+    sigma = [1.0, 1.0]
+    init = [0.5, 0.5]
+    trans = [[0.9, 0.1],
+             [0.1, 0.9]] # Dummy values for now 
+    
+    hmm = HMM(states=states,mu=mu,sigma=sigma,initial_state=init,transition_matrix=trans)
 
     # inference the hmm 
 
@@ -186,9 +194,29 @@ def ihmm(
 
     # collapse states
 
-    
+    events = []
 
-    return 
+    prevState = states[0]
+    event = []
+
+    for i, state in enumerate(states):
+
+        if state == 0:
+            if prevState != 0:
+                event = [i]
+            else:
+                event.append(i)
+        else: 
+            if prevState == 0 and event:
+                events.append(event.copy())
+                event = []
+
+        prevState = state
+
+    if prevState == 0 and event:
+        events.append(event.copy())
+
+    return events
 
 
 
