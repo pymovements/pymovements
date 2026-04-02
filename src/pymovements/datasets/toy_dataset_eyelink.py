@@ -165,14 +165,14 @@ class ToyDatasetEyeLink(DatasetDefinition):
                                 'value': None,
                             },
 
-                            r'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
+                            r'.*SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)',
                             {
                                 'pattern': 'READING[.]STOP',
                                 'column': 'screen_id',
                                 'value': None,
                             },
 
-                            r'SYNCTIME.P(?P<point_id>\d+)',
+                            r'.*SYNCTIME.P(?P<point_id>\d+)',
                             {
                                 'pattern': r'P\d[.]STOP',
                                 'column': 'point_id',
