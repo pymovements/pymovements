@@ -103,7 +103,7 @@ class Participants:
             if warnings_list:
                 if verify_bids is True:
                     raise ValueError(
-                        f'BIDS non-conformities found: {'; '.join(warnings_list)}',
+                        f"BIDS non-conformities found: {'; '.join(warnings_list)}",
                     )
                 for warning_msg in warnings_list:
                     warnings.warn(warning_msg, UserWarning, stacklevel=2)
@@ -274,7 +274,7 @@ class Participants:
             if warnings_list:
                 if verify_bids is True:
                     raise ValueError(
-                        f'BIDS non-conformities found: {'; '.join(warnings_list)}',
+                        f"BIDS non-conformities found: {'; '.join(warnings_list)}",
                     )
                 for warning_msg in warnings_list:
                     warnings.warn(warning_msg, UserWarning, stacklevel=2)
@@ -416,7 +416,7 @@ def _validate_participant_id(data: polars.DataFrame) -> list[str]:
     if invalid_ids:
         validation_warnings.append(
             f"participant_id values must match 'sub-<label>' pattern. "
-            f'Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}',
+            f"Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}",
         )
 
     unique_ids = set(participant_ids)
