@@ -44,26 +44,53 @@ class HMM:
         self.sigma = sigma
 
         self.trans = np.log(transition_matrix)
-
-        self.emit = [] # TODO: initialize properly
         
         return
+    
+    def emit_log_prob(self, v, s):
+        mu = self.mu[s]
+        sigma = self.sigma[s]
+        return -0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2)
     
     def viterbi(self, velocities):
 
         # init step
 
-        prob = np.zeros(shape=(len(velocities),self.states)) 
-        prev = []
+        T = len(velocities)
+
+        prob = np.full((T, self.states), -np.inf)
+        prev = np.zeros((T, self.states), dtype=int)
 
         for s in range(self.states):
-            prob[0][s] = self.initial_state[s] * self.emit[s][velocities[0]] # TODO: check indeces for velocities[0]
+            prob[0, s] = self.init[s] + self.emit_log_prob(velocities[0], s)
 
         # main loop
 
-        
+        for t in range(1, T):
+            for state1 in range(self.states):
+                bestP = -np.inf
+                bestState = 0
+                for state2 in range(self.states):
+                    newP = prob[t-1, state2] + self.trans[state2, state1] + self.emit_log_prob(velocities[t], state1)
+                    if newP > bestP:
+                        bestP = newP
+                        bestState = state2
+                prob[t, state1] = bestP
+                prev[t, state1] = bestState
 
-        return
+        
+        # backtrack
+        
+        path = np.zeros(T, dtype=int)
+
+        path[T-1] = np.argmax(prob[T-1])
+
+        for t in range(T-2, -1, -1):
+            path[t] = prev[t+1, path[t+1]]
+
+        return path
+
+    
     
 
 '''
