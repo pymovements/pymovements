@@ -998,6 +998,28 @@ class TestValidateEdgeCases:
                 [],
                 id='sex_with_NA',
             ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'strain_rrid': [[]]},
+                    schema={'participant_id': pl.String, 'strain_rrid': pl.List(pl.String)},
+                ),
+                [],
+                id='strain_rrid_empty_list',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'strain': ['C57BL/6J']},
+                ),
+                [],
+                id='strain_with_values',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'strain': [None]},
+                ),
+                [],
+                id='strain_all_null',
+            ),
         ],
     )
     def test_validate_functions_edge_cases(self, data, expected):
@@ -1009,6 +1031,10 @@ class TestValidateEdgeCases:
             warnings_list = _validate_handedness(data)
         elif 'species' in data.columns:
             warnings_list = _validate_species(data)
+        elif 'strain' in data.columns:
+            warnings_list = _validate_strain(data)
+        elif 'strain_rrid' in data.columns:
+            warnings_list = _validate_strain_rrid(data)
         else:
             warnings_list = _validate_participant_id(data)
         assert warnings_list == expected
@@ -1028,98 +1054,37 @@ class TestValidateEdgeCases:
             warning_messages = [str(warning.message) for warning in w]
             assert not any('sex' in msg for msg in warning_messages)
 
-    def test_validate_age_all_null(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01', 'sub-02'], 'age': [None, None]},
-        )
-        warnings_list = _validate_age(data)
-        assert not warnings_list
+    def test_participants_save_verify_bids_true_raises_value_error(self, tmp_path):
+        data = pl.DataFrame({'participant_id': ['01']})
+        participants = Participants(data, verify_bids=False)
 
-    def test_validate_sex_all_null(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01', 'sub-02'], 'sex': [None, None]},
-        )
-        warnings_list = _validate_sex(data)
-        assert not warnings_list
+        with pytest.raises(ValueError, match='BIDS non-conformities found'):
+            participants.save(tmp_path / 'participants.tsv', verify_bids=True)
 
-    def test_validate_handedness_column_not_first(self):
-        data = pl.DataFrame(
-            {'age': [34], 'participant_id': ['sub-01'], 'handedness': ['right']},
-        )
-        warnings_list = _validate_handedness(data)
-        assert not warnings_list
+    def test_participants_save_verify_bids_string_emits_warning(self, tmp_path):
+        data = pl.DataFrame({'participant_id': ['01']})
+        participants = Participants(data, verify_bids=False)
 
-    def test_validate_handedness_with_na(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'handedness': ['n/a']},
-        )
-        warnings_list = _validate_handedness(data)
-        assert not warnings_list
+        with pytest.warns(
+                UserWarning, match="participant_id values must match 'sub-<label>' pattern",
+        ):
+            participants.save(tmp_path / 'participants.tsv', verify_bids='REQUIRED')
 
-    def test_validate_species_with_values(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'species': ['homo sapiens']},
-        )
-        warnings_list = _validate_species(data)
-        assert not warnings_list
+    def test_verify_bids_unknown_level(self):
+        data = pl.DataFrame({'participant_id': ['sub-01']})
+        participants = Participants(data, verify_bids=False)
+        assert not participants.verify_bids('INVALID')
 
-    def test_validate_species_all_null(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'species': [None]},
-        )
-        warnings_list = _validate_species(data)
-        assert not warnings_list
+    def test_participants_init_verify_bids_true_no_warnings(self):
+        data = pl.DataFrame({'participant_id': ['sub-01']})
+        # This should NOT raise ValueError because data is valid
+        participants = Participants(data, verify_bids=True)
+        assert participants.data.shape == (1, 1)
 
-    def test_validate_strain_rrid_empty_list(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'strain_rrid': [[]]},
-            schema={'participant_id': pl.String, 'strain_rrid': pl.List(pl.String)},
-        )
-        warnings_list = _validate_strain_rrid(data)
-        assert not warnings_list
-
-    def test_validate_strain_with_values(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'strain': ['C57BL/6J']},
-        )
-        warnings_list = _validate_strain(data)
-        assert not warnings_list
-
-    def test_validate_strain_all_null(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'strain': [None]},
-        )
-        warnings_list = _validate_strain(data)
-        assert not warnings_list
-
-    def test_validate_age_with_nan(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'age': ['NaN']},
-            schema={'participant_id': pl.String, 'age': pl.String},
-        )
-        warnings_list = _validate_age(data)
-        assert not warnings_list
-
-    def test_validate_age_with_na_string(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'age': ['N/A']},
-            schema={'participant_id': pl.String, 'age': pl.String},
-        )
-        warnings_list = _validate_age(data)
-        assert not warnings_list
-
-    def test_validate_sex_with_na_string(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'sex': ['NA']},
-            schema={'participant_id': pl.String, 'sex': pl.String},
-        )
-        warnings_list = _validate_sex(data)
-        assert not warnings_list
-
-    def test_validate_handedness_with_empty_string(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01'], 'handedness': ['']},
-            schema={'participant_id': pl.String, 'handedness': pl.String},
-        )
-        warnings_list = _validate_handedness(data)
-        assert not warnings_list
+    def test_participants_save_verify_bids_true_no_warnings(self, tmp_path):
+        data = pl.DataFrame({'participant_id': ['sub-01']})
+        participants = Participants(data, verify_bids=False)
+        # This should NOT raise ValueError and should save files
+        participants.save(tmp_path / 'participants.tsv', verify_bids=True)
+        assert (tmp_path / 'participants.tsv').exists()
+        assert (tmp_path / 'participants.json').exists()
