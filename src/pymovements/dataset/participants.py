@@ -21,10 +21,13 @@
 from __future__ import annotations
 
 import json
+import re
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from typing import Literal
 
 import polars
 
@@ -51,6 +54,11 @@ class Participants:
         Additional metadata on participant data conforming to BIDS side car json files.
         If ``None``, initialize an empty dictionary.
         (default: ``None``)
+    verify_bids: str | bool
+        Verify BIDS conformity. If True, raise exception on non-conformity.
+        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+        If False, do not verify.
+        (default: ``False``)
     infer_metadata: bool
         Infer metadata column format descriptors from ``data``.
         (default: ``True``)
@@ -60,11 +68,12 @@ class Participants:
     metadata: dict[str, Any]
 
     def __init__(
-            self,
-            data: polars.DataFrame,
-            metadata: dict[str, Any] | None = None,
-            *,
-            infer_metadata: bool = True,
+        self,
+        data: polars.DataFrame,
+        metadata: dict[str, Any] | None = None,
+        *,
+        verify_bids: str | bool = False,
+        infer_metadata: bool = True,
     ):
         if 'participant_id' not in data.columns:
             raise ValueError("data must have column named 'participant_id'")
@@ -83,15 +92,29 @@ class Participants:
         self.data = data
         self.metadata = metadata
 
+        if verify_bids is not False:
+            level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
+            if isinstance(verify_bids, str):
+                level = verify_bids  # type: ignore[assignment]
+            warnings_list = self.verify_bids(level)
+            if warnings_list:
+                if verify_bids is True:
+                    raise ValueError(
+                        f'BIDS non-conformities found: {'; '.join(warnings_list)}',
+                    )
+                for warning_msg in warnings_list:
+                    warnings.warn(warning_msg, UserWarning, stacklevel=2)
+
     @staticmethod
     def load(
-            path: Path | str,
-            metadata: Path | str | dict[str, Any] | None = None,
-            *,
-            separator: str = '\t',
-            rename: dict[str, str] | None = None,
-            read_csv_kwargs: dict[str, Any] | None = None,
-            metadata_encoding: str = 'utf-8',
+        path: Path | str,
+        metadata: Path | str | dict[str, Any] | None = None,
+        *,
+        verify_bids: str | bool = False,
+        separator: str = '\t',
+        rename: dict[str, str] | None = None,
+        read_csv_kwargs: dict[str, Any] | None = None,
+        metadata_encoding: str = 'utf-8',
     ) -> Participants:
         r"""Load participant data from participant files.
 
@@ -106,6 +129,11 @@ class Participants:
             parent of ``path``. If None: check for ``path`` parent directory for existing
             ``participants.json`` and load metadata if available.
             (default: None)
+        verify_bids: str | bool
+            Verify BIDS conformity. If True, raise exception on non-conformity.
+            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+            If False, do not verify.
+            (default: ``False``)
         separator: str
             Separator in the tabular data file.
             (default: ``\t``)
@@ -162,12 +190,13 @@ class Participants:
         else:
             metadata_dict = metadata
 
-        return Participants(data, metadata_dict)
+        return Participants(data, metadata_dict, verify_bids=verify_bids)
 
     def save(
         self,
         path: Path | str,
         *,
+        verify_bids: str | bool = 'REQUIRED',
         metadata_path: Path | str = 'participants.json',
         separator: str = '\t',
         write_csv_kwargs: dict[str, Any] | None = None,
@@ -180,6 +209,11 @@ class Participants:
         path: Path | str
             Save participants data to this path. If this is a directory, use ``participants.tsv`` as
             filename.
+        verify_bids: str | bool
+            Verify BIDS conformity before saving. If True, raise exception on non-conformity.
+            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+            If False, do not verify.
+            (default: ``'REQUIRED'``)
         metadata_path:  Path | str
             Save metadata json to this path. If this is a relative path it is assumed to be relative
             to the directory specified by ``path``.
@@ -195,6 +229,19 @@ class Participants:
             Use this encoding for loading the metadata json file.
             (default: ``utf-8``)
         """
+        if verify_bids is not False:
+            level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
+            if isinstance(verify_bids, str):
+                level = verify_bids  # type: ignore[assignment]
+            warnings_list = self.verify_bids(level)
+            if warnings_list:
+                if verify_bids is True:
+                    raise ValueError(
+                        f'BIDS non-conformities found: {'; '.join(warnings_list)}',
+                    )
+                for warning_msg in warnings_list:
+                    warnings.warn(warning_msg, UserWarning, stacklevel=2)
+
         path = Path(path)
         if path.is_dir():
             dir_path = path
@@ -217,6 +264,236 @@ class Participants:
         # Save metadata to json file.
         with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:
             json.dump(self.metadata, opened_file)
+
+    def verify_bids(
+        self,
+        level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED',
+    ) -> list[str]:
+        r"""Verify BIDS conformity of participant data.
+
+        Parameters
+        ----------
+        level : Literal['REQUIRED', 'RECOMMENDED']
+            Level of BIDS compliance to verify.
+            ``REQUIRED``: Check required fields only.
+            ``RECOMMENDED``: Check required fields plus recommended fields.
+
+        Returns
+        -------
+        list[str]
+            List of warning messages for each non-conformity found.
+            Empty list if data is BIDS conformant.
+
+        Examples
+        --------
+        Verify BIDS compliance at REQUIRED level (default):
+
+        >>> import polars as pl
+        >>> from pymovements import Participants
+        >>> data = pl.DataFrame({
+        ...     "participant_id": ["sub-01", "sub-02"],
+        ...     "age": [34, 12],
+        ...     "sex": ["M", "F"],
+        ... })
+        >>> participants = Participants(data, verify_bids=False)
+        >>> warnings = participants.verify_bids("REQUIRED")
+        >>> print(warnings)
+        []
+
+        Verify at RECOMMENDED level with non-conformant data:
+
+        >>> data = pl.DataFrame({
+        ...     "participant_id": ["01", "sub-02"],
+        ...     "age": [34, 100],  # age over 89
+        ...     "sex": ["M", "invalid"],
+        ... })
+        >>> participants = Participants(data, verify_bids=False)
+        >>> warnings = participants.verify_bids("RECOMMENDED")
+        >>> for w in warnings:
+        ...     print(w)
+        participant_id values must match 'sub-<label>' pattern. Invalid values: ['01']
+        age should be capped at 89, found 100.0
+        sex must be one of ['F', 'FEMALE', 'Female', 'M', 'MALE', 'Male', 'O', 'OTHER', 'Other',
+        'f', 'female', 'm', 'male', 'o', 'other'], found: ['invalid']
+
+        Using ``verify_bids=True`` during initialisation raises an exception:
+
+        >>> data = pl.DataFrame({"participant_id": ["01"]})
+        >>> try:
+        ...     participants = Participants(data, verify_bids=True)
+        ... except ValueError as e:
+        ...     print(str(e)[:50])
+        BIDS non-conformities found: participant_id values
+
+        Using ``verify_bids='REQUIRED'`` emits warnings but continues:
+
+        >>> import warnings as warn
+        >>> data = pl.DataFrame({"participant_id": ["01"]})
+        >>> with warn.catch_warnings(record=True) as w:
+        ...     warn.simplefilter("always")
+        ...     participants = Participants(data, verify_bids="REQUIRED")
+        ...     print(str(w[0].message))
+        participant_id values must match 'sub-<label>' pattern. Invalid values: ['01']
+        """
+        warnings_list: list[str] = []
+
+        if level in ('REQUIRED', 'RECOMMENDED'):
+            warnings_list.extend(_validate_participant_id(self.data))
+
+        if level == 'RECOMMENDED':
+            warnings_list.extend(_validate_age(self.data))
+            warnings_list.extend(_validate_sex(self.data))
+            warnings_list.extend(_validate_handedness(self.data))
+            warnings_list.extend(_validate_species(self.data))
+            warnings_list.extend(_validate_strain(self.data))
+            warnings_list.extend(_validate_strain_rrid(self.data))
+
+        return warnings_list
+
+
+def _validate_participant_id(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'participant_id' not in data.columns:
+        return ['participant_id column is missing']
+
+    if data.columns[0] != 'participant_id':
+        warnings.append('participant_id column must be the first column')
+
+    participant_ids = data['participant_id'].drop_nulls().to_list()
+
+    pattern = re.compile(r'^sub-[a-zA-Z0-9]+$')
+    invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
+    if invalid_ids:
+        warnings.append(
+            f'participant_id values must match `sub-<label>` pattern. '
+            f'Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}',
+        )
+
+    if len(participant_ids) != len(set(participant_ids)):
+        warnings.append('participant_id values must be unique')
+
+    return warnings
+
+
+def _validate_age(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'age' not in data.columns:
+        return warnings
+
+    ages = data['age'].drop_nulls().to_list()
+    na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
+    for age in ages:
+        if str(age).lower() in na_values:
+            continue
+        try:
+            age_val = float(age)
+            if age_val > 89:
+                warnings.append(f'age should be capped at 89, found {age_val}')
+        except (ValueError, TypeError):
+            warnings.append(f'age must be a numeric value, found {age}')
+
+    return warnings
+
+
+def _validate_sex(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'sex' not in data.columns:
+        return warnings
+
+    valid_male = {'male', 'm', 'M', 'MALE', 'Male'}
+    valid_female = {'female', 'f', 'F', 'FEMALE', 'Female'}
+    valid_other = {'other', 'o', 'O', 'OTHER', 'Other'}
+    valid_sex = valid_male | valid_female | valid_other
+    na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
+
+    sex_values = data['sex'].drop_nulls().to_list()
+    invalid_sex = [
+        s
+        for s in sex_values
+        if str(s).lower() not in valid_sex and str(s).lower() not in na_values
+    ]
+    if invalid_sex:
+        warnings.append(
+            f'sex must be one of {sorted(valid_sex)}, found: {invalid_sex[:5]}'
+            f'{'...' if len(invalid_sex) > 5 else ''}',
+        )
+
+    return warnings
+
+
+def _validate_handedness(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'handedness' not in data.columns:
+        return warnings
+
+    valid_left = {'left', 'l', 'L', 'LEFT', 'Left'}
+    valid_right = {'right', 'r', 'R', 'RIGHT', 'Right'}
+    valid_ambidextrous = {'ambidextrous', 'a', 'A', 'AMBIDEXTROUS', 'Ambidextrous'}
+    valid_handedness = valid_left | valid_right | valid_ambidextrous
+    na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
+
+    handedness_values = data['handedness'].drop_nulls().to_list()
+    invalid_handedness = [
+        h
+        for h in handedness_values
+        if str(h).lower() not in valid_handedness and str(h).lower() not in na_values
+    ]
+    if invalid_handedness:
+        warnings.append(
+            f'handedness must be one of {sorted(valid_handedness)}, '
+            f'found: {invalid_handedness[:5]}{'...' if len(invalid_handedness) > 5 else ''}',
+        )
+
+    return warnings
+
+
+def _validate_species(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'species' not in data.columns:
+        return warnings
+
+    species_values = data['species'].drop_nulls().to_list()
+    if not species_values:
+        return warnings
+
+    return warnings
+
+
+def _validate_strain(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'strain' not in data.columns:
+        return warnings
+
+    return warnings
+
+
+def _validate_strain_rrid(data: polars.DataFrame) -> list[str]:
+    warnings: list[str] = []
+
+    if 'strain_rrid' not in data.columns:
+        return warnings
+
+    strain_rrid_values = data['strain_rrid'].drop_nulls().to_list()
+    if not strain_rrid_values:
+        return warnings
+
+    rrid_pattern = re.compile(r'^RRID:[a-zA-Z0-9_:\-]+$')
+    invalid_rrids = [
+        rrid for rrid in strain_rrid_values if not rrid_pattern.match(str(rrid))
+    ]
+    if invalid_rrids:
+        warnings.append(
+            f'strain_rrid must match `RRID:<identifier>` pattern. '
+            f'Invalid values: {invalid_rrids[:5]}{'...' if len(invalid_rrids) > 5 else ''}',
+        )
+
+    return warnings
 
 
 def _infer_metadata_column_format(
@@ -270,7 +547,7 @@ def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:
         return mapping[bids_format]
 
     raise TypeError(
-        f"unknown bids format descriptor '{bids_format}'. Known formats: {list(mapping.keys())}",
+        f'unknown bids format descriptor "{bids_format}". Known formats: {list(mapping.keys())}',
     )
 
 
