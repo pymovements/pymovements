@@ -28,8 +28,12 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Participants
 from pymovements.dataset.participants import _validate_age
+from pymovements.dataset.participants import _validate_handedness
 from pymovements.dataset.participants import _validate_participant_id
 from pymovements.dataset.participants import _validate_sex
+from pymovements.dataset.participants import _validate_species
+from pymovements.dataset.participants import _validate_strain
+from pymovements.dataset.participants import _validate_strain_rrid
 
 
 @pytest.mark.parametrize(
@@ -161,12 +165,17 @@ def test_participants_init_data_raises(data, expected_exception, expected_messag
             pl.DataFrame({'participant_id': [1], 'test': 1}),
             {'test': {'Format': 'test'}},
             TypeError,
-            "unknown bids format descriptor 'test'",
+            r'unknown bids format descriptor "test"',
             id='unknown_bids_format',
         ),
     ],
 )
-def test_participants_init_metadata_raises(data, metadata, expected_exception, expected_message):
+def test_participants_init_metadata_raises(
+    data,
+    metadata,
+    expected_exception,
+    expected_message,
+):
     with pytest.raises(expected_exception, match=expected_message):
         Participants(data, metadata)
 
@@ -215,7 +224,11 @@ def test_participants_load_data_from_directory(make_csv_file):
 
 def test_participants_load_missing_participant_id_raises(make_csv_file):
     """Test that ValueError is raised if loaded participant data has no participant_id column."""
-    path = make_csv_file('participants.tsv', pl.DataFrame({'a': [1, 2]}), separator='\t')
+    path = make_csv_file(
+        'participants.tsv',
+        pl.DataFrame({'a': [1, 2]}),
+        separator='\t',
+    )
 
     with pytest.raises(ValueError, match='participant_id'):
         Participants.load(path)
@@ -233,7 +246,10 @@ def test_participants_load_missing_participant_id_raises(make_csv_file):
     ],
 )
 def test_participants_load_and_rename_data_from_file(
-        source_data, rename, expected_data, make_csv_file,
+    source_data,
+    rename,
+    expected_data,
+    make_csv_file,
 ):
     filename = 'participants.tsv'
     path = make_csv_file(filename, source_data, separator='\t')
@@ -289,14 +305,23 @@ class TestParticipantsCastsFromMetadata:
         assert_frame_equal(participants.data, expected_data)
 
     def test_participants_load_casts_from_metadata_dict(
-            self, data, metadata, expected_data, make_csv_file,
+        self,
+        data,
+        metadata,
+        expected_data,
+        make_csv_file,
     ):
         path = make_csv_file('participants.tsv', data, separator='\t')
         participants = Participants.load(path, metadata=metadata)
         assert_frame_equal(participants.data, expected_data)
 
     def test_participants_load_casts_from_metadata_path(
-            self, data, metadata, expected_data, make_csv_file, make_json_file,
+        self,
+        data,
+        metadata,
+        expected_data,
+        make_csv_file,
+        make_json_file,
     ):
         tsv_path = make_csv_file('participants.tsv', data, separator='\t')
         json_path = make_json_file('participants.json', metadata)
@@ -306,7 +331,12 @@ class TestParticipantsCastsFromMetadata:
         assert_frame_equal(participants.data, expected_data)
 
     def test_participants_load_casts_from_metadata_filename(
-            self, data, metadata, expected_data, make_csv_file, make_json_file,
+        self,
+        data,
+        metadata,
+        expected_data,
+        make_csv_file,
+        make_json_file,
     ):
         tsv_path = make_csv_file('participants.tsv', data, separator='\t')
         make_json_file(tsv_path.parent / 'test_participants.json', metadata)
@@ -316,7 +346,12 @@ class TestParticipantsCastsFromMetadata:
         assert_frame_equal(participants.data, expected_data)
 
     def test_participants_load_casts_from_metadata_implicit(
-            self, data, metadata, expected_data, make_csv_file, make_json_file,
+        self,
+        data,
+        metadata,
+        expected_data,
+        make_csv_file,
+        make_json_file,
     ):
         tsv_path = make_csv_file('participants.tsv', data, separator='\t')
         make_json_file(tsv_path.parent / 'participants.json', metadata)
@@ -326,7 +361,12 @@ class TestParticipantsCastsFromMetadata:
         assert_frame_equal(participants.data, expected_data)
 
     def test_participants_load_kwargs_take_precedence(
-            self, data, metadata, expected_data, make_csv_file, make_json_file,
+        self,
+        data,
+        metadata,
+        expected_data,
+        make_csv_file,
+        make_json_file,
     ):
         tsv_path = make_csv_file('participants.tsv', data, separator='\t')
         make_json_file(tsv_path.parent / 'participants.json', metadata)
@@ -334,7 +374,9 @@ class TestParticipantsCastsFromMetadata:
         participants = Participants.load(
             tsv_path,
             separator=',',
-            read_csv_kwargs={'separator': '\t'},  # takes precedence over explicit separator
+            read_csv_kwargs={
+                'separator': '\t',
+            },  # takes precedence over explicit separator
         )
 
         assert_frame_equal(participants.data, expected_data)
@@ -404,19 +446,30 @@ def test_participants_save_data_to_dirpath(tmp_path):
         Participants(
             data=pl.DataFrame({'participant_id': [1], 'age': [21]}),
             metadata={
-                'participant_id': {'Description': 'id of the participant', 'Format': 'string'},
+                'participant_id': {
+                    'Description': 'id of the participant',
+                    'Format': 'string',
+                },
                 'age': {
-                    'Description': 'age of the participant', 'Format': 'integer', 'Units': 'year',
+                    'Description': 'age of the participant',
+                    'Format': 'integer',
+                    'Units': 'year',
                 },
             },
         ),
     ],
 )
 @pytest.mark.parametrize(
-    'encoding', ['utf-8', 'ascii'],
+    'encoding',
+    ['utf-8', 'ascii'],
 )
 class TestParticipantsSaveMetadata:
-    def test_participants_save_metadata_to_dirpath(self, participants, encoding, tmp_path):
+    def test_participants_save_metadata_to_dirpath(
+        self,
+        participants,
+        encoding,
+        tmp_path,
+    ):
         metadata = deepcopy(participants.metadata)
         participants.save(tmp_path, metadata_encoding=encoding, verify_bids=False)
 
@@ -426,7 +479,12 @@ class TestParticipantsSaveMetadata:
             saved_metadata = json.load(opened_file)
         assert saved_metadata == metadata
 
-    def test_participants_save_metadata_to_filepath(self, participants, encoding, tmp_path):
+    def test_participants_save_metadata_to_filepath(
+        self,
+        participants,
+        encoding,
+        tmp_path,
+    ):
         metadata = deepcopy(participants.metadata)
         metadata_path = tmp_path / 'test_participants.json'
         participants.save(
@@ -442,7 +500,12 @@ class TestParticipantsSaveMetadata:
             saved_metadata = json.load(opened_file)
         assert saved_metadata == metadata
 
-    def test_participants_save_metadata_to_relative_path(self, participants, encoding, tmp_path):
+    def test_participants_save_metadata_to_relative_path(
+        self,
+        participants,
+        encoding,
+        tmp_path,
+    ):
         metadata = deepcopy(participants.metadata)
         metadata_filename = 'test_participants.json'
         participants.save(
@@ -758,6 +821,11 @@ class TestValidateParticipantId:
                 ['participant_id column is missing'],
                 id='missing_column',
             ),
+            pytest.param(
+                pl.DataFrame({'age': [34], 'participant_id': ['sub-01']}),
+                ['participant_id column must be the first column'],
+                id='not_first_column',
+            ),
         ],
     )
     def test_validate_participant_id(self, data, expected):
@@ -783,6 +851,11 @@ class TestValidateAge:
                 pl.DataFrame({'participant_id': ['sub-01']}),
                 [],
                 id='no_age_column',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01'], 'age': ['not_a_number']}),
+                ['age must be a numeric value, found not_a_number'],
+                id='non_numeric_age',
             ),
         ],
     )
@@ -822,24 +895,123 @@ class TestValidateSex:
 
 
 class TestValidateEdgeCases:
-    def test_validate_participant_id_all_null(self):
-        data = pl.DataFrame({'participant_id': [None, None]})
-        warnings_list = _validate_participant_id(data)
-        assert warnings_list == []
-
-    def test_validate_age_all_null(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01', 'sub-02'], 'age': [None, None]},
-        )
-        warnings_list = _validate_age(data)
-        assert warnings_list == []
-
-    def test_validate_sex_all_null(self):
-        data = pl.DataFrame(
-            {'participant_id': ['sub-01', 'sub-02'], 'sex': [None, None]},
-        )
-        warnings_list = _validate_sex(data)
-        assert warnings_list == []
+    @pytest.mark.parametrize(
+        ('data', 'expected'),
+        [
+            pytest.param(
+                pl.DataFrame({'participant_id': [None, None]}),
+                [],
+                id='participant_id_all_null',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01', 'sub-02'], 'age': [None, None]},
+                ),
+                [],
+                id='age_all_null',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01', 'sub-02'], 'sex': [None, None]},
+                ),
+                [],
+                id='sex_all_null',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {
+                        'age': [34],
+                        'participant_id': ['sub-01'],
+                        'handedness': ['right'],
+                    },
+                ),
+                [],
+                id='handedness_column_not_first',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'handedness': ['n/a']},
+                    schema={'participant_id': pl.String, 'handedness': pl.String},
+                ),
+                [],
+                id='handedness_with_na',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'species': ['homo sapiens']},
+                ),
+                [],
+                id='species_with_values',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'species': [None]},
+                ),
+                [],
+                id='species_all_null',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'handedness': ['NaN']},
+                    schema={'participant_id': pl.String, 'handedness': pl.String},
+                ),
+                [],
+                id='handedness_with_nan',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'handedness': ['N/A']},
+                    schema={'participant_id': pl.String, 'handedness': pl.String},
+                ),
+                [],
+                id='handedness_with_NA',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'handedness': ['']},
+                    schema={'participant_id': pl.String, 'handedness': pl.String},
+                ),
+                [],
+                id='handedness_with_empty',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'age': ['NaN']},
+                    schema={'participant_id': pl.String, 'age': pl.String},
+                ),
+                [],
+                id='age_with_nan',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'age': ['N/A']},
+                    schema={'participant_id': pl.String, 'age': pl.String},
+                ),
+                [],
+                id='age_with_NA',
+            ),
+            pytest.param(
+                pl.DataFrame(
+                    {'participant_id': ['sub-01'], 'sex': ['NA']},
+                    schema={'participant_id': pl.String, 'sex': pl.String},
+                ),
+                [],
+                id='sex_with_NA',
+            ),
+        ],
+    )
+    def test_validate_functions_edge_cases(self, data, expected):
+        if 'age' in data.columns:
+            warnings_list = _validate_age(data)
+        elif 'sex' in data.columns:
+            warnings_list = _validate_sex(data)
+        elif 'handedness' in data.columns:
+            warnings_list = _validate_handedness(data)
+        elif 'species' in data.columns:
+            warnings_list = _validate_species(data)
+        else:
+            warnings_list = _validate_participant_id(data)
+        assert warnings_list == expected
 
     def test_verify_bids_with_sex_na(self, make_csv_file):
         data = pl.DataFrame(
@@ -855,3 +1027,99 @@ class TestValidateEdgeCases:
             _ = Participants.load(path, verify_bids='RECOMMENDED')
             warning_messages = [str(warning.message) for warning in w]
             assert not any('sex' in msg for msg in warning_messages)
+
+    def test_validate_age_all_null(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01', 'sub-02'], 'age': [None, None]},
+        )
+        warnings_list = _validate_age(data)
+        assert not warnings_list
+
+    def test_validate_sex_all_null(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01', 'sub-02'], 'sex': [None, None]},
+        )
+        warnings_list = _validate_sex(data)
+        assert not warnings_list
+
+    def test_validate_handedness_column_not_first(self):
+        data = pl.DataFrame(
+            {'age': [34], 'participant_id': ['sub-01'], 'handedness': ['right']},
+        )
+        warnings_list = _validate_handedness(data)
+        assert not warnings_list
+
+    def test_validate_handedness_with_na(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'handedness': ['n/a']},
+        )
+        warnings_list = _validate_handedness(data)
+        assert not warnings_list
+
+    def test_validate_species_with_values(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'species': ['homo sapiens']},
+        )
+        warnings_list = _validate_species(data)
+        assert not warnings_list
+
+    def test_validate_species_all_null(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'species': [None]},
+        )
+        warnings_list = _validate_species(data)
+        assert not warnings_list
+
+    def test_validate_strain_rrid_empty_list(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'strain_rrid': [[]]},
+            schema={'participant_id': pl.String, 'strain_rrid': pl.List(pl.String)},
+        )
+        warnings_list = _validate_strain_rrid(data)
+        assert not warnings_list
+
+    def test_validate_strain_with_values(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'strain': ['C57BL/6J']},
+        )
+        warnings_list = _validate_strain(data)
+        assert not warnings_list
+
+    def test_validate_strain_all_null(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'strain': [None]},
+        )
+        warnings_list = _validate_strain(data)
+        assert not warnings_list
+
+    def test_validate_age_with_nan(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'age': ['NaN']},
+            schema={'participant_id': pl.String, 'age': pl.String},
+        )
+        warnings_list = _validate_age(data)
+        assert not warnings_list
+
+    def test_validate_age_with_na_string(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'age': ['N/A']},
+            schema={'participant_id': pl.String, 'age': pl.String},
+        )
+        warnings_list = _validate_age(data)
+        assert not warnings_list
+
+    def test_validate_sex_with_na_string(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'sex': ['NA']},
+            schema={'participant_id': pl.String, 'sex': pl.String},
+        )
+        warnings_list = _validate_sex(data)
+        assert not warnings_list
+
+    def test_validate_handedness_with_empty_string(self):
+        data = pl.DataFrame(
+            {'participant_id': ['sub-01'], 'handedness': ['']},
+            schema={'participant_id': pl.String, 'handedness': pl.String},
+        )
+        warnings_list = _validate_handedness(data)
+        assert not warnings_list

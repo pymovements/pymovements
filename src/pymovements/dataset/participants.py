@@ -337,7 +337,7 @@ class Participants:
         """
         warnings_list: list[str] = []
 
-        if level in ('REQUIRED', 'RECOMMENDED'):
+        if level in {'REQUIRED', 'RECOMMENDED'}:
             warnings_list.extend(_validate_participant_id(self.data))
 
         if level == 'RECOMMENDED':
@@ -352,35 +352,60 @@ class Participants:
 
 
 def _validate_participant_id(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate participant_id column format per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'participant_id' not in data.columns:
         return ['participant_id column is missing']
 
     if data.columns[0] != 'participant_id':
-        warnings.append('participant_id column must be the first column')
+        validation_warnings.append('participant_id column must be the first column')
 
     participant_ids = data['participant_id'].drop_nulls().to_list()
 
     pattern = re.compile(r'^sub-[a-zA-Z0-9]+$')
     invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
     if invalid_ids:
-        warnings.append(
-            f'participant_id values must match `sub-<label>` pattern. '
+        validation_warnings.append(
+            f"participant_id values must match 'sub-<label>' pattern. "
             f'Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}',
         )
 
-    if len(participant_ids) != len(set(participant_ids)):
-        warnings.append('participant_id values must be unique')
+    unique_ids = set(participant_ids)
+    if len(unique_ids) != len(participant_ids):
+        validation_warnings.append('participant_id values must be unique')
 
-    return warnings
+    return validation_warnings
 
 
 def _validate_age(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate age column values per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'age' not in data.columns:
-        return warnings
+        return validation_warnings
 
     ages = data['age'].drop_nulls().to_list()
     na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
@@ -390,24 +415,38 @@ def _validate_age(data: polars.DataFrame) -> list[str]:
         try:
             age_val = float(age)
             if age_val > 89:
-                warnings.append(f'age should be capped at 89, found {age_val}')
+                validation_warnings.append(
+                    f'age should be capped at 89, found {age_val}',
+                )
         except (ValueError, TypeError):
-            warnings.append(f'age must be a numeric value, found {age}')
+            validation_warnings.append(f'age must be a numeric value, found {age}')
 
-    return warnings
+    return validation_warnings
 
 
 def _validate_sex(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate sex column values per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'sex' not in data.columns:
-        return warnings
+        return validation_warnings
 
     valid_male = {'male', 'm', 'M', 'MALE', 'Male'}
     valid_female = {'female', 'f', 'F', 'FEMALE', 'Female'}
     valid_other = {'other', 'o', 'O', 'OTHER', 'Other'}
     valid_sex = valid_male | valid_female | valid_other
-    na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
+    na_values = {'n/a', 'N/A', 'na', 'NA', 'NaN', 'nan', ''}
 
     sex_values = data['sex'].drop_nulls().to_list()
     invalid_sex = [
@@ -416,19 +455,31 @@ def _validate_sex(data: polars.DataFrame) -> list[str]:
         if str(s).lower() not in valid_sex and str(s).lower() not in na_values
     ]
     if invalid_sex:
-        warnings.append(
+        validation_warnings.append(
             f'sex must be one of {sorted(valid_sex)}, found: {invalid_sex[:5]}'
-            f'{'...' if len(invalid_sex) > 5 else ''}',
+            f"{'...' if len(invalid_sex) > 5 else ''}",
         )
 
-    return warnings
+    return validation_warnings
 
 
 def _validate_handedness(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate handedness column values per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'handedness' not in data.columns:
-        return warnings
+        return validation_warnings
 
     valid_left = {'left', 'l', 'L', 'LEFT', 'Left'}
     valid_right = {'right', 'r', 'R', 'RIGHT', 'Right'}
@@ -443,57 +494,98 @@ def _validate_handedness(data: polars.DataFrame) -> list[str]:
         if str(h).lower() not in valid_handedness and str(h).lower() not in na_values
     ]
     if invalid_handedness:
-        warnings.append(
+        validation_warnings.append(
             f'handedness must be one of {sorted(valid_handedness)}, '
-            f'found: {invalid_handedness[:5]}{'...' if len(invalid_handedness) > 5 else ''}',
+            f"found: {invalid_handedness[:5]}{'...' if len(invalid_handedness) > 5 else ''}",
         )
 
-    return warnings
+    return validation_warnings
 
 
 def _validate_species(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate species column values per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'species' not in data.columns:
-        return warnings
+        return validation_warnings
 
     species_values = data['species'].drop_nulls().to_list()
     if not species_values:
-        return warnings
+        return validation_warnings
 
-    return warnings
+    return validation_warnings
 
 
 def _validate_strain(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate strain column values per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'strain' not in data.columns:
-        return warnings
+        return validation_warnings
 
-    return warnings
+    strain_values = data['strain'].drop_nulls().to_list()
+    if not strain_values:
+        return validation_warnings
+
+    return validation_warnings
 
 
 def _validate_strain_rrid(data: polars.DataFrame) -> list[str]:
-    warnings: list[str] = []
+    """Validate strain_rrid column values per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
 
     if 'strain_rrid' not in data.columns:
-        return warnings
+        return validation_warnings
 
     strain_rrid_values = data['strain_rrid'].drop_nulls().to_list()
+    strain_rrid_values = [rrid for rrid in strain_rrid_values if rrid]
     if not strain_rrid_values:
-        return warnings
+        return validation_warnings
 
     rrid_pattern = re.compile(r'^RRID:[a-zA-Z0-9_:\-]+$')
     invalid_rrids = [
         rrid for rrid in strain_rrid_values if not rrid_pattern.match(str(rrid))
     ]
     if invalid_rrids:
-        warnings.append(
-            f'strain_rrid must match `RRID:<identifier>` pattern. '
-            f'Invalid values: {invalid_rrids[:5]}{'...' if len(invalid_rrids) > 5 else ''}',
+        validation_warnings.append(
+            f"strain_rrid must match 'RRID:<identifier>' pattern. "
+            f"Invalid values: {invalid_rrids[:5]}{'...' if len(invalid_rrids) > 5 else ''}",
         )
 
-    return warnings
+    return validation_warnings
 
 
 def _infer_metadata_column_format(
