@@ -26,7 +26,7 @@ resources:
         - task
         - trial_id
       patterns:
-        - pattern: 'SYNCTIME_READING_SCREEN'
+        - pattern: 'SYNCTIME_READING'
           column: "task"
           value: "reading"
         - pattern: 'SYNCTIME_JUDO'
@@ -41,11 +41,11 @@ resources:
         - pattern: 'TRIAL_RESULT'
           column: "trial_id"
           value: null
-        - 'SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
+        - '.*SYNCTIME_READING_SCREEN_(?P<screen_id>\d+)'
         - pattern: 'READING[.]STOP'
           column: "screen_id"
           value: null
-        - 'SYNCTIME.P(?P<point_id>\d+)'
+        - '.*SYNCTIME.P(?P<point_id>\d+)'
         - pattern: 'P\d[.]STOP'
           column: "point_id"
           value: null
