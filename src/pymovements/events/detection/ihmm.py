@@ -8,24 +8,6 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 
-'''
-def dispersion(positions: list[list[float]] | np.ndarray) -> float:
-    """Compute the dispersion of a group of consecutive points in a 2D position time series.
-
-    The dispersion is defined as the sum of the differences between
-    the points' maximum and minimum x and y values
-
-    Parameters
-    ----------
-    positions: list[list[float]] | np.ndarray
-        Continuous 2D position time series.
-
-    Returns
-    -------
-    float
-        Dispersion of the group of points.
-    """
-    return sum(np.nanmax(positions, axis=0) - np.nanmin(positions, axis=0))'''
 
 class HMM:
 
@@ -33,7 +15,7 @@ class HMM:
 
     def __init__(self,states,mu,sigma,initial_state,transition_matrix):
 
-        # TODO: implement different initializations outside/inside
+        # DONE # TODO: implement different initializations outside/inside
 
         self.states = states
 
@@ -127,9 +109,11 @@ end
 def ihmm(
         positions: list[list[float]] | list[tuple[float, float]] | np.ndarray,
         timesteps: list[int] | np.ndarray | None = None,
-        minimum_duration: int = 100,
-        dispersion_threshold: float = 1.0,
-        include_nan: bool = False,
+        mu: list[int] | np.ndarray | None = None, 
+        sigma: list[int] | np.ndarray | None = None, 
+        init_state : list[int] | np.ndarray | None = None,
+        transition_probabilities: list[list[float]] | np.ndarray | None = None,
+        initialization: str | None = None,
         name: str = 'fixation',
 ) -> Events:
     
@@ -148,6 +132,13 @@ def ihmm(
     timesteps = timesteps_int
 
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
+
+
+    # TODO: Implement other dimension checks for inputs
+
+
+
+
 
     # convert into velocities (1D velocities vector)
 
@@ -179,14 +170,43 @@ def ihmm(
 
     # Init 2 state HMM
 
-    states = 2
-    mu = [1.0, 10.0]     
-    sigma = [1.0, 1.0]
-    init = [0.5, 0.5]
-    trans = [[0.9, 0.1],
-             [0.1, 0.9]] # Dummy values for now 
+    # DONE # TODO: find reasonable def paramenters
+    defaults={
+        "mu": [np.percentile(velocities, 30), np.percentile(velocities, 80)], #DATA BASED init  #[1.0, 10.0],
+        "sigma": [np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
+        "init":[0.5, 0.5],  # dummy average values should be fine for long sequences
+        "trans":[[0.95, 0.05],[0.05, 0.95]] # based on paper diagram
+    }
+
+    match initialization:
+        case "reestimation":
+            # TODO: Implement Baum-Welch
+            pass
+        case "default":
+            _mu = defaults["mu"]
+            _sigma=defaults["sigma"]
+            _init = defaults["init"]
+            _trans = defaults["trans"]
+        case _:
+            if mu:
+                _mu=mu
+            else:
+                _mu = defaults["mu"]
+            if sigma:
+                _sigma = sigma
+            else:
+                _sigma= defaults["sigma"]
+            if init_state:
+                _init = init_state
+            else:
+                _init = defaults["init"]
+            if transition_probabilities:
+                _trans = transition_probabilities
+            else:
+                _trans = defaults["trans"]
+            
     
-    hmm = HMM(states=states,mu=mu,sigma=sigma,initial_state=init,transition_matrix=trans)
+    hmm = HMM(states= 2 ,mu=_mu,sigma=_sigma,initial_state=_init,transition_matrix=_trans)
 
     # inference the hmm 
 
@@ -216,7 +236,13 @@ def ihmm(
     if prevState == 0 and event:
         events.append(event.copy())
 
+    events # TODO: transform in event object
+
+    #Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
+
     return events
+
+
 
 
 
