@@ -24,4 +24,5 @@ pytest_plugins = [
     'tests.fixtures.file_fixtures',
     'tests.fixtures.plotting_fixtures',
     'tests.fixtures.text_stimulus_fixtures',
+    'tests.unit.gaze.fixtures.gaze_fixtures',
 ]
