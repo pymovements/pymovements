@@ -26,6 +26,7 @@ import math
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
+from json import dump
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -2475,15 +2476,23 @@ class Gaze:
             save_events: bool | None = None,
             save_samples: bool | None = None,
             save_experiment: bool | None = None,
+            save_metadata: bool | None = None,
+            save_messages: bool | None = None,
+            save_calibrations: bool | None = None,
+            save_validations: bool | None = None,
             verbose: int = 1,
             extension: str = 'feather',
     ) -> Gaze:
         """Save data from the Gaze object in the provided directory.
 
-        Depending on parameters, it may save three files:
+        Depending on parameters, it may save multiple files:
         * preprocessed gaze in samples (samples)
         * calculated gaze events (events)
-        * metadatata experiment in YAML file (experiment).
+        * metadata experiment in YAML file (experiment)
+        * additional metadata in YAML file (metadata)
+        * messages from experiment session (messages)
+        * calibrations data (calibrations)
+        * validations data (validations)
 
         Data will be saved as feather or csv files.
 
@@ -2504,11 +2513,38 @@ class Gaze:
             Save samples in sample.{extension} file
         save_experiment: bool | None
             Save experiment metadata in experiment.yaml file
+        save_metadata: bool | None
+            Save metadata dictionary in metadata.yaml file
+        save_messages: bool | None
+            Save messages in messages.{extension} file
+        save_calibrations: bool | None
+            Save calibrations in calibrations.{extension} file
+        save_validations: bool | None
+            Save validations in validations.{extension} file
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
         extension: str
             Extension specifies the fileformat to store the data. (default: 'feather')
+
+        Examples
+        --------
+        Save all available data fields to a directory:
+
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        ...     pixel_columns=['x', 'y'],
+        ...     metadata={'subject_id': 42},
+        ...     messages=pl.DataFrame({'time': [0], 'content': ['start']}),
+        ...     calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+        ...     validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+        ... )
+        >>> gaze.save('./output', save_metadata=True, save_messages=True,
+        ...           save_calibrations=True, save_validations=True)
+        >>> # Creates: samples.feather, events.feather, metadata.yaml,
+        >>> #          messages.feather, calibrations.feather, validations.feather
 
         Raises
         ------
@@ -2536,6 +2572,48 @@ class Gaze:
                 self.experiment.to_yaml(Path(f'{dirpath}/experiment.yaml'))
             elif save_experiment is not None:
                 raise ValueError('no experiment data in the Gaze object')
+
+        if save_metadata is None or save_metadata:
+            if verbose >= 2:
+                print('Saving metadata file to', dirpath)
+            if self.metadata is not None:
+                with open(Path(f'{dirpath}/metadata.yaml'), 'w') as f:
+                    dump(self.metadata, f, default_flow_style=False)
+            elif save_metadata is not None:
+                raise ValueError('no metadata in the Gaze object')
+
+        if save_messages is None or save_messages:
+            if verbose >= 2:
+                print('Saving messages file to', dirpath)
+            if self.messages is not None:
+                self.save_messages(
+                    Path(f"{dirpath}/messages.{extension}"), verbose=verbose,
+                )
+            elif save_messages is not None:
+                raise ValueError('no messages in the Gaze object')
+
+        if save_calibrations is None or save_calibrations:
+            if verbose >= 2:
+                print('Saving calibrations file to', dirpath)
+            if self.calibrations is not None:
+                self.save_calibrations(
+                    Path(f'{dirpath}/calibrations.{extension}'),
+                    verbose=verbose,
+                )
+            elif save_calibrations is not None:
+                raise ValueError('no calibrations in the Gaze object')
+
+        if save_validations is None or save_validations:
+            if verbose >= 2:
+                print('Saving validations file to', dirpath)
+            if self.validations is not None:
+                self.save_validations(
+                    Path(f'{dirpath}/validations.{extension}'),
+                    verbose=verbose,
+                )
+            elif save_validations is not None:
+                raise ValueError('no validations in the Gaze object')
+
         return self
 
     def save_events(
@@ -2622,6 +2700,120 @@ class Gaze:
             raise ValueError(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
+            )
+
+    def save_messages(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save messages to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        """
+        messages_out = self.messages.clone()
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving messages to', path)
+
+        if extension == 'feather':
+            messages_out.write_ipc(path)
+        elif extension == 'csv':
+            messages_out.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
+            )
+
+    def save_calibrations(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save calibrations to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        """
+        calibrations_out = self.calibrations.clone()
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving calibrations to', path)
+
+        if extension == 'feather':
+            calibrations_out.write_ipc(path)
+        elif extension == 'csv':
+            calibrations_out.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
+            )
+
+    def save_validations(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save validations to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        """
+        validations_out = self.validations.clone()
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving validations to', path)
+
+        if extension == 'feather':
+            validations_out.write_ipc(path)
+        elif extension == 'csv':
+            validations_out.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
             )
 
 
