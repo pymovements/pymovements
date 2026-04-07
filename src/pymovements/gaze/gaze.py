@@ -2577,8 +2577,8 @@ class Gaze:
             if verbose >= 2:
                 print('Saving metadata file to', dirpath)
             if self.metadata is not None:
-                with open(Path(f'{dirpath}/metadata.yaml'), 'w') as f:
-                    dump(self.metadata, f, default_flow_style=False)
+                with open(Path(f'{dirpath}/metadata.yaml'), 'w', encoding='utf-8') as f:
+                    yaml.safe_dump(self.metadata, f, default_flow_style=False)
             elif save_metadata is not None:
                 raise ValueError('no metadata in the Gaze object')
 
