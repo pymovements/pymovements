@@ -75,6 +75,13 @@ class Gaze:
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
+    calibrations: polars.DataFrame | None
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
+    validations: polars.DataFrame | None
+        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        accuracy_max. None by default, to be populated by I/O helpers (e.g. from_asc).
+        (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
@@ -257,6 +264,8 @@ class Gaze:
             metadata: dict[str, Any] | None = None,
             messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
+            calibrations: polars.DataFrame | None = None,
+            validations: polars.DataFrame | None = None,
             time_column: str | None = None,
             time_unit: str | None = None,
             pixel_columns: list[str] | None = None,
@@ -324,8 +333,15 @@ class Gaze:
         _check_messages(messages)
         self.messages = messages
 
-        self.calibrations = None
-        self.validations = None
+        if calibrations is not None:
+            self.calibrations = calibrations.clone()
+        else:
+            self.calibrations = None
+
+        if validations is not None:
+            self.validations = validations.clone()
+        else:
+            self.validations = None
 
         # Keep remaining parsed metadata privately if an I/O helper provides it.
         self._metadata = None
@@ -524,7 +540,11 @@ class Gaze:
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
                 metadata=metadata_split,
+                messages=self.messages,
+                calibrations=self.calibrations,
+                validations=self.validations,
             )
+            gaze_split.n_components = self.n_components
             gazes[key] = gaze_split
 
         if as_dict:
@@ -1951,6 +1971,15 @@ class Gaze:
             samples=self.samples.clone(),
             experiment=deepcopy(self.experiment),
             events=self.events.clone(),
+            metadata=deepcopy(self.metadata),
+            messages=self.messages.clone() if self.messages is not None else None,
+            trial_columns=deepcopy(self.trial_columns),
+            calibrations=self.calibrations.clone()
+            if self.calibrations is not None
+            else None,
+            validations=self.validations.clone()
+            if self.validations is not None
+            else None,
         )
         gaze.n_components = self.n_components
         return gaze
