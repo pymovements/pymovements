@@ -26,7 +26,6 @@ import math
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
-from json import dump
 from pathlib import Path
 from typing import Any
 from typing import Literal
@@ -35,6 +34,7 @@ from warnings import warn
 
 import numpy as np
 import polars
+import yaml
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
@@ -2722,7 +2722,11 @@ class Gaze:
         ------
         ValueError
             If file extension in path is not in list of valid extensions.
+        ValueError
+            If messages is None.
         """
+        if self.messages is None:
+            raise ValueError('No messages in the Gaze object')
         messages_out = self.messages.clone()
         extension = path.suffix[1:]
 
@@ -2760,7 +2764,11 @@ class Gaze:
         ------
         ValueError
             If file extension in path is not in list of valid extensions.
+        ValueError
+            If calibrations is None.
         """
+        if self.calibrations is None:
+            raise ValueError('No calibrations in the Gaze object')
         calibrations_out = self.calibrations.clone()
         extension = path.suffix[1:]
 
@@ -2798,7 +2806,11 @@ class Gaze:
         ------
         ValueError
             If file extension in path is not in list of valid extensions.
+        ValueError
+            If validations is None.
         """
+        if self.validations is None:
+            raise ValueError('No validations in the Gaze object')
         validations_out = self.validations.clone()
         extension = path.suffix[1:]
 
