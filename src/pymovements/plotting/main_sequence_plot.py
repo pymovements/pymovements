@@ -151,33 +151,19 @@ def main_sequence_plot(
             'the main sequence plot. ',
         ) from exc
 
-    fig, ax, own = prepare_figure(ax, figsize, func_name='main_sequence_plot')
+    fig, ax, _ = prepare_figure(ax, figsize, func_name='main_sequence_plot')
 
-    # Use plt.scatter when we own the figure to preserve legacy test expectations.
-    if own:
-        plt.scatter(
-            amplitudes,
-            peak_velocities,
-            color=marker_color,
-            alpha=marker_alpha,
-            s=marker_size,
-            marker=marker,
-            label=event_name,
-            **kwargs,
-        )
-        plt.legend()
-    else:
-        ax.scatter(
-            amplitudes,
-            peak_velocities,
-            color=marker_color,
-            alpha=marker_alpha,
-            s=marker_size,
-            marker=marker,
-            label=event_name,
-            **kwargs,
-        )
-        ax.legend()
+    ax.scatter(
+        amplitudes,
+        peak_velocities,
+        color=marker_color,
+        alpha=marker_alpha,
+        s=marker_size,
+        marker=marker,
+        label=event_name,
+        **kwargs,
+    )
+    ax.legend()
 
     # --- Linear fit (only if requested) ---
     if fit:
@@ -187,8 +173,6 @@ def main_sequence_plot(
         min_ampl, max_ampl = min(amplitudes), max(amplitudes)
         line_x = [min_ampl, max_ampl]
         line_y = [a * min_ampl + b, a * max_ampl + b]
-
-        line_axes = plt.gca() if own else ax
 
         fit_label = None
 
@@ -211,10 +195,10 @@ def main_sequence_plot(
 
         # add fit label to the legend
         if fit_label is not None:
-            line_axes.plot(line_x, line_y, c=fit_color, label=fit_label)
+            ax.plot(line_x, line_y, c=fit_color, label=fit_label)
         else:
-            line_axes.plot(line_x, line_y, c=fit_color)
-        line_axes.legend()
+            ax.plot(line_x, line_y, c=fit_color)
+        ax.legend()
 
     if title:
         ax.set_title(title)
