@@ -85,6 +85,27 @@ def test_heatmap_own_figure_closes_by_default(gaze, monkeypatch):
     close_mock.assert_called()
 
 
+def test_heatmap_with_external_ax_show_close_and_warnings(gaze, monkeypatch):
+    fig, ax = plt.subplots()
+
+    show_mock = Mock()
+    monkeypatch.setattr(plt, 'show', show_mock)
+    close_mock = Mock()
+    monkeypatch.setattr(plt, 'close', close_mock)
+
+    with pytest.warns(UserWarning):
+        result = pm.plotting.heatmap(
+            gaze,
+            position_column='pixel',
+            ax=ax,
+            show=True,
+            closefig=True,
+        )
+    assert result is None
+    show_mock.assert_not_called()
+    close_mock.assert_not_called()
+
+
 def test_heatmap_with_external_ax_no_show_no_close_and_warnings(gaze, monkeypatch):
     fig, ax = plt.subplots()
 
@@ -98,8 +119,8 @@ def test_heatmap_with_external_ax_no_show_no_close_and_warnings(gaze, monkeypatc
             gaze,
             position_column='pixel',
             ax=ax,
-            show=True,
-            closefig=True,
+            show=False,
+            closefig=False,
         )
     assert ret_ax is ax
     assert ret_fig is fig
