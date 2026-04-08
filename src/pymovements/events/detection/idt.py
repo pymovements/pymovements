@@ -111,9 +111,11 @@ def idt(
     >>> import numpy as np
     >>> from pymovements.synthetic import step_function
     >>> from pymovements.gaze import from_numpy
-    >>> positions = step_function(length=200, steps=[2, 5, 9, 111, 150],
-    ...                           values=[(1., 2.), (2., 3.), (3., 4.), (1., 1.), (2., 2.)],
-    ...                           start_value=(0., 0.))
+    >>> positions = step_function(
+    ...     length=200, steps=[2, 5, 9, 111, 150],
+    ...     values=[(1., 2.), (2., 3.), (3., 4.), (1., 1.), (2., 2.)],
+    ...     start_value=(0., 0.),
+    ... )
     >>> positions.shape
     (200, 2)
 
