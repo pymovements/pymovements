@@ -27,9 +27,9 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import Participants
+from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset.participants import _validate_age
 from pymovements.dataset.participants import _validate_handedness
-from pymovements.dataset.participants import _validate_participant_id
 from pymovements.dataset.participants import _validate_sex
 from pymovements.dataset.participants import _validate_species
 from pymovements.dataset.participants import _validate_strain
@@ -165,7 +165,7 @@ def test_participants_init_data_raises(data, expected_exception, expected_messag
             pl.DataFrame({'participant_id': [1], 'test': 1}),
             {'test': {'Format': 'test'}},
             TypeError,
-            r'unknown bids format descriptor "test"',
+            r"unknown bids format descriptor 'test'",
             id='unknown_bids_format',
         ),
     ],
@@ -828,8 +828,8 @@ class TestValidateParticipantId:
             ),
         ],
     )
-    def test_validate_participant_id(self, data, expected):
-        warnings_list = _validate_participant_id(data)
+    def test_validate_participant_id_format(self, data, expected):
+        warnings_list = _validate_participant_id_format(data)
         assert warnings_list == expected
 
 
@@ -1036,7 +1036,7 @@ class TestValidateEdgeCases:
         elif 'strain_rrid' in data.columns:
             warnings_list = _validate_strain_rrid(data)
         else:
-            warnings_list = _validate_participant_id(data)
+            warnings_list = _validate_participant_id_format(data)
         assert warnings_list == expected
 
     def test_verify_bids_with_sex_na(self, make_csv_file):

@@ -24,7 +24,8 @@ import pytest
 from pymovements.dataset._bids_dataset import _bids_format_to_polars_datatype
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _polars_datatype_to_bids_format
-from pymovements.dataset._bids_dataset import _validate_participant_id
+from pymovements.dataset._bids_dataset import _validate_participant_id_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 
 
 class TestValidateParticipantId:
@@ -42,7 +43,7 @@ class TestValidateParticipantId:
         ],
     )
     def test_valid_participant_id_passes(self, data):
-        _validate_participant_id(data)
+        _validate_participant_id_structure(data)
 
     @pytest.mark.parametrize(
         ('data', 'error_msg'),
@@ -61,7 +62,51 @@ class TestValidateParticipantId:
     )
     def test_invalid_participant_id_raises(self, data, error_msg):
         with pytest.raises(ValueError, match=error_msg):
-            _validate_participant_id(data)
+            _validate_participant_id_structure(data)
+
+
+class TestValidateParticipantIdFormat:
+    @pytest.mark.parametrize(
+        'data,expected',
+        [
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01', 'sub-02']}),
+                [],
+                id='valid_format',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['01', '02']}),
+                [
+                    "participant_id values must match 'sub-<label>' pattern. "
+                    "Invalid values: ['01', '02']",
+                ],
+                id='invalid_format',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01', 'sub-01']}),
+                ['participant_id values must be unique'],
+                id='duplicate_ids',
+            ),
+            pytest.param(
+                pl.DataFrame({'a': [1], 'participant_id': ['sub-01']}),
+                ['participant_id column must be the first column'],
+                id='not_first_column',
+            ),
+            pytest.param(
+                pl.DataFrame(),
+                ['participant_id column is missing'],
+                id='missing_column',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': [None]}),
+                [],
+                id='all_null',
+            ),
+        ],
+    )
+    def test_validate_participant_id_format(self, data, expected):
+        result = _validate_participant_id_format(data)
+        assert result == expected
 
 
 class TestCastColumnsToMetadataFormat:

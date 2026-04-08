@@ -30,7 +30,7 @@ import polars
 
 from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
-from pymovements.dataset._bids_dataset import _validate_participant_id
+from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 from pymovements.dataset.participants import _infer_metadata_column_format
 
 
@@ -72,7 +72,7 @@ class Phenotype:
         *,
         infer_metadata: bool = True,
     ):
-        _validate_participant_id(data)
+        _validate_participant_id_structure(data)
 
         if metadata:
             metadata = deepcopy(metadata)

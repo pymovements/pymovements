@@ -20,17 +20,56 @@
 """Shared helpers for BIDS dataset classes."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import polars
 
 
-def _validate_participant_id(data: polars.DataFrame) -> None:
+def _validate_participant_id_structure(data: polars.DataFrame) -> None:
     """Validate participant_id column exists and is first column."""
     if 'participant_id' not in data.columns:
         raise ValueError("data must have column named 'participant_id'")
     if data.columns[0] != 'participant_id':
         raise ValueError("first column in data must be named 'participant_id'")
+
+
+def _validate_participant_id_format(data: polars.DataFrame) -> list[str]:
+    """Validate participant_id column format per BIDS specification.
+
+    Parameters
+    ----------
+    data : polars.DataFrame
+        The participants DataFrame to validate.
+
+    Returns
+    -------
+    list[str]
+        List of warning messages for any non-conformities found.
+    """
+    validation_warnings: list[str] = []
+
+    if 'participant_id' not in data.columns:
+        return ['participant_id column is missing']
+
+    if data.columns[0] != 'participant_id':
+        validation_warnings.append('participant_id column must be the first column')
+
+    participant_ids = data['participant_id'].drop_nulls().to_list()
+
+    pattern = re.compile(r'^sub-[a-zA-Z0-9]+$')
+    invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
+    if invalid_ids:
+        validation_warnings.append(
+            f"participant_id values must match 'sub-<label>' pattern. "
+            f"Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}",
+        )
+
+    unique_ids = set(participant_ids)
+    if len(unique_ids) != len(participant_ids):
+        validation_warnings.append('participant_id values must be unique')
+
+    return validation_warnings
 
 
 def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:

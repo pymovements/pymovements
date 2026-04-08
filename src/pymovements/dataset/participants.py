@@ -34,7 +34,8 @@ import polars
 from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _polars_datatype_to_bids_format
-from pymovements.dataset._bids_dataset import _validate_participant_id
+from pymovements.dataset._bids_dataset import _validate_participant_id_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 
 
 @dataclass
@@ -78,7 +79,7 @@ class Participants:
         verify_bids: str | bool = False,
         infer_metadata: bool = True,
     ):
-        _validate_participant_id(data)
+        _validate_participant_id_structure(data)
 
         if metadata:
             # metadata may be changed and updated, work on copy
@@ -189,6 +190,8 @@ class Participants:
                 metadata_dict = json.load(opened_file)
         else:
             metadata_dict = metadata
+
+        _validate_participant_id_structure(data)
 
         return Participants(data, metadata_dict, verify_bids=verify_bids)
 
@@ -338,7 +341,7 @@ class Participants:
         warnings_list: list[str] = []
 
         if level in {'REQUIRED', 'RECOMMENDED'}:
-            warnings_list.extend(_validate_participant_id(self.data))
+            warnings_list.extend(_validate_participant_id_format(self.data))
 
         if level == 'RECOMMENDED':
             warnings_list.extend(_validate_age(self.data))
@@ -349,44 +352,6 @@ class Participants:
             warnings_list.extend(_validate_strain_rrid(self.data))
 
         return warnings_list
-
-
-def _validate_participant_id(data: polars.DataFrame) -> list[str]:
-    """Validate participant_id column format per BIDS specification.
-
-    Parameters
-    ----------
-    data : polars.DataFrame
-        The participants DataFrame to validate.
-
-    Returns
-    -------
-    list[str]
-        List of warning messages for any non-conformities found.
-    """
-    validation_warnings: list[str] = []
-
-    if 'participant_id' not in data.columns:
-        return ['participant_id column is missing']
-
-    if data.columns[0] != 'participant_id':
-        validation_warnings.append('participant_id column must be the first column')
-
-    participant_ids = data['participant_id'].drop_nulls().to_list()
-
-    pattern = re.compile(r'^sub-[a-zA-Z0-9]+$')
-    invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
-    if invalid_ids:
-        validation_warnings.append(
-            f"participant_id values must match 'sub-<label>' pattern. "
-            f"Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}",
-        )
-
-    unique_ids = set(participant_ids)
-    if len(unique_ids) != len(participant_ids):
-        validation_warnings.append('participant_id values must be unique')
-
-    return validation_warnings
 
 
 def _validate_age(data: polars.DataFrame) -> list[str]:
