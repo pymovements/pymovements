@@ -101,7 +101,7 @@ MatplotlibSetupType: TypeAlias = tuple[
 def prepare_figure(
     ax: plt.Axes | None, figsize: tuple[int, int] | tuple[float, float] | None,
     *, func_name: str,
-) -> tuple[plt.Figure, plt.Axes, bool]:
+) -> tuple[plt.Figure, plt.Axes]:
     """Prepare a matplotlib figure and axes.
 
     Create or reuse a matplotlib Figure/Axes pair. If an external Axes is provided,
@@ -118,9 +118,8 @@ def prepare_figure(
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes, bool]
-        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes were
-        created internally (True) or provided externally (False).
+    tuple[plt.Figure, plt.Axes]
+        A tuple of a figure and its corresponding axes.
     """
     if ax is None:
         # figsize may be None for some callers
@@ -128,17 +127,15 @@ def prepare_figure(
             fig, ax = plt.subplots()
         else:
             fig, ax = plt.subplots(figsize=figsize)
-        own = True
     else:
         fig = ax.figure
-        own = False
         if figsize is not None:
             warn(
                 f'{func_name}: "figsize" is ignored because an external Axes was provided.',
                 UserWarning,
                 stacklevel=2,
             )
-    return fig, ax, own
+    return fig, ax
 
 
 def _setup_axes_and_colormap(

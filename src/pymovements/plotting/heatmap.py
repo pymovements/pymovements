@@ -163,7 +163,7 @@ def heatmap(
         extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
-    fig, ax, _ = prepare_figure(ax, figsize, func_name='heatmap')
+    fig, ax = prepare_figure(ax, figsize, func_name='heatmap')
 
     if add_stimulus:
         assert path_to_image_stimulus

@@ -127,7 +127,7 @@ def tsplot(
     external_ax = ax is not None
 
     if n_channels == 1:
-        fig, ax, _ = prepare_figure(ax, figsize, func_name='tsplot')
+        fig, ax = prepare_figure(ax, figsize, func_name='tsplot')
         axs = [ax]
     else:
         if external_ax:

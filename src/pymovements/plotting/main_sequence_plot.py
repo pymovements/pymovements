@@ -151,7 +151,7 @@ def main_sequence_plot(
             'the main sequence plot. ',
         ) from exc
 
-    fig, ax, _ = prepare_figure(ax, figsize, func_name='main_sequence_plot')
+    fig, ax = prepare_figure(ax, figsize, func_name='main_sequence_plot')
 
     ax.scatter(
         amplitudes,
