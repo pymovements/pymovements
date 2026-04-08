@@ -2541,8 +2541,8 @@ class Gaze:
         ...     calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
         ...     validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
         ... )
-        >>> gaze.save('./output', save_metadata=True, save_messages=True,
-        ...           save_calibrations=True, save_validations=True)
+        >>> _ = gaze.save('./output', save_metadata=True, save_messages=True,
+        ...           save_calibrations=True, save_validations=True, verbose=0)
         >>> # Creates: samples.feather, events.feather, metadata.yaml,
         >>> #          messages.feather, calibrations.feather, validations.feather
 
