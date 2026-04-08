@@ -131,11 +131,7 @@ class Phenotype:
         path = Path(path)
         if path.is_dir():
             dir_path = path
-            phenotype_dir = path / 'phenotype'
-            if phenotype_dir.exists():
-                data_path = phenotype_dir / f"{path.name}.tsv"
-            else:
-                data_path = path / 'phenotype' / f"{path.name}.tsv"
+            data_path = path / 'phenotype' / f"{path.name}.tsv"
             default_metadata_path = path / f"{path.name}.json"
         else:
             dir_path = path.parent

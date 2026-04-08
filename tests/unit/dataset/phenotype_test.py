@@ -219,6 +219,35 @@ def test_phenotype_load_data_from_directory(make_csv_file):
     assert_frame_equal(phenotype.data, data)
 
 
+def test_phenotype_load_from_directory_path(tmp_path):
+    """Test that phenotype data is loaded when directory path is provided."""
+    data = pl.DataFrame({'participant_id': ['1']})
+    dataset_dir = tmp_path / 'mydataset'
+    phenotype_dir = dataset_dir / 'phenotype'
+    phenotype_dir.mkdir(parents=True)
+    data_file = phenotype_dir / 'mydataset.tsv'
+    data.write_csv(data_file, separator='\t')
+
+    phenotype = Phenotype.load(dataset_dir)
+
+    assert_frame_equal(phenotype.data, data)
+
+
+def test_phenotype_load_from_directory_path_with_existing_phenotype_dir(tmp_path):
+    """Test loading when phenotype directory already exists."""
+    data = pl.DataFrame({'participant_id': ['1']})
+    dataset_dir = tmp_path / 'mydataset'
+    dataset_dir.mkdir()
+    phenotype_dir = dataset_dir / 'phenotype'
+    phenotype_dir.mkdir()
+    data_file = phenotype_dir / 'mydataset.tsv'
+    data.write_csv(data_file, separator='\t')
+
+    phenotype = Phenotype.load(dataset_dir)
+
+    assert_frame_equal(phenotype.data, data)
+
+
 def test_phenotype_load_missing_participant_id_raises(make_csv_file):
     """Test that ValueError is raised if loaded phenotype data has no participant_id column."""
     path = make_csv_file('acds_adult.tsv', pl.DataFrame({'a': [1, 2]}), separator='\t')
