@@ -88,6 +88,18 @@ def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(events
     close_mock.assert_not_called()
 
 
+def test_scanpathplot_save(events, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
+    main_sequence_plot(
+        events=events,
+        savepath=str(filepath),
+    )
+
+    assert filepath.is_file()
+
+
 def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch):
     # event_df path triggers the deprecation branch (97->98)
     df = pl.DataFrame({

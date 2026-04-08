@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 from pymovements import Events
 from pymovements import Experiment
@@ -278,18 +277,16 @@ def test_scanpathplot_filter_events_plots_expected_circles(
     assert len(ax.patches) == expected_n_circles
 
 
-def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
+def test_scanpathplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
     scanpathplot(
         gaze=gaze,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+        savepath=str(filepath),
     )
 
-    mock.assert_called_once()
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(

@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
@@ -187,18 +186,16 @@ def test_traceplot_noshow(gaze, monkeypatch):
     mock.assert_not_called()
 
 
-def test_traceplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
+def test_traceplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
     traceplot(
         gaze=gaze,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+        savepath=str(filepath),
     )
 
-    mock.assert_called_once()
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(
