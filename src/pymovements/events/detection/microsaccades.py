@@ -89,6 +89,100 @@ def microsaccades(
     ValueError
         If `threshold` value is below `min_threshold` value.
         If passed `threshold` is either not two-dimensional or not a supported method.
+
+    Examples
+    --------
+    Create a synthetic velocity signal representing micro-saccades.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.gaze import from_numpy
+    >>> velocities = step_function(
+    ...     length=200, steps=[2, 5, 9, 111, 150],
+    ...     values=[(0.5, 0.5), (11.0, 12.0), (0.2, 0.2), (10.0, 20.0), (0.1, 0.1)],
+    ...     start_value=(0., 0.),
+    ...     noise=0.001,
+    ... )
+    >>> velocities.shape
+    (200, 2)
+
+    Apply event detection algorithm on numpy array:
+
+    >>> microsaccades(velocities)
+    shape: (1, 4)
+    ┌─────────┬───────┬────────┬──────────┐
+    │ name    ┆ onset ┆ offset ┆ duration │
+    │ ---     ┆ ---   ┆ ---    ┆ ---      │
+    │ str     ┆ i64   ┆ i64    ┆ i64      │
+    ╞═════════╪═══════╪════════╪══════════╡
+    │ saccade ┆ 2     ┆ 199    ┆ 197      │
+    └─────────┴───────┴────────┴──────────┘
+
+    Run fixation detection with custom parameters:
+
+    >>> microsaccades(velocities, minimum_duration=10, threshold=0.1)
+    shape: (1, 4)
+    ┌─────────┬───────┬────────┬──────────┐
+    │ name    ┆ onset ┆ offset ┆ duration │
+    │ ---     ┆ ---   ┆ ---    ┆ ---      │
+    │ str     ┆ i64   ┆ i64    ┆ i64      │
+    ╞═════════╪═══════╪════════╪══════════╡
+    │ saccade ┆ 111   ┆ 149    ┆ 38       │
+    └─────────┴───────┴────────┴──────────┘
+
+    We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
+
+    >>> from pymovements import Experiment
+    >>> gaze = from_numpy(
+    ...    velocity=velocities.T,
+    ...    time=np.arange(len(velocities)),
+    ... )
+    >>> gaze  # doctest: +SKIP
+    shape: (200, 2)
+    ┌──────┬────────────────────────┐
+    │ time ┆ velocity               │
+    │ ---  ┆ ---                    │
+    │ i64  ┆ list[f64]              │
+    ╞══════╪════════════════════════╡
+    │ 0    ┆ [-0.000628, 0.000055]  │
+    │ 1    ┆ [-0.000818, -0.000694] │
+    │ 2    ┆ [0.50097, 0.498064]    │
+    │ 3    ┆ [0.500475, 0.500865]   │
+    │ 4    ┆ [0.498559, 0.499092]   │
+    │ …    ┆ …                      │
+    │ 195  ┆ [0.100042, 0.100217]   │
+    │ 196  ┆ [0.099627, 0.099812]   │
+    │ 197  ┆ [0.101374, 0.098537]   │
+    │ 198  ┆ [0.099669, 0.100079]   │
+    │ 199  ┆ [0.098491, 0.101448]   │
+    └──────┴────────────────────────┘
+
+    Run saccade detection by using the :py:meth:`~pymovements.Gaze.detect` method.
+
+    >>> gaze.detect('microsaccades')
+    >>> gaze.events
+    shape: (1, 4)
+    ┌─────────┬───────┬────────┬──────────┐
+    │ name    ┆ onset ┆ offset ┆ duration │
+    │ ---     ┆ ---   ┆ ---    ┆ ---      │
+    │ str     ┆ i64   ┆ i64    ┆ i64      │
+    ╞═════════╪═══════╪════════╪══════════╡
+    │ saccade ┆ 2     ┆ 199    ┆ 197      │
+    └─────────┴───────┴────────┴──────────┘
+
+    Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
+
+    >>> gaze.detect('microsaccades', minimum_duration=10, threshold=0.1, name='microsaccade')
+    >>> gaze.events.filter_by_name('microsaccade')
+    shape: (1, 4)
+    ┌──────────────┬───────┬────────┬──────────┐
+    │ name         ┆ onset ┆ offset ┆ duration │
+    │ ---          ┆ ---   ┆ ---    ┆ ---      │
+    │ str          ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════════╪═══════╪════════╪══════════╡
+    │ microsaccade ┆ 111   ┆ 149    ┆ 38       │
+    └──────────────┴───────┴────────┴──────────┘
+
     """
     velocities = np.array(velocities)
 
