@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 from typing import Literal
-from typing import overload
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -33,11 +32,9 @@ from sklearn.metrics import r2_score
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 
 
-@overload
 def main_sequence_plot(
         events: Events | EventDataFrame | None = None,
         *,
@@ -51,60 +48,11 @@ def main_sequence_plot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: Literal[True] = True,
         event_df: Events | EventDataFrame | None = None,
         event_name: str = 'saccade',
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-        **kwargs: Collection,
-) -> None:
-    ...
-
-
-@overload
-def main_sequence_plot(
-        events: Events | EventDataFrame | None = None,
-        *,
-        marker: str = 'o',
-        marker_size: float = 25,
-        marker_color: str = 'purple',
-        marker_alpha: float = 0.5,
-        fit: bool = True,
-        fit_measure: bool | Literal['r2', 's'] = True,
-        fit_color: str = 'red',
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: Literal[False],
-        event_df: Events | EventDataFrame | None = None,
-        event_name: str = 'saccade',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
         **kwargs: Collection,
 ) -> tuple[plt.Figure, plt.Axes]:
-    ...
-
-
-def main_sequence_plot(
-        events: Events | EventDataFrame | None = None,
-        *,
-        marker: str = 'o',
-        marker_size: float = 25,
-        marker_color: str = 'purple',
-        marker_alpha: float = 0.5,
-        fit: bool = True,
-        fit_measure: bool | Literal['r2', 's'] = True,
-        fit_color: str = 'red',
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        event_df: Events | EventDataFrame | None = None,
-        event_name: str = 'saccade',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-        **kwargs: Collection,
-) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot the saccade main sequence.
 
     Parameters
@@ -134,8 +82,6 @@ def main_sequence_plot(
         Figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     event_df: Events | EventDataFrame | None
         It must contain columns "peak_velocity" and "amplitude". (default: None)
         .. deprecated:: v0.22.0
@@ -143,17 +89,14 @@ def main_sequence_plot(
     event_name: str
         Filters events for a particular value in the "name" column. (default: 'saccade')
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close the figure.
-    closefig: bool | None
-        Close figure after plotting. If None, defaults to closing only when the figure
-        was created by this function.
+        External axes to draw into.
     **kwargs: Collection
         Additional keyword arguments passed to matplotlib.axes.Axes.scatter.
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes] | None
-        The created or provided figure and axes. Returns ``None`` if ``show`` is ``True``.
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and axes.
 
     Raises
     ------
@@ -278,15 +221,7 @@ def main_sequence_plot(
     ax.set_xlabel('Amplitude [dva]')
     ax.set_ylabel('Peak Velocity [dva/s]')
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own,
-        func_name='main_sequence_plot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
-    if show:
-        return None
     return fig, ax

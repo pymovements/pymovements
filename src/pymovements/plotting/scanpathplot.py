@@ -21,8 +21,6 @@
 from __future__ import annotations
 
 import math
-from typing import Literal
-from typing import overload
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -38,15 +36,13 @@ from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
 
 
-@overload
 def scanpathplot(
         gaze: Gaze | None = None,
-        *,
         position_column: str = 'location',
+        *,
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
         cmap_norm: matplotlib.colors.Normalize | str | None = None,
@@ -58,7 +54,6 @@ def scanpathplot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: Literal[True] = True,
         color: str = 'blue',
         alpha: float = 0.5,
         add_traceplot: bool = False,
@@ -74,81 +69,7 @@ def scanpathplot(
         events: Events | EventDataFrame | None = None,
         event_name: str = 'fixation',
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-) -> None:
-    ...
-
-
-@overload
-def scanpathplot(
-        gaze: Gaze | None = None,
-        *,
-        position_column: str = 'location',
-        cval: np.ndarray | None = None,
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
-        cmap_segmentdata: LinearSegmentedColormapType | None = None,
-        cbar_label: str | None = None,
-        show_cbar: bool = False,
-        padding: float | None = None,
-        pad_factor: float | None = 0.05,
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: Literal[False],
-        color: str = 'blue',
-        alpha: float = 0.5,
-        add_traceplot: bool = False,
-        gaze_position_column: str = 'pixel',
-        add_stimulus: bool = False,
-        add_arrows: bool = True,
-        arrow_color: str = 'black',
-        arrow_rad: float = 0.25,
-        arrow_style: str = 'simple',
-        arrow_scale: float = 40.,
-        path_to_image_stimulus: str | None = None,
-        stimulus_origin: str = 'upper',
-        events: Events | EventDataFrame | None = None,
-        event_name: str = 'fixation',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
-    ...
-
-
-def scanpathplot(
-        gaze: Gaze | None = None,
-        position_column: str = 'location',
-        *,
-        cval: np.ndarray | None = None,
-        cmap: matplotlib.colors.Colormap | None = None,
-        cmap_norm: matplotlib.colors.Normalize | str | None = None,
-        cmap_segmentdata: LinearSegmentedColormapType | None = None,
-        cbar_label: str | None = None,
-        show_cbar: bool = False,
-        padding: float | None = None,
-        pad_factor: float | None = 0.05,
-        figsize: tuple[int, int] = (15, 5),
-        title: str | None = None,
-        savepath: str | None = None,
-        show: bool = True,
-        color: str = 'blue',
-        alpha: float = 0.5,
-        add_traceplot: bool = False,
-        gaze_position_column: str = 'pixel',
-        add_stimulus: bool = False,
-        add_arrows: bool = True,
-        arrow_color: str = 'black',
-        arrow_rad: float = 0.25,
-        arrow_style: str = 'simple',
-        arrow_scale: float = 40.,
-        path_to_image_stimulus: str | None = None,
-        stimulus_origin: str = 'upper',
-        events: Events | EventDataFrame | None = None,
-        event_name: str = 'fixation',
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot scanpath from positional data.
 
     Parameters
@@ -180,8 +101,6 @@ def scanpathplot(
         Set figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     color: str
         Color of fixations. (default: 'blue')
     alpha: float
@@ -212,14 +131,12 @@ def scanpathplot(
     event_name: str
         Filters events for a particular value in the `` name `` column. (default: 'fixation')
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close the figure.
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created the figure.
+        External axes to draw into.
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes] | None
-        The created or provided figure and axes. Returns ``None`` if ``show`` is ``True``.
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and axes.
 
     Raises
     ------
@@ -251,8 +168,6 @@ def scanpathplot(
 
     x_signal = fixations[position_column].list.get(0)
     y_signal = fixations[position_column].list.get(1)
-
-    own_figure = ax is None
 
     fig, ax, cmap, cmap_norm, cval, show_cbar = _setup_axes_and_colormap(
         x_signal,
@@ -317,15 +232,7 @@ def scanpathplot(
     if title:
         ax.set_title(title)
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='scanpathplot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
-    if show:
-        return None
     return fig, ax
