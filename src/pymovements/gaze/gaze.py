@@ -530,7 +530,9 @@ class Gaze:
         gazes: dict[tuple[Any, ...], Gaze] = {}
 
         for key in keys:
-            metadata_split = deepcopy(self.metadata)
+            metadata_split: dict[str, Any] = (
+                deepcopy(self.metadata) if self.metadata else {}
+            )
             if extend_metadata:
                 for by_id, column_name in enumerate(by):
                     metadata_split[column_name] = key[by_id]
