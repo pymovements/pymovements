@@ -1014,6 +1014,36 @@ from pymovements import Gaze
             id='df_auto_columns_acceleration',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [[1.23, 4.56]]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56]]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_pixel_column_two_components',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [[1.23, 4.56], None]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56], None]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_pixel_column_two_components_one_null',
+        ),
+
     ],
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
