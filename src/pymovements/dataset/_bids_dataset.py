@@ -1,0 +1,84 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Shared helpers for BIDS dataset classes."""
+from __future__ import annotations
+
+from typing import Any
+
+import polars
+
+
+def _validate_participant_id(data: polars.DataFrame) -> None:
+    """Validate participant_id column exists and is first column."""
+    if 'participant_id' not in data.columns:
+        raise ValueError("data must have column named 'participant_id'")
+    if data.columns[0] != 'participant_id':
+        raise ValueError("first column in data must be named 'participant_id'")
+
+
+def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:
+    """Infer polars datatype from bids format descriptor."""
+    mapping = {
+        'string': polars.String,
+        'number': polars.Float64,
+        'integer': polars.Int64,
+        'bool': polars.Boolean,
+        'index': polars.UInt64,
+        'label': polars.String,
+    }
+
+    if bids_format in mapping:
+        return mapping[bids_format]
+
+    raise TypeError(
+        f"unknown bids format descriptor '{bids_format}'. Known formats: {list(mapping.keys())}",
+    )
+
+
+def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
+    """Infer bids format descriptor from polars datatype."""
+    if dtype.is_unsigned_integer():
+        return 'index'
+    if dtype.is_integer():
+        return 'integer'
+    if dtype.is_numeric():
+        return 'number'
+    if dtype == polars.Boolean:
+        return 'bool'
+    if dtype == polars.String:
+        return 'string'
+
+    raise TypeError(
+        f"polars datatype {dtype} has no mapping to bids format descriptor. "
+        f"Supported polars datatypes are: Integer, Float, String",
+    )
+
+
+def _cast_columns_to_metadata_format(
+    data: polars.DataFrame,
+    metadata: dict[str, Any],
+) -> polars.DataFrame:
+    """Cast columns in data according to column bids format specified in metadata."""
+    schema_overrides = {}
+    for column in data.columns:
+        bids_format = metadata.get(column, {}).get('Format', None)
+        if bids_format:
+            schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
+    return data.cast(schema_overrides)

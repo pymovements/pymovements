@@ -29,6 +29,9 @@ from typing import Any
 import polars
 
 from pymovements._utils._html import repr_html
+from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
+from pymovements.dataset._bids_dataset import _polars_datatype_to_bids_format
+from pymovements.dataset._bids_dataset import _validate_participant_id
 
 
 @dataclass
@@ -66,10 +69,7 @@ class Participants:
             *,
             infer_metadata: bool = True,
     ):
-        if 'participant_id' not in data.columns:
-            raise ValueError("data must have column named 'participant_id'")
-        if data.columns[0] != 'participant_id':
-            raise ValueError("first column in data must be named 'participant_id'")
+        _validate_participant_id(data)
 
         if metadata:
             # metadata may be changed and updated, work on copy
@@ -239,55 +239,3 @@ def _infer_metadata_column_format(
                 metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)
 
     return metadata
-
-
-def _cast_columns_to_metadata_format(
-        data: polars.DataFrame,
-        metadata: dict[str, Any],
-) -> polars.DataFrame:
-    """Cast columns in data according to column bids format specified in metadata."""
-    schema_overrides = {}
-    for column in data.columns:
-        bids_format = metadata.get(column, {}).get('Format', None)
-        if bids_format:
-            schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
-    data = data.cast(schema_overrides)
-    return data
-
-
-def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:
-    """Infer polars datatype from bids format descriptor."""
-    mapping = {
-        'string': polars.String,
-        'number': polars.Float64,
-        'integer': polars.Int64,
-        'bool': polars.Boolean,
-        'index': polars.UInt64,
-        'label': polars.String,
-    }
-
-    if bids_format in mapping:
-        return mapping[bids_format]
-
-    raise TypeError(
-        f"unknown bids format descriptor '{bids_format}'. Known formats: {list(mapping.keys())}",
-    )
-
-
-def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
-    """Infer bids format descriptor from polars datatype."""
-    if dtype.is_unsigned_integer():
-        return 'index'
-    if dtype.is_integer():
-        return 'integer'
-    if dtype.is_numeric():
-        return 'number'
-    if dtype == polars.Boolean:
-        return 'bool'
-    if dtype == polars.String:
-        return 'string'
-
-    raise TypeError(
-        f'polars datatype {dtype} has no mapping to bids format descriptor. '
-        f'Supported polars datatypes are: Integer, Float, String',
-    )

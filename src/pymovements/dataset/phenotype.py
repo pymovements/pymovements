@@ -29,7 +29,8 @@ from typing import Any
 import polars
 
 from pymovements._utils._html import repr_html
-from pymovements.dataset.participants import _bids_format_to_polars_datatype
+from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
+from pymovements.dataset._bids_dataset import _validate_participant_id
 from pymovements.dataset.participants import _infer_metadata_column_format
 
 
@@ -71,10 +72,7 @@ class Phenotype:
         *,
         infer_metadata: bool = True,
     ):
-        if 'participant_id' not in data.columns:
-            raise ValueError("data must have column named 'participant_id'")
-        if data.columns[0] != 'participant_id':
-            raise ValueError("first column in data must be named 'participant_id'")
+        _validate_participant_id(data)
 
         if metadata:
             metadata = deepcopy(metadata)
@@ -227,17 +225,3 @@ class Phenotype:
 
         with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:
             json.dump(self.metadata, opened_file)
-
-
-def _cast_columns_to_metadata_format(
-    data: polars.DataFrame,
-    metadata: dict[str, Any],
-) -> polars.DataFrame:
-    """Cast columns in data according to column bids format specified in metadata."""
-    schema_overrides = {}
-    for column in data.columns:
-        bids_format = metadata.get(column, {}).get('Format', None)
-        if bids_format:
-            schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
-    data = data.cast(schema_overrides)
-    return data
