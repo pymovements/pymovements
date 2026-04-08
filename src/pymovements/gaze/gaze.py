@@ -531,8 +531,6 @@ class Gaze:
 
         for key in keys:
             metadata_split = deepcopy(self.metadata)
-            if metadata_split is None:
-                metadata_split = {}
             if extend_metadata:
                 for by_id, column_name in enumerate(by):
                     metadata_split[column_name] = key[by_id]
