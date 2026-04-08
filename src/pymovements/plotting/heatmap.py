@@ -21,8 +21,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
-from typing import overload
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,12 +28,10 @@ from matplotlib import colors
 
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _set_screen_axes
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 from pymovements.stimulus.image import _draw_image_stimulus
 
 
-@overload
 def heatmap(
         gaze: Gaze,
         position_column: str = 'pixel',
@@ -50,68 +46,13 @@ def heatmap(
         title: str | None = None,
         xlabel: str | None = None,
         ylabel: str | None = None,
-        show: Literal[True] = True,
         savepath: str | None = None,
         add_stimulus: bool = False,
         path_to_image_stimulus: str | Path | None = None,
         stimulus_origin: str = 'upper',
         alpha: float = 1.,
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-) -> None:
-    ...
-
-
-@overload
-def heatmap(
-        gaze: Gaze,
-        position_column: str = 'pixel',
-        *,
-        gridsize: tuple[int, int] = (10, 10),
-        cmap: colors.Colormap | str = 'jet',
-        interpolation: str = 'gaussian',
-        origin: str = 'upper',
-        figsize: tuple[float, float] = (15, 10),
-        cbar_label: str | None = None,
-        show_cbar: bool = True,
-        title: str | None = None,
-        xlabel: str | None = None,
-        ylabel: str | None = None,
-        show: Literal[False],
-        savepath: str | None = None,
-        add_stimulus: bool = False,
-        path_to_image_stimulus: str | Path | None = None,
-        stimulus_origin: str = 'upper',
-        alpha: float = 1.,
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
-    ...
-
-
-def heatmap(
-        gaze: Gaze,
-        position_column: str = 'pixel',
-        *,
-        gridsize: tuple[int, int] = (10, 10),
-        cmap: colors.Colormap | str = 'jet',
-        interpolation: str = 'gaussian',
-        origin: str = 'upper',
-        figsize: tuple[float, float] = (15, 10),
-        cbar_label: str | None = None,
-        show_cbar: bool = True,
-        title: str | None = None,
-        xlabel: str | None = None,
-        ylabel: str | None = None,
-        show: bool = True,
-        savepath: str | None = None,
-        add_stimulus: bool = False,
-        path_to_image_stimulus: str | Path | None = None,
-        stimulus_origin: str = 'upper',
-        alpha: float = 1.,
-        ax: plt.Axes | None = None,
-        closefig: bool | None = None,
-) -> tuple[plt.Figure, plt.Axes] | None:
     """Plot a heatmap of gaze data.
 
     The heatmap displays the distribution of gaze positions across the experiment screen
@@ -146,8 +87,6 @@ def heatmap(
         Set x-axis label. (default: None)
     ylabel: str | None
         Set y-axis label. (default: None)
-    show: bool
-        Whether to show the plot. (default: True)
     savepath: str | None
         If provided, the figure will be saved to this path. (default: None)
     add_stimulus: bool
@@ -159,16 +98,12 @@ def heatmap(
     alpha: float
         Alpha value of heatmap. (default: 1.)
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close
-        the figure automatically. (default: None)
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created
-        the figure. (default: None)
+        External axes to draw into. (default: None)
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes] | None
-        The created or provided figure and axes. Returns ``None`` if ``show`` is ``True``.
+    tuple[plt.Figure, plt.Axes]
+        The created or provided figure and axes.
 
     Raises
     ------
@@ -228,7 +163,7 @@ def heatmap(
         extent = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
 
     # If add_stimulus is requested, we still reuse/create fig/ax via prepare_figure and then draw
-    fig, ax, own_figure = prepare_figure(ax, figsize, func_name='heatmap')
+    fig, ax, _ = prepare_figure(ax, figsize, func_name='heatmap')
 
     if add_stimulus:
         assert path_to_image_stimulus
@@ -273,16 +208,7 @@ def heatmap(
         if cbar_label:
             cbar.set_label(cbar_label)
 
-    # Finalize (save/show/close) with standardized behavior
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='heatmap',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
-    if show:
-        return None
     return fig, ax

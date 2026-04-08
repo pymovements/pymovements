@@ -141,64 +141,6 @@ def prepare_figure(
     return fig, ax, own
 
 
-def finalize_figure(
-    fig: plt.Figure,
-    *,
-    show: bool,
-    savepath: str | None,
-    closefig: bool | None,
-    own_figure: bool,
-    func_name: str,
-) -> None:
-    """Finalize a matplotlib figure (save/show/close).
-
-    Manage saving, showing, and closing behavior consistently. When plotting into an
-    external Axes, ``show=True`` and ``closefig=True`` are ignored with a warning.
-
-    Parameters
-    ----------
-    fig : plt.Figure
-        Matplotlib figure to finalize.
-    show : bool
-        Whether to display the figure.
-    savepath : str | None
-        File path to save the figure to. If None, the figure is not saved.
-    closefig : bool | None
-        Whether to close the figure. If None, close only when the figure is owned
-        by the current function (``own_figure=True``).
-    own_figure : bool
-        Indicates whether the figure was created by the current function.
-    func_name : str
-        Name of the calling function, used in warning messages.
-    """
-    if savepath is not None:
-        fig.savefig(savepath)
-
-    if show:
-        if own_figure:
-            plt.show()
-        else:
-            warn(
-                f'{func_name}: "show=True" has no effect if plotting into an external Axes.',
-                UserWarning,
-                stacklevel=2,
-            )
-
-    if closefig is None:
-        do_close = own_figure
-    else:
-        if not own_figure and closefig:
-            warn(
-                f'{func_name}: "closefig=True" is ignored if an external Axes is provided.',
-                UserWarning,
-                stacklevel=2,
-            )
-        do_close = bool(closefig) and own_figure
-
-    if do_close:
-        plt.close(fig)
-
-
 def _setup_axes_and_colormap(
     x_signal: np.ndarray,
     y_signal: np.ndarray,
