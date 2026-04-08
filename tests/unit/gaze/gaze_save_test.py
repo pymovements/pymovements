@@ -120,6 +120,7 @@ def test_gaze_save_empty_experiment_true_save(tmp_path, gaze_all):
             pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
             id='validations',
         ),
+        pytest.param('save_metadata', 'metadata', {'key': 'value'}, id='metadata'),
     ],
 )
 def test_gaze_save_flag_false_skips(tmp_path, save_flag, data_field, data):
@@ -178,6 +179,7 @@ def test_gaze_save_with_all_dataframes(tmp_path):
         pytest.param('save_messages', 'no messages', id='messages'),
         pytest.param('save_calibrations', 'no calibrations', id='calibrations'),
         pytest.param('save_validations', 'no validations', id='validations'),
+        pytest.param('save_metadata', 'no metadata', id='metadata'),
     ],
 )
 def test_gaze_save_flag_true_raises_when_none(tmp_path, save_flag, error_match):

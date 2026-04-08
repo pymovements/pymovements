@@ -127,7 +127,7 @@ class Gaze:
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
         Dictionary containing additional metadata.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session.
@@ -241,7 +241,7 @@ class Gaze:
 
     experiment: Experiment | None
 
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
 
     messages: polars.DataFrame | None
 
@@ -531,6 +531,8 @@ class Gaze:
 
         for key in keys:
             metadata_split = deepcopy(self.metadata)
+            if metadata_split is None:
+                metadata_split = {}
             if extend_metadata:
                 for by_id, column_name in enumerate(by):
                     metadata_split[column_name] = key[by_id]
@@ -540,7 +542,9 @@ class Gaze:
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
-                metadata=metadata_split,
+                metadata=metadata_split
+                if (self.metadata is not None or extend_metadata)
+                else None,
                 messages=self.messages,
                 calibrations=self.calibrations,
                 validations=self.validations,
@@ -2576,8 +2580,8 @@ class Gaze:
         if save_metadata is None or save_metadata:
             if verbose >= 2:
                 print('Saving metadata file to', dirpath)
-            if self.metadata is not None:
-                with open(Path(f'{dirpath}/metadata.yaml'), 'w', encoding='utf-8') as f:
+            if self.metadata:
+                with open(Path(f"{dirpath}/metadata.yaml"), 'w', encoding='utf-8') as f:
                     yaml.safe_dump(self.metadata, f, default_flow_style=False)
             elif save_metadata is not None:
                 raise ValueError('no metadata in the Gaze object')
