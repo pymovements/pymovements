@@ -34,6 +34,148 @@ class HMM:
         sigma = self.sigma[s]
         return -0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2)
     
+    def log_sum_exp(self,arr):
+        m = np.max(arr)
+        return m + np.log(np.sum(np.exp(arr - m)))
+
+    def baum_welch(self,velocities,n_iter=100):
+
+        T = len(velocities)
+        M = self.states
+
+        # TODO: Implement convergence instead of iters
+
+        for _ in range(n_iter):
+
+            alpha = self.baum_forward(velocities,T,M)
+            beta = self.baum_backward(velocities,T,M)
+
+            xi = np.zeros((M, M, T-1))
+
+            for t in range(T-1):
+                denomTerms = []
+
+                for i in range(M):
+                    for j in range(M):
+                        denomTerms.append(
+                            alpha[t, i] +
+                            self.trans[i, j] +
+                            self.emit_log_prob(velocities[t+1], j) +
+                            beta[t+1, j]
+                        )
+
+                denom = self.log_sum_exp(np.array(denomTerms))
+
+                for i in range(M):
+                    for j in range(M):
+                        num = (
+                            alpha[t, i] +
+                            self.trans[i, j] +
+                            self.emit_log_prob(velocities[t+1], j) +
+                            beta[t+1, j]
+                        )
+                        xi[i, j, t] = np.exp(num - denom)
+
+           
+            gamma = np.sum(xi, axis=1) 
+
+            gammaFull = np.zeros((M, T))
+            gammaFull[:, :-1] = gamma
+
+            last = alpha[T-1] + beta[T-1]
+            last = np.exp(last - self.log_sum_exp(last))
+            gammaFull[:, -1] = last
+
+          
+            self.init = np.log(gammaFull[:, 0])
+
+            for i in range(M):
+                denom = np.sum(gammaFull[i, :-1])
+                for j in range(M):
+                    numer = np.sum(xi[i, j, :])
+                    self.trans[i, j] = np.log(numer / denom)
+
+        
+            for j in range(M):
+                weights = gammaFull[j, :]
+                total = np.sum(weights)
+
+                self.mu[j] = np.sum(weights * velocities) / total
+
+                var = np.sum(weights * (velocities - self.mu[j])**2) / total
+                self.sigma[j] = np.sqrt(var)
+
+        return
+    
+    def baum_forward(self, velocities,T,M):
+        
+        alpha = np.full((T, M), -np.inf)
+
+        for s in range(M):
+            alpha[0, s] = self.init[s] + self.emit_log_prob(velocities[0], s)
+
+        for t in range(1, T):
+            for j in range(M):
+                terms = []
+                for i in range(M):
+                    terms.append(alpha[t-1, i] + self.trans[i, j])
+                alpha[t, j] = self.log_sum_exp(np.array(terms)) + self.emit_log_prob(velocities[t], j)
+
+        return alpha
+    
+    def baum_backward(self, velocities,T,M):
+        
+        beta = np.full((T, M), -np.inf)
+
+        beta[T-1, :] = 0 
+
+        for t in range(T-2, -1, -1):
+            for i in range(M):
+                terms = []
+                for j in range(M):
+                    terms.append(
+                        self.trans[i, j] +
+                        self.emit_log_prob(velocities[t+1], j) +
+                        beta[t+1, j]
+                    )
+                beta[t, i] = self.log_sum_exp(np.array(terms))
+
+        return beta
+    
+    '''
+    code from "https://ristohinno.medium.com/baum-welch-algorithm-4d4514cf9dbe" still need to fully check it 
+    # DONE #TODO: adapt for log probs
+    def baum_welch(O, a, b, initial_distribution, n_iter=100):
+        #http://www.adeveloperdiary.com/data-science/machine-learning/derivation-and-implementation-of-baum-welch-algorithm-for-hidden-markov-model/
+        M = a.shape[0]
+        T = len(O)
+        for n in range(n_iter):
+            ###estimation step
+            alpha = forward(O, a, b, initial_distribution)
+            beta = backward(O, a, b)
+            xi = np.zeros((M, M, T - 1))
+            for t in range(T - 1):
+                # joint probab of observed data up to time t @ transition prob * 
+                #emisssion prob at t+1 @ joint probab of observed data from at t+1
+                denominator = (alpha[t, :].T @ a * b[:, O[t + 1]].T) @ beta[t + 1, :]
+                for i in range(M):
+                    numerator = alpha[t, i] * a[i, :] * b[:, O[t + 1]].T * beta[t + 1, :].T
+                    xi[i, :, t] = numerator / denominator
+            gamma = np.sum(xi, axis=1)
+            ### maximization step
+            a = np.sum(xi, 2) / np.sum(gamma, axis=1).reshape((-1, 1))
+            # Add additional T'th element in gamma
+            gamma = np.hstack((gamma, np.sum(xi[:, :, T - 2], axis=0).reshape((-1, 1))))
+            K = b.shape[1]
+            denominator = np.sum(gamma, axis=1)
+            for l in range(K):
+                b[:, l] = np.sum(gamma[:, O == l], axis=1)
+            b = np.divide(b, denominator.reshape((-1, 1)))
+        return a, b
+
+
+    '''
+    
     def viterbi(self, velocities):
 
         # init step
@@ -175,13 +317,20 @@ def ihmm(
         "mu": [np.percentile(velocities, 30), np.percentile(velocities, 80)], #DATA BASED init  #[1.0, 10.0],
         "sigma": [np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
         "init":[0.5, 0.5],  # dummy average values should be fine for long sequences
-        "trans":[[0.95, 0.05],[0.05, 0.95]] # based on paper diagram
+        "trans":[[0.95, 0.05],[0.05, 0.95]] # based on Salvucci's paper diagram
     }
+
+    reestimate=False
 
     match initialization:
         case "reestimation":
             # TODO: Implement Baum-Welch
-            pass
+            reestimate = True
+            _mu = defaults["mu"]
+            _sigma=defaults["sigma"]
+            _init = defaults["init"]
+            _trans = defaults["trans"]
+
         case "default":
             _mu = defaults["mu"]
             _sigma=defaults["sigma"]
@@ -204,37 +353,17 @@ def ihmm(
                 _trans = transition_probabilities
             else:
                 _trans = defaults["trans"]
-            
-    
+
     hmm = HMM(states= 2 ,mu=_mu,sigma=_sigma,initial_state=_init,transition_matrix=_trans)
+
+    if reestimate:
+        hmm.baum_welch(velocities=velocities)
 
     # inference the hmm 
 
     states = hmm.viterbi(velocities=velocities)
 
     # collapse states
-
-    events = []
-
-    '''prevState = states[0]
-    event = []
-
-    for i, state in enumerate(states):
-
-        if state == 0:
-            if prevState != 0:
-                event = [i]
-            else:
-                event.append(i)
-        else: 
-            if prevState == 0 and event:
-                events.append(event.copy())
-                event = []
-
-        prevState = state
-
-    if prevState == 0 and event:
-        events.append(event.copy())'''
     
     onsets_arr = []
     offsets_arr = []
@@ -265,8 +394,6 @@ def ihmm(
     onsets_arr = np.array(onsets_arr)
     offsets_arr = np.array(offsets_arr)
     
-    
-
 
     # DONE # TODO: transform in event object
 
