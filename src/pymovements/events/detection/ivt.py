@@ -103,8 +103,7 @@ def ivt(
 
     Apply event detection algorithm on numpy array:
 
-    >>> events = ivt(velocities)
-    >>> events
+    >>> ivt(velocities)
     shape: (1, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
@@ -124,6 +123,40 @@ def ivt(
     │ str      ┆ i64   ┆ i64    ┆ i64      │
     ╞══════════╪═══════╪════════╪══════════╡
     │ fixation ┆ 9     ┆ 199    ┆ 190      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Polars series are also supported as input. Let's create a nested position series from our numpy
+    array:
+
+    >>> df = polars.from_numpy(velocities, schema=['x', 'y'])
+    >>> velocity_series = df.select(polars.concat_list(('x', 'y')).alias('velocity'))['velocity']
+    >>> velocity_series
+    shape: (200,)
+    Series: 'velocity' [list[f64]]
+    [
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [10.0, 20.0]
+        [10.0, 20.0]
+        [10.0, 20.0]
+        …
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [0.0, 0.0]
+    ]
+
+    Apply event detection algorithm on polars series:
+
+    >>> ivt(velocity_series)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 110    ┆ 101      │
     └──────────┴───────┴────────┴──────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.

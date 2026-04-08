@@ -121,7 +121,7 @@ def microsaccades(
     │ saccade ┆ 2     ┆ 199    ┆ 197      │
     └─────────┴───────┴────────┴──────────┘
 
-    Run fixation detection with custom parameters:
+    Run saccade detection with custom parameters:
 
     >>> microsaccades(velocities, minimum_duration=10, threshold=0.1)
     shape: (1, 4)
@@ -131,6 +131,40 @@ def microsaccades(
     │ str     ┆ i64   ┆ i64    ┆ i64      │
     ╞═════════╪═══════╪════════╪══════════╡
     │ saccade ┆ 111   ┆ 149    ┆ 38       │
+    └─────────┴───────┴────────┴──────────┘
+
+    Polars series are also supported as input. Let's create a nested position series from our numpy
+    array:
+
+    >>> df = polars.from_numpy(velocities, schema=['x', 'y'])
+    >>> velocity_series = df.select(polars.concat_list(('x', 'y')).alias('velocity'))['velocity']
+    >>> velocity_series  # doctest: +SKIP
+    shape: (200,)
+    Series: 'velocity' [list[f64]]
+    [
+        [-0.000628, 0.000055]
+        [-0.000818, -0.000694]
+        [0.50097, 0.498064]
+        [0.500475, 0.500865]
+        [0.498559, 0.499092]
+        …
+        [0.100042, 0.100217]
+        [0.099627, 0.099812]
+        [0.101374, 0.098537]
+        [0.099669, 0.100079]
+        [0.098491, 0.101448]
+    ]
+
+    Apply event detection algorithm on polars series:
+
+    >>> microsaccades(velocity_series)
+    shape: (1, 4)
+    ┌─────────┬───────┬────────┬──────────┐
+    │ name    ┆ onset ┆ offset ┆ duration │
+    │ ---     ┆ ---   ┆ ---    ┆ ---      │
+    │ str     ┆ i64   ┆ i64    ┆ i64      │
+    ╞═════════╪═══════╪════════╪══════════╡
+    │ saccade ┆ 2     ┆ 199    ┆ 197      │
     └─────────┴───────┴────────┴──────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.

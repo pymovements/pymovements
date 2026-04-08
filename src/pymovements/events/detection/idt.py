@@ -123,8 +123,7 @@ def idt(
 
     Apply event detection algorithm on numpy array:
 
-    >>> events = idt(positions)
-    >>> events
+    >>> idt(positions)
     shape: (1, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
@@ -145,6 +144,40 @@ def idt(
     ╞══════════╪═══════╪════════╪══════════╡
     │ fixation ┆ 9     ┆ 111    ┆ 102      │
     │ fixation ┆ 150   ┆ 199    ┆ 49       │
+    └──────────┴───────┴────────┴──────────┘
+
+    Polars series are also supported as input. Let's create a nested position series from our numpy
+    array:
+
+    >>> df = polars.from_numpy(positions, schema=['x', 'y'])
+    >>> position_series = df.select(polars.concat_list(('x', 'y')).alias('position'))['position']
+    >>> position_series
+    shape: (200,)
+    Series: 'position' [list[f64]]
+    [
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [1.0, 2.0]
+        [1.0, 2.0]
+        [1.0, 2.0]
+        …
+        [2.0, 2.0]
+        [2.0, 2.0]
+        [2.0, 2.0]
+        [2.0, 2.0]
+        [2.0, 2.0]
+    ]
+
+    Apply event detection algorithm on polars series:
+
+    >>> idt(position_series)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 111    ┆ 102      │
     └──────────┴───────┴────────┴──────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
