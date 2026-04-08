@@ -28,67 +28,35 @@ import pytest
 from pymovements import Gaze
 
 
-def test_gaze_save_csv(tmp_path, gaze_all):
+@pytest.mark.parametrize(
+    'extension',
+    [
+        pytest.param('csv', id='csv'),
+        pytest.param('feather', id='feather'),
+    ],
+)
+def test_gaze_save_extension(tmp_path, gaze_all, extension):
     gaze = gaze_all
-    gaze.save(
-        dirpath=tmp_path,
-        verbose=2,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert os.path.exists(tmp_path / 'events.csv')
+    gaze.save(dirpath=tmp_path, verbose=2, extension=extension)
+    assert os.path.exists(tmp_path / f"samples.{extension}")
+    assert os.path.exists(tmp_path / f"events.{extension}")
     assert os.path.exists(tmp_path / 'experiment.yaml')
 
 
-def test_gaze_save_feather(tmp_path, gaze_all):
+@pytest.mark.parametrize(
+    'save_flag,missing_file',
+    [
+        pytest.param({'save_events': False}, 'events.csv', id='without_events'),
+        pytest.param({'save_samples': False}, 'samples.csv', id='without_samples'),
+        pytest.param(
+            {'save_experiment': False}, 'experiment.yaml', id='without_experiment',
+        ),
+    ],
+)
+def test_gaze_save_without_flag(tmp_path, gaze_all, save_flag, missing_file):
     gaze = gaze_all
-    gaze.save(
-        dirpath=tmp_path,
-        verbose=2,
-        extension='feather',
-    )
-    assert os.path.exists(tmp_path / 'samples.feather')
-    assert os.path.exists(tmp_path / 'events.feather')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_without_events(tmp_path, gaze_all):
-    gaze = gaze_all
-    gaze.save(
-        dirpath=tmp_path,
-        save_events=False,
-        verbose=2,
-        extension='csv',
-    )
-    assert not os.path.exists(tmp_path / 'events.csv')
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_without_samples(tmp_path, gaze_all):
-    gaze = gaze_all
-    gaze.save(
-        dirpath=tmp_path,
-        save_samples=False,
-        verbose=2,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'events.csv')
-    assert not os.path.exists(tmp_path / 'samples.csv')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_without_experiment(tmp_path, gaze_all):
-    gaze = gaze_all
-    gaze.save(
-        dirpath=tmp_path,
-        save_experiment=False,
-        verbose=1,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'events.csv')
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert not os.path.exists(tmp_path / 'experiment.yaml')
+    gaze.save(dirpath=tmp_path, verbose=1, extension='csv', **save_flag)
+    assert not os.path.exists(tmp_path / missing_file)
 
 
 def test_gaze_save_with_empty_events(tmp_path, gaze_all):
@@ -96,46 +64,28 @@ def test_gaze_save_with_empty_events(tmp_path, gaze_all):
     gaze.events = None
 
     with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            save_events=True,
-            verbose=2,
-            extension='csv',
-        )
+        gaze.save(dirpath=tmp_path, save_events=True, verbose=2, extension='csv')
 
 
-def test_gaze_save_wrong_extension_events(tmp_path, gaze_all):
+@pytest.mark.parametrize(
+    'save_kwargs',
+    [
+        pytest.param({}, id='events'),
+        pytest.param({'save_events': False}, id='samples'),
+    ],
+)
+def test_gaze_save_wrong_extension(tmp_path, gaze_all, save_kwargs):
     gaze = gaze_all
 
     with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            verbose=0,
-            extension='blabla',
-        )
-
-
-def test_gaze_save_wrong_extension_samples(tmp_path, gaze_all):
-    gaze = gaze_all
-
-    with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            save_events=False,
-            verbose=1,
-            extension='blabla',
-        )
+        gaze.save(dirpath=tmp_path, verbose=0, extension='blabla', **save_kwargs)
 
 
 def test_gaze_save_empty_experiment(tmp_path, gaze_all):
     gaze = gaze_all
     gaze.experiment = None
 
-    gaze.save(
-        dirpath=tmp_path,
-        verbose=1,
-        extension='csv',
-    )
+    gaze.save(dirpath=tmp_path, verbose=1, extension='csv')
     assert os.path.exists(tmp_path / 'events.csv')
     assert os.path.exists(tmp_path / 'samples.csv')
     assert not os.path.exists(tmp_path / 'experiment.yaml')
@@ -146,12 +96,42 @@ def test_gaze_save_empty_experiment_true_save(tmp_path, gaze_all):
     gaze.experiment = None
 
     with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            save_experiment=True,
-            verbose=1,
-            extension='csv',
-        )
+        gaze.save(dirpath=tmp_path, save_experiment=True, verbose=1, extension='csv')
+
+
+@pytest.mark.parametrize(
+    'save_flag,data_field,data',
+    [
+        pytest.param(
+            'save_messages',
+            'messages',
+            pl.DataFrame({'time': [0], 'content': ['msg']}),
+            id='messages',
+        ),
+        pytest.param(
+            'save_calibrations',
+            'calibrations',
+            pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+            id='calibrations',
+        ),
+        pytest.param(
+            'save_validations',
+            'validations',
+            pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+            id='validations',
+        ),
+    ],
+)
+def test_gaze_save_flag_false_skips(tmp_path, save_flag, data_field, data):
+    gaze = Gaze(
+        pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        pixel_columns=['x', 'y'],
+        **{data_field: data},
+    )
+
+    kwargs = {save_flag: False}
+    gaze.save(tmp_path, verbose=0, **kwargs)
+    assert not os.path.exists(tmp_path / f"{data_field}.feather")
 
 
 def test_gaze_save_samples_csv_no_warning_without_nested_columns(tmp_path):
@@ -169,6 +149,46 @@ def test_gaze_save_samples_csv_no_warning_without_nested_columns(tmp_path):
         verbose=1,
         extension='csv',
     )
+
+
+def test_gaze_save_with_all_dataframes(tmp_path):
+    gaze = Gaze(
+        pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        pixel_columns=['x', 'y'],
+        messages=pl.DataFrame({'time': [0], 'content': ['msg']}),
+        calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+        validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+    )
+    gaze.save(
+        dirpath=tmp_path,
+        save_samples=False,
+        save_events=False,
+        save_experiment=False,
+        verbose=2,
+        extension='feather',
+    )
+    assert os.path.exists(tmp_path / 'messages.feather')
+    assert os.path.exists(tmp_path / 'calibrations.feather')
+    assert os.path.exists(tmp_path / 'validations.feather')
+
+
+@pytest.mark.parametrize(
+    'save_flag,error_match',
+    [
+        pytest.param('save_messages', 'no messages', id='messages'),
+        pytest.param('save_calibrations', 'no calibrations', id='calibrations'),
+        pytest.param('save_validations', 'no validations', id='validations'),
+    ],
+)
+def test_gaze_save_flag_true_raises_when_none(tmp_path, save_flag, error_match):
+    gaze = Gaze(
+        pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        pixel_columns=['x', 'y'],
+    )
+
+    with pytest.raises(ValueError, match=error_match):
+        kwargs = {save_flag: True}
+        gaze.save(tmp_path, verbose=0, **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -203,7 +223,19 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             'messages.feather',
             False,
             None,
-            id='messages_with_data',
+            id='messages_with_data_feather',
+        ),
+        pytest.param(
+            Gaze(
+                pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+                pixel_columns=['x', 'y'],
+                messages=pl.DataFrame({'time': [0], 'content': ['msg']}),
+            ),
+            lambda g, p: g.save_messages(p / 'messages.csv', verbose=2),
+            'messages.csv',
+            False,
+            None,
+            id='messages_with_data_csv',
         ),
         pytest.param(
             Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
@@ -223,7 +255,19 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             'calibrations.feather',
             False,
             None,
-            id='calibrations_with_data',
+            id='calibrations_with_data_feather',
+        ),
+        pytest.param(
+            Gaze(
+                pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+                pixel_columns=['x', 'y'],
+                calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+            ),
+            lambda g, p: g.save_calibrations(p / 'calibrations.csv', verbose=2),
+            'calibrations.csv',
+            False,
+            None,
+            id='calibrations_with_data_csv',
         ),
         pytest.param(
             Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
@@ -243,7 +287,19 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             'validations.feather',
             False,
             None,
-            id='validations_with_data',
+            id='validations_with_data_feather',
+        ),
+        pytest.param(
+            Gaze(
+                pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+                pixel_columns=['x', 'y'],
+                validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+            ),
+            lambda g, p: g.save_validations(p / 'validations.csv', verbose=2),
+            'validations.csv',
+            False,
+            None,
+            id='validations_with_data_csv',
         ),
         pytest.param(
             Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
@@ -279,7 +335,7 @@ def test_gaze_save_dataframes(
         pytest.param('save_validations', id='validations'),
     ],
 )
-def test_gaze_save_wrong_extension(tmp_path, save_method):
+def test_gaze_save_method_wrong_extension(tmp_path, save_method):
     gaze = Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y'])
     if save_method == 'save_messages':
         gaze.messages = pl.DataFrame({'time': [0], 'content': ['msg']})
