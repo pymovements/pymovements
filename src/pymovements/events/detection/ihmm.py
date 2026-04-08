@@ -216,7 +216,7 @@ def ihmm(
 
     events = []
 
-    prevState = states[0]
+    '''prevState = states[0]
     event = []
 
     for i, state in enumerate(states):
@@ -234,11 +234,43 @@ def ihmm(
         prevState = state
 
     if prevState == 0 and event:
-        events.append(event.copy())
+        events.append(event.copy())'''
+    
+    onsets_arr = []
+    offsets_arr = []
 
-    events # TODO: transform in event object
+    prevState = states[0]
 
-    #Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
+    if prevState == 0:
+        onsets_arr.append(0)
+
+    for i, state in enumerate(states[1:], start=1):
+
+        if state == 0:
+            if prevState != 0:
+                onsets_arr.append(i)
+            #else:
+            #    pass 
+        else:
+            #if prevState != 0:
+            #    pass
+            if prevState == 0:
+                offsets_arr.append(i-1)
+
+        prevState = state
+    
+    if prevState == 0:
+        offsets_arr.append(len(states) - 1)
+
+    onsets_arr = np.array(onsets_arr)
+    offsets_arr = np.array(offsets_arr)
+    
+    
+
+
+    # DONE # TODO: transform in event object
+
+    events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
 
