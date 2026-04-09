@@ -34,7 +34,7 @@ Transforms
     segmentation2events
 
 
-.. currentmodule:: pymovements.gaze.transforms_numpy
+.. currentmodule:: pymovements.transforms.numpy
 
 .. rubric:: Numpy Transformations
 
