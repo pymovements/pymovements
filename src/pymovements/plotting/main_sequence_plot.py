@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 from typing import Literal
-from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +28,6 @@ import polars as pl
 from matplotlib.collections import Collection
 from sklearn.metrics import r2_score
 
-from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
 from pymovements.plotting._matplotlib import finalize_figure
@@ -50,7 +48,6 @@ def main_sequence_plot(
         title: str | None = None,
         savepath: str | None = None,
         show: bool = True,
-        event_df: Events | EventDataFrame | None = None,
         event_name: str = 'saccade',
         ax: plt.Axes | None = None,
         closefig: bool | None = None,
@@ -87,10 +84,6 @@ def main_sequence_plot(
         If given, figure will be saved to this path. (default: None)
     show: bool
         If True, figure will be shown. (default: True)
-    event_df: Events | EventDataFrame | None
-        It must contain columns "peak_velocity" and "amplitude". (default: None)
-        .. deprecated:: v0.22.0
-        Please use the ``events`` argument instead. This argument will be removed in v0.27.0.
     event_name: str
         Filters events for a particular value in the "name" column. (default: 'saccade')
     ax: plt.Axes | None
@@ -114,15 +107,6 @@ def main_sequence_plot(
     ValueError
         If the event dataframe does not contain any saccades.
     """
-    if event_df is not None:
-        warn(
-            'The argument event_df has been renamed to events '
-            'in v0.22.0 and will be removed in v0.27.0.',
-            DeprecationWarning,
-        )
-        check_is_mutual_exclusive(events=events, event_df=event_df)
-        events = event_df
-
     event_col_name = 'name'
 
     if events is None or events.frame.is_empty():
