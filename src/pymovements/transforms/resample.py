@@ -20,6 +20,8 @@
 """Module for py:func:`pymovements.gaze.transforms."""
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 import polars as pl
 from polars.datatypes.classes import NumericType

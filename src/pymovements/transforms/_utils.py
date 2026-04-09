@@ -20,10 +20,7 @@
 """Module for py:func:`pymovements.gaze.transforms."""
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
-
-import polars as pl
 
 from pymovements._utils import _checks
 

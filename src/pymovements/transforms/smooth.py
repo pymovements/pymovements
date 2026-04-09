@@ -210,5 +210,3 @@ def _identity(x: Any) -> Any:
         The value passed to the function.
     """
     return x
-
-

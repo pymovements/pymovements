@@ -45,7 +45,7 @@ def events2segmentation(
 
     Parameters
     ----------
-    events : pl.DataFramefrom pymovements.transforms._utils import _apply_on_columns
+    events : pl.DataFrame
         Event data. Must have onset and offset columns.
     name : str
         The name of the event type to use for segmentation (e.g. 'blink').

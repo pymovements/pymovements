@@ -21,10 +21,12 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import Any
 
 import polars as pl
 import scipy
 
+from pymovements._utils import _checks
 from pymovements.transforms._utils import _check_padding
 from pymovements.transforms._utils import _check_window_length
 from pymovements.transforms.library import register_transform
@@ -181,5 +183,3 @@ def _check_derivative(derivative: Any) -> None:
     """
     _checks.check_is_int(derivative=derivative)
     _checks.check_is_positive_value(derivative=derivative)
-
-
