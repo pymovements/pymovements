@@ -25,8 +25,6 @@ from functools import partial
 import polars as pl
 import scipy
 
-from pymovements.transforms._utils import _check_degree
-from pymovements.transforms._utils import _check_derivative
 from pymovements.transforms._utils import _check_padding
 from pymovements.transforms._utils import _check_window_length
 from pymovements.transforms.library import register_transform
@@ -152,3 +150,36 @@ def savitzky_golay(
             for component in range(n_components)
         ],
     ).alias(output_column)
+
+
+def _check_degree(degree: Any, window_length: int) -> None:
+    """Check that polynomial degree is an integer, greater than zero and less than window_length.
+
+    Parameters
+    ----------
+    degree: Any
+        The degree to check.
+
+    window_length: int
+        The window length to check against.
+    """
+    _checks.check_is_not_none(degree=degree)
+    _checks.check_is_int(degree=degree)
+    _checks.check_is_greater_than_zero(degree=degree)
+
+    if degree >= window_length:
+        raise ValueError("'degree' must be less than 'window_length'")
+
+
+def _check_derivative(derivative: Any) -> None:
+    """Check that derivative has a positive integer value.
+
+    Parameters
+    ----------
+    derivative: Any
+        The derivative to check.
+    """
+    _checks.check_is_int(derivative=derivative)
+    _checks.check_is_positive_value(derivative=derivative)
+
+

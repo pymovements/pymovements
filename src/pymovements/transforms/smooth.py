@@ -27,7 +27,6 @@ import polars as pl
 
 from pymovements.transforms._utils import _check_padding
 from pymovements.transforms._utils import _check_window_length
-from pymovements.transforms._utils import _identity
 from pymovements.transforms.library import register_transform
 from pymovements.transforms.savitzky_golay import savitzky_golay
 
@@ -195,3 +194,21 @@ def smooth(
     raise ValueError(
         f"Unknown method '{method}'. Supported methods are: {supported_methods}",
     )
+
+
+def _identity(x: Any) -> Any:
+    """Identity function as placeholder for None as padding.
+
+    Parameters
+    ----------
+    x: Any
+        The value to return.
+
+    Returns
+    -------
+    Any
+        The value passed to the function.
+    """
+    return x
+
+

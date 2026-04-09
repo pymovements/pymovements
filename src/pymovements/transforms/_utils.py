@@ -28,99 +28,6 @@ import polars as pl
 from pymovements._utils import _checks
 
 
-def _apply_on_columns(
-        frame: pl.DataFrame,
-        columns: list[str],
-        transformation: Callable,
-        n_components: int | None = None,
-        return_dtype: pl.DataType | None = None,
-) -> pl.DataFrame:
-    """Apply a function on nested and normal columns of a DataFrame.
-
-    Parameters
-    ----------
-    frame: pl.DataFrame
-        The DataFrame to apply the function on.
-    columns: list[str]
-        The columns to apply the function on. Must be numeric columns.
-    transformation: Callable
-        The function to apply on the specified columns.
-    n_components: int | None
-        Number of components of nested columns in columns. (default: None)
-    return_dtype: pl.DataType | None
-        The data type to return for the transformed columns. (default: None)
-
-    Returns
-    -------
-    pl.DataFrame
-        The DataFrame with the function applied on the specified columns.
-
-    Raises
-    ------
-    ValueError
-        If n_components is not specified when nested columns are present.
-    """
-    for column in columns:
-        # Determine if the column is nested based on its data type
-        if isinstance(frame.schema[column], pl.List):
-
-            # Raise an error if n_components is not specified for nested columns
-            if n_components is None:
-                raise ValueError(
-                    f'n_components must be specified when processing nested column {column}',
-                )
-
-            # Apply the function on the nested components separately
-            frame = frame.with_columns(
-                pl.concat_list(
-                    [
-                        pl.col(column)
-                        .list.get(component)
-                        .map_batches(
-                            transformation,
-                            # If an override is provided, prefer it. For a list column we expect
-                            # the override to describe the inner element type.
-                            return_dtype=(
-                                return_dtype
-                                if return_dtype is not None
-                                else (
-                                    frame.schema[column].inner
-                                    if hasattr(frame.schema[column], 'inner')
-                                    else pl.Float64
-                                )
-                            ),
-                        )
-                        for component in range(n_components)
-                    ],
-                ).alias(column),
-            )
-        else:
-            frame = frame.with_columns(
-                pl.col(column).map_batches(
-                    transformation,
-                    return_dtype=(return_dtype or frame.schema[column]),
-                ).alias(column),
-            )
-
-    return frame
-
-
-def _identity(x: Any) -> Any:
-    """Identity function as placeholder for None as padding.
-
-    Parameters
-    ----------
-    x: Any
-        The value to return.
-
-    Returns
-    -------
-    Any
-        The value passed to the function.
-    """
-    return x
-
-
 def _check_window_length(window_length: Any) -> None:
     """Check that window length is an integer and greater than zero.
 
@@ -132,25 +39,6 @@ def _check_window_length(window_length: Any) -> None:
     _checks.check_is_not_none(window_length=window_length)
     _checks.check_is_int(window_length=window_length)
     _checks.check_is_greater_than_zero(degree=window_length)
-
-
-def _check_degree(degree: Any, window_length: int) -> None:
-    """Check that polynomial degree is an integer, greater than zero and less than window_length.
-
-    Parameters
-    ----------
-    degree: Any
-        The degree to check.
-
-    window_length: int
-        The window length to check against.
-    """
-    _checks.check_is_not_none(degree=degree)
-    _checks.check_is_int(degree=degree)
-    _checks.check_is_greater_than_zero(degree=degree)
-
-    if degree >= window_length:
-        raise ValueError("'degree' must be less than 'window_length'")
 
 
 def _check_padding(padding: Any) -> None:
@@ -176,18 +64,6 @@ def _check_padding(padding: Any) -> None:
                 'Choose a valid padding string, a scalar, or None.'
                 f' Valid padding strings are: {supported_padding_modes}',
             )
-
-
-def _check_derivative(derivative: Any) -> None:
-    """Check that derivative has a positive integer value.
-
-    Parameters
-    ----------
-    derivative: Any
-        The derivative to check.
-    """
-    _checks.check_is_int(derivative=derivative)
-    _checks.check_is_positive_value(derivative=derivative)
 
 
 def _check_distance(distance: float) -> None:

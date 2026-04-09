@@ -25,7 +25,6 @@ import polars as pl
 from polars.datatypes.classes import NumericType
 
 from pymovements._utils import _checks
-from pymovements.transforms._utils import _apply_on_columns
 from pymovements.transforms.library import register_transform
 
 
@@ -193,3 +192,80 @@ def resample(
         )
 
     return samples
+
+
+def _apply_on_columns(
+        frame: pl.DataFrame,
+        columns: list[str],
+        transformation: Callable,
+        n_components: int | None = None,
+        return_dtype: pl.DataType | None = None,
+) -> pl.DataFrame:
+    """Apply a function on nested and normal columns of a DataFrame.
+
+    Parameters
+    ----------
+    frame: pl.DataFrame
+        The DataFrame to apply the function on.
+    columns: list[str]
+        The columns to apply the function on. Must be numeric columns.
+    transformation: Callable
+        The function to apply on the specified columns.
+    n_components: int | None
+        Number of components of nested columns in columns. (default: None)
+    return_dtype: pl.DataType | None
+        The data type to return for the transformed columns. (default: None)
+
+    Returns
+    -------
+    pl.DataFrame
+        The DataFrame with the function applied on the specified columns.
+
+    Raises
+    ------
+    ValueError
+        If n_components is not specified when nested columns are present.
+    """
+    for column in columns:
+        # Determine if the column is nested based on its data type
+        if isinstance(frame.schema[column], pl.List):
+
+            # Raise an error if n_components is not specified for nested columns
+            if n_components is None:
+                raise ValueError(
+                    f'n_components must be specified when processing nested column {column}',
+                )
+
+            # Apply the function on the nested components separately
+            frame = frame.with_columns(
+                pl.concat_list(
+                    [
+                        pl.col(column)
+                        .list.get(component)
+                        .map_batches(
+                            transformation,
+                            # If an override is provided, prefer it. For a list column we expect
+                            # the override to describe the inner element type.
+                            return_dtype=(
+                                return_dtype
+                                if return_dtype is not None
+                                else (
+                                    frame.schema[column].inner
+                                    if hasattr(frame.schema[column], 'inner')
+                                    else pl.Float64
+                                )
+                            ),
+                        )
+                        for component in range(n_components)
+                    ],
+                ).alias(column),
+            )
+        else:
+            frame = frame.with_columns(
+                pl.col(column).map_batches(
+                    transformation,
+                    return_dtype=(return_dtype or frame.schema[column]),
+                ).alias(column),
+            )
+
+    return frame
