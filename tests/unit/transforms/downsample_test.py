@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import downsample
 
 
 @pytest.mark.parametrize(
@@ -44,7 +44,7 @@ import pymovements as pm
 )
 def test_downsample_init_raises_error(factor, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.transforms.downsample(factor=factor)
+        downsample(factor=factor)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -84,6 +84,6 @@ def test_downsample_returns(factor, series, expected_df):
     df = series.to_frame()
 
     result_df = df.select(
-        pm.transforms.downsample(factor=factor),
+        downsample(factor=factor),
     )
     assert_frame_equal(result_df, expected_df.to_frame())

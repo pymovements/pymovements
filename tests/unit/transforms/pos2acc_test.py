@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import pos2acc
 
 
 @pytest.mark.parametrize(
@@ -77,7 +77,7 @@ import pymovements as pm
 )
 def test_pos2acc_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.transforms.pos2acc(**kwargs)
+        pos2acc(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -101,7 +101,7 @@ def test_pos2acc_init_raises_error(kwargs, exception, msg_substrings):
 )
 def test_pos2acc_raises_error(kwargs, series, exception, msg_substrings):
     df = series.to_frame()
-    expression = pm.transforms.pos2acc(**kwargs)
+    expression = pos2acc(**kwargs)
 
     with pytest.raises(exception) as excinfo:
         df.select(expression)
@@ -213,6 +213,6 @@ def test_pos2acc_returns(kwargs, series, expected_df):
     df = series.to_frame()
 
     result_df = df.select(
-        pm.transforms.pos2acc(**kwargs),
+        pos2acc(**kwargs),
     )
     assert_frame_equal(result_df, expected_df.to_frame())

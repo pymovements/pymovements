@@ -23,7 +23,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import pix2deg
 
 
 @pytest.mark.parametrize(
@@ -254,7 +254,7 @@ import pymovements as pm
 )
 def test_pix2deg_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.transforms.pix2deg(**kwargs)
+        pix2deg(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -282,7 +282,7 @@ def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
 
     with pytest.raises(exception) as excinfo:
         df.with_columns(
-            pm.transforms.pix2deg(**kwargs),
+            pix2deg(**kwargs),
         )
 
     msg, = excinfo.value.args
@@ -555,7 +555,7 @@ def test_pix2deg_returns(kwargs, series, expected_df, distance_as_column):
         kwargs['distance'] = 'distance'
 
     result_df = df.select(
-        pm.transforms.pix2deg(**kwargs),
+        pix2deg(**kwargs),
     )
     assert_frame_equal(result_df, expected_df.to_frame())
 
@@ -584,10 +584,10 @@ def test_pix2deg_defensive_guard_n_components_defaults(n_bad_components):
     series = pl.Series('pixel', [[10.0, 0.0]], pl.List(pl.Float64))
     df = series.to_frame()
 
-    expected_df = df.select(pm.transforms.pix2deg(**kwargs))
+    expected_df = df.select(pix2deg(**kwargs))
 
     kwargs['n_components'] = n_bad_components  # type: ignore[assignment]
-    result_df = df.select(pm.transforms.pix2deg(**kwargs))
+    result_df = df.select(pix2deg(**kwargs))
     assert_frame_equal(result_df, expected_df)
 
 
@@ -704,7 +704,7 @@ def test_pix2deg_distance_as_colum_returns(kwargs, data, expected_df):
     )
 
     result_df = df.select(
-        pm.transforms.pix2deg(**kwargs, distance='distance'),
+        pix2deg(**kwargs, distance='distance'),
     )
 
     assert_frame_equal(result_df, expected_df.to_frame())
