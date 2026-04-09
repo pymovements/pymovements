@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements.gaze.transforms.deg2pix. Based on tests for pix2deg."""
+"""Test pymovements.gaze.transforms.pix2deg."""
 import numpy as np
 import polars as pl
 import pytest
@@ -33,7 +33,7 @@ import pymovements as pm
             {
                 'screen_size': (100, 00),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -44,7 +44,7 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 00), 'distance': 100, 'pixel_origin': 'center',
+                'screen_resolution': (100, 00), 'distance': 100, 'origin': 'center',
                 'pixel_column': 'pixel', 'position_column': 'position',
                 'n_components': 2,
             },
@@ -54,9 +54,9 @@ import pymovements as pm
         ),
         pytest.param(
             {
-                'screen_resolution': (100, 100), 'screen_size': (100, 100),
-                'pixel_origin': 'center', 'pixel_column': 'pixel',
-                'position_column': 'position', 'n_components': 2,
+                'screen_resolution': (100, 100), 'screen_size': (100, 100), 'origin': 'center',
+                'pixel_column': 'pixel', 'position_column': 'position',
+                'n_components': 2,
             },
             TypeError,
             ('distance', 'missing'),
@@ -67,7 +67,7 @@ import pymovements as pm
                 'screen_resolution': None,
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -81,7 +81,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': None,
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -95,7 +95,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': None,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -109,7 +109,7 @@ import pymovements as pm
                 'screen_resolution': (0, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -123,7 +123,7 @@ import pymovements as pm
                 'screen_resolution': 1,
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -137,7 +137,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -149,7 +149,7 @@ import pymovements as pm
         pytest.param(
             {
                 'screen_resolution': (100, 100), 'screen_size': (0, 100), 'distance': 100,
-                'pixel_origin': 'center', 'pixel_column': 'pixel', 'position_column': 'position',
+                'origin': 'center', 'pixel_column': 'pixel', 'position_column': 'position',
                 'n_components': 2,
             },
             ValueError,
@@ -161,7 +161,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': 1,
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -175,7 +175,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -187,7 +187,7 @@ import pymovements as pm
         pytest.param(
             {
                 'screen_resolution': (100, 100), 'screen_size': (100, 100), 'distance': 0,
-                'pixel_origin': 'center', 'n_components': 2,
+                'origin': 'center', 'n_components': 2,
                 'pixel_column': 'pixel', 'position_column': 'position',
             },
             ValueError,
@@ -199,7 +199,7 @@ import pymovements as pm
                 'screen_resolution': (-1, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -213,7 +213,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': (-1, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -227,7 +227,7 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': -1,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
@@ -241,20 +241,20 @@ import pymovements as pm
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'foobar',
+                'origin': 'foobar',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             ValueError,
-            ('pixel_origin', 'invalid', 'foobar', 'valid', 'center', 'upper left'),
+            ('origin', 'invalid', 'foobar', 'valid', 'center', 'upper left'),
             id='invalid_origin_raises_value_error',
         ),
     ],
 )
-def test_deg2pix_init_raises_error(kwargs, exception, msg_substrings):
+def test_pix2deg_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.gaze.transforms.deg2pix(**kwargs)
+        pm.transforms.pix2deg(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -267,22 +267,22 @@ def test_deg2pix_init_raises_error(kwargs, exception, msg_substrings):
         pytest.param(
             {
                 'screen_resolution': (100, 100), 'screen_size': (100, 100), 'distance': 100,
-                'pixel_origin': 'center', 'pixel_column': 'aaa', 'position_column': 'bbb',
+                'origin': 'center', 'pixel_column': 'aaa', 'position_column': 'bbb',
                 'n_components': 2,
             },
             pl.Series('ccc', [0], pl.Float64),
             pl.exceptions.ColumnNotFoundError,
-            ('bbb',),
+            ('aaa',),
             id='df_missing_column_raises_column_not_found_error',
         ),
     ],
 )
-def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
+def test_pix2deg_raises_error(kwargs, series, exception, msg_substrings):
     df = series.to_frame()
 
     with pytest.raises(exception) as excinfo:
         df.with_columns(
-            pm.gaze.transforms.deg2pix(**kwargs),
+            pm.transforms.pix2deg(**kwargs),
         )
 
     msg, = excinfo.value.args
@@ -298,13 +298,13 @@ def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 100.,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [], pl.List(pl.Float64)),
             pl.Series('pixel', [], pl.List(pl.Float64)),
+            pl.Series('position', [], pl.List(pl.Float64)),
             id='empty_series',
         ),
         pytest.param(
@@ -312,13 +312,13 @@ def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[0, 0]], pl.List(pl.Float64)),
             pl.Series('pixel', [[0, 0]], pl.List(pl.Float64)),
+            pl.Series('position', [[0, 0]], pl.List(pl.Float64)),
             id='zero_origin_center_returns_0',
         ),
         pytest.param(
@@ -326,153 +326,192 @@ def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[-26.3354, 0]], pl.List(pl.Float64)),
             pl.Series('pixel', [[0, (100 - 1) / 2]], pl.List(pl.Float64)),
-            id='center_pixel_origin_lowerleft_returns_49.5',
+            pl.Series('position', [[-26.3354, 0]], pl.List(pl.Float64)),
+            id='center_pixel_origin_upperleft_returns_0',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
+            pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
             pl.Series('position', [[0, 45]], pl.List(pl.Float64)),
-            pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
-            id='isosceles_triangle_origin_center_returns_50',
+            id='isosceles_triangle_origin_center_returns_45',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50,
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[-44.712084, 45]], pl.List(pl.Float64)),
             pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
-            id='isosceles_triangle_origin_lowerleft_returns_99.5',
+            pl.Series('position', [[-44.7120, 45]], pl.List(pl.Float64)),
+            id='isosceles_triangle_origin_upperleft_returns_45',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50,
-                'pixel_origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[-44.712084, -45]], pl.List(pl.Float64)),
+            pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
+            pl.Series('position', [[-44.7120, 45]], pl.List(pl.Float64)),
+            id='isosceles_triangle_origin_default_returns_45',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100),
+                'screen_size': (100, 100),
+                'distance': 50,
+                'origin': 'upper left',
+                'pixel_column': 'pixel',
+                'position_column': 'position',
+                'n_components': 2,
+            },
             pl.Series('pixel', [[0, -0.5]], pl.List(pl.Float64)),
-            id='isosceles_triangle_left_origin_lowerleft_returns_neg0.5',
+            pl.Series('position', [[-44.7120, -45]], pl.List(pl.Float64)),
+            id='isosceles_triangle_left_origin_upperleft_returns_neg45',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100),
+                'screen_size': (100, 100),
+                'distance': 50,
+                'pixel_column': 'pixel',
+                'position_column': 'position',
+                'n_components': 2,
+            },
+            pl.Series('pixel', [[0, -0.5]], pl.List(pl.Float64)),
+            pl.Series('position', [[-44.7120, -45]], pl.List(pl.Float64)),
+            id='isosceles_triangle_left_origin_default_returns_neg45',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
+            pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
             pl.Series('position', [[0, 26.5650]], pl.List(pl.Float64)),
-            pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
-            id='ankathet_half_origin_center_returns_50',
+            id='ankathet_half_origin_center_returns_26.565',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
+            pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
             pl.Series('position', [[-26.3354, 26.5650]], pl.List(pl.Float64)),
+            id='ankathet_half_origin_upperleft_returns_26.565',
+        ),
+        pytest.param(
+            {
+                'screen_resolution': (100, 100),
+                'screen_size': (100, 100),
+                'distance': 100,
+                'pixel_column': 'pixel',
+                'position_column': 'position',
+                'n_components': 2,
+            },
             pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
-            id='ankathet_half_origin_lowerleft_returns_99.5',
+            pl.Series('position', [[-26.3354, 26.5650]], pl.List(pl.Float64)),
+            id='ankathet_half_origin_default_returns_26.565',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50 / np.sqrt(3),
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
+            pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
             pl.Series('position', [[0, 60]], pl.List(pl.Float64)),
-            pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
-            id='ankathet_sqrt3_origin_center_returns_50',
+            id='ankathet_sqrt3_origin_center_returns_60',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50 / np.sqrt(3),
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[-59.75, 60]], pl.List(pl.Float64)),
             pl.Series('pixel', [[0, 100 - 0.5]], pl.List(pl.Float64)),
-            id='ankathet_sqrt3_origin_lowerleft_returns_99.5',
+            pl.Series('position', [[-59.75, 60]], pl.List(pl.Float64)),
+            id='ankathet_sqrt3_origin_upperleft_returns_60',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50 * np.sqrt(3),
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[0, 30]], pl.List(pl.Float64)),
             pl.Series('pixel', [[0, 50]], pl.List(pl.Float64)),
-            id='opposite_sqrt3_origin_center_returns_50',
+            pl.Series('position', [[0, 30]], pl.List(pl.Float64)),
+            id='opposite_sqrt3_origin_center_returns_30',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
                 'distance': 50 * np.sqrt(3),
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[-30, 30]], pl.List(pl.Float64)),
             pl.Series('pixel', [[-0.5, 100 - 0.5]], pl.List(pl.Float64)),
-            id='opposite_sqrt3_origin_lowerleft_returns_99.5',
+            pl.Series('position', [[-30, 30]], pl.List(pl.Float64)),
+            id='opposite_sqrt3_origin_upperleft_returns_30',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 200),
                 'screen_size': (100, 100),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[45, 26.5650]], pl.List(pl.Float64)),
             pl.Series('pixel', [[100, 100]], pl.List(pl.Float64)),
+            pl.Series('position', [[45, 26.5650]], pl.List(pl.Float64)),
             id='screen_resolution_different_values',
         ),
         pytest.param(
@@ -480,13 +519,13 @@ def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 200),
                 'distance': 100,
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
-            pl.Series('position', [[45, 63.4349]], pl.List(pl.Float64)),
             pl.Series('pixel', [[100, 100]], pl.List(pl.Float64)),
+            pl.Series('position', [[45, 63.4349]], pl.List(pl.Float64)),
             id='screen_size_different_values',
         ),
     ],
@@ -498,7 +537,7 @@ def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
         pytest.param(False, id='scalar_distance'),
     ],
 )
-def test_deg2pix_returns(kwargs, series, expected_df, distance_as_column):
+def test_pix2deg_returns(kwargs, series, expected_df, distance_as_column):
     df = series.to_frame().clone()
     kwargs = kwargs.copy()
 
@@ -516,9 +555,40 @@ def test_deg2pix_returns(kwargs, series, expected_df, distance_as_column):
         kwargs['distance'] = 'distance'
 
     result_df = df.select(
-        pm.gaze.transforms.deg2pix(**kwargs),
+        pm.transforms.pix2deg(**kwargs),
     )
-    assert_frame_equal(result_df, expected_df.to_frame(), abs_tol=1e-4)
+    assert_frame_equal(result_df, expected_df.to_frame())
+
+
+@pytest.mark.parametrize(
+    'n_bad_components',
+    [
+        pytest.param(0, id='zero_components_defaults_to_two'),
+        pytest.param(None, id='none_components_defaults_to_two'),
+        pytest.param('x', id='non_int_components_defaults_to_two'),
+    ],
+)
+def test_pix2deg_defensive_guard_n_components_defaults(n_bad_components):
+    # baseline with n_components=2
+    kwargs = {
+        'screen_resolution': (100, 100),
+        'screen_size': (100, 100),
+        'distance': 100,
+        'origin': 'center',
+        'pixel_column': 'pixel',
+        'position_column': 'position',
+        'n_components': 2,
+    }
+
+    # simple pixel series
+    series = pl.Series('pixel', [[10.0, 0.0]], pl.List(pl.Float64))
+    df = series.to_frame()
+
+    expected_df = df.select(pm.transforms.pix2deg(**kwargs))
+
+    kwargs['n_components'] = n_bad_components  # type: ignore[assignment]
+    result_df = df.select(pm.transforms.pix2deg(**kwargs))
+    assert_frame_equal(result_df, expected_df)
 
 
 @pytest.mark.parametrize(
@@ -528,111 +598,113 @@ def test_deg2pix_returns(kwargs, series, expected_df, distance_as_column):
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             {
-                'position': [[0., 0.], [0., 0.], [0., 0.]],
+                'pixel': [[0., 0.], [0., 0.], [0., 0.]],
                 'distance': [100., 100., 100.],
             },
-            pl.Series('pixel', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
-            id='origin_center_constant_distance_and_position_returns_constant_pixel',
+            pl.Series('position', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
+            id='origin_center_constant_distance_and_pixel_returns_constant_position',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             {
-                'position': [[0., 0.], [0., 0.], [0., 0.]],
+                'pixel': [[0., 0.], [0., 0.], [0., 0.]],
                 'distance': [1000., 100., 10.],
             },
-            pl.Series('pixel', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
-            id='origin_center_constant_centered_position_changing_distance_returns_constant_pixel',
+            pl.Series('position', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
+            id='origin_center_constant_centered_pixel_changing_distance_returns_constant_position',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             {
-                'position': [[0., 0.], [0., 0.], [0., 0.]],
+                'pixel': [[49.5, 49.5], [49.5, 49.5], [49.5, 49.5]],
                 'distance': [100., 100., 100.],
             },
-            pl.Series('pixel', [[49.5, 49.5], [49.5, 49.5], [49.5, 49.5]], pl.List(pl.Float64)),
-            id='origin_lower_left_constant_distance_and_position_returns_constant_pixel',
+            pl.Series('position', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
+            id='origin_upper_left_constant_distance_and_pixel_'
+               'returns_constant_position',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
-                'pixel_origin': 'upper left',
+                'origin': 'upper left',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             {
-                'position': [[0., 0.], [0., 0.], [0., 0.]],
+                'pixel': [[49.5, 49.5], [49.5, 49.5], [49.5, 49.5]],
                 'distance': [1000., 100., 10.],
             },
-            pl.Series('pixel', [[49.5, 49.5], [49.5, 49.5], [49.5, 49.5]], pl.List(pl.Float64)),
-            id='origin_lower_left_constant_centered_pos_changing_distance_returns_constant_pixel',
+            pl.Series('position', [[0., 0.], [0., 0.], [0., 0.]], pl.List(pl.Float64)),
+            id='origin_upper_left_constant_centered_pixel_changing_distance_'
+               'returns_constant_position',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             {
-                'position': [[0., 63.4349], [0., 45.], [0., 26.5650]],
+                'pixel': [[0., 50.], [0., 50.], [0., 50.]],
                 'distance': [250., 500., 1000.],
             },
             pl.Series(
-                'pixel', [[0., 50.], [0., 50.], [0., 50.]], pl.List(pl.Float64),
+                'position', [[0., 63.4349], [0., 45.], [0., 26.5650]], pl.List(pl.Float64),
             ),
-            id='origin_center_constant_position_centered_x_changing_distance_returns',
+            id='origin_center_constant_pixel_centered_x_changing_distance_returns',
         ),
         pytest.param(
             {
                 'screen_resolution': (100, 100),
                 'screen_size': (100, 100),
-                'pixel_origin': 'center',
+                'origin': 'center',
                 'pixel_column': 'pixel',
                 'position_column': 'position',
                 'n_components': 2,
             },
             {
-                'position': [[63.4349, 0.], [45., 0.], [26.5650, 0.]],
+                'pixel': [[50., 0.], [50., 0.], [50., 0.]],
                 'distance': [250., 500., 1000.],
             },
             pl.Series(
-                'pixel', [[50., 0.], [50., 0.], [50., 0.]], pl.List(pl.Float64),
+                'position', [[63.4349, 0.], [45., 0.], [26.5650, 0.]], pl.List(pl.Float64),
             ),
-            id='origin_center_constant_position_centered_y_changing_distance_returns',
+            id='origin_center_constant_pixel_centered_y_changing_distance_returns',
         ),
     ],
 )
-def test_deg2pix_distance_as_colum_returns(kwargs, data, expected_df):
+def test_pix2deg_distance_as_colum_returns(kwargs, data, expected_df):
     df = pl.DataFrame(
-        data, schema={'position': pl.List(pl.Float64), 'distance': pl.Float64},
+        data, schema={'pixel': pl.List(pl.Float64), 'distance': pl.Float64},
     )
 
     result_df = df.select(
-        pm.gaze.transforms.deg2pix(**kwargs, distance='distance'),
+        pm.transforms.pix2deg(**kwargs, distance='distance'),
     )
 
     assert_frame_equal(result_df, expected_df.to_frame())

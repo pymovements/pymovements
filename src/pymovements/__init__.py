@@ -26,6 +26,7 @@ from pymovements import measure
 from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
+from pymovements import transforms
 from pymovements import utils
 from pymovements import warnings
 from pymovements._version import __version__
@@ -95,6 +96,7 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
+    'transforms',
 
     'exceptions',
     'UnknownFileType',

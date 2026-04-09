@@ -127,7 +127,7 @@ import pymovements as pm
 )
 def test_savitzky_golay_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.gaze.transforms.savitzky_golay(**kwargs)
+        pm.transforms.savitzky_golay(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -151,7 +151,7 @@ def test_savitzky_golay_init_raises_error(kwargs, exception, msg_substrings):
 )
 def test_savitzky_golay_raises_error(kwargs, series, exception, msg_substrings):
     df = series.to_frame()
-    expression = pm.gaze.transforms.savitzky_golay(**kwargs)
+    expression = pm.transforms.savitzky_golay(**kwargs)
 
     with pytest.raises(exception) as excinfo:
         df.select(expression)
@@ -260,6 +260,6 @@ def test_savitzky_golay_returns(kwargs, series, expected_df):
     df = series.to_frame()
 
     result_df = df.select(
-        pm.gaze.transforms.savitzky_golay(**kwargs),
+        pm.transforms.savitzky_golay(**kwargs),
     )
     assert_frame_equal(result_df, expected_df.to_frame())
