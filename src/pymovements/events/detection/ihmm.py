@@ -13,7 +13,13 @@ class HMM:
 
     # TODO: some string representation method? To inspect states and so on
 
-    def __init__(self,states,mu,sigma,initial_state,transition_matrix):
+    def __init__(
+            self,
+            states : int,
+            mu: list[float] | np.ndarray,
+            sigma: list[float] | np.ndarray,
+            initial_state: list[float] | np.ndarray,
+            transition_matrix: list[list[float]] | np.ndarray):
 
         self.states = states
 
@@ -27,16 +33,25 @@ class HMM:
         
         return
     
-    def emit_log_prob(self, v, s):
+    def emit_log_prob(
+            self,
+            v: list[float] | np.ndarray,
+            s: int) -> float:
         mu = self.mu[s]
         sigma = self.sigma[s]
         return -0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2)
     
-    def log_sum_exp(self,arr):
+    def log_sum_exp(
+            self,
+            arr: np.ndarray) -> float:
         m = np.max(arr)
         return m + np.log(np.sum(np.exp(arr - m)))
 
-    def baum_welch(self,velocities,max_iters=1000,epsilon = 1e-4):
+    def baum_welch(
+            self,
+            velocities: list[float] | np.ndarray,
+            max_iters: int = 1000,
+            epsilon: float = 1e-4) -> dict[str, np.ndarray]:
 
         T = len(velocities)
         M = self.states
@@ -118,7 +133,11 @@ class HMM:
 
         return  {"mu":self.mu, "sigma":self.sigma, "init":self.init, "trans":self.trans}
     
-    def baum_forward(self, velocities,T,M):
+    def baum_forward(
+            self, 
+            velocities: list[float] | np.ndarray,
+            T: int,
+            M: int) -> np.ndarray:
         
         alpha = np.full((T, M), -np.inf)
 
@@ -134,7 +153,11 @@ class HMM:
 
         return alpha
     
-    def baum_backward(self, velocities,T,M):
+    def baum_backward(
+            self, 
+            velocities: list[float] | np.ndarray,
+            T: int,
+            M: int) -> np.ndarray:
         
         beta = np.full((T, M), -np.inf)
 
@@ -153,7 +176,9 @@ class HMM:
 
         return beta
     
-    def viterbi(self, velocities):
+    def viterbi(
+            self,
+            velocities: list[float] | np.ndarray) -> np.ndarray:
 
         # init step
 
@@ -196,9 +221,9 @@ class HMM:
 def ihmm(
         positions: list[list[float]] | list[tuple[float, float]] | np.ndarray,
         timesteps: list[int] | np.ndarray | None = None,
-        mu: list[int] | np.ndarray | None = None, 
-        sigma: list[int] | np.ndarray | None = None, 
-        init_state : list[int] | np.ndarray | None = None,
+        mu: list[float] | np.ndarray | None = None, 
+        sigma: list[float] | np.ndarray | None = None, 
+        init_state : list[float] | np.ndarray | None = None,
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
         initialization: str | None = None,
         name: str = 'fixation',
