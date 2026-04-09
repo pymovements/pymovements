@@ -26,7 +26,6 @@ from pymovements import measure
 from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
-from pymovements import utils
 from pymovements import warnings
 from pymovements._version import __version__
 from pymovements.dataset import Dataset
@@ -102,8 +101,6 @@ __all__ = [
 
     'warnings',
     'ExperimentalWarning',
-
-    'utils',
 
     'text',
 
