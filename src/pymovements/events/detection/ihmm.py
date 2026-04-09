@@ -36,33 +36,36 @@ class HMM:
         m = np.max(arr)
         return m + np.log(np.sum(np.exp(arr - m)))
 
-    def baum_welch(self,velocities,n_iter=100):
+    def baum_welch(self,velocities,max_iters=1000,epsilon = 1e-4):
 
         T = len(velocities)
         M = self.states
 
         # TODO: Implement convergence instead of iters
 
-        for _ in range(n_iter):
+        prev_log_likelihood = -np.inf
+
+        for _ in range(max_iters):
 
             alpha = self.baum_forward(velocities,T,M)
+
             beta = self.baum_backward(velocities,T,M)
 
             xi = np.zeros((M, M, T-1))
 
             for t in range(T-1):
-                denomTerms = []
+                denom_terms = []
 
                 for i in range(M):
                     for j in range(M):
-                        denomTerms.append(
+                        denom_terms.append(
                             alpha[t, i] +
                             self.trans[i, j] +
                             self.emit_log_prob(velocities[t+1], j) +
                             beta[t+1, j]
                         )
 
-                denom = self.log_sum_exp(np.array(denomTerms))
+                denom = self.log_sum_exp(np.array(denom_terms))
 
                 for i in range(M):
                     for j in range(M):
@@ -102,8 +105,18 @@ class HMM:
 
                 var = np.sum(weights * (velocities - self.mu[j])**2) / total
                 self.sigma[j] = np.sqrt(var)
+            
 
-        return  self.mu, self.sigma, self.init, self.trans
+            alpha_updated = self.baum_forward(velocities, T, M)
+
+            log_likelihood = self.log_sum_exp(alpha_updated[-1])
+
+            if abs(log_likelihood - prev_log_likelihood) < epsilon:
+                break
+
+            prev_log_likelihood = log_likelihood
+
+        return  {"mu":self.mu, "sigma":self.sigma, "init":self.init, "trans":self.trans}
     
     def baum_forward(self, velocities,T,M):
         
@@ -282,7 +295,8 @@ def ihmm(
     hmm = HMM(states= 2 ,mu=_mu,sigma=_sigma,initial_state=_init,transition_matrix=_trans)
 
     if reestimate:
-        hmm.baum_welch(velocities=velocities)
+        optimal = hmm.baum_welch(velocities=velocities)
+        # print(optimal)
 
     # inference the hmm 
 
