@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Module for py:func:`pymovements.gaze.transforms."""
+"""Module for py:func:`pymovements.transforms.pix2deg`."""
 from __future__ import annotations
 
 import polars as pl
