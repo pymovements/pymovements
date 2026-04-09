@@ -1087,7 +1087,7 @@ from pymovements import Gaze
             id='df_pixel_column_all_nulls_returns_none',
         ),
 
-   ],
+    ],
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
     gaze = Gaze(**init_kwargs)
@@ -1712,8 +1712,6 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             id='samples_data_mutually_exclusive',
         ),
 
-    ],
-       ),
         pytest.param(
             {
                 'samples': pl.from_dict(
@@ -1727,7 +1725,7 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             'inconsistent number of components inferred: {2, 3}',
             id='inconsistent_n_components_with_nulls',
         ),
-   ],
+    ],
 )
 def test_gaze_init_exceptions(init_kwargs, exception, exception_msg):
     with pytest.raises(exception) as excinfo:
