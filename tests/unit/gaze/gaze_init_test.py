@@ -1713,6 +1713,21 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
         ),
 
     ],
+       ),
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'pixel': [[1.23, 4.56], None, [7.89, 10.11, 12.13]],
+                    },
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            ValueError,
+            'inconsistent number of components inferred: {2, 3}',
+            id='inconsistent_n_components_with_nulls',
+        ),
+   ],
 )
 def test_gaze_init_exceptions(init_kwargs, exception, exception_msg):
     with pytest.raises(exception) as excinfo:
