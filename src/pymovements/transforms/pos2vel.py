@@ -25,6 +25,7 @@ import polars as pl
 from pymovements.transforms.library import register_transform
 from pymovements.transforms.savitzky_golay import savitzky_golay
 
+
 @register_transform
 def pos2vel(
         *,
