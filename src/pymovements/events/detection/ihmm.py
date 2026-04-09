@@ -15,8 +15,6 @@ class HMM:
 
     def __init__(self,states,mu,sigma,initial_state,transition_matrix):
 
-        # DONE # TODO: implement different initializations outside/inside
-
         self.states = states
 
         self.init = np.log(initial_state)
@@ -79,25 +77,25 @@ class HMM:
            
             gamma = np.sum(xi, axis=1) 
 
-            gammaFull = np.zeros((M, T))
-            gammaFull[:, :-1] = gamma
+            gamma_full = np.zeros((M, T))
+            gamma_full[:, :-1] = gamma
 
             last = alpha[T-1] + beta[T-1]
             last = np.exp(last - self.log_sum_exp(last))
-            gammaFull[:, -1] = last
+            gamma_full[:, -1] = last
 
           
-            self.init = np.log(gammaFull[:, 0])
+            self.init = np.log(gamma_full[:, 0])
 
             for i in range(M):
-                denom = np.sum(gammaFull[i, :-1])
+                denom = np.sum(gamma_full[i, :-1])
                 for j in range(M):
                     numer = np.sum(xi[i, j, :])
                     self.trans[i, j] = np.log(numer / denom)
 
         
             for j in range(M):
-                weights = gammaFull[j, :]
+                weights = gamma_full[j, :]
                 total = np.sum(weights)
 
                 self.mu[j] = np.sum(weights * velocities) / total
@@ -105,7 +103,7 @@ class HMM:
                 var = np.sum(weights * (velocities - self.mu[j])**2) / total
                 self.sigma[j] = np.sqrt(var)
 
-        return
+        return  self.mu, self.sigma, self.init, self.trans
     
     def baum_forward(self, velocities,T,M):
         
@@ -142,40 +140,6 @@ class HMM:
 
         return beta
     
-    '''
-    code from "https://ristohinno.medium.com/baum-welch-algorithm-4d4514cf9dbe" still need to fully check it 
-    # DONE #TODO: adapt for log probs
-    def baum_welch(O, a, b, initial_distribution, n_iter=100):
-        #http://www.adeveloperdiary.com/data-science/machine-learning/derivation-and-implementation-of-baum-welch-algorithm-for-hidden-markov-model/
-        M = a.shape[0]
-        T = len(O)
-        for n in range(n_iter):
-            ###estimation step
-            alpha = forward(O, a, b, initial_distribution)
-            beta = backward(O, a, b)
-            xi = np.zeros((M, M, T - 1))
-            for t in range(T - 1):
-                # joint probab of observed data up to time t @ transition prob * 
-                #emisssion prob at t+1 @ joint probab of observed data from at t+1
-                denominator = (alpha[t, :].T @ a * b[:, O[t + 1]].T) @ beta[t + 1, :]
-                for i in range(M):
-                    numerator = alpha[t, i] * a[i, :] * b[:, O[t + 1]].T * beta[t + 1, :].T
-                    xi[i, :, t] = numerator / denominator
-            gamma = np.sum(xi, axis=1)
-            ### maximization step
-            a = np.sum(xi, 2) / np.sum(gamma, axis=1).reshape((-1, 1))
-            # Add additional T'th element in gamma
-            gamma = np.hstack((gamma, np.sum(xi[:, :, T - 2], axis=0).reshape((-1, 1))))
-            K = b.shape[1]
-            denominator = np.sum(gamma, axis=1)
-            for l in range(K):
-                b[:, l] = np.sum(gamma[:, O == l], axis=1)
-            b = np.divide(b, denominator.reshape((-1, 1)))
-        return a, b
-
-
-    '''
-    
     def viterbi(self, velocities):
 
         # init step
@@ -192,17 +156,16 @@ class HMM:
 
         for t in range(1, T):
             for state1 in range(self.states):
-                bestP = -np.inf
-                bestState = 0
+                best_prob = -np.inf
+                best_state = 0
                 for state2 in range(self.states):
-                    newP = prob[t-1, state2] + self.trans[state2, state1] + self.emit_log_prob(velocities[t], state1)
-                    if newP > bestP:
-                        bestP = newP
-                        bestState = state2
-                prob[t, state1] = bestP
-                prev[t, state1] = bestState
+                    new_prob = prob[t-1, state2] + self.trans[state2, state1] + self.emit_log_prob(velocities[t], state1)
+                    if new_prob > best_prob:
+                        best_prob = new_prob
+                        best_state = state2
+                prob[t, state1] = best_prob
+                prev[t, state1] = best_state
 
-        
         # backtrack
         
         path = np.zeros(T, dtype=int)
@@ -215,37 +178,6 @@ class HMM:
         return path
 
     
-    
-
-'''
-function Viterbi(states, init, trans, emit, obs) is
-    input states: S hidden states
-    input init: initial probabilities of each state
-    input trans: S × S transition matrix
-    input emit: S × O emission matrix
-    input obs: sequence of T observations
-
-    prob ← T × S matrix of zeroes
-    prev ← empty T × S matrix
-    for each state s in states do
-        prob[0][s] = init[s] * emit[s][obs[0]]
-
-    for t = 1 to T - 1 inclusive do // t = 0 has been dealt with already
-        for each state s in states do
-            for each state r in states do
-                new_prob ← prob[t - 1][r] * trans[r][s] * emit[s][obs[t]]
-                if new_prob > prob[t][s] then
-                    prob[t][s] ← new_prob
-                    prev[t][s] ← r
-
-    path ← empty array of length T
-    path[T - 1] ← the state s with maximum prob[T - 1][s]
-    for t = T - 2 to 0 inclusive do
-        path[t] ← prev[t + 1][path[t + 1]]
-
-    return path
-end
-'''
 
 @register_event_detection
 def ihmm(
@@ -275,12 +207,7 @@ def ihmm(
 
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
-
     # TODO: Implement other dimension checks for inputs
-
-
-
-
 
     # convert into velocities (1D velocities vector)
 
@@ -309,10 +236,8 @@ def ihmm(
 
     velocities = np.array(velocities)
 
-
     # Init 2 state HMM
 
-    # DONE # TODO: find reasonable def paramenters
     defaults={
         "mu": [np.percentile(velocities, 30), np.percentile(velocities, 80)], #DATA BASED init  #[1.0, 10.0],
         "sigma": [np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
@@ -368,176 +293,28 @@ def ihmm(
     onsets_arr = []
     offsets_arr = []
 
-    prevState = states[0]
+    prev_state = states[0]
 
-    if prevState == 0:
+    if prev_state == 0:
         onsets_arr.append(0)
 
     for i, state in enumerate(states[1:], start=1):
 
         if state == 0:
-            if prevState != 0:
+            if prev_state != 0:
                 onsets_arr.append(i)
-            #else:
-            #    pass 
         else:
-            #if prevState != 0:
-            #    pass
-            if prevState == 0:
+            if prev_state == 0:
                 offsets_arr.append(i-1)
 
-        prevState = state
+        prev_state = state
     
-    if prevState == 0:
+    if prev_state == 0:
         offsets_arr.append(len(states) - 1)
 
     onsets_arr = np.array(onsets_arr)
     offsets_arr = np.array(offsets_arr)
     
-
-    # DONE # TODO: transform in event object
-
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    '''
-    _checks.check_shapes(positions=positions)
-
-    if timesteps is None:
-        timesteps = np.arange(len(positions), dtype=np.int64)
-    timesteps = np.array(timesteps).flatten()
-
-    # Check that timesteps are integers or are floats without a fractional part.
-    timesteps_int = timesteps.astype(int)
-    if np.any((timesteps - timesteps_int) != 0):
-        raise TypeError('timesteps must be of type int')
-    timesteps = timesteps_int
-
-    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
-
-    if dispersion_threshold <= 0:
-        raise ValueError('dispersion_threshold must be greater than 0')
-    if minimum_duration <= 0:
-        raise ValueError('minimum_duration must be greater than 0')
-    if not isinstance(minimum_duration, int):
-        raise TypeError(
-            'minimum_duration must be of type int'
-            f' but is of type {type(minimum_duration)}',
-        )
-
-    onsets = []
-    offsets = []
-
-    # Infer minimum duration in number of samples.
-    # This implementation is currently very restrictive.
-    # It requires that the interval between timesteps is constant.
-    # It requires that the minimum duration is divisible by the constant interval between timesteps.
-    timesteps_diff = np.diff(timesteps)
-    if not np.all(timesteps_diff == timesteps_diff[0]):
-        raise ValueError('interval between timesteps must be constant')
-    if not minimum_duration % timesteps_diff[0] == 0:
-        raise ValueError(
-            'minimum_duration must be divisible by the constant interval between timesteps',
-        )
-    if (minimum_sample_duration := int(minimum_duration // timesteps_diff[0])) < 2:
-        raise ValueError('minimum_duration must be longer than the equivalent of 2 samples')
-
-    # Initialize window over first points to cover the duration threshold
-    win_start = 0
-    win_end = minimum_sample_duration
-
-    while win_start < len(timesteps) and win_end <= len(timesteps):
-
-        # Initialize window over first points to cover the duration threshold.
-        # This automatically extends the window to the specified minimum event duration.
-        win_end = max(win_start + minimum_sample_duration, win_end)
-        win_end = min(win_end, len(timesteps))
-        if win_end - win_start < minimum_sample_duration:
-            break
-
-        if dispersion(positions[win_start:win_end]) <= dispersion_threshold:
-            # Add additional points to the window until dispersion > threshold.
-            while dispersion(positions[win_start:win_end]) < dispersion_threshold:
-                # break if we reach end of input data
-                if win_end == len(timesteps):
-                    break
-
-                win_end += 1
-
-            # check for np.nan values
-            if np.sum(np.isnan(positions[win_start:win_end - 1])) > 0:
-                tmp_candidates = [np.arange(win_start, win_end - 1, 1)]
-                tmp_candidates = filter_candidates_remove_nans(
-                    candidates=tmp_candidates,
-                    values=positions,
-                )
-                # split events if include_nan == False
-                if not include_nan:
-                    tmp_candidates = events_split_nans(
-                        candidates=tmp_candidates,
-                        values=positions,
-                    )
-
-                # Filter all candidates by minimum duration.
-                tmp_candidates = [
-                    candidate for candidate in tmp_candidates
-                    if len(candidate) >= minimum_sample_duration
-                ]
-                for candidate in tmp_candidates:
-                    onsets.append(timesteps[candidate[0]])
-                    offsets.append(timesteps[candidate[-1]])
-
-            else:
-                # Note a fixation at the centroid of the window points.
-
-                onsets.append(timesteps[win_start])
-                offsets.append(timesteps[win_end - 1])
-
-            # Remove window points from points.
-            # Initialize new window excluding the previous window
-            win_start = win_end
-        else:
-            # Remove first point from points.
-            # Move window start one step further without modifying window end.
-            win_start += 1
-
-    # Create proper flat numpy arrays.
-    onsets_arr = np.array(onsets).flatten()
-    offsets_arr = np.array(offsets).flatten()
-
-    events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
-    return events
-    '''
