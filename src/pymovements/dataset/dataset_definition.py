@@ -78,11 +78,6 @@ class DatasetDefinition:
         (default: ResourceDefinitions())
     experiment: Experiment | None
         The experiment definition. (default: None)
-    extract: dict[str, bool] | None
-        Decide whether to extract the data. (default: None)
-
-        .. deprecated:: v0.22.1
-           This field will be removed in v0.27.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -201,11 +196,6 @@ class DatasetDefinition:
         (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
-    extract: dict[str, bool] | None
-        Decide whether to extract the data. (default: None)
-
-        .. deprecated:: v0.22.1
-           This field will be removed in v0.27.0.
     filename_format: dict[str, str] | None
         Regular expression, which will be matched before trying to load the file. Named groups will
         appear in the `fileinfo` dataframe. (default: None)
@@ -312,8 +302,6 @@ class DatasetDefinition:
 
     experiment: Experiment | None = field(default_factory=Experiment)
 
-    extract: dict[str, bool] | None = None
-
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None
 
     column_map: dict[str, str] | None = None
@@ -337,7 +325,6 @@ class DatasetDefinition:
             mirrors: dict[str, Sequence[str]] | None = None,
             resources: ResourceDefinitions | ResourcesLike | None = None,
             experiment: Experiment | None = None,
-            extract: dict[str, bool] | None = None,
             filename_format: dict[str, str] | None = None,
             filename_format_schema_overrides: dict[str, dict[str, type]] | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
@@ -356,8 +343,6 @@ class DatasetDefinition:
         self.description = description
 
         self.experiment = experiment
-
-        self.extract = extract
 
         self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
@@ -488,14 +473,6 @@ class DatasetDefinition:
                     'DatasetDefinition.has_files is deprecated since version v0.23.0. '
                     'Please specify ResourceDefinition.filename_pattern instead. '
                     'This field will be removed in v0.28.0.',
-                ),
-            )
-
-        if self.extract is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.extract is deprecated since version v0.22.1. '
-                    'This field will be removed in v0.27.0.',
                 ),
             )
 

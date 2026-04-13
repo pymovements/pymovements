@@ -2063,6 +2063,7 @@ class Gaze:
             list_length
             for column in considered_columns
             for list_length in self.samples.get_column(column).list.len().unique().to_list()
+            if list_length is not None
         }
 
         for column_specifier_list in column_specifiers:
