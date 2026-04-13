@@ -100,27 +100,6 @@ def test_scanpathplot_save(events, tmp_path):
     assert filepath.is_file()
 
 
-def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch):
-    # event_df path triggers the deprecation branch (97->98)
-    df = pl.DataFrame({
-        'trial': [1, 1],
-        'name': ['saccade', 'saccade'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        'amplitude': [2.0, 4.0],
-        'peak_velocity': [100.0, 200.0],
-    })
-    event_df = Events(df)
-
-    show_called = []
-    monkeypatch.setattr(plt, 'show', lambda: show_called.append(True))
-
-    with pytest.warns(DeprecationWarning):
-        fig, ax = main_sequence_plot(event_df=event_df)
-    assert fig is ax.figure
-
-
 def test_main_sequence_plot_raises_on_empty_events():
     # Covers 108->109: not events -> ValueError
     empty_events = Events(pl.DataFrame())
