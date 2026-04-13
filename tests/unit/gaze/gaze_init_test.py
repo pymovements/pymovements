@@ -1014,6 +1014,79 @@ from pymovements import Gaze
             id='df_auto_columns_acceleration',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [[1.23, 4.56]]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56]]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_pixel_column_two_components',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [[1.23, 4.56], None]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56], None]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_pixel_column_two_components_one_null',
+        ),
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'pixel': [[1.23, 4.56], None],
+                        'position': [None, [7.89, 10.11]],
+                    },
+                    schema={
+                        'pixel': pl.List(pl.Float64),
+                        'position': pl.List(pl.Float64),
+                    },
+                ),
+            },
+            pl.from_dict(
+                {
+                    'pixel': [[1.23, 4.56], None],
+                    'position': [None, [7.89, 10.11]],
+                },
+                schema={
+                    'pixel': pl.List(pl.Float64),
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            2,
+            id='df_pixel_position_columns_both_have_nulls',
+        ),
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [None, None]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [None, None]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            None,
+            marks=pytest.mark.filterwarnings(
+                'ignore:Gaze contains samples but no.*:UserWarning',
+            ),
+            id='df_pixel_column_all_nulls_returns_none',
+        ),
+
     ],
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
@@ -1639,6 +1712,19 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             id='samples_data_mutually_exclusive',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'pixel': [[1.23, 4.56], None, [7.89, 10.11, 12.13]],
+                    },
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            ValueError,
+            'inconsistent number of components inferred: {2, 3}',
+            id='inconsistent_n_components_with_nulls',
+        ),
     ],
 )
 def test_gaze_init_exceptions(init_kwargs, exception, exception_msg):

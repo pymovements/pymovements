@@ -26,8 +26,6 @@
      - Overview of plotting functionality
    * - :doc:`extending`
      - Overview on how to extend pymovements with your own functions
-   * - :doc:`utils`
-     - Overview of helper utilities
 
 
 .. toctree::
@@ -44,4 +42,3 @@
    synthetic
    plotting
    extending
-   utils
