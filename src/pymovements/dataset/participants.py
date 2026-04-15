@@ -83,6 +83,30 @@ class Participants:
         self.data = data
         self.metadata = metadata
 
+    def update(
+            self,
+            data: polars.DataFrame,
+    ) -> None:
+        if 'participant_id' not in data.columns:
+            raise ValueError("data must have column named 'participant_id'")
+
+        # Somehow new columns are not added. Do this manually. Is this a bug in polars update()?
+        new_columns = list(set(data.columns) - set(self.data.columns))
+        if new_columns:
+            new_column_init = {
+                column: polars.lit(None).cast(data[column].dtype)
+                for column in new_columns
+            }
+            self.data = self.data.with_columns(**new_column_init)
+
+        # Update existing data.
+        self.data = self.data.update(
+            data.sort('participant_id'),
+            on='participant_id',
+            how='full',
+            include_nulls=True,
+        ).sort('participant_id')
+
     @staticmethod
     def load(
             path: Path | str,
@@ -232,8 +256,6 @@ def _infer_metadata_column_format(
             # infer format from BIDS specification or use polars datatypes of data columns
             if column == 'participant_id':
                 metadata[column]['Format'] = 'string'
-            elif column == 'age':
-                metadata[column]['Format'] = 'number'
             else:
                 # convert polars datatype to bids format descriptor
                 metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)

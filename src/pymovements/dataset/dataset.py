@@ -39,6 +39,7 @@ from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
@@ -67,6 +68,8 @@ class Dataset:
         :py:class:`~pymovements.dataset.DatasetPaths` instance.
     """
 
+    participants: Participants
+
     def __init__(
             self,
             definition: str | Path | DatasetDefinition | type[DatasetDefinition],
@@ -74,6 +77,7 @@ class Dataset:
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
         self._files: list[DatasetFile] = []
+        self.participants = Participants(pl.DataFrame(schema={'participant_id': pl.String}))
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
@@ -105,6 +109,7 @@ class Dataset:
     def load(
             self,
             *,
+            participants: bool | None = None,
             events: bool | None = None,
             preprocessed: bool = False,
             stimuli: bool | None = None,
@@ -246,6 +251,8 @@ class Dataset:
     def scan(self) -> Dataset:
         """Infer information from filepaths and filenames.
 
+        Sets the
+
         Returns
         -------
         Dataset
@@ -261,7 +268,33 @@ class Dataset:
         self.fileinfo, self._files = dataset_files.scan_dataset(
             definition=self.definition, paths=self.paths,
         )
+        self.scan_participants()
         return self
+
+    def scan_participants(
+            self,
+            *,
+            participant_key: str = 'participant_id',
+            reset_participants: bool = False,
+    ) -> None:
+        """Scan files for participant metadata.
+
+        Currently only scans file metadata for participant id.
+        """
+        participant_ids = set()
+        for file in self.files:
+            if participant_key in file.metadata:
+                participant_ids.add(file.metadata[participant_key])
+
+        participant_data = pl.from_dict(
+            {'participant_id': list(participant_ids)},
+        ).sort('participant_id')
+
+        if len(participant_data):
+            if reset_participants:
+                self.participants = Participants(participant_data)
+            else:
+                self.participants.update(participant_data)
 
     def load_gaze_files(
             self,

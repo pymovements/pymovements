@@ -75,7 +75,7 @@ class DatasetFile:
     """
 
     path: Path
-    definition: ResourceDefinition
+    definition: ResourceDefinition | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
