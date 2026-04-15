@@ -190,10 +190,7 @@ def test_dataset_load_participants_raises_with_multiple_participant_files(
         dataset.load_participants()
 
 
-def test_dataset_load_participants_raises_without_participants_resource(
-        tmp_path,
-        make_csv_file,
-):
+def test_dataset_load_participants_raises_without_participants_resource(tmp_path):
     dataset = Dataset(DatasetDefinition('.', resources=[]), path=tmp_path)
     dataset.scan()
 
