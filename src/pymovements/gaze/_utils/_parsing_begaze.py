@@ -371,7 +371,7 @@ def parse_begaze(
         if key in metadata and metadata[key] not in ('', None) and metadata[key] != value:
             warnings.warn(
                 f"BeGaze parser: metadata key '{key}' is being overwritten "
-                f"(old={metadata[key]!r}, new={value!r}).",
+                f'(old={metadata[key]!r}, new={value!r}).',
                 RuntimeWarning,
             )
         metadata[key] = value

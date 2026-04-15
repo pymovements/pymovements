@@ -103,9 +103,11 @@ class ChineseReading(DatasetDefinition):
             [
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename': 'Raw Data.txt',
-                    'md5': None,  # type: ignore
+                    'source': {
+                        'url': 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/6253cb37840dd726e75c831a',  # noqa: E501 # pylint: disable=line-too-long
+                        'filename': 'Raw Data.txt',
+                        'md5': None,  # type: ignore
+                    },
                     'filename_pattern': 'Raw Data.txt',
                     'load_kwargs': {
                         'trial_columns': ['Subject', 'Sentence_ID'],
@@ -114,9 +116,11 @@ class ChineseReading(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip=',
-                    'filename': 'chinese_reading_measures.zip',
-                    'md5': None,  # type: ignore
+                    'source': {
+                        'url': 'https://files.osf.io/v1/resources/94wue/providers/osfstorage/?zip=',
+                        'filename': 'chinese_reading_measures.zip',
+                        'md5': None,  # type: ignore
+                    },
                     'filename_pattern': r'{measure_type:s} Measures.xlsx',
                     'load_kwargs': {
                         'read_excel_kwargs': {'sheet_name': 'Sheet 1'},

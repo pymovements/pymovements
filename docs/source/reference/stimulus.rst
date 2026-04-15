@@ -12,6 +12,7 @@ Stimulus
 
     ImageStimulus
     TextStimulus
+    WritingSystem
 
 .. rubric:: Input / Output
 

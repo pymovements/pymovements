@@ -30,6 +30,7 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     idt
     ivt
     microsaccades
+    blink
     fill
 
 .. currentmodule:: pymovements.events.segmentation
@@ -42,4 +43,5 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     :template: function.rst
 
     events2segmentation
+    events2timeratio
     segmentation2events

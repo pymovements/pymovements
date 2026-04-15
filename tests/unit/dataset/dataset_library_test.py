@@ -111,7 +111,7 @@ def test_dataset_library_contains_all_public_datasets_files():
         dataset_path = Path(filename)
         if dataset_path.name == 'datasets.yaml':
             continue
-        with open(filename, encoding='ascii') as f:
+        with open(filename, encoding='utf-8') as f:
             dataset_file = yaml.safe_load(f)
         dataset_name = dataset_file['name']
         assert dataset_name in library, f'please add {dataset_name} to `datasets.yaml`'

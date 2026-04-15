@@ -1,10 +1,18 @@
 name: CopCo
 long_name: Copenhagen Corpus of Eye-Tracking Recordings from Natural Reading
+description: "CopCo dataset :cite:p:`CopCoL1Hollenstein`.\n\nThis dataset includes\
+  \ monocular eye tracking data from a single participant in a single\nsession. Eye\
+  \ movements are recorded at a sampling frequency of 1,000 Hz using an EyeLink 1000\n\
+  eye tracker and are provided as pixel coordinates.\n\nThe participant is instructed\
+  \ to read texts and answer questions.\n\nThe dataset includes the data from three\
+  \ papers:\n    the L1 data: :cite:p:`CopCoL1Hollenstein`,\n    the L1 data with\
+  \ dylsexia: :cite:p:`CopCoL1DysBjornsdottir`,\n    the L2 data: :cite:p:`CopCoL2`,\n"
 resources:
 - content: gaze
-  filename: csvs.zip
-  url: https://osf.io/download/bg9r4/
-  md5: 9dc3276714397b7fccac1e179a14c52b
+  source:
+    url: https://osf.io/download/bg9r4/
+    filename: csvs.zip
+    md5: 9dc3276714397b7fccac1e179a14c52b
   filename_pattern: P{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'
@@ -18,8 +26,9 @@ resources:
     - x_right
     - y_right
 - content: precomputed_events
-  filename: FixationReports.zip
-  url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=
+  source:
+    url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e13174c99ebd02df017c14/?zip=
+    filename: FixationReports.zip
   filename_pattern: FIX_report_P{subject_id:d}.txt
   filename_pattern_schema_overrides:
     subject_id: '!int'
@@ -34,8 +43,9 @@ resources:
       decimal_comma: true
       quote_char: null
 - content: precomputed_reading_measures
-  filename: ReadingMeasures.zip
-  url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=
+  source:
+    url: https://files.de-1.osf.io/v1/resources/ud8s5/providers/osfstorage/61e1317cc99ebd02df017c4f/?zip=
+    filename: ReadingMeasures.zip
   filename_pattern: P{subject_id:d}.csv
   filename_pattern_schema_overrides:
     subject_id: '!int'

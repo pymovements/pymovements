@@ -47,7 +47,7 @@ ResourcesLike = Sequence[dict[str, Any]] | dict[str, Sequence[dict[str, Any]]]
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 
-@repr_html()
+@repr_html(['name', 'long_name', 'description', 'experiment', 'resources'])
 @dataclass
 class DatasetDefinition:
     """Definition to initialize a :py:class:`~Dataset`.
@@ -58,6 +58,9 @@ class DatasetDefinition:
         The name of the dataset. (default: '.')
     long_name: str | None
         The entire name of the dataset. (default: None)
+    description: str | None
+        A fulltext description of the dataset.
+        (default: None)
     mirrors: dict[str, Sequence[str]]
         A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
         (default: {})
@@ -75,11 +78,6 @@ class DatasetDefinition:
         (default: ResourceDefinitions())
     experiment: Experiment | None
         The experiment definition. (default: None)
-    extract: dict[str, bool] | None
-        Decide whether to extract the data. (default: None)
-
-        .. deprecated:: v0.22.1
-           This field will be removed in v0.27.0.
     custom_read_kwargs: dict[str, dict[str, Any]] | None
         If specified, these keyword arguments will be passed to the file reading function. The
         behavior of this argument depends on the file extension of the dataset files.
@@ -172,6 +170,9 @@ class DatasetDefinition:
         The name of the dataset. (default: '.')
     long_name: str | None
         The entire name of the dataset. (default: None)
+    description: str | None
+        A fulltext description of the dataset.
+        (default: None)
     has_files: dict[str, bool] | None
         Indicate whether the dataset contains 'gaze', 'precomputed_events', and
         'precomputed_reading_measures'. (default: None)
@@ -195,11 +196,6 @@ class DatasetDefinition:
         (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
-    extract: dict[str, bool] | None
-        Decide whether to extract the data. (default: None)
-
-        .. deprecated:: v0.22.1
-           This field will be removed in v0.27.0.
     filename_format: dict[str, str] | None
         Regular expression, which will be matched before trying to load the file. Named groups will
         appear in the `fileinfo` dataframe. (default: None)
@@ -298,13 +294,13 @@ class DatasetDefinition:
 
     long_name: str | None = None
 
+    description: str | None = None
+
     mirrors: dict[str, Sequence[str]] = field(default_factory=dict)
 
     resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
 
     experiment: Experiment | None = field(default_factory=Experiment)
-
-    extract: dict[str, bool] | None = None
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None
 
@@ -324,11 +320,11 @@ class DatasetDefinition:
             name: str = '.',
             *,
             long_name: str | None = None,
+            description: str | None = None,
             has_files: dict[str, bool] | None = None,
             mirrors: dict[str, Sequence[str]] | None = None,
             resources: ResourceDefinitions | ResourcesLike | None = None,
             experiment: Experiment | None = None,
-            extract: dict[str, bool] | None = None,
             filename_format: dict[str, str] | None = None,
             filename_format_schema_overrides: dict[str, dict[str, type]] | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
@@ -344,10 +340,9 @@ class DatasetDefinition:
     ) -> None:
         self.name = name
         self.long_name = long_name
+        self.description = description
 
         self.experiment = experiment
-
-        self.extract = extract
 
         self.resources = self._initialize_resources(resources=resources)
         self._has_resources = _HasResourcesIndexer(resources=self.resources)
@@ -478,14 +473,6 @@ class DatasetDefinition:
                     'DatasetDefinition.has_files is deprecated since version v0.23.0. '
                     'Please specify ResourceDefinition.filename_pattern instead. '
                     'This field will be removed in v0.28.0.',
-                ),
-            )
-
-        if self.extract is not None:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.extract is deprecated since version v0.22.1. '
-                    'This field will be removed in v0.27.0.',
                 ),
             )
 
@@ -654,7 +641,7 @@ class DatasetDefinition:
                 if not isinstance(value, (bool, int, float)) and not value:
                     del data[key]
 
-        # Convert those object fields.
+        # Convert those object fields to dictionaries.
         if 'experiment' in data and data['experiment'] is not None:
             data['experiment'] = data['experiment'].to_dict(exclude_none=exclude_none)
         if 'resources' in data and data['resources'] is not None:

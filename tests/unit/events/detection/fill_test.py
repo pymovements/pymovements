@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import numpy as np
+import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
@@ -29,15 +30,55 @@ from pymovements.events import fill
 
 
 @pytest.mark.parametrize(
+    ('kwargs', 'expected_error', 'expected_message'),
+    [
+        pytest.param(
+            {
+                'events': Events(),
+                'timesteps': pl.repeat('b', 10, eager=True),
+            },
+            TypeError,
+            r'timesteps dtype must be float or int but is String',
+            id='timesteps_str_raises_type_error',
+        ),
+    ],
+)
+def test_fill_raise_error(kwargs, expected_error, expected_message):
+    """Test if fill raises expected error."""
+    with pytest.raises(expected_error, match=expected_message):
+        fill(**kwargs)
+
+
+@pytest.mark.parametrize(
     ('kwargs', 'expected'),
     [
+        pytest.param(
+            {
+                'events': Events(name='fixation', onsets=[0], offsets=[100]),
+                'timesteps': pl.arange(0, 100, eager=True),
+            },
+            Events(),
+            id='fixation_from_start_to_end_no_fill',
+        ),
         pytest.param(
             {
                 'events': Events(name='fixation', onsets=[0], offsets=[100]),
                 'timesteps': np.arange(0, 100),
             },
             Events(),
-            id='fixation_from_start_to_end_no_fill',
+            id='fixation_from_start_to_end_no_fill_numpy',
+        ),
+        pytest.param(
+            {
+                'events': Events(name='fixation', onsets=[10], offsets=[100]),
+                'timesteps': pl.arange(0, 100, eager=True),
+            },
+            Events(
+                name='unclassified',
+                onsets=[0],
+                offsets=[9],
+            ),
+            id='fixation_10_ms_after_start_to_end_single_fill',
         ),
         pytest.param(
             {
@@ -49,7 +90,19 @@ from pymovements.events import fill
                 onsets=[0],
                 offsets=[9],
             ),
-            id='fixation_10_ms_after_start_to_end_single_fill',
+            id='fixation_10_ms_after_start_to_end_single_fill_numpy',
+        ),
+        pytest.param(
+            {
+                'events': Events(name='fixation', onsets=[0], offsets=[90]),
+                'timesteps': pl.arange(0, 100, eager=True),
+            },
+            Events(
+                name='unclassified',
+                onsets=[90],
+                offsets=[99],
+            ),
+            id='fixation_from_start_to_10_ms_before_end_single_fill',
         ),
         pytest.param(
             {
@@ -61,7 +114,19 @@ from pymovements.events import fill
                 onsets=[90],
                 offsets=[99],
             ),
-            id='fixation_from_start_to_10_ms_before_end_single_fill',
+            id='fixation_from_start_to_10_ms_before_end_single_fill_numpy',
+        ),
+        pytest.param(
+            {
+                'events': Events(name='fixation', onsets=[0, 50], offsets=[40, 100]),
+                'timesteps': pl.arange(0, 100, eager=True),
+            },
+            Events(
+                name='unclassified',
+                onsets=[40],
+                offsets=[49],
+            ),
+            id='fixation_10_ms_break_at_40ms_single_fill',
         ),
         pytest.param(
             {
@@ -73,7 +138,21 @@ from pymovements.events import fill
                 onsets=[40],
                 offsets=[49],
             ),
-            id='fixation_10_ms_break_at_40ms_single_fill',
+            id='fixation_10_ms_break_at_40ms_single_fill_numpy',
+        ),
+        pytest.param(
+            {
+                'events': Events(
+                    name=['fixation', 'saccade'], onsets=[0, 50], offsets=[40, 100],
+                ),
+                'timesteps': pl.arange(0, 100, eager=True),
+            },
+            Events(
+                name='unclassified',
+                onsets=[40],
+                offsets=[49],
+            ),
+            id='fixation_10_ms_break_then_saccade_until_end_single_fill',
         ),
         pytest.param(
             {
@@ -87,7 +166,7 @@ from pymovements.events import fill
                 onsets=[40],
                 offsets=[49],
             ),
-            id='fixation_10_ms_break_then_saccade_until_end_single_fill',
+            id='fixation_10_ms_break_then_saccade_until_end_single_fill_numpy',
         ),
     ],
 )
