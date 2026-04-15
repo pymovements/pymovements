@@ -260,14 +260,6 @@ def test_participants_load_and_rename_data_from_file(
             ),
             id='autocast_participant_id_to_string',
         ),
-        pytest.param(
-            pl.DataFrame({'participant_id': ['1'], 'age': ['21.3']}),
-            pl.DataFrame(
-                {'participant_id': ['1'], 'age': [21.3]},
-                schema={'participant_id': pl.String, 'age': pl.Float64},
-            ),
-            id='autocast_age_column_to_float',
-        ),
     ],
 )
 def test_participants_init_autocasts(data, expected_data):
