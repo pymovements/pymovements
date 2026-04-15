@@ -221,7 +221,7 @@ class Participants:
             Separator in the tabular data file.
             (default: ``\t``)
         write_csv_kwargs: dict[str, Any] | None
-            Pass these additional keyword arguments to :py:func:`polars.write_csv`.
+            Pass these additional keyword arguments to :py:func:`polars.DataFrame.write_csv`.
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
