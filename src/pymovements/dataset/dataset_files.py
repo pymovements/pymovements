@@ -366,8 +366,6 @@ def load_gaze_file(
             )
 
     load_function_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_function_kwargs is None:
-        load_function_kwargs = {}
 
     if load_function_name == 'from_csv':
         if preprocessed:
@@ -509,8 +507,6 @@ def load_precomputed_reading_measure_file(
         Raises ValueError if unsupported file type is encountered.
     """
     load_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_kwargs is None:
-        load_kwargs = {}
     if dataset_definition.custom_read_kwargs is not None:
         custom_read_kwargs = dataset_definition.custom_read_kwargs.get(
             'precomputed_reading_measures', {},
@@ -607,8 +603,6 @@ def load_precomputed_event_file(
         If the file format is unsupported based on its extension.
     """
     load_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_kwargs is None:
-        load_kwargs = {}
     if dataset_definition.custom_read_kwargs is not None:
         custom_read_kwargs = dataset_definition.custom_read_kwargs.get('precomputed_events', {})
         load_kwargs.update(custom_read_kwargs)
@@ -703,8 +697,6 @@ def load_stimulus_file(
         )
 
     load_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_kwargs is None:
-        load_kwargs = {}
 
     if load_function_name == 'TextStimulus.from_csv':
         return TextStimulus.from_csv(path=file.path, **load_kwargs)
