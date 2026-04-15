@@ -28,6 +28,11 @@ from polars.testing import assert_frame_equal
 from pymovements import Participants
 
 
+def test_participants_init_default():
+    participants = Participants()
+    assert_frame_equal(participants.data, pl.DataFrame(schema={'participant_id': pl.String}))
+
+
 @pytest.mark.parametrize(
     'data',
     [
@@ -49,6 +54,11 @@ def test_participants_init_data(data):
         ),
         pytest.param(
             pl.DataFrame({'participant_id': ['1'], 'age': [21]}),
+            {'participant_id': {'Format': 'string'}, 'age': {'Format': 'integer'}},
+            id='age_integer',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': [21.0]}),
             {'participant_id': {'Format': 'string'}, 'age': {'Format': 'number'}},
             id='age_number',
         ),
@@ -394,7 +404,7 @@ def test_participants_init_autocasts(data, expected_data):
             ),
             id='one_participant_without_age_update_new_participant_with_age',
         ),
-    ]
+    ],
 )
 def test_participants_update_data(before, update_data, after):
     participants = Participants(before)
@@ -412,7 +422,7 @@ def test_participants_update_data(before, update_data, after):
             "data must have column named 'participant_id'",
             id='no_participant_id',
         ),
-    ]
+    ],
 )
 def test_participants_update_raises(before, update_data, exception, message):
     participants = Participants(before)

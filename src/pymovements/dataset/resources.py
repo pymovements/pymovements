@@ -462,6 +462,9 @@ class ResourceDefinitions(list):
         """
         return any(resource.content == content for resource in self)
 
+    def __getitem__(self, index: int) -> ResourceDefinition:
+        return super().__getitem__(index)
+
 
 class _HasResourcesIndexer:
     """Helper class for :py:meth:`~pymovements.dataset.DatasetDefinition.has_resources` property.

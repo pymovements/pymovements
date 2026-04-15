@@ -58,7 +58,7 @@ class DatasetFile:
     ----------
     path: Path
         Absolute path of the dataset file.
-    definition: ResourceDefinition
+    definition: ResourceDefinition | None
         Associated :py:class:`~pymovements.ResourceDefinition`.
     metadata: dict[str, Any]
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
@@ -67,7 +67,7 @@ class DatasetFile:
     ----------
     path: Path
         Absolute path of the dataset file.
-    definition: ResourceDefinition
+    definition: ResourceDefinition | None
         Associated :py:class:`~pymovements.ResourceDefinition`.
     metadata: dict[str, Any]
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
@@ -112,7 +112,9 @@ def scan_dataset(
     for resource_definition in definition.resources:
         content_type = resource_definition.content
 
-        if content_type == 'gaze':
+        if content_type == 'participants':
+            resource_dirpath = paths.dataset
+        elif content_type == 'gaze':
             resource_dirpath = paths.raw
         elif content_type == 'precomputed_events':
             resource_dirpath = paths.precomputed_events
@@ -123,7 +125,7 @@ def scan_dataset(
         else:
             warn(
                 f'content type {content_type} is not supported. '
-                'supported contents are: gaze, precomputed_events, '
+                'supported contents are: participants, gaze, precomputed_events, '
                 'precomputed_reading_measures, TextStimulus, ImageStimulus. '
                 'skipping this resource definition during scan.',
             )

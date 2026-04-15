@@ -59,6 +59,11 @@ class Dataset:
 
     Initialize the dataset object.
 
+    Attributes
+    ----------
+    participants: Participants
+        Participant data.
+
     Parameters
     ----------
     definition: str | Path | DatasetDefinition | type[DatasetDefinition]
@@ -77,7 +82,7 @@ class Dataset:
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
         self._files: list[DatasetFile] = []
-        self.participants = Participants(pl.DataFrame(schema={'participant_id': pl.String}))
+        self.participants = Participants()
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
@@ -125,6 +130,10 @@ class Dataset:
 
         Parameters
         ----------
+        participants: bool | None
+            If ``True``, load participants data. If ``None``, load participants data only if
+            available.
+            (default: None)
         events: bool | None
             If ``True``, load previously saved event data. (default: None)
         preprocessed: bool
@@ -132,7 +141,7 @@ class Dataset:
             (default: False)
         stimuli: bool | None
             If ``True``, load stimulus data. If ``None``, load stimulus data only if available.
-            (default: True)
+            (default: None)
         subset:  dict[str, float | int | str | list[float | int | str]] | None
             If specified, load only a subset of the dataset. All keys in the dictionary must be
             present in the fileinfo dataframe inferred by `scan()`. Values can be either
@@ -163,6 +172,15 @@ class Dataset:
             files=self._files,
             subset=subset,
         )
+
+        # Load participants data if desired and if present.
+        if participants is not False:
+            participant_files = any(
+                file.definition is not None and file.definition.content == 'participants'
+                for file in self._files
+            )
+            if participant_files:
+                self.load_participants()
 
         if self.definition.resources.has_content('gaze'):
             self.load_gaze_files(
@@ -282,7 +300,7 @@ class Dataset:
         Currently only scans file metadata for participant id.
         """
         participant_ids = set()
-        for file in self.files:
+        for file in self._files:
             if participant_key in file.metadata:
                 participant_ids.add(file.metadata[participant_key])
 
@@ -295,6 +313,37 @@ class Dataset:
                 self.participants = Participants(participant_data)
             else:
                 self.participants.update(participant_data)
+
+    def load_participants(
+            self,
+    ) -> None:
+        """Load participants file from resources."""
+        participants_files = [
+            file
+            for file in self._files
+            if file.definition and file.definition.content == 'participants'
+        ]
+
+        if len(participants_files) > 1:
+            raise ValueError('there may be only a single participants resource per dataset')
+        if not participants_files:
+            return
+        participants_file = participants_files[0]
+        participants_definition = participants_file.definition
+
+        if participants_definition.load_function:
+            load_function = participants_definition.load_function
+        else:
+            load_function = Participants.load
+
+        if participants_definition.load_kwargs:
+            load_kwargs = participants_definition.load_kwargs
+        else:
+            load_kwargs = {}
+
+        loaded_participants = load_function(path=participants_file.path, **load_kwargs)
+
+        self.participants = loaded_participants
 
     def load_gaze_files(
             self,

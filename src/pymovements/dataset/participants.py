@@ -45,8 +45,9 @@ class Participants:
 
     Parameters
     ----------
-    data: polars.DataFrame
+    data: polars.DataFrame | None
         The participant data conforming to BIDS (i.e., first column must be named participant_id).
+        If ``None``, initialize an empty dataframe with a ``participant_id`` string column.
     metadata: dict[str, Any] | None
         Additional metadata on participant data conforming to BIDS side car json files.
         If ``None``, initialize an empty dictionary.
@@ -61,11 +62,13 @@ class Participants:
 
     def __init__(
             self,
-            data: polars.DataFrame,
+            data: polars.DataFrame | None = None,
             metadata: dict[str, Any] | None = None,
             *,
             infer_metadata: bool = True,
     ):
+        if data is None:
+            data = polars.DataFrame(schema={'participant_id': polars.String})
         if 'participant_id' not in data.columns:
             raise ValueError("data must have column named 'participant_id'")
         if data.columns[0] != 'participant_id':
@@ -87,6 +90,12 @@ class Participants:
             self,
             data: polars.DataFrame,
     ) -> None:
+        """Update participants data.
+
+        Adds new participants and new columns.
+        Overwrites participant data for participant if it already exists.
+
+        """
         if 'participant_id' not in data.columns:
             raise ValueError("data must have column named 'participant_id'")
 
