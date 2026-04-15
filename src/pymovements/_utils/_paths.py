@@ -125,7 +125,16 @@ def match_filepaths(
                 relative=relative, relative_anchor=relative_anchor,
             )
             match_dicts.extend(recursive_results)
-        elif match := regex.match(childpath.name):
+        elif (
+            (match := regex.match(childpath.name)) or
+            (
+                relative_anchor is not None and (
+                    match := regex.match(
+                        childpath.relative_to(relative_anchor).as_posix(),
+                    )
+                )
+            )
+        ):
             match_dict = match.groupdict()
 
             filepath = childpath
