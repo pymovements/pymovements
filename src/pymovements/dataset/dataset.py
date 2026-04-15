@@ -331,18 +331,12 @@ class Dataset:
         participants_file = participants_files[0]
         participants_definition = participants_file.definition
 
-        if participants_definition.load_function:
-            load_function = participants_definition.load_function
-        else:
-            load_function = Participants.load
-
         if participants_definition.load_kwargs:
             load_kwargs = participants_definition.load_kwargs
         else:
             load_kwargs = {}
 
-        loaded_participants = load_function(path=participants_file.path, **load_kwargs)
-
+        loaded_participants = Participants.load(path=participants_file.path, **load_kwargs)
         self.participants = loaded_participants
 
     def load_gaze_files(

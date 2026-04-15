@@ -463,6 +463,7 @@ class ResourceDefinitions(list):
         return any(resource.content == content for resource in self)
 
     def __getitem__(self, index: int) -> ResourceDefinition:
+        """Get ``ResourceDefinition`` at index."""
         return super().__getitem__(index)
 
 
