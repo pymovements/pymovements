@@ -160,3 +160,43 @@ class TestDatasetLoadParticipants:
         dataset.load(participants=False)
 
         assert dataset.participants.data.shape == (0, 1)
+
+
+def test_dataset_load_participants_raises_with_multiple_participant_files(
+        tmp_path,
+        make_csv_file,
+):
+    participants = pl.DataFrame({'participant_id': ['1']})
+    make_csv_file(
+        tmp_path / 'participants.tsv',
+        data=participants,
+        separator='\t',
+    )
+    make_csv_file(
+        tmp_path / 'participants2.tsv',
+        data=participants,
+        separator='\t',
+    )
+
+    resources = [
+        ResourceDefinition(content='participants', filename_pattern='participants.tsv'),
+        ResourceDefinition(content='participants', filename_pattern='participants2.tsv'),
+    ]
+    dataset = Dataset(DatasetDefinition('.', resources=resources), path=tmp_path)
+    dataset.scan()
+
+    message = 'there may be only a single participants resource per dataset'
+    with pytest.raises(AttributeError, match=message):
+        dataset.load_participants()
+
+
+def test_dataset_load_participants_raises_without_participants_resource(
+        tmp_path,
+        make_csv_file,
+):
+    dataset = Dataset(DatasetDefinition('.', resources=[]), path=tmp_path)
+    dataset.scan()
+
+    message = 'no participant file defined in dataset resources'
+    with pytest.raises(AttributeError, match=message):
+        dataset.load_participants()

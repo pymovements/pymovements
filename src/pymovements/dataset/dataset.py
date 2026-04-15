@@ -293,7 +293,6 @@ class Dataset:
             self,
             *,
             participant_key: str = 'participant_id',
-            reset_participants: bool = False,
     ) -> None:
         """Scan files for participant metadata.
 
@@ -309,10 +308,7 @@ class Dataset:
         ).sort('participant_id')
 
         if len(participant_data):
-            if reset_participants:
-                self.participants = Participants(participant_data)
-            else:
-                self.participants.update(participant_data)
+            self.participants.update(participant_data)
 
     def load_participants(
             self,
@@ -325,9 +321,9 @@ class Dataset:
         ]
 
         if len(participants_files) > 1:
-            raise ValueError('there may be only a single participants resource per dataset')
+            raise AttributeError('there may be only a single participants resource per dataset')
         if not participants_files:
-            return
+            raise AttributeError('no participant file defined in dataset resources')
         participants_file = participants_files[0]
         participants_definition = participants_file.definition
 
