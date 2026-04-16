@@ -33,34 +33,49 @@ class HMM:
         
         return
     
-    def emit_log_prob(
-            self,
-            v: list[float] | np.ndarray,
-            s: int) -> float:
+    def emit_log_prob(self, v, s):
+        #v = float(v)
+        #print(f"v is : {v}")
         mu = self.mu[s]
         sigma = self.sigma[s]
+
+        sigma = max(sigma, 1e-6)  
+
+        #print("emit")
+
+        #print(-0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2))
+
         return -0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2)
     
     def log_sum_exp(
             self,
             arr: np.ndarray) -> float:
         m = np.max(arr)
+        #print("logsum2")
+        #print(m + np.log(np.sum(np.exp(arr - m))))
+        #if np.all(np.isneginf(arr)):
+            #print(-np.inf)
+        #    return -np.inf
         return m + np.log(np.sum(np.exp(arr - m)))
 
     def baum_welch(
             self,
             velocities: list[float] | np.ndarray,
-            max_iters: int = 1000,
+            max_iters: int,
             epsilon: float = 1e-4) -> dict[str, np.ndarray]:
 
         T = len(velocities)
         M = self.states
 
-        # TODO: Implement convergence instead of iters
+        # DONE # TODO: Implement convergence instead of iters
 
         prev_log_likelihood = -np.inf
 
+        
+
         for _ in range(max_iters):
+
+            print(prev_log_likelihood)
 
             alpha = self.baum_forward(velocities,T,M)
 
@@ -102,14 +117,19 @@ class HMM:
             last = np.exp(last - self.log_sum_exp(last))
             gamma_full[:, -1] = last
 
-          
+            #e = 1e-12
+            #print(f"e:{e}")
+
             self.init = np.log(gamma_full[:, 0])
+            #
+            #self.init = np.log(gamma_full[:, 0] + e)
 
             for i in range(M):
                 denom = np.sum(gamma_full[i, :-1])
                 for j in range(M):
                     numer = np.sum(xi[i, j, :])
                     self.trans[i, j] = np.log(numer / denom)
+                    #self.trans[i, j] = np.log((numer + e) / (denom + e))
 
         
             for j in range(M):
@@ -120,6 +140,10 @@ class HMM:
 
                 var = np.sum(weights * (velocities - self.mu[j])**2) / total
                 self.sigma[j] = np.sqrt(var)
+
+                #var = np.sum(weights * (velocities - self.mu[j])**2) / total
+                #self.sigma[j] = np.sqrt(max(var, 1e-6))
+                
             
 
             alpha_updated = self.baum_forward(velocities, T, M)
@@ -130,6 +154,18 @@ class HMM:
                 break
 
             prev_log_likelihood = log_likelihood
+            #if np.isnan(self.trans).any():
+            #    print("NaN in trans")
+
+            #if np.isnan(self.sigma).any():
+            #    print("NaN in sigma")
+
+            #if np.isnan(alpha).any():
+            #    print("NaN in alpha")
+            
+            #print(self.trans)
+            #print(self.sigma)
+            #print(self.mu)
 
         return  {"mu":self.mu, "sigma":self.sigma, "init":self.init, "trans":self.trans}
     
@@ -225,9 +261,13 @@ def ihmm(
         sigma: list[float] | np.ndarray | None = None, 
         init_state : list[float] | np.ndarray | None = None,
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
+        reestimation_max_iters: int = 100,
         initialization: str | None = None,
         name: str = 'fixation',
 ) -> Events:
+    """
+    documentation...
+    """
     
     positions = np.array(positions)
 
@@ -274,11 +314,18 @@ def ihmm(
 
     velocities = np.array(velocities)
 
+    velocities = np.nan_to_num(velocities, nan=0.0) # maybe should be average?
+
     # Init 2 state HMM
+
+    print(velocities)
+
+    #if np.isnan(velocities).any():
+    #    print("NaNs in velocities!")
 
     defaults={
         "mu": [np.percentile(velocities, 30), np.percentile(velocities, 80)], #DATA BASED init  #[1.0, 10.0],
-        "sigma": [np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
+        "sigma": [np.sqrt(np.var(velocities)/2), np.sqrt(np.var(velocities))], #[np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
         "init":[0.5, 0.5],  # dummy average values should be fine for long sequences
         "trans":[[0.95, 0.05],[0.05, 0.95]] # based on Salvucci's paper diagram
     }
@@ -320,7 +367,7 @@ def ihmm(
     hmm = HMM(states= 2 ,mu=_mu,sigma=_sigma,initial_state=_init,transition_matrix=_trans)
 
     if reestimate:
-        optimal = hmm.baum_welch(velocities=velocities)
+        optimal = hmm.baum_welch(velocities=velocities,max_iters=reestimation_max_iters)
         # print(optimal)
 
     # inference the hmm 
@@ -357,3 +404,6 @@ def ihmm(
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
+
+
+
