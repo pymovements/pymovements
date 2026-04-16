@@ -19,8 +19,34 @@ class HMM:
             mu: list[float] | np.ndarray,
             sigma: list[float] | np.ndarray,
             initial_state: list[float] | np.ndarray,
-            transition_matrix: list[list[float]] | np.ndarray):
+            transition_matrix: list[list[float]] | np.ndarray) -> None:
+        """Initialize a Hidden Markov Model with Gaussian emissions.
 
+        The model uses log-space for numerical stability. Each state is
+        associated with a Gaussian distribution defined by its mean and standard
+        deviation, and transitions between states are governed by a transition matrix.
+
+        Parameters
+        ----------
+        states : int
+            Number of hidden states in the model.
+        mu : list[float] | np.ndarray
+            shape (states,)
+            Mean of the emission distribution for each state.
+        sigma : list[float] | np.ndarray
+            shape (states,)
+            Standard deviation of the emission distribution for each state.
+        initial_state : list[float] | np.ndarray
+            shape (states,)
+            Initial probability distribution over states. Must sum to 1.
+        transition_matrix : list[list[float]] | np.ndarray
+            shape (states, states)
+            State transition probability matrix.
+
+        Returns
+        -------
+        None
+        """
         self.states = states
 
         self.init = np.log(initial_state)
@@ -33,29 +59,47 @@ class HMM:
         
         return
     
-    def emit_log_prob(self, v, s):
-        #v = float(v)
-        #print(f"v is : {v}")
+    def emit_log_prob(
+            self,
+            v: float,
+            s: int) -> float: 
+        """Compute the log-probability of an observation given a state.
+
+        Parameters
+        ----------
+        v : float
+            Observed value (e.g., velocity).
+        s : int
+            State index.
+
+        Returns
+        -------
+        float
+            Log-probability of observing v in state s.
+        """
         mu = self.mu[s]
         sigma = self.sigma[s]
 
         sigma = max(sigma, 1e-6)  
-
-        #print("emit")
-
-        #print(-0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2))
 
         return -0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2)
     
     def log_sum_exp(
             self,
             arr: np.ndarray) -> float:
+        """Compute log-sum-exp.
+
+        Parameters
+        ----------
+        arr : np.ndarray
+            Input array of log-values.
+
+        Returns
+        -------
+        float
+            Logarithm of the summed exponentials.
+        """
         m = np.max(arr)
-        #print("logsum2")
-        #print(m + np.log(np.sum(np.exp(arr - m))))
-        #if np.all(np.isneginf(arr)):
-            #print(-np.inf)
-        #    return -np.inf
         return m + np.log(np.sum(np.exp(arr - m)))
 
     def baum_welch(
@@ -63,19 +107,41 @@ class HMM:
             velocities: list[float] | np.ndarray,
             max_iters: int,
             epsilon: float = 1e-4) -> dict[str, np.ndarray]:
+        """Estimate HMM parameters using the Baum-Welch algorithm.
+
+        This is an Expectation-Maximization (EM) procedure that iteratively updates
+        the model parameters (initial state, transition probabilities, and emission
+        distributions) to maximize the likelihood of the observed data.
+
+        Parameters
+        ----------
+        velocities : list[float] | np.ndarray
+            shape (T,)
+            Sequence of observed values.
+        max_iters : int
+            Maximum number of EM iterations.
+        epsilon : float
+            Convergence threshold for change in log-likelihood.
+            (default: 1e-4)
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            Dictionary containing updated parameters:
+            - "mu": means of emission distributions
+            - "sigma": standard deviations of emission distributions
+            - "init": log initial state probabilities
+            - "trans": log transition matrix
+        """
 
         T = len(velocities)
         M = self.states
-
-        # DONE # TODO: Implement convergence instead of iters
 
         prev_log_likelihood = -np.inf
 
         
 
         for _ in range(max_iters):
-
-            print(prev_log_likelihood)
 
             alpha = self.baum_forward(velocities,T,M)
 
@@ -117,19 +183,14 @@ class HMM:
             last = np.exp(last - self.log_sum_exp(last))
             gamma_full[:, -1] = last
 
-            #e = 1e-12
-            #print(f"e:{e}")
 
             self.init = np.log(gamma_full[:, 0])
-            #
-            #self.init = np.log(gamma_full[:, 0] + e)
 
             for i in range(M):
                 denom = np.sum(gamma_full[i, :-1])
                 for j in range(M):
                     numer = np.sum(xi[i, j, :])
                     self.trans[i, j] = np.log(numer / denom)
-                    #self.trans[i, j] = np.log((numer + e) / (denom + e))
 
         
             for j in range(M):
@@ -140,10 +201,6 @@ class HMM:
 
                 var = np.sum(weights * (velocities - self.mu[j])**2) / total
                 self.sigma[j] = np.sqrt(var)
-
-                #var = np.sum(weights * (velocities - self.mu[j])**2) / total
-                #self.sigma[j] = np.sqrt(max(var, 1e-6))
-                
             
 
             alpha_updated = self.baum_forward(velocities, T, M)
@@ -154,18 +211,6 @@ class HMM:
                 break
 
             prev_log_likelihood = log_likelihood
-            #if np.isnan(self.trans).any():
-            #    print("NaN in trans")
-
-            #if np.isnan(self.sigma).any():
-            #    print("NaN in sigma")
-
-            #if np.isnan(alpha).any():
-            #    print("NaN in alpha")
-            
-            #print(self.trans)
-            #print(self.sigma)
-            #print(self.mu)
 
         return  {"mu":self.mu, "sigma":self.sigma, "init":self.init, "trans":self.trans}
     
@@ -174,6 +219,27 @@ class HMM:
             velocities: list[float] | np.ndarray,
             T: int,
             M: int) -> np.ndarray:
+        """Compute forward probabilities (alpha) in log-space.
+
+        The forward algorithm calculates the probability of observing the sequence
+        up to time t and being in state j at time t.
+
+        Parameters
+        ----------
+        velocities : list[float] | np.ndarray
+            shape (T,)
+            Sequence of observed values.
+        T : int
+            Length of the sequence.
+        M : int
+            Number of states.
+
+        Returns
+        -------
+        np.ndarray
+            shape (T, M)
+            Log forward probabilities.
+        """
         
         alpha = np.full((T, M), -np.inf)
 
@@ -194,6 +260,27 @@ class HMM:
             velocities: list[float] | np.ndarray,
             T: int,
             M: int) -> np.ndarray:
+        """Compute backward probabilities (beta) in log-space.
+
+        The backward algorithm calculates the probability of observing the future
+        sequence from time t+1 onward given state i at time t.
+
+        Parameters
+        ----------
+        velocities : list[float] | np.ndarray
+            shape (T,)
+            Sequence of observed values.
+        T : int
+            Length of the sequence.
+        M : int
+            Number of states.
+
+        Returns
+        -------
+        np.ndarray
+            shape (T, M)
+            Log backward probabilities.
+        """
         
         beta = np.full((T, M), -np.inf)
 
@@ -215,6 +302,23 @@ class HMM:
     def viterbi(
             self,
             velocities: list[float] | np.ndarray) -> np.ndarray:
+        """Compute the most likely state sequence using the Viterbi algorithm.
+
+        This dynamic programming algorithm finds the sequence of hidden states
+        that maximizes the joint probability of the observations and the states.
+
+        Parameters
+        ----------
+        velocities : list[float] | np.ndarray
+            shape (T,)
+            Sequence of observed values.
+
+        Returns
+        -------
+        np.ndarray
+            shape (T,)
+            Most likely sequence of state indices.
+        """
 
         # init step
 
@@ -266,7 +370,57 @@ def ihmm(
         name: str = 'fixation',
 ) -> Events:
     """
-    documentation...
+    Fixation identification based on a two state Hidden Markov Model.
+
+    The algorithm models eye movements using a two-state Hidden Markov Model (HMM). 
+    One state represents fixations (low velocities), and the other represents saccades (high velocities). 
+    It analyzes the sequence of velocities and uses dynamic programming (Viterbi decoding) 
+    to assign each point to the most likely state. This results in classifying every point as either a fixation or a saccade.
+    
+    Parameters
+    ----------
+    positions: list[list[float]] | list[tuple[float, float]] | np.ndarray
+        shape (N, 2)
+        Continuous 2D position time series
+    timesteps: list[int] | np.ndarray | None
+        shape (N, )
+        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
+        assumed. (default: None)
+        (default: None)
+    mu: list[float] | np.ndarray | None = None
+        shape (2,)
+        Array of means for the fixations distribution and saccades distribution.
+        (default: None)
+    sigma: list[float] | np.ndarray | None = None
+        shape (2,)
+        Array of standard deviations for the fixations distribution and saccades distribution.
+        (default: None)
+    init_state: list[float] | np.ndarray | None = None
+        shape (2,)
+        Initial probability of starting in each state.
+        (default: None)
+    transition_probabilities:
+        shape (2, 2)
+        Probabilities to change from a state to another.
+        (default: None)
+    reestimation_max_iters: int
+        Number of maximum iterations for the Baum-Welch reestimation algorithm.
+        (default: 100)
+    initialization: str
+        Initialization mode, default or None for default parameters and 'reestimation' for Baum-Welch reestimation.
+        (default: None) 
+    name: str
+        Name for detected events in Events. (default: 'fixation')
+    
+    Returns
+    -------
+    Events
+        A dataframe with detected fixations as rows.
+    
+    Raises
+    ------
+    ValueError
+        If positions is not shaped (N, 2)
     """
     
     positions = np.array(positions)
@@ -318,11 +472,6 @@ def ihmm(
 
     # Init 2 state HMM
 
-    print(velocities)
-
-    #if np.isnan(velocities).any():
-    #    print("NaNs in velocities!")
-
     defaults={
         "mu": [np.percentile(velocities, 30), np.percentile(velocities, 80)], #DATA BASED init  #[1.0, 10.0],
         "sigma": [np.sqrt(np.var(velocities)/2), np.sqrt(np.var(velocities))], #[np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
@@ -334,7 +483,6 @@ def ihmm(
 
     match initialization:
         case "reestimation":
-            # TODO: Implement Baum-Welch
             reestimate = True
             _mu = defaults["mu"]
             _sigma=defaults["sigma"]
@@ -368,7 +516,6 @@ def ihmm(
 
     if reestimate:
         optimal = hmm.baum_welch(velocities=velocities,max_iters=reestimation_max_iters)
-        # print(optimal)
 
     # inference the hmm 
 
