@@ -421,9 +421,26 @@ def ihmm(
     ------
     ValueError
         If positions is not shaped (N, 2)
+        If mu is not shaped (2,)
+        If sigma is not shaped (2,)
+        If init_state is not shaped (2,)
+        If transition_probabilities is not shaped (2, 2)
+    
+    Examples
+    --------
+    
     """
     
     positions = np.array(positions)
+
+    if mu is not None:
+        mu = np.array(mu)
+    if sigma is not None:
+        sigma = np.array(sigma)
+    if init_state is not None:
+        init_state = np.array(init_state)
+    if transition_probabilities is not None:
+        transition_probabilities = np.array(transition_probabilities)
 
     _checks.check_shapes(positions=positions)
 
@@ -439,8 +456,33 @@ def ihmm(
 
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
-    # TODO: Implement other dimension checks for inputs
+    # DONE # TODO: Implement other dimension checks for inputs
 
+    if mu is not None and  mu.shape != (2,):
+        raise ValueError(
+            f'mu'
+            f' must have shape (2,), but shapes are '
+            f'{mu.shape}',
+        )
+    if sigma is not None and sigma.shape != (2,):
+        raise ValueError(
+            f'sigma'
+            f' must have shape (2,), but shapes are '
+            f'{sigma.shape}',
+        )
+    if init_state is not None and init_state.shape != (2,):
+        raise ValueError(
+            f'init_state'
+            f' must have shape (2,), but shapes are '
+            f'{init_state.shape}',
+        )
+    if transition_probabilities is not None and transition_probabilities.shape != (2,2):
+        raise ValueError(
+            f'transition_probabilities'
+            f' must have shape (2, 2), but shapes are '
+            f'{transition_probabilities.shape}',
+        )
+    
     # convert into velocities (1D velocities vector)
 
     # TODO: Optimize, maybe implement different vel algorithms/connect to pos2vel method/make use of the velocity column if present
@@ -474,7 +516,7 @@ def ihmm(
 
     defaults={
         "mu": [np.percentile(velocities, 30), np.percentile(velocities, 80)], #DATA BASED init  #[1.0, 10.0],
-        "sigma": [np.sqrt(np.var(velocities)/2), np.sqrt(np.var(velocities))], #[np.var(velocities)/2, np.var(velocities)], # #DATA BASED init   #[1.0, 1.0],
+        "sigma": [np.sqrt(np.var(velocities)/2), np.sqrt(np.var(velocities))], # #DATA BASED init   #[1.0, 1.0],
         "init":[0.5, 0.5],  # dummy average values should be fine for long sequences
         "trans":[[0.95, 0.05],[0.05, 0.95]] # based on Salvucci's paper diagram
     }
@@ -488,7 +530,6 @@ def ihmm(
             _sigma=defaults["sigma"]
             _init = defaults["init"]
             _trans = defaults["trans"]
-
         case "default":
             _mu = defaults["mu"]
             _sigma=defaults["sigma"]
