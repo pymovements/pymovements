@@ -428,7 +428,73 @@ def ihmm(
     
     Examples
     --------
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.gaze import from_numpy
+    >>> from pymovements.events.detection import ihmm
+
+    Create synthetic gaze data.
+    >>> positions = step_function(
+        ...    length=200, steps=[2, 5, 9, 111, 150],
+        ...    values=[(1., 2.), (2., 3.), (3., 4.), (1., 1.), (2., 2.)],
+        ...    start_value=(0., 0.))
+    >>> positions.shape
+    shape: (200, 2)
     
+    Detect fixations with default parameters.
+    >>> events = ihmm(positions)
+    >>> events
+    shape: (3, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 109    ┆ 100      │
+    │ fixation ┆ 111   ┆ 148    ┆ 37       │
+    │ fixation ┆ 150   ┆ 198    ┆ 48       │
+    └──────────┴───────┴────────┴──────────┘
+
+    The IHMM algorithm can also be used with a Gaze object using the detect() method.
+
+    Initialize Gaze object.
+    >>> gaze = from_numpy(
+         position=positions.T,
+         time=np.arange(len(positions)),
+      )
+    >>> gaze
+    shape: (200, 2)
+    ┌──────┬────────────┐
+    │ time ┆ position   │
+    │ ---  ┆ ---        │
+    │ i64  ┆ list[f64]  │
+    ╞══════╪════════════╡
+    │ 0    ┆ [0.0, 0.0] │
+    │ 1    ┆ [0.0, 0.0] │
+    │ 2    ┆ [1.0, 2.0] │
+    │ 3    ┆ [1.0, 2.0] │
+    │ 4    ┆ [1.0, 2.0] │
+    │ …    ┆ …          │
+    │ 195  ┆ [2.0, 2.0] │
+    │ 196  ┆ [2.0, 2.0] │
+    │ 197  ┆ [2.0, 2.0] │
+    │ 198  ┆ [2.0, 2.0] │
+    │ 199  ┆ [2.0, 2.0] │
+    └──────┴────────────┘
+
+    Detect fixations with Baum-Welch reestimation.
+    >>> gaze.detect('ihmm', intialization="reestimation")
+    >>> gaze.events
+    shape: (6, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 109    ┆ 100      │
+    │ fixation ┆ 111   ┆ 148    ┆ 37       │
+    │ fixation ┆ 150   ┆ 198    ┆ 48       │
+    └──────────┴───────┴────────┴──────────┘
     """
     
     positions = np.array(positions)
@@ -482,6 +548,13 @@ def ihmm(
             f' must have shape (2, 2), but shapes are '
             f'{transition_probabilities.shape}',
         )
+    if transition_probabilities is not None and np.sum(transition_probabilities[0]) > 1 and  np.sum(transition_probabilities[1]) > 1:
+        raise ValueError(
+            f'transition_probabilities'
+            f' values must sum up to one for each state but instead are '
+            f'{np.sum(transition_probabilities[0])} and {np.sum(transition_probabilities[1])}',
+        )
+
     
     # convert into velocities (1D velocities vector)
 
@@ -536,19 +609,19 @@ def ihmm(
             _init = defaults["init"]
             _trans = defaults["trans"]
         case _:
-            if mu:
+            if mu is not None:
                 _mu=mu
             else:
                 _mu = defaults["mu"]
-            if sigma:
+            if sigma is not None:
                 _sigma = sigma
             else:
                 _sigma= defaults["sigma"]
-            if init_state:
+            if init_state is not None:
                 _init = init_state
             else:
                 _init = defaults["init"]
-            if transition_probabilities:
+            if transition_probabilities is not None:
                 _trans = transition_probabilities
             else:
                 _trans = defaults["trans"]
