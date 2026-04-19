@@ -1,0 +1,167 @@
+# Copyright (c) 2025-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Test data_loss_histogram plotting function."""
+from __future__ import annotations
+
+import matplotlib.pyplot as plt
+import polars as pl
+import pytest
+
+from pymovements.gaze import Gaze
+from pymovements.plotting import data_loss_histogram
+
+
+class TestDataLossHistogram:
+    """Test data_loss_histogram plotting function."""
+
+    @pytest.fixture
+    def sample_gaze_no_loss(self) -> Gaze:
+        """Create sample gaze data with no data loss."""
+        df = pl.DataFrame({
+            'time': [0.0, 1.0, 2.0, 3.0, 4.0],
+            'x': [1.0, 1.0, 1.0, 1.0, 1.0],
+            'y': [1.0, 1.0, 1.0, 1.0, 1.0],
+        })
+        return Gaze(samples=df, pixel_columns=['x', 'y'], time_column='time')
+
+    @pytest.fixture
+    def sample_gaze_with_loss(self) -> Gaze:
+        """Create sample gaze data with consecutive data loss."""
+        df = pl.DataFrame({
+            'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            'x': [1.0, None, None, 1.0, 1.0, None, 1.0],
+            'y': [1.0, None, None, 1.0, 1.0, None, 1.0],
+        })
+        return Gaze(samples=df, pixel_columns=['x', 'y'], time_column='time')
+
+    @pytest.fixture
+    def sample_gaze_with_time_gaps(self) -> Gaze:
+        """Create sample gaze data with time gaps."""
+        df = pl.DataFrame({
+            'time': [0.0, 1.0, 2.0, 5.0, 6.0],
+            'x': [1.0, 1.0, 1.0, 1.0, 1.0],
+            'y': [1.0, 1.0, 1.0, 1.0, 1.0],
+        })
+        return Gaze(samples=df, pixel_columns=['x', 'y'], time_column='time')
+
+    def test_no_data_loss(self, sample_gaze_no_loss: Gaze) -> None:
+        """Test histogram with no data loss."""
+        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', sampling_rate=1000.0)
+
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(ax, plt.Axes)
+
+        # Should have no bars (no loss)
+        assert len(ax.patches) == 0
+
+        plt.close(fig)
+
+    def test_with_invalid_values(self, sample_gaze_with_loss: Gaze) -> None:
+        """Test histogram with consecutive invalid values."""
+        fig, ax = data_loss_histogram(
+            sample_gaze_with_loss,
+            column='pixel',
+            unit='count',
+            sampling_rate=1000.0,
+        )
+
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(ax, plt.Axes)
+
+        # Should have 2 chunks: 2 invalid samples, then 1 invalid sample
+        assert len(ax.patches) > 0
+
+        plt.close(fig)
+
+    def test_with_time_gaps(self, sample_gaze_with_time_gaps: Gaze) -> None:
+        """Test histogram with time gaps."""
+        fig, ax = data_loss_histogram(
+            sample_gaze_with_time_gaps,
+            column='pixel',
+            sampling_rate=1000.0,
+            unit='count',
+        )
+
+        assert isinstance(fig, plt.Figure)
+        assert isinstance(ax, plt.Axes)
+
+        plt.close(fig)
+
+    def test_unit_time_requires_sampling_rate(self, sample_gaze_no_loss: Gaze) -> None:
+        """Test that unit='time' requires sampling_rate."""
+        with pytest.raises(ValueError, match='sampling_rate must be provided'):
+            data_loss_histogram(sample_gaze_no_loss, unit='time')
+
+    def test_invalid_unit(self, sample_gaze_no_loss: Gaze) -> None:
+        """Test that invalid unit raises error."""
+        with pytest.raises(ValueError, match="unit must be 'count' or 'time'"):
+            data_loss_histogram(sample_gaze_no_loss, unit='invalid')  # type: ignore
+
+    def test_custom_title(self, sample_gaze_no_loss: Gaze) -> None:
+        """Test custom title parameter."""
+        custom_title = 'Custom Histogram Title'
+        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', title=custom_title)
+
+        assert ax.get_title() == custom_title
+
+        plt.close(fig)
+
+    def test_custom_figsize(self, sample_gaze_no_loss: Gaze) -> None:
+        """Test custom figure size."""
+        figsize = (10, 5)
+        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', figsize=figsize)
+
+        assert fig.get_figwidth() == figsize[0]
+        assert fig.get_figheight() == figsize[1]
+
+        plt.close(fig)
+
+    def test_external_axes(self, sample_gaze_no_loss: Gaze) -> None:
+        """Test plotting on external axes."""
+        fig, external_ax = plt.subplots()
+        returned_fig, returned_ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', ax=external_ax)
+
+        assert returned_ax is external_ax
+        assert returned_fig is fig
+
+        plt.close(fig)
+
+    def test_unit_time_conversion(self, sample_gaze_with_loss: Gaze) -> None:
+        """Test that time unit converts correctly."""
+        fig_count, ax_count = data_loss_histogram(
+            sample_gaze_with_loss,
+            column='pixel',
+            unit='count',
+            sampling_rate=1000.0,
+        )
+
+        fig_time, ax_time = data_loss_histogram(
+            sample_gaze_with_loss,
+            column='pixel',
+            unit='time',
+            sampling_rate=1000.0,
+        )
+
+        # Check axis labels
+        assert 'samples' in ax_count.get_xlabel().lower()
+        assert 'ms' in ax_time.get_xlabel().lower()
+
+        plt.close(fig_count)
+        plt.close(fig_time)
