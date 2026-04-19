@@ -749,7 +749,8 @@ class Gaze:
         output_column : str
             Name of the output column.
         **kwargs: Any
-            Additional keyword arguments to be passed to the :py:func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to
+            :py:func:`pymovements.gaze.transforms.clip`.
 
         Raises
         ------
@@ -856,11 +857,11 @@ class Gaze:
         Parameters
         ----------
         method: str
-            Computation method. See :py:func:`~transforms.pos2vel()` for details.
+            Computation method. See :py:func:`pymovements.gaze.transforms.pos2vel` for details.
             (default: 'fivepoint')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :py:func:`~transforms.pos2vel()`
-            method.
+            Additional keyword arguments to be passed to
+            :py:func:`pymovements.gaze.transforms.pos2vel`.
 
         Raises
         ------
@@ -981,8 +982,8 @@ class Gaze:
         ----------
         method: str
             The method to use for smoothing. Choose from ``savitzky_golay``, ``moving_average``,
-            ``exponential_moving_average``. See :py:func:`~transforms.smooth()` for details.
-            (default: 'savitzky_golay')
+            ``exponential_moving_average``. See :py:func:`pymovements.gaze.transforms.smooth` for
+            details. (default: 'savitzky_golay')
         window_length: int
             For ``moving_average`` this is the window size to calculate the mean of the subsequent
             samples. For ``savitzky_golay`` this is the window size to use for the polynomial fit.
@@ -1000,10 +1001,11 @@ class Gaze:
             which the filter is applied.
             When passing ``None``, no extension padding is used.
             When passing a scalar value, sample series will be padded using the passed value.
-            See :py:func:`~transforms.smooth()` for details on the padding methods.
+            See :py:func:`pymovements.gaze.transforms.smooth` for details on the padding methods.
             (default: 'nearest')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :py:func:`~transforms.smooth()` method.
+            Additional keyword arguments to be passed to
+            :py:func:`pymovements.gaze.transforms.smooth`.
         """
         self.transform(
             'smooth',
