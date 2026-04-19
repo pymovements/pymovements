@@ -115,8 +115,8 @@ class Dataset:
     ) -> Dataset:
         """Parse file information and load all gaze files.
 
-        The parsed file information is assigned to the `fileinfo` attribute.
-        All gaze files will be loaded as dataframes and assigned to the `gaze` attribute.
+        The parsed file information is assigned to the :py:attr:`fileinfo` attribute.
+        All gaze files will be loaded as dataframes and assigned to the :py:attr:`gaze` attribute.
 
         Parameters
         ----------
@@ -561,7 +561,7 @@ class Dataset:
     ) -> Dataset:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
         After success, the gaze dataframe is clipped.
 
@@ -589,8 +589,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`gaze` attribute, or if the :py:attr:`experiment` is None.
         """
         return self.apply(
             'clip',
@@ -644,7 +644,7 @@ class Dataset:
     def pix2deg(self, verbose: bool = True) -> Dataset:
         """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -661,8 +661,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`gaze` attribute, or if :py:attr:`experiment` is None.
         """
         return self.apply('pix2deg', verbose=verbose)
 
@@ -675,7 +675,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -699,8 +699,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`gaze` attribute, or if :py:attr:`experiment` is None.
         """
         return self.apply(
             'deg2pix',
@@ -720,7 +720,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting acceleration columns.
 
@@ -743,8 +743,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`gaze` attribute, or if :py:attr:`experiment` is None.
         """
         return self.apply(
             'pos2acc',
@@ -763,7 +763,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze velocities in dva/s from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
         After success, the gaze dataframe is extended by the resulting velocity columns.
 
@@ -786,8 +786,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`gaze` attribute, or if :py:attr:`experiment` is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 

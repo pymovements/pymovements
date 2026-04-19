@@ -734,9 +734,9 @@ class Gaze:
     ) -> None:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
-        After success, the values in :py:attr:`~.Gaze.samples` are clipped.
+        After success, the values in :py:attr:`samples` are clipped.
 
         Parameters
         ----------
@@ -755,7 +755,7 @@ class Gaze:
         Raises
         ------
         AttributeError
-            If :py:attr:`~.Gaze.samples` is None, or if :py:attr:`~.Gaze.experiment` is None.
+            If :py:attr:`samples` is None, or if :py:attr:`experiment` is None.
         """
         self.transform(
             'clip',
@@ -769,14 +769,14 @@ class Gaze:
     def pix2deg(self) -> None:
         """Compute gaze positions in degrees of visual angle from pixel position coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
+        After success, :py:attr:`samples` is extended by the resulting dva position columns.
 
         Raises
         ------
         AttributeError
-            If :py:attr:`~.Gaze.samples` is None, or if :py:attr:`~.Gaze.experiment` is None.
+            If :py:attr:`samples` is None, or if :py:attr:`experiment` is None.
         """
         self.transform('pix2deg')
 
@@ -788,9 +788,9 @@ class Gaze:
     ) -> None:
         """Compute gaze positions in pixel position coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting dva position columns.
+        After success, :py:attr:`samples` is extended by the resulting dva position columns.
 
         Parameters
         ----------
@@ -805,7 +805,7 @@ class Gaze:
         Raises
         ------
         AttributeError
-            If :py:attr:`~.Gaze.samples` is None, or if :py:attr:`~.Gaze.experiment` is None.
+            If :py:attr:`samples` is None, or if :py:attr:`experiment` is None.
         """
         self.transform(
             'deg2pix',
@@ -823,9 +823,9 @@ class Gaze:
     ) -> None:
         """Compute gaze acceleration in dva/s^2 from dva position coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting velocity columns.
+        After success, :py:attr:`samples` is extended by the resulting velocity columns.
 
         Parameters
         ----------
@@ -839,7 +839,7 @@ class Gaze:
         Raises
         ------
         AttributeError
-            If :py:attr:`~.Gaze.samples` is None, or if :py:attr:`~.Gaze.experiment` is None.
+            If :py:attr:`samples` is None, or if :py:attr:`experiment` is None.
         """
         self.transform('pos2acc', window_length=window_length, degree=degree, padding=padding)
 
@@ -850,9 +850,9 @@ class Gaze:
     ) -> None:
         """Compute gaze velocity in dva/s from dva position coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Gaze.experiment` attribute.
+        This method requires a properly initialized :py:attr:`experiment` attribute.
 
-        After success, :py:attr:`~.Gaze.samples` is extended by the resulting velocity columns.
+        After success, :py:attr:`samples` is extended by the resulting velocity columns.
 
         Parameters
         ----------
@@ -866,7 +866,7 @@ class Gaze:
         Raises
         ------
         AttributeError
-            If :py:attr:`~.Gaze.samples` is None, or if :py:attr:`~.Gaze.experiment` is None.
+            If :py:attr:`samples` is None, or if :py:attr:`experiment` is None.
         """
         self.transform('pos2vel', method=method, **kwargs)
 
@@ -876,9 +876,9 @@ class Gaze:
             columns: str | list[str] = 'all',
             fill_null_strategy: str = 'interpolate_linear',
     ) -> None:
-        """Resample :py:attr:`~.Gaze.samples` to a new sampling rate by timestamps in time column.
+        """Resample :py:attr:`samples` to a new sampling rate by timestamps in time column.
 
-        :py:attr:`~.Gaze.samples` is resampled by upsampling or downsampling the data to the new
+        :py:attr:`samples` is resampled by upsampling or downsampling the data to the new
         sampling rate. Can also be used to achieve a constant sampling rate for inconsistent data.
 
         Parameters
@@ -976,7 +976,7 @@ class Gaze:
             padding: str | float | int | None = 'nearest',
             **kwargs: int | float | str,
     ) -> None:
-        """Smooth column values in :py:attr:`~.Gaze.samples`.
+        """Smooth column values in :py:attr:`samples`.
 
         Parameters
         ----------
@@ -1034,7 +1034,7 @@ class Gaze:
         ----------
         name : str
             The name of the event type whose samples should be set to null
-            (e.g. ``'blink'``). Must match an event name in :py:attr:`~.Gaze.events`.
+            (e.g. ``'blink'``). Must match an event name in :py:attr:`events`.
         padding : float | tuple[float, float]
             Padding to extend each event interval, in the same units as the time
             column. If a single float, the same padding is applied symmetrically
@@ -1045,7 +1045,7 @@ class Gaze:
         Raises
         ------
         AttributeError
-            If :py:attr:`~.Gaze.events` is ``None``.
+            If :py:attr:`events` is ``None``.
         ValueError
             If no events with the specified ``name`` are found.
 
@@ -1122,7 +1122,7 @@ class Gaze:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available columns in :py:attr:`~.Gaze.samples`. (default: 'auto')
+            the available columns in :py:attr:`samples`. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
             merged into the existing one. (default: False)
@@ -1308,7 +1308,7 @@ class Gaze:
             method: str | Callable[..., polars.Expr],
             **kwargs: Any,
     ) -> polars.DataFrame:
-        """Calculate eye movement measure on :py:attr:`~.Gaze.samples`.
+        """Calculate eye movement measure on :py:attr:`samples`.
 
         If :py:class:``Gaze`` has :py:attr:``trial_columns``, measures will be grouped by
         trials.
@@ -2267,7 +2267,7 @@ class Gaze:
             distance_column: str | None = None,
             auto_column_detect: bool = False,
     ) -> None:
-        """Initialize columns of :py:attr:`~.Gaze.samples`."""
+        """Initialize columns of :py:attr:`samples`."""
         # Initialize trial_columns.
         trial_columns = [trial_columns] if isinstance(trial_columns, str) else trial_columns
         if trial_columns is not None and len(trial_columns) == 0:
@@ -2416,7 +2416,7 @@ class Gaze:
     def __str__(self) -> str:
         """Return string representation of Gaze.
 
-        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        If :py:attr:`messages` is not ``None``, includes ``messages=<N> rows``,
         where ``N`` is the number of rows.
         """
         fields = []
@@ -2435,7 +2435,7 @@ class Gaze:
     def __repr__(self) -> str:
         """Return string representation of Gaze.
 
-        If :py:attr:`~.Gaze.messages` is not ``None``, includes ``messages=<N> rows``,
+        If :py:attr:`messages` is not ``None``, includes ``messages=<N> rows``,
         where ``N`` is the number of rows.
         """
         return self.__str__()
