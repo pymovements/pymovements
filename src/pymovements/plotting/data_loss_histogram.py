@@ -24,7 +24,6 @@ from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
-import polars as pl
 
 from pymovements.gaze.gaze import Gaze
 from pymovements.measure.samples.measures import _is_invalid
@@ -94,7 +93,7 @@ def data_loss_histogram(
 
     # Compute invalid mask using the same logic as data_loss measure
     invalid_mask = samples.select(
-        _is_invalid(column).alias('invalid')
+        _is_invalid(column).alias('invalid'),
     )['invalid'].to_numpy()
 
     # Compute time gap mask
@@ -154,12 +153,16 @@ def data_loss_histogram(
             f'σ={chunks_array.std():.2f}\n'
             f'max={chunks_array.max():.0f}'
         )
-        ax.text(0.98, 0.97, stats_text, transform=ax.transAxes,
-                verticalalignment='top', horizontalalignment='right',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        ax.text(
+            0.98, 0.97, stats_text, transform=ax.transAxes,
+            verticalalignment='top', horizontalalignment='right',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5),
+        )
     else:
-        ax.text(0.5, 0.5, 'No data loss detected', ha='center', va='center',
-                transform=ax.transAxes, fontsize=14)
+        ax.text(
+            0.5, 0.5, 'No data loss detected', ha='center', va='center',
+            transform=ax.transAxes, fontsize=14,
+        )
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
 

@@ -136,7 +136,8 @@ class TestDataLossHistogram:
     def test_external_axes(self, sample_gaze_no_loss: Gaze) -> None:
         """Test plotting on external axes."""
         fig, external_ax = plt.subplots()
-        returned_fig, returned_ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', ax=external_ax)
+        returned_fig, returned_ax = data_loss_histogram(
+            sample_gaze_no_loss, column='pixel', ax=external_ax)
 
         assert returned_ax is external_ax
         assert returned_fig is fig
