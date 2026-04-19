@@ -282,7 +282,7 @@ def pix2deg(
         Number of components in input column.
     origin: str
         The location of the pixel origin. Supported values: ``center``, ``upper left``. See also
-        py:func:`~pymovements.gaze.transform.center_origin` for more information.
+        :py:func:`~pymovements.gaze.transforms.center_origin` for more information.
         (default: ``upper left``)
     pixel_column: str
         The input pixel column name. (default: 'pixel')
@@ -578,7 +578,7 @@ def pos2vel(
 
     * ``savitzky_golay``: velocity is calculated by a polynomial of fixed degree and window length.
       See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
-    * ``fivepoint``: velocity is calculated from the difference of the mean values
+    * ``fivepoint`` or ``smooth``: velocity is calculated from the difference of the mean values
       of the subsequent two samples and the preceding two samples
     * ``neighbors``: velocity is calculated from the difference of the subsequent
       sample and the preceding sample
