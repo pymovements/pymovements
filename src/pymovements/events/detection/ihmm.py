@@ -17,7 +17,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 from __future__ import annotations
 
 import numpy as np
@@ -569,7 +568,8 @@ def ihmm(
             f'{transition_probabilities.shape}',
         )
     if transition_probabilities is not None and np.sum(
-            transition_probabilities[0]) > 1 and np.sum(transition_probabilities[1]) > 1:
+            transition_probabilities[0],
+    ) > 1 and np.sum(transition_probabilities[1]) > 1:
         raise ValueError(
             f'transition_probabilities'
             f' values must sum up to one for each state but instead are '
