@@ -20,7 +20,8 @@
 """Provides the implementation for I-DT algorithm."""
 from __future__ import annotations
 
-import numpy as np
+import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events._utils._filters import events_split_nans
@@ -29,7 +30,7 @@ from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 
 
-def dispersion(positions: list[list[float]] | np.ndarray) -> float:
+def dispersion(positions: list[list[float]] | numpy.ndarray) -> float:
     """Compute the dispersion of a group of consecutive points in a 2D position time series.
 
     The dispersion is defined as the sum of the differences between
@@ -37,7 +38,7 @@ def dispersion(positions: list[list[float]] | np.ndarray) -> float:
 
     Parameters
     ----------
-    positions: list[list[float]] | np.ndarray
+    positions: list[list[float]] | numpy.ndarray
         Continuous 2D position time series.
 
     Returns
@@ -45,13 +46,13 @@ def dispersion(positions: list[list[float]] | np.ndarray) -> float:
     float
         Dispersion of the group of points.
     """
-    return sum(np.nanmax(positions, axis=0) - np.nanmin(positions, axis=0))
+    return sum(numpy.nanmax(positions, axis=0) - numpy.nanmin(positions, axis=0))
 
 
 @register_event_detection
 def idt(
-        positions: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        timesteps: list[int] | np.ndarray | None = None,
+        positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
@@ -70,10 +71,10 @@ def idt(
 
     Parameters
     ----------
-    positions: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Continuous 2D position time series
-    timesteps: list[int] | np.ndarray | None
+    timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
@@ -85,7 +86,7 @@ def idt(
         Threshold for dispersion for a group of consecutive samples to be identified as fixation.
         (default: 1.0)
     include_nan: bool
-        Indicator, whether we want to split events on missing/corrupt value (np.nan).
+        Indicator, whether we want to split events on missing/corrupt value (numpy.nan).
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
@@ -98,27 +99,168 @@ def idt(
     Raises
     ------
     TypeError
+        If pixels is a polars Series and dtype not List
         If minimum_duration is not of type ``int`` or timesteps
     ValueError
         If positions is not shaped (N, 2)
         If dispersion_threshold is not greater than 0
         If duration_threshold is not greater than 0
-    """
-    positions = np.array(positions)
 
+    Examples
+    --------
+    Create a synthetic step signal representing gaze segments.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.gaze import from_numpy
+    >>> positions = step_function(
+    ...     length=200, steps=[2, 5, 9, 111, 150],
+    ...     values=[(1., 2.), (2., 3.), (3., 4.), (1., 1.), (2., 2.)],
+    ...     start_value=(0., 0.),
+    ... )
+    >>> positions.shape
+    (200, 2)
+
+    Apply event detection algorithm on numpy array:
+
+    >>> idt(positions)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 111    ┆ 102      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Run fixation detection with custom parameters:
+
+    >>> idt(positions, minimum_duration = 50, dispersion_threshold = 0.5)
+    shape: (2, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 111    ┆ 102      │
+    │ fixation ┆ 150   ┆ 199    ┆ 49       │
+    └──────────┴───────┴────────┴──────────┘
+
+    Polars series are also supported as input. Let's create a nested position series from our numpy
+    array:
+
+    >>> df = polars.from_numpy(positions, schema=['x', 'y'])
+    >>> position_series = df.select(polars.concat_list(('x', 'y')).alias('position'))['position']
+    >>> position_series
+    shape: (200,)
+    Series: 'position' [list[f64]]
+    [
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [1.0, 2.0]
+        [1.0, 2.0]
+        [1.0, 2.0]
+        …
+        [2.0, 2.0]
+        [2.0, 2.0]
+        [2.0, 2.0]
+        [2.0, 2.0]
+        [2.0, 2.0]
+    ]
+
+    Apply event detection algorithm on polars series:
+
+    >>> idt(position_series)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 111    ┆ 102      │
+    └──────────┴───────┴────────┴──────────┘
+
+    We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
+
+    >>> from pymovements import Experiment
+    >>> gaze = from_numpy(
+    ...    position=positions.T,
+    ...    time=np.arange(len(positions)),
+    ... )
+    >>> gaze
+    shape: (200, 2)
+    ┌──────┬────────────┐
+    │ time ┆ position   │
+    │ ---  ┆ ---        │
+    │ i64  ┆ list[f64]  │
+    ╞══════╪════════════╡
+    │ 0    ┆ [0.0, 0.0] │
+    │ 1    ┆ [0.0, 0.0] │
+    │ 2    ┆ [1.0, 2.0] │
+    │ 3    ┆ [1.0, 2.0] │
+    │ 4    ┆ [1.0, 2.0] │
+    │ …    ┆ …          │
+    │ 195  ┆ [2.0, 2.0] │
+    │ 196  ┆ [2.0, 2.0] │
+    │ 197  ┆ [2.0, 2.0] │
+    │ 198  ┆ [2.0, 2.0] │
+    │ 199  ┆ [2.0, 2.0] │
+    └──────┴────────────┘
+
+    Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
+
+    >>> gaze.detect('idt')
+    >>> gaze.events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 111    ┆ 102      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
+
+    >>> gaze.detect('idt', minimum_duration = 50, dispersion_threshold = 0.5, name='fixation_idt')
+    >>> gaze.events.filter_by_name('fixation_idt')
+    shape: (2, 4)
+    ┌──────────────┬───────┬────────┬──────────┐
+    │ name         ┆ onset ┆ offset ┆ duration │
+    │ ---          ┆ ---   ┆ ---    ┆ ---      │
+    │ str          ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════════╪═══════╪════════╪══════════╡
+    │ fixation_idt ┆ 9     ┆ 111    ┆ 102      │
+    │ fixation_idt ┆ 150   ┆ 199    ┆ 49       │
+    └──────────────┴───────┴────────┴──────────┘
+    """
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+    if isinstance(positions, polars.Series):
+        if not isinstance(positions.dtype, polars.List):
+            raise TypeError(f'positions dtype must be List but is {positions.dtype}')
+        if not (positions.list.len() == 2).all():
+            list_lengths = positions.list.len().unique().to_list()
+            raise ValueError(f'positions must be 2D list but list lengths are: {list_lengths}')
+        positions = numpy.vstack([positions.list.get(0), positions.list.get(1)]).transpose()
+    positions = numpy.array(positions)
     _checks.check_shapes(positions=positions)
 
-    if timesteps is None:
-        timesteps = np.arange(len(positions), dtype=np.int64)
-    timesteps = np.array(timesteps).flatten()
+    if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+        timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
+        timesteps = numpy.arange(len(positions), dtype=numpy.int64)
+    timesteps = numpy.array(timesteps).flatten()
+    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     # Check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)
-    if np.any((timesteps - timesteps_int) != 0):
+    if numpy.any((timesteps - timesteps_int) != 0):
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
-
-    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
@@ -137,8 +279,8 @@ def idt(
     # This implementation is currently very restrictive.
     # It requires that the interval between timesteps is constant.
     # It requires that the minimum duration is divisible by the constant interval between timesteps.
-    timesteps_diff = np.diff(timesteps)
-    if not np.all(timesteps_diff == timesteps_diff[0]):
+    timesteps_diff = numpy.diff(timesteps)
+    if not numpy.all(timesteps_diff == timesteps_diff[0]):
         raise ValueError('interval between timesteps must be constant')
     if not minimum_duration % timesteps_diff[0] == 0:
         raise ValueError(
@@ -169,9 +311,9 @@ def idt(
 
                 win_end += 1
 
-            # check for np.nan values
-            if np.sum(np.isnan(positions[win_start:win_end - 1])) > 0:
-                tmp_candidates = [np.arange(win_start, win_end - 1, 1)]
+            # check for numpy.nan values
+            if numpy.sum(numpy.isnan(positions[win_start:win_end - 1])) > 0:
+                tmp_candidates = [numpy.arange(win_start, win_end - 1, 1)]
                 tmp_candidates = filter_candidates_remove_nans(
                     candidates=tmp_candidates,
                     values=positions,
@@ -207,8 +349,8 @@ def idt(
             win_start += 1
 
     # Create proper flat numpy arrays.
-    onsets_arr = np.array(onsets).flatten()
-    offsets_arr = np.array(offsets).flatten()
+    onsets_arr = numpy.array(onsets).flatten()
+    offsets_arr = numpy.array(offsets).flatten()
 
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
     return events

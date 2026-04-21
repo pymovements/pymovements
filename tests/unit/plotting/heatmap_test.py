@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 import pymovements as pm
 from pymovements import Experiment
@@ -125,15 +124,13 @@ def position_column_mapping_fixture():
         ),
     ],
 )
-def test_heatmap_show(args, kwargs, position_column_mapping, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
+def test_heatmap_returns_figure_and_axes(args, kwargs, position_column_mapping):
     position_column = position_column_mapping[args[1]]
     kwargs['position_column'] = position_column
-    heatmap(args[0], **kwargs)
+    fig, ax = heatmap(args[0], **kwargs)
 
-    mock.assert_called_once()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_heatmap_noshow(args, position_column_mapping, monkeypatch):
@@ -141,7 +138,7 @@ def test_heatmap_noshow(args, position_column_mapping, monkeypatch):
     monkeypatch.setattr(plt, 'show', mock)
 
     position_column = position_column_mapping[args[1]]
-    heatmap(args[0], position_column=position_column, show=False)
+    heatmap(args[0], position_column=position_column)
 
     mock.assert_not_called()
 
@@ -156,24 +153,23 @@ def test_heatmap_noshow_no_pixel_or_position_column(
     gaze = args[0]
     gaze.samples = gaze.samples.rename({position_column: 'custom_column'})
 
-    heatmap(gaze, position_column='custom_column', show=False)
+    heatmap(gaze, position_column='custom_column')
 
     mock.assert_not_called()
 
 
-def test_heatmap_save(args, position_column_mapping, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
+def test_heatmap_save(args, position_column_mapping, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
 
     position_column = position_column_mapping[args[1]]
     heatmap(
         args[0],
         position_column=position_column,
-        show=False,
-        savepath=str(tmp_path / 'test.svg'),
+        savepath=str(filepath),
     )
 
-    mock.assert_called_once()
+    assert filepath.is_file()
 
 
 def test_heatmap_invalid_position_columns(args, position_column_mapping):
@@ -182,7 +178,7 @@ def test_heatmap_invalid_position_columns(args, position_column_mapping):
     invalid_column = 'position' if position_column == 'pixel' else 'pixel'
 
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
-        heatmap(gaze=args[0], position_column=invalid_column, show=False)
+        heatmap(gaze=args[0], position_column=invalid_column)
 
 
 def test_heatmap_no_experiment_property():
@@ -196,7 +192,7 @@ def test_heatmap_no_experiment_property():
     gaze = Gaze(samples=df, pixel_columns=['x_pix', 'y_pix'], experiment=None)
 
     with pytest.raises(ValueError):
-        heatmap(gaze, show=False)
+        heatmap(gaze)
 
 
 @pytest.fixture(name='gaze')
@@ -227,7 +223,7 @@ def gaze_fixture():
 
 
 def test_heatmap_sets_screen_axes_correctly(gaze):
-    _, ax = pm.plotting.heatmap(gaze, show=False)
+    _, ax = pm.plotting.heatmap(gaze)
     screen = gaze.experiment.screen
     assert ax.get_xlim() == (0, screen.width_px)
     assert ax.get_ylim() == (screen.height_px, 0)
@@ -238,4 +234,4 @@ def test_heatmap_sets_screen_axes_correctly(gaze):
 def test_heatmap_invalid_screen_origin_raises(origin, gaze):
     gaze.experiment.screen.origin = origin
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
-        pm.plotting.heatmap(gaze, show=False)
+        pm.plotting.heatmap(gaze)

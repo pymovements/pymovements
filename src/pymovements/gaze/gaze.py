@@ -1345,8 +1345,19 @@ class Gaze:
         if isinstance(method, str):
             method = SampleMeasureLibrary.get(method)
 
-        if 'column_dtype' in inspect.getfullargspec(method).args:
+        # Automatically infer optional method arguments from experiment.
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
+
+        if 'column_dtype' in method_args and 'column_dtype' not in kwargs:
             kwargs['column_dtype'] = self.samples[kwargs['column']].dtype
+        if 'time_column' in method_args and 'time_column' not in kwargs:
+            kwargs['time_column'] = 'time'
+        if 'sampling_rate' in method_args and 'sampling_rate' not in kwargs:
+            if self.experiment and self.experiment.sampling_rate is not None:
+                kwargs['sampling_rate'] = self.experiment.sampling_rate
 
         if self.trial_columns is None:
             return self.samples.select(method(**kwargs))
@@ -2053,6 +2064,7 @@ class Gaze:
             list_length
             for column in considered_columns
             for list_length in self.samples.get_column(column).list.len().unique().to_list()
+            if list_length is not None
         }
 
         for column_specifier_list in column_specifiers:
@@ -2359,6 +2371,9 @@ class Gaze:
         if time_unit == 's':
             self.samples = self.samples.with_columns(polars.col('time').mul(1000))
 
+        elif time_unit == 'us':
+            self.samples = self.samples.with_columns(polars.col('time').truediv(1000))
+
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
@@ -2372,8 +2387,8 @@ class Gaze:
         elif time_unit != 'ms':
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
-                "Supported units are 's' for seconds, 'ms' for milliseconds and "
-                "'step' for steps.",
+                "Supported units are 's' for seconds, 'ms' for milliseconds, "
+                "'us' for microseconds and 'step' for steps.",
             )
 
         # Convert to int if possible.
