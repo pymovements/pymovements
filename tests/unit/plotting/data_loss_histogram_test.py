@@ -1,4 +1,4 @@
-# Copyright (c) 2025-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -61,6 +61,26 @@ class TestDataLossHistogram:
         })
         return Gaze(samples=df, pixel_columns=['x', 'y'], time_column='time')
 
+    @pytest.fixture
+    def sample_gaze_ends_with_loss(self) -> Gaze:
+        """Create sample gaze data ending with data loss."""
+        df = pl.DataFrame({
+            'time': [0.0, 1.0, 2.0],
+            'x': [1.0, 1.0, None],
+            'y': [1.0, 1.0, None],
+        })
+        return Gaze(samples=df, pixel_columns=['x', 'y'], time_column='time')
+
+    @pytest.fixture
+    def sample_gaze_no_time_column(self) -> Gaze:
+        """Create sample gaze data with no time column."""
+        df = pl.DataFrame({
+            'x': [1.0, 1.0, None, 1.0],
+            'y': [1.0, 1.0, None, 1.0],
+        })
+        # Explicitly don't pass time_column to Gaze initialization
+        return Gaze(samples=df, pixel_columns=['x', 'y'])
+
     def test_no_data_loss(self, sample_gaze_no_loss: Gaze) -> None:
         """Test histogram with no data loss."""
         fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', sampling_rate=1000.0)
@@ -102,6 +122,24 @@ class TestDataLossHistogram:
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
 
+        plt.close(fig)
+
+    def test_ends_with_loss(self, sample_gaze_ends_with_loss: Gaze) -> None:
+        """Test histogram when data ends with a loss chunk."""
+        fig, ax = data_loss_histogram(
+            sample_gaze_ends_with_loss,
+            column='pixel',
+        )
+        assert len(ax.patches) == 1
+        plt.close(fig)
+
+    def test_no_time_column(self, sample_gaze_no_time_column: Gaze) -> None:
+        """Test histogram when there is no time column."""
+        fig, ax = data_loss_histogram(
+            sample_gaze_no_time_column,
+            column='pixel',
+        )
+        assert len(ax.patches) == 1
         plt.close(fig)
 
     def test_unit_time_requires_sampling_rate(self, sample_gaze_no_loss: Gaze) -> None:
@@ -150,19 +188,26 @@ class TestDataLossHistogram:
             sample_gaze_with_loss,
             column='pixel',
             unit='count',
-            sampling_rate=1000.0,
+            sampling_rate=500.0,
         )
 
         fig_time, ax_time = data_loss_histogram(
             sample_gaze_with_loss,
             column='pixel',
             unit='time',
-            sampling_rate=1000.0,
+            sampling_rate=500.0,
         )
 
         # Check axis labels
         assert 'samples' in ax_count.get_xlabel().lower()
         assert 'ms' in ax_time.get_xlabel().lower()
+
+        # Check calculated statistics
+        count_texts = [t.get_text() for t in ax_count.texts]
+        time_texts = [t.get_text() for t in ax_time.texts]
+
+        assert any('max=2' in t for t in count_texts)
+        assert any('max=4' in t for t in time_texts)
 
         plt.close(fig_count)
         plt.close(fig_time)

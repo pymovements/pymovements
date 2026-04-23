@@ -1,4 +1,4 @@
-# Copyright (c) 2025-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ def data_loss_histogram(
     gaze : Gaze
         The gaze data to analyze.
     column : str, optional
-        The column to check for invalid values, by default 'position'.
+        The column to check for invalid values (i.e. 'pixel' for pixel columns, 'position' for position data), by default 'position'.
     sampling_rate : float | None, optional
         Sampling rate in Hz. Required if unit='time', by default None.
     unit : Literal['count', 'time'], optional
@@ -135,7 +135,7 @@ def data_loss_histogram(
 
     # Convert to requested unit
     if unit == 'time' and sampling_rate is not None:
-        chunks_converted = [c / sampling_rate for c in chunks]
+        chunks_converted = [c / sampling_rate * 1000 for c in chunks]
     else:
         chunks_converted = chunks
 
