@@ -73,317 +73,337 @@ def __init__(
         self.trans = np.log(transition_matrix)
 
         return'''
-    
+
+
 def emit_log_prob(
-            mu,
-            sigma,
-            v: float,
-            s: int,
-    ) -> float:
-        """Compute the log-probability of an observation given a state.
+    mu,
+    sigma,
+    v: float,
+    s: int,
+) -> float:
+    """Compute the log-probability of an observation given a state.
 
-        Parameters
-        ----------
-        v : float
-            Observed value (e.g., velocity).
-        s : int
-            State index.
+    Parameters
+    ----------
+    v : float
+        Observed value (e.g., velocity).
+    s : int
+        State index.
 
-        Returns
-        -------
-        float
-            Log-probability of observing v in state s.
-        """
-        mu = mu[s]
-        sigma = sigma[s]
+    Returns
+    -------
+    float
+        Log-probability of observing v in state s.
+    """
+    mu = mu[s]
+    sigma = sigma[s]
 
-        sigma = max(sigma, 1e-6)
+    sigma = max(sigma, 1e-6)
 
-        return -0.5 * np.log(2*np.pi*sigma**2) - ((v - mu)**2) / (2*sigma**2)
+    return -0.5 * np.log(2 * np.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
+
 
 def log_sum_exp(
-            arr: np.ndarray) -> float:
-        """Compute log-sum-exp.
+    arr: np.ndarray,
+) -> float:
+    """Compute log-sum-exp.
 
-        Parameters
-        ----------
-        arr : np.ndarray
-            Input array of log-values.
+    Parameters
+    ----------
+    arr : np.ndarray
+        Input array of log-values.
 
-        Returns
-        -------
-        float
-            Logarithm of the summed exponentials.
-        """
-        m = np.max(arr)
-        return m + np.log(np.sum(np.exp(arr - m)))
+    Returns
+    -------
+    float
+        Logarithm of the summed exponentials.
+    """
+    m = np.max(arr)
+    return m + np.log(np.sum(np.exp(arr - m)))
+
 
 def baum_welch(
-            states,
-            mu,
-            sigma,
-            init,
-            trans,
-            velocities: list[float] | np.ndarray,
-            max_iters: int,
-            epsilon: float = 1e-4,
-    ) -> dict[str, np.ndarray]:
-        """Estimate HMM parameters using the Baum-Welch algorithm.
+    states,
+    mu,
+    sigma,
+    init,
+    trans,
+    velocities: list[float] | np.ndarray,
+    max_iters: int,
+    epsilon: float = 1e-4,
+) -> dict[str, np.ndarray]:
+    """Estimate HMM parameters using the Baum-Welch algorithm.
 
-        This is an Expectation-Maximization (EM) procedure that iteratively updates
-        the model parameters (initial state, transition probabilities, and emission
-        distributions) to maximize the likelihood of the observed data.
+    This is an Expectation-Maximization (EM) procedure that iteratively updates
+    the model parameters (initial state, transition probabilities, and emission
+    distributions) to maximize the likelihood of the observed data.
 
-        Parameters
-        ----------
-        velocities : list[float] | np.ndarray
-            shape (T,)
-            Sequence of observed values.
-        max_iters : int
-            Maximum number of EM iterations.
-        epsilon : float
-            Convergence threshold for change in log-likelihood.
-            (default: 1e-4)
+    Parameters
+    ----------
+    velocities : list[float] | np.ndarray
+        shape (T,)
+        Sequence of observed values.
+    max_iters : int
+        Maximum number of EM iterations.
+    epsilon : float
+        Convergence threshold for change in log-likelihood.
+        (default: 1e-4)
 
-        Returns
-        -------
-        dict[str, np.ndarray]
-            Dictionary containing updated parameters:
-            - "mu": means of emission distributions
-            - "sigma": standard deviations of emission distributions
-            - "init": log initial state probabilities
-            - "trans": log transition matrix
-        """
+    Returns
+    -------
+    dict[str, np.ndarray]
+        Dictionary containing updated parameters:
+        - "mu": means of emission distributions
+        - "sigma": standard deviations of emission distributions
+        - "init": log initial state probabilities
+        - "trans": log transition matrix
+    """
 
-        T = len(velocities)
-        M = states
+    T = len(velocities)
+    M = states
 
-        prev_log_likelihood = -np.inf
+    prev_log_likelihood = -np.inf
 
-        for _ in range(max_iters):
+    for _ in range(max_iters):
 
-            alpha = baum_forward(mu=mu,sigma=sigma,trans=trans,init=init,velocities=velocities,T=T,M=M)
+        alpha = baum_forward(
+            mu=mu,
+            sigma=sigma,
+            trans=trans,
+            init=init,
+            velocities=velocities,
+            T=T,
+            M=M)
 
-            beta = baum_backward(mu=mu,sigma=sigma,trans=trans,velocities=velocities,T=T,M=M)
+        beta = baum_backward(mu=mu, sigma=sigma, trans=trans, velocities=velocities, T=T, M=M)
 
-            xi = np.zeros((M, M, T - 1))
+        xi = np.zeros((M, M, T - 1))
 
-            for t in range(T - 1):
-                denom_terms = []
-
-                for i in range(M):
-                    for j in range(M):
-                        denom_terms.append(
-                            alpha[t, i] +
-                            trans[i, j] +
-                            emit_log_prob(mu=mu,sigma=sigma,v=velocities[t+1], s=j) +
-                            beta[t+1, j]
-                        )
-
-                denom = log_sum_exp(np.array(denom_terms))
-
-                for i in range(M):
-                    for j in range(M):
-                        num = (
-                            alpha[t, i] +
-                            trans[i, j] +
-                            emit_log_prob(mu=mu,sigma=sigma,v=velocities[t+1], s= j) +
-                            beta[t+1, j]
-                        )
-                        xi[i, j, t] = np.exp(num - denom)
-
-            gamma = np.sum(xi, axis=1)
-
-            gamma_full = np.zeros((M, T))
-            gamma_full[:, :-1] = gamma
-
-            
-            last = alpha[T - 1] + beta[T - 1]
-            last = np.exp(last - log_sum_exp(last))
-            gamma_full[:, -1] = last
-
-
-            init = np.log(gamma_full[:, 0])
+        for t in range(T - 1):
+            denom_terms = []
 
             for i in range(M):
-                denom = np.sum(gamma_full[i, :-1])
                 for j in range(M):
-                    numer = np.sum(xi[i, j, :])
-                    trans[i, j] = np.log(numer / denom)
-
-        
-            for j in range(M):
-                weights = gamma_full[j, :]
-                total = np.sum(weights)
-
-                mu[j] = np.sum(weights * velocities) / total
-
-                var = np.sum(weights * (velocities - mu[j])**2) / total
-                sigma[j] = np.sqrt(var)
-            
-
-            alpha_updated = baum_forward(mu=mu,sigma=sigma,trans=trans,init=init,velocities=velocities, T=T, M=M)
-
-            log_likelihood = log_sum_exp(alpha_updated[-1])
-
-            if abs(log_likelihood - prev_log_likelihood) < epsilon:
-                break
-
-            prev_log_likelihood = log_likelihood
-
-        return  {"mu":mu, "sigma":sigma, "init":init, "trans":trans}
-    
-def baum_forward(
-            mu,
-            sigma,
-            init,
-            trans,             
-            velocities: list[float] | np.ndarray,
-            T: int,
-            M: int,
-    ) -> np.ndarray:
-        """Compute forward probabilities (alpha) in log-space.
-
-        The forward algorithm calculates the probability of observing the sequence
-        up to time t and being in state j at time t.
-
-        Parameters
-        ----------
-        velocities : list[float] | np.ndarray
-            shape (T,)
-            Sequence of observed values.
-        T : int
-            Length of the sequence.
-        M : int
-            Number of states.
-
-        Returns
-        -------
-        np.ndarray
-            shape (T, M)
-            Log forward probabilities.
-        """
-
-        alpha = np.full((T, M), -np.inf)
-
-        for s in range(M):
-            alpha[0, s] = init[s] + emit_log_prob(mu=mu,sigma=sigma,v=velocities[0], s=s)
-
-        for t in range(1, T):
-            for j in range(M):
-                terms = []
-                for i in range(M):
-                    terms.append(alpha[t-1, i] + trans[i, j])
-                alpha[t, j] = log_sum_exp(np.array(terms)) + emit_log_prob(mu=mu,sigma=sigma,v=velocities[t], s= j)
-
-        return alpha
-    
-def baum_backward(
-            mu,
-            sigma,
-            trans,            
-            velocities: list[float] | np.ndarray,
-            T: int,
-            M: int,
-    ) -> np.ndarray:
-        """Compute backward probabilities (beta) in log-space.
-
-        The backward algorithm calculates the probability of observing the future
-        sequence from time t+1 onward given state i at time t.
-
-        Parameters
-        ----------
-        velocities : list[float] | np.ndarray
-            shape (T,)
-            Sequence of observed values.
-        T : int
-            Length of the sequence.
-        M : int
-            Number of states.
-
-        Returns
-        -------
-        np.ndarray
-            shape (T, M)
-            Log backward probabilities.
-        """
-
-        beta = np.full((T, M), -np.inf)
-
-        beta[T - 1, :] = 0
-
-        for t in range(T - 2, -1, -1):
-            for i in range(M):
-                terms = []
-                for j in range(M):
-                    terms.append(
+                    denom_terms.append(
+                        alpha[t, i] +
                         trans[i, j] +
-                        emit_log_prob(mu=mu,sigma=sigma,v=velocities[t+1], s=j) +
-                        beta[t+1, j]
+                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                        beta[t + 1, j],
                     )
-                beta[t, i] = log_sum_exp(np.array(terms))
 
-        return beta
-    
+            denom = log_sum_exp(np.array(denom_terms))
+
+            for i in range(M):
+                for j in range(M):
+                    num = (
+                        alpha[t, i] +
+                        trans[i, j] +
+                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                        beta[t + 1, j]
+                    )
+                    xi[i, j, t] = np.exp(num - denom)
+
+        gamma = np.sum(xi, axis=1)
+
+        gamma_full = np.zeros((M, T))
+        gamma_full[:, :-1] = gamma
+
+        last = alpha[T - 1] + beta[T - 1]
+        last = np.exp(last - log_sum_exp(last))
+        gamma_full[:, -1] = last
+
+        init = np.log(gamma_full[:, 0])
+
+        for i in range(M):
+            denom = np.sum(gamma_full[i, :-1])
+            for j in range(M):
+                numer = np.sum(xi[i, j, :])
+                trans[i, j] = np.log(numer / denom)
+
+        for j in range(M):
+            weights = gamma_full[j, :]
+            total = np.sum(weights)
+
+            mu[j] = np.sum(weights * velocities) / total
+
+            var = np.sum(weights * (velocities - mu[j])**2) / total
+            sigma[j] = np.sqrt(var)
+
+        alpha_updated = baum_forward(
+            mu=mu,
+            sigma=sigma,
+            trans=trans,
+            init=init,
+            velocities=velocities,
+            T=T,
+            M=M)
+
+        log_likelihood = log_sum_exp(alpha_updated[-1])
+
+        if abs(log_likelihood - prev_log_likelihood) < epsilon:
+            break
+
+        prev_log_likelihood = log_likelihood
+
+    return {'mu': mu, 'sigma': sigma, 'init': init, 'trans': trans}
+
+
+def baum_forward(
+    mu,
+    sigma,
+    init,
+    trans,
+    velocities: list[float] | np.ndarray,
+    T: int,
+    M: int,
+) -> np.ndarray:
+    """Compute forward probabilities (alpha) in log-space.
+
+    The forward algorithm calculates the probability of observing the sequence
+    up to time t and being in state j at time t.
+
+    Parameters
+    ----------
+    velocities : list[float] | np.ndarray
+        shape (T,)
+        Sequence of observed values.
+    T : int
+        Length of the sequence.
+    M : int
+        Number of states.
+
+    Returns
+    -------
+    np.ndarray
+        shape (T, M)
+        Log forward probabilities.
+    """
+
+    alpha = np.full((T, M), -np.inf)
+
+    for s in range(M):
+        alpha[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+
+    for t in range(1, T):
+        for j in range(M):
+            terms = []
+            for i in range(M):
+                terms.append(alpha[t - 1, i] + trans[i, j])
+            alpha[t, j] = log_sum_exp(np.array(terms)) + \
+                emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
+
+    return alpha
+
+
+def baum_backward(
+    mu,
+    sigma,
+    trans,
+    velocities: list[float] | np.ndarray,
+    T: int,
+    M: int,
+) -> np.ndarray:
+    """Compute backward probabilities (beta) in log-space.
+
+    The backward algorithm calculates the probability of observing the future
+    sequence from time t+1 onward given state i at time t.
+
+    Parameters
+    ----------
+    velocities : list[float] | np.ndarray
+        shape (T,)
+        Sequence of observed values.
+    T : int
+        Length of the sequence.
+    M : int
+        Number of states.
+
+    Returns
+    -------
+    np.ndarray
+        shape (T, M)
+        Log backward probabilities.
+    """
+
+    beta = np.full((T, M), -np.inf)
+
+    beta[T - 1, :] = 0
+
+    for t in range(T - 2, -1, -1):
+        for i in range(M):
+            terms = []
+            for j in range(M):
+                terms.append(
+                    trans[i, j] +
+                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                    beta[t + 1, j],
+                )
+            beta[t, i] = log_sum_exp(np.array(terms))
+
+    return beta
+
+
 def viterbi(
-            states,
-            mu,
-            sigma,
-            init,
-            trans,        
-            velocities: list[float] | np.ndarray) -> np.ndarray:
-        """Compute the most likely state sequence using the Viterbi algorithm.
+    states,
+    mu,
+    sigma,
+    init,
+    trans,
+    velocities: list[float] | np.ndarray,
+) -> np.ndarray:
+    """Compute the most likely state sequence using the Viterbi algorithm.
 
-        This dynamic programming algorithm finds the sequence of hidden states
-        that maximizes the joint probability of the observations and the states.
+    This dynamic programming algorithm finds the sequence of hidden states
+    that maximizes the joint probability of the observations and the states.
 
-        Parameters
-        ----------
-        velocities : list[float] | np.ndarray
-            shape (T,)
-            Sequence of observed values.
+    Parameters
+    ----------
+    velocities : list[float] | np.ndarray
+        shape (T,)
+        Sequence of observed values.
 
-        Returns
-        -------
-        np.ndarray
-            shape (T,)
-            Most likely sequence of state indices.
-        """
+    Returns
+    -------
+    np.ndarray
+        shape (T,)
+        Most likely sequence of state indices.
+    """
 
-        # init step
+    # init step
 
-        T = len(velocities)
+    T = len(velocities)
 
-        prob = np.full((T, states), -np.inf)
-        prev = np.zeros((T, states), dtype=int)
+    prob = np.full((T, states), -np.inf)
+    prev = np.zeros((T, states), dtype=int)
 
-        for s in range(states):
-            prob[0, s] = init[s] + emit_log_prob(mu=mu,sigma=sigma,v=velocities[0], s=s)
+    for s in range(states):
+        prob[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
 
-        # main loop
+    # main loop
 
-        for t in range(1, T):
-            for state1 in range(states):
-                best_prob = -np.inf
-                best_state = 0
-                for state2 in range(states):
-                    new_prob = prob[t-1, state2] + trans[state2, state1] + emit_log_prob(mu=mu,sigma=sigma,v=velocities[t],s= state1)
-                    if new_prob > best_prob:
-                        best_prob = new_prob
-                        best_state = state2
-                prob[t, state1] = best_prob
-                prev[t, state1] = best_state
+    for t in range(1, T):
+        for state1 in range(states):
+            best_prob = -np.inf
+            best_state = 0
+            for state2 in range(states):
+                new_prob = prob[t - 1, state2] + trans[state2, state1] + \
+                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
+                if new_prob > best_prob:
+                    best_prob = new_prob
+                    best_state = state2
+            prob[t, state1] = best_prob
+            prev[t, state1] = best_state
 
-        # backtrack
+    # backtrack
 
-        path = np.zeros(T, dtype=int)
+    path = np.zeros(T, dtype=int)
 
-        path[T - 1] = np.argmax(prob[T - 1])
+    path[T - 1] = np.argmax(prob[T - 1])
 
-        for t in range(T - 2, -1, -1):
-            path[t] = prev[t + 1, path[t + 1]]
+    for t in range(T - 2, -1, -1):
+        path[t] = prev[t + 1, path[t + 1]]
 
-        return path
+    return path
 
 
 def collapse_states(states):
@@ -413,12 +433,11 @@ def collapse_states(states):
     onsets_arr = np.array(onsets_arr)
     offsets_arr = np.array(offsets_arr)
 
-   
-
     return onsets_arr, offsets_arr
 
 
-def compute_hmm(velocities, verbose, initialization,reestimation_max_iters, mu, sigma,init_state,transition_probabilities):
+def compute_hmm(velocities, verbose, initialization, reestimation_max_iters,
+                mu, sigma, init_state, transition_probabilities):
     reestimate = False
 
     defaults = {
@@ -460,27 +479,39 @@ def compute_hmm(velocities, verbose, initialization,reestimation_max_iters, mu, 
             else:
                 _trans = defaults['trans']
 
-    #hmm = HMM(states=2, mu=_mu, sigma=_sigma, initial_state=_init, transition_matrix=_trans)
+    # hmm = HMM(states=2, mu=_mu, sigma=_sigma, initial_state=_init, transition_matrix=_trans)
 
     _init = np.log(_init)
     _trans = np.log(_trans)
 
     if reestimate:
-        optimal = baum_welch(states=2,mu=_mu,sigma=_sigma,init=_init,trans=_trans, velocities=velocities,max_iters=reestimation_max_iters)
-        _mu = optimal["mu"]
-        _sigma = optimal["sigma"]
-        _init = optimal["init"]
-        _trans = optimal["trans"]
+        optimal = baum_welch(
+            states=2,
+            mu=_mu,
+            sigma=_sigma,
+            init=_init,
+            trans=_trans,
+            velocities=velocities,
+            max_iters=reestimation_max_iters)
+        _mu = optimal['mu']
+        _sigma = optimal['sigma']
+        _init = optimal['init']
+        _trans = optimal['trans']
 
         if verbose:
             print(f"Optimal parameters found by reestimation are:\n{optimal}")
 
     # inference the hmm
 
-    states = viterbi(states=2, mu=_mu, sigma=_sigma, init=_init, trans=_trans, velocities=velocities)
+    states = viterbi(
+        states=2,
+        mu=_mu,
+        sigma=_sigma,
+        init=_init,
+        trans=_trans,
+        velocities=velocities)
 
     return states
-
 
 
 @register_event_detection
@@ -554,7 +585,7 @@ def ihmm(
         If init_state is not shaped (2,).
         If transition_probabilities is not shaped (2, 2).
         If transition_probabilities do not sum up to 1.
-    
+
     Examples
     --------
     >>> import numpy as np
@@ -685,14 +716,23 @@ def ihmm(
         )
 
     # convert into velocities (1D velocities vector)
-    
-    velocities = np.array(list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2) ,pos2vel(arr = positions,method="preceding"))))
 
-    velocities = np.nan_to_num(velocities, nan=0.0) 
+    velocities = np.array(
+        list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), pos2vel(arr=positions, method='preceding'))))
+
+    velocities = np.nan_to_num(velocities, nan=0.0)
 
     # compute HMM
 
-    states=compute_hmm(velocities=velocities,verbose=verbose,initialization=initialization,reestimation_max_iters=reestimation_max_iters,mu=mu,sigma=sigma,init_state=init_state,transition_probabilities=transition_probabilities)
+    states = compute_hmm(
+        velocities=velocities,
+        verbose=verbose,
+        initialization=initialization,
+        reestimation_max_iters=reestimation_max_iters,
+        mu=mu,
+        sigma=sigma,
+        init_state=init_state,
+        transition_probabilities=transition_probabilities)
 
     # collapse states
 
@@ -702,4 +742,3 @@ def ihmm(
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
-
