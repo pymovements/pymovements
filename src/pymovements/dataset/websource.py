@@ -17,13 +17,18 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Utils module for downloading files."""
+"""WebSource definition and download helper."""
 from __future__ import annotations
 
 import hashlib
 import urllib.request
+from dataclasses import asdict
+from dataclasses import dataclass
+from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
+from urllib.error import URLError
+from warnings import warn
 
 from tqdm.auto import tqdm
 
@@ -32,7 +37,112 @@ from pymovements._version import __version__
 USER_AGENT: str = f'pymovements/{__version__}'
 
 
-def download_file(
+@dataclass(frozen=True)
+class WebSource:
+    """Web-based source of a dataset resource.
+
+    Attributes
+    ----------
+    url: str
+        Primary URL of the resource to be downloaded.
+    filename: str | None
+        Optional target filename. If not provided, the basename of the URL path is used.
+    md5: str | None
+        Optional MD5 checksum for integrity verification.
+    mirrors: list[str] | None
+        Optional list of full mirror URLs. Tried in order if primary URL fails.
+    """
+
+    url: str
+
+    _: KW_ONLY
+
+    filename: str | None = None
+    md5: str | None = None
+    mirrors: list[str] | None = None
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> WebSource:
+        """Create a `WebSource` from a dictionary."""
+        return WebSource(
+            url=data.get('url'),  # type: ignore[arg-type]
+            filename=data.get('filename'),
+            md5=data.get('md5'),
+            mirrors=data.get('mirrors'),
+        )
+
+    def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
+        """Serialize this `WebSource` to a dictionary.
+
+        Omits None values if `exclude_none` is True.
+        """
+        data = asdict(self)
+        if exclude_none:
+            return {key: value for key, value in data.items() if value}
+        return data
+
+    def download(
+            self,
+            target_dirpath: Path | str,
+            *,
+            verbose: bool = True,
+    ) -> Path:
+        """Download this resource into `target_dirpath`.
+
+        Tries the primary `url` first, then any `mirrors` in order. Integrity is
+        validated via MD5 when provided. Returns the local file path.
+        """
+        dirpath = Path(target_dirpath).expanduser()
+
+        if self.url is None:
+            raise AttributeError('WebSource.url must not be None')
+        if self.filename is None:
+            raise AttributeError('WebSource.filename must not be None')
+
+        # Attempt downloading from primary URL.
+        try:
+            return _download_file(
+                url=self.url,
+                dirpath=dirpath,
+                filename=self.filename,
+                md5=self.md5,
+                verbose=verbose,
+            )
+        except (OSError, RuntimeError) as primary_error:
+            # No mirrors to try
+            if not self.mirrors:
+                raise RuntimeError(f"Downloading resource {self.url} failed.") from primary_error
+
+            warn(UserWarning(f"Downloading resource {self.url} failed. Trying mirror."))
+
+            # Try mirrors in order
+            for mirror_idx, mirror_url in enumerate(self.mirrors, start=1):
+                try:
+                    return _download_file(
+                        url=mirror_url,
+                        dirpath=dirpath,
+                        filename=self.filename,
+                        md5=self.md5,
+                        verbose=verbose,
+                    )
+                # pylint: disable=overlapping-except
+                except (URLError, OSError, RuntimeError) as mirror_error:
+                    msg = f"Downloading resource from mirror {mirror_url} failed."
+                    if mirror_idx < len(self.mirrors):
+                        msg = msg + \
+                            f" Trying next mirror ({len(self.mirrors) - mirror_idx} remaining)."
+                    warning = UserWarning(msg)
+                    warning.__cause__ = mirror_error
+                    warn(warning)
+                    # Continue to next mirror
+
+            # If we are here, downloading failed for all mirrors.
+            raise RuntimeError(
+                f"Downloading resource {self.filename} failed for all mirrors.",
+            ) from primary_error
+
+
+def _download_file(
         url: str,
         dirpath: Path,
         filename: str,

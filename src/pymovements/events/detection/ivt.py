@@ -20,7 +20,8 @@
 """Provides the implementation of the I-VT algorithm."""
 from __future__ import annotations
 
-import numpy as np
+import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events._utils._filters import filter_candidates_remove_nans
@@ -32,8 +33,8 @@ from pymovements.gaze.transforms_numpy import norm
 
 @register_event_detection
 def ivt(
-        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
-        timesteps: list[int] | np.ndarray | None = None,
+        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         velocity_threshold: float = 20.0,
         include_nan: bool = False,
@@ -50,10 +51,10 @@ def ivt(
 
     Parameters
     ----------
-    velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Corresponding continuous 2D velocity time series.
-    timesteps: list[int] | np.ndarray | None
+    timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
@@ -65,7 +66,7 @@ def ivt(
         Threshold for a point to be classified as a fixation. If the
         velocity is below the threshold, the point is classified as a fixation. (default: 20.0)
     include_nan: bool
-        Indicator, whether we want to split events on missing/corrupt value (np.nan)
+        Indicator, whether we want to split events on missing/corrupt value (numpy.nan)
         (default: False)
     name: str
         Name for detected events in Events. (default: 'fixation')
@@ -77,14 +78,149 @@ def ivt(
 
     Raises
     ------
+    TypeError
+        If velocities is a polars Series and dtype not List
     ValueError
         If velocities is None
         If velocities does not have shape (N, 2)
         If velocity threshold is None.
         If velocity threshold is not greater than 0.
-    """
-    velocities = np.array(velocities)
 
+    Examples
+    --------
+    Create a synthetic velocity signal representing low-velocity fixations.
+
+    >>> import numpy as np
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.gaze import from_numpy
+    >>> velocities = step_function(
+    ...     length=200, steps=[2, 5, 9, 111, 150],
+    ...     values=[(10., 20.), (20., 30.), (0., 0.), (20., 20.), (0., 0.)],
+    ...     start_value=(0., 0.),
+    ... )
+    >>> velocities.shape
+    (200, 2)
+
+    Apply event detection algorithm on numpy array:
+
+    >>> ivt(velocities)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 110    ┆ 101      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Run fixation detection with custom parameters:
+
+    >>> ivt(velocities, minimum_duration = 50, velocity_threshold=30)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 199    ┆ 190      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Polars series are also supported as input. Let's create a nested position series from our numpy
+    array:
+
+    >>> df = polars.from_numpy(velocities, schema=['x', 'y'])
+    >>> velocity_series = df.select(polars.concat_list(('x', 'y')).alias('velocity'))['velocity']
+    >>> velocity_series
+    shape: (200,)
+    Series: 'velocity' [list[f64]]
+    [
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [10.0, 20.0]
+        [10.0, 20.0]
+        [10.0, 20.0]
+        …
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [0.0, 0.0]
+        [0.0, 0.0]
+    ]
+
+    Apply event detection algorithm on polars series:
+
+    >>> ivt(velocity_series)
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 110    ┆ 101      │
+    └──────────┴───────┴────────┴──────────┘
+
+    We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
+
+    >>> from pymovements import Experiment
+    >>> gaze = from_numpy(
+    ...    velocity=velocities.T,
+    ...    time=np.arange(len(velocities)),
+    ... )
+    >>> gaze
+    shape: (200, 2)
+    ┌──────┬──────────────┐
+    │ time ┆ velocity     │
+    │ ---  ┆ ---          │
+    │ i64  ┆ list[f64]    │
+    ╞══════╪══════════════╡
+    │ 0    ┆ [0.0, 0.0]   │
+    │ 1    ┆ [0.0, 0.0]   │
+    │ 2    ┆ [10.0, 20.0] │
+    │ 3    ┆ [10.0, 20.0] │
+    │ 4    ┆ [10.0, 20.0] │
+    │ …    ┆ …            │
+    │ 195  ┆ [0.0, 0.0]   │
+    │ 196  ┆ [0.0, 0.0]   │
+    │ 197  ┆ [0.0, 0.0]   │
+    │ 198  ┆ [0.0, 0.0]   │
+    │ 199  ┆ [0.0, 0.0]   │
+    └──────┴──────────────┘
+
+    Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
+
+    >>> gaze.detect('ivt')
+    >>> gaze.events
+    shape: (1, 4)
+    ┌──────────┬───────┬────────┬──────────┐
+    │ name     ┆ onset ┆ offset ┆ duration │
+    │ ---      ┆ ---   ┆ ---    ┆ ---      │
+    │ str      ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════╪═══════╪════════╪══════════╡
+    │ fixation ┆ 9     ┆ 110    ┆ 101      │
+    └──────────┴───────┴────────┴──────────┘
+
+    Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
+
+    >>> gaze.detect('ivt', minimum_duration = 50, velocity_threshold=30, name='fixation_ivt')
+    >>> gaze.events.filter_by_name('fixation_ivt')
+    shape: (1, 4)
+    ┌──────────────┬───────┬────────┬──────────┐
+    │ name         ┆ onset ┆ offset ┆ duration │
+    │ ---          ┆ ---   ┆ ---    ┆ ---      │
+    │ str          ┆ i64   ┆ i64    ┆ i64      │
+    ╞══════════════╪═══════╪════════╪══════════╡
+    │ fixation_ivt ┆ 9     ┆ 199    ┆ 190      │
+    └──────────────┴───────┴────────┴──────────┘
+    """
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+    if isinstance(velocities, polars.Series):
+        if not isinstance(velocities.dtype, polars.List):
+            raise TypeError(f'velocities dtype must be List but is {velocities.dtype}')
+        if not (velocities.list.len() == 2).all():
+            list_lengths = velocities.list.len().unique().to_list()
+            raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
+        velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
+    velocities = numpy.array(velocities)
     _checks.check_shapes(velocities=velocities)
 
     if velocity_threshold is None:
@@ -92,9 +228,15 @@ def ivt(
     if velocity_threshold <= 0:
         raise ValueError('velocity threshold must be greater than 0')
 
-    if timesteps is None:
-        timesteps = np.arange(len(velocities), dtype=np.int64)
-    timesteps = np.array(timesteps)
+    if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+        timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
+        timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
+    timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     # Get all indices with norm-velocities below threshold.
@@ -103,10 +245,10 @@ def ivt(
 
     # Add nans to candidates if desired.
     if include_nan:
-        candidate_mask = np.logical_or(candidate_mask, np.isnan(velocities).any(axis=1))
+        candidate_mask = numpy.logical_or(candidate_mask, numpy.isnan(velocities).any(axis=1))
 
     # Get indices of true values in candidate mask.
-    candidate_indices = np.where(candidate_mask)[0]
+    candidate_indices = numpy.where(candidate_mask)[0]
 
     # Get all fixation candidates by grouping all consecutive indices.
     candidates = consecutive(arr=candidate_indices)

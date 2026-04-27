@@ -20,7 +20,8 @@
 """Provides detection of out-of-screen gaze samples."""
 from __future__ import annotations
 
-import numpy as np
+import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
@@ -30,13 +31,13 @@ from pymovements.gaze.transforms_numpy import consecutive
 
 @register_event_detection
 def out_of_screen(
-        pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+        pixels: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
         *,
         x_max: float,
         y_max: float,
         x_min: float = 0,
         y_min: float = 0,
-        timesteps: list[int] | np.ndarray | None = None,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         name: str = 'out_of_screen',
 ) -> Events:
     """Detect gaze samples with pixel coordinates outside of screen boundaries.
@@ -47,7 +48,7 @@ def out_of_screen(
 
     Parameters
     ----------
-    pixels: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    pixels: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Continuous 2D pixel coordinate time series. The first column is the x coordinate
         and the second column is the y coordinate.
@@ -59,7 +60,7 @@ def out_of_screen(
         Minimum valid x pixel coordinate (inclusive). (default: 0)
     y_min: float
         Minimum valid y pixel coordinate (inclusive). (default: 0)
-    timesteps: list[int] | np.ndarray | None
+    timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
         assumed. (default: None)
@@ -73,13 +74,21 @@ def out_of_screen(
 
     Raises
     ------
+    TypeError
+        If pixels is a polars Series and dtype not List
     ValueError
         If pixels is None or does not have shape (N, 2).
         If x_min >= x_max.
         If y_min >= y_max.
     """
-    pixels = np.array(pixels)
-
+    if isinstance(pixels, polars.Series):
+        if not isinstance(pixels.dtype, polars.List):
+            raise TypeError(f'pixels dtype must be List but is {pixels.dtype}')
+        if not (pixels.list.len() == 2).all():
+            list_lengths = pixels.list.len().unique().to_list()
+            raise ValueError(f'pixels must be 2D list but list lengths are: {list_lengths}')
+        pixels = numpy.vstack([pixels.list.get(0), pixels.list.get(1)]).transpose()
+    pixels = numpy.array(pixels)
     _checks.check_shapes(pixels=pixels)
 
     if x_min >= x_max:
@@ -91,9 +100,16 @@ def out_of_screen(
             f'y_min must be less than y_max, but got y_min={y_min} and y_max={y_max}',
         )
 
-    if timesteps is None:
-        timesteps = np.arange(len(pixels), dtype=np.int64)
-    timesteps = np.array(timesteps)
+    if isinstance(timesteps, polars.Series):
+        numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+        timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
+        timesteps = numpy.arange(len(pixels), dtype=numpy.int64)
+    timesteps = numpy.array(timesteps)
     _checks.check_is_length_matching(pixels=pixels, timesteps=timesteps)
 
     # A sample is out-of-screen if x or y is outside the screen boundaries.
@@ -106,7 +122,7 @@ def out_of_screen(
     )
 
     # Get indices of out-of-screen samples.
-    candidate_indices = np.where(out_of_screen_mask)[0]
+    candidate_indices = numpy.where(out_of_screen_mask)[0]
 
     if len(candidate_indices) == 0:
         return Events(name=name, onsets=[], offsets=[])
