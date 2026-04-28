@@ -26,6 +26,7 @@ from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import pos2vel
 
+
 def emit_log_prob(
     mu: np.ndarray | None,
     sigma: np.ndarray | None,
@@ -816,7 +817,7 @@ def ihmm(
     onsets_arr, offsets_arr = collapse_states(states)
 
     # return event frame
-    
+
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
