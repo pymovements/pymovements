@@ -129,7 +129,7 @@ def log_sum_exp(
 
 
 def baum_welch(
-    states : int,
+    states: int,
     mu: np.ndarray | None,
     sigma: np.ndarray | None,
     init: np.ndarray | None,
@@ -193,7 +193,8 @@ def baum_welch(
             init=init,
             velocities=velocities,
             T=T,
-            M=M)
+            M=M,
+        )
 
         beta = baum_backward(mu=mu, sigma=sigma, trans=trans, velocities=velocities, T=T, M=M)
 
@@ -256,7 +257,8 @@ def baum_welch(
             init=init,
             velocities=velocities,
             T=T,
-            M=M)
+            M=M,
+        )
 
         log_likelihood = log_sum_exp(alpha_updated[-1])
 
@@ -385,7 +387,7 @@ def baum_backward(
 
 
 def viterbi(
-    states : int,
+    states: int,
     mu: np.ndarray | None,
     sigma: np.ndarray | None,
     init: np.ndarray | None,
@@ -462,8 +464,8 @@ def viterbi(
 
 
 def collapse_states(
-        states: np.ndarray
-        ) -> tuple[np.ndarray, np.ndarray]:
+        states: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     """Convert a sequence of HMM states into event onsets and offsets.
 
     This function assumes a binary state model where state `0` represents
@@ -512,15 +514,16 @@ def collapse_states(
     return onsets_arr, offsets_arr
 
 
-def compute_hmm(velocities: np.ndarray,
+def compute_hmm(
+    velocities: np.ndarray,
     verbose: bool,
     initialization: str | None,
     reestimation_max_iters: int,
     mu: np.ndarray | None,
     sigma: np.ndarray | None,
     init_state: np.ndarray | None,
-    transition_probabilities: np.ndarray | None
-    ) -> np.ndarray:
+    transition_probabilities: np.ndarray | None,
+) -> np.ndarray:
     """Run HMM parameter setup, optional Baum-Welch reestimation, and Viterbi decoding.
 
     This function initializes HMM parameters (either from defaults or user input),
@@ -614,7 +617,8 @@ def compute_hmm(velocities: np.ndarray,
             init=_init,
             trans=_trans,
             velocities=velocities,
-            max_iters=reestimation_max_iters)
+            max_iters=reestimation_max_iters,
+        )
         _mu = optimal['mu']
         _sigma = optimal['sigma']
         _init = optimal['init']
@@ -631,7 +635,8 @@ def compute_hmm(velocities: np.ndarray,
         sigma=_sigma,
         init=_init,
         trans=_trans,
-        velocities=velocities)
+        velocities=velocities,
+    )
 
     return states
 
@@ -840,7 +845,8 @@ def ihmm(
     # convert into velocities (1D velocities vector)
 
     velocities = np.array(
-        list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), pos2vel(arr=positions, method='preceding'))))
+        list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), pos2vel(arr=positions, method='preceding'))),
+    )
 
     velocities = np.nan_to_num(velocities, nan=0.0)
 
@@ -854,7 +860,8 @@ def ihmm(
         mu=mu,
         sigma=sigma,
         init_state=init_state,
-        transition_probabilities=transition_probabilities)
+        transition_probabilities=transition_probabilities,
+    )
 
     # collapse states
 
