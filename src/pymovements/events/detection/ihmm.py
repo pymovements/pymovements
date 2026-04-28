@@ -26,55 +26,6 @@ from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import pos2vel
 
-'''
-def __init__(
-            self,
-            states: int,
-            mu: list[float] | np.ndarray,
-            sigma: list[float] | np.ndarray,
-            initial_state: list[float] | np.ndarray,
-            transition_matrix: list[list[float]] | np.ndarray,
-    ) -> None:
-        """Initialize a Hidden Markov Model with Gaussian emissions.
-
-        The model uses log-space for numerical stability. Each state is
-        associated with a Gaussian distribution defined by its mean and standard
-        deviation, and transitions between states are governed by a transition matrix.
-
-        Parameters
-        ----------
-        states : int
-            Number of hidden states in the model.
-        mu : list[float] | np.ndarray
-            shape (states,)
-            Mean of the emission distribution for each state.
-        sigma : list[float] | np.ndarray
-            shape (states,)
-            Standard deviation of the emission distribution for each state.
-        initial_state : list[float] | np.ndarray
-            shape (states,)
-            Initial probability distribution over states. Must sum to 1.
-        transition_matrix : list[list[float]] | np.ndarray
-            shape (states, states)
-            State transition probability matrix.
-
-        Returns
-        -------
-        None
-        """
-        self.states = states
-
-        self.init = np.log(initial_state)
-
-        self.mu = mu
-
-        self.sigma = sigma
-
-        self.trans = np.log(transition_matrix)
-
-        return'''
-
-
 def emit_log_prob(
     mu: np.ndarray | None,
     sigma: np.ndarray | None,
@@ -604,8 +555,6 @@ def compute_hmm(
             else:
                 _trans = defaults['trans']
 
-    # hmm = HMM(states=2, mu=_mu, sigma=_sigma, initial_state=_init, transition_matrix=_trans)
-
     _init = np.log(_init)
     _trans = np.log(_trans)
 
@@ -651,7 +600,6 @@ def ihmm(
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
         reestimation_max_iters: int = 100,
         initialization: str | None = None,
-        include_nan: bool = True,
         verbose: bool = False,
         name: str = 'fixation',
 ) -> Events:
@@ -868,6 +816,7 @@ def ihmm(
     onsets_arr, offsets_arr = collapse_states(states)
 
     # return event frame
+    
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
