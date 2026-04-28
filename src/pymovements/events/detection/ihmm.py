@@ -76,8 +76,8 @@ def __init__(
 
 
 def emit_log_prob(
-    mu,
-    sigma,
+    mu: np.ndarray | None,
+    sigma: np.ndarray | None,
     v: float,
     s: int,
 ) -> float:
@@ -85,6 +85,12 @@ def emit_log_prob(
 
     Parameters
     ----------
+    mu : np.ndarray | None
+        shape (2,)
+        Initial means of emission distributions.
+    sigma : np.ndarray | None
+        shape (2,)
+        Initial standard deviations of emission distributions.
     v : float
         Observed value (e.g., velocity).
     s : int
@@ -123,11 +129,11 @@ def log_sum_exp(
 
 
 def baum_welch(
-    states,
-    mu,
-    sigma,
-    init,
-    trans,
+    states : int,
+    mu: np.ndarray | None,
+    sigma: np.ndarray | None,
+    init: np.ndarray | None,
+    trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
     max_iters: int,
     epsilon: float = 1e-4,
@@ -140,6 +146,20 @@ def baum_welch(
 
     Parameters
     ----------
+    states : int
+            Number of hidden states in the model.
+    mu : np.ndarray | None
+        shape (2,)
+        Initial means of emission distributions.
+    sigma : np.ndarray | None
+        shape (2,)
+        Initial standard deviations of emission distributions.
+    init : np.ndarray | None
+        shape (2,)
+        Initial state probabilities.
+    trans : np.ndarray | None
+        shape (2, 2)
+        State transition probabilities.
     velocities : list[float] | np.ndarray
         shape (T,)
         Sequence of observed values.
@@ -249,10 +269,10 @@ def baum_welch(
 
 
 def baum_forward(
-    mu,
-    sigma,
-    init,
-    trans,
+    mu: np.ndarray | None,
+    sigma: np.ndarray | None,
+    init: np.ndarray | None,
+    trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
     T: int,
     M: int,
@@ -264,6 +284,18 @@ def baum_forward(
 
     Parameters
     ----------
+    mu : np.ndarray | None
+        shape (2,)
+        Initial means of emission distributions.
+    sigma : np.ndarray | None
+        shape (2,)
+        Initial standard deviations of emission distributions.
+    init : np.ndarray | None
+        shape (2,)
+        Initial state probabilities.
+    trans : np.ndarray | None
+        shape (2, 2)
+        State transition probabilities.
     velocities : list[float] | np.ndarray
         shape (T,)
         Sequence of observed values.
@@ -296,9 +328,9 @@ def baum_forward(
 
 
 def baum_backward(
-    mu,
-    sigma,
-    trans,
+    mu: np.ndarray | None,
+    sigma: np.ndarray | None,
+    trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
     T: int,
     M: int,
@@ -310,6 +342,15 @@ def baum_backward(
 
     Parameters
     ----------
+    mu : np.ndarray | None
+        shape (2,)
+        Initial means of emission distributions.
+    sigma : np.ndarray | None
+        shape (2,)
+        Initial standard deviations of emission distributions.
+    trans : np.ndarray | None
+        shape (2, 2)
+        State transition probabilities.
     velocities : list[float] | np.ndarray
         shape (T,)
         Sequence of observed values.
@@ -344,11 +385,11 @@ def baum_backward(
 
 
 def viterbi(
-    states,
-    mu,
-    sigma,
-    init,
-    trans,
+    states : int,
+    mu: np.ndarray | None,
+    sigma: np.ndarray | None,
+    init: np.ndarray | None,
+    trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
 ) -> np.ndarray:
     """Compute the most likely state sequence using the Viterbi algorithm.
@@ -358,6 +399,20 @@ def viterbi(
 
     Parameters
     ----------
+    states : int
+            Number of hidden states in the model.
+    mu : np.ndarray | None
+        shape (2,)
+        Initial means of emission distributions.
+    sigma : np.ndarray | None
+        shape (2,)
+        Initial standard deviations of emission distributions.
+    init : np.ndarray | None
+        shape (2,)
+        Initial state probabilities.
+    trans : np.ndarray | None
+        shape (2, 2)
+        State transition probabilities.
     velocities : list[float] | np.ndarray
         shape (T,)
         Sequence of observed values.
@@ -406,7 +461,28 @@ def viterbi(
     return path
 
 
-def collapse_states(states):
+def collapse_states(
+        states: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray]:
+    """Convert a sequence of HMM states into event onsets and offsets.
+
+    This function assumes a binary state model where state `0` represents
+    the event of interest (e.g., fixation) and state `1` represents the
+    other class (e.g., saccade). It extracts contiguous segments of state 0.
+
+    Parameters
+    ----------
+    states : np.ndarray
+        shape (T,)
+        Sequence of inferred state indices.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Two arrays:
+        - onsets: indices where state 0 segments start
+        - offsets: indices where state 0 segments end
+    """
 
     onsets_arr = []
     offsets_arr = []
@@ -436,8 +512,54 @@ def collapse_states(states):
     return onsets_arr, offsets_arr
 
 
-def compute_hmm(velocities, verbose, initialization, reestimation_max_iters,
-                mu, sigma, init_state, transition_probabilities):
+def compute_hmm(velocities: np.ndarray,
+    verbose: bool,
+    initialization: str | None,
+    reestimation_max_iters: int,
+    mu: np.ndarray | None,
+    sigma: np.ndarray | None,
+    init_state: np.ndarray | None,
+    transition_probabilities: np.ndarray | None
+    ) -> np.ndarray:
+    """Run HMM parameter setup, optional Baum-Welch reestimation, and Viterbi decoding.
+
+    This function initializes HMM parameters (either from defaults or user input),
+    optionally refines them using the Baum-Welch algorithm, and then computes the
+    most likely hidden state sequence using the Viterbi algorithm.
+
+    Parameters
+    ----------
+    velocities : np.ndarray
+        shape (T,)
+        Sequence of observed velocities.
+    verbose : bool
+        If True, prints parameters after reestimation.
+    initialization : str | None
+        Initialization mode:
+        - None: use provided parameters or defaults
+        - 'default': use default parameters
+        - 'reestimation': use defaults and apply Baum-Welch
+    reestimation_max_iters : int
+        Maximum number of iterations for Baum-Welch.
+    mu : np.ndarray | None
+        shape (2,)
+        Initial means of emission distributions.
+    sigma : np.ndarray | None
+        shape (2,)
+        Initial standard deviations of emission distributions.
+    init_state : np.ndarray | None
+        shape (2,)
+        Initial state probabilities.
+    transition_probabilities : np.ndarray | None
+        shape (2, 2)
+        State transition probabilities.
+
+    Returns
+    -------
+    np.ndarray
+        shape (T,)
+        Most likely sequence of hidden states.
+    """
     reestimate = False
 
     defaults = {
