@@ -600,7 +600,7 @@ def ihmm(
         sigma: list[float] | np.ndarray | None = None,
         init_state: list[float] | np.ndarray | None = None,
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
-        reestimation_max_iters: int = 100,
+        reestimation_max_iters: int = 1000,
         initialization: str | None = None,
         verbose: bool = False,
         name: str = 'fixation',
