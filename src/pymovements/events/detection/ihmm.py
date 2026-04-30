@@ -594,7 +594,7 @@ def compute_hmm(
 
 @register_event_detection
 def ihmm(
-        positions: list[list[float]] | list[tuple[float, float]] | np.ndarray,
+        velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
         timesteps: list[int] | np.ndarray | None = None,
         mu: list[float] | np.ndarray | None = None,
         sigma: list[float] | np.ndarray | None = None,
@@ -615,9 +615,9 @@ def ihmm(
 
     Parameters
     ----------
-    positions: list[list[float]] | list[tuple[float, float]] | np.ndarray
+    velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
-        Continuous 2D position time series
+        Corresponding continuous 2D velocity time series.
     timesteps: list[int] | np.ndarray | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
@@ -656,7 +656,8 @@ def ihmm(
     Raises
     ------
     ValueError
-        If positions is not shaped (N, 2).
+        If velocities is None
+        If velocities does not have shape (N, 2)
         If mu is not shaped (2,).
         If sigma is not shaped (2,).
         If init_state is not shaped (2,).
@@ -734,7 +735,7 @@ def ihmm(
     └──────────┴───────┴────────┴──────────┘
     """
 
-    positions = np.array(positions)
+    velocities = np.array(velocities)
 
     if mu is not None:
         mu = np.array(mu)
@@ -745,10 +746,10 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = np.array(transition_probabilities)
 
-    _checks.check_shapes(positions=positions)
+    _checks.check_shapes(velocities=velocities)
 
     if timesteps is None:
-        timesteps = np.arange(len(positions), dtype=np.int64)
+        timesteps = np.arange(len(velocities), dtype=np.int64)
     timesteps = np.array(timesteps).flatten()
 
     # Check that timesteps are integers or are floats without a fractional part.
@@ -757,7 +758,7 @@ def ihmm(
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
 
-    _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
+    _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if mu is not None and mu.shape != (2,):
         raise ValueError(
@@ -803,16 +804,16 @@ def ihmm(
 
     # convert into velocities (1D velocities vector)
 
-    velocities = np.array(
-        list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), pos2vel(arr=positions, method='preceding'))),
+    velocities_1d = np.array(
+        list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), velocities)),
     )
 
-    velocities = np.nan_to_num(velocities, nan=0.0)
+    velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
 
     # compute HMM
 
     states = compute_hmm(
-        velocities=velocities,
+        velocities=velocities_1d,
         verbose=verbose,
         initialization=initialization,
         reestimation_max_iters=reestimation_max_iters,
