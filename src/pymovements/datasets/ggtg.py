@@ -125,7 +125,7 @@ class GGTG(DatasetDefinition):
                     'source': {
                         'url': 'https://osf.io/download/udmrk/',
                         'filename': 'measures.zip',
-                        'md5': '63d33923d04f56c95a3d52e5b89a4ebd',
+                        'md5': '21a3a929a16239147b81f44f6deed938',
                     },
                     'filename_pattern': '{subject_id}.csv',
                 },
