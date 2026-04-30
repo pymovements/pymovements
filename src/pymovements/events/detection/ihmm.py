@@ -185,7 +185,7 @@ def baum_welch(
         last = np.exp(last - log_sum_exp(last))
         gamma_full[:, -1] = last
 
-        #init = np.log(gamma_full[:, 0]) 
+        # init = np.log(gamma_full[:, 0])
         init = np.log(np.clip(gamma_full[:, 0], 1e-12, 1.0))
 
         for i in range(M):
@@ -792,15 +792,13 @@ def ihmm(
             f' values must sum up to one for each state but instead are '
             f'{np.sum(transition_probabilities[0])} and {np.sum(transition_probabilities[1])}',
         )
-    
-    if initialization != None and initialization != "reestimation" and initialization != "default" :
+
+    if initialization is not None and initialization != 'reestimation' and initialization != 'default':
         raise ValueError(
             f'initialization'
             f' must either be None "reestimation" or "default" and instead is '
             f'{initialization}',
         )
-
-
 
     # convert into velocities (1D velocities vector)
 
