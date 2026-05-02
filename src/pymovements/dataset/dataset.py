@@ -21,13 +21,17 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
-import warnings
+from typing import TYPE_CHECKING
 from warnings import warn
+
+if TYPE_CHECKING:
+    from pymovements.dataset.data_quality import DataQualityReport
 
 import polars as pl
 from tqdm.auto import tqdm
@@ -1249,7 +1253,7 @@ class Dataset:
             measures: list[str] | None = None,
             levels: list[str] | None = None,
             raise_on_error: bool = False,
-    ) -> 'DataQualityReport':
+    ) -> DataQualityReport:
         """Run sanity checks and compute data quality measures for all loaded gaze data.
 
         Three processing stages are executed in sequence:
@@ -1340,7 +1344,7 @@ class Dataset:
                 check_fn = _ALL_CHECKS[check_id]
                 for idx, gaze in enumerate(self.gaze):
                     src = source_paths[idx] if idx < len(source_paths) else str(idx)
-                    result = check_fn(gaze, source_path=src)
+                    result = check_fn(gaze, src)
                     report.check_results.append(result)
                     if raise_on_error and result.severity == 'error':
                         raise GazeDataValidationError(

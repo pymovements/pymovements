@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import json
-import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
@@ -76,7 +75,7 @@ class GazeDataValidationError(Exception):
 class CheckResult:
     """Result of a single validation check.
 
-    Parameters
+    Attributes
     ----------
     check_id : str
         Short identifier, e.g. ``'trial_columns_exist'``.
@@ -98,7 +97,7 @@ class CheckResult:
 class DataQualityReport:
     """Aggregated output of :py:meth:`~pymovements.Dataset.report_data_quality`.
 
-    Parameters
+    Attributes
     ----------
     check_results : list[CheckResult]
         Results of all validation checks that were run.
@@ -372,7 +371,7 @@ def check_trial_columns_dtype(gaze: Gaze, source_path: str = '') -> CheckResult:
             severity='warning',
             message=(
                 f"trial_columns {float_cols!r} have float dtype. "
-                "Trial identifiers should be integer or string to avoid join ambiguity."
+                'Trial identifiers should be integer or string to avoid join ambiguity.'
             ),
             affected_files=[source_path] if source_path else [],
         )
@@ -411,8 +410,8 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
             severity='error',
             message=(
                 "No 'time' column found in the sample schema. "
-                "Specify time_column during Gaze initialisation or provide an Experiment "
-                "with a sampling_rate to auto-generate timestamps."
+                'Specify time_column during Gaze initialisation or provide an Experiment '
+                'with a sampling_rate to auto-generate timestamps.'
             ),
             affected_files=[source_path] if source_path else [],
         )
@@ -423,7 +422,7 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
             severity='error',
             message=(
                 f"'time' column has dtype {schema['time']!r} which is not numeric. "
-                "Timestamps must be numeric (integer or float)."
+                'Timestamps must be numeric (integer or float).'
             ),
             affected_files=[source_path] if source_path else [],
         )
@@ -463,10 +462,10 @@ def check_gaze_components_defined(gaze: Gaze, source_path: str = '') -> CheckRes
             check_id='gaze_components_defined',
             severity='error',
             message=(
-                "No gaze coordinate columns found (expected at least one of "
+                'No gaze coordinate columns found (expected at least one of '
                 f"{sorted(coordinate_cols)!r}). "
-                "Specify pixel_columns, position_columns, or velocity_columns during "
-                "Gaze initialisation."
+                'Specify pixel_columns, position_columns, or velocity_columns during '
+                'Gaze initialisation.'
             ),
             affected_files=[source_path] if source_path else [],
         )
@@ -514,7 +513,7 @@ def check_trial_continuity(gaze: Gaze, source_path: str = '') -> CheckResult:
             severity='pass',
             message=(
                 f"trial_columns {missing_tc!r} absent from schema; "
-                "continuity check skipped."
+                'continuity check skipped.'
             ),
         )
 
@@ -606,7 +605,7 @@ def check_sampling_rate_consistency(gaze: Gaze, source_path: str = '') -> CheckR
         )
 
     declared_rate = gaze.experiment.sampling_rate
-    expected_isi_ms = 1000.0 / declared_rate
+    1000.0 / declared_rate
 
     diffs = gaze.samples['time'].cast(pl.Float64).diff().drop_nulls()
     positive_diffs = diffs.filter(diffs > 0)
@@ -737,7 +736,7 @@ def check_gaze_range(gaze: Gaze, source_path: str = '') -> CheckResult:
             message=(
                 f"Only {ratio * 100:.1f}% of samples lie within screen bounds "
                 f"(x: [{x_min:.2f}, {x_max:.2f}], y: [{y_min:.2f}, {y_max:.2f}]). "
-                "Threshold: 95%."
+                'Threshold: 95%.'
             ),
             affected_files=[source_path] if source_path else [],
         )
@@ -747,7 +746,7 @@ def check_gaze_range(gaze: Gaze, source_path: str = '') -> CheckResult:
         severity='pass',
         message=(
             f"{ratio * 100:.1f}% of samples lie within screen bounds. "
-            "Threshold: 95%."
+            'Threshold: 95%.'
         ),
     )
 
@@ -787,9 +786,10 @@ def _compute_data_loss_simple(gaze: Gaze, coord_col: str) -> float:
 
 def _build_precision_agg(coord_col: str) -> list[pl.Expr]:
     """Return Polars aggregation expressions for precision measures on *coord_col*."""
-    from pymovements.measure.samples.measures import bcea  # pylint: disable=import-outside-toplevel
-    from pymovements.measure.samples.measures import rms_s2s  # pylint: disable=import-outside-toplevel
-    from pymovements.measure.samples.measures import std_rms  # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel
+    from pymovements.measure.samples.measures import bcea
+    from pymovements.measure.samples.measures import rms_s2s
+    from pymovements.measure.samples.measures import std_rms
     return [
         std_rms(column=coord_col),
         rms_s2s(column=coord_col),
@@ -799,7 +799,7 @@ def _build_precision_agg(coord_col: str) -> list[pl.Expr]:
 
 def _compute_measures(
         gaze_list: list[Gaze],
-        fileinfo: Any,
+        fileinfo: dict[str, Any] | None,
         levels: list[str],
         measures: list[str] | None = None,
 ) -> dict[str, pl.DataFrame]:
@@ -809,7 +809,7 @@ def _compute_measures(
     ----------
     gaze_list : list[Gaze]
         All loaded gaze frames from the dataset.
-    fileinfo : dict[str, pl.DataFrame] | None
+    fileinfo : dict[str, Any] | None
         Dataset fileinfo for subject/session mapping.
     levels : list[str]
         Subset of ``['dataset', 'subject', 'session', 'trial']``.
@@ -861,9 +861,8 @@ def _compute_measures(
                 and len(gaze.samples) > 0
             ):
                 try:
-                    from pymovements.measure.samples.measures import (  # pylint: disable=import-outside-toplevel
-                        data_loss,
-                    )
+                    # pylint: disable=import-outside-toplevel
+                    from pymovements.measure.samples.measures import data_loss
                     result_df = gaze.samples.select(
                         data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
                     )
@@ -947,9 +946,8 @@ def _compute_measures(
                         else None
                     )
                     if sampling_rate is not None and 'time' in gaze.samples.schema:
-                        from pymovements.measure.samples.measures import (  # pylint: disable=import-outside-toplevel
-                            data_loss,
-                        )
+                        # pylint: disable=import-outside-toplevel
+                        from pymovements.measure.samples.measures import data_loss
                         agg_exprs_t.append(
                             data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
                         )
