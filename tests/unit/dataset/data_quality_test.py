@@ -22,13 +22,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
 
-from pymovements.dataset.data_quality import CheckResult
-from pymovements.dataset.data_quality import DataQualityReport
-from pymovements.dataset.data_quality import GazeDataValidationError
 from pymovements.dataset.data_quality import _ALL_CHECKS
 from pymovements.dataset.data_quality import _compute_measures
 from pymovements.dataset.data_quality import check_gaze_components_defined
@@ -38,9 +36,11 @@ from pymovements.dataset.data_quality import check_time_column_exists
 from pymovements.dataset.data_quality import check_trial_columns_dtype
 from pymovements.dataset.data_quality import check_trial_columns_exist
 from pymovements.dataset.data_quality import check_trial_continuity
+from pymovements.dataset.data_quality import CheckResult
+from pymovements.dataset.data_quality import DataQualityReport
+from pymovements.dataset.data_quality import GazeDataValidationError
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
-from pymovements.gaze.screen import Screen
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +486,7 @@ class TestAllChecks:
     @pytest.mark.parametrize('check_id', list(_ALL_CHECKS.keys()))
     def test_each_check_callable(self, check_id: str) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1]}))
-        result = _ALL_CHECKS[check_id](gaze)
+        result = _ALL_CHECKS[check_id](gaze, '')
         assert isinstance(result, CheckResult)
         assert result.severity in {'pass', 'warning', 'error'}
 
@@ -676,26 +676,32 @@ class TestDatasetReportDataQuality:
         ds.fileinfo = fileinfo or {}
         return ds
 
-    def _call_report(self, ds: object, **kwargs: object) -> DataQualityReport:
+    def _call_report(  # type: ignore[return]
+            self,
+            ds: object,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+            output_path: Path | None = None,
+    ) -> DataQualityReport:
         """Call report_data_quality on a Dataset-like object."""
-        import warnings as warn_mod  # pylint: disable=import-outside-toplevel
-        from pymovements.dataset.data_quality import _ALL_CHECKS  # pylint: disable=import-outside-toplevel
-        from pymovements.dataset.data_quality import _compute_measures  # pylint: disable=import-outside-toplevel
-        from pymovements.dataset.data_quality import DataQualityReport  # pylint: disable=import-outside-toplevel
-        from pymovements.dataset.data_quality import GazeDataValidationError  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        import warnings as warn_mod
+        from pymovements.dataset.data_quality import _ALL_CHECKS
+        from pymovements.dataset.data_quality import _compute_measures
+        from pymovements.dataset.data_quality import DataQualityReport
+        from pymovements.dataset.data_quality import GazeDataValidationError
 
-        checks = kwargs.get('checks', None)
-        measures = kwargs.get('measures', None)
-        levels = kwargs.get('levels', None)
-        raise_on_error = kwargs.get('raise_on_error', False)
-        output_path = kwargs.get('output_path', None)
+        gaze_list: list[Gaze] = getattr(ds, 'gaze', [])
+        fileinfo: Any = getattr(ds, 'fileinfo', {})
 
         checks_to_run = checks if checks is not None else list(_ALL_CHECKS.keys())
         levels_to_run = (
             levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
         )
 
-        source_paths = [str(i) for i in range(len(ds.gaze))]  # type: ignore[attr-defined]
+        source_paths = [str(i) for i in range(len(gaze_list))]
         report = DataQualityReport()
         captured: list[str] = []
 
@@ -703,9 +709,9 @@ class TestDatasetReportDataQuality:
             warn_mod.simplefilter('always')
             for check_id in checks_to_run:
                 check_fn = _ALL_CHECKS[check_id]
-                for idx, gaze in enumerate(ds.gaze):  # type: ignore[attr-defined]
+                for idx, gaze in enumerate(gaze_list):
                     src = source_paths[idx]
-                    result = check_fn(gaze, source_path=src)
+                    result = check_fn(gaze, src)
                     report.check_results.append(result)
                     if raise_on_error and result.severity == 'error':
                         raise GazeDataValidationError(
@@ -714,8 +720,8 @@ class TestDatasetReportDataQuality:
                             affected_files=result.affected_files,
                         )
             report.measures = _compute_measures(
-                ds.gaze,  # type: ignore[attr-defined]
-                ds.fileinfo,  # type: ignore[attr-defined]
+                gaze_list,
+                fileinfo,
                 levels_to_run,
                 measures,
             )
@@ -723,8 +729,7 @@ class TestDatasetReportDataQuality:
 
         report._warning_log = captured  # type: ignore[attr-defined]
         if output_path is not None:
-            from pathlib import Path as _Path  # pylint: disable=import-outside-toplevel
-            report.save_bids_report(_Path(output_path))
+            report.save_bids_report(output_path)
         return report
 
     def test_all_checks_run_by_default(self) -> None:
