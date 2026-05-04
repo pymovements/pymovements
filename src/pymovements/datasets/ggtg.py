@@ -130,12 +130,12 @@ class GGTG(DatasetDefinition):
                     'filename_pattern': '{subject_id}.csv',
                 },
                 {
-                   'content': 'ImageStimulus',
-                   'url': 'https://osf.io/download/3y9q2/',
-                   'filename': 'stimulus_imgs.zip',
-                   'md5': 'b481ea115040766809becac82830df51',
-                   'filename_pattern': '{stimulus}.png',
-               },
+                    'content': 'ImageStimulus',
+                    'url': 'https://osf.io/download/3y9q2/',
+                    'filename': 'stimulus_imgs.zip',
+                    'md5': 'b481ea115040766809becac82830df51',
+                    'filename_pattern': '{stimulus}.png',
+                },
             ],
         ),
     )

@@ -264,7 +264,7 @@ def test_websource_download_with_invalid_md5(tmp_path):
     with pytest.raises(RuntimeError) as excinfo:
         source.download(tmp_path)
 
-    message = f"File {tmp_path / source.filename} not found or download corrupted."
+    message = f'File {tmp_path / source.filename} not found or download corrupted.'
     assert isinstance(excinfo.value.__cause__, RuntimeError)
     assert str(excinfo.value.__cause__) == message
 

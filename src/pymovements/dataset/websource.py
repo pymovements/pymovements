@@ -111,9 +111,9 @@ class WebSource:
         except (OSError, RuntimeError) as primary_error:
             # No mirrors to try
             if not self.mirrors:
-                raise RuntimeError(f"Downloading resource {self.url} failed.") from primary_error
+                raise RuntimeError(f'Downloading resource {self.url} failed.') from primary_error
 
-            warn(UserWarning(f"Downloading resource {self.url} failed. Trying mirror."))
+            warn(UserWarning(f'Downloading resource {self.url} failed. Trying mirror.'))
 
             # Try mirrors in order
             for mirror_idx, mirror_url in enumerate(self.mirrors, start=1):
@@ -127,10 +127,10 @@ class WebSource:
                     )
                 # pylint: disable=overlapping-except
                 except (URLError, OSError, RuntimeError) as mirror_error:
-                    msg = f"Downloading resource from mirror {mirror_url} failed."
+                    msg = f'Downloading resource from mirror {mirror_url} failed.'
                     if mirror_idx < len(self.mirrors):
                         msg = msg + \
-                            f" Trying next mirror ({len(self.mirrors) - mirror_idx} remaining)."
+                            f' Trying next mirror ({len(self.mirrors) - mirror_idx} remaining).'
                     warning = UserWarning(msg)
                     warning.__cause__ = mirror_error
                     warn(warning)
@@ -138,7 +138,7 @@ class WebSource:
 
             # If we are here, downloading failed for all mirrors.
             raise RuntimeError(
-                f"Downloading resource {self.filename} failed for all mirrors.",
+                f'Downloading resource {self.filename} failed for all mirrors.',
             ) from primary_error
 
 
