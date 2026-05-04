@@ -93,7 +93,7 @@ class TestEventRatio:
 
         result = gaze.samples.select(gaze.measure_events_ratio(event_name))
 
-        expected = pl.DataFrame({f"event_ratio_{event_name}": [expected_ratio]})
+        expected = pl.DataFrame({f'event_ratio_{event_name}': [expected_ratio]})
         assert_frame_equal(result, expected)
 
     @pytest.mark.parametrize(

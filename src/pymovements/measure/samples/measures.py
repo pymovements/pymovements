@@ -648,8 +648,8 @@ def bcea(
 
     if confidence < 0 or confidence >= 100:
         raise ValueError(
-            f"confidence must be between 0 and 100 (exclusive of 100), "
-            f"but got: {confidence}",
+            f'confidence must be between 0 and 100 (exclusive of 100), '
+            f'but got: {confidence}',
         )
 
     x_position = pl.col(column).list.get(0)

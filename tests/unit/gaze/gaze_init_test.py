@@ -867,6 +867,30 @@ from pymovements import Gaze
             id='df_three_rows_two_position_float_step_time_converts_to_int_millis',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'time': [1000, 2000, 3000],
+                        'x': [0., 1., 2.],
+                        'y': [3., 4., 5.],
+                    },
+                    schema={'time': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_unit': 'us',
+                'time_column': 'time',
+            },
+            pl.from_dict(
+                {
+                    'time': [1, 2, 3],
+                    'pixel': [[0., 3.], [1., 4.], [2., 5.]],
+                },
+                schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_three_rows_two_position_int_microseconds_time_converts_to_int_millis',
+        ),
 
         pytest.param(
             {
@@ -1012,6 +1036,79 @@ from pymovements import Gaze
             ),
             2,
             id='df_auto_columns_acceleration',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [[1.23, 4.56]]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56]]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_pixel_column_two_components',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [[1.23, 4.56], None]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [[1.23, 4.56], None]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_pixel_column_two_components_one_null',
+        ),
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'pixel': [[1.23, 4.56], None],
+                        'position': [None, [7.89, 10.11]],
+                    },
+                    schema={
+                        'pixel': pl.List(pl.Float64),
+                        'position': pl.List(pl.Float64),
+                    },
+                ),
+            },
+            pl.from_dict(
+                {
+                    'pixel': [[1.23, 4.56], None],
+                    'position': [None, [7.89, 10.11]],
+                },
+                schema={
+                    'pixel': pl.List(pl.Float64),
+                    'position': pl.List(pl.Float64),
+                },
+            ),
+            2,
+            id='df_pixel_position_columns_both_have_nulls',
+        ),
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {'pixel': [None, None]},
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            pl.from_dict(
+                {'pixel': [None, None]},
+                schema={'pixel': pl.List(pl.Float64)},
+            ),
+            None,
+            marks=pytest.mark.filterwarnings(
+                'ignore:Gaze contains samples but no.*:UserWarning',
+            ),
+            id='df_pixel_column_all_nulls_returns_none',
         ),
 
     ],
@@ -1623,8 +1720,8 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             },
             ValueError,
             "unsupported time unit 'invalid'. "
-            "Supported units are 's' for seconds, 'ms' for milliseconds and "
-            "'step' for steps.",
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
             id='time_unit_unsupported',
         ),
 
@@ -1639,6 +1736,19 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             id='samples_data_mutually_exclusive',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'pixel': [[1.23, 4.56], None, [7.89, 10.11, 12.13]],
+                    },
+                    schema={'pixel': pl.List(pl.Float64)},
+                ),
+            },
+            ValueError,
+            'inconsistent number of components inferred: {2, 3}',
+            id='inconsistent_n_components_with_nulls',
+        ),
     ],
 )
 def test_gaze_init_exceptions(init_kwargs, exception, exception_msg):

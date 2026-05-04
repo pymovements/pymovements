@@ -125,9 +125,11 @@ class EMTeC(DatasetDefinition):
             [
                 {
                     'content': 'gaze',
-                    'url': 'https://osf.io/download/374sk/',
-                    'filename': 'subject_level_data.zip',
-                    'md5': 'dca99e47ef43f3696acec4fd70967750',
+                    'source': {
+                        'url': 'https://osf.io/download/374sk/',
+                        'filename': 'subject_level_data.zip',
+                        'md5': 'dca99e47ef43f3696acec4fd70967750',
+                    },
                     'filename_pattern': r'ET_{subject_id:d}.csv',
                     'filename_pattern_schema_overrides': {'subject_id': int},
                     'load_kwargs': {
@@ -164,17 +166,21 @@ class EMTeC(DatasetDefinition):
                 },
                 {
                     'content': 'precomputed_events',
-                    'url': 'https://osf.io/download/2hs8p/',
-                    'filename': 'fixations.csv',
-                    'md5': '5e05a364a1d8a044d8b36506aa91437e',
+                    'source': {
+                        'url': 'https://osf.io/download/2hs8p/',
+                        'filename': 'fixations.csv',
+                        'md5': '5e05a364a1d8a044d8b36506aa91437e',
+                    },
                     'filename_pattern': r'fixations.csv',
                     'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },
                 {
                     'content': 'precomputed_reading_measures',
-                    'url': 'https://osf.io/download/s4ny8/',
-                    'filename': 'reading_measures.csv',
-                    'md5': '56880f50af20682558065ac2d26be827',
+                    'source': {
+                        'url': 'https://osf.io/download/s4ny8/',
+                        'filename': 'reading_measures.csv',
+                        'md5': '56880f50af20682558065ac2d26be827',
+                    },
                     'filename_pattern': r'reading_measures.csv',
                     'load_kwargs': {'read_csv_kwargs': {'separator': '\t'}},
                 },

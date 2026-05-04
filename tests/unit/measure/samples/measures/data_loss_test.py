@@ -524,7 +524,7 @@ def test_data_loss_invalid_time_column_raises(bad_time_column):
 def test_data_loss_invalid_sampling_rate_raises(bad_sampling_rate):
     """Test that providing an invalid sampling rate raises a ValueError."""
     message = (
-        f"sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}"
+        f'sampling_rate must be a positive number, but got: {repr(bad_sampling_rate)}'
     )
     with pytest.raises(ValueError, match=message):
         data_loss('value', sampling_rate=bad_sampling_rate)

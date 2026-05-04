@@ -40,7 +40,7 @@ def test_gaze_messages_must_be_polars_dataframe(bad_messages):
     """Ensure that non-DataFrame `messages` raises a TypeError with exact message."""
     expected = (
         f"The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-        f"not {type(bad_messages)}."
+        f'not {type(bad_messages)}.'
     )
     with pytest.raises(TypeError, match=escape(expected)):
         Gaze(messages=bad_messages)
@@ -100,7 +100,7 @@ def test_gaze_str_messages_variations(messages_df, expected_fragment):
     """Check __str__ shows clear messages summary."""
     gaze = Gaze(messages=messages_df)
     s = str(gaze)
-    assert f"messages={expected_fragment}" in s, s
+    assert f'messages={expected_fragment}' in s, s
 
 
 def test_gaze_str_messages_exluded_if_none():
