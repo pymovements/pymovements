@@ -602,6 +602,7 @@ def ihmm(
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
         reestimation_max_iters: int = 1000,
         initialization: str | None = None,
+        include_nan: bool = False,
         verbose: bool = False,
         name: str = 'fixation',
 ) -> Events:
@@ -805,6 +806,10 @@ def ihmm(
     velocities_1d = np.array(
         list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), velocities)),
     )
+    #if include_nan:
+    #    pass
+    #else:
+    #    velocities_1d = velocities_1d[~np.isnan(velocities_1d)]
 
     velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
 
