@@ -131,7 +131,8 @@ def match_filepaths(
             match_on_relative_path = None
             if relative_anchor is not None:
                 match_on_relative_path = regex.match(
-                    childpath.relative_to(relative_anchor).as_posix())
+                    childpath.relative_to(relative_anchor).as_posix(),
+                )
 
             match = match_on_filename or match_on_relative_path
 
