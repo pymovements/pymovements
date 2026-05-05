@@ -54,7 +54,7 @@ def test_create_filetree_returns_path(create_filetree):
 
 
 @pytest.mark.parametrize(
-    'filepaths',
+    'files',
     [
         [],
         ['test.txt'],
@@ -63,8 +63,8 @@ def test_create_filetree_returns_path(create_filetree):
         ['a/test1.txt', 'a/test2.txt', 'b/test1.txt', 'b/test2.txt'],
     ],
 )
-def test_create_filetree_created_correct_filepaths(filepaths, create_filetree):
-    rootpath = create_filetree(filepaths)
+def test_create_filetree_created_correct_filepaths(files, create_filetree):
+    rootpath = create_filetree(files)
 
     created_files = set()
     for path_object in rootpath.rglob('*'):
@@ -72,8 +72,8 @@ def test_create_filetree_created_correct_filepaths(filepaths, create_filetree):
             created_files.add(path_object)
 
     expected_files = {
-        rootpath / filepath
-        for filepath in filepaths
+        rootpath / relative_filepath
+        for relative_filepath in files
     }
 
     assert created_files == expected_files
