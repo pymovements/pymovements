@@ -127,7 +127,7 @@ RECORDING_CONFIG_REGEX = re.compile(
     r'(?P<link_sample_filter>0|1|2)\s+'
     r'((?P<file_event_filter>0|1|2)\s+)?'
     r'((?P<link_event_filter>0|1|2)\s+)?'
-    r'(?P<tracked_eye>LR|[LR])\s*',
+    r'(?P<tracked_eye>LR|[LR])?\s*',
 )
 
 # Resolution (GAZE_COORDS) pattern used to extract screen coordinates
