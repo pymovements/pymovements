@@ -144,12 +144,19 @@ def baum_welch(
             trans=trans,
             init=init,
             velocities=velocities,
-            velocities_mask = velocities_mask,
+            velocities_mask=velocities_mask,
             T=T,
             M=M,
         )
 
-        beta = baum_backward(mu=mu, sigma=sigma, trans=trans, velocities=velocities,velocities_mask = velocities_mask, T=T, M=M)
+        beta = baum_backward(
+            mu=mu,
+            sigma=sigma,
+            trans=trans,
+            velocities=velocities,
+            velocities_mask=velocities_mask,
+            T=T,
+            M=M)
 
         xi = np.zeros((M, M, T - 1))
 
@@ -158,7 +165,7 @@ def baum_welch(
 
             for i in range(M):
                 for j in range(M):
-                    if velocities_mask[t+1]:
+                    if velocities_mask[t + 1]:
                         denom_terms.append(
                             alpha[t, i] +
                             trans[i, j] +
@@ -173,12 +180,11 @@ def baum_welch(
                             beta[t + 1, j],
                         )
 
-
             denom = log_sum_exp(np.array(denom_terms))
 
             for i in range(M):
                 for j in range(M):
-                    if velocities_mask[t+1]:
+                    if velocities_mask[t + 1]:
                         num = (
                             alpha[t, i] +
                             trans[i, j] +
@@ -214,8 +220,8 @@ def baum_welch(
                 trans[i, j] = np.log(numer / denom)
 
         for j in range(M):
-            #weights = gamma_full[j, :]
-            #total = np.sum(weights)
+            # weights = gamma_full[j, :]
+            # total = np.sum(weights)
 
             mask = velocities_mask
 
@@ -226,10 +232,10 @@ def baum_welch(
 
             mu[j] = np.sum(weights * vals) / total
 
-            #mu[j] = np.sum(weights * velocities) / total
+            # mu[j] = np.sum(weights * velocities) / total
 
-            #var = np.sum(weights * (velocities - mu[j])**2) / total
-            #sigma[j] = np.sqrt(var)
+            # var = np.sum(weights * (velocities - mu[j])**2) / total
+            # sigma[j] = np.sqrt(var)
 
             var = np.sum(weights * (vals - mu[j])**2) / total
             sigma[j] = np.sqrt(var)
@@ -240,7 +246,7 @@ def baum_welch(
             trans=trans,
             init=init,
             velocities=velocities,
-            velocities_mask = velocities_mask,
+            velocities_mask=velocities_mask,
             T=T,
             M=M,
         )
@@ -319,7 +325,6 @@ def baum_forward(
                 alpha[t, j] = log_sum_exp(np.array(terms)) + \
                     0.0
 
-
     return alpha
 
 
@@ -371,7 +376,7 @@ def baum_backward(
         for i in range(M):
             terms = []
             for j in range(M):
-                if velocities_mask[t+1]:
+                if velocities_mask[t + 1]:
                     terms.append(
                         trans[i, j] +
                         emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
@@ -396,7 +401,7 @@ def viterbi(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask: list[bool]
+    velocities_mask: list[bool],
 ) -> np.ndarray:
     """Compute the most likely state sequence using the Viterbi algorithm.
 
@@ -451,7 +456,7 @@ def viterbi(
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + \
                         emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
                 else:
-                    #print(velocities_mask[t])
+                    # print(velocities_mask[t])
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
                 if new_prob > best_prob:
                     best_prob = new_prob
@@ -531,7 +536,7 @@ def compute_hmm(
     sigma: np.ndarray | None,
     init_state: np.ndarray | None,
     transition_probabilities: np.ndarray | None,
-    velocities_mask
+    velocities_mask,
 ) -> np.ndarray:
     """Run HMM parameter setup, optional Baum-Welch reestimation, and Viterbi decoding.
 
@@ -644,7 +649,7 @@ def compute_hmm(
         init=_init,
         trans=_trans,
         velocities=velocities,
-        velocities_mask=velocities_mask
+        velocities_mask=velocities_mask,
     )
 
     return states
@@ -865,7 +870,7 @@ def ihmm(
         list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), velocities)),
     )
 
-    #velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
+    # velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
     vel_mask = ~np.isnan(velocities_1d)
     cW = 0
     for val in vel_mask:
@@ -896,10 +901,10 @@ def ihmm(
         sigma=sigma,
         init_state=init_state,
         transition_probabilities=transition_probabilities,
-        velocities_mask=vel_mask
-        )
+        velocities_mask=vel_mask,
+    )
 
-    # collapse states 
+    # collapse states
 
     onsets_arr, offsets_arr = collapse_states(states)
 
