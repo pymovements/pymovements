@@ -156,7 +156,8 @@ def baum_welch(
             velocities=velocities,
             velocities_mask=velocities_mask,
             T=T,
-            M=M)
+            M=M,
+        )
 
         xi = np.zeros((M, M, T - 1))
 
@@ -877,11 +878,10 @@ def ihmm(
         if val:
             pass
         else:
-            cW+=1
-    #print(cW)
-    #print(len(vel_mask))
+            cW += 1
+    # print(cW)
+    # print(len(vel_mask))
 
-   
     start = np.argmax(vel_mask)
     end = len(velocities_1d) - np.argmax(vel_mask[::-1])
 
@@ -889,7 +889,6 @@ def ihmm(
 
     vel_mask = vel_mask[start:end]
 
-    
     # compute HMM
 
     states = compute_hmm(
