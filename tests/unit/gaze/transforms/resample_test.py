@@ -485,7 +485,7 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, None, 2., 4., 4.],
+                    'pixel': [None, 2., 2., 4., 4.],
                 },
             ),
             id='upsample_500_to_1000_interpolate_nearest_one_component_with_none_values',
