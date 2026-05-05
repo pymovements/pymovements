@@ -141,7 +141,7 @@ def match_filepaths(
 
                 filepath = childpath
                 if relative:
-                    # mypy is unaware that 'relative_anchor' can never be None (l.116)
+                    # mypy is unaware that 'relative_anchor' can never be None
                     assert relative_anchor is not None
                     filepath = filepath.relative_to(relative_anchor)
 
