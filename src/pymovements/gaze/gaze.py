@@ -49,7 +49,7 @@ from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
 
-@repr_html(['samples', 'events', 'trial_columns', 'experiment'])
+@repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
 class Gaze:
     """Self-contained data structure containing gaze represented as samples or events.
 
