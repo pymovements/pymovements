@@ -865,16 +865,18 @@ def ihmm(
         list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), velocities)),
     )
 
-    #if include_nan:
-    #    pass
-    #else:
-    #    velocities_1d = velocities_1d[~np.isnan(velocities_1d)]
-
     #velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
     vel_mask = ~np.isnan(velocities_1d)
+    cW = 0
+    for val in vel_mask:
+        if val:
+            pass
+        else:
+            cW+=1
+    #print(cW)
+    #print(len(vel_mask))
 
-    #print(velocities_1d)
-    #print(vel_mask)
+   
     start = np.argmax(vel_mask)
     end = len(velocities_1d) - np.argmax(vel_mask[::-1])
 
@@ -882,14 +884,7 @@ def ihmm(
 
     vel_mask = vel_mask[start:end]
 
-    #if len(vel_mask) != len(velocities_1d):
-    #    print("")
-    #else:
-    #    print("good")
-
-
-    #print(velMask)
-
+    
     # compute HMM
 
     states = compute_hmm(
