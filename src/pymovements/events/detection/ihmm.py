@@ -86,6 +86,7 @@ def baum_welch(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
+    velocities_mask,
     max_iters: int,
     epsilon: float = 1e-4,
 ) -> dict[str, np.ndarray]:
@@ -143,11 +144,12 @@ def baum_welch(
             trans=trans,
             init=init,
             velocities=velocities,
+            velocities_mask = velocities_mask,
             T=T,
             M=M,
         )
 
-        beta = baum_backward(mu=mu, sigma=sigma, trans=trans, velocities=velocities, T=T, M=M)
+        beta = baum_backward(mu=mu, sigma=sigma, trans=trans, velocities=velocities,velocities_mask = velocities_mask, T=T, M=M)
 
         xi = np.zeros((M, M, T - 1))
 
@@ -156,23 +158,41 @@ def baum_welch(
 
             for i in range(M):
                 for j in range(M):
-                    denom_terms.append(
-                        alpha[t, i] +
-                        trans[i, j] +
-                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
-                        beta[t + 1, j],
-                    )
+                    if velocities_mask[t+1]:
+                        denom_terms.append(
+                            alpha[t, i] +
+                            trans[i, j] +
+                            emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            beta[t + 1, j],
+                        )
+                    else:
+                        denom_terms.append(
+                            alpha[t, i] +
+                            trans[i, j] +
+                            0.0 +
+                            beta[t + 1, j],
+                        )
+
 
             denom = log_sum_exp(np.array(denom_terms))
 
             for i in range(M):
                 for j in range(M):
-                    num = (
-                        alpha[t, i] +
-                        trans[i, j] +
-                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
-                        beta[t + 1, j]
-                    )
+                    if velocities_mask[t+1]:
+                        num = (
+                            alpha[t, i] +
+                            trans[i, j] +
+                            emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            beta[t + 1, j]
+                        )
+                    else:
+                        num = (
+                            alpha[t, i] +
+                            trans[i, j] +
+                            0.0 +
+                            beta[t + 1, j]
+                        )
+
                     xi[i, j, t] = np.exp(num - denom)
 
         gamma = np.sum(xi, axis=1)
@@ -194,12 +214,24 @@ def baum_welch(
                 trans[i, j] = np.log(numer / denom)
 
         for j in range(M):
-            weights = gamma_full[j, :]
+            #weights = gamma_full[j, :]
+            #total = np.sum(weights)
+
+            mask = velocities_mask
+
+            weights = gamma_full[j, mask]
+            vals = np.asarray(velocities)[mask]
+
             total = np.sum(weights)
 
-            mu[j] = np.sum(weights * velocities) / total
+            mu[j] = np.sum(weights * vals) / total
 
-            var = np.sum(weights * (velocities - mu[j])**2) / total
+            #mu[j] = np.sum(weights * velocities) / total
+
+            #var = np.sum(weights * (velocities - mu[j])**2) / total
+            #sigma[j] = np.sqrt(var)
+
+            var = np.sum(weights * (vals - mu[j])**2) / total
             sigma[j] = np.sqrt(var)
 
         alpha_updated = baum_forward(
@@ -208,6 +240,7 @@ def baum_welch(
             trans=trans,
             init=init,
             velocities=velocities,
+            velocities_mask = velocities_mask,
             T=T,
             M=M,
         )
@@ -228,6 +261,7 @@ def baum_forward(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
+    velocities_mask,
     T: int,
     M: int,
 ) -> np.ndarray:
@@ -268,15 +302,23 @@ def baum_forward(
     alpha = np.full((T, M), -np.inf)
 
     for s in range(M):
-        alpha[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        if velocities_mask[0]:
+            alpha[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        else:
+            alpha[0, s] = init[s] + 0
 
     for t in range(1, T):
         for j in range(M):
             terms = []
             for i in range(M):
                 terms.append(alpha[t - 1, i] + trans[i, j])
-            alpha[t, j] = log_sum_exp(np.array(terms)) + \
-                emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
+            if velocities_mask[t]:
+                alpha[t, j] = log_sum_exp(np.array(terms)) + \
+                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
+            else:
+                alpha[t, j] = log_sum_exp(np.array(terms)) + \
+                    0.0
+
 
     return alpha
 
@@ -286,6 +328,7 @@ def baum_backward(
     sigma: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
+    velocities_mask,
     T: int,
     M: int,
 ) -> np.ndarray:
@@ -328,11 +371,19 @@ def baum_backward(
         for i in range(M):
             terms = []
             for j in range(M):
-                terms.append(
-                    trans[i, j] +
-                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
-                    beta[t + 1, j],
-                )
+                if velocities_mask[t+1]:
+                    terms.append(
+                        trans[i, j] +
+                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                        beta[t + 1, j],
+                    )
+                else:
+                    terms.append(
+                        trans[i, j] +
+                        0.0 +
+                        beta[t + 1, j],
+                    )
+
             beta[t, i] = log_sum_exp(np.array(terms))
 
     return beta
@@ -345,6 +396,7 @@ def viterbi(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
+    velocities_mask: list[bool]
 ) -> np.ndarray:
     """Compute the most likely state sequence using the Viterbi algorithm.
 
@@ -395,8 +447,12 @@ def viterbi(
             best_prob = -np.inf
             best_state = 0
             for state2 in range(states):
-                new_prob = prob[t - 1, state2] + trans[state2, state1] + \
-                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
+                if velocities_mask[t]:
+                    new_prob = prob[t - 1, state2] + trans[state2, state1] + \
+                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
+                else:
+                    #print(velocities_mask[t])
+                    new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
                 if new_prob > best_prob:
                     best_prob = new_prob
                     best_state = state2
@@ -475,6 +531,7 @@ def compute_hmm(
     sigma: np.ndarray | None,
     init_state: np.ndarray | None,
     transition_probabilities: np.ndarray | None,
+    velocities_mask
 ) -> np.ndarray:
     """Run HMM parameter setup, optional Baum-Welch reestimation, and Viterbi decoding.
 
@@ -567,6 +624,7 @@ def compute_hmm(
             init=_init,
             trans=_trans,
             velocities=velocities,
+            velocities_mask=velocities_mask,
             max_iters=reestimation_max_iters,
         )
         _mu = optimal['mu']
@@ -586,6 +644,7 @@ def compute_hmm(
         init=_init,
         trans=_trans,
         velocities=velocities,
+        velocities_mask=velocities_mask
     )
 
     return states
@@ -805,12 +864,31 @@ def ihmm(
     velocities_1d = np.array(
         list(map(lambda x: np.sqrt(x[0]**2 + x[1]**2), velocities)),
     )
+
     #if include_nan:
     #    pass
     #else:
     #    velocities_1d = velocities_1d[~np.isnan(velocities_1d)]
 
-    velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
+    #velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
+    vel_mask = ~np.isnan(velocities_1d)
+
+    #print(velocities_1d)
+    #print(vel_mask)
+    start = np.argmax(vel_mask)
+    end = len(velocities_1d) - np.argmax(vel_mask[::-1])
+
+    velocities_1d = velocities_1d[start:end]
+
+    vel_mask = vel_mask[start:end]
+
+    #if len(vel_mask) != len(velocities_1d):
+    #    print("")
+    #else:
+    #    print("good")
+
+
+    #print(velMask)
 
     # compute HMM
 
@@ -823,9 +901,10 @@ def ihmm(
         sigma=sigma,
         init_state=init_state,
         transition_probabilities=transition_probabilities,
-    )
+        velocities_mask=vel_mask
+        )
 
-    # collapse states
+    # collapse states 
 
     onsets_arr, offsets_arr = collapse_states(states)
 
