@@ -266,10 +266,22 @@ class Dataset:
         for gaze, ev in zip(self.gaze, data):
             gaze.events = ev
 
-    def scan(self) -> Dataset:
+    def scan(
+            self,
+            *,
+            participant_key: str = 'participant_id',
+    ) -> Dataset:
         """Infer information from filepaths and filenames.
 
-        Sets the
+        Sets :py:attr:`~pymovements.Dataset.fileinfo` and
+        :py:attr:`~pymovements.Dataset.participants`.
+
+        Parameters
+        ----------
+        participant_key: str
+            The participant key used for identifying a participant. See
+            :py:meth:`~pymovements.Dataset.scan_participants` for more details.
+            (default: `'participant_id'`)
 
         Returns
         -------
@@ -286,7 +298,7 @@ class Dataset:
         self.fileinfo, self._files = dataset_files.scan_dataset(
             definition=self.definition, paths=self.paths,
         )
-        self.scan_participants()
+        self.scan_participants(participant_key=participant_key)
         return self
 
     def scan_participants(
@@ -297,6 +309,15 @@ class Dataset:
         """Scan files for participant metadata.
 
         Currently only scans file metadata for participant id.
+
+        Parameters
+        ----------
+        participant_key: str
+            The participant key used for identifying a participant. This corresponds to the group
+            name specified in :py:attr:`~pymovements.ResourceDefinition.filename_pattern`. Usually
+            this is `'participant_id'` or `'subject_id'`. Values will be used to fill the
+            `participant_id` column of :py:attr:`~pymovements.Dataset.participants`.
+            (default: `'participant_id'`)
         """
         participant_ids = set()
         for file in self._files:
@@ -312,8 +333,18 @@ class Dataset:
 
     def load_participants(
             self,
+            *,
+            replace: bool = False,
     ) -> None:
-        """Load participants file from resources."""
+        """Load participants file from resources.
+
+        Parameters
+        ----------
+        replace: bool
+            If `True` this will replace :py:attr:`~pymovements.Dataset.participants` with the loaded
+            data. If `False` this will update the existing data in
+            :py:attr:`~pymovements.Dataset.participants` with the loaded data.
+        """
         participants_files = [
             file
             for file in self._files
@@ -331,7 +362,14 @@ class Dataset:
             path=participants_file.path,
             **participants_definition.load_kwargs,
         )
-        self.participants = loaded_participants
+
+        if replace:
+            self.participants = loaded_participants
+        else:
+            self.participants.update(
+                data=loaded_participants.data,
+                metadata=loaded_participants.metadata,
+            )
 
     def load_gaze_files(
             self,

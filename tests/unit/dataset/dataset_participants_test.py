@@ -85,6 +85,128 @@ def test_dataset_scan_participants_correct_data(files, expected_participants, tm
 
 
 @pytest.mark.parametrize(
+    ('files', 'participant_key', 'expected_participants'),
+    [
+        pytest.param(
+            [DatasetFile(path='1.csv', metadata={'participant_id': '1'})],
+            'participant_id',
+            pl.DataFrame({'participant_id': ['1']}),
+            id='one_file_with_participant_id',
+        ),
+        pytest.param(
+            [DatasetFile(path='1.csv', metadata={'subject_id': '1'})],
+            'subject_id',
+            pl.DataFrame({'participant_id': ['1']}),
+            id='one_file_with_subject_id',
+        ),
+        pytest.param(
+            [
+                DatasetFile(path='1.csv', metadata={'participant_id': '1'}),
+                DatasetFile(path='2.csv', metadata={'participant_id': '2'}),
+            ],
+            'participant_id',
+            pl.DataFrame({'participant_id': ['1', '2']}),
+            id='two_files_with_different_participant_id',
+        ),
+        pytest.param(
+            [
+                DatasetFile(path='1.csv', metadata={'subject_id': '1'}),
+                DatasetFile(path='2.csv', metadata={'subject_id': '2'}),
+            ],
+            'subject_id',
+            pl.DataFrame({'participant_id': ['1', '2']}),
+            id='two_files_with_different_subject_id',
+        ),
+    ],
+)
+def test_dataset_scan_participants_with_custom_participant_key(
+        files, participant_key, expected_participants, tmp_path,
+):
+    dataset = Dataset(DatasetDefinition('.'), path=tmp_path)
+    dataset._files = files
+
+    assert dataset.participants.data.shape == (0, 1)
+
+    dataset.scan_participants(participant_key=participant_key)
+
+    assert_frame_equal(dataset.participants.data, expected_participants)
+
+
+@pytest.mark.parametrize(
+    ('files', 'resource_definitions', 'participant_key', 'expected_participants'),
+    [
+        pytest.param(
+            ['raw/1.csv'],
+            [ResourceDefinition(content='gaze', filename_pattern='{participant_id}.csv')],
+            'participant_id',
+            pl.DataFrame({'participant_id': ['1']}),
+            id='one_file_with_participant_id',
+        ),
+        pytest.param(
+            ['raw/1.csv'],
+            [ResourceDefinition(content='gaze', filename_pattern='{subject_id}.csv')],
+            'subject_id',
+            pl.DataFrame({'participant_id': ['1']}),
+            id='one_file_with_subject_id',
+        ),
+        pytest.param(
+            ['raw/1.csv', 'raw/2.csv'],
+            [ResourceDefinition(content='gaze', filename_pattern='{participant_id}.csv')],
+            'participant_id',
+            pl.DataFrame({'participant_id': ['1', '2']}),
+            id='two_files_with_different_participant_id',
+        ),
+        pytest.param(
+            ['raw/1.csv', 'raw/2.csv'],
+            [ResourceDefinition(content='gaze', filename_pattern='{subject_id}.csv')],
+            'subject_id',
+            pl.DataFrame({'participant_id': ['1', '2']}),
+            id='two_files_with_different_subject_id',
+        ),
+        pytest.param(
+            ['raw/1.csv', 'precomputed_events/1.csv'],
+            [
+                ResourceDefinition(
+                    content='gaze', filename_pattern='{participant_id}.csv',
+                ),
+                ResourceDefinition(
+                    content='precomputed_events', filename_pattern='{participant_id}.csv',
+                ),
+            ],
+            'participant_id',
+            pl.DataFrame({'participant_id': ['1']}),
+            id='two_files_with_same_participant_id',
+        ),
+        pytest.param(
+            ['raw/1.csv', 'precomputed_events/1.csv'],
+            [
+                ResourceDefinition(
+                    content='gaze', filename_pattern='{subject_id}.csv',
+                ),
+                ResourceDefinition(
+                    content='precomputed_events', filename_pattern='{subject_id}.csv',
+                ),
+            ],
+            'subject_id',
+            pl.DataFrame({'participant_id': ['1']}),
+            id='two_files_with_same_subject_id',
+        ),
+    ],
+)
+def test_dataset_scan_with_custom_participant_key(
+        files, resource_definitions, participant_key, expected_participants, make_text_files,
+):
+    dataset_path = make_text_files(files)
+    dataset = Dataset(DatasetDefinition('.', resources=resource_definitions), path=dataset_path)
+    assert dataset.participants.data.shape == (0, 1)
+
+    dataset.scan(participant_key=participant_key)
+
+    assert dataset._files
+    assert_frame_equal(dataset.participants.data, expected_participants)
+
+
+@pytest.mark.parametrize(
     ('participants', 'resources'),
     [
         pytest.param(
@@ -124,6 +246,40 @@ class TestDatasetLoadParticipants:
         assert dataset.participants.data.shape == (0, 1)
 
         dataset.load_participants()
+
+        assert_frame_equal(dataset.participants.data, participants)
+
+    def test_dataset_load_participants_file_replaces(
+            self, participants, resources, tmp_path, make_csv_file,
+    ):
+        make_csv_file(
+            tmp_path / 'participants.tsv',
+            data=participants,
+            separator='\t',
+        )
+        dataset = Dataset(DatasetDefinition('.', resources=resources), path=tmp_path)
+        dataset.scan()
+
+        assert dataset.participants.data.shape == (0, 1)
+
+        dataset.load_participants(replace=True)
+
+        assert_frame_equal(dataset.participants.data, participants)
+
+    def test_dataset_load_participants_file_updates(
+            self, participants, resources, tmp_path, make_csv_file,
+    ):
+        make_csv_file(
+            tmp_path / 'participants.tsv',
+            data=participants,
+            separator='\t',
+        )
+        dataset = Dataset(DatasetDefinition('.', resources=resources), path=tmp_path)
+        dataset.scan()
+
+        assert dataset.participants.data.shape == (0, 1)
+
+        dataset.load_participants(replace=False)
 
         assert_frame_equal(dataset.participants.data, participants)
 

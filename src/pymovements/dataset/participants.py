@@ -89,6 +89,7 @@ class Participants:
     def update(
             self,
             data: polars.DataFrame,
+            metadata: dict[str, Any] | None = None,
     ) -> None:
         """Update participants data.
 
@@ -115,6 +116,9 @@ class Participants:
             how='full',
             include_nulls=True,
         ).sort('participant_id')
+
+        if metadata:
+            self.metadata.update(metadata)
 
     @staticmethod
     def load(

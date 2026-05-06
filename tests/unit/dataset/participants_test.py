@@ -405,6 +405,44 @@ def test_participants_update_data(before, update_data, after):
 
 
 @pytest.mark.parametrize(
+    ('before', 'update_metadata', 'after'),
+    [
+        pytest.param(
+            {},
+            {},
+            {},
+            id='empty_with_empty',
+        ),
+        pytest.param(
+            {},
+            {'a': 1},
+            {'a': 1},
+            id='empty_with_single_key',
+        ),
+        pytest.param(
+            {'b': 2},
+            {'a': 1},
+            {'a': 1, 'b': 2},
+            id='one_key_with_other_key',
+        ),
+        pytest.param(
+            {'a': 2},
+            {'a': 1},
+            {'a': 1},
+            id='one_key_with_same_key',
+        ),
+    ],
+)
+def test_participants_update_metadata(before, update_metadata, after):
+    participants = Participants(metadata=before)
+    init_metadata = {**participants.metadata}
+    participants.update(data=participants.data, metadata=update_metadata)
+
+    expected = {**init_metadata, **after}
+    assert participants.metadata == expected
+
+
+@pytest.mark.parametrize(
     ('before', 'update_data', 'exception', 'message'),
     [
         pytest.param(
