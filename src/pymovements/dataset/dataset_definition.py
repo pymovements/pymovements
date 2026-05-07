@@ -499,10 +499,17 @@ class DatasetDefinition:
         data: dict[str, str] = {}
         content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
         for content_type in content_types:
-            if content_resources := self.resources.filter(content=content_type):
-                # take first resource with matching content type.
+            content_resources = self.resources.filter(content=content_type)
+            candidates = [
+                resource_definition.filename_pattern
+                for resource_definition in content_resources
+                if resource_definition.filename_pattern is not None
+            ]
+            if candidates:
+                # take first resource with matching content type and filename_pattern.
                 # deprecated property supports only one value per content type.
-                data[content_type] = content_resources[0].filename_pattern
+                data[content_type] = candidates[0]
+
         return data
 
     @filename_format.setter
@@ -550,10 +557,17 @@ class DatasetDefinition:
         data: dict[str, dict[str, type]] = {}
         content_types = ('gaze', 'precomputed_events', 'precomputed_reading_measures', 'stimulus')
         for content_type in content_types:
-            if content_resources := self.resources.filter(content=content_type):
-                # take first resource with matching content type.
-                # deprecated property supports only one dict per content type.
-                data[content_type] = content_resources[0].filename_pattern_schema_overrides
+            content_resources = self.resources.filter(content=content_type)
+            candidates = [
+                resource_definition.filename_pattern_schema_overrides
+                for resource_definition in content_resources
+                if resource_definition.filename_pattern_schema_overrides is not None
+            ]
+            if candidates:
+                # take first resource with content type and filename_pattern_schema_overrides.
+                # deprecated property supports only one value per content type.
+                data[content_type] = candidates[0]
+
         return data
 
     @filename_format_schema_overrides.setter
