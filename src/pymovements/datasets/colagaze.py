@@ -143,7 +143,7 @@ class CoLAGaze(DatasetDefinition):
                     },
                     {
                         'content': 'TextStimulus',
-                        'url': 'https://osf.io/download/dnfby/',  # noqa: E501 # pylint: disable=line-too-long
+                        'url': 'https://osf.io/download/dnfby/',
                         'filename': 'AOI_coordinates_counterbalance_2.csv',
                         'md5': None,  # type: ignore
                         'filename_pattern': 'AOI_coordinates_counterbalance_2.csv',
