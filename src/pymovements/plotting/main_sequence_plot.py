@@ -30,7 +30,6 @@ from sklearn.metrics import r2_score
 
 from pymovements.events.events import Events
 from pymovements.events.frame import EventDataFrame
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 
 
@@ -47,10 +46,8 @@ def main_sequence_plot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: bool = True,
         event_name: str = 'saccade',
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
         **kwargs: Collection,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot the saccade main sequence.
@@ -82,15 +79,10 @@ def main_sequence_plot(
         Figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     event_name: str
         Filters events for a particular value in the "name" column. (default: 'saccade')
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close the figure.
-    closefig: bool | None
-        Close figure after plotting. If None, defaults to closing only when the figure
-        was created by this function.
+        External axes to draw into.
     **kwargs: Collection
         Additional keyword arguments passed to matplotlib.axes.Axes.scatter.
 
@@ -143,33 +135,19 @@ def main_sequence_plot(
             'the main sequence plot. ',
         ) from exc
 
-    fig, ax, own = prepare_figure(ax, figsize, func_name='main_sequence_plot')
+    fig, ax = prepare_figure(ax, figsize, func_name='main_sequence_plot')
 
-    # Use plt.scatter when we own the figure to preserve legacy test expectations.
-    if own:
-        plt.scatter(
-            amplitudes,
-            peak_velocities,
-            color=marker_color,
-            alpha=marker_alpha,
-            s=marker_size,
-            marker=marker,
-            label=event_name,
-            **kwargs,
-        )
-        plt.legend()
-    else:
-        ax.scatter(
-            amplitudes,
-            peak_velocities,
-            color=marker_color,
-            alpha=marker_alpha,
-            s=marker_size,
-            marker=marker,
-            label=event_name,
-            **kwargs,
-        )
-        ax.legend()
+    ax.scatter(
+        amplitudes,
+        peak_velocities,
+        color=marker_color,
+        alpha=marker_alpha,
+        s=marker_size,
+        marker=marker,
+        label=event_name,
+        **kwargs,
+    )
+    ax.legend()
 
     # --- Linear fit (only if requested) ---
     if fit:
@@ -179,8 +157,6 @@ def main_sequence_plot(
         min_ampl, max_ampl = min(amplitudes), max(amplitudes)
         line_x = [min_ampl, max_ampl]
         line_y = [a * min_ampl + b, a * max_ampl + b]
-
-        line_axes = plt.gca() if own else ax
 
         fit_label = None
 
@@ -203,23 +179,17 @@ def main_sequence_plot(
 
         # add fit label to the legend
         if fit_label is not None:
-            line_axes.plot(line_x, line_y, c=fit_color, label=fit_label)
+            ax.plot(line_x, line_y, c=fit_color, label=fit_label)
         else:
-            line_axes.plot(line_x, line_y, c=fit_color)
-        line_axes.legend()
+            ax.plot(line_x, line_y, c=fit_color)
+        ax.legend()
 
     if title:
         ax.set_title(title)
     ax.set_xlabel('Amplitude [dva]')
     ax.set_ylabel('Peak Velocity [dva/s]')
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own,
-        func_name='main_sequence_plot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
     return fig, ax
