@@ -1465,18 +1465,24 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
 
 
 @pytest.mark.parametrize(
-    ('reccfg_line', 'has_event_filters'),
+    ('reccfg_line', 'has_event_filters', 'tracked_eye'),
     [
         # normal RECCFG without event filter fields
-        ('MSG\t0 RECCFG CR 1000 2 1 R\n', False),
+        ('MSG\t0 RECCFG CR 1000 2 1 L\n', False, 'L'),
+        ('MSG\t0 RECCFG CR 1000 2 1 R\n', False, 'R'),
+        ('MSG\t0 RECCFG CR 1000 2 1 LR\n', False, 'LR'),
+        ('MSG\t0 RECCFG CR 1000 2 1\n', False, None),
         # extended RECCFG with file_event_filter and link_event_filter present
-        ('MSG\t0 RECCFG CR 1000 2 1 2 1 R\n', True),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 L\n', True, 'L'),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 R\n', True, 'R'),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 LR\n', True, 'LR'),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 \n', True, None),
     ],
 )
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_reccfg_with_optional_event_filters_parses(
-    make_text_file, reccfg_line, has_event_filters,
+def test_reccfg_with_optional_fields_parses(
+    make_text_file, reccfg_line, has_event_filters, tracked_eye,
 ):
     """RECCFG lines with and without optional event filters should parse without error.
 
@@ -1500,7 +1506,6 @@ def test_reccfg_with_optional_event_filters_parses(
     assert rec_cfg['sampling_rate'] == '1000'
     assert rec_cfg['file_sample_filter'] in {'0', '1', '2'}
     assert rec_cfg['link_sample_filter'] in {'0', '1', '2'}
-    assert rec_cfg['tracked_eye'] in {'L', 'R', 'LR'}
 
     # Optional fields
     if has_event_filters:
@@ -1509,6 +1514,7 @@ def test_reccfg_with_optional_event_filters_parses(
     else:
         assert rec_cfg.get('file_event_filter') is None
         assert rec_cfg.get('link_event_filter') is None
+    assert rec_cfg.get('tracked_eye') == tracked_eye
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
