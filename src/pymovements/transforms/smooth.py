@@ -77,7 +77,7 @@ def smooth(
     The following methods are available for smoothing:
 
     * ``savitzky_golay``: Smooth data by applying a Savitzky-Golay filter.
-    See :py:func:`~pymovements.gaze.transforms.savitzky_golay` for further details.
+    See :py:func:`~pymovements.transforms.savitzky_golay` for further details.
     * ``moving_average``: Smooth data by calculating the mean of the subsequent samples.
     Each smoothed sample is calculated by the mean of the samples in the window around the sample.
     * ``exponential_moving_average``: Smooth data by exponentially weighted moving average.
