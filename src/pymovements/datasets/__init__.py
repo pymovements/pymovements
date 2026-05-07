@@ -39,7 +39,6 @@ from pymovements.datasets.hbn import HBN
 from pymovements.datasets.iitb_hgc import IITB_HGC
 from pymovements.datasets.interead import InteRead
 from pymovements.datasets.judo1000 import JuDo1000
-from pymovements.datasets.mcfw_gaze import mcfw_gaze
 from pymovements.datasets.mecol1w1 import MECOL1W1
 from pymovements.datasets.mecol1w2 import MECOL1W2
 from pymovements.datasets.mecol2w1 import MECOL2W1
@@ -80,7 +79,6 @@ __all__ = [
     'IITB_HGC',
     'InteRead',
     'JuDo1000',
-    'mcfw_gaze',
     'MouseCursor',
     'MECOL1W1',
     'MECOL1W2',
