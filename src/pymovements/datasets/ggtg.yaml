@@ -41,16 +41,16 @@ resources:
     source:
       url: https://osf.io/download/udmrk/
       filename: "measures.zip"
-      md5: 21a3a929a16239147b81f44f6deed938
     filename_pattern: '{subject_id}.csv'
     load_kwargs:
       trial_columns:
         - stimulus
 
   - content: ImageStimulus
-    url: https://osf.io/download/3y9q2/
-    filename: "stimulus_imgs.zip"
-    md5: b481ea115040766809becac82830df51
+    source:
+      url: https://osf.io/download/3y9q2/
+      filename: "stimulus_imgs.zip"
+      md5: b481ea115040766809becac82830df51
     filename_pattern: "{stimulus}.png"
 
 experiment:

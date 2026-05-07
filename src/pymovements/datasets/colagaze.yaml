@@ -43,10 +43,11 @@ resources:
     filename_pattern_schema_overrides:
       subject_id: !int
 
-    - content: TextStimulus
-    url: https://osf.io/download/78zdf/
-    filename: "AOI_coordinates_counterbalance_1.csv"
-    md5: null
+  - content: TextStimulus
+    source:
+      url: https://osf.io/download/78zdf/
+      filename: "AOI_coordinates_counterbalance_1.csv"
+      md5: null
     filename_pattern: 'AOI_coordinates_counterbalance_1.csv'
     load_kwargs:
       aoi_column:
@@ -61,9 +62,10 @@ resources:
         - IA_BOTTOM
 
   - content: TextStimulus
-    url: https://osf.io/download/dnfby/
-    filename: "AOI_coordinates_counterbalance_2.csv"
-    md5: null
+    source:
+      url: https://osf.io/download/dnfby/
+      filename: "AOI_coordinates_counterbalance_2.csv"
+      md5: null
     filename_pattern: 'AOI_coordinates_counterbalance_2.csv'
     load_kwargs:
       aoi_column:

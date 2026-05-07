@@ -80,6 +80,7 @@ __all__ = [
     'InteRead',
     'JuDo1000',
     'MouseCursor',
+    'mcfw-gaze'
     'MECOL1W1',
     'MECOL1W2',
     'MECOL2W1',

@@ -1,0 +1,53 @@
+name: mcfw-gaze
+long_name: Multi-Context Free-Viewing and Web-Browsing Gaze Dataset
+
+description: |
+  Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion (120 Hz)
+  from 15 participants across four task types: natural image free-viewing
+  (100 images, 3 sessions, 5 seconds per image), gaze-pattern authentication (5 trials),
+  password experiment (5 blocks), and free web browsing
+  (news, shopping, and video, 600 seconds per task).
+
+  Eye-tracking data is provided as binocular gaze point coordinates on the
+  display area, along with pupil diameter and gaze origin in user coordinates.
+
+  Dataset available at: https://doi.org/10.5281/zenodo.18725478
+  Dataset paper: https://doi.org/10.1145/3797246.3806660
+
+resources:
+- content: gaze
+  source:
+    url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+    filename: dataset.zip
+    md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
+  filename_pattern: participant_{subject_id}/(image_)?(?P<stimulus>\d+|gaze_pattern_auth_trial|news|shopping|video|password_experiment_block)_*(?P<trial_id>\d*).tsv
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
+    time_column: device_time_stamp
+    time_unit: us
+    pixel_columns:
+    #- left_gaze_point_on_display_area_x
+    #- left_gaze_point_on_display_area_y
+    - right_gaze_point_on_display_area_x
+    - right_gaze_point_on_display_area_y
+
+
+- content: ImageStimulus
+  source:
+    url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+    filename: dataset.zip
+    md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
+  filename_pattern: '{image_id}.jpg'
+
+
+experiment:
+  eyetracker:
+    sampling_rate: 120
+  screen:
+    width_px: 1920
+    height_px: 1080
+    width_cm: 31.0
+    height_cm: 17.5
+    distance_cm: 65.0
+    origin: upper left
