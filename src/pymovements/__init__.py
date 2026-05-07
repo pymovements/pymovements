@@ -30,6 +30,7 @@ from pymovements import warnings
 from pymovements._version import __version__
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
+from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
 from pymovements.dataset import Participants
@@ -60,6 +61,7 @@ from pymovements.warnings import ExperimentalWarning
 __all__ = [
     'Dataset',
     'DatasetDefinition',
+    'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
     'datasets',

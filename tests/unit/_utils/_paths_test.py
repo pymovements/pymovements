@@ -29,56 +29,6 @@ from pymovements._utils._paths import get_filepaths
 from pymovements._utils._paths import match_filepaths
 
 
-@pytest.fixture(name='create_filetree', scope='function')
-def fixture_create_filetree(tmp_path):
-    """Create a filetree from a list of filepaths.
-
-    Files are created relative to an implicitly created tmp_path.
-
-    Empty directories cannot be created with this fixture.
-    """
-    def _create_filetree(files: list[str]) -> Path:
-        for relative_filepath in files:
-            absolute_filepath = tmp_path / relative_filepath
-            if not absolute_filepath.parent.is_dir():
-                absolute_filepath.parent.mkdir(parents=True)
-            absolute_filepath.write_text('test')
-        return tmp_path
-
-    return _create_filetree
-
-
-def test_create_filetree_returns_path(create_filetree):
-    result = create_filetree([])
-    assert isinstance(result, Path)
-
-
-@pytest.mark.parametrize(
-    'files',
-    [
-        [],
-        ['test.txt'],
-        ['test1.txt', 'test2.txt'],
-        ['a/test.txt', 'b/test.txt'],
-        ['a/test1.txt', 'a/test2.txt', 'b/test1.txt', 'b/test2.txt'],
-    ],
-)
-def test_create_filetree_created_correct_filepaths(files, create_filetree):
-    rootpath = create_filetree(files)
-
-    created_files = set()
-    for path_object in rootpath.rglob('*'):
-        if path_object.is_file():
-            created_files.add(path_object)
-
-    expected_files = {
-        rootpath / relative_filepath
-        for relative_filepath in files
-    }
-
-    assert created_files == expected_files
-
-
 def test_get_filepaths_mut_excl_extension_and_regex_error():
     """Test mutually exclusive extension and regex in get_filepaths."""
     with pytest.raises(ValueError) as excinfo:
@@ -136,9 +86,9 @@ def test_get_filepaths_expected_output(
         extension,
         regex,
         expected_paths,
-        create_filetree,
+        make_text_files,
 ):
-    rootpath = create_filetree(files)
+    rootpath = make_text_files(files)
     ret = get_filepaths(path=rootpath, extension=extension, regex=regex)
     expected_list = [rootpath / pathlib.Path(expected_path) for expected_path in expected_paths]
     assert sorted(ret) == sorted(expected_list)
@@ -222,17 +172,17 @@ def test_match_filepaths(
         files,
         regex,
         expected_dicts,
-        create_filetree,
+        make_text_files,
 ):
-    rootpath = create_filetree(files)
+    rootpath = make_text_files(files)
     result_dicts = match_filepaths(path=rootpath, regex=regex)
 
     case = unittest.TestCase()
     case.assertCountEqual(result_dicts, expected_dicts)
 
 
-def test_match_filepaths_not_relative(create_filetree):
-    rootpath = create_filetree(['tmp_dir/foo.txt'])
+def test_match_filepaths_not_relative(make_text_files):
+    rootpath = make_text_files(['tmp_dir/foo.txt'])
     result_dicts = match_filepaths(path=rootpath, regex=re.compile('.*'), relative=False)
 
     expected_dicts = [{'filepath': str(rootpath / 'tmp_dir/foo.txt')}]
@@ -251,8 +201,8 @@ def test_match_filepaths_not_exists_raises_value_error(tmp_path):
     assert str(filepath) in msg
 
 
-def test_match_filepaths_no_directory_raises_value_error(create_filetree):
-    rootpath = create_filetree(['tmp_dir/foo.txt'])
+def test_match_filepaths_no_directory_raises_value_error(make_text_files):
+    rootpath = make_text_files(['tmp_dir/foo.txt'])
     filepath = rootpath / 'tmp_dir' / 'foo.txt'
 
     with pytest.raises(ValueError) as excinfo:
