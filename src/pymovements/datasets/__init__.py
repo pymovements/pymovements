@@ -80,7 +80,7 @@ __all__ = [
     'IITB_HGC',
     'InteRead',
     'JuDo1000',
-    'mcfw_gaze'
+    'mcfw_gaze',
     'MouseCursor',
     'MECOL1W1',
     'MECOL1W2',
