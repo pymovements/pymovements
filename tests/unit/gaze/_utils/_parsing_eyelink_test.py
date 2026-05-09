@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
 import datetime
+import importlib
 import re
 import warnings
 from typing import Any
@@ -30,6 +31,18 @@ from polars.testing import assert_frame_equal
 
 from pymovements.gaze._utils import _parsing_eyelink
 from pymovements.gaze._utils._parsing_eyelink import _check_patterns
+
+
+def test_eyelink_regexes_are_not_compiled_during_import(monkeypatch):
+    """Parser-owned regexes should be compiled lazily when parsing starts."""
+
+    def fail_compile(*args, **kwargs):
+        raise AssertionError('regex compiled during module import')
+
+    monkeypatch.setattr(re, 'compile', fail_compile)
+
+    importlib.reload(_parsing_eyelink)
+
 
 ASC_TEXT = r"""
 ** DATE: Wed Mar  8 09:25:20 2023

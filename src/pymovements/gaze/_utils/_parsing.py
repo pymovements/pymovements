@@ -21,9 +21,16 @@
 from __future__ import annotations
 
 import re
+from functools import cache
 from typing import Any
 
 import numpy as np
+
+
+@cache
+def _compile_regex(pattern: str, flags: int = 0) -> re.Pattern[str]:
+    """Compile a regex pattern on demand and reuse it for later parser calls."""
+    return re.compile(pattern, flags)
 
 
 def check_nan(sample_location: str) -> float:
