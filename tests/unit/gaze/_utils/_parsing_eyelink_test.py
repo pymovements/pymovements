@@ -44,6 +44,19 @@ def test_eyelink_regexes_are_not_compiled_during_import(monkeypatch):
     importlib.reload(_parsing_eyelink)
 
 
+def test_eyelink_regex_helpers_accept_precompiled_patterns():
+    """Compiled user-provided patterns should still be accepted by helper wrappers."""
+    compiled_pattern = re.compile(r'MSG\s+(?P<timestamp>\d+)\s+(?P<content>.*)')
+
+    match = _parsing_eyelink._match_regex(compiled_pattern, 'MSG 100 START')
+    search = _parsing_eyelink._search_regex(compiled_pattern, 'prefix MSG 200 END')
+
+    assert match is not None
+    assert match.groupdict() == {'timestamp': '100', 'content': 'START'}
+    assert search is not None
+    assert search.groupdict() == {'timestamp': '200', 'content': 'END'}
+
+
 ASC_TEXT = r"""
 ** DATE: Wed Mar  8 09:25:20 2023
 ** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED
