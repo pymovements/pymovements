@@ -792,6 +792,8 @@ class Events:
                     # No AOI columns are to be appended (all already exist in the Events frame).
                     # Keep row count but contribute zero columns to avoid duplicate-column errors.
                     aoi_row = aoi_row.select([])
+                if aoi_row.height > 1:
+                    aoi_row = aoi_row.head(1)
             out_rows.append(aoi_row)
 
         aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
