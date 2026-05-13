@@ -79,9 +79,6 @@ authors:
   - family-names: "Jäger"
     given-names: "Lena A."
     orcid: "https://orcid.org/0000-0001-9018-9713"
-  - family-names: "Pérez"
-    given-names: "Carlos J."
-    orcid: "https://orcid.org/0009-0002-7119-1812"
 
 type: software
 license: MIT
