@@ -22,23 +22,23 @@ from __future__ import annotations
 
 import pytest
 
-import pymovements as pm
+from pymovements import transforms
 
 
 @pytest.mark.parametrize(
     ('transform_function', 'transform_name'),
     [
-        pytest.param(pm.gaze.transforms.center_origin, 'center_origin', id='center_origin'),
-        pytest.param(pm.gaze.transforms.deg2pix, 'deg2pix', id='deg2pix'),
-        pytest.param(pm.gaze.transforms.downsample, 'downsample', id='downsample'),
-        pytest.param(pm.gaze.transforms.norm, 'norm', id='norm'),
-        pytest.param(pm.gaze.transforms.pix2deg, 'pix2deg', id='pix2deg'),
-        pytest.param(pm.gaze.transforms.pos2acc, 'pos2acc', id='pos2acc'),
-        pytest.param(pm.gaze.transforms.pos2vel, 'pos2vel', id='pos2vel'),
-        pytest.param(pm.gaze.transforms.savitzky_golay, 'savitzky_golay', id='savitzky_golay'),
+        pytest.param(transforms.center_origin, 'center_origin', id='center_origin'),
+        pytest.param(transforms.deg2pix, 'deg2pix', id='deg2pix'),
+        pytest.param(transforms.downsample, 'downsample', id='downsample'),
+        pytest.param(transforms.norm, 'norm', id='norm'),
+        pytest.param(transforms.pix2deg, 'pix2deg', id='pix2deg'),
+        pytest.param(transforms.pos2acc, 'pos2acc', id='pos2acc'),
+        pytest.param(transforms.pos2vel, 'pos2vel', id='pos2vel'),
+        pytest.param(transforms.savitzky_golay, 'savitzky_golay', id='savitzky_golay'),
     ],
 )
 def test_transform_registered(transform_function, transform_name):
-    assert transform_name in pm.gaze.transforms.TransformLibrary.methods
-    assert pm.gaze.transforms.TransformLibrary.get(transform_name) == transform_function
-    assert pm.gaze.transforms.TransformLibrary.get(transform_name).__name__ == transform_name
+    assert transform_name in transforms.TransformLibrary.methods
+    assert transforms.TransformLibrary.get(transform_name) == transform_function
+    assert transforms.TransformLibrary.get(transform_name).__name__ == transform_name

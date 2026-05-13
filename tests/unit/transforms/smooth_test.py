@@ -17,12 +17,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements.gaze.transforms.smooth."""
+"""Test pymovements.transforms.smooth."""
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import smooth
+from pymovements.transforms.smooth import _identity
 
 
 @pytest.mark.parametrize(
@@ -363,7 +364,7 @@ def test_smooth_returns(kwargs, series, expected_df):
     df = series.to_frame()
 
     result_df = df.select(
-        pm.gaze.transforms.smooth(**kwargs),
+        smooth(**kwargs),
     )
 
     assert_frame_equal(result_df, expected_df.to_frame())
@@ -398,7 +399,7 @@ def test_smooth_returns(kwargs, series, expected_df):
 def test_smooth_init_raises_error(kwargs, exception, msg_substrings):
     """Test if smooth init raises the expected error."""
     with pytest.raises(exception) as excinfo:
-        pm.gaze.transforms.smooth(**kwargs)
+        smooth(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -408,6 +409,6 @@ def test_smooth_init_raises_error(kwargs, exception, msg_substrings):
 def test_identity_returns_same_series():
     """Test if identity returns the same series."""
     series = pl.Series('position', [[1., 1.], [2., 2.], [3., 3.]], pl.List(pl.Float64))
-    series_identity = pm.gaze.transforms._identity(series)
+    series_identity = _identity(series)
 
     assert_frame_equal(series.to_frame(), series_identity.to_frame())

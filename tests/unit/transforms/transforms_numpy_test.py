@@ -21,11 +21,11 @@
 import numpy as np
 import pytest
 
-from pymovements.gaze.transforms_numpy import norm
-from pymovements.gaze.transforms_numpy import pix2deg
-from pymovements.gaze.transforms_numpy import pos2acc
-from pymovements.gaze.transforms_numpy import pos2vel
-from pymovements.gaze.transforms_numpy import split
+from pymovements.transforms.numpy import norm
+from pymovements.transforms.numpy import pix2deg
+from pymovements.transforms.numpy import pos2acc
+from pymovements.transforms.numpy import pos2vel
+from pymovements.transforms.numpy import split
 
 n_coords = 100
 screen_px_1d = 100
