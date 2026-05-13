@@ -485,10 +485,48 @@ import pymovements as pm
             pl.DataFrame(
                 {
                     'time': [0, 1, 2, 3, 4],
-                    'pixel': [None, None, 2., 4., 4.],
+                    'pixel': [None, 2., 2., 4., 4.],
                 },
             ),
-            id='upsample_500_to_1000_interpolate_nearest_one_component_with_none_values',
+            id='upsample_500_to_1000_interpolate_nearest_one_component_with_none_at_start',
+        ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': 'interpolate_nearest',
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [0, None, 4],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [0., None, None, 4., 4.],
+                },
+            ),
+            id='upsample_500_to_1000_interpolate_nearest_one_component_with_none_at_middle',
+        ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': 'interpolate_nearest',
+            },
+            pl.DataFrame(
+                {
+                    'time': [0, 2, 4],
+                    'pixel': [0, 2, None],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': [0, 1, 2, 3, 4],
+                    'pixel': [0., 2., 2., None, None],
+                },
+            ),
+            id='upsample_500_to_1000_interpolate_nearest_one_component_with_none_at_end',
         ),
         pytest.param(
             {
