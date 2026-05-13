@@ -1744,7 +1744,7 @@ class Gaze:
             if mode == 'direct':
                 x_eye, y_eye = payload
                 aois = [
-                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
+                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye, max_matches=1)
                     for row in tqdm(self.samples.iter_rows(named=True))
                 ]
             elif mode == 'average_lr':
@@ -1763,7 +1763,9 @@ class Gaze:
                     tmp = dict(row)
                     tmp['__x'] = x_val
                     tmp['__y'] = y_val
-                    aois.append(aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y'))
+                    aois.append(
+                        aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y', max_matches=1),
+                    )
             else:
                 # This branch is unreachable with the current selector:
                 # the flat-components selector only yields 'direct', 'average_lr' or None
@@ -1867,7 +1869,9 @@ class Gaze:
                 tmp_row = dict(row)
                 tmp_row['__x'] = x
                 tmp_row['__y'] = y
-                aois.append(aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y'))
+                aois.append(
+                    aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1),
+                )
 
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal')

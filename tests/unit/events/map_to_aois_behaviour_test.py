@@ -127,9 +127,9 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
             {
                 'content': ['AOI1', 'AOI2'],
                 'left': [0, 100],
-                'right': [200, 200],
+                'right': [200, 300],
                 'top': [0, 100],
-                'bottom': [200, 200],
+                'bottom': [200, 300],
             },
         ),
         aoi_column='content',
@@ -141,10 +141,10 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     events = Events(
         pl.DataFrame(
             {
-                'name': ['fixation', 'fixation', 'fixation'],
-                'location': [(50, 50), (150, 150), (250, 250)],
-                'onset': [0, 1000, 2000],
-                'offset': [500, 1500, 2500],
+                'name': ['fixation', 'fixation', 'fixation', 'fixation'],
+                'location': [(50, 50), (150, 150), (250, 250), (350, 350)],
+                'onset': [0, 1000, 2000, 3000],
+                'offset': [500, 1500, 2500, 3500],
             },
         ),
     )
@@ -152,8 +152,8 @@ def test_map_to_aois_uses_first_overlapping_aoi_without_misalignment() -> None:
     with pytest.warns(UserWarning, match='Multiple AOIs matched this point'):
         events.map_to_aois(stimulus, verbose=False)
 
-    assert events.frame.height == 3
-    assert events.frame.get_column('content').to_list() == ['AOI1', 'AOI1', None]
+    assert events.frame.height == 4
+    assert events.frame.get_column('content').to_list() == ['AOI1', 'AOI1', 'AOI2', None]
 
 
 def test_map_to_aois_fixation_missing_coordinates(simple_stimulus: TextStimulus) -> None:
