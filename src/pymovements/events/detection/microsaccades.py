@@ -67,8 +67,9 @@ def microsaccades(
          (default: 6)
     threshold: numpy.ndarray | tuple[float, float] | str
         If tuple of floats then use this as explicit elliptic threshold. If str, then use
-        a data-driven velocity threshold method. See :func:`~events.engbert.compute_threshold` for
-        a reference of valid methods. (default: 'engbert2015')
+        a data-driven velocity threshold method. See
+        :py:func:`~pymovements.events.detection.microsaccades.compute_threshold` for a reference of
+        valid methods. (default: 'engbert2015')
     threshold_factor: float
         factor for relative velocity threshold computation. (default: 6)
     minimum_threshold: float

@@ -81,7 +81,7 @@ class Experiment:
 
     We can also access the screen boundaries in degrees of visual angle via the
     :py:attr:`~pymovements.gaze.Screen` object. This only works if the
-    `distance_cm` attribute is specified.
+    :py:attr:`distance_cm` attribute is specified.
 
     >>> experiment.screen.x_min_dva# doctest:+ELLIPSIS
     -15.59...
@@ -232,7 +232,8 @@ class Experiment:
         arr: list[float] | list[list[float]] | np.ndarray
             Continuous 2D position time series.
         method: str
-            Computation method. See :func:`~transforms.pos2vel` for details. (default: 'smooth')
+            Computation method. See :py:func:`pymovements.gaze.transforms.pos2vel` for details.
+            (default: 'smooth')
         **kwargs: int | float | str
             Additional keyword arguments used for savitzky golay method.
 
