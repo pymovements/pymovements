@@ -775,7 +775,9 @@ class Events:
             tmp_row['__y'] = y
 
             try:
-                aoi_row = aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y')
+                aoi_row = aoi_dataframe.get_aoi(
+                    row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1,
+                )
             except (KeyError, TypeError):  # tolerate common lookup/type errors per row
                 aoi_row = _empty_aoi_row()
             else:
