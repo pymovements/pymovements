@@ -42,7 +42,7 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan, _calculate_data_loss_ratio, _compile_regex
+    check_nan, _calculate_data_loss_ratio
 
 
 # Define separate regex patterns for monocular and binocular cases
@@ -163,7 +163,7 @@ def _match_regex(
 ) -> re.Match[str] | None:
     """Match a parser regex, compiling string patterns on demand."""
     if isinstance(pattern, str):
-        return _compile_regex(pattern, flags).match(line)
+        return re.compile(pattern, flags).match(line)
     return pattern.match(line)
 
 
@@ -174,13 +174,13 @@ def _search_regex(
 ) -> re.Match[str] | None:
     """Search with a parser regex, compiling string patterns on demand."""
     if isinstance(pattern, str):
-        return _compile_regex(pattern, flags).search(line)
+        return re.compile(pattern, flags).search(line)
     return pattern.search(line)
 
 
 def _eyelink_meta_regexes() -> list[dict[str, re.Pattern[str]]]:
     """Return lazily compiled default EyeLink metadata regex dictionaries."""
-    return [{'pattern': _compile_regex(regex)} for regex in EYELINK_META_REGEXES]
+    return [{'pattern': re.compile(regex)} for regex in EYELINK_META_REGEXES]
 
 
 def _check_reccfg_key(
@@ -1170,7 +1170,7 @@ def _parse_full_eyelink_version(version_str_1: str, version_str_2: str) -> tuple
         Version number and model as strings or unknown if it cannot be parsed.
     """
     if version_str_1 == 'EYELINK II 1' and version_str_2:
-        version_pattern = _compile_regex(r'.*v(?P<version_number>[0-9]\.[0-9]+).*')
+        version_pattern = re.compile(r'.*v(?P<version_number>[0-9]\.[0-9]+).*')
         if match := version_pattern.match(version_str_2):
             version_number = match.groupdict()['version_number']
             if float(version_number) < 3:
@@ -1188,7 +1188,7 @@ def _parse_full_eyelink_version(version_str_1: str, version_str_2: str) -> tuple
 
     else:
         # taken from R package eyelinker/eyelink_parser.R
-        version_pattern = _compile_regex(r'.*\s+(?P<version_number>[0-9]\.[0-9]+).*')
+        version_pattern = re.compile(r'.*\s+(?P<version_number>[0-9]\.[0-9]+).*')
         model = 'EyeLink I'
         if match := version_pattern.match(version_str_1):
             version_number = match.groupdict()['version_number']

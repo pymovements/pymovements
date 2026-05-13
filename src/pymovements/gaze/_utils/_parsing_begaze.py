@@ -31,6 +31,7 @@ __all__ = [
 ]
 
 import datetime
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,7 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan, _compile_regex
+    check_nan
 
 # Regular expressions for BeGaze header metadata lines with named groups.
 # Regexes are compiled lazily so importing the parser does not pay the setup cost.
@@ -58,7 +59,7 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
     Performs light casting for known fields (e.g., float for sampling rate, datetime for date).
     """
     for pattern in BEGAZE_META_REGEXES:
-        regex = _compile_regex(pattern)
+        regex = re.compile(pattern)
         if match := regex.match(line):
             groupdict = match.groupdict()
             # Casting and processing for known fields
