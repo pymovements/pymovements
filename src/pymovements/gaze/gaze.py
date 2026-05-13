@@ -37,13 +37,11 @@ import polars
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
+from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
-from pymovements.events import events2segmentation
-from pymovements.events import events2timeratio
-from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
@@ -1075,7 +1073,7 @@ class Gaze:
                 f"No events with name '{name}' found in events.",
             )
 
-        mask_expr = events2segmentation(
+        mask_expr = transforms.events2segmentation(
             events_frame,
             name=name,
             time_column='time',
@@ -1494,7 +1492,7 @@ class Gaze:
                 },
             )
 
-        return events2timeratio(
+        return transforms.events2timeratio(
             events=events_df,
             samples=self.samples,
             name=name,

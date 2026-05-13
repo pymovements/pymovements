@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2026 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,30 +17,35 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides gaze related functionality."""
-from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.eyetracker import EyeTracker
-from pymovements.gaze.gaze import Gaze
-from pymovements.gaze.gaze_dataframe import GazeDataFrame
-from pymovements.gaze.integration import from_numpy
-from pymovements.gaze.integration import from_pandas
-from pymovements.gaze.io import from_asc
-from pymovements.gaze.io import from_begaze
-from pymovements.gaze.io import from_csv
-from pymovements.gaze.io import from_ipc
-from pymovements.gaze.screen import Screen
+"""Module for py:func:`pymovements.transforms.downsample`."""
+from __future__ import annotations
+
+import polars as pl
+
+from pymovements._utils import _checks
+from pymovements.transforms.library import register_transform
 
 
-__all__ = [
-    'Experiment',
-    'EyeTracker',
-    'from_numpy',
-    'from_pandas',
-    'Gaze',
-    'GazeDataFrame',
-    'Screen',
-    'from_asc',
-    'from_begaze',
-    'from_csv',
-    'from_ipc',
-]
+@register_transform
+def downsample(
+        *,
+        factor: int,
+) -> pl.Expr:
+    """Downsample gaze data by an integer factor.
+
+    Downsampling is done by taking every `nth` sample specified by the downsampling factor.
+
+    Parameters
+    ----------
+    factor: int
+        Downsample factor.
+
+    Returns
+    -------
+    pl.Expr
+        The respective polars expression.
+    """
+    _checks.check_is_int(factor=factor)
+    _checks.check_is_positive_value(factor=factor)
+
+    return pl.all().gather_every(n=factor)

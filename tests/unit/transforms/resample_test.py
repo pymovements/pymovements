@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import resample
 
 
 @pytest.mark.parametrize(
@@ -696,7 +696,7 @@ import pymovements as pm
 )
 def test_resample_returns(kwargs, df, expected_df):
     """Test if resample returns expected DataFrame."""
-    result_df = pm.gaze.transforms.resample(df, **kwargs)
+    result_df = resample(df, **kwargs)
 
     assert_frame_equal(result_df, expected_df)
 
@@ -762,7 +762,7 @@ def test_resample_raises_error(kwargs, exception, msg_substrings):
     })
 
     with pytest.raises(exception) as excinfo:
-        pm.gaze.transforms.resample(df, **kwargs)
+        resample(df, **kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
