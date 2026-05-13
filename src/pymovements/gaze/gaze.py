@@ -32,24 +32,23 @@ from typing import Literal
 from typing import overload
 from warnings import warn
 
+import numpy as np
 import polars
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
+from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
-from pymovements.events import events2segmentation
-from pymovements.events import events2timeratio
-from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
 
-@repr_html(['samples', 'events', 'trial_columns', 'experiment'])
+@repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
 class Gaze:
     """Self-contained data structure containing gaze represented as samples or events.
 
@@ -1074,7 +1073,7 @@ class Gaze:
                 f"No events with name '{name}' found in events.",
             )
 
-        mask_expr = events2segmentation(
+        mask_expr = transforms.events2segmentation(
             events_frame,
             name=name,
             time_column='time',
@@ -1493,7 +1492,7 @@ class Gaze:
                 },
             )
 
-        return events2timeratio(
+        return transforms.events2timeratio(
             events=events_df,
             samples=self.samples,
             name=name,
@@ -1743,7 +1742,7 @@ class Gaze:
             if mode == 'direct':
                 x_eye, y_eye = payload
                 aois = [
-                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
+                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye, max_matches=1)
                     for row in tqdm(self.samples.iter_rows(named=True))
                 ]
             elif mode == 'average_lr':
@@ -1762,7 +1761,9 @@ class Gaze:
                     tmp = dict(row)
                     tmp['__x'] = x_val
                     tmp['__y'] = y_val
-                    aois.append(aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y'))
+                    aois.append(
+                        aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y', max_matches=1),
+                    )
             else:
                 # This branch is unreachable with the current selector:
                 # the flat-components selector only yields 'direct', 'average_lr' or None
@@ -1866,7 +1867,9 @@ class Gaze:
                 tmp_row = dict(row)
                 tmp_row['__x'] = x
                 tmp_row['__y'] = y
-                aois.append(aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y'))
+                aois.append(
+                    aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1),
+                )
 
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
@@ -2063,6 +2066,7 @@ class Gaze:
             list_length
             for column in considered_columns
             for list_length in self.samples.get_column(column).list.len().unique().to_list()
+            if list_length is not None
         }
 
         for column_specifier_list in column_specifiers:
@@ -2173,7 +2177,12 @@ class Gaze:
                     'eye_components must not be None if passing position to event detection',
                 )
 
-            kwargs['positions'] = samples.get_column('position').list.gather(eye_components)
+            kwargs['positions'] = np.vstack(
+                [
+                    samples.get_column('position').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
 
         if 'velocities' in method_args:
             if 'velocity' not in samples.columns:
@@ -2187,7 +2196,12 @@ class Gaze:
                     'eye_components must not be None if passing velocity to event detection',
                 )
 
-            kwargs['velocities'] = samples.get_column('velocity').list.gather(eye_components)
+            kwargs['velocities'] = np.vstack(
+                [
+                    samples.get_column('velocity').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
 
         if 'pixels' in method_args and 'pixels' not in kwargs:
             if 'pixel' not in samples.columns:
@@ -2201,7 +2215,12 @@ class Gaze:
                     'eye_components must not be None if passing pixel to event detection',
                 )
 
-            kwargs['pixels'] = samples.get_column('pixel').list.gather(eye_components)
+            kwargs['pixels'] = np.vstack(
+                [
+                    samples.get_column('pixel').list.get(eye_component)
+                    for eye_component in eye_components
+                ],
+            ).transpose()
 
         if 'pupil' in method_args and 'pupil' not in kwargs:
             if 'pupil' not in samples.columns:
@@ -2213,9 +2232,9 @@ class Gaze:
             if isinstance(pupil_series.dtype, polars.List):
                 # Binocular: [left, right] — pick eye based on eye_components
                 eye_idx = 1 if eye_components and eye_components[0] in {2, 3} else 0
-                kwargs['pupil'] = pupil_series.list.get(eye_idx)
+                kwargs['pupil'] = pupil_series.list.get(eye_idx).to_numpy()
             else:
-                kwargs['pupil'] = pupil_series
+                kwargs['pupil'] = pupil_series.to_numpy()
 
         if method.__name__ == 'out_of_screen' and self.experiment is not None:
             if 'x_min' not in kwargs:
@@ -2231,7 +2250,7 @@ class Gaze:
             kwargs['events'] = events
 
         if 'timesteps' in method_args and 'time' in samples.columns:
-            kwargs['timesteps'] = samples.get_column('time')
+            kwargs['timesteps'] = samples.get_column('time').to_numpy()
 
         return kwargs
 
@@ -2354,6 +2373,9 @@ class Gaze:
         if time_unit == 's':
             self.samples = self.samples.with_columns(polars.col('time').mul(1000))
 
+        elif time_unit == 'us':
+            self.samples = self.samples.with_columns(polars.col('time').truediv(1000))
+
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
@@ -2367,8 +2389,8 @@ class Gaze:
         elif time_unit != 'ms':
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
-                "Supported units are 's' for seconds, 'ms' for milliseconds and "
-                "'step' for steps.",
+                "Supported units are 's' for seconds, 'ms' for milliseconds, "
+                "'us' for microseconds and 'step' for steps.",
             )
 
         # Convert to int if possible.

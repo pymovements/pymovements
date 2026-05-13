@@ -29,9 +29,9 @@ import yaml
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.gaze import transforms_numpy
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
+from pymovements.transforms.numpy import pos2vel
 
 
 @repr_html(['eyetracker', 'screen'])
@@ -271,7 +271,7 @@ class Experiment:
                [ 500.,  500.]])
         """
         assert self.sampling_rate is not None
-        return transforms_numpy.pos2vel(
+        return pos2vel(
             arr=arr, sampling_rate=self.sampling_rate, method=method, **kwargs,
         )
 

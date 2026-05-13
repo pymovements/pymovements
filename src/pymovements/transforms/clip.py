@@ -17,15 +17,46 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# pylint: disable=cyclic-import
-"""Provides utility functions.
+"""Module for py:func:`pymovements.transforms.clip`."""
+from __future__ import annotations
 
-.. deprecated:: v0.22.0
-   This module will be removed in v0.27.0.
-"""
-from pymovements.utils import plotting
+import polars as pl
+
+from pymovements.transforms.library import register_transform
 
 
-__all__ = [
-    'plotting',
-]
+@register_transform
+def clip(
+        lower_bound: int | float | None,
+        upper_bound: int | float | None,
+        *,
+        input_column: str,
+        output_column: str,
+        n_components: int,
+) -> pl.Expr:
+    """Clip gaze signal to a lower and upper bound.
+
+    Parameters
+    ----------
+    lower_bound : int | float | None
+        Lower bound of the clipped column.
+    upper_bound : int | float | None
+        Upper bound of the clipped column.
+    input_column : str
+        Name of the input column.
+    output_column : str
+        Name of the output column.
+    n_components : int
+        Number of components in input column.
+
+    Returns
+    -------
+    pl.Expr
+        The respective polars expression.
+    """
+    return pl.concat_list(
+        [
+            pl.col(input_column).list.get(component).clip(lower_bound, upper_bound)
+            for component in range(n_components)
+        ],
+    ).alias(output_column)

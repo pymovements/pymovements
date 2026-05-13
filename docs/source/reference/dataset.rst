@@ -22,3 +22,4 @@ in different formats.
     ResourceDefinition
     ResourceDefinitions
     WebSource
+    Participants

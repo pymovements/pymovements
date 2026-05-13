@@ -107,7 +107,7 @@ def events2segmentation(
     Examples
     --------
     >>> import polars as pl
-    >>> from pymovements.events import events2segmentation
+    >>> from pymovements.transforms import events2segmentation
     >>>
     >>> events_df = pl.DataFrame(
     ...     {'name': ['blink', 'blink', 'not_blink'], 'onset': [2, 7, 3], 'offset': [5, 9, 6]}
@@ -327,7 +327,7 @@ def events2timeratio(
     Examples
     --------
     >>> import polars as pl
-    >>> from pymovements.events import events2timeratio
+    >>> from pymovements.transforms import events2timeratio
     >>> events = pl.DataFrame({
     ...     'name': ['blink', 'blink'],
     ...     'onset': [1.0, 5.0],
@@ -519,7 +519,7 @@ def segmentation2events(
     Examples
     --------
     >>> import polars as pl
-    >>> from pymovements.events import segmentation2events
+    >>> from pymovements.transforms import segmentation2events
     >>> segmentation = pl.Series([0, 0, 1, 1, 1, 0, 0, 1, 1, 0])
     >>> segmentation2events(segmentation, name='blink')
     shape: (2, 3)

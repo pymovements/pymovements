@@ -17,13 +17,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements.gaze.transforms.deg2pix. Based on tests for pix2deg."""
+"""Test pymovements.transforms.deg2pix. Based on tests for pix2deg."""
 import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import deg2pix
 
 
 @pytest.mark.parametrize(
@@ -254,7 +254,7 @@ import pymovements as pm
 )
 def test_deg2pix_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.gaze.transforms.deg2pix(**kwargs)
+        deg2pix(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -282,7 +282,7 @@ def test_deg2pix_raises_error(kwargs, series, exception, msg_substrings):
 
     with pytest.raises(exception) as excinfo:
         df.with_columns(
-            pm.gaze.transforms.deg2pix(**kwargs),
+            deg2pix(**kwargs),
         )
 
     msg, = excinfo.value.args
@@ -516,7 +516,7 @@ def test_deg2pix_returns(kwargs, series, expected_df, distance_as_column):
         kwargs['distance'] = 'distance'
 
     result_df = df.select(
-        pm.gaze.transforms.deg2pix(**kwargs),
+        deg2pix(**kwargs),
     )
     assert_frame_equal(result_df, expected_df.to_frame(), abs_tol=1e-4)
 
@@ -632,7 +632,7 @@ def test_deg2pix_distance_as_colum_returns(kwargs, data, expected_df):
     )
 
     result_df = df.select(
-        pm.gaze.transforms.deg2pix(**kwargs, distance='distance'),
+        deg2pix(**kwargs, distance='distance'),
     )
 
     assert_frame_equal(result_df, expected_df.to_frame())

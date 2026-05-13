@@ -17,12 +17,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test pymovements.gaze.transforms.center_origin."""
+"""Test pymovements.transforms.center_origin."""
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-import pymovements as pm
+from pymovements.transforms import center_origin
 
 
 @pytest.mark.parametrize(
@@ -56,7 +56,7 @@ import pymovements as pm
 )
 def test_center_origin_init_raises_error(kwargs, exception, msg_substrings):
     with pytest.raises(exception) as excinfo:
-        pm.gaze.transforms.center_origin(**kwargs)
+        center_origin(**kwargs)
 
     msg, = excinfo.value.args
     for msg_substring in msg_substrings:
@@ -117,6 +117,6 @@ def test_center_origin_returns(kwargs, series, expected_df):
     df = series.to_frame()
 
     result_df = df.select(
-        pm.gaze.transforms.center_origin(**kwargs),
+        center_origin(**kwargs),
     )
     assert_frame_equal(result_df, expected_df.to_frame())

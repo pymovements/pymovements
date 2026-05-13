@@ -14,6 +14,8 @@
      - Overview of the :py:class:`~pymovements.Gaze` class
    * - :doc:`events`
      - Overview of the :py:class:`~pymovements.Events` class
+   * - :doc:`transforms`
+     - Overview of transformation functions
    * - :doc:`measures`
      - Overview of eye movement measures
    * - :doc:`stimulus`
@@ -24,8 +26,6 @@
      - Overview of plotting functionality
    * - :doc:`extending`
      - Overview on how to extend pymovements with your own functions
-   * - :doc:`utils`
-     - Overview of helper utilities
 
 
 .. toctree::
@@ -36,9 +36,9 @@
    metadata
    gaze
    events
+   transforms
    measures
    stimulus
    synthetic
    plotting
    extending
-   utils
