@@ -83,7 +83,7 @@ class Screen:
     Examples
     --------
     >>> screen = Screen(
-    ...     value=1280,
+    ...     width_px=1280,
     ...     height_px=1024,
     ...     width_cm=38.0,
     ...     height_cm=30.0,
@@ -91,7 +91,7 @@ class Screen:
     ...     origin='upper left',
     ... )
     >>> print(screen)
-    Screen(value=1280, height_px=1024, width_cm=38.0,
+    Screen(width_px=1280, height_px=1024, width_cm=38.0,
     height_cm=30.0, distance_cm=68.0, origin='upper left')
 
     We can also access the screen boundaries in degrees of visual angle. This only works if the
@@ -503,3 +503,18 @@ class Screen:
     def __bool__(self) -> bool:
         """Return True if the screen has data defined, else False."""
         return not all(not value for value in self.__dict__.values())
+
+    def __str__(self) -> str:
+        """Return Screen string."""
+        # Make sure a string is enclosed by ' characters.
+        origin_str = f"'{self.origin}'" if isinstance(self.origin, str) else str(self.origin)
+
+        return (
+            f'{type(self).__name__}('
+            f'width_px={self.width_px}, '
+            f'height_px={self.height_px}, '
+            f'width_cm={self.width_cm}, '
+            f'height_cm={self.height_cm}, '
+            f'distance_cm={self.distance_cm}, '
+            f"origin={origin_str})"
+        )
