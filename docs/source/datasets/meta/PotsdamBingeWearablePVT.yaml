@@ -135,8 +135,8 @@ experiment:
     vendor: Pupil Labs
     mount: Wearable
   screen:
+    origin: center
     width_px: 1920
     height_px: 1080
     width_cm: 59.76
     height_cm: 33.615
-    origin: center

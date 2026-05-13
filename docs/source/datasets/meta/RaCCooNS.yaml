@@ -82,9 +82,9 @@ experiment:
     vendor: EyeLink
     mount: Desktop
   screen:
+    distance_cm: 105.5
+    origin: center
     width_px: 1920
     height_px: 1080
     width_cm: 56.8
     height_cm: 33.5
-    distance_cm: 105.5
-    origin: center

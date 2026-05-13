@@ -69,9 +69,9 @@ experiment:
   eyetracker:
     sampling_rate: 1000
   screen:
+    distance_cm: 65
+    origin: upper left
     width_px: 1680
     height_px: 1050
     width_cm: 47.5
     height_cm: 30
-    distance_cm: 65
-    origin: upper left
