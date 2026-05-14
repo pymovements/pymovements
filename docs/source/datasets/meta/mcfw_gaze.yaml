@@ -1,5 +1,6 @@
 name: mcfw_gaze
 long_name: Multi-Context Free-Viewing and Web-Browsing Gaze Dataset
+<<<<<<< HEAD
 description: 'Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion
   (120 Hz)
 
@@ -22,6 +23,8 @@ description: 'Multi-context eye-tracking dataset recorded with a Tobii Pro Fusio
   Dataset paper: https://doi.org/10.1145/3797246.3806660
 
   '
+=======
+>>>>>>> e5544496989670f02457d4ee2099aaed3e3931a8
 resources:
 - content: gaze
   source:
@@ -29,6 +32,11 @@ resources:
     filename: dataset.zip
     md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
   filename_pattern: dataset/data/participant_{participant_id:d}/image_\d+_\d+\.tsv
+<<<<<<< HEAD
+=======
+  filename_pattern_schema_overrides:
+    participant_id: '!int'
+>>>>>>> e5544496989670f02457d4ee2099aaed3e3931a8
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
@@ -45,6 +53,11 @@ resources:
     filename: dataset.zip
     md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
   filename_pattern: dataset/data/participant_{participant_id:d}/gaze_pattern_auth_trial\d+\.tsv
+<<<<<<< HEAD
+=======
+  filename_pattern_schema_overrides:
+    participant_id: '!int'
+>>>>>>> e5544496989670f02457d4ee2099aaed3e3931a8
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
@@ -61,6 +74,11 @@ resources:
     filename: dataset.zip
     md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
   filename_pattern: dataset/data/participant_{participant_id:d}/password_experiment_block\d+\.tsv
+<<<<<<< HEAD
+=======
+  filename_pattern_schema_overrides:
+    participant_id: '!int'
+>>>>>>> e5544496989670f02457d4ee2099aaed3e3931a8
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
@@ -77,6 +95,11 @@ resources:
     filename: dataset.zip
     md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
   filename_pattern: dataset/data/participant_{participant_id:d}/(?:news|shopping|video)\.tsv
+<<<<<<< HEAD
+=======
+  filename_pattern_schema_overrides:
+    participant_id: '!int'
+>>>>>>> e5544496989670f02457d4ee2099aaed3e3931a8
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
