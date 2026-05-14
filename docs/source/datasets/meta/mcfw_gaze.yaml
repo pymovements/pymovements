@@ -1,4 +1,4 @@
-name: mcfw-gaze
+name: mcfw_gaze
 long_name: Multi-Context Free-Viewing and Web-Browsing Gaze Dataset
 description: 'Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion
   (120 Hz)
