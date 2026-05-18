@@ -114,13 +114,27 @@ class MCFWGaze(DatasetDefinition):
         default_factory=lambda: ResourceDefinitions(
             [
                 {
+                    'content': 'participants',
+                    'source': {
+                        'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
+                        'filename': 'dataset.zip',
+                        'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
+                    },
+                    'filename_pattern': 'participant.csv',
+                    'load_kwargs': {
+                        'read_csv_kwargs': {'separator': ','},
+                        'rename': {'ID': 'participant_id'},
+                    },
+                },
+                {
                     'content': 'gaze',
                     'source': {
                         'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
                         'filename': 'dataset.zip',
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
-                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/image_\d+_\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_|_trial|_block)?{run:d}(_{acquisition:d})?)?.tsv',
+                    # noqa: E501 # pylint: disable=line-too-long
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
@@ -134,64 +148,13 @@ class MCFWGaze(DatasetDefinition):
                     },
                 },
                 {
-                    'content': 'gaze',
+                    'content': 'imagestimulus',
                     'source': {
                         'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
                         'filename': 'dataset.zip',
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
-                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/gaze_pattern_auth_trial\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'load_kwargs': {
-                        'read_csv_kwargs': {'separator': '\t'},
-                        'time_column': 'device_time_stamp',
-                        'time_unit': 'us',
-                        'pixel_columns': [
-                            'left_gaze_point_on_display_area_x',
-                            'left_gaze_point_on_display_area_y',
-                            'right_gaze_point_on_display_area_x',
-                            'right_gaze_point_on_display_area_y',
-                        ],
-                    },
-                },
-                {
-                    'content': 'gaze',
-                    'source': {
-                        'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
-                        'filename': 'dataset.zip',
-                        'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
-                    },
-                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/password_experiment_block\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'load_kwargs': {
-                        'read_csv_kwargs': {'separator': '\t'},
-                        'time_column': 'device_time_stamp',
-                        'time_unit': 'us',
-                        'pixel_columns': [
-                            'left_gaze_point_on_display_area_x',
-                            'left_gaze_point_on_display_area_y',
-                            'right_gaze_point_on_display_area_x',
-                            'right_gaze_point_on_display_area_y',
-                        ],
-                    },
-                },
-                {
-                    'content': 'gaze',
-                    'source': {
-                        'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
-                        'filename': 'dataset.zip',
-                        'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
-                    },
-                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/(?:news|shopping|video)\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'load_kwargs': {
-                        'read_csv_kwargs': {'separator': '\t'},
-                        'time_column': 'device_time_stamp',
-                        'time_unit': 'us',
-                        'pixel_columns': [
-                            'left_gaze_point_on_display_area_x',
-                            'left_gaze_point_on_display_area_y',
-                            'right_gaze_point_on_display_area_x',
-                            'right_gaze_point_on_display_area_y',
-                        ],
-                    },
+                    'filename_pattern': '{stimulus_id:d}.jpg',
                 },
             ],
         ),
