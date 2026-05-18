@@ -86,11 +86,11 @@ class MCFWGaze(DatasetDefinition):
     Examples
     --------
     Initialize your :py:class:`~pymovements.dataset.Dataset` object with the
-    :py:class:`~pymovements.datasets.mcfw_gaze` definition:
+    :py:class:`~pymovements.datasets.MCFWGaze` definition:
 
     >>> import pymovements as pm
     >>>
-    >>> dataset = pm.Dataset("mcfw_gaze", path='data/mcfw_gaze')
+    >>> dataset = pm.Dataset("MCFW-Gaze", path='data/mcfw_gaze')
 
     Download the dataset resources:
 
@@ -120,7 +120,7 @@ class MCFWGaze(DatasetDefinition):
                         'filename': 'dataset.zip',
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
-                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/image_\d+_\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/image_{run_id:d}_{acquisition:d}\.tsv',  # noqa: E501 # pylint: disable=line-too-long
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
