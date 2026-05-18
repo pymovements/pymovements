@@ -1,7 +1,10 @@
-name: mcfw_gaze
+name: MCFW-Gaze
+
 long_name: Multi-Context Free-Viewing and Web-Browsing Gaze Dataset
 
 description: |
+  MCFW-Gaze dataset :cite:p:`MCFW-Gaze`.
+
   Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion (120 Hz)
   from 15 participants across four task types: natural image free-viewing
   (100 images, 3 sessions, 5 seconds per image), gaze-pattern authentication (5 trials),
@@ -11,8 +14,7 @@ description: |
   Eye-tracking data is provided as binocular gaze point coordinates on the
   display area, along with pupil diameter and gaze origin in user coordinates.
 
-  Dataset available at: https://doi.org/10.5281/zenodo.18725478
-  Dataset paper: https://doi.org/10.1145/3797246.3806660
+  Check the respective zenodo page for details :cite:p:`MCFW-Gaze`.
 
 resources:
 - content: gaze
@@ -79,6 +81,7 @@ resources:
     - left_gaze_point_on_display_area_y
     - right_gaze_point_on_display_area_x
     - right_gaze_point_on_display_area_y
+
 experiment:
   eyetracker:
     sampling_rate: 120

@@ -26,15 +26,13 @@ from dataclasses import KW_ONLY
 from typing import Any
 
 from pymovements.dataset.dataset_definition import DatasetDefinition
-from pymovements.dataset.dataset_library import register_dataset
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
-@register_dataset
 @dataclass
-class mcfw_gaze(DatasetDefinition):
-    """mcfw_gaze dataset :cite:p:`mcfw_gaze`.
+class MCFWGaze(DatasetDefinition):
+    """MCFW-Gaze dataset :cite:p:`MCFW-Gaze`.
 
     Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion (120 Hz)
     from 15 participants across four task types: natural image free-viewing
@@ -44,6 +42,8 @@ class mcfw_gaze(DatasetDefinition):
 
     Eye-tracking data is provided as binocular gaze point coordinates on the
     display area, along with pupil diameter and gaze origin in user coordinates.
+
+    Check the respective zenodo page for details :cite:p:`MCFW-Gaze`.
 
     Attributes
     ----------
@@ -104,7 +104,7 @@ class mcfw_gaze(DatasetDefinition):
     # pylint: disable=similarities
     # The DatasetDefinition child classes potentially share code chunks for definitions.
 
-    name: str = 'mcfw_gaze'
+    name: str = 'MCFW-Gaze'
 
     _: KW_ONLY  # all fields below can only be passed as keyword arguments.
 
@@ -121,7 +121,6 @@ class mcfw_gaze(DatasetDefinition):
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
                     'filename_pattern': r'dataset/data/participant_{participant_id:d}/image_\d+_\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename_pattern_schema_overrides': {'participant_id': int},
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
@@ -142,7 +141,6 @@ class mcfw_gaze(DatasetDefinition):
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
                     'filename_pattern': r'dataset/data/participant_{participant_id:d}/gaze_pattern_auth_trial\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename_pattern_schema_overrides': {'participant_id': int},
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
@@ -163,7 +161,6 @@ class mcfw_gaze(DatasetDefinition):
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
                     'filename_pattern': r'dataset/data/participant_{participant_id:d}/password_experiment_block\d+\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename_pattern_schema_overrides': {'participant_id': int},
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
@@ -184,7 +181,6 @@ class mcfw_gaze(DatasetDefinition):
                         'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
                     },
                     'filename_pattern': r'dataset/data/participant_{participant_id:d}/(?:news|shopping|video)\.tsv',  # noqa: E501 # pylint: disable=line-too-long
-                    'filename_pattern_schema_overrides': {'participant_id': int},
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
