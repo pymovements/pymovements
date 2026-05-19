@@ -25,6 +25,8 @@ from dataclasses import field
 from dataclasses import KW_ONLY
 from typing import Any
 
+import polars
+
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
@@ -122,7 +124,16 @@ class MCFWGaze(DatasetDefinition):
                     },
                     'filename_pattern': 'participant.csv',
                     'load_kwargs': {
-                        'read_csv_kwargs': {'separator': ','},
+                        'read_csv_kwargs': {
+                            'separator': ',',
+                            'schema': {
+                                'ID': polars.String,
+                                'gender': polars.String,
+                                'age': polars.Int64,
+                                'glasses': polars.String,
+                                'Memo': polars.String,
+                            },
+                        },
                         'rename': {'ID': 'participant_id'},
                     },
                 },
