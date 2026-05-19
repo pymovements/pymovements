@@ -31,6 +31,12 @@ resources:
   filename_pattern: participant.csv
   load_kwargs:
     read_csv_kwargs:
+      schema:
+        ID: '!polars.datatypes.classes.String'
+        gender: '!polars.datatypes.classes.String'
+        age: '!polars.datatypes.classes.Int64'
+        glasses: '!polars.datatypes.classes.String'
+        Memo: '!polars.datatypes.classes.String'
       separator: ','
     rename:
       ID: participant_id
@@ -39,7 +45,7 @@ resources:
     url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
     filename: dataset.zip
     md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
-  filename_pattern: dataset/data/participant_0*(?P<participant_id>[1-9]+[0-9]*)/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_|_trial|_block)?{run:d}(_{acquisition:d})?)?.tsv
+  filename_pattern: dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_|_trial|_block)?{run:d}(_{acquisition:d})?)?.tsv
   load_kwargs:
     read_csv_kwargs:
       separator: "\t"
