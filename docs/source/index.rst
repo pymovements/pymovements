@@ -15,4 +15,5 @@ Welcome to the pymovements documentation!
    datasets/index
    reference/index
    contributing/index
+   citing
    bibliography
