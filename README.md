@@ -90,7 +90,7 @@ If you use pymovements for a scientific publication, we would appreciate citatio
 software and the following paper:
 
 - [pymovements on Zenodo](https://doi.org/10.5281/zenodo.17397139). Please find us on Zenodo and
-  replace with the citation for the version you are using. You can replace the full author list from  
+  replace with the citation for the version you are using. You can replace the full author list from
   there with "The pymovements project team" like in the example below.
 
   ```bibtex
@@ -130,5 +130,5 @@ software and the following paper:
   ```
 
 In case you want to cite specific parts of the package, like our dataset library or data quality
-reports, please consider citing our other publications listed on our 
+reports, please consider citing our other publications listed on our
 [citing page](https://pymovements.readthedocs.io/en/stable/citing.html).

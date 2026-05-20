@@ -45,9 +45,9 @@ software and the following paper:
       doi       = {10.1145/3588015.3590134},
       booktitle = {Proceedings of the 2023 Symposium on Eye Tracking Research and Applications},
       articleno = {53},
-      numpages = {2},
+      numpages  = {2},
       location  = {Tubingen, Germany},
-      series = {ETRA '23}
+      series    = {ETRA '23}
     }
 
 - `The More the Merrier: Boost Your Dataset Visibility and Discover Eye-Tracking Datasets with
