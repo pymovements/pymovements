@@ -143,7 +143,7 @@ class MCFWGaze(DatasetDefinition):
                         'filename': 'dataset.zip',
                         'md5': '5e04a7b5e50f7508775e1daea527246b',
                     },
-                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_|_trial|_block)?{run:d}(_{acquisition:d})?)?.tsv',  # noqa: E501 # pylint: disable=line-too-long
+                    'filename_pattern': r'dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_{stimulus_id:d})?(_|_trial|_block)?{run:d})?.tsv',  # noqa: E501 # pylint: disable=line-too-long
                     'load_kwargs': {
                         'read_csv_kwargs': {'separator': '\t'},
                         'time_column': 'device_time_stamp',
