@@ -118,14 +118,13 @@ class MCFWGaze(DatasetDefinition):
                 {
                     'content': 'participants',
                     'source': {
-                        'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
+                        'url': 'https://zenodo.org/records/20300972/files/dataset.zip?download=1',
                         'filename': 'dataset.zip',
-                        'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
+                        'md5': '5e04a7b5e50f7508775e1daea527246b',
                     },
-                    'filename_pattern': 'participant.csv',
+                    'filename_pattern': 'participants.tsv',
                     'load_kwargs': {
                         'read_csv_kwargs': {
-                            'separator': ',',
                             'schema': {
                                 'ID': polars.String,
                                 'gender': polars.String,
@@ -140,9 +139,9 @@ class MCFWGaze(DatasetDefinition):
                 {
                     'content': 'gaze',
                     'source': {
-                        'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
+                        'url': 'https://zenodo.org/records/20300972/files/dataset.zip?download=1',
                         'filename': 'dataset.zip',
-                        'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
+                        'md5': '5e04a7b5e50f7508775e1daea527246b',
                     },
                     'filename_pattern': r'dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_|_trial|_block)?{run:d}(_{acquisition:d})?)?.tsv',  # noqa: E501 # pylint: disable=line-too-long
                     'load_kwargs': {
@@ -160,9 +159,9 @@ class MCFWGaze(DatasetDefinition):
                 {
                     'content': 'imagestimulus',
                     'source': {
-                        'url': 'https://zenodo.org/records/19463338/files/dataset.zip?download=1',
+                        'url': 'https://zenodo.org/records/20300972/files/dataset.zip?download=1',
                         'filename': 'dataset.zip',
-                        'md5': '8fdb6e04df4ca2dee59b14edc3ec3aed',
+                        'md5': '5e04a7b5e50f7508775e1daea527246b',
                     },
                     'filename_pattern': '{stimulus_id:d}.jpg',
                 },
