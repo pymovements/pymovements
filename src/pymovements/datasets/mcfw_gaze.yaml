@@ -19,10 +19,10 @@ description: |
 resources:
   - content: participants
     source:
-      url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+      url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
       filename: dataset.zip
-      md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
-    filename_pattern: 'participant.csv'
+      md5: 5e04a7b5e50f7508775e1daea527246b
+    filename_pattern: 'participants.tsv'
     load_kwargs:
       read_csv_kwargs:
         schema:
@@ -31,14 +31,13 @@ resources:
           age: !polars.Int64
           glasses: !polars.String
           Memo: !polars.String
-        separator: ','
       rename:
         ID: participant_id
   - content: gaze
     source:
-      url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+      url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
       filename: dataset.zip
-      md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
+      md5: 5e04a7b5e50f7508775e1daea527246b
     filename_pattern: 'dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_|_trial|_block)?{run:d}(_{acquisition:d})?)?.tsv'
     load_kwargs:
       read_csv_kwargs:
@@ -52,9 +51,9 @@ resources:
       - right_gaze_point_on_display_area_y
   - content: imagestimulus
     source:
-      url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+      url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
       filename: dataset.zip
-      md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
+      md5: 5e04a7b5e50f7508775e1daea527246b
     filename_pattern: '{stimulus_id:d}.jpg'
 
 experiment:
