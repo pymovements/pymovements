@@ -2,12 +2,43 @@
 Citing pymovements
 ==================
 
-If you use pymovements for a scientific publication, we would appreciate citations to the published
-software and the following paper:
+If you use pymovements in a scientific publication, please cite both the published software and the
+following paper:
 
-- `pymovements on Zenodo <pymovementsZenodo>`_. Please find us on Zenodo and replace with the
-  citation for the version you are using. You can replace the full author list from there with
-  "The pymovements project team" like in the example below.
+- `pymovements: A Python Package for Processing Eye Movement Data <pymovementsPaper_>`_.
+  Daniel G. Krakowczyk, David R. Reich, Jakob Chwastek, Deborah N. Jakobi, Paul Prasse,
+  Assunta Süss, Oleksii Turuta, Paweł Kasprowski, and Lena A. Jäger. 2023.
+  *In Proceedings of the 2023 Symposium on Eye Tracking Research and Applications (ETRA '23).*
+  https://doi.org/10.1145/3588015.3590134
+
+  .. _pymovementsPaper: https://doi.org/10.1145/3588015.3590134
+
+  .. code:: bibtex
+
+    @inproceedings{pymovementsPaper,
+      author    = {
+        Krakowczyk, Daniel G. and Reich, David R. and Chwastek, Jakob and Jakobi, Deborah N. and
+        Prasse, Paul and Süss, Assunta and Turuta, Oleksii and Kasprowski, Pawe\l{} and
+        J\"{a}ger, Lena A.
+      },
+      title     = {pymovements: A Python Package for Processing Eye Movement Data},
+      year      = {2023},
+      isbn      = {9798400701504},
+      publisher = {Association for Computing Machinery},
+      address   = {New York, NY, USA},
+      url       = {https://doi.org/10.1145/3588015.3590134},
+      doi       = {10.1145/3588015.3590134},
+      booktitle = {Proceedings of the 2023 Symposium on Eye Tracking Research and Applications},
+      articleno = {53},
+      numpages  = {2},
+      location  = {Tubingen, Germany},
+      series    = {ETRA '23}
+    }
+
+- `pymovements on Zenodo <pymovementsZenodo_>`_. Each new pymovements release is archived on Zenodo
+  and assigned a unique DOI. Please choose the citation corresponding to the specific pymovements
+  version you are using. If needed, you may replace the full author list with
+  “*The pymovements project team*” as shown in the example for *pymovements v0.26.2* below.
 
   .. _pymovementsZenodo: https://doi.org/10.5281/zenodo.17397139
 
@@ -24,34 +55,15 @@ software and the following paper:
       url       = {https://doi.org/10.5281/zenodo.19486286},
     }
 
-- `pymovements: A Python Package for Processing Eye Movement Data <pymovementsPaper>`_
-
-  .. _pymovementsPaper: https://doi.org/10.1145/3588015.3590134
-
-  .. code:: bibtex
-
-    @inproceedings{pymovementsPaper,
-      author    = {
-        Krakowczyk, Daniel G. and Reich, David R. and Chwastek, Jakob and Jakobi, Deborah N.
-        and Prasse, Paul and Süss, Assunta and Turuta, Oleksii and Kasprowski, Pawe\l{}
-        and J\"{a}ger, Lena A.
-      },
-      title     = {pymovements: A Python Package for Processing Eye Movement Data},
-      year      = {2023},
-      isbn      = {9798400701504},
-      publisher = {Association for Computing Machinery},
-      address   = {New York, NY, USA},
-      url       = {https://doi.org/10.1145/3588015.3590134},
-      doi       = {10.1145/3588015.3590134},
-      booktitle = {Proceedings of the 2023 Symposium on Eye Tracking Research and Applications},
-      articleno = {53},
-      numpages  = {2},
-      location  = {Tubingen, Germany},
-      series    = {ETRA '23}
-    }
+In case you want to cite specific parts of the package, like our dataset library or data quality
+reports, please consider the publications below.
 
 - `The More the Merrier: Boost Your Dataset Visibility and Discover Eye-Tracking Datasets with
-  pymovmenents <pymovementsDatasets>`_
+  pymovements <pymovementsDatasets_>`_ .
+  Daniel G. Krakowczyk, David R. Reich, Andreas Säuberli, Iza Škrjanec, Isabelle C. R. Cretton,
+  Deborah N. Jakobi, Sergiu Nisioi, Paul Prasse, and Lena A. Jäger. 2025.
+  *In Proceedings of the 2025 Symposium on Eye Tracking Research and Applications (ETRA '25).*
+  https://doi.org/10.1145/3715669.3726810
 
   .. _pymovementsDatasets: https://doi.org/10.1145/3715669.3726810
 
@@ -60,8 +72,8 @@ software and the following paper:
     @inproceedings{pymovementsDatasets,
       author    = {
         Krakowczyk, Daniel G. and Reich, David R. and S\"{a}uberli, Andreas and \v{S}krjanec, Iza
-        and Cretton, Isabelle C. R. and Jakobi, Deborah N. and Nisioi, Sergiu and Prasse, Paul
-        and J\"{a}ger, Lena A.
+        and Cretton, Isabelle C. R. and Jakobi, Deborah N. and Nisioi, Sergiu and Prasse, Paul and
+        J\"{a}ger, Lena A.
       },
       title     = {
         The More the Merrier: Boost Your Dataset Visibility and Discover Eye-Tracking Datasets with
@@ -80,7 +92,10 @@ software and the following paper:
       series    = {ETRA '25}
     }
 
-- `Reporting Eye-Tracking Data Quality: Towards a New Standard <pymovementsDataQuality>`_
+- `Reporting Eye-Tracking Data Quality: Towards a New Standard <pymovementsDataQuality_>`_.
+  Deborah N. Jakobi, Daniel G. Krakowczyk, and Lena A. Jäger. 2024.
+  *In Proceedings of the 2024 Symposium on Eye Tracking Research and Applications (ETRA '24).*
+  https://doi.org/10.1145/3649902.3655658
 
   .. _pymovementsDataQuality: https://doi.org/10.1145/3649902.3655658
 
