@@ -127,7 +127,7 @@ def scan_dataset(
         content_type = resource_definition.content
 
         if content_type == 'participants':
-            resource_dirpath = paths.dataset
+            resource_dirpath = paths.raw
         elif content_type == 'gaze':
             resource_dirpath = paths.raw
         elif content_type == 'precomputed_events':
@@ -145,14 +145,15 @@ def scan_dataset(
             )
             continue
 
+        regex = curly_to_regex(resource_definition.filename_pattern)
         filepaths = match_filepaths(
             path=resource_dirpath,
-            regex=curly_to_regex(resource_definition.filename_pattern),
+            regex=regex,
             relative=True,
         )
 
         if not filepaths:
-            raise RuntimeError(f'no matching files found in {resource_dirpath}')
+            raise RuntimeError(f'no matching files found in {resource_dirpath} with regex {regex}')
 
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
         fileinfo_df = fileinfo_df.sort(by='filepath')

@@ -236,7 +236,7 @@ class TestDatasetLoadParticipants:
             self, participants, resources, tmp_path, make_csv_file,
     ):
         make_csv_file(
-            tmp_path / 'participants.tsv',
+            tmp_path / 'raw' / 'participants.tsv',
             data=participants,
             separator='\t',
         )
@@ -253,7 +253,7 @@ class TestDatasetLoadParticipants:
             self, participants, resources, tmp_path, make_csv_file,
     ):
         make_csv_file(
-            tmp_path / 'participants.tsv',
+            tmp_path / 'raw' / 'participants.tsv',
             data=participants,
             separator='\t',
         )
@@ -270,7 +270,7 @@ class TestDatasetLoadParticipants:
             self, participants, resources, tmp_path, make_csv_file,
     ):
         make_csv_file(
-            tmp_path / 'participants.tsv',
+            tmp_path / 'raw' / 'participants.tsv',
             data=participants,
             separator='\t',
         )
@@ -287,7 +287,7 @@ class TestDatasetLoadParticipants:
             self, participants, resources, tmp_path, make_csv_file,
     ):
         make_csv_file(
-            tmp_path / 'participants.tsv',
+            tmp_path / 'raw' / 'participants.tsv',
             data=participants,
             separator='\t',
         )
@@ -304,7 +304,7 @@ class TestDatasetLoadParticipants:
             self, participants, resources, tmp_path, make_csv_file,
     ):
         make_csv_file(
-            tmp_path / 'participants.tsv',
+            tmp_path / 'raw' / 'participants.tsv',
             data=participants,
             separator='\t',
         )
@@ -324,12 +324,12 @@ def test_dataset_load_participants_raises_with_multiple_participant_files(
 ):
     participants = pl.DataFrame({'participant_id': ['1']})
     make_csv_file(
-        tmp_path / 'participants.tsv',
+        tmp_path / 'raw' / 'participants.tsv',
         data=participants,
         separator='\t',
     )
     make_csv_file(
-        tmp_path / 'participants2.tsv',
+        tmp_path / 'raw' / 'participants2.tsv',
         data=participants,
         separator='\t',
     )
