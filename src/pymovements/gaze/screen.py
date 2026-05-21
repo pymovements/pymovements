@@ -503,10 +503,8 @@ class Screen:
 
         return (
             f'{type(self).__name__}('
-            f'width_px={self.width_px}, '
-            f'height_px={self.height_px}, '
-            f'width_cm={self.width_cm}, '
-            f'height_cm={self.height_cm}, '
+            f'resolution={self.resolution}, '
+            f'size={self.size}, '
             f'distance_cm={self.distance_cm}, '
             f"origin={origin_str})"
         )
