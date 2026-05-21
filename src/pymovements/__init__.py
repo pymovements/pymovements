@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides top-level access to submodules."""
-from pymovements import datasets
 from pymovements import events
 from pymovements import exceptions
 from pymovements import gaze
@@ -26,6 +25,7 @@ from pymovements import measure
 from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
+from pymovements import transforms
 from pymovements import warnings
 from pymovements._version import __version__
 from pymovements.dataset import Dataset
@@ -64,7 +64,6 @@ __all__ = [
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
-    'datasets',
     'Participants',
     'register_dataset',
     'ResourceDefinition',
@@ -96,6 +95,7 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
+    'transforms',
 
     'exceptions',
     'UnknownFileType',

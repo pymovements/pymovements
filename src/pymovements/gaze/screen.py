@@ -30,7 +30,7 @@ import numpy as np
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.gaze import transforms_numpy
+from pymovements.transforms.numpy import pix2deg
 
 
 @repr_html()
@@ -273,7 +273,7 @@ class Screen:
         assert self.origin is not None
 
         return float(
-            transforms_numpy.pix2deg(
+            pix2deg(
                 self.width_px - 1,
                 screen_px=self.width_px,
                 screen_cm=self.width_cm,
@@ -298,7 +298,7 @@ class Screen:
         assert self.origin is not None
 
         return float(
-            transforms_numpy.pix2deg(
+            pix2deg(
                 self.height_px - 1,
                 screen_px=self.height_px,
                 screen_cm=self.height_cm,
@@ -323,7 +323,7 @@ class Screen:
         assert self.origin is not None
 
         return float(
-            transforms_numpy.pix2deg(
+            pix2deg(
                 0,
                 screen_px=self.width_px,
                 screen_cm=self.width_cm,
@@ -348,7 +348,7 @@ class Screen:
         assert self.origin is not None
 
         return float(
-            transforms_numpy.pix2deg(
+            pix2deg(
                 0,
                 screen_px=self.height_px,
                 screen_cm=self.height_cm,
@@ -421,7 +421,7 @@ class Screen:
         _checks.check_is_not_none(origin=self.origin)
         assert self.origin is not None
 
-        return transforms_numpy.pix2deg(
+        return pix2deg(
             arr=arr,
             screen_px=(self.width_px, self.height_px),
             screen_cm=(self.width_cm, self.height_cm),
