@@ -440,7 +440,6 @@ class Screen:
             self,
             *,
             exclude_none: bool = True,
-            exclude_private: bool = True,
             prefer_resolution: bool = False,
             prefer_size: bool = False,
     ) -> dict[str, Any]:
@@ -452,9 +451,6 @@ class Screen:
             Exclude attributes that are either ``None`` or that are objects that evaluate to
             ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
             ``int``, and ``float`` are not excluded.
-            (default: True)
-        exclude_private: bool
-            Exclude attributes that start with ``_``.
             (default: True)
         prefer_resolution: bool
             If ``True`` include ``resolution`` instead of ``width_px`` and ``height_px`` in output
@@ -485,12 +481,11 @@ class Screen:
             data['height_cm'] = self.height_cm
 
         # Delete private fields from dictionary.
-        if exclude_private:
-            # we need a separate list of keys here or else we get a
-            # RuntimeError: dictionary changed size during iteration
-            for key in list(data.keys()):
-                if key.startswith('_'):
-                    del data[key]
+        # we need a separate list of keys here or else we get a
+        # RuntimeError: dictionary changed size during iteration
+        for key in list(data.keys()):
+            if key.startswith('_'):
+                del data[key]
 
         # Delete fields that evaluate to False (False, None, [], {})
         if exclude_none:

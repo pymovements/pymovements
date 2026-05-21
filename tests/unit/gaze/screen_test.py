@@ -544,75 +544,6 @@ def test_screen_to_dict_exclude_none(screen, exclude_none, expected_dict):
 
 
 @pytest.mark.parametrize(
-    ('screen', 'exclude_private', 'expected_dict'),
-    [
-        pytest.param(
-            pm.Screen(),
-            False,
-            {
-                'width_px': None,
-                'height_px': None,
-                'width_cm': None,
-                'height_cm': None,
-                'distance_cm': None,
-                'origin': None,
-                '_width_px': None,
-                '_height_px': None,
-                '_width_cm': None,
-                '_height_cm': None,
-            },
-            id='all_none_exclude_false',
-        ),
-        pytest.param(
-            pm.Screen(),
-            True,
-            {
-                'width_px': None,
-                'height_px': None,
-                'width_cm': None,
-                'height_cm': None,
-                'distance_cm': None,
-                'origin': None,
-            },
-            id='all_none_exclude_true',
-        ),
-        pytest.param(
-            pm.Screen(height_px=150, origin='test'),
-            True,
-            {
-                'width_px': None,
-                'height_px': 150,
-                'width_cm': None,
-                'height_cm': None,
-                'distance_cm': None,
-                'origin': 'test',
-            },
-            id='height_px_origin_exclude_true',
-        ),
-        pytest.param(
-            pm.Screen(height_px=150, origin='test'),
-            False,
-            {
-                'width_px': None,
-                'height_px': 150,
-                'width_cm': None,
-                'height_cm': None,
-                'distance_cm': None,
-                'origin': 'test',
-                '_width_px': None,
-                '_height_px': 150,
-                '_width_cm': None,
-                '_height_cm': None,
-            },
-            id='height_px_origin_exclude_false',
-        ),
-    ],
-)
-def test_screen_to_dict_exclude_private(screen, exclude_private, expected_dict):
-    assert screen.to_dict(exclude_none=False, exclude_private=exclude_private) == expected_dict
-
-
-@pytest.mark.parametrize(
     ('prefer_resolution', 'expected_dict'),
     [
         pytest.param(
@@ -629,11 +560,7 @@ def test_screen_to_dict_exclude_private(screen, exclude_private, expected_dict):
 )
 def test_screen_to_dict_prefer_resolution(prefer_resolution, expected_dict):
     screen = pm.Screen(1024, 768)
-    result = screen.to_dict(
-        prefer_resolution=prefer_resolution,
-        exclude_none=True,
-        exclude_private=True,
-    )
+    result = screen.to_dict(prefer_resolution=prefer_resolution, exclude_none=True)
     assert result == expected_dict
 
 
@@ -654,11 +581,7 @@ def test_screen_to_dict_prefer_resolution(prefer_resolution, expected_dict):
 )
 def test_screen_to_dict_prefer_size(prefer_size, expected_dict):
     screen = pm.Screen(size=(30.9, 27.1))
-    result = screen.to_dict(
-        prefer_size=prefer_size,
-        exclude_none=True,
-        exclude_private=True,
-    )
+    result = screen.to_dict(prefer_size=prefer_size, exclude_none=True)
     assert result == expected_dict
 
 
