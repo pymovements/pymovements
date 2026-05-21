@@ -466,7 +466,7 @@ class Screen:
         dict[str, Any]
             Screen as dictionary.
         """
-        data = {}
+        data: dict[str, Any] = {}
 
         # Include properties in dictionary.
         if prefer_resolution:
