@@ -91,8 +91,7 @@ class Screen:
     ...     origin='upper left',
     ... )
     >>> print(screen)
-    Screen(width_px=1280, height_px=1024, width_cm=38.0,
-    height_cm=30.0, distance_cm=68.0, origin='upper left')
+    Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0, origin='upper left')
 
     We can also access the screen boundaries in degrees of visual angle. This only works if the
     `distance_cm` attribute is specified.
