@@ -131,4 +131,4 @@ software and the following paper:
 
 In case you want to cite specific parts of the package, like our dataset library or data quality
 reports, please consider citing our other publications listed on our
-[citing page](https://pymovements.readthedocs.io/en/stable/citing.html).
+[citing page](https://pymovements.readthedocs.io/en/stable/about-us/citing.html).
