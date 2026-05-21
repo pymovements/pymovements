@@ -20,8 +20,10 @@
 """Provides the Screen class."""
 from __future__ import annotations
 
-from dataclasses import asdict
+from collections.abc import Sequence
 from dataclasses import dataclass
+from dataclasses import fields
+from numbers import Number
 from typing import Any
 
 import numpy as np
@@ -38,21 +40,45 @@ class Screen:
 
     Attributes
     ----------
-    width_px: int | None
-        Screen width in pixels. (default: None)
-    height_px: int | None
-        Screen height in pixels. (default: None)
-    width_cm: float | None
-        Screen width in centimeters. (default: None)
-    height_cm: float | None
-        Screen height in centimeters. (default: None)
     distance_cm: float | None
         Eye-to-screen distance in centimeters. If None, a `distance_column` must be provided
         in the `DatasetDefinition` or `Gaze`, which contains the eye-to-screen
-        distance for each sample in millimeters. (default: None)
+        distance for each sample in millimeters.
+        (default: None)
     origin: str | None
         Specifies the screen location of the origin of the pixel
-        coordinate system. (default: None)
+        coordinate system.
+        (default: None)
+
+    Parameters
+    ----------
+    width_px: int | None
+        Screen width in pixels.
+        (default: None)
+    height_px: int | None
+        Screen height in pixels.
+        (default: None)
+    width_cm: float | None
+        Screen width in centimeters.
+        (default: None)
+    height_cm: float | None
+        Screen height in centimeters.
+        (default: None)
+    distance_cm: float | None
+        Eye-to-screen distance in centimeters. If None, a `distance_column` must be provided
+        in the `DatasetDefinition` or `Gaze`, which contains the eye-to-screen
+        distance for each sample in millimeters.
+        (default: None)
+    origin: str | None
+        Specifies the screen location of the origin of the pixel
+        coordinate system.
+        (default: None)
+    resolution: tuple[int | None, int | None] | None
+        Screen resolution in pixels as tuple of width and height.
+        (default: None)
+    size: tuple[float | None, float | None] | None
+        Screen size in centimeters as tuple of width and height.
+        (default: None)
 
     Examples
     --------
@@ -65,8 +91,7 @@ class Screen:
     ...     origin='upper left',
     ... )
     >>> print(screen)
-    Screen(width_px=1280, height_px=1024, width_cm=38.0,
-    height_cm=30.0, distance_cm=68.0, origin='upper left')
+    Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0, origin='upper left')
 
     We can also access the screen boundaries in degrees of visual angle. This only works if the
     `distance_cm` attribute is specified.
@@ -82,12 +107,37 @@ class Screen:
 
     """
 
-    width_px: int | None = None
-    height_px: int | None = None
-    width_cm: float | None = None
-    height_cm: float | None = None
     distance_cm: float | None = None
     origin: str | None = None
+
+    _width_px: int | None = None
+    _height_px: int | None = None
+    _width_cm: float | None = None
+    _height_cm: float | None = None
+
+    def __init__(
+        self,
+        width_px: int | None = None,
+        height_px: int | None = None,
+        width_cm: float | None = None,
+        height_cm: float | None = None,
+        distance_cm: float | None = None,
+        origin: str | None = None,
+        *,
+        resolution: tuple[int | None, int | None] | None = None,
+        size: tuple[float | None, float | None] | None = None,
+    ):
+        # Check mutual exclusivity.
+        _checks.check_is_mutual_exclusive(width_px=width_px, resolution=resolution)
+        _checks.check_is_mutual_exclusive(height_px=height_px, resolution=resolution)
+        _checks.check_is_mutual_exclusive(width_cm=width_cm, size=size)
+        _checks.check_is_mutual_exclusive(height_cm=height_cm, size=size)
+
+        # Build the tuple from the individual px/cm arguments if not provided.
+        self.resolution = resolution if resolution is not None else (width_px, height_px)
+        self.size = size if size is not None else (width_cm, height_cm)
+        self.distance_cm = distance_cm
+        self.origin = origin
 
     def __post_init__(self) -> None:
         """Check fields for validity."""
@@ -105,6 +155,106 @@ class Screen:
 
         if self.distance_cm is not None:
             _checks.check_is_greater_than_zero(distance_cm=self.distance_cm)
+
+    @property
+    def width_px(self) -> int | None:
+        """Width of screen in pixels."""
+        return self._width_px
+
+    @width_px.setter
+    def width_px(self, value: int | None = None) -> None:
+        if value is not None and not isinstance(value, Number):
+            raise TypeError(f"'width_px' must be a number but is of type {type(value).__name__}")
+        if value is not None and value <= 0:
+            raise ValueError(f"'width_px' must be a positive number but is: {value}")
+        self._width_px = value
+
+    @property
+    def height_px(self) -> int | None:
+        """Height of screen in pixels."""
+        return self._height_px
+
+    @height_px.setter
+    def height_px(self, value: int | None = None) -> None:
+        if value is not None and not isinstance(value, Number):
+            raise TypeError(f"'height_px' must be a number but is of type {type(value).__name__}")
+        if value is not None and value <= 0:
+            raise ValueError(f"'height_px' must be a positive number but is: {value}")
+        self._height_px = value
+
+    @property
+    def resolution(self) -> tuple[int | None, int | None] | None:
+        """Resolution of screen in pixels (width, height)."""
+        if self.width_px is None and self.height_px is None:
+            return None
+        return (self.width_px, self.height_px)
+
+    @resolution.setter
+    def resolution(self, values: Sequence[int | None] | None) -> None:
+        if values is None:
+            self.width_px = None
+            self.height_px = None
+            return
+
+        if not isinstance(values, Sequence):
+            raise TypeError(
+                f"'resolution' must be a sequence but is of type {type(values).__name__}",
+            )
+
+        if len(values) != 2:
+            raise ValueError(f"'resolution' must be of length 2 but its length is {len(values)}")
+
+        self.width_px = values[0]
+        self.height_px = values[1]
+
+    @property
+    def width_cm(self) -> float | None:
+        """Width of screen in cm."""
+        return self._width_cm
+
+    @width_cm.setter
+    def width_cm(self, value: float | None = None) -> None:
+        if value is not None and not isinstance(value, Number):
+            raise TypeError(f"'width_cm' must be a number but is of type {type(value).__name__}")
+        if value is not None and value <= 0:
+            raise ValueError(f"'width_cm' must be a positive number but is: {value}")
+        self._width_cm = value
+
+    @property
+    def height_cm(self) -> float | None:
+        """Height of screen in cm."""
+        return self._height_cm
+
+    @height_cm.setter
+    def height_cm(self, value: float | None = None) -> None:
+        if value is not None and not isinstance(value, Number):
+            raise TypeError(f"'height_cm' must be a number but is of type {type(value).__name__}")
+        if value is not None and value <= 0:
+            raise ValueError(f"'height_cm' must be a positive number but is: {value}")
+        self._height_cm = value
+
+    @property
+    def size(self) -> tuple[float | None, float | None] | None:
+        """Size of screen in centimeters (width, height)."""
+        if self.width_cm is None and self.height_cm is None:
+            return None
+        return (self.width_cm, self.height_cm)
+
+    @size.setter
+    def size(self, values: Sequence[float | None] | None) -> None:
+        if values is None:
+            self.width_cm = None
+            self.height_cm = None
+            return
+
+        if not isinstance(values, Sequence):
+            raise TypeError(f"'size' must be a sequence but is of type {type(values).__name__}")
+
+        if len(values) != 2:
+            raise ValueError(f"'size' must be of length 2 but its length is {len(values)}")
+
+        self.width_cm = values[0]
+        self.height_cm = values[1]
 
     @property
     def x_max_dva(self) -> float:
@@ -285,7 +435,13 @@ class Screen:
         assert isinstance(value, (int, float))
         _checks.check_is_greater_than_zero(**{key: value})
 
-    def to_dict(self, *, exclude_none: bool = True) -> dict[str, Any]:
+    def to_dict(
+            self,
+            *,
+            exclude_none: bool = True,
+            prefer_resolution: bool = False,
+            prefer_size: bool = False,
+    ) -> dict[str, Any]:
         """Convert the Screen instance into a dictionary.
 
         Parameters
@@ -294,22 +450,64 @@ class Screen:
             Exclude attributes that are either ``None`` or that are objects that evaluate to
             ``False`` (e.g., ``[]``, ``{}``, ``EyeTracker()``). Attributes of type ``bool``,
             ``int``, and ``float`` are not excluded.
+            (default: True)
+        prefer_resolution: bool
+            If ``True`` include ``resolution`` instead of ``width_px`` and ``height_px`` in output
+            dictionary.
+            (default: False)
+        prefer_size: bool
+            If ``True`` include ``size`` instead of ``width_cm`` and ``height_cm`` in output
+            dictionary.
+            (default: False)
 
         Returns
         -------
         dict[str, Any]
             Screen as dictionary.
         """
-        _dict = asdict(self)
+        data: dict[str, Any] = {}
+
+        # Include properties in dictionary.
+        if prefer_resolution:
+            data['resolution'] = self.resolution
+        else:
+            data['width_px'] = self.width_px
+            data['height_px'] = self.height_px
+        if prefer_size:
+            data['size'] = self.size
+        else:
+            data['width_cm'] = self.width_cm
+            data['height_cm'] = self.height_cm
+
+        # this does not include properties, just explicit attributes (distance_cm, origin)
+        fields_data = {
+            field.name: getattr(self, field.name)
+            for field in fields(self)
+            if not field.name.startswith('_')  # exclude private attributes
+        }
+        data.update(fields_data)
 
         # Delete fields that evaluate to False (False, None, [], {})
         if exclude_none:
-            for key, value in list(_dict.items()):
+            for key, value in list(data.items()):
                 if not isinstance(value, (bool, int, float)) and not value:
-                    del _dict[key]
+                    del data[key]
 
-        return _dict
+        return data
 
     def __bool__(self) -> bool:
         """Return True if the screen has data defined, else False."""
         return not all(not value for value in self.__dict__.values())
+
+    def __str__(self) -> str:
+        """Return Screen string."""
+        # Make sure a string is enclosed by ' characters.
+        origin_str = f"'{self.origin}'" if isinstance(self.origin, str) else str(self.origin)
+
+        return (
+            f'{type(self).__name__}('
+            f'resolution={self.resolution}, '
+            f'size={self.size}, '
+            f'distance_cm={self.distance_cm}, '
+            f"origin={origin_str})"
+        )
