@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import InitVar
 from numbers import Number
 from typing import Any
 
@@ -111,10 +112,10 @@ class Screen:
     distance_cm: float | None = None
     origin: str | None = None
 
-    _width_px: int | None = None
-    _height_px: int | None = None
-    _width_cm: float | None = None
-    _height_cm: float | None = None
+    _width_px: InitVar[int | None] = None
+    _height_px: InitVar[int | None] = None
+    _width_cm: InitVar[float | None] = None
+    _height_cm: InitVar[float | None] = None
 
     def __init__(
         self,
@@ -466,7 +467,7 @@ class Screen:
         dict[str, Any]
             Screen as dictionary.
         """
-        data = asdict(self)  # this does not include properties, just explicit attributes.
+        data = {}
 
         # Include properties in dictionary.
         if prefer_resolution:
@@ -480,12 +481,8 @@ class Screen:
             data['width_cm'] = self.width_cm
             data['height_cm'] = self.height_cm
 
-        # Delete private fields from dictionary.
-        # we need a separate list of keys here or else we get a
-        # RuntimeError: dictionary changed size during iteration
-        for key in list(data.keys()):
-            if key.startswith('_'):
-                del data[key]
+        # asdict this does not include properties, just explicit attributes (distance_cm, origin)
+        data.update(asdict(self))
 
         # Delete fields that evaluate to False (False, None, [], {})
         if exclude_none:
