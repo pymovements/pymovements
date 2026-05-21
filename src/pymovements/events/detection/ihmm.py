@@ -58,10 +58,10 @@ def emit_log_prob(
 
     sigma = max(sigma, 1e-6)
 
-    #print(mu)
-    #print(sigma)
-    #print(v)
-    #print(s)
+    # print(mu)
+    # print(sigma)
+    # print(v)
+    # print(s)
 
     return -0.5 * np.log(2 * np.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
 
@@ -449,8 +449,8 @@ def viterbi(
     prob = np.full((T, states), -np.inf)
     prev = np.zeros((T, states), dtype=int)
 
-    #print(prob)
-    #print(prev)
+    # print(prob)
+    # print(prev)
 
     for s in range(states):
         prob[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
@@ -589,10 +589,9 @@ def compute_hmm(
     """
     reestimate = False
 
-    
     # Ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
-    
+
     defaults = {
         # DATA BASED init  #[1.0, 10.0],
         'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)],
@@ -880,8 +879,7 @@ def ihmm(
 
     # convert into velocities (1D velocities vector)
 
-    
-    velocities_1d = norm(velocities,axis=1)
+    velocities_1d = norm(velocities, axis=1)
 
     # velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
     vel_mask = ~np.isnan(velocities_1d)
@@ -900,8 +898,8 @@ def ihmm(
     velocities_1d = velocities_1d[start:end]
 
     vel_mask = vel_mask[start:end]
-    #print(velocities_1d[0:100])
-    #print(vel_mask[0:100])
+    # print(velocities_1d[0:100])
+    # print(vel_mask[0:100])
 
     # compute HMM
 
@@ -926,4 +924,3 @@ def ihmm(
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
-
