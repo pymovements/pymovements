@@ -58,7 +58,6 @@ def emit_log_prob(
 
     sigma = max(sigma, 1e-6)
 
-
     return -0.5 * np.log(2 * np.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
 
 
@@ -213,7 +212,6 @@ def baum_welch(
         last = np.exp(last - log_sum_exp(last))
         gamma_full[:, -1] = last
 
-       
         init = np.log(np.clip(gamma_full[:, 0], 1e-12, 1.0))
 
         for i in range(M):
@@ -223,7 +221,6 @@ def baum_welch(
                 trans[i, j] = np.log(numer / denom)
 
         for j in range(M):
-            
 
             mask = velocities_mask
 
@@ -233,7 +230,6 @@ def baum_welch(
             total = np.sum(weights)
 
             mu[j] = np.sum(weights * vals) / total
-
 
             var = np.sum(weights * (vals - mu[j])**2) / total
             sigma[j] = np.sqrt(var)
@@ -440,8 +436,6 @@ def viterbi(
     prob = np.full((T, states), -np.inf)
     prev = np.zeros((T, states), dtype=int)
 
-   
-
     for s in range(states):
         prob[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
 
@@ -456,7 +450,7 @@ def viterbi(
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + \
                         emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
                 else:
-                 
+
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
                 if new_prob > best_prob:
                     best_prob = new_prob
@@ -870,7 +864,6 @@ def ihmm(
     # convert into velocities (1D velocities vector)
 
     velocities_1d = norm(velocities, axis=1)
-
 
     vel_mask = ~np.isnan(velocities_1d)
     cW = 0
