@@ -58,10 +58,6 @@ def emit_log_prob(
 
     sigma = max(sigma, 1e-6)
 
-    # print(mu)
-    # print(sigma)
-    # print(v)
-    # print(s)
 
     return -0.5 * np.log(2 * np.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
 
@@ -217,7 +213,7 @@ def baum_welch(
         last = np.exp(last - log_sum_exp(last))
         gamma_full[:, -1] = last
 
-        # init = np.log(gamma_full[:, 0])
+       
         init = np.log(np.clip(gamma_full[:, 0], 1e-12, 1.0))
 
         for i in range(M):
@@ -227,8 +223,7 @@ def baum_welch(
                 trans[i, j] = np.log(numer / denom)
 
         for j in range(M):
-            # weights = gamma_full[j, :]
-            # total = np.sum(weights)
+            
 
             mask = velocities_mask
 
@@ -239,10 +234,6 @@ def baum_welch(
 
             mu[j] = np.sum(weights * vals) / total
 
-            # mu[j] = np.sum(weights * velocities) / total
-
-            # var = np.sum(weights * (velocities - mu[j])**2) / total
-            # sigma[j] = np.sqrt(var)
 
             var = np.sum(weights * (vals - mu[j])**2) / total
             sigma[j] = np.sqrt(var)
@@ -449,8 +440,7 @@ def viterbi(
     prob = np.full((T, states), -np.inf)
     prev = np.zeros((T, states), dtype=int)
 
-    # print(prob)
-    # print(prev)
+   
 
     for s in range(states):
         prob[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
@@ -466,7 +456,7 @@ def viterbi(
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + \
                         emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
                 else:
-                    # print(velocities_mask[t])
+                 
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
                 if new_prob > best_prob:
                     best_prob = new_prob
@@ -881,7 +871,7 @@ def ihmm(
 
     velocities_1d = norm(velocities, axis=1)
 
-    # velocities_1d = np.nan_to_num(velocities_1d, nan=0.0)
+
     vel_mask = ~np.isnan(velocities_1d)
     cW = 0
     for val in vel_mask:
@@ -889,8 +879,6 @@ def ihmm(
             pass
         else:
             cW += 1
-    # print(cW)
-    # print(len(vel_mask))
 
     start = np.argmax(vel_mask)
     end = len(velocities_1d) - np.argmax(vel_mask[::-1])
@@ -898,8 +886,6 @@ def ihmm(
     velocities_1d = velocities_1d[start:end]
 
     vel_mask = vel_mask[start:end]
-    # print(velocities_1d[0:100])
-    # print(vel_mask[0:100])
 
     # compute HMM
 
