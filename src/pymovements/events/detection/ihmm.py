@@ -20,12 +20,21 @@
 from __future__ import annotations
 
 import numpy as np
+import warnings
+
 
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import norm
 
+def format_optimal_dict(opt):
+    out={}
+    out['mu'] = [float(opt['mu'][0]),float(opt['mu'][1])]
+    out['sigma'] = [float(opt['sigma'][0]),float(opt['sigma'][1])]
+    out['init'] = np.exp(opt['init'])
+    out['trans'] = np.exp(opt['trans'])
+    return out
 
 def emit_log_prob(
     mu: np.ndarray | None,
@@ -524,13 +533,14 @@ def collapse_states(
 def compute_hmm(
     velocities: np.ndarray,
     verbose: bool,
-    initialization: str | None,
+    reestimation: bool,
     reestimation_max_iters: int,
     mu: np.ndarray | None,
     sigma: np.ndarray | None,
     init_state: np.ndarray | None,
     transition_probabilities: np.ndarray | None,
     velocities_mask,
+    hmm_parameters_dict
 ) -> np.ndarray:
     """Run HMM parameter setup, optional Baum-Welch reestimation, and Viterbi decoding.
 
@@ -571,21 +581,67 @@ def compute_hmm(
         shape (T,)
         Most likely sequence of hidden states.
     """
-    reestimate = False
+    #reestimate = False
 
     # Ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
 
-    defaults = {
-        # DATA BASED init  #[1.0, 10.0],
-        'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)],
-        # DATA BASED init   #[1.0, 1.0],
-        'sigma': [np.sqrt(np.var(velocities_for_init) / 2), np.sqrt(np.var(velocities_for_init))],
-        'init': [0.5, 0.5],  # dummy average values should be fine for long sequences
-        'trans': [[0.95, 0.05], [0.05, 0.95]],  # based on Salvucci's paper diagram
-    }
+    if hmm_parameters_dict:
+        defaults = hmm_parameters_dict
+    else:
+        defaults = {
+            # DATA BASED init  #[1.0, 10.0],
+            'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)],
+            # DATA BASED init   #[1.0, 1.0],
+            'sigma': [np.sqrt(np.var(velocities_for_init) / 2), np.sqrt(np.var(velocities_for_init))],
+            'init': [0.5, 0.5],  # dummy average values should be fine for long sequences
+            'trans': [[0.95, 0.05], [0.05, 0.95]],  # based on Salvucci's paper diagram
+        }
 
-    match initialization:
+    
+    if mu is not None:
+        _mu = mu
+    else:
+        _mu = defaults['mu']
+    if sigma is not None:
+        _sigma = sigma
+    else:
+        _sigma = defaults['sigma']
+    if init_state is not None:
+        _init = init_state
+    else:
+        _init = defaults['init']
+    if transition_probabilities is not None:
+        _trans = transition_probabilities
+    else:
+        _trans = defaults['trans']
+
+
+    _init = np.log(_init)
+    _trans = np.log(_trans)
+
+    if reestimation:
+        optimal = baum_welch(
+            states=2,
+            mu=_mu,
+            sigma=_sigma,
+            init=_init,
+            trans=_trans,
+            velocities=velocities,
+            velocities_mask=velocities_mask,
+            max_iters=reestimation_max_iters,
+        )
+        _mu = optimal['mu']
+        _sigma = optimal['sigma']
+        _init = optimal['init']
+        _trans = optimal['trans']
+
+        if verbose:
+            print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
+
+
+
+    ''' match initialization:
         case 'reestimation':
             reestimate = True
             _mu = defaults['mu']
@@ -613,29 +669,12 @@ def compute_hmm(
             if transition_probabilities is not None:
                 _trans = transition_probabilities
             else:
-                _trans = defaults['trans']
+                _trans = defaults['trans'] '''
 
-    _init = np.log(_init)
-    _trans = np.log(_trans)
+    
 
-    if reestimate:
-        optimal = baum_welch(
-            states=2,
-            mu=_mu,
-            sigma=_sigma,
-            init=_init,
-            trans=_trans,
-            velocities=velocities,
-            velocities_mask=velocities_mask,
-            max_iters=reestimation_max_iters,
-        )
-        _mu = optimal['mu']
-        _sigma = optimal['sigma']
-        _init = optimal['init']
-        _trans = optimal['trans']
-
-        if verbose:
-            print(f"Optimal parameters found by reestimation are:\n{optimal}")
+    #if reestimate:
+    #    pass
 
     # inference the hmm
 
@@ -661,9 +700,10 @@ def ihmm(
         init_state: list[float] | np.ndarray | None = None,
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
         reestimation_max_iters: int = 1000,
-        initialization: str | None = None,
+        reestimation: bool = False,
         include_nan: bool = False,
         verbose: bool = False,
+        hmm_parameters_dict: dict | None = None,
         name: str = 'fixation',
 ) -> Events:
     """
@@ -798,6 +838,13 @@ def ihmm(
 
     velocities = np.array(velocities)
 
+    if hmm_parameters_dict is not None:
+        hmm_parameters_dict['mu'] = np.array( hmm_parameters_dict['mu'])
+        hmm_parameters_dict['sigma'] = np.array( hmm_parameters_dict['sigma'])
+        hmm_parameters_dict['init'] = np.array( hmm_parameters_dict['init'])
+        hmm_parameters_dict['trans'] = np.array( hmm_parameters_dict['trans'])
+
+
     if mu is not None:
         mu = np.array(mu)
     if sigma is not None:
@@ -853,13 +900,22 @@ def ihmm(
             f' values must sum up to one for each state but instead are '
             f'{np.sum(transition_probabilities[0])} and {np.sum(transition_probabilities[1])}',
         )
+    
+    if hmm_parameters_dict is not None:
+        pass
 
-    if initialization is not None and initialization != 'reestimation' and initialization != 'default':
-        raise ValueError(
-            f'initialization'
-            f' must either be None "reestimation" or "default" and instead is '
-            f'{initialization}',
-        )
+    if reestimation == False and verbose == True:
+        warnings.warn(message= f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.")
+
+    
+
+
+    #if initialization is not None and initialization != 'reestimation' and initialization != 'default':
+    #    raise ValueError(
+    #        f'initialization'
+    #        f' must either be None "reestimation" or "default" and instead is '
+    #        f'{initialization}',
+    #    )
 
     # convert into velocities (1D velocities vector)
 
@@ -885,13 +941,14 @@ def ihmm(
     states = compute_hmm(
         velocities=velocities_1d,
         verbose=verbose,
-        initialization=initialization,
+        reestimation=reestimation,
         reestimation_max_iters=reestimation_max_iters,
         mu=mu,
         sigma=sigma,
         init_state=init_state,
         transition_probabilities=transition_probabilities,
         velocities_mask=vel_mask,
+        hmm_parameters_dict = hmm_parameters_dict
     )
 
     # collapse states
