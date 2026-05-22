@@ -19,22 +19,24 @@
 # SOFTWARE.
 from __future__ import annotations
 
-import numpy as np
 import warnings
 
+import numpy as np
 
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.gaze.transforms_numpy import norm
 
+
 def format_optimal_dict(opt):
-    out={}
-    out['mu'] = [float(opt['mu'][0]),float(opt['mu'][1])]
-    out['sigma'] = [float(opt['sigma'][0]),float(opt['sigma'][1])]
+    out = {}
+    out['mu'] = [float(opt['mu'][0]), float(opt['mu'][1])]
+    out['sigma'] = [float(opt['sigma'][0]), float(opt['sigma'][1])]
     out['init'] = np.exp(opt['init'])
     out['trans'] = np.exp(opt['trans'])
     return out
+
 
 def emit_log_prob(
     mu: np.ndarray | None,
@@ -540,7 +542,7 @@ def compute_hmm(
     init_state: np.ndarray | None,
     transition_probabilities: np.ndarray | None,
     velocities_mask,
-    hmm_parameters_dict
+    hmm_parameters_dict,
 ) -> np.ndarray:
     """Run HMM parameter setup, optional Baum-Welch reestimation, and Viterbi decoding.
 
@@ -581,7 +583,7 @@ def compute_hmm(
         shape (T,)
         Most likely sequence of hidden states.
     """
-    #reestimate = False
+    # reestimate = False
 
     # Ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
@@ -598,7 +600,6 @@ def compute_hmm(
             'trans': [[0.95, 0.05], [0.05, 0.95]],  # based on Salvucci's paper diagram
         }
 
-    
     if mu is not None:
         _mu = mu
     else:
@@ -615,7 +616,6 @@ def compute_hmm(
         _trans = transition_probabilities
     else:
         _trans = defaults['trans']
-
 
     _init = np.log(_init)
     _trans = np.log(_trans)
@@ -638,8 +638,6 @@ def compute_hmm(
 
         if verbose:
             print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
-
-
 
     ''' match initialization:
         case 'reestimation':
@@ -671,9 +669,7 @@ def compute_hmm(
             else:
                 _trans = defaults['trans'] '''
 
-    
-
-    #if reestimate:
+    # if reestimate:
     #    pass
 
     # inference the hmm
@@ -839,11 +835,10 @@ def ihmm(
     velocities = np.array(velocities)
 
     if hmm_parameters_dict is not None:
-        hmm_parameters_dict['mu'] = np.array( hmm_parameters_dict['mu'])
-        hmm_parameters_dict['sigma'] = np.array( hmm_parameters_dict['sigma'])
-        hmm_parameters_dict['init'] = np.array( hmm_parameters_dict['init'])
-        hmm_parameters_dict['trans'] = np.array( hmm_parameters_dict['trans'])
-
+        hmm_parameters_dict['mu'] = np.array(hmm_parameters_dict['mu'])
+        hmm_parameters_dict['sigma'] = np.array(hmm_parameters_dict['sigma'])
+        hmm_parameters_dict['init'] = np.array(hmm_parameters_dict['init'])
+        hmm_parameters_dict['trans'] = np.array(hmm_parameters_dict['trans'])
 
     if mu is not None:
         mu = np.array(mu)
@@ -900,17 +895,15 @@ def ihmm(
             f' values must sum up to one for each state but instead are '
             f'{np.sum(transition_probabilities[0])} and {np.sum(transition_probabilities[1])}',
         )
-    
+
     if hmm_parameters_dict is not None:
         pass
 
     if reestimation == False and verbose == True:
-        warnings.warn(message= f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.")
+        warnings.warn(
+            message=f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.")
 
-    
-
-
-    #if initialization is not None and initialization != 'reestimation' and initialization != 'default':
+    # if initialization is not None and initialization != 'reestimation' and initialization != 'default':
     #    raise ValueError(
     #        f'initialization'
     #        f' must either be None "reestimation" or "default" and instead is '
@@ -948,7 +941,7 @@ def ihmm(
         init_state=init_state,
         transition_probabilities=transition_probabilities,
         velocities_mask=vel_mask,
-        hmm_parameters_dict = hmm_parameters_dict
+        hmm_parameters_dict=hmm_parameters_dict,
     )
 
     # collapse states
