@@ -33,8 +33,10 @@ def format_optimal_dict(opt):
     out = {}
     out['mu'] = [float(opt['mu'][0]), float(opt['mu'][1])]
     out['sigma'] = [float(opt['sigma'][0]), float(opt['sigma'][1])]
-    out['init'] = [float(np.exp(opt['init'][0])),float(np.exp(opt['init'][1]))]
-    out['trans'] =   [[float(np.exp(opt['trans'][0][0])),float(np.exp(opt['trans'][0][1]))],[float(np.exp(opt['trans'][1][0])),float(np.exp(opt['trans'][1][1]))]]  #list(np.exp(opt['trans']))
+    out['init'] = [float(np.exp(opt['init'][0])), float(np.exp(opt['init'][1]))]
+    out['trans'] = [[float(np.exp(opt['trans'][0][0])), float(np.exp(opt['trans'][0][1]))], [float(
+        # list(np.exp(opt['trans']))
+        np.exp(opt['trans'][1][0])), float(np.exp(opt['trans'][1][1]))]]
     return out
 
 
@@ -861,15 +863,15 @@ def ihmm(
             f' values must sum up to one for each state but instead are '
             f'{np.sum(transition_probabilities[0])} and {np.sum(transition_probabilities[1])}',
         )
-    
+
     if hmm_parameters_dict is not None:
 
-        if list(hmm_parameters_dict.keys())!= ['mu','sigma','init','trans']:
+        if list(hmm_parameters_dict.keys()) != ['mu', 'sigma', 'init', 'trans']:
             raise ValueError(
-            f'hmm_parameters_dict'
-            f' should have fields ${['mu','sigma','init','trans']} but instead has '
-            f'{hmm_parameters_dict.keys()}',
-        )
+                f'hmm_parameters_dict'
+                f' should have fields ${['mu', 'sigma', 'init', 'trans']} but instead has '
+                f'{hmm_parameters_dict.keys()}',
+            )
         if hmm_parameters_dict['mu'] is not None and hmm_parameters_dict['mu'].shape != (2,):
             raise ValueError(
                 f'mu'
@@ -888,15 +890,13 @@ def ihmm(
                 f' must have shape (2,), but shapes are '
                 f'{hmm_parameters_dict['init'].shape}',
             )
-        if hmm_parameters_dict['trans'] is not None and hmm_parameters_dict['trans'].shape != (2, 2):
+        if hmm_parameters_dict['trans'] is not None and hmm_parameters_dict['trans'].shape != (
+                2, 2):
             raise ValueError(
                 f'transition_probabilities'
                 f' must have shape (2, 2), but shapes are '
                 f'{hmm_parameters_dict['trans'].shape}',
             )
-
-
-
 
     if reestimation == False and verbose == True:
         warnings.warn(
