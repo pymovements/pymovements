@@ -581,7 +581,6 @@ def compute_hmm(
         shape (T,)
         Most likely sequence of hidden states.
     """
-    #reestimate = False
 
     # Ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
@@ -640,41 +639,6 @@ def compute_hmm(
             print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
 
 
-
-    ''' match initialization:
-        case 'reestimation':
-            reestimate = True
-            _mu = defaults['mu']
-            _sigma = defaults['sigma']
-            _init = defaults['init']
-            _trans = defaults['trans']
-        case 'default':
-            _mu = defaults['mu']
-            _sigma = defaults['sigma']
-            _init = defaults['init']
-            _trans = defaults['trans']
-        case _:
-            if mu is not None:
-                _mu = mu
-            else:
-                _mu = defaults['mu']
-            if sigma is not None:
-                _sigma = sigma
-            else:
-                _sigma = defaults['sigma']
-            if init_state is not None:
-                _init = init_state
-            else:
-                _init = defaults['init']
-            if transition_probabilities is not None:
-                _trans = transition_probabilities
-            else:
-                _trans = defaults['trans'] '''
-
-    
-
-    #if reestimate:
-    #    pass
 
     # inference the hmm
 
@@ -907,15 +871,6 @@ def ihmm(
     if reestimation == False and verbose == True:
         warnings.warn(message= f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.")
 
-    
-
-
-    #if initialization is not None and initialization != 'reestimation' and initialization != 'default':
-    #    raise ValueError(
-    #        f'initialization'
-    #        f' must either be None "reestimation" or "default" and instead is '
-    #        f'{initialization}',
-    #    )
 
     # convert into velocities (1D velocities vector)
 
