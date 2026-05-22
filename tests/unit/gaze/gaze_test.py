@@ -424,109 +424,84 @@ def test_gaze_copy_events(gaze):
     assert_frame_equal(gaze.events.frame, gaze_copy.events.frame)
 
 
-@pytest.mark.parametrize(
-    'gaze_obj',
-    [
-        pytest.param(
-            Gaze(
-                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                experiment=None,
-                position_columns=['x', 'y'],
-                metadata={'key': 'value', 'nested': {'inner': 42}},
-            ),
-            id='with_metadata',
-        ),
-        pytest.param(
-            Gaze(
-                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                experiment=None,
-                position_columns=['x', 'y'],
-            ),
-            id='with_default_metadata',
-        ),
-    ],
-)
-def test_gaze_copy_metadata(gaze_obj):
+def test_gaze_copy_metadata():
+    gaze_obj = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        metadata={'key': 'value', 'nested': {'inner': 42}},
+    )
     gaze_copy = gaze_obj.clone()
 
     assert gaze_copy.metadata is not gaze_obj.metadata
     assert gaze_copy.metadata == gaze_obj.metadata
 
-    if gaze_obj.metadata:
-        gaze_copy.metadata['key'] = 'modified'
-        assert gaze_obj.metadata['key'] == 'value'
+    gaze_copy.metadata['key'] = 'modified'
+    assert gaze_obj.metadata['key'] == 'value'
 
 
-@pytest.mark.parametrize(
-    'gaze,has_messages',
-    [
-        pytest.param(
-            Gaze(
-                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                experiment=None,
-                position_columns=['x', 'y'],
-                messages=pl.DataFrame({'time': [0, 1], 'content': ['msg1', 'msg2']}),
-            ),
-            True,
-            id='with_messages',
-        ),
-        pytest.param(
-            Gaze(
-                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                experiment=None,
-                position_columns=['x', 'y'],
-                messages=None,
-            ),
-            False,
-            id='without_messages',
-        ),
-    ],
-)
-def test_gaze_copy_messages(gaze, has_messages):
+def test_gaze_copy_metadata_default():
+    gaze_obj = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+    )
+    gaze_copy = gaze_obj.clone()
+
+    assert gaze_copy.metadata is not gaze_obj.metadata
+    assert gaze_copy.metadata == gaze_obj.metadata
+
+
+def test_gaze_copy_messages():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        messages=pl.DataFrame({'time': [0, 1], 'content': ['msg1', 'msg2']}),
+    )
     gaze_copy = gaze.clone()
 
-    if has_messages:
-        assert gaze_copy.messages is not gaze.messages
-        assert_frame_equal(gaze.messages, gaze_copy.messages)
-    else:
-        assert gaze_copy.messages is None
+    assert gaze_copy.messages is not gaze.messages
+    assert_frame_equal(gaze.messages, gaze_copy.messages)
 
 
-@pytest.mark.parametrize(
-    'gaze,has_trial_columns',
-    [
-        pytest.param(
-            Gaze(
-                pl.DataFrame(
-                    schema={'x': pl.Float64, 'y': pl.Float64, 'trial': pl.Int64},
-                ),
-                experiment=None,
-                position_columns=['x', 'y'],
-                trial_columns='trial',
-            ),
-            True,
-            id='with_trial_columns',
-        ),
-        pytest.param(
-            Gaze(
-                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
-                experiment=None,
-                position_columns=['x', 'y'],
-                trial_columns=None,
-            ),
-            False,
-            id='without_trial_columns',
-        ),
-    ],
-)
-def test_gaze_copy_trial_columns(gaze, has_trial_columns):
+def test_gaze_copy_messages_none():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        messages=None,
+    )
     gaze_copy = gaze.clone()
 
-    if has_trial_columns:
-        assert gaze_copy.trial_columns is not gaze.trial_columns
-        assert gaze_copy.trial_columns == gaze.trial_columns
-    else:
-        assert gaze_copy.trial_columns is None
+    assert gaze_copy.messages is None
+
+
+def test_gaze_copy_trial_columns():
+    gaze = Gaze(
+        pl.DataFrame(
+            schema={'x': pl.Float64, 'y': pl.Float64, 'trial': pl.Int64},
+        ),
+        experiment=None,
+        position_columns=['x', 'y'],
+        trial_columns='trial',
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.trial_columns is not gaze.trial_columns
+    assert gaze_copy.trial_columns == gaze.trial_columns
+
+
+def test_gaze_copy_trial_columns_none():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        trial_columns=None,
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.trial_columns is None
 
 
 @pytest.mark.parametrize(

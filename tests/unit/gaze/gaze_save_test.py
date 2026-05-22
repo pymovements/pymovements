@@ -213,7 +213,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
 
 
 @pytest.mark.parametrize(
-    'gaze,save_func,expected_file,raises_error,error_match',
+    'gaze,save_func,expected_file',
     [
         pytest.param(
             Gaze(
@@ -223,8 +223,6 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             ),
             lambda g, p: g.save_messages(p / 'messages.feather', verbose=2),
             'messages.feather',
-            False,
-            None,
             id='messages_with_data_feather',
         ),
         pytest.param(
@@ -235,17 +233,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             ),
             lambda g, p: g.save_messages(p / 'messages.csv', verbose=2),
             'messages.csv',
-            False,
-            None,
             id='messages_with_data_csv',
-        ),
-        pytest.param(
-            Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
-            lambda g, p: g.save_messages(p / 'messages.feather', verbose=2),
-            None,
-            True,
-            'No messages',
-            id='messages_none',
         ),
         pytest.param(
             Gaze(
@@ -255,8 +243,6 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             ),
             lambda g, p: g.save_calibrations(p / 'calibrations.feather', verbose=2),
             'calibrations.feather',
-            False,
-            None,
             id='calibrations_with_data_feather',
         ),
         pytest.param(
@@ -267,17 +253,7 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             ),
             lambda g, p: g.save_calibrations(p / 'calibrations.csv', verbose=2),
             'calibrations.csv',
-            False,
-            None,
             id='calibrations_with_data_csv',
-        ),
-        pytest.param(
-            Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
-            lambda g, p: g.save_calibrations(p / 'calibrations.feather', verbose=2),
-            None,
-            True,
-            'No calibrations',
-            id='calibrations_none',
         ),
         pytest.param(
             Gaze(
@@ -287,8 +263,6 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             ),
             lambda g, p: g.save_validations(p / 'validations.feather', verbose=2),
             'validations.feather',
-            False,
-            None,
             id='validations_with_data_feather',
         ),
         pytest.param(
@@ -299,52 +273,66 @@ def test_gaze_save_metadata(tmp_path, gaze, expected_file):
             ),
             lambda g, p: g.save_validations(p / 'validations.csv', verbose=2),
             'validations.csv',
-            False,
-            None,
             id='validations_with_data_csv',
+        ),
+    ],
+)
+def test_gaze_save_dataframes(tmp_path, gaze, save_func, expected_file):
+    save_func(gaze, tmp_path)
+    assert os.path.exists(tmp_path / expected_file)
+
+
+@pytest.mark.parametrize(
+    'gaze,save_func,error_match',
+    [
+        pytest.param(
+            Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
+            lambda g, p: g.save_messages(p / 'messages.feather', verbose=2),
+            'No messages',
+            id='messages_none',
+        ),
+        pytest.param(
+            Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
+            lambda g, p: g.save_calibrations(p / 'calibrations.feather', verbose=2),
+            'No calibrations',
+            id='calibrations_none',
         ),
         pytest.param(
             Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y']),
             lambda g, p: g.save_validations(p / 'validations.feather', verbose=2),
-            None,
-            True,
             'No validations',
             id='validations_none',
         ),
     ],
 )
-def test_gaze_save_dataframes(
-    tmp_path,
-    gaze,
-    save_func,
-    expected_file,
-    raises_error,
-    error_match,
-):
-    if raises_error:
-        with pytest.raises(ValueError, match=error_match):
-            save_func(gaze, tmp_path)
-    else:
+def test_gaze_save_dataframes_raises_error(tmp_path, gaze, save_func, error_match):
+    with pytest.raises(ValueError, match=error_match):
         save_func(gaze, tmp_path)
-        assert os.path.exists(tmp_path / expected_file)
 
 
 @pytest.mark.parametrize(
-    'save_method',
+    'save_method,data',
     [
-        pytest.param('save_messages', id='messages'),
-        pytest.param('save_calibrations', id='calibrations'),
-        pytest.param('save_validations', id='validations'),
+        pytest.param(
+            'save_messages', pl.DataFrame(
+                {'time': [0], 'content': ['msg']},
+            ), id='messages',
+        ),
+        pytest.param(
+            'save_calibrations',
+            pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+            id='calibrations',
+        ),
+        pytest.param(
+            'save_validations',
+            pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+            id='validations',
+        ),
     ],
 )
-def test_gaze_save_method_wrong_extension(tmp_path, save_method):
-    gaze = Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y'])
-    if save_method == 'save_messages':
-        gaze.messages = pl.DataFrame({'time': [0], 'content': ['msg']})
-    elif save_method == 'save_calibrations':
-        gaze.calibrations = pl.DataFrame({'timestamp': [0], 'num_points': [9]})
-    else:
-        gaze.validations = pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]})
+def test_gaze_save_method_wrong_extension(tmp_path, save_method, data):
+    gaze_kwargs = {save_method.replace('save_', ''): data}
+    gaze = Gaze(pl.DataFrame({'x': [1, 2], 'y': [3, 4]}), pixel_columns=['x', 'y'], **gaze_kwargs)
 
     with pytest.raises(ValueError, match='unsupported file format'):
         getattr(gaze, save_method)(tmp_path / 'test.txt')

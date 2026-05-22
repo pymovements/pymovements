@@ -537,17 +537,23 @@ class Gaze:
                 for by_id, column_name in enumerate(by):
                     metadata_split[column_name] = key[by_id]
 
+            messages = self.messages.clone() if self.messages is not None else None
+            calibrations = (
+                self.calibrations.clone() if self.calibrations is not None else None
+            )
+            validations = (
+                self.validations.clone() if self.validations is not None else None
+            )
+
             gaze_split = Gaze(
                 samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
-                metadata=metadata_split
-                if (self.metadata is not None or extend_metadata)
-                else None,
-                messages=self.messages,
-                calibrations=self.calibrations,
-                validations=self.validations,
+                metadata=metadata_split if (self.metadata is not None or extend_metadata) else None,
+                messages=messages,
+                calibrations=calibrations,
+                validations=validations,
             )
             gaze_split.n_components = self.n_components
             gazes[key] = gaze_split
@@ -1972,19 +1978,19 @@ class Gaze:
         Gaze
             A copy of the Gaze.
         """
+        messages = self.messages.clone() if self.messages is not None else None
+        calibrations = self.calibrations.clone() if self.calibrations is not None else None
+        validations = self.validations.clone() if self.validations is not None else None
+
         gaze = Gaze(
             samples=self.samples.clone(),
             experiment=deepcopy(self.experiment),
             events=self.events.clone(),
             metadata=deepcopy(self.metadata),
-            messages=self.messages.clone() if self.messages is not None else None,
+            messages=messages,
             trial_columns=deepcopy(self.trial_columns),
-            calibrations=self.calibrations.clone()
-            if self.calibrations is not None
-            else None,
-            validations=self.validations.clone()
-            if self.validations is not None
-            else None,
+            calibrations=calibrations,
+            validations=validations,
         )
         gaze.n_components = self.n_components
         return gaze
@@ -2731,16 +2737,16 @@ class Gaze:
         """
         if self.messages is None:
             raise ValueError('No messages in the Gaze object')
-        messages_out = self.messages.clone()
+
         extension = path.suffix[1:]
 
         if verbose >= 2:
             print('Saving messages to', path)
 
         if extension == 'feather':
-            messages_out.write_ipc(path)
+            self.messages.write_ipc(path)
         elif extension == 'csv':
-            messages_out.write_csv(path)
+            self.messages.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2773,16 +2779,16 @@ class Gaze:
         """
         if self.calibrations is None:
             raise ValueError('No calibrations in the Gaze object')
-        calibrations_out = self.calibrations.clone()
+
         extension = path.suffix[1:]
 
         if verbose >= 2:
             print('Saving calibrations to', path)
 
         if extension == 'feather':
-            calibrations_out.write_ipc(path)
+            self.calibrations.write_ipc(path)
         elif extension == 'csv':
-            calibrations_out.write_csv(path)
+            self.calibrations.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2815,16 +2821,16 @@ class Gaze:
         """
         if self.validations is None:
             raise ValueError('No validations in the Gaze object')
-        validations_out = self.validations.clone()
+
         extension = path.suffix[1:]
 
         if verbose >= 2:
             print('Saving validations to', path)
 
         if extension == 'feather':
-            validations_out.write_ipc(path)
+            self.validations.write_ipc(path)
         elif extension == 'csv':
-            validations_out.write_csv(path)
+            self.validations.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
