@@ -404,6 +404,7 @@ class Participants:
         >>> for w in warnings:
         ...     print(w)
         participant_id values must match 'sub-<label>' pattern. Invalid values: ['01']
+        Recommended column 'handedness' is missing
         age should be capped at 89, found 100.0
         sex must be one of ['F', 'FEMALE', 'Female', 'M', 'MALE', 'Male', 'O', 'OTHER', 'Other',
         'f', 'female', 'm', 'male', 'o', 'other'], found: ['invalid']
