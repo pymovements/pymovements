@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import warnings
 from copy import deepcopy
@@ -55,8 +56,8 @@ class Participants:
         Additional metadata on participant data conforming to BIDS side car json files.
         If ``None``, initialize an empty dictionary.
         (default: ``None``)
-    verify_bids: str | bool
-        Verify BIDS conformity. If True, raise exception on non-conformity.
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
+        Verify BIDS conformity. If True, raise exception on non-conformity at REQUIRED level.
         If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
         If False, do not verify.
         (default: ``False``)
@@ -73,15 +74,11 @@ class Participants:
             data: polars.DataFrame | None = None,
             metadata: dict[str, Any] | None = None,
             *,
-        verify_bids: str | bool = False,
+            verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
             infer_metadata: bool = True,
     ):
         if data is None:
             data = polars.DataFrame(schema={'participant_id': polars.String})
-        if 'participant_id' not in data.columns:
-            raise ValueError("data must have column named 'participant_id'")
-        if data.columns[0] != 'participant_id':
-            raise ValueError("first column in data must be named 'participant_id'")
 
         if metadata:
             # metadata may be changed and updated, work on copy
@@ -98,7 +95,7 @@ class Participants:
         if verify_bids is not False:
             level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
             if isinstance(verify_bids, str):
-                level = verify_bids  # type: ignore[assignment]
+                level = verify_bids
             warnings_list = self.verify_bids(level)
             if warnings_list:
                 if verify_bids is True:
@@ -147,7 +144,7 @@ class Participants:
         path: Path | str,
         metadata: Path | str | dict[str, Any] | None = None,
         *,
-        verify_bids: str | bool = False,
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
         separator: str = '\t',
         rename: dict[str, str] | None = None,
         read_csv_kwargs: dict[str, Any] | None = None,
@@ -166,8 +163,8 @@ class Participants:
             parent of ``path``. If None: check for ``path`` parent directory for existing
             ``participants.json`` and load metadata if available.
             (default: None)
-        verify_bids: str | bool
-            Verify BIDS conformity. If True, raise exception on non-conformity.
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
+            Verify BIDS conformity. If True, raise exception on non-conformity at REQUIRED level.
             If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
             If False, do not verify.
             (default: ``False``)
@@ -198,11 +195,28 @@ class Participants:
             dir_path = path.parent
             data_path = path
 
+        if verify_bids is not False:
+            if data_path.name != 'participants.tsv':
+                warnings.warn(
+                    f"BIDS requires participant file to be named 'participants.tsv', "
+                    f"but found '{data_path.name}'",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         if read_csv_kwargs is None:
             read_csv_kwargs = {'separator': separator}
         else:
             # **read_csv_kwargs takes precedence over explicit separator argument.
             read_csv_kwargs = {'separator': separator, **read_csv_kwargs}
+
+        if verify_bids is not False:
+            if read_csv_kwargs.get('separator') != '\t':
+                warnings.warn(
+                    "BIDS requires tab-separated files, but separator is not '\\t'",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         data = polars.read_csv(data_path, **read_csv_kwargs)
 
@@ -221,6 +235,15 @@ class Participants:
                 # Assume path is relative to directory of data file.
                 metadata_path = dir_path / metadata_path
 
+            if verify_bids is not False:
+                if metadata_path.name != 'participants.json':
+                    warnings.warn(
+                        f"BIDS requires metadata file to be named 'participants.json', "
+                        f"but found '{metadata_path.name}'",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+
             # Load metadata from json file.
             with open(metadata_path, encoding=metadata_encoding) as opened_file:
                 metadata_dict = json.load(opened_file)
@@ -233,7 +256,7 @@ class Participants:
         self,
         path: Path | str,
         *,
-        verify_bids: str | bool = 'REQUIRED',
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
         metadata_path: Path | str = 'participants.json',
         separator: str = '\t',
         write_csv_kwargs: dict[str, Any] | None = None,
@@ -246,8 +269,9 @@ class Participants:
         path: Path | str
             Save participants data to this path. If this is a directory, use ``participants.tsv`` as
             filename.
-        verify_bids: str | bool
-            Verify BIDS conformity before saving. If True, raise exception on non-conformity.
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
+            Verify BIDS conformity before saving. If True, raise exception on non-conformity
+            at REQUIRED level.
             If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
             If False, do not verify.
             (default: ``'REQUIRED'``)
@@ -269,7 +293,7 @@ class Participants:
         if verify_bids is not False:
             level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
             if isinstance(verify_bids, str):
-                level = verify_bids  # type: ignore[assignment]
+                level = verify_bids
             warnings_list = self.verify_bids(level)
             if warnings_list:
                 if verify_bids is True:
@@ -287,17 +311,48 @@ class Participants:
             dir_path = path.parent
             data_path = path
 
+        if verify_bids is not False:
+            if data_path.name != 'participants.tsv':
+                warnings.warn(
+                    f"BIDS requires participant file to be named 'participants.tsv', "
+                    f"but found '{data_path.name}'",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         if write_csv_kwargs is None:
             write_csv_kwargs = {'separator': separator}
         else:
             # **write_csv_kwargs takes precedence over explicit separator argument.
             write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
-        self.data.write_csv(data_path, **write_csv_kwargs)
+
+        if verify_bids is not False:
+            if write_csv_kwargs.get('separator') != '\t':
+                warnings.warn(
+                    "BIDS requires tab-separated files, but separator is not '\\t'",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         metadata_path = Path(metadata_path)
         if metadata_path.parent == Path('.'):
             # Assume path is relative to directory of data file.
             metadata_path = dir_path / metadata_path
+
+        if verify_bids is not False:
+            if metadata_path.name != 'participants.json':
+                warnings.warn(
+                    f"BIDS requires metadata file to be named 'participants.json', "
+                    f"but found '{metadata_path.name}'",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+        # Ensure null values are encoded as n/a.
+        data_to_save = self.data.fill_null('n/a')
+
+        data_to_save.write_csv(data_path, **write_csv_kwargs)
+
         # Save metadata to json file.
         with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:
             json.dump(self.metadata, opened_file)
@@ -376,8 +431,15 @@ class Participants:
 
         if level in {'REQUIRED', 'RECOMMENDED'}:
             warnings_list.extend(_validate_participant_id(self.data))
+            warnings_list.extend(_check_na_conformity(self.data))
 
         if level == 'RECOMMENDED':
+            # Check for recommended columns
+            recommended_columns = ['age', 'sex', 'handedness']
+            for col in recommended_columns:
+                if col not in self.data.columns:
+                    warnings_list.append(f"Recommended column '{col}' is missing")
+
             warnings_list.extend(_validate_age(self.data))
             warnings_list.extend(_validate_sex(self.data))
             warnings_list.extend(_validate_handedness(self.data))
@@ -385,7 +447,76 @@ class Participants:
             warnings_list.extend(_validate_strain(self.data))
             warnings_list.extend(_validate_strain_rrid(self.data))
 
+            # Check additional columns metadata
+            warnings_list.extend(_check_metadata_descriptions(self.data, self.metadata))
+
+            # Check column names (snake_case, not null)
+            warnings_list.extend(_validate_column_names(self.data))
+
         return warnings_list
+
+
+def _check_na_conformity(data: polars.DataFrame) -> list[str]:
+    """Check that null values are coded as 'n/a' in BIDS columns.
+
+    BIDS requires that missing and non-applicable values MUST be coded as 'n/a'.
+    """
+    validation_warnings: list[str] = []
+    # Standard BIDS columns that we check for 'n/a' conformity
+    bids_columns = ['age', 'sex', 'handedness', 'species', 'strain', 'strain_rrid']
+    na_alternatives = {'N/A', 'NA', 'na', 'NaN', 'nan', ''}
+
+    for col in data.columns:
+        if col in bids_columns:
+            values = data[col].to_list()
+            invalid_na = []
+            for v in values:
+                if v is None:
+                    invalid_na.append('None')
+                elif isinstance(v, float) and math.isnan(v):
+                    invalid_na.append('NaN')
+                elif isinstance(v, str) and v in na_alternatives:
+                    invalid_na.append(v)
+
+            if invalid_na:
+                validation_warnings.append(
+                    f"Column '{col}' contains invalid null values: {set(invalid_na)}. "
+                    "BIDS requires missing values to be coded as 'n/a'.",
+                )
+    return validation_warnings
+
+
+def _check_metadata_descriptions(data: polars.DataFrame, metadata: dict[str, Any]) -> list[str]:
+    """Check that additional columns have a Description field in metadata."""
+    validation_warnings: list[str] = []
+    # Recommended columns + participant_id
+    standard_columns = {
+        'participant_id', 'age', 'sex', 'handedness', 'species', 'strain',
+        'strain_rrid',
+    }
+
+    for col in data.columns:
+        if col not in standard_columns:
+            if col not in metadata or 'Description' not in metadata[col]:
+                validation_warnings.append(
+                    f"Column '{col}' is missing a 'Description' field in metadata (json).",
+                )
+    return validation_warnings
+
+
+def _validate_column_names(data: polars.DataFrame) -> list[str]:
+    """Check that column names are snake_case and not null."""
+    validation_warnings: list[str] = []
+    snake_case_pattern = re.compile(r'^[a-z0-9_]+$')
+
+    for col in data.columns:
+        if not col or col.lower() == 'null':
+            validation_warnings.append('Column names must not be blank or null')
+        elif not snake_case_pattern.match(col):
+            validation_warnings.append(
+                f"Column name '{col}' should be written in snake_case.",
+            )
+    return validation_warnings
 
 
 def _validate_participant_id(data: polars.DataFrame) -> list[str]:
@@ -409,9 +540,22 @@ def _validate_participant_id(data: polars.DataFrame) -> list[str]:
     if data.columns[0] != 'participant_id':
         validation_warnings.append('participant_id column must be the first column')
 
+    # Check dtype
+    if not data['participant_id'].dtype.is_temporal(
+    ) and data['participant_id'].dtype != polars.String:  # String is preferred
+        # Just check if it's generally string-like if we can't be sure, but BIDS wants strings.
+        pass
+
+    if data['participant_id'].dtype != polars.String:
+        validation_warnings.append('participant_id column must have string (Utf8) data type')
+
+    # Check for null values
+    if data['participant_id'].null_count() > 0:
+        validation_warnings.append('participant_id column contains null values')
+
     participant_ids = data['participant_id'].drop_nulls().to_list()
 
-    pattern = re.compile(r'^sub-[a-zA-Z0-9]+$')
+    pattern = re.compile(r'^sub-[a-zA-Z0-9+]+$')
     invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
     if invalid_ids:
         validation_warnings.append(
@@ -444,10 +588,13 @@ def _validate_age(data: polars.DataFrame) -> list[str]:
     if 'age' not in data.columns:
         return validation_warnings
 
+    # Check dtype
+    if not data['age'].dtype.is_numeric():
+        validation_warnings.append("Column 'age' must be of numeric type (integer or float)")
+
     ages = data['age'].drop_nulls().to_list()
-    na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
     for age in ages:
-        if str(age).lower() in na_values:
+        if str(age).lower() == 'n/a':
             continue
         try:
             age_val = float(age)
@@ -456,7 +603,8 @@ def _validate_age(data: polars.DataFrame) -> list[str]:
                     f'age should be capped at 89, found {age_val}',
                 )
         except (ValueError, TypeError):
-            validation_warnings.append(f'age must be a numeric value, found {age}')
+            # If it was already warned about dtype, maybe skip this or add extra info.
+            pass
 
     return validation_warnings
 
@@ -479,17 +627,19 @@ def _validate_sex(data: polars.DataFrame) -> list[str]:
     if 'sex' not in data.columns:
         return validation_warnings
 
+    if data['sex'].dtype != polars.String:
+        validation_warnings.append("Column 'sex' must be of string (Utf8) type")
+
     valid_male = {'male', 'm', 'M', 'MALE', 'Male'}
     valid_female = {'female', 'f', 'F', 'FEMALE', 'Female'}
     valid_other = {'other', 'o', 'O', 'OTHER', 'Other'}
     valid_sex = valid_male | valid_female | valid_other
-    na_values = {'n/a', 'N/A', 'na', 'NA', 'NaN', 'nan', ''}
 
     sex_values = data['sex'].drop_nulls().to_list()
     invalid_sex = [
         s
         for s in sex_values
-        if str(s).lower() not in valid_sex and str(s).lower() not in na_values
+        if str(s).lower() not in valid_sex and str(s).lower() != 'n/a'
     ]
     if invalid_sex:
         validation_warnings.append(
@@ -518,17 +668,19 @@ def _validate_handedness(data: polars.DataFrame) -> list[str]:
     if 'handedness' not in data.columns:
         return validation_warnings
 
+    if data['handedness'].dtype != polars.String:
+        validation_warnings.append("Column 'handedness' must be of string (Utf8) type")
+
     valid_left = {'left', 'l', 'L', 'LEFT', 'Left'}
     valid_right = {'right', 'r', 'R', 'RIGHT', 'Right'}
     valid_ambidextrous = {'ambidextrous', 'a', 'A', 'AMBIDEXTROUS', 'Ambidextrous'}
     valid_handedness = valid_left | valid_right | valid_ambidextrous
-    na_values = {'n/a', 'N/A', 'NA', 'NaN', 'nan', ''}
 
     handedness_values = data['handedness'].drop_nulls().to_list()
     invalid_handedness = [
         h
         for h in handedness_values
-        if str(h).lower() not in valid_handedness and str(h).lower() not in na_values
+        if str(h).lower() not in valid_handedness and str(h).lower() != 'n/a'
     ]
     if invalid_handedness:
         validation_warnings.append(
@@ -557,9 +709,8 @@ def _validate_species(data: polars.DataFrame) -> list[str]:
     if 'species' not in data.columns:
         return validation_warnings
 
-    species_values = data['species'].drop_nulls().to_list()
-    if not species_values:
-        return validation_warnings
+    if data['species'].dtype != polars.String and not data['species'].dtype.is_numeric():
+        validation_warnings.append("Column 'species' must be of string or numeric type")
 
     return validation_warnings
 
@@ -689,6 +840,8 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
     if dtype == polars.Boolean:
         return 'bool'
     if dtype == polars.String:
+        return 'string'
+    if dtype == polars.Null:
         return 'string'
 
     raise TypeError(
