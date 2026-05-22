@@ -638,8 +638,6 @@ def compute_hmm(
         if verbose:
             print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
 
-
-
     # inference the hmm
 
     states = viterbi(
@@ -869,8 +867,8 @@ def ihmm(
 
     if reestimation == False and verbose == True:
         warnings.warn(
-            message=f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.")
-
+            message=f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.",
+        )
 
     # convert into velocities (1D velocities vector)
 
