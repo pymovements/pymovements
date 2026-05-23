@@ -34,8 +34,13 @@ def format_optimal_dict(opt):
     out['mu'] = [float(opt['mu'][0]), float(opt['mu'][1])]
     out['sigma'] = [float(opt['sigma'][0]), float(opt['sigma'][1])]
     out['init'] = [float(np.exp(opt['init'][0])), float(np.exp(opt['init'][1]))]
-    out['trans'] = [[float(np.exp(opt['trans'][0][0])), float(np.exp(opt['trans'][0][1]))], [float(
-        np.exp(opt['trans'][1][0])), float(np.exp(opt['trans'][1][1]))]]
+    out['trans'] = [
+        [float(np.exp(opt['trans'][0][0])), float(np.exp(opt['trans'][0][1]))], [
+            float(
+                np.exp(opt['trans'][1][0]),
+            ), float(np.exp(opt['trans'][1][1])),
+        ],
+    ]
     return out
 
 
@@ -481,14 +486,15 @@ def viterbi(
 
     return path
 
+
 def collapse_states(
         states: np.ndarray,
         timesteps: np.ndarray,
         fixation_state: int = 0,
-        
+
 ) -> tuple[np.ndarray, np.ndarray]:
     """Convert a sequence of HMM states into event onsets and offsets using timesteps.
-    
+
     Parameters
     ----------
     states : np.ndarray
@@ -502,7 +508,7 @@ def collapse_states(
     inclusive_offsets : bool, default=True
         If True, offsets are the timestamp of the last point of the event.
         If False, offsets are the timestamp after the event (exclusive).
-    
+
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
@@ -512,10 +518,10 @@ def collapse_states(
     """
     if len(states) == 0 or len(timesteps) == 0:
         return np.array([]), np.array([])
-    
+
     onsets = []
     offsets = []
-    
+
     i = 0
     while i < len(states):
 
@@ -530,11 +536,11 @@ def collapse_states(
 
             onsets.append(onset_time)
             offsets.append(offset_time)
-            
+
             i = j
         else:
             i += 1
-    
+
     return np.array(onsets), np.array(offsets)
 
 
@@ -833,8 +839,6 @@ def ihmm(
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
 
-    
-
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if mu is not None and mu.shape != (2,):
@@ -897,7 +901,8 @@ def ihmm(
                 f'{hmm_parameters_dict['init'].shape}',
             )
         if hmm_parameters_dict['trans'] is not None and hmm_parameters_dict['trans'].shape != (
-                2, 2):
+                2, 2,
+        ):
             raise ValueError(
                 f'transition_probabilities'
                 f' must have shape (2, 2), but shapes are '
@@ -946,7 +951,7 @@ def ihmm(
 
     # collapse states
 
-    onsets_arr, offsets_arr = collapse_states(states,timesteps=timesteps_masked)
+    onsets_arr, offsets_arr = collapse_states(states, timesteps=timesteps_masked)
 
     # return event frame
 
