@@ -35,7 +35,6 @@ def format_optimal_dict(opt):
     out['sigma'] = [float(opt['sigma'][0]), float(opt['sigma'][1])]
     out['init'] = [float(np.exp(opt['init'][0])), float(np.exp(opt['init'][1]))]
     out['trans'] = [[float(np.exp(opt['trans'][0][0])), float(np.exp(opt['trans'][0][1]))], [float(
-        # list(np.exp(opt['trans']))
         np.exp(opt['trans'][1][0])), float(np.exp(opt['trans'][1][1]))]]
     return out
 
@@ -482,56 +481,61 @@ def viterbi(
 
     return path
 
-
 def collapse_states(
         states: np.ndarray,
+        timesteps: np.ndarray,
+        fixation_state: int = 0,
+        
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Convert a sequence of HMM states into event onsets and offsets.
-
-    This function assumes a binary state model where state `0` represents
-    the event of interest (e.g., fixation) and state `1` represents the
-    other class (e.g., saccade). It extracts contiguous segments of state 0.
-
+    """Convert a sequence of HMM states into event onsets and offsets using timesteps.
+    
     Parameters
     ----------
     states : np.ndarray
         shape (T,)
         Sequence of inferred state indices.
-
+    timesteps : np.ndarray
+        shape (T,)
+        Corresponding timestamps for each state (e.g., in milliseconds).
+    fixation_state : int, default=0
+        The state value representing fixations/events of interest.
+    inclusive_offsets : bool, default=True
+        If True, offsets are the timestamp of the last point of the event.
+        If False, offsets are the timestamp after the event (exclusive).
+    
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
         Two arrays:
-        - onsets: indices where state 0 segments start
-        - offsets: indices where state 0 segments end
+        - onsets: timestamps where fixation segments start
+        - offsets: timestamps where fixation segments end (or end+interval if exclusive)
     """
+    if len(states) == 0 or len(timesteps) == 0:
+        return np.array([]), np.array([])
+    
+    onsets = []
+    offsets = []
+    
+    i = 0
+    while i < len(states):
 
-    onsets_arr = []
-    offsets_arr = []
+        if states[i] == fixation_state:
+            onset_idx = i
+            onset_time = timesteps[onset_idx]
+            j = i
+            while j < len(states) and states[j] == fixation_state:
+                j += 1
 
-    prev_state = states[0]
+            offset_time = timesteps[j - 1]
 
-    if prev_state == 0:
-        onsets_arr.append(0)
-
-    for i, state in enumerate(states[1:], start=1):
-
-        if state == 0:
-            if prev_state != 0:
-                onsets_arr.append(i)
+            onsets.append(onset_time)
+            offsets.append(offset_time)
+            
+            i = j
         else:
-            if prev_state == 0:
-                offsets_arr.append(i - 1)
-
-        prev_state = state
-
-    if prev_state == 0:
-        offsets_arr.append(len(states) - 1)
-
-    onsets_arr = np.array(onsets_arr)
-    offsets_arr = np.array(offsets_arr)
-
-    return onsets_arr, offsets_arr
+            i += 1
+    
+    return np.array(onsets), np.array(offsets)
 
 
 def compute_hmm(
@@ -829,6 +833,8 @@ def ihmm(
         raise TypeError('timesteps must be of type int')
     timesteps = timesteps_int
 
+    
+
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
     if mu is not None and mu.shape != (2,):
@@ -922,6 +928,7 @@ def ihmm(
 
     vel_mask = vel_mask[start:end]
 
+    timesteps_masked = timesteps[start:end]
     # compute HMM
 
     states = compute_hmm(
@@ -939,7 +946,7 @@ def ihmm(
 
     # collapse states
 
-    onsets_arr, offsets_arr = collapse_states(states)
+    onsets_arr, offsets_arr = collapse_states(states,timesteps=timesteps_masked)
 
     # return event frame
 
