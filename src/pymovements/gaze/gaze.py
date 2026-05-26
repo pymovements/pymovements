@@ -868,9 +868,9 @@ class Gaze:
     def value_impossible(
             self,
             maxi: int | float,
-            mode: str = "null", 
-            input_column: str = "velocity",
-            output_column: str = "velocity",
+            mode: str = 'null',
+            input_column: str = 'velocity',
+            output_column: str = 'velocity',
     ) -> None:
         num = self.n_components
 
@@ -881,7 +881,7 @@ class Gaze:
             input_column=input_column,
             output_column=output_column,
             num=num,
-            )
+        )
 
     def resample(
             self,
