@@ -340,7 +340,7 @@ class Gaze:
             self.calibrations = None
 
         if validations is not None:
-            self.validations = validations.clone()
+            self.validations = validations
         else:
             self.validations = None
 
