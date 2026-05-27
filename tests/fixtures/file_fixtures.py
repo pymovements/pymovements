@@ -118,6 +118,37 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
     return _make_text_file
 
 
+@pytest.fixture(name='make_text_files', scope='function')
+def fixture_make_text_files(tmp_path: Path) -> Callable[[list[str]], Path]:
+    """Make text files.
+
+    Files are created relative to an implicitly created tmp_path.
+
+    Empty directories cannot be created with this fixture.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where files are copied to. Built-in fixture.
+
+    Returns
+    -------
+    Callable[[list[str]], Path]
+        Function that takes a list of relative filepaths and returns the path to the root directory.
+        The files are saved into a temporary directory.
+
+    """
+    def _make_text_files(files: list[str]) -> Path:
+        for relative_filepath in files:
+            absolute_filepath = tmp_path / relative_filepath
+            if not absolute_filepath.parent.is_dir():
+                absolute_filepath.parent.mkdir(parents=True)
+            absolute_filepath.write_text('test')
+        return tmp_path
+
+    return _make_text_files
+
+
 @pytest.fixture(name='make_csv_file', scope='function')
 def fixture_make_csv_file(tmp_path: Path) -> Callable:
     """Make a csv file with optional header.

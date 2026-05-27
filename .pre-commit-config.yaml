@@ -59,7 +59,7 @@ repos:
         args: [ --use-current-year ]
         types: [ python ]
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.3
+    rev: 0.8.4
     hooks:
       - id: pydoclint
         args: [ "--config=pyproject.toml" ]
@@ -74,7 +74,7 @@ repos:
       - id: nbqa-pyupgrade
         args: [ "--py310-plus" ]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.20.1
+    rev: v2.1.0
     hooks:
       - id: mypy
         additional_dependencies: [ pandas-stubs, types-tqdm, types-PyYAML ]

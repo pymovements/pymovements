@@ -27,9 +27,9 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements.events import ivt
-from pymovements.gaze.transforms import pos2vel
-from pymovements.gaze.transforms_numpy import pos2vel as pos2vel_numpy
 from pymovements.synthetic import step_function
+from pymovements.transforms import pos2vel
+from pymovements.transforms.numpy import pos2vel as pos2vel_numpy
 
 
 @pytest.mark.parametrize(
