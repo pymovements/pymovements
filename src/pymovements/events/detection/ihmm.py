@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import warnings
 from typing import Any
+
 import numpy as np
 
 from pymovements._utils import _checks
@@ -108,7 +109,7 @@ def emit_log_prob(
         The log-probability (float) of observing `v` given state `s`
         under a Gaussian emission model.
     """
-    
+
     mu = mu[s]
     sigma = sigma[s]
 
@@ -158,34 +159,34 @@ def baum_welch(
     ----------
     states : int
         Number of hidden states in the HMM (M).
-    
+
     mu : np.ndarray | None
         Initial means for the observation distributions (Gaussian emissions).
         Shape: (states,). If None, will be initialized during algorithm execution.
-    
+
     sigma : np.ndarray | None
         Initial standard deviations for the observation distributions.
         Shape: (states,). If None, will be initialized during algorithm execution.
-    
+
     init : np.ndarray | None
         Initial state probability distribution (log-space).
         Shape: (states,). If None, will be initialized from the forward-backward algorithm.
-    
+
     trans : np.ndarray | None
         Initial state transition probability matrix (log-space).
         Shape: (states, states). trans[i, j] = log P(state_j | state_i).
-    
+
     velocities : list[float] | np.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
-    
+
     velocities_mask : array-like
         Boolean mask indicating which velocity observations are valid/observed.
         Same length as velocities. True indicates observed, False indicates missing.
-    
+
     max_iters : int
         Maximum number of EM iterations to perform.
-    
+
     epsilon : float, default=1e-4
         Convergence threshold. Algorithm stops when the relative change in
         log-likelihood between iterations is less than this value.
@@ -194,7 +195,7 @@ def baum_welch(
     -------
     dict[str, np.ndarray]
         Dictionary containing the estimated HMM parameters:
-        
+
         - 'mu' : np.ndarray
             Estimated emission means for each state. Shape: (states,)
         - 'sigma' : np.ndarray
@@ -204,7 +205,6 @@ def baum_welch(
         - 'trans' : np.ndarray
             Estimated state transition probabilities (log-space). Shape: (states, states)
     """
-
 
     T = len(velocities)
     M = states
@@ -352,30 +352,30 @@ def baum_forward(
     mu : np.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
         Shape: (M,). If None, emission probabilities are ignored (treated as log(1) = 0).
-    
+
     sigma : np.ndarray | None
         Standard deviations of the emission distributions for each state.
         Shape: (M,). If None, emission probabilities are ignored.
-    
+
     init : np.ndarray | None
         Initial state probability distribution (log-space).
         Shape: (M,). init[s] = log(P(state = s at time 0)).
-    
+
     trans : np.ndarray | None
         State transition probability matrix (log-space).
         Shape: (M, M). trans[i, j] = log(P(state = j at time t | state = i at time t-1)).
-    
+
     velocities : list[float] | np.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
-    
+
     velocities_mask : array-like
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
-    
+
     T : int
         Number of time steps (length of observation sequence).
-    
+
     M : int
         Number of hidden states.
 
@@ -430,26 +430,26 @@ def baum_backward(
     mu : np.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
         Shape: (M,). If None, emission probabilities are ignored (treated as log(1) = 0).
-    
+
     sigma : np.ndarray | None
         Standard deviations of the emission distributions for each state.
         Shape: (M,). If None, emission probabilities are ignored.
-    
+
     trans : np.ndarray | None
         State transition probability matrix (log-space).
         Shape: (M, M). trans[i, j] = log(P(state = j at time t+1 | state = i at time t)).
-    
+
     velocities : list[float] | np.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
-    
+
     velocities_mask : array-like
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
-    
+
     T : int
         Number of time steps (length of observation sequence).
-    
+
     M : int
         Number of hidden states.
 
@@ -460,8 +460,6 @@ def baum_backward(
         beta[t, i] = log(P(observations[t+1:T] | state = i at time t, model parameters)).
 
     """
-
-    
 
     beta = np.full((T, M), -np.inf)
 
@@ -510,27 +508,27 @@ def viterbi(
     ----------
     states : int
         Number of hidden states in the HMM (M).
-    
+
     mu : np.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
         Shape: (states,). If None, emission probabilities are ignored (treated as log(1) = 0).
-    
+
     sigma : np.ndarray | None
         Standard deviations of the emission distributions for each state.
         Shape: (states,). If None, emission probabilities are ignored.
-    
+
     init : np.ndarray | None
         Initial state probability distribution (log-space).
         Shape: (states,). init[s] = log(P(state = s at time 0)).
-    
+
     trans : np.ndarray | None
         State transition probability matrix (log-space).
         Shape: (states, states). trans[i, j] = log(P(state = j at time t | state = i at time t-1)).
-    
+
     velocities : list[float] | np.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
-    
+
     velocities_mask : list[bool]
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
@@ -542,8 +540,6 @@ def viterbi(
         Shape: (T,), dtype=int. Each entry is a state index from 0 to states-1.
 
     """
-
-    
 
     # init step
 
@@ -604,11 +600,11 @@ def collapse_states(
     states : np.ndarray
         Array of state labels for each timestep. Typically output from Viterbi
         or other HMM decoding methods. Shape: (T,), where T is number of timesteps.
-    
+
     timesteps : np.ndarray
         Array of time values corresponding to each state label.
         Must have the same length as states. Shape: (T,).
-    
+
     fixation_state : int, default=0
         The state label that represents fixation periods.
         All other states are ignored. Default is 0 (commonly used for fixation).
@@ -617,17 +613,16 @@ def collapse_states(
     -------
     tuple[np.ndarray, np.ndarray]
         A tuple containing two arrays:
-        
+
         - onsets : np.ndarray
             Start times of each fixation period. Shape: (N,), where N is number
             of fixation periods.
-        
+
         - offsets : np.ndarray
             End times of each fixation period. Shape: (N,).
             Same length as onsets.
    """
 
-    
     if len(states) == 0 or len(timesteps) == 0:
         return np.array([]), np.array([])
 
@@ -680,42 +675,42 @@ def compute_hmm(
     ----------
     velocities : np.ndarray
         Array of velocity measurements. Shape: (T,), where T is number of timesteps.
-    
+
     verbose : bool
         If True, prints parameter values and reestimation results to console.
-    
+
     reestimation : bool
         If True, performs Baum-Welch reestimation to optimize HMM parameters
         before state decoding.
-    
+
     reestimation_max_iters : int
         Maximum number of EM iterations for Baum-Welch reestimation.
         Only used if reestimation is True.
-    
+
     mu : np.ndarray | None
         Mean velocity for each state (Gaussian emissions).
         Shape: (2,), typically [fixation_mean, saccade_mean].
         If None, uses default or hmm_parameters_dict values.
-    
+
     sigma : np.ndarray | None
         Standard deviation of velocity for each state.
         Shape: (2,), typically [fixation_std, saccade_std].
         If None, uses default or hmm_parameters_dict values.
-    
+
     init_state : np.ndarray | None
         Initial state probability distribution (linear scale, not log).
         Shape: (2,), e.g., [0.5, 0.5].
         If None, uses default or hmm_parameters_dict values.
-    
+
     transition_probabilities : np.ndarray | None
         State transition probability matrix (linear scale, not log).
         Shape: (2, 2), where trans[i, j] = P(state=j | state=i).
         If None, uses default or hmm_parameters_dict values.
-    
+
     velocities_mask : array-like
         Boolean mask indicating valid/observed velocity values.
         Shape: (T,). True for observed, False for missing/NaN values.
-    
+
     hmm_parameters_dict : dict or None
         Dictionary containing custom HMM parameters with keys:
         - 'mu': list of 2 means
@@ -730,7 +725,6 @@ def compute_hmm(
         Decoded state sequence. Shape: (T,), dtype=int.
         State 0 typically represents fixation, State 1 represents saccade.
     """
-    
 
     # Ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
@@ -833,53 +827,53 @@ def ihmm(
         - 1D array of shape (T,) containing pre-computed velocity magnitudes
         - List of (vx, vy) tuples or lists
         Will be converted to velocity magnitudes via Euclidean norm.
-    
+
     timesteps : list[int] | np.ndarray | None, default=None
         Timestamp indices for each velocity sample. Must be integers.
         If None, uses sequential indices (0, 1, 2, ..., T-1).
-    
+
     mu : list[float] | np.ndarray | None, default=None
         Mean velocity for each state (Gaussian emissions).
         Shape: (2,), typically [fixation_mean, saccade_mean].
         If None, uses data-driven defaults or hmm_parameters_dict.
-    
+
     sigma : list[float] | np.ndarray | None, default=None
         Standard deviation of velocity for each state.
         Shape: (2,), typically [fixation_std, saccade_std].
         If None, uses data-driven defaults or hmm_parameters_dict.
-    
+
     init_state : list[float] | np.ndarray | None, default=None
         Initial state probability distribution (linear scale).
         Shape: (2,), e.g., [0.5, 0.5]. Must sum to 1.
         If None, uses defaults or hmm_parameters_dict.
-    
+
     transition_probabilities : list[list[float]] | np.ndarray | None, default=None
         State transition probability matrix (linear scale).
         Shape: (2, 2). Each row must sum to 1.
         If None, uses default matrix [[0.95, 0.05], [0.05, 0.95]].
-    
+
     reestimation_max_iters : int, default=1000
         Maximum number of Baum-Welch EM iterations if reestimation=True.
-    
+
     reestimation : bool, default=False
         If True, performs Baum-Welch reestimation to optimize HMM parameters
         before state decoding. Recommended for robust parameter estimation.
-    
+
     include_nan : bool, default=False
         If True, includes NaN values in processing. Currently unused.
-    
+
     verbose : bool, default=False
         If True, prints parameter values and reestimation progress.
         Only effective when reestimation=True.
-    
+
     hmm_parameters_dict : dict | None, default=None
         Dictionary containing custom HMM parameters with keys:
         - 'mu': list of 2 means
-        - 'sigma': list of 2 standard deviations  
+        - 'sigma': list of 2 standard deviations
         - 'init': list of 2 initial probabilities
         - 'trans': 2x2 transition probability matrix
         Overridden by explicit mu, sigma, init_state, transition_probabilities.
-    
+
     name : str, default='fixation'
         Name for the detected events. Appears in the returned Events object.
 
@@ -895,29 +889,29 @@ def ihmm(
     Notes
     -----
     The processing pipeline consists of several steps:
-    
+
     1. Input validation and conversion:
        - Converts velocities to 1D magnitude array via Euclidean norm
        - Removes leading/trailing NaN values
        - Validates parameter shapes and transition probability sums
-    
+
     2. HMM parameter initialization (priority order):
        - Explicit parameters (mu, sigma, init_state, transition_probabilities)
        - Custom dictionary (hmm_parameters_dict)
        - Data-driven defaults (based on velocity percentiles)
-    
+
     3. Optional parameter reestimation using Baum-Welch:
        - Maximizes likelihood of observed velocity data
        - Updates all HMM parameters
        - Runs for up to reestimation_max_iters iterations
-    
+
     4. State decoding using Viterbi algorithm:
        - Finds most likely fixation/saccade sequence
-    
+
     5. Event extraction:
        - Collapses consecutive fixation state periods into events
        - Returns onset and offset times for each fixation
-    
+
     The default transition probabilities (0.95 for self-transitions, 0.05 for
     switches) are based on Salvucci's eye movement model, reflecting typical
     fixation and saccade durations.
