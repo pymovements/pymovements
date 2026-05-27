@@ -83,7 +83,9 @@ class TestDataLossHistogram:
 
     def test_no_data_loss(self, sample_gaze_no_loss: Gaze) -> None:
         """Test histogram with no data loss."""
-        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', sampling_rate=1000.0)
+        fig, ax = data_loss_histogram(
+            sample_gaze_no_loss, column='pixel', sampling_rate=1000.0,
+        )
 
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
@@ -106,7 +108,7 @@ class TestDataLossHistogram:
         assert isinstance(ax, plt.Axes)
 
         # Should have 2 chunks: 2 invalid samples, then 1 invalid sample
-        assert len(ax.patches) > 0
+        assert len(ax.patches) == 2
 
         plt.close(fig)
 
@@ -121,6 +123,8 @@ class TestDataLossHistogram:
 
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
+
+        assert len(ax.patches) == 1
 
         plt.close(fig)
 
@@ -142,7 +146,9 @@ class TestDataLossHistogram:
         assert len(ax.patches) == 1
         plt.close(fig)
 
-    def test_unit_time_requires_sampling_rate(self, sample_gaze_no_loss: Gaze) -> None:
+    def test_unit_time_requires_sampling_rate(
+        self, sample_gaze_no_loss: Gaze,
+    ) -> None:
         """Test that unit='time' requires sampling_rate."""
         with pytest.raises(ValueError, match='sampling_rate must be provided'):
             data_loss_histogram(sample_gaze_no_loss, unit='time')
@@ -155,7 +161,9 @@ class TestDataLossHistogram:
     def test_custom_title(self, sample_gaze_no_loss: Gaze) -> None:
         """Test custom title parameter."""
         custom_title = 'Custom Histogram Title'
-        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', title=custom_title)
+        fig, ax = data_loss_histogram(
+            sample_gaze_no_loss, column='pixel', title=custom_title,
+        )
 
         assert ax.get_title() == custom_title
 
@@ -164,7 +172,9 @@ class TestDataLossHistogram:
     def test_custom_figsize(self, sample_gaze_no_loss: Gaze) -> None:
         """Test custom figure size."""
         figsize = (10, 5)
-        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', figsize=figsize)
+        fig, ax = data_loss_histogram(
+            sample_gaze_no_loss, column='pixel', figsize=figsize,
+        )
 
         assert fig.get_figwidth() == figsize[0]
         assert fig.get_figheight() == figsize[1]
@@ -183,8 +193,10 @@ class TestDataLossHistogram:
 
         plt.close(fig)
 
-    def test_unit_time_conversion(self, sample_gaze_with_loss: Gaze) -> None:
-        """Test that time unit converts correctly."""
+    def test_unit_time_conversion_axis_labels(
+        self, sample_gaze_with_loss: Gaze,
+    ) -> None:
+        """Test that axis labels reflect the selected unit."""
         fig_count, ax_count = data_loss_histogram(
             sample_gaze_with_loss,
             column='pixel',
@@ -202,6 +214,27 @@ class TestDataLossHistogram:
         # Check axis labels
         assert 'samples' in ax_count.get_xlabel().lower()
         assert 'ms' in ax_time.get_xlabel().lower()
+
+        plt.close(fig_count)
+        plt.close(fig_time)
+
+    def test_unit_time_conversion_statistics(
+        self, sample_gaze_with_loss: Gaze,
+    ) -> None:
+        """Test that statistics reflect the selected unit."""
+        fig_count, ax_count = data_loss_histogram(
+            sample_gaze_with_loss,
+            column='pixel',
+            unit='count',
+            sampling_rate=500.0,
+        )
+
+        fig_time, ax_time = data_loss_histogram(
+            sample_gaze_with_loss,
+            column='pixel',
+            unit='time',
+            sampling_rate=500.0,
+        )
 
         # Check calculated statistics
         count_texts = [t.get_text() for t in ax_count.texts]

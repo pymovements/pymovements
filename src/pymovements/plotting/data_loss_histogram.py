@@ -39,6 +39,10 @@ def data_loss_histogram(
         time_column: str = 'time',
         figsize: tuple[int, int] = (12, 6),
         title: str | None = None,
+        bins: int | str | None = 'auto',
+        color: str | None = None,
+        edgecolor: str = 'black',
+        alpha: float = 0.7,
         ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot histogram of consecutive data loss chunk lengths.
@@ -51,7 +55,8 @@ def data_loss_histogram(
     gaze : Gaze
         The gaze data to analyze.
     column : str, optional
-        The column to check for invalid values (i.e. 'pixel' for pixel columns, 'position' for position data), by default 'position'.
+        The column to check for invalid values (i.e. 'pixel' for pixel columns,
+        'position' for position data), by default 'position'.
     sampling_rate : float | None, optional
         Sampling rate in Hz. Required if unit='time', by default None.
     unit : Literal['count', 'time'], optional
@@ -63,6 +68,15 @@ def data_loss_histogram(
         Figure size in inches (width, height), by default (12, 6).
     title : str | None, optional
         Title for the plot. Auto-generated if None, by default None.
+    bins : int | str | None, optional
+        Number of bins or binning strategy for the histogram, by default 'auto'.
+        See matplotlib.pyplot.hist for available options.
+    color : str | None, optional
+        Fill color of the histogram bars, by default None (matplotlib default).
+    edgecolor : str, optional
+        Edge color of the histogram bars, by default 'black'.
+    alpha : float, optional
+        Transparency of bars (0.0 transparent to 1.0 opaque), by default 0.7.
     ax : plt.Axes | None, optional
         Matplotlib axes to plot on. Creates new figure if None, by default None.
 
@@ -87,7 +101,9 @@ def data_loss_histogram(
     # Create figure if needed
     # Don't pass figsize when using external axes
     effective_figsize = None if ax is not None else figsize
-    fig, ax = prepare_figure(ax=ax, figsize=effective_figsize, func_name='data_loss_histogram')
+    fig, ax = prepare_figure(
+        ax=ax, figsize=effective_figsize, func_name='data_loss_histogram',
+    )
 
     samples = gaze.samples
 
@@ -141,9 +157,27 @@ def data_loss_histogram(
 
     # Create histogram
     if chunks_converted:
-        ax.hist(chunks_converted, bins='auto', edgecolor='black', alpha=0.7)
-        ax.set_xlabel('Chunk Length' + (' (ms)' if unit == 'time' else ' (samples)'))
-        ax.set_ylabel('Frequency')
+        _, _, bar_container = ax.hist(
+            chunks_converted,
+            bins=bins,
+            color=color,
+            edgecolor=edgecolor,
+            alpha=alpha,
+        )
+
+        # Center ticks on bars for clearer interpretation
+        bin_centers = []
+        for patch in bar_container.patches:
+            bin_centers.append(patch.get_x() + patch.get_width() / 2)
+        ax.set_xticks(bin_centers)
+
+        ax.set_xlabel(
+            'Data Loss Duration' + (' (ms)' if unit == 'time' else ' (samples)'),
+        )
+        ax.set_ylabel('Count')
+
+        # Force y-axis ticks to be integers (count values are whole numbers)
+        ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
         # Add statistics
         chunks_array = np.array(chunks_converted)
@@ -169,7 +203,7 @@ def data_loss_histogram(
     # Set title
     if title is None:
         unit_str = 'Time (ms)' if unit == 'time' else 'Samples'
-        title = f'Data Loss Chunk Length Distribution ({unit_str})'
+        title = f'Data Loss Duration Distribution ({unit_str})'
 
     ax.set_title(title)
     fig.tight_layout()
