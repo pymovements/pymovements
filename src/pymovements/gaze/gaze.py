@@ -335,7 +335,7 @@ class Gaze:
         self.messages = messages
 
         if calibrations is not None:
-            self.calibrations = calibrations.clone()
+            self.calibrations = calibrations
         else:
             self.calibrations = None
 
