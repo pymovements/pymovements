@@ -23,7 +23,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-from dataclasses import field
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -65,18 +64,33 @@ class DatasetFile:
 
     Parameters
     ----------
-    path: Path
+    path: Path | str
         Absolute path of the dataset file.
-    definition: ResourceDefinition
+    definition: ResourceDefinition | None
         Associated :py:class:`~pymovements.ResourceDefinition`.
-    metadata: dict[str, Any]
+        (default: None)
+    metadata: dict[str, Any] | None
         Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
-        (default: {})
+        (default: None)
     """
 
     path: Path
     definition: ResourceDefinition
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any]
+
+    def __init__(
+            self,
+            path: Path | str,
+            definition: ResourceDefinition | None = None,
+            metadata: dict[str, Any] | None = None,
+    ):
+        self.path = Path(path)
+        if definition is None:
+            definition = ResourceDefinition(content='unknown')
+        self.definition = definition
+        if metadata is None:
+            metadata = {}
+        self.metadata = metadata
 
 
 def scan_dataset(
@@ -112,7 +126,9 @@ def scan_dataset(
     for resource_definition in definition.resources:
         content_type = resource_definition.content
 
-        if content_type == 'gaze':
+        if content_type == 'participants':
+            resource_dirpath = paths.raw
+        elif content_type == 'gaze':
             resource_dirpath = paths.raw
         elif content_type == 'precomputed_events':
             resource_dirpath = paths.precomputed_events
@@ -123,20 +139,21 @@ def scan_dataset(
         else:
             warn(
                 f'content type {content_type} is not supported. '
-                'supported contents are: gaze, precomputed_events, '
+                'supported contents are: participants, gaze, precomputed_events, '
                 'precomputed_reading_measures, TextStimulus, ImageStimulus. '
                 'skipping this resource definition during scan.',
             )
             continue
 
+        regex = curly_to_regex(resource_definition.filename_pattern)
         filepaths = match_filepaths(
             path=resource_dirpath,
-            regex=curly_to_regex(resource_definition.filename_pattern),
+            regex=regex,
             relative=True,
         )
 
         if not filepaths:
-            raise RuntimeError(f'no matching files found in {resource_dirpath}')
+            raise RuntimeError(f'no matching files found in {resource_dirpath} with regex {regex}')
 
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=1)
         fileinfo_df = fileinfo_df.sort(by='filepath')
@@ -350,8 +367,6 @@ def load_gaze_file(
             )
 
     load_function_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_function_kwargs is None:
-        load_function_kwargs = {}
 
     if load_function_name == 'from_csv':
         if preprocessed:
@@ -493,8 +508,6 @@ def load_precomputed_reading_measure_file(
         Raises ValueError if unsupported file type is encountered.
     """
     load_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_kwargs is None:
-        load_kwargs = {}
     if dataset_definition.custom_read_kwargs is not None:
         custom_read_kwargs = dataset_definition.custom_read_kwargs.get(
             'precomputed_reading_measures', {},
@@ -591,8 +604,6 @@ def load_precomputed_event_file(
         If the file format is unsupported based on its extension.
     """
     load_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_kwargs is None:
-        load_kwargs = {}
     if dataset_definition.custom_read_kwargs is not None:
         custom_read_kwargs = dataset_definition.custom_read_kwargs.get('precomputed_events', {})
         load_kwargs.update(custom_read_kwargs)
@@ -687,8 +698,6 @@ def load_stimulus_file(
         )
 
     load_kwargs = deepcopy(file.definition.load_kwargs)
-    if load_kwargs is None:
-        load_kwargs = {}
 
     if load_function_name == 'TextStimulus.from_csv':
         return TextStimulus.from_csv(path=file.path, **load_kwargs)

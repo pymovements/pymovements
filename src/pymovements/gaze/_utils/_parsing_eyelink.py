@@ -46,16 +46,16 @@ from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys,
 
 
 # Define separate regex patterns for monocular and binocular cases
-EYE_TRACKING_SAMPLE_MONOCULAR = re.compile(
+EYE_TRACKING_SAMPLE_MONOCULAR = (
     r'(?P<time>(\d+[.]?\d*))\s+'
     r'(?P<x_pix>[-]?\d*[.]\d*|\.)?\s*'
     r'(?P<y_pix>[-]?\d*[.]\d*|\.)?\s*'
     r'(?P<pupil>\d*[.]\d*|\.)?\s*'
     r'(?P<dummy>\d*[.]\d*|\.)?\s*'
-    r'(?P<flags>[A-Za-z.]{3,5})?\s*',
+    r'(?P<flags>[A-Za-z.]{3,5})?\s*'
 )
 
-EYE_TRACKING_SAMPLE_BINOCULAR = re.compile(
+EYE_TRACKING_SAMPLE_BINOCULAR = (
     r'(?P<time>(\d+[.]?\d*))\s+'
     r'(?P<x_pix_left>[-]?\d*[.]\d*|\.)?\s*'
     r'(?P<y_pix_left>[-]?\d*[.]\d*|\.)?\s*'
@@ -64,62 +64,60 @@ EYE_TRACKING_SAMPLE_BINOCULAR = re.compile(
     r'(?P<y_pix_right>[-]?\d*[.]\d*|\.)?\s*'
     r'(?P<pupil_right>\d*[.]\d*|\.)?\s*'
     r'(?P<dummy>\d*[.]\d*|\.)?\s*'
-    r'(?P<flags>[A-Za-z.]{3,5})?\s*',
+    r'(?P<flags>[A-Za-z.]{3,5})?\s*'
 )
 
 EYELINK_META_REGEXES = [
-    {'pattern': re.compile(regex)} for regex in (
-        r'\*\*\s+VERSION:\s+(?P<version_1>.*)\s+',
-        (
-            r'\*\*\s+DATE:\s+(?P<weekday>[A-Z,a-z]+)\s+(?P<month>[A-Z,a-z]+)'
-            r'\s+(?P<day>\d\d?)\s+(?P<time>\d\d:\d\d:\d\d)\s+(?P<year>\d{4})\s*'
-        ),
-        r'\*\*\s+(?P<version_2>EYELINK.*)',
-        r'\*\*\s+RECORDED\s+BY\s+(?P<recorded_by>.*)',
-        r'MSG\s+\d+[.]?\d*\s+DISPLAY_COORDS\s*=?\s*(?P<DISPLAY_COORDS>.*)',
-        r'PUPIL\s+(?P<pupil_data_type>(AREA|DIAMETER))\s*',
-        r'MSG\s+\d+[.]?\d*\s+ELCLCFG\s+(?P<mount_configuration>.*)',
-    )
+    r'\*\*\s+VERSION:\s+(?P<version_1>.*)\s+',
+    (
+        r'\*\*\s+DATE:\s+(?P<weekday>[A-Z,a-z]+)\s+(?P<month>[A-Z,a-z]+)'
+        r'\s+(?P<day>\d\d?)\s+(?P<time>\d\d:\d\d:\d\d)\s+(?P<year>\d{4})\s*'
+    ),
+    r'\*\*\s+(?P<version_2>EYELINK.*)',
+    r'\*\*\s+RECORDED\s+BY\s+(?P<recorded_by>.*)',
+    r'MSG\s+\d+[.]?\d*\s+DISPLAY_COORDS\s*=?\s*(?P<DISPLAY_COORDS>.*)',
+    r'PUPIL\s+(?P<pupil_data_type>(AREA|DIAMETER))\s*',
+    r'MSG\s+\d+[.]?\d*\s+ELCLCFG\s+(?P<mount_configuration>.*)',
 ]
 
-VALIDATION_REGEX = re.compile(
+VALIDATION_REGEX = (
     r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s+VALIDATION\s+HV'
     r'(?P<num_points>\d\d?).*'
     r'(?P<tracked_eye>LEFT|RIGHT)\s+'
     r'(?P<error>\D*)\s+'
     r'(?P<validation_score_avg>\d.\d\d)\s+avg\.\s+'
-    r'(?P<validation_score_max>\d.\d\d)\s+max',
+    r'(?P<validation_score_max>\d.\d\d)\s+max'
 )
 
-FIXATION_START_REGEX = re.compile(r'SFIX\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*')
-FIXATION_STOP_REGEX = re.compile(
+FIXATION_START_REGEX = r'SFIX\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*'
+FIXATION_STOP_REGEX = (
     r'EFIX\s+(?P<eye>R|L)\s+(?P<timestamp_start>(\d+[.]?\d*))\s+'
     r'(?P<timestamp_end>(\d+[.]?\d*))\s+(?P<duration_ms>(\d+[.]?\d*))\s+'
-    r'(?P<avg_x_pix>(\d+[.]?\d*))\s+(?P<avg_y_pix>(\d+[.]?\d*))\s+(?P<avg_pupil>(\d+[.]?\d*))\s*.*',
+    r'(?P<avg_x_pix>(\d+[.]?\d*))\s+(?P<avg_y_pix>(\d+[.]?\d*))\s+(?P<avg_pupil>(\d+[.]?\d*))\s*.*'
 )
-SACCADE_START_REGEX = re.compile(r'SSACC\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*')
-SACCADE_STOP_REGEX = re.compile(
+SACCADE_START_REGEX = r'SSACC\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*'
+SACCADE_STOP_REGEX = (
     r'ESACC\s+(?P<eye>R|L)\s+(?P<timestamp_start>(\d+[.]?\d*))\s+'
     r'(?P<timestamp_end>(\d+[.]?\d*))\s+(?P<duration_ms>(\d+[.]?\d*))\s+'
     r'(?P<start_x_pix>(\d+[.]?\d*))\s+(?P<start_y_pix>(\d+[.]?\d*))\s+'
     r'(?P<end_x_pix>(\d+[.]?\d*))\s+(?P<end_y_pix>(\d+[.]?\d*))\s+'
-    r'(?P<amplitude>(\d+[.]?\d*))\s+(?P<peak_velocity>(\d+[.]?\d*))\s*.*',
+    r'(?P<amplitude>(\d+[.]?\d*))\s+(?P<peak_velocity>(\d+[.]?\d*))\s*.*'
 )
-BLINK_START_REGEX = re.compile(r'SBLINK\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*')
-BLINK_STOP_REGEX = re.compile(
+BLINK_START_REGEX = r'SBLINK\s+(?P<eye>R|L)\s+(?P<timestamp>(\d+[.]?\d*))\s*'
+BLINK_STOP_REGEX = (
     r'EBLINK\s+(?P<eye>R|L)\s+(?P<timestamp_start>(\d+[.]?\d*))\s+'
-    r'(?P<timestamp_end>(\d+[.]?\d*))\s+(?P<duration_ms>(\d+[.]?\d*))\s*',
+    r'(?P<timestamp_end>(\d+[.]?\d*))\s+(?P<duration_ms>(\d+[.]?\d*))\s*'
 )
 
-CALIBRATION_TIMESTAMP_REGEX = re.compile(r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s*\n')
+CALIBRATION_TIMESTAMP_REGEX = r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s*\n'
 
-CALIBRATION_REGEX = re.compile(
+CALIBRATION_REGEX = (
     r'>+\s+CALIBRATION\s+\(HV(?P<num_points>\d\d?),'
     r'(?P<type>.*)\).*'
-    r'(?P<tracked_eye>RIGHT|LEFT):\s+<{9}',
+    r'(?P<tracked_eye>RIGHT|LEFT):\s+<{9}'
 )
 
-RECORDING_CONFIG_REGEX = re.compile(
+RECORDING_CONFIG_REGEX = (
     r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+'
     r'RECCFG\s+(?P<tracking_mode>[A-Z,a-z]+)\s+'
     r'(?P<sampling_rate>\d+)\s+'
@@ -127,36 +125,62 @@ RECORDING_CONFIG_REGEX = re.compile(
     r'(?P<link_sample_filter>0|1|2)\s+'
     r'((?P<file_event_filter>0|1|2)\s+)?'
     r'((?P<link_event_filter>0|1|2)\s+)?'
-    r'(?P<tracked_eye>LR|[LR])?\s*',
+    r'(?P<tracked_eye>LR|[LR])?\s*'
 )
 
 # Resolution (GAZE_COORDS) pattern used to extract screen coordinates
-GAZE_COORDS_REGEX = re.compile(
-    r'MSG\s+\d+[.]?\d*\s+GAZE_COORDS\s*=?\s*(?P<resolution>.*)',
+GAZE_COORDS_REGEX = (
+    r'MSG\s+\d+[.]?\d*\s+GAZE_COORDS\s*=?\s*(?P<resolution>.*)'
 )
 
 # Regex to match SAMPLES lines and capture which eyes are present (LEFT, RIGHT, LEFT RIGHT, LR)
-SAMPLES_CONFIG_REGEX = re.compile(
+SAMPLES_CONFIG_REGEX = (
     r'SAMPLES\s+GAZE\s+'
     r'(?P<tracked_eye>(?:LEFT\s+RIGHT|LEFT|RIGHT|LR|[LR]))'
     r'(?:\s+RATE\s+(?P<sampling_rate>\d+(?:\.\d+)?))?'
     r'(?:\s+TRACKING\s+(?P<tracking_method>\S+))?'
     r'(?:\s+FILTER\s+(?P<filter>\d+))?'
-    r'(?:\s+(?P<input_flag>INPUT))?',
-    re.IGNORECASE,
+    r'(?:\s+(?P<input_flag>INPUT))?'
 )
-START_RECORDING_REGEX = re.compile(
-    r'START\s+(?P<timestamp>(\d+[.]?\d*))\s+(RIGHT|LEFT)\s+(?P<types>.*)',
+START_RECORDING_REGEX = (
+    r'START\s+(?P<timestamp>(\d+[.]?\d*))\s+(RIGHT|LEFT)\s+(?P<types>.*)'
 )
-STOP_RECORDING_REGEX = re.compile(
+STOP_RECORDING_REGEX = (
     r'END\s+(?P<timestamp>(\d+[.]?\d*))\s+(?P<types>.*)\s+RES\s+'
-    r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*',
+    r'(?P<xres>[\d\.]*)\s+(?P<yres>[\d\.]*)\s*'
 )
 
 # General message format
-MSG_REGEX = re.compile(
-    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)',
+MSG_REGEX = (
+    r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+(?P<content>.*)'
 )
+
+
+def _match_regex(
+        pattern: str | re.Pattern[str],
+        line: str,
+        flags: int = 0,
+) -> re.Match[str] | None:
+    """Match a parser regex, compiling string patterns on demand."""
+    if isinstance(pattern, str):
+        return re.compile(pattern, flags).match(line)
+    return pattern.match(line)
+
+
+def _search_regex(
+        pattern: str | re.Pattern[str],
+        line: str,
+        flags: int = 0,
+) -> re.Match[str] | None:
+    """Search with a parser regex, compiling string patterns on demand."""
+    if isinstance(pattern, str):
+        return re.compile(pattern, flags).search(line)
+    return pattern.search(line)
+
+
+def _eyelink_meta_regexes() -> list[dict[str, re.Pattern[str]]]:
+    """Return lazily compiled default EyeLink metadata regex dictionaries."""
+    return [{'pattern': re.compile(regex)} for regex in EYELINK_META_REGEXES]
 
 
 def _check_reccfg_key(
@@ -260,15 +284,15 @@ def parse_eyelink_event_start(line: str) -> tuple[str, str, float] | None:
     Returns a tuple (event_name, eye, timestamp) where eye is 'left' or 'right'.
     Example: ('fixation', 'left', 100.0)
     """
-    if match := FIXATION_START_REGEX.match(line):
+    if match := _match_regex(FIXATION_START_REGEX, line):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return 'fixation', eye_str, float(match.group('timestamp'))
-    if match := SACCADE_START_REGEX.match(line):
+    if match := _match_regex(SACCADE_START_REGEX, line):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return 'saccade', eye_str, float(match.group('timestamp'))
-    if match := BLINK_START_REGEX.match(line):
+    if match := _match_regex(BLINK_START_REGEX, line):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return 'blink', eye_str, float(match.group('timestamp'))
@@ -280,7 +304,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
 
     Returns a tuple (event_name, eye, onset, offset). Example: ('fixation', 'left', 123.0, 130.0)
     """
-    if match := FIXATION_STOP_REGEX.match(line):
+    if match := _match_regex(FIXATION_STOP_REGEX, line):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return (
@@ -289,7 +313,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
         )
-    if match := SACCADE_STOP_REGEX.match(line):
+    if match := _match_regex(SACCADE_STOP_REGEX, line):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return (
@@ -298,7 +322,7 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
             float(match.group('timestamp_start')),
             float(match.group('timestamp_end')),
         )
-    if match := BLINK_STOP_REGEX.match(line):
+    if match := _match_regex(BLINK_STOP_REGEX, line):
         eye = match.group('eye').upper()
         eye_str = 'left' if eye == 'L' else 'right'
         return (
@@ -542,7 +566,7 @@ def parse_eyelink(
     for key in metadata_keys:
         metadata[key] = None
 
-    compiled_metadata_patterns.extend(EYELINK_META_REGEXES)
+    compiled_metadata_patterns.extend(_eyelink_meta_regexes())
 
     # Flag: whether file was recorded by libeyelink.py (PyGaze)
     recorded_by_libeyelink = False
@@ -576,7 +600,7 @@ def parse_eyelink(
     # First pass: collect SAMPLES config for binocular detection only
     is_binocular = False
     for line in lines:
-        if match := SAMPLES_CONFIG_REGEX.search(line):
+        if match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
             samples_config.append(match.groupdict())
             tracked = match.group('tracked_eye').upper().strip()
             # consider 'LEFT' in tracked and 'RIGHT' in tracked or tracked == 'LR' or
@@ -646,17 +670,17 @@ def parse_eyelink(
                     'timestamp': cal_timestamp,
                     **match.groupdict(),
                 }
-                if (match := CALIBRATION_REGEX.match(line))
+                if (match := _match_regex(CALIBRATION_REGEX, line))
                 else {'timestamp': cal_timestamp},
             )
             cal_timestamp = ''
 
-        elif match := RECORDING_CONFIG_REGEX.match(line):
+        elif match := _match_regex(RECORDING_CONFIG_REGEX, line):
             # Drop optional groups that weren't present for legacy behaviour
             rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
             recording_config.append(rec_cfg)
 
-        elif match := GAZE_COORDS_REGEX.match(line):
+        elif match := _match_regex(GAZE_COORDS_REGEX, line):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())
             # GAZE_COORDS is typically logged after RECCFG - if not, warn and skip assignment.
             if not recording_config:
@@ -680,10 +704,10 @@ def parse_eyelink(
 
                 recording_config[-1]['resolution'] = (width, height)
 
-        elif match := START_RECORDING_REGEX.match(line):
+        elif match := _match_regex(START_RECORDING_REGEX, line):
             start_recording_timestamp = match.groupdict()['timestamp']
 
-        elif match := STOP_RECORDING_REGEX.match(line):
+        elif match := _match_regex(STOP_RECORDING_REGEX, line):
             stop_recording_timestamp = match.groupdict()['timestamp']
 
             try:
@@ -702,14 +726,14 @@ def parse_eyelink(
                         block_duration * float(current_sampling_rate) / 1000,
                     )
 
-        if messages and (match := MSG_REGEX.match(line)):
+        if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
         # Use the appropriate regex based on the file type
         eye_tracking_sample_match = (
-            EYE_TRACKING_SAMPLE_BINOCULAR.match(line)
+            _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
             if is_binocular else
-            EYE_TRACKING_SAMPLE_MONOCULAR.match(line)
+            _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
         )
 
         if eye_tracking_sample_match:
@@ -766,10 +790,10 @@ def parse_eyelink(
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
 
-        elif match := CALIBRATION_TIMESTAMP_REGEX.match(line):
+        elif match := _match_regex(CALIBRATION_TIMESTAMP_REGEX, line):
             cal_timestamp = match.groupdict()['timestamp']
 
-        elif match := VALIDATION_REGEX.match(line):
+        elif match := _match_regex(VALIDATION_REGEX, line):
             validations.append(match.groupdict())
 
         elif compiled_metadata_patterns:
