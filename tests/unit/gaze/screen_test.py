@@ -446,17 +446,33 @@ def test_dva_properties_with_distance_cm(property_name):
     getattr(screen, property_name)
 
 
+@pytest.mark.filterwarnings('ignore:.*pix2deg.*:DeprecationWarning')
 def test_screen_pix2deg_with_no_distance_cm():
     screen = pm.Screen(1920, 1080, 30, 20, None, 'upper left')
     with pytest.raises(TypeError):
         screen.pix2deg([[0, 0]])
 
 
+@pytest.mark.filterwarnings('ignore:.*pix2deg.*:DeprecationWarning')
 def test_screen_pix2deg_with_distance_cm():
     screen = pm.Screen(1920, 1080, 30, 20, 60, 'upper left')
     screen.pix2deg([[0, 0]])
 
 
+def test_screen_pix2deg_is_deprecated_or_removed(assert_deprecation_is_removed):
+    screen = pm.Screen(1920, 1080, 30, 20, 60, 'upper left')
+
+    with pytest.raises(DeprecationWarning) as info:
+        screen.pix2deg([[0, 0]])
+
+    assert_deprecation_is_removed(
+        function_name='pix2deg',
+        warning_message=info.value.args[0],
+        scheduled_version='0.32.0',
+    )
+
+
+@pytest.mark.filterwarnings('ignore:.*pix2deg.*:DeprecationWarning')
 @pytest.mark.parametrize(
     ('missing_attribute', 'exception', 'exception_msg'),
     [

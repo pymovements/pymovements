@@ -27,6 +27,7 @@ from numbers import Number
 from typing import Any
 
 import numpy as np
+from deprecated.sphinx import deprecated
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
@@ -356,11 +357,20 @@ class Screen:
             ),
         )
 
+    @deprecated(
+        reason='Please use pymovements.transforms.pix2deg() instead. '
+               'This method will be removed in v0.32.0.',
+        version='v0.27.1',
+    )
     def pix2deg(
             self,
             arr: float | list[float] | list[list[float]] | np.ndarray,
     ) -> np.ndarray:
         """Convert pixel screen coordinates to degrees of visual angle.
+
+        .. deprecated:: v0.27.1
+           Please use :py:func:`~pymovements.transforms.pix2deg` instead.
+           This method will be removed in v0.32.0.
 
         Parameters
         ----------
@@ -388,7 +398,7 @@ class Screen:
         ...     distance_cm=68.0,
         ...     origin='upper left',
         ... )
-        >>> screen.pix2deg(arr=arr)
+        >>> screen.pix2deg(arr=arr)# doctest: +SKIP
         array([[-12.70732231, 8.65963972]])
 
         >>> screen = Screen(
@@ -399,7 +409,7 @@ class Screen:
         ...     distance_cm=68.0,
         ...     origin='center',
         ... )
-        >>> screen.pix2deg(arr=arr)
+        >>> screen.pix2deg(arr=arr)# doctest: +SKIP
         array([[ 3.07379946, 20.43909054]])
         """
         self._check_numerical_attribute('width_px')
