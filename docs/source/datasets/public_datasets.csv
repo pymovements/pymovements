@@ -20,11 +20,12 @@ Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampli
 ":ref:`InteRead` :cite:p:`InteRead`",X,X,,50,1,1200 Hz,Text (documents)
 ":ref:`IITB_HGC` :cite:p:`IITB_HGC`",,X,,5,1,2000 Hz,Text (documents)
 ":ref:`JuDo1000` :cite:p:`JuDo1000`",X,,,150,4,1000 Hz,Random Dots
-":ref:`MouseCursor` :cite:p:`MouseCursor`",X,,,2,1,3 Hz,Mouse Cursor
+":ref:`MCFW-Gaze` :cite:p:`MCFW-Gaze`",X,,,15,1,120 Hz,"Image, Gaze Authentication, Web Browsing, Text, Video"
 ":ref:`MECOL1W1` :cite:p:`MECOL1W1`",,X,X,580,1,Various Hz,Text (documents)
 ":ref:`MECOL1W2` :cite:p:`MECOL1W2`",,X,X,654,1,Various Hz,Text (documents)
 ":ref:`MECOL2W1` :cite:p:`MECOL2W1`",,X,,542,1,Various Hz,Text (documents)
 ":ref:`MECOL2W2` :cite:p:`MECOL2W2`",,X,,660,1,Various Hz,Text (documents)
+":ref:`MouseCursor` :cite:p:`MouseCursor`",X,,,2,1,3 Hz,Mouse Cursor
 ":ref:`OneStop` :cite:p:`OneStop`",,X,X,360,1,1000 Hz,Text (documents)
 ":ref:`PoTeC` :cite:p:`PoTeC`",X,,,75,1,1000 Hz,Text (documents)
 ":ref:`PotsdamBingeRemotePVT` :cite:p:`PotsdamBingePVT`",X,,,57,2,1000 Hz,Dots (PVT test)
