@@ -283,7 +283,9 @@ class AuthorYearLabelStyle(BaseLabelStyle):
 
     def format_labels(self, sorted_entries):
         for entry in sorted_entries:
-            output = f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
+            output = f'{
+                entry.persons["author"][0].rich_last_names[0]} et al., {
+                entry.fields["year"]}'
 
             if output in self.outputs:
                 for suffix_char in string.ascii_lowercase:
