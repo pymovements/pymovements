@@ -55,31 +55,41 @@ def data_loss_histogram(
     ----------
     gaze : Gaze
         The gaze data to analyze.
-    column : str, optional
-        The column to check for invalid values (i.e. 'pixel' for pixel columns,
-        'position' for position data), by default 'position'.
-    sampling_rate : float | None, optional
-        Sampling rate in Hz. Required if unit='time', by default None.
-    unit : Literal['count', 'time'], optional
-        Unit for chunk length: 'count' for sample count or 'time' for milliseconds,
-        by default 'count'.
-    time_column : str, optional
-        The column name containing timestamps, by default 'time'.
-    figsize : tuple[int, int], optional
-        Figure size in inches (width, height), by default (12, 6).
+    column : str
+        The column to check for invalid values (i.e. `'pixel'` for pixel columns,
+        `'position'` for position data).
+        (default `'position'`)
+    sampling_rate : float | None
+        Sampling rate in Hz. Required if unit='time'.
+        (default: `None`)
+    unit : Literal['count', 'time']
+        Unit for chunk length: 'count' for sample count or 'time' for milliseconds.
+        (default: `'count'`)
+    time_column : str
+        The column name containing timestamps.
+        (default: `'time'`)
+    figsize : tuple[int, int]
+        Figure size in inches (width, height).
+        (default `(12, 6)`)
     title : str | None, optional
-        Title for the plot. Auto-generated if None, by default None.
-    bins : int | str | None, optional
-        Number of bins or binning strategy for the histogram, by default 'auto'.
+        Title for the plot. Auto-generated if None.
+        (default: `None`)
+    bins : int | str | None
+        Number of bins or binning strategy for the histogram.
         See matplotlib.pyplot.hist for available options.
-    color : str | None, optional
-        Fill color of the histogram bars, by default None (matplotlib default).
-    edgecolor : str, optional
-        Edge color of the histogram bars, by default 'black'.
-    alpha : float, optional
-        Transparency of bars (0.0 transparent to 1.0 opaque), by default 0.7.
-    ax : plt.Axes | None, optional
-        Matplotlib axes to plot on. Creates new figure if None, by default None.
+        (default: `'auto'`)
+    color : str | None
+        Fill color of the histogram bars, if `None`, use  matplotlib default.
+        (default: `None`)
+    edgecolor : str
+        Edge color of the histogram bars.
+        (default: `'black'`)
+    alpha : float
+        Transparency of bars (0.0 transparent to 1.0 opaque).
+         (default: `0.7`)
+    ax : plt.Axes | None
+        Matplotlib axes to plot on. Creates new figure if `None`.
+        (default: `None`)
 
     Returns
     -------
