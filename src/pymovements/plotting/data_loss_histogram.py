@@ -141,10 +141,9 @@ def data_loss_histogram(
     for is_loss in loss_mask:
         if is_loss:
             current_chunk_length += 1
-        else:
-            if current_chunk_length > 0:
-                chunks.append(current_chunk_length)
-                current_chunk_length = 0
+        elif current_chunk_length > 0:
+            chunks.append(current_chunk_length)
+            current_chunk_length = 0
 
     # Don't forget the last chunk if data ends with a loss
     if current_chunk_length > 0:
@@ -192,7 +191,7 @@ def data_loss_histogram(
         ax.text(
             0.98, 0.97, stats_text, transform=ax.transAxes,
             verticalalignment='top', horizontalalignment='right',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5),
+            bbox={'boxstyle': 'round', 'facecolor': 'wheat', 'alpha': 0.5},
         )
     else:
         ax.text(
