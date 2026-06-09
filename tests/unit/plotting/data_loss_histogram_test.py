@@ -172,7 +172,7 @@ class TestDataLossHistogram:
     def test_custom_figsize(self, sample_gaze_no_loss: Gaze) -> None:
         """Test custom figure size."""
         figsize = (10, 5)
-        fig, ax = data_loss_histogram(
+        fig, _ = data_loss_histogram(
             sample_gaze_no_loss, column='pixel', figsize=figsize,
         )
 
