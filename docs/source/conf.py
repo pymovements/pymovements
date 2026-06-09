@@ -48,7 +48,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('src'))))
 # -- Project information -----------------------------------------------------
 
 project = 'pymovements'
-copyright = '2022-2025 The pymovements Project Authors'
+copyright = '2022-2026 The pymovements Project Authors'
 author = 'The pymovements Project Authors'
 
 
