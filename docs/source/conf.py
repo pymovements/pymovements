@@ -30,6 +30,7 @@
 import importlib.resources
 import inspect
 import os
+import string
 import sys
 from subprocess import CalledProcessError
 from subprocess import run
@@ -278,9 +279,21 @@ bibtex_reference_style = 'author_year'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
+    outputs = []
+
     def format_labels(self, sorted_entries):
         for entry in sorted_entries:
-            yield f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
+            output = f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
+
+            if output in self.outputs:
+                for suffix_char in string.ascii_lowercase:
+                    suffix_output = output + suffix_char
+                    if suffix_output not in self.outputs:
+                        output = suffix_output
+                        break
+
+            self.outputs.append(output)
+            yield output
 
 
 class AuthorYearStyle(PlainStyle):
