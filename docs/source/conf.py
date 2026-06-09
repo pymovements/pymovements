@@ -292,7 +292,7 @@ class AuthorYearLabelStyle(BaseLabelStyle):
             if output in outputs:
                 for suffix_char in string.ascii_lowercase:
                     suffix_output = output + suffix_char
-                    if suffix_output not in self.outputs:
+                    if suffix_output not in outputs:
                         output = suffix_output
                         break
 
