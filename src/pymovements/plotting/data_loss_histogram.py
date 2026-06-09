@@ -20,6 +20,7 @@
 """Provides the data_loss_histogram plotting function."""
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Literal
 
 import matplotlib.pyplot as plt
@@ -150,6 +151,7 @@ def data_loss_histogram(
         chunks.append(current_chunk_length)
 
     # Convert to requested unit
+    chunks_converted: Sequence[float | int] = []
     if unit == 'time' and sampling_rate is not None:
         chunks_converted = [c / sampling_rate * 1000 for c in chunks]
     else:
