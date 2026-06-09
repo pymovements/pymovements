@@ -20,7 +20,7 @@ Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampli
 ":ref:`InteRead` :cite:p:`InteRead`",X,X,,50,1,1200 Hz,Text (documents)
 ":ref:`IITB_HGC` :cite:p:`IITB_HGC`",,X,,5,1,2000 Hz,Text (documents)
 ":ref:`JuDo1000` :cite:p:`JuDo1000`",X,,,150,4,1000 Hz,Random Dots
-":ref:`MCFW-Gaze` :cite:p:`MCFW-Gaze`",X,,,15,1,120 Hz,"Image, Gaze Authentication, Web Browsing, Text, Video"
+":ref:`MCFW-Gaze` :cite:p:`MCFW-Gaze-Paper,MCFW-Gaze-Zenodo`",X,,,15,1,120 Hz,"Image, Gaze Authentication, Web Browsing, Text, Video"
 ":ref:`MECOL1W1` :cite:p:`MECOL1W1`",,X,X,580,1,Various Hz,Text (documents)
 ":ref:`MECOL1W2` :cite:p:`MECOL1W2`",,X,X,654,1,Various Hz,Text (documents)
 ":ref:`MECOL2W1` :cite:p:`MECOL2W1`",,X,,542,1,Various Hz,Text (documents)
