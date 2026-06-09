@@ -71,7 +71,7 @@ def data_loss_histogram(
     figsize : tuple[int, int]
         Figure size in inches (width, height).
         (default `(12, 6)`)
-    title : str | None, optional
+    title : str | None
         Title for the plot. Auto-generated if None.
         (default: `None`)
     bins : int | str | None
