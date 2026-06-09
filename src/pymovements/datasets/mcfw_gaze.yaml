@@ -3,7 +3,7 @@ name: MCFW-Gaze
 long_name: Multi-Context Free-Viewing and Web-Browsing Gaze Dataset
 
 description: |
-  MCFW-Gaze dataset :cite:p:`MCFW-Gaze-Paper` :cite:p:`MCFW-Gaze-Zenodo`.
+  MCFW-Gaze dataset :cite:p:`MCFW-Gaze-Paper,MCFW-Gaze-Zenodo`.
 
   Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion (120 Hz)
   from 15 participants across four task types: natural image free-viewing
