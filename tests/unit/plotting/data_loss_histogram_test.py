@@ -102,6 +102,7 @@ class TestDataLossHistogram:
             column='pixel',
             unit='count',
             sampling_rate=1000.0,
+            bins=2,
         )
 
         assert isinstance(fig, plt.Figure)
