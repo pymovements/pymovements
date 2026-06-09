@@ -279,13 +279,15 @@ bibtex_reference_style = 'author_year'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
-    outputs = []
+    outputs: list[str] = []
+    template: str = '{author} et al., {year}'
 
     def format_labels(self, sorted_entries):
         for entry in sorted_entries:
-            output = f'{
-                entry.persons["author"][0].rich_last_names[0]} et al., {
-                entry.fields["year"]}'
+            output = self.template.format(
+                author=entry.persons['author'][0].rich_last_names[0],
+                year=entry.fields['year'],
+            )
 
             if output in self.outputs:
                 for suffix_char in string.ascii_lowercase:
