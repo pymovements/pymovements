@@ -91,7 +91,7 @@ def data_loss_histogram(
     alpha : float
         Transparency of bars (0.0 transparent to 1.0 opaque).
         See :py:func:`matplotlib.pyplot.hist` for available options.
-         (default: `0.7`)
+        (default: `0.7`)
     ax : plt.Axes | None
         Matplotlib axes to plot on. Creates new figure if `None`.
         (default: `None`)
