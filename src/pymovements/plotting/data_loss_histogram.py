@@ -51,6 +51,8 @@ def data_loss_histogram(
     Identifies consecutive regions of data loss (invalid values or time gaps)
     and creates a histogram showing the distribution of chunk lengths.
 
+    This function internally uses :py:func:`matplotlib.pyplot.hist`.
+
     Parameters
     ----------
     gaze : Gaze
@@ -76,16 +78,19 @@ def data_loss_histogram(
         (default: `None`)
     bins : int | str | None
         Number of bins or binning strategy for the histogram.
-        See matplotlib.pyplot.hist for available options.
+        See :py:func:`matplotlib.pyplot.hist` for available options.
         (default: `'auto'`)
     color : str | None
         Fill color of the histogram bars, if `None`, use  matplotlib default.
+        See :py:func:`matplotlib.pyplot.hist` for available options.
         (default: `None`)
     edgecolor : str
         Edge color of the histogram bars.
+        See :py:func:`matplotlib.pyplot.hist` for available options.
         (default: `'black'`)
     alpha : float
         Transparency of bars (0.0 transparent to 1.0 opaque).
+        See :py:func:`matplotlib.pyplot.hist` for available options.
          (default: `0.7`)
     ax : plt.Axes | None
         Matplotlib axes to plot on. Creates new figure if `None`.
@@ -165,6 +170,8 @@ def data_loss_histogram(
         chunks_converted = [c / sampling_rate * 1000 for c in chunks]
     else:
         chunks_converted = chunks
+
+    print(chunks_converted)
 
     # Create histogram
     if chunks_converted:
