@@ -83,9 +83,7 @@ class TestDataLossHistogram:
 
     def test_no_data_loss(self, sample_gaze_no_loss: Gaze) -> None:
         """Test histogram with no data loss."""
-        fig, ax = data_loss_histogram(
-            sample_gaze_no_loss, column='pixel', sampling_rate=1000.0,
-        )
+        fig, ax = data_loss_histogram(sample_gaze_no_loss, column='pixel', sampling_rate=1000.0)
 
         assert isinstance(fig, plt.Figure)
         assert isinstance(ax, plt.Axes)
@@ -194,55 +192,50 @@ class TestDataLossHistogram:
 
         plt.close(fig)
 
+    @pytest.mark.parametrize(
+        ('unit', 'xlabel'),
+        [
+            pytest.param('count', 'samples', id='count'),
+            pytest.param('time', 'ms', id='time'),
+        ],
+    )
     def test_unit_time_conversion_axis_labels(
-        self, sample_gaze_with_loss: Gaze,
+        self, unit: str, xlabel: str, sample_gaze_with_loss: Gaze,
     ) -> None:
         """Test that axis labels reflect the selected unit."""
-        fig_count, ax_count = data_loss_histogram(
+        fig, ax = data_loss_histogram(
             sample_gaze_with_loss,
             column='pixel',
-            unit='count',
+            unit=unit,
             sampling_rate=500.0,
         )
 
-        fig_time, ax_time = data_loss_histogram(
-            sample_gaze_with_loss,
-            column='pixel',
-            unit='time',
-            sampling_rate=500.0,
-        )
+        # Check axis label
+        assert xlabel in ax.get_xlabel().lower()
 
-        # Check axis labels
-        assert 'samples' in ax_count.get_xlabel().lower()
-        assert 'ms' in ax_time.get_xlabel().lower()
+        plt.close(fig)
 
-        plt.close(fig_count)
-        plt.close(fig_time)
-
+    @pytest.mark.parametrize(
+        ('unit', 'expected_text'),
+        [
+            pytest.param('count', 'max=2', id='count'),
+            pytest.param('time', 'max=4', id='time'),
+        ],
+    )
     def test_unit_time_conversion_statistics(
-        self, sample_gaze_with_loss: Gaze,
+        self, unit: str, expected_text: str, sample_gaze_with_loss: Gaze,
     ) -> None:
         """Test that statistics reflect the selected unit."""
-        fig_count, ax_count = data_loss_histogram(
+        fig, ax = data_loss_histogram(
             sample_gaze_with_loss,
             column='pixel',
-            unit='count',
-            sampling_rate=500.0,
-        )
-
-        fig_time, ax_time = data_loss_histogram(
-            sample_gaze_with_loss,
-            column='pixel',
-            unit='time',
+            unit=unit,
             sampling_rate=500.0,
         )
 
         # Check calculated statistics
-        count_texts = [t.get_text() for t in ax_count.texts]
-        time_texts = [t.get_text() for t in ax_time.texts]
+        texts = [t.get_text() for t in ax.texts]
 
-        assert any('max=2' in t for t in count_texts)
-        assert any('max=4' in t for t in time_texts)
+        assert any(expected_text in t for t in texts)
 
-        plt.close(fig_count)
-        plt.close(fig_time)
+        plt.close(fig)
