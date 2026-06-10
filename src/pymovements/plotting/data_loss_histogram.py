@@ -171,8 +171,6 @@ def data_loss_histogram(
     else:
         chunks_converted = chunks
 
-    print(chunks_converted)
-
     # Create histogram
     if chunks_converted:
         _, _, bar_container = ax.hist(
