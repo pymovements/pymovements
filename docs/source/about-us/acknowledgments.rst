@@ -31,7 +31,7 @@ The pymovements project was partially funded by:
 
       the Romanian National Research Council (CNCS) through the Executive Agency for Higher Education, Research, Development and Innovation Funding (UEFISCDI) under grant PN-IV-P2-2.1-TE-2023-2007 (InstRead)
 
-and is supported by work from
+and was supported by work from
 
 .. grid:: 1 2 2 2
    :gutter: 3
