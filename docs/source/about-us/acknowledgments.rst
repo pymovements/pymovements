@@ -12,6 +12,7 @@ The pymovements project was partially funded by:
          :target: https://www.snf.ch
          :width: 479
          :height: 200
+         :align: center
 
       the Swiss National Science Foundation (SNSF) under grants IZCOZ0_220330 (EyeNLG) and 212276 (MeRID)
 
@@ -20,22 +21,25 @@ The pymovements project was partially funded by:
          :target: https://www.bmftr.bund.de
          :width: 509
          :height: 200
+         :align: center
 
       the German Federal Ministry of Education and Research (BMBF) under grant 01IS20043
 
    .. grid-item::
       .. image:: https://www.daad.de/_nuxt/logo-light.1I6xeyd5.svg
          :target: https://www.daad.de
-         :width: 670
-         :height: 180
+         :width: 597
+         :height: 160
+         :align: center
 
       the DAAD programme Konrad Zuse Schools of Excellence in Artificial Intelligence (ELIZA)
 
    .. grid-item::
       .. image:: https://fundit.fr/sites/default/files/styles/max_650x650/public/actors/2318-autorite-nationale-pour-recherche-scientifique-roumanie-ancs.png
          :target: https://www.cncs-nrc.ro
-         :width: 321
+         :width: 285
          :height: 180
+         :align: center
 
       the Romanian National Research Council (CNCS) through the Executive Agency for Higher Education, Research, Development and Innovation Funding (UEFISCDI) under grant PN-IV-P2-2.1-TE-2023-2007 (InstRead)
 
@@ -49,6 +53,7 @@ and was supported by work from
          :target: https://www.cost.eu
          :width: 426
          :height: 200
+         :align: center
 
       European Cooperation in Science and Technology
 
@@ -57,5 +62,6 @@ and was supported by work from
          :target: https://multipleye.eu
          :width: 340
          :height: 200
+         :align: center
 
       COST Action MultiplEYE, CA21131
