@@ -26,16 +26,16 @@ The pymovements project was partially funded by:
    .. grid-item::
       .. image:: https://www.daad.de/_nuxt/logo-light.1I6xeyd5.svg
          :target: https://www.daad.de
-         :width: 745
-         :height: 200
+         :width: 670
+         :height: 180
 
       the DAAD programme Konrad Zuse Schools of Excellence in Artificial Intelligence (ELIZA)
 
    .. grid-item::
       .. image:: https://fundit.fr/sites/default/files/styles/max_650x650/public/actors/2318-autorite-nationale-pour-recherche-scientifique-roumanie-ancs.png
          :target: https://www.cncs-nrc.ro
-         :width: 357
-         :height: 200
+         :width: 321
+         :height: 180
 
       the Romanian National Research Council (CNCS) through the Executive Agency for Higher Education, Research, Development and Innovation Funding (UEFISCDI) under grant PN-IV-P2-2.1-TE-2023-2007 (InstRead)
 
