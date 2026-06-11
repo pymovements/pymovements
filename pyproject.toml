@@ -101,6 +101,7 @@ aggressive = 1
 skip = "./src/pymovements/_version.py,./.git/*,./.pytest_cache/*,tests/files/*,*.bib"
 count = true
 quiet-level = 3
+ignore-words-list = 'bund,InstRead'
 
 [tool.coverage.paths]
 source = [
