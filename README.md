@@ -138,5 +138,5 @@ reports, please consider citing our other publications listed on our
 
 The pymovements project was partially funded by the Swiss National Science Foundation (SNSF) and
 the German Federal Ministry of Education and Research (BMBF). Please refer to our
-[acknowledgements page](https://pymovements.readthedocs.io/en/stable/about-us/citing.html) for a
-comprehensive overview.
+[acknowledgements page](https://pymovements.readthedocs.io/en/stable/about-us/acknowledgments.html)
+for a comprehensive overview of funding and support.
