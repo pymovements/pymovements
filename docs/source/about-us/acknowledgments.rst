@@ -1,6 +1,6 @@
-=======
-Funding
-=======
+================
+Acknowledgements
+================
 
 The pymovements project was partially funded by:
 

@@ -6,4 +6,4 @@ About Us
    :maxdepth: 2
 
    citing
-   funding
+   acknowledgements
