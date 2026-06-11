@@ -35,7 +35,6 @@ import urllib.request
 from subprocess import CalledProcessError
 from subprocess import run
 
-from docutils import nodes
 from pybtex.plugin import register_plugin
 from pybtex.style.formatting.plain import Style as PlainStyle
 from pybtex.style.labels import BaseLabelStyle
@@ -113,6 +112,8 @@ def builder_inited_handler(app):
 
 def doctree_resolved_handler(app, doctree, docname):
     """Open all external links in a new tab."""
+    from docutils import nodes
+
     for node in doctree.traverse(nodes.reference):
         uri = node.get('refuri', '')
         if uri.startswith(('http://', 'https://')):
