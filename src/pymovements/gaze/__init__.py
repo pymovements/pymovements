@@ -28,16 +28,22 @@ from pymovements.gaze.io import from_asc
 from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import GazeDataValidationError
 from pymovements.gaze.screen import Screen
+from pymovements.gaze.validation import CheckResult
 
 
 __all__ = [
+    'CheckResult',
+    'DataQualityReport',
     'Experiment',
     'EyeTracker',
     'from_numpy',
     'from_pandas',
     'Gaze',
     'GazeDataFrame',
+    'GazeDataValidationError',
     'Screen',
     'from_asc',
     'from_begaze',

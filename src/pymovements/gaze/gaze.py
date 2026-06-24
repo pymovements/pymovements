@@ -43,6 +43,16 @@ from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
+from pymovements.gaze.quality import _run_report
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.validation import check_gaze_components_defined
+from pymovements.gaze.validation import check_gaze_range
+from pymovements.gaze.validation import check_sampling_rate_consistency
+from pymovements.gaze.validation import check_time_column_exists
+from pymovements.gaze.validation import check_trial_columns_dtype
+from pymovements.gaze.validation import check_trial_columns_exist
+from pymovements.gaze.validation import check_trial_continuity
+from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
@@ -1993,6 +2003,157 @@ class Gaze:
         )
         gaze.n_components = self.n_components
         return gaze
+
+    def validate(
+            self,
+            *,
+            trial_columns_exist: bool = True,
+            trial_columns_dtype: bool = True,
+            time_column_exists: bool = True,
+            gaze_components_defined: bool = True,
+            trial_continuity: bool = True,
+            sampling_rate_consistency: bool = True,
+            gaze_range: bool = True,
+            source_path: str = '',
+    ) -> list[CheckResult]:
+        """Run data quality validation checks on this gaze object.
+
+        Each check can be individually enabled or disabled via its boolean argument.
+        By default all seven checks are run.
+
+        Parameters
+        ----------
+        trial_columns_exist : bool
+            Check that every column listed in ``trial_columns`` is present in the
+            sample schema. (default: True)
+        trial_columns_dtype : bool
+            Check that trial-identifier columns have integer or string dtype, not
+            float. (default: True)
+        time_column_exists : bool
+            Check that a numeric ``'time'`` column is present. (default: True)
+        gaze_components_defined : bool
+            Check that at least one coordinate column (pixel, position, velocity or
+            acceleration) is present. (default: True)
+        trial_continuity : bool
+            Check that timestamps are strictly monotone increasing within each trial
+            and that no gap exceeds 5× the expected inter-sample interval.
+            (default: True)
+        sampling_rate_consistency : bool
+            Check that the empirical median ISI matches the declared sampling rate
+            within 5%. (default: True)
+        gaze_range : bool
+            Check that ≥95% of gaze samples fall within screen bounds. (default: True)
+        source_path : str
+            Identifier for this gaze object (e.g. a file path). Included in the
+            ``affected_files`` field of any failing :py:class:`CheckResult`.
+            (default: ``''``)
+
+        Returns
+        -------
+        list[CheckResult]
+            One :py:class:`~pymovements.gaze.validation.CheckResult` per enabled
+            check, in the order listed above.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements.gaze.gaze import Gaze
+        >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
+        >>> results = gaze.validate()
+        >>> all(r.severity in {'pass', 'warning', 'error'} for r in results)
+        True
+        """
+        flag_fn_pairs: list[tuple[bool, object]] = [
+            (trial_columns_exist, check_trial_columns_exist),
+            (trial_columns_dtype, check_trial_columns_dtype),
+            (time_column_exists, check_time_column_exists),
+            (gaze_components_defined, check_gaze_components_defined),
+            (trial_continuity, check_trial_continuity),
+            (sampling_rate_consistency, check_sampling_rate_consistency),
+            (gaze_range, check_gaze_range),
+        ]
+        return [
+            fn(self, source_path)  # type: ignore[operator]
+            for enabled, fn in flag_fn_pairs
+            if enabled
+        ]
+
+    def report_data_quality(
+            self,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+            output_path: Path | str | None = None,
+            source_path: str = '',
+    ) -> DataQualityReport:
+        """Generate a data quality report for this gaze object.
+
+        Runs validation checks via :py:meth:`validate` and computes quality
+        measures (data loss, fixation precision) for this single gaze file.
+        The result is a :py:class:`~pymovements.gaze.quality.DataQualityReport`
+        that can optionally be saved as BIDS-conformant derivative files.
+
+        Parameters
+        ----------
+        checks : list[str] | None
+            Check identifiers to run. ``None`` runs all seven checks.
+            Valid values: ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
+            ``'time_column_exists'``, ``'gaze_components_defined'``,
+            ``'trial_continuity'``, ``'sampling_rate_consistency'``,
+            ``'gaze_range'``.
+        measures : list[str] | None
+            Measures to compute. ``None`` computes all four.
+            Valid values: ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``,
+            ``'bcea'``.
+        levels : list[str] | None
+            Aggregation levels. ``None`` defaults to ``['dataset', 'trial']``
+            (meaningful for a single file; pass ``'subject'`` or ``'session'``
+            explicitly if needed).
+        raise_on_error : bool
+            If ``True``, raise :py:class:`~GazeDataValidationError` on the
+            first error-severity check result. (default: ``False``)
+        output_path : Path | str | None
+            If given, write BIDS-conformant derivative files here via
+            :py:meth:`~DataQualityReport.save_bids_report`.
+            (default: ``None``)
+        source_path : str
+            Identifier for this gaze object (e.g. a file path). Used as
+            ``affected_files`` in failing :py:class:`CheckResult` objects.
+            (default: ``''``)
+
+        Returns
+        -------
+        DataQualityReport
+            Aggregated check results, quality measures, pass/fail status, and
+            any Python warnings captured during the run.
+
+        Raises
+        ------
+        GazeDataValidationError
+            If *raise_on_error* is ``True`` and any check produces an error
+            result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements.gaze.gaze import Gaze
+        >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
+        >>> report = gaze.report_data_quality(checks=['time_column_exists'])
+        >>> report.passed
+        True
+        """
+        return _run_report(
+            gaze=self,
+            checks=checks,
+            measures=measures,
+            levels=levels,
+            raise_on_error=raise_on_error,
+            output_path=output_path,
+            source_path=source_path,
+        )
 
     def _check_experiment(self) -> None:
         """Check if the experiment attribute has been set.
