@@ -236,7 +236,12 @@ nitpick_ignore_regex = [
     (r'py:class', r'.*dict\[str'),
 
     # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
-    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
+    (
+        r'py:class',
+        r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths'
+        r'|CheckResult|DataQualityReport)$',
+    ),
+    (r'py:exc', r'^(?:pymovements\.dataset\.)?GazeDataValidationError$'),
     (r'py:class', r'^pymovements\.datasets\.Dataset$'),
     (r'py:class', r'^pymovements\.gaze\.Experiment$'),
 

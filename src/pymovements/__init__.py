@@ -28,11 +28,14 @@ from pymovements import synthetic
 from pymovements import transforms
 from pymovements import warnings
 from pymovements._version import __version__
+from pymovements.dataset import CheckResult
+from pymovements.dataset import DataQualityReport
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
 from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
+from pymovements.dataset import GazeDataValidationError
 from pymovements.dataset import Participants
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
@@ -59,11 +62,15 @@ from pymovements.warnings import ExperimentalWarning
 
 
 __all__ = [
+    'CheckResult',
     'Dataset',
     'DatasetDefinition',
+    'DataQualityReport',
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
+    'datasets',
+    'GazeDataValidationError',
     'Participants',
     'register_dataset',
     'ResourceDefinition',

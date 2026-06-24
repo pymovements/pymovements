@@ -27,11 +27,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
-from typing import TYPE_CHECKING
 from warnings import warn
-
-if TYPE_CHECKING:
-    from pymovements.dataset.data_quality import DataQualityReport
 
 import polars as pl
 from tqdm.auto import tqdm
@@ -40,6 +36,9 @@ from pymovements._utils._html import repr_html
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
+from pymovements.dataset.data_quality import _compute_measures
+from pymovements.dataset.data_quality import DataQualityReport
+from pymovements.dataset.data_quality import GazeDataValidationError
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
@@ -48,6 +47,7 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
+from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
@@ -1298,6 +1298,8 @@ class Dataset:
         ------
         GazeDataValidationError
             If *raise_on_error* is ``True`` and any check produces an error result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
 
         Examples
         --------
@@ -1307,27 +1309,28 @@ class Dataset:
         >>> # report = dataset.report_data_quality()
         >>> # print(report.summary())
         """
-        # pylint: disable=import-outside-toplevel
-        from pymovements.dataset.data_quality import _ALL_CHECKS
-        from pymovements.dataset.data_quality import DataQualityReport
-        from pymovements.dataset.data_quality import GazeDataValidationError
-        from pymovements.dataset.data_quality import _compute_measures
-
-        checks_to_run = checks if checks is not None else list(_ALL_CHECKS.keys())
+        checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
         levels_to_run = (
             levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
         )
 
-        # Extract source paths from fileinfo when available.
-        source_paths: list[str] = []
-        if isinstance(self.fileinfo, dict) and 'gaze' in self.fileinfo:
-            try:
-                fi_dicts = self.fileinfo['gaze'].to_dicts()
-                source_paths = [str(row.get('filepath', i)) for i, row in enumerate(fi_dicts)]
-            except Exception:  # noqa: BLE001
-                source_paths = [str(i) for i in range(len(self.gaze))]
+        if checks is not None:
+            unknown = checks_to_run - set(_ALL_CHECKS.keys())
+            if unknown:
+                raise ValueError(
+                    f'Unknown check identifier(s) {sorted(unknown)!r}. '
+                    f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
+                )
+
+        # Use real file paths from fileinfo when available; otherwise leave blank.
+        if (
+            isinstance(self.fileinfo, dict)
+            and 'gaze' in self.fileinfo
+            and 'filepath' in self.fileinfo['gaze'].columns
+        ):
+            source_paths: list[str] = self.fileinfo['gaze']['filepath'].cast(pl.Utf8).to_list()
         else:
-            source_paths = [str(i) for i in range(len(self.gaze))]
+            source_paths = ['' for _ in self.gaze]
 
         report = DataQualityReport()
         captured_warnings: list[str] = []
@@ -1335,16 +1338,19 @@ class Dataset:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter('always')
 
-            for check_id in checks_to_run:
-                if check_id not in _ALL_CHECKS:
-                    raise ValueError(
-                        f"Unknown check identifier {check_id!r}. "
-                        f"Valid identifiers: {list(_ALL_CHECKS.keys())!r}",
-                    )
-                check_fn = _ALL_CHECKS[check_id]
-                for idx, gaze in enumerate(self.gaze):
-                    src = source_paths[idx] if idx < len(source_paths) else str(idx)
-                    result = check_fn(gaze, src)
+            for idx, gaze in enumerate(self.gaze):
+                src = source_paths[idx] if idx < len(source_paths) else ''
+                results = gaze.validate(
+                    trial_columns_exist='trial_columns_exist' in checks_to_run,
+                    trial_columns_dtype='trial_columns_dtype' in checks_to_run,
+                    time_column_exists='time_column_exists' in checks_to_run,
+                    gaze_components_defined='gaze_components_defined' in checks_to_run,
+                    trial_continuity='trial_continuity' in checks_to_run,
+                    sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                    gaze_range='gaze_range' in checks_to_run,
+                    source_path=src,
+                )
+                for result in results:
                     report.check_results.append(result)
                     if raise_on_error and result.severity == 'error':
                         raise GazeDataValidationError(
@@ -1362,7 +1368,8 @@ class Dataset:
 
             captured_warnings = [str(w.message) for w in caught]
 
-        report._warning_log = captured_warnings  # type: ignore[attr-defined]
+        report.passed = all(r.severity != 'error' for r in report.check_results)
+        report.warning_log = captured_warnings
 
         if output_path is not None:
             report.save_bids_report(Path(output_path))
