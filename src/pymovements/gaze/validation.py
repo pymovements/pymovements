@@ -90,7 +90,10 @@ def check_trial_columns_exist(gaze: Gaze, source_path: str = '') -> CheckResult:
     >>> import polars as pl
     >>> from pymovements.gaze.gaze import Gaze
     >>> from pymovements.gaze.validation import check_trial_columns_exist
-    >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1]}))
+    >>> gaze = Gaze(
+    ...     samples=pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
+    ...     pixel_columns=['x', 'y'],
+    ... )
     >>> check_trial_columns_exist(gaze).severity
     'pass'
     """
@@ -143,8 +146,13 @@ def check_trial_columns_dtype(gaze: Gaze, source_path: str = '') -> CheckResult:
     >>> import polars as pl
     >>> from pymovements.gaze.gaze import Gaze
     >>> from pymovements.gaze.validation import check_trial_columns_dtype
-    >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1], 'trial': [1, 2]}),
-    ...             trial_columns=['trial'])
+    >>> gaze = Gaze(
+    ...     samples=pl.DataFrame(
+    ...         {'time': [0, 1], 'trial': [1, 2], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}
+    ...     ),
+    ...     trial_columns=['trial'],
+    ...     pixel_columns=['x', 'y'],
+    ... )
     >>> check_trial_columns_dtype(gaze).severity
     'pass'
     """
@@ -203,7 +211,10 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
     >>> import polars as pl
     >>> from pymovements.gaze.gaze import Gaze
     >>> from pymovements.gaze.validation import check_time_column_exists
-    >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
+    >>> gaze = Gaze(
+    ...     samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
+    ...     pixel_columns=['x', 'y'],
+    ... )
     >>> check_time_column_exists(gaze).severity
     'pass'
     """
@@ -320,10 +331,10 @@ def check_trial_continuity(gaze: Gaze, source_path: str = '') -> CheckResult:
     >>> import polars as pl
     >>> from pymovements.gaze.gaze import Gaze
     >>> from pymovements.gaze.validation import check_trial_continuity
-    >>> gaze = Gaze(
-    ...     samples=pl.DataFrame({'time': [0, 10, 20], 'trial': [1, 1, 1]}),
-    ...     trial_columns=['trial'],
+    >>> samples = pl.DataFrame(
+    ...     {'time': [0, 10, 20], 'trial': [1, 1, 1], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
     ... )
+    >>> gaze = Gaze(samples=samples, trial_columns=['trial'], pixel_columns=['x', 'y'])
     >>> check_trial_continuity(gaze).severity
     'pass'
     """
@@ -426,7 +437,13 @@ def check_sampling_rate_consistency(gaze: Gaze, source_path: str = '') -> CheckR
     >>> from pymovements.gaze.gaze import Gaze
     >>> from pymovements.gaze.validation import check_sampling_rate_consistency
     >>> exp = Experiment(1280, 1024, 38, 30, 68, 'upper left', sampling_rate=100.0)
-    >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 10, 20, 30]}), experiment=exp)
+    >>> gaze = Gaze(
+    ...     samples=pl.DataFrame(
+    ...         {'time': [0, 10, 20, 30], 'x': [0.0, 1.0, 2.0, 3.0], 'y': [0.0, 1.0, 2.0, 3.0]}
+    ...     ),
+    ...     experiment=exp,
+    ...     pixel_columns=['x', 'y'],
+    ... )
     >>> check_sampling_rate_consistency(gaze).severity
     'pass'
     """
@@ -506,7 +523,10 @@ def check_gaze_range(gaze: Gaze, source_path: str = '') -> CheckResult:
     >>> import polars as pl
     >>> from pymovements.gaze.gaze import Gaze
     >>> from pymovements.gaze.validation import check_gaze_range
-    >>> gaze = Gaze(samples=pl.DataFrame({'time': [0]}))
+    >>> gaze = Gaze(
+    ...     samples=pl.DataFrame({'time': [0], 'x': [0.0], 'y': [0.0]}),
+    ...     pixel_columns=['x', 'y'],
+    ... )
     >>> check_gaze_range(gaze).severity
     'pass'
     """

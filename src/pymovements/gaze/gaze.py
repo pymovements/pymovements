@@ -2058,7 +2058,10 @@ class Gaze:
         --------
         >>> import polars as pl
         >>> from pymovements.gaze.gaze import Gaze
-        >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
+        >>> samples = pl.DataFrame(
+        ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ... )
+        >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
         >>> results = gaze.validate()
         >>> all(r.severity in {'pass', 'warning', 'error'} for r in results)
         True
@@ -2140,7 +2143,10 @@ class Gaze:
         --------
         >>> import polars as pl
         >>> from pymovements.gaze.gaze import Gaze
-        >>> gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
+        >>> samples = pl.DataFrame(
+        ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ... )
+        >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
         >>> report = gaze.report_data_quality(checks=['time_column_exists'])
         >>> report.passed
         True
