@@ -30,6 +30,8 @@ from unittest.mock import patch
 import polars as pl
 import pytest
 
+from pymovements.dataset import Dataset
+from pymovements.dataset import DatasetDefinition
 from pymovements.dataset.data_quality import _compute_data_loss_simple
 from pymovements.dataset.data_quality import _compute_measures
 from pymovements.dataset.data_quality import DataQualityReport
@@ -1080,3 +1082,83 @@ class TestDatasetReportDataQuality:
         report = self._call_report(ds)
         assert not report.check_results
         assert report.passed is True
+
+
+# ---------------------------------------------------------------------------
+# Direct tests for Dataset.report_data_quality()
+# ---------------------------------------------------------------------------
+
+def _make_real_gaze() -> Gaze:
+    """Return a minimal valid Gaze with time and pixel columns."""
+    return Gaze(
+        samples=pl.DataFrame(
+            {'time': [0, 10, 20], 'x': [1.0, 2.0, 3.0], 'y': [1.0, 2.0, 3.0]},
+        ),
+        pixel_columns=['x', 'y'],
+    )
+
+
+def _make_real_dataset(gaze_list: list[Gaze], fileinfo: object | None = None) -> Dataset:
+    """Return a Dataset with gaze set directly (no file scanning required)."""
+    ds = Dataset(DatasetDefinition, path='.')
+    ds.gaze = gaze_list
+    if fileinfo is not None:
+        ds.fileinfo = fileinfo
+    return ds
+
+
+class TestDatasetReportDataQualityDirect:
+    """Tests that call Dataset.report_data_quality() on real Dataset objects."""
+
+    def test_basic_call_returns_report(self) -> None:
+        ds = _make_real_dataset([_make_real_gaze()])
+        report = ds.report_data_quality()
+        assert isinstance(report, DataQualityReport)
+        assert report.passed is True
+        assert len(report.check_results) == 7
+
+    def test_subset_checks(self) -> None:
+        ds = _make_real_dataset([_make_real_gaze()])
+        report = ds.report_data_quality(checks=['time_column_exists'])
+        assert len(report.check_results) == 1
+        assert report.check_results[0].check_id == 'time_column_exists'
+
+    def test_unknown_check_raises_value_error(self) -> None:
+        ds = _make_real_dataset([_make_real_gaze()])
+        with pytest.raises(ValueError, match='Unknown check identifier'):
+            ds.report_data_quality(checks=['not_a_valid_check'])
+
+    def test_raise_on_error_raises_gaze_validation_error(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0]}),
+            trial_columns=['nonexistent_col'],
+        )
+        ds = _make_real_dataset([gaze])
+        with pytest.raises(GazeDataValidationError):
+            ds.report_data_quality(
+                checks=['trial_columns_exist'],
+                raise_on_error=True,
+            )
+
+    def test_fileinfo_with_filepath_sets_source_paths(self) -> None:
+        gaze = _make_real_gaze()
+        fileinfo = {'gaze': pl.DataFrame({'filepath': ['subject1.csv']})}
+        ds = _make_real_dataset([gaze], fileinfo=fileinfo)
+        report = ds.report_data_quality(checks=['time_column_exists'])
+        assert report.passed is True
+
+    def test_output_path_writes_bids_report(self, tmp_path: Path) -> None:
+        ds = _make_real_dataset([_make_real_gaze()])
+        ds.report_data_quality(output_path=tmp_path)
+        assert (tmp_path / 'derivatives' / 'pymovements' / 'dataset_description.json').exists()
+
+    def test_levels_parameter_filters_measures(self) -> None:
+        ds = _make_real_dataset([_make_real_gaze()])
+        report = ds.report_data_quality(levels=['dataset'], measures=['data_loss'])
+        assert 'dataset' in report.measures
+
+    def test_empty_gaze_list_returns_passed_report(self) -> None:
+        ds = _make_real_dataset([])
+        report = ds.report_data_quality()
+        assert report.passed is True
+        assert not report.check_results
