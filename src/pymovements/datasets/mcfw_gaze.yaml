@@ -1,10 +1,7 @@
-name: MCFW-Gaze
-
+name: mcfw-gaze
 long_name: Multi-Context Free-Viewing and Web-Browsing Gaze Dataset
 
 description: |
-  MCFW-Gaze dataset :cite:p:`MCFW-Gaze`.
-
   Multi-context eye-tracking dataset recorded with a Tobii Pro Fusion (120 Hz)
   from 15 participants across four task types: natural image free-viewing
   (100 images, 3 sessions, 5 seconds per image), gaze-pattern authentication (5 trials),
@@ -14,47 +11,35 @@ description: |
   Eye-tracking data is provided as binocular gaze point coordinates on the
   display area, along with pupil diameter and gaze origin in user coordinates.
 
-  Check the respective zenodo page for details :cite:p:`MCFW-Gaze`.
+  Dataset available at: https://doi.org/10.5281/zenodo.18725478
+  Dataset paper: https://doi.org/10.1145/3797246.3806660
 
 resources:
-  - content: participants
-    source:
-      url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
-      filename: dataset.zip
-      md5: 5e04a7b5e50f7508775e1daea527246b
-    filename_pattern: 'participants.tsv'
-    load_kwargs:
-      read_csv_kwargs:
-        schema:
-          ID: !polars.String
-          gender: !polars.String
-          age: !polars.Int64
-          glasses: !polars.String
-          Memo: !polars.String
-      rename:
-        ID: participant_id
-  - content: gaze
-    source:
-      url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
-      filename: dataset.zip
-      md5: 5e04a7b5e50f7508775e1daea527246b
-    filename_pattern: 'dataset/data/participant_{participant_id:d}/(?P<task>gaze_pattern_auth|image|news|password_experiment|shopping|video)((_{stimulus_id:d})?(_|_trial|_block)?{run:d})?.tsv'
-    load_kwargs:
-      read_csv_kwargs:
-        separator: "\t"
-      time_column: device_time_stamp
-      time_unit: us
-      pixel_columns:
-      # - left_gaze_point_on_display_area_x
-      # - left_gaze_point_on_display_area_y
-      - right_gaze_point_on_display_area_x
-      - right_gaze_point_on_display_area_y
-  - content: Imagestimulus
-    source:
-      url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
-      filename: dataset.zip
-      md5: 5e04a7b5e50f7508775e1daea527246b
-    filename_pattern: '{stimulus_id}.jpg'
+- content: gaze
+  source:
+    url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+    filename: dataset.zip
+    md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
+  filename_pattern: dataset/data/participant_{subject_id}/(image_)?(?P<stimulus>\d+|gaze_pattern_auth_trial|news|shopping|video|password_experiment_block)_*(?P<trial_id>\d*).tsv
+  load_kwargs:
+    read_csv_kwargs:
+      separator: "\t"
+    time_column: device_time_stamp
+    time_unit: us
+    pixel_columns:
+    #- left_gaze_point_on_display_area_x
+    #- left_gaze_point_on_display_area_y
+    - right_gaze_point_on_display_area_x
+    - right_gaze_point_on_display_area_y
+
+
+- content: ImageStimulus
+  source:
+    url: https://zenodo.org/records/19463338/files/dataset.zip?download=1
+    filename: dataset.zip
+    md5: 8fdb6e04df4ca2dee59b14edc3ec3aed
+  filename_pattern: dataset/stimuli/{stimulus}.jpg
+
 
 experiment:
   eyetracker:
