@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Unit tests of Participants class functionality."""
+import math
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -309,7 +311,7 @@ def test_participants_save_data_to_dirpath(tmp_path):
 def test_verify_bids_valid():
     data = pl.DataFrame({'participant_id': ['sub-01', 'sub-02']})
     participants = Participants(data, verify_bids=False)
-    assert participants.verify_bids('REQUIRED') == []
+    assert not participants.verify_bids('REQUIRED')
 
 
 def test_verify_bids_invalid_id_format():
@@ -344,14 +346,7 @@ def test_verify_bids_id_not_string():
     data = pl.DataFrame({'participant_id': ['sub-1']})
     participants = Participants(data, verify_bids=False)
     assert participants.data['participant_id'].dtype == pl.String
-    assert participants.verify_bids('REQUIRED') == []
-
-
-def test_verify_bids_age_over_89():
-    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [100]})
-    participants = Participants(data, verify_bids=False)
-    warnings_list = participants.verify_bids('RECOMMENDED')
-    assert any('age should be capped at 89' in w for w in warnings_list)
+    assert not participants.verify_bids('REQUIRED')
 
 
 def test_verify_bids_recommended_missing():
@@ -378,20 +373,23 @@ def test_verify_bids_handedness_invalid():
 
 
 def test_verify_bids_na_conformity():
-    # 'NaN' instead of 'n/a'
-    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [float('nan')]})
-    # Cast to float to ensure numeric dtype if it's not already
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [math.nan]})
     participants = Participants(data, verify_bids=False)
     warnings_list = participants.verify_bids('REQUIRED')
     assert any("Column 'age' contains invalid null values" in w for w in warnings_list)
-    assert any("BIDS requires missing values to be coded as 'n/a'" in w for w in warnings_list)
+    assert any(
+        "BIDS requires missing values to be coded as 'n/a'" in w for w in warnings_list
+    )
 
 
 def test_verify_bids_metadata_description_missing():
     data = pl.DataFrame({'participant_id': ['sub-01'], 'custom': [1]})
     participants = Participants(data, verify_bids=False)
     warnings_list = participants.verify_bids('RECOMMENDED')
-    assert "Column 'custom' is missing a 'Description' field in metadata (json)." in warnings_list
+    assert (
+        "Column 'custom' is missing a 'Description' field in metadata (json)."
+        in warnings_list
+    )
 
 
 def test_verify_bids_column_name_not_snake_case():
@@ -474,16 +472,430 @@ def test_verify_bids_save_format_warnings(tmp_path):
 def test_verify_bids_regex_plus_allowed():
     data = pl.DataFrame({'participant_id': ['sub-01+02']})
     participants = Participants(data, verify_bids=False)
-    assert participants.verify_bids('REQUIRED') == []
+    assert not participants.verify_bids('REQUIRED')
 
 
-def test_save_encodes_null_as_na(tmp_path):
-    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [None]})
+@pytest.mark.parametrize(
+    ('before', 'update_data', 'expected_exception', 'expected_match'),
+    [
+        pytest.param(
+            pl.DataFrame(schema={'participant_id': pl.String}),
+            pl.DataFrame({'not_id': ['sub-1']}),
+            ValueError,
+            "data must have column named 'participant_id'",
+            id='update_missing_participant_id',
+        ),
+    ],
+)
+def test_participants_update_raises(
+    before,
+    update_data,
+    expected_exception,
+    expected_match,
+):
+    participants = Participants(before)
+    with pytest.raises(expected_exception, match=expected_match):
+        participants.update(update_data)
+
+
+@pytest.mark.parametrize(
+    ('before', 'update_data', 'after'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-1']}),
+            pl.DataFrame({'participant_id': ['sub-2'], 'age': [21]}),
+            pl.DataFrame(
+                {'participant_id': ['sub-1', 'sub-2'], 'age': [None, 21]},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            id='update_adds_new_column',
+        ),
+    ],
+)
+def test_participants_update_new_columns(before, update_data, after):
+    participants = Participants(before)
+    participants.update(update_data)
+    assert_frame_equal(participants.data, after)
+
+
+@pytest.mark.parametrize(
+    ('data', 'load_kwargs', 'expected_data'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-1']}),
+            {'read_csv_kwargs': {'separator': ','}},
+            pl.DataFrame({'participant_id': ['sub-1']}),
+            id='load_with_custom_read_csv_kwargs',
+        ),
+    ],
+)
+def test_participants_load_custom_kwargs(
+    data,
+    load_kwargs,
+    expected_data,
+    make_csv_file,
+):
+    filename = 'participants.tsv'
+    path = make_csv_file(filename, data, separator=',')
+    participants = Participants.load(path, **load_kwargs)
+    assert_frame_equal(participants.data, expected_data)
+
+
+def test_participants_load_auto_detect_metadata(make_csv_file, make_json_file):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    metadata = {'participant_id': {'Description': 'The participant ID'}}
+
+    path = make_csv_file('participants.tsv', data, separator='\t')
+    make_json_file('participants.json', metadata)
+
+    participants = Participants.load(path.parent)
+    assert (
+        participants.metadata.get('participant_id', {}).get('Description')
+        == 'The participant ID'
+    )
+
+
+@pytest.mark.parametrize(
+    ('metadata_input', 'expected_description'),
+    [
+        pytest.param(
+            {'participant_id': {'Description': 'ID from dict'}},
+            'ID from dict',
+            id='metadata_dict',
+        ),
+    ],
+)
+def test_participants_load_with_metadata_dict(
+    metadata_input,
+    expected_description,
+    make_csv_file,
+):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    path = make_csv_file('participants.tsv', data, separator='\t')
+    participants = Participants.load(path, metadata=metadata_input)
+    assert (
+        participants.metadata.get('participant_id', {}).get(
+            'Description',
+        )
+        == expected_description
+    )
+
+
+def test_participants_load_with_metadata_path(make_csv_file, make_json_file):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    metadata = {'participant_id': {'Description': 'ID from path'}}
+
+    path = make_csv_file('participants.tsv', data, separator='\t')
+    json_path = make_json_file('participants.json', metadata)
+
+    participants = Participants.load(path, metadata=json_path)
+    assert (
+        participants.metadata.get('participant_id', {}).get(
+            'Description',
+        )
+        == 'ID from path'
+    )
+
+
+def test_participants_load_with_metadata_path_wrong_name(make_csv_file, make_json_file):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    metadata = {'participant_id': {'Description': 'ID'}}
+
+    path = make_csv_file('participants.tsv', data, separator='\t')
+    custom_metadata_path = make_json_file('custom.json', metadata)
+
+    with pytest.warns(
+        UserWarning,
+        match="requires metadata file to be named 'participants.json'",
+    ):
+        Participants.load(
+            path,
+            metadata=custom_metadata_path,
+            verify_bids='REQUIRED',
+        )
+
+
+@pytest.mark.parametrize(
+    'write_csv_kwargs',
+    [
+        pytest.param({'separator': ','}, id='save_custom_write_kwargs'),
+    ],
+)
+def test_participants_save_custom_write_kwargs(tmp_path, write_csv_kwargs):
+    data = pl.DataFrame({'participant_id': ['sub-1']})
+    participants = Participants(data)
+    participants.save(
+        tmp_path / 'participants.tsv',
+        verify_bids=False,
+        write_csv_kwargs=write_csv_kwargs,
+    )
+    saved = pl.read_csv(tmp_path / 'participants.tsv', separator=',')
+    assert_frame_equal(saved, data)
+
+
+def test_participants_save_metadata_warning(tmp_path):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
     participants = Participants(data, verify_bids=False)
-    save_path = tmp_path / 'participants.tsv'
-    participants.save(save_path, verify_bids=False)
+    with pytest.warns(
+        UserWarning,
+        match="requires metadata file to be named 'participants.json'",
+    ):
+        participants.save(
+            tmp_path / 'participants.tsv',
+            verify_bids='REQUIRED',
+            metadata_path=tmp_path / 'custom.json',
+        )
 
-    with open(save_path) as f:
-        content = f.read()
-        assert 'n/a' in content
-        assert 'null' not in content.lower()
+
+def test_verify_bids_invalid_level():
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    participants = Participants(data, verify_bids=False)
+    assert not participants.verify_bids('INVALID')  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ('data', 'metadata', 'level', 'expected_warnings', 'unexpected_warnings'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'age': [25]}),
+            None,
+            'RECOMMENDED',
+            [],
+            ["Column 'age' must be of numeric type"],
+            id='age_valid_up_to_89',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01', 'sub-01'], 'age': ['n/a', 'abc']},
+            ),
+            None,
+            'RECOMMENDED',
+            ["Column 'age' must be of numeric type"],
+            [],
+            id='age_na_and_exception',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'sex': [1]}),
+            None,
+            'RECOMMENDED',
+            ["Column 'sex' must be of string (Utf8) type"],
+            [],
+            id='sex_non_string',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'sex': ['F']}),
+            None,
+            'RECOMMENDED',
+            [],
+            ['sex must be one of'],
+            id='sex_valid_no_invalid',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'handedness': [1]}),
+            None,
+            'RECOMMENDED',
+            ["Column 'handedness' must be of string (Utf8) type"],
+            [],
+            id='handedness_non_string',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'handedness': ['right']}),
+            None,
+            'RECOMMENDED',
+            [],
+            ['handedness must be one of'],
+            id='handedness_valid_no_invalid',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'species': [True]}),
+            None,
+            'RECOMMENDED',
+            ["Column 'species' must be of string or numeric type"],
+            [],
+            id='species_non_standard_dtype',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'strain': ['some_strain']}),
+            None,
+            'RECOMMENDED',
+            [],
+            [],
+            id='strain_with_values',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'strain_rrid': ['invalid']}),
+            None,
+            'RECOMMENDED',
+            ["strain_rrid must match 'RRID:<identifier>' pattern"],
+            [],
+            id='strain_rrid_invalid_pattern',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'null': [1]}),
+            None,
+            'RECOMMENDED',
+            ['Column names must not be blank or null'],
+            [],
+            id='column_name_null',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'custom_col': [1]}),
+            {'custom_col': {'Description': 'A custom column'}},
+            'RECOMMENDED',
+            [],
+            ["Column 'custom_col' is missing a 'Description' field"],
+            id='custom_column_with_description',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01'], 'species': ['human']}),
+            None,
+            'RECOMMENDED',
+            [],
+            ["Column 'species' must be of string or numeric type"],
+            id='species_valid_string',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'strain': [None]},
+                schema={'participant_id': pl.String, 'strain': pl.String},
+            ),
+            None,
+            'RECOMMENDED',
+            [],
+            [],
+            id='strain_null_values',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'strain_rrid': [None]},
+                schema={'participant_id': pl.String, 'strain_rrid': pl.String},
+            ),
+            None,
+            'RECOMMENDED',
+            [],
+            [],
+            id='strain_rrid_null_values',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'strain_rrid': ['RRID:valid_123']},
+            ),
+            None,
+            'RECOMMENDED',
+            [],
+            ["strain_rrid must match 'RRID:<identifier>' pattern"],
+            id='strain_rrid_valid_pattern',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'age': [None]},
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            None,
+            'REQUIRED',
+            ["Column 'age' contains invalid null values"],
+            [],
+            id='age_null_value',
+        ),
+    ],
+)
+def test_verify_bids_edge_cases(
+    data,
+    metadata,
+    level,
+    expected_warnings,
+    unexpected_warnings,
+):
+    participants = Participants(data, metadata=metadata, verify_bids=False)
+    warnings_list = participants.verify_bids(level)
+    for expected in expected_warnings:
+        assert any(expected in w for w in warnings_list), (
+            f"Expected '{expected}' in warnings: {warnings_list}"
+        )
+    for unexpected in unexpected_warnings:
+        assert not any(unexpected in w for w in warnings_list), (
+            f"Did not expect '{unexpected}' in warnings: {warnings_list}"
+        )
+
+
+def test_verify_bids_missing_participant_id_column():
+    data = pl.DataFrame({'not_id': ['sub-01']})
+    participants = Participants(data, verify_bids=False)
+    warnings_list = participants.verify_bids('REQUIRED')
+    assert 'participant_id column is missing' in warnings_list
+
+
+def test_verify_bids_non_string_participant_id_dtype():
+    data = pl.DataFrame({'participant_id': [1]})
+    participants = Participants(data, verify_bids=False, infer_metadata=False)
+    warnings_list = participants.verify_bids('REQUIRED')
+    assert any(
+        'participant_id column must have string (Utf8) data type' in w
+        for w in warnings_list
+    )
+
+
+def test_verify_bids_age_over_89():
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [100]})
+    participants = Participants(data, verify_bids=False)
+    warnings_list = participants.verify_bids('RECOMMENDED')
+    assert any('age should be capped at 89' in w for w in warnings_list)
+
+
+@pytest.mark.parametrize(
+    ('data', 'expected_warnings'),
+    [
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'age': [math.nan]},
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            ["Column 'age' contains invalid null values"],
+            id='age_nan',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'sex': ['N/A']},
+            ),
+            ["Column 'sex' contains invalid null values"],
+            id='sex_na_string',
+        ),
+    ],
+)
+def test_verify_bids_na_conformity_detailed(data, expected_warnings):
+    participants = Participants(data, verify_bids=False)
+    warnings_list = participants.verify_bids('REQUIRED')
+    for expected in expected_warnings:
+        assert any(expected in w for w in warnings_list), (
+            f"Expected '{expected}' in warnings: {warnings_list}"
+        )
+
+
+def test_participants_load_relative_metadata_path_with_verify(
+    make_csv_file,
+    make_json_file,
+):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    metadata = {'participant_id': {'Description': 'The participant ID'}}
+
+    path = make_csv_file('participants.tsv', data, separator='\t')
+    make_json_file('participants.json', metadata)
+
+    participants = Participants.load(
+        path.parent,
+        metadata='participants.json',
+        verify_bids='REQUIRED',
+    )
+    assert (
+        participants.metadata.get('participant_id', {}).get('Description')
+        == 'The participant ID'
+    )
+
+
+def test_participants_init_null_dtype():
+    data = pl.DataFrame(
+        {'participant_id': ['sub-01'], 'col': [None]},
+        schema={'participant_id': pl.String, 'col': pl.Null},
+    )
+    participants = Participants(data)
+    assert participants.metadata.get('col', {}).get('Format') == 'string'
