@@ -50,9 +50,11 @@ class Phenotype:
 
     Parameters
     ----------
-    data: polars.DataFrame
+    data: polars.DataFrame | None
         The phenotypic data conforming to BIDS (i.e., first column must be named
-        participant_id).
+        participant_id). If ``None``, initialize an empty DataFrame with a
+        ``participant_id`` string column.
+        (default: ``None``)
     metadata: dict[str, Any] | None
         Additional metadata on phenotypic data conforming to BIDS side car json files.
         If ``None``, initialize an empty dictionary.
@@ -67,11 +69,13 @@ class Phenotype:
 
     def __init__(
         self,
-        data: polars.DataFrame,
+        data: polars.DataFrame | None = None,
         metadata: dict[str, Any] | None = None,
         *,
         infer_metadata: bool = True,
     ):
+        if data is None:
+            data = polars.DataFrame(schema={'participant_id': polars.String})
         _validate_participant_id_structure(data)
 
         if metadata:

@@ -153,6 +153,20 @@ def test_phenotype_init_data_raises(data, expected_exception, expected_message):
         Phenotype(data)
 
 
+def test_phenotype_init_no_args():
+    phenotype = Phenotype()
+    expected_data = pl.DataFrame(
+        schema={'participant_id': pl.String},
+    )
+    assert_frame_equal(phenotype.data, expected_data)
+
+
+def test_phenotype_init_no_data_no_infer():
+    phenotype = Phenotype(infer_metadata=False)
+    assert isinstance(phenotype.metadata, dict)
+    assert not phenotype.metadata
+
+
 @pytest.mark.parametrize(
     ('data', 'metadata', 'expected_exception', 'expected_message'),
     [
