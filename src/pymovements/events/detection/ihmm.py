@@ -586,7 +586,7 @@ def collapse_states(
         states: np.ndarray,
         timesteps: np.ndarray,
         fixation_state: int = 0,
-        min_duration: int =0 
+        min_duration: int = 0,
 
 ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -780,23 +780,20 @@ def compute_hmm(
         # reorder to enforce states order (0 fixations)
 
         order = np.argsort(optimal['mu'])
-        #print(order)
+        # print(order)
 
-        optimal['mu'] = np.array( optimal['mu'])[order]
-        optimal['sigma']= np.array(optimal['sigma'])[order]
+        optimal['mu'] = np.array(optimal['mu'])[order]
+        optimal['sigma'] = np.array(optimal['sigma'])[order]
         optimal['init'] = np.array(optimal['init'])[order]
         optimal['trans'] = np.array(optimal['trans'][order])[:, order]
-        
 
         _mu = optimal['mu']
         _sigma = optimal['sigma']
         _init = optimal['init']
         _trans = optimal['trans']
 
-        
         if verbose:
             print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
-
 
     # inference the hmm
 
@@ -1200,7 +1197,8 @@ def ihmm(
 
     # collapse states
 
-    onsets_arr, offsets_arr = collapse_states(states, timesteps=timesteps_masked,min_duration=minimum_duration)
+    onsets_arr, offsets_arr = collapse_states(
+        states, timesteps=timesteps_masked, min_duration=minimum_duration)
 
     # return event frame
 
