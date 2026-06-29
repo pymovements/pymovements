@@ -586,6 +586,7 @@ def collapse_states(
         states: np.ndarray,
         timesteps: np.ndarray,
         fixation_state: int = 0,
+        min_duration: int =0 
 
 ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -641,8 +642,11 @@ def collapse_states(
 
             offset_time = timesteps[j - 1]
 
-            onsets.append(onset_time)
-            offsets.append(offset_time)
+            duration = offset_time - onset_time
+
+            if duration >= min_duration:
+                onsets.append(onset_time)
+                offsets.append(offset_time)
 
             i = j
         else:
@@ -772,13 +776,27 @@ def compute_hmm(
             velocities_mask=velocities_mask,
             max_iters=reestimation_max_iters,
         )
+
+        # reorder to enforce states order (0 fixations)
+
+        order = np.argsort(optimal['mu'])
+        #print(order)
+
+        optimal['mu'] = np.array( optimal['mu'])[order]
+        optimal['sigma']= np.array(optimal['sigma'])[order]
+        optimal['init'] = np.array(optimal['init'])[order]
+        optimal['trans'] = np.array(optimal['trans'][order])[:, order]
+        
+
         _mu = optimal['mu']
         _sigma = optimal['sigma']
         _init = optimal['init']
         _trans = optimal['trans']
 
+        
         if verbose:
             print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
+
 
     # inference the hmm
 
@@ -799,13 +817,13 @@ def compute_hmm(
 def ihmm(
         velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
         timesteps: list[int] | np.ndarray | None = None,
+        minimum_duration: int = 0,
         mu: list[float] | np.ndarray | None = None,
         sigma: list[float] | np.ndarray | None = None,
         init_state: list[float] | np.ndarray | None = None,
         transition_probabilities: list[list[float]] | np.ndarray | None = None,
         reestimation_max_iters: int = 1000,
         reestimation: bool = False,
-        include_nan: bool = False,
         verbose: bool = False,
         hmm_parameters_dict: dict | None = None,
         name: str = 'fixation',
@@ -1182,7 +1200,7 @@ def ihmm(
 
     # collapse states
 
-    onsets_arr, offsets_arr = collapse_states(states, timesteps=timesteps_masked)
+    onsets_arr, offsets_arr = collapse_states(states, timesteps=timesteps_masked,min_duration=minimum_duration)
 
     # return event frame
 
