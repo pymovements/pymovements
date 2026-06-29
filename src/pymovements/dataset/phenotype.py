@@ -25,12 +25,16 @@ from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from typing import Literal
 
 import polars
 
 from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_structure
+from pymovements.dataset._bids_dataset import _verify_bids_handler
+from pymovements.dataset.participants import _check_na_conformity
 from pymovements.dataset.participants import _infer_metadata_column_format
 
 
@@ -62,6 +66,13 @@ class Phenotype:
     infer_metadata: bool
         Infer metadata column format descriptors from ``data``.
         (default: ``True``)
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
+        Verify BIDS conformity after initialization. If True, raise exception on
+        non-conformity at REQUIRED level.
+        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that
+        level.
+        If False, do not verify.
+        (default: ``False``)
     """
 
     data: polars.DataFrame
@@ -73,10 +84,13 @@ class Phenotype:
         metadata: dict[str, Any] | None = None,
         *,
         infer_metadata: bool = True,
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ):
         if data is None:
             data = polars.DataFrame(schema={'participant_id': polars.String})
-        _validate_participant_id_structure(data)
+
+        if verify_bids is not False:
+            _validate_participant_id_structure(data)
 
         if metadata:
             metadata = deepcopy(metadata)
@@ -89,6 +103,35 @@ class Phenotype:
         self.data = data
         self.metadata = metadata
 
+        _verify_bids_handler(verify_bids, self.verify_bids, stacklevel=2)
+
+    def verify_bids(
+        self,
+        level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED',
+    ) -> list[str]:
+        """Verify BIDS conformity of phenotypic data.
+
+        Parameters
+        ----------
+        level : Literal['REQUIRED', 'RECOMMENDED']
+            Level of BIDS compliance to verify.
+            ``REQUIRED``: Check required fields only.
+            ``RECOMMENDED``: Check required fields plus recommended fields.
+
+        Returns
+        -------
+        list[str]
+            List of warning messages for each non-conformity found.
+            Empty list if data is BIDS conformant.
+        """
+        warnings_list: list[str] = []
+
+        if level in {'REQUIRED', 'RECOMMENDED'}:
+            warnings_list.extend(_validate_participant_id_format(self.data))
+            warnings_list.extend(_check_na_conformity(self.data))
+
+        return warnings_list
+
     @staticmethod
     def load(
         path: Path | str,
@@ -98,6 +141,7 @@ class Phenotype:
         rename: dict[str, str] | None = None,
         read_csv_kwargs: dict[str, Any] | None = None,
         metadata_encoding: str = 'utf-8',
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
     ) -> Phenotype:
         r"""Load phenotypic data from phenotype files.
 
@@ -126,6 +170,13 @@ class Phenotype:
         metadata_encoding: str
             Use this encoding for loading the metadata json file.
             (default: ``utf-8``)
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
+            Verify BIDS conformity after loading. If True, raise exception on
+            non-conformity at REQUIRED level.
+            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that
+            level.
+            If False, do not verify.
+            (default: ``False``)
 
         Returns
         -------
@@ -166,12 +217,13 @@ class Phenotype:
         else:
             metadata_dict = metadata
 
-        return Phenotype(data, metadata_dict)
+        return Phenotype(data, metadata_dict, verify_bids=verify_bids)
 
     def save(
         self,
         path: Path | str,
         *,
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
         metadata_path: Path | str | None = None,
         separator: str = '\t',
         write_csv_kwargs: dict[str, Any] | None = None,
@@ -184,6 +236,12 @@ class Phenotype:
         path: Path | str
             Save phenotypic data to this path. If this is a directory, use the basename of
             the directory as filename stem and save as ``phenotype/<stem>.tsv``.
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
+            Verify BIDS conformity before saving. If True, raise exception on non-conformity
+            at REQUIRED level.
+            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+            If False, do not verify.
+            (default: ``False``)
         metadata_path: Path | str | None
             Save metadata json to this path. If this is a relative path it is assumed to be
             relative to the directory specified by ``path``. If None: use stem from ``path``
@@ -200,6 +258,8 @@ class Phenotype:
             Use this encoding for loading the metadata json file.
             (default: ``utf-8``)
         """
+        _verify_bids_handler(verify_bids, self.verify_bids)
+
         path = Path(path)
         if path.is_dir():
             phenotype_dir = path / 'phenotype'
@@ -214,7 +274,10 @@ class Phenotype:
             write_csv_kwargs = {'separator': separator}
         else:
             write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
-        self.data.write_csv(data_path, **write_csv_kwargs)
+
+        # Ensure null values are encoded as n/a.
+        data_to_save = self.data.fill_null('n/a')
+        data_to_save.write_csv(data_path, **write_csv_kwargs)
 
         if metadata_path is None:
             metadata_path = default_metadata_path

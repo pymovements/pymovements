@@ -21,7 +21,10 @@
 from __future__ import annotations
 
 import re
+import warnings
+from collections.abc import Callable
 from typing import Any
+from typing import Literal
 
 import polars
 
@@ -55,9 +58,17 @@ def _validate_participant_id_format(data: polars.DataFrame) -> list[str]:
     if data.columns[0] != 'participant_id':
         validation_warnings.append('participant_id column must be the first column')
 
+    if data['participant_id'].dtype != polars.String:
+        validation_warnings.append(
+            'participant_id column must have string (Utf8) data type',
+        )
+
+    if data['participant_id'].null_count() > 0:
+        validation_warnings.append('participant_id column contains null values')
+
     participant_ids = data['participant_id'].drop_nulls().to_list()
 
-    pattern = re.compile(r'^sub-[a-zA-Z0-9]+$')
+    pattern = re.compile(r'^sub-[a-zA-Z0-9+]+$')
     invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
     if invalid_ids:
         validation_warnings.append(
@@ -123,3 +134,35 @@ def _cast_columns_to_metadata_format(
         if bids_format:
             schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
     return data.cast(schema_overrides)
+
+
+def _verify_bids_handler(
+    verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool,
+    verify_func: Callable[[Literal['REQUIRED', 'RECOMMENDED']], list[str]],
+    stacklevel: int = 3,
+) -> None:
+    """Handle verify_bids parameter by raising or warning on non-conformities.
+
+    Parameters
+    ----------
+    verify_bids : Literal['REQUIRED', 'RECOMMENDED'] | bool
+        If True, raise exception on non-conformity at REQUIRED level.
+        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+        If False, do nothing.
+    verify_func : Callable[[Literal['REQUIRED', 'RECOMMENDED']], list[str]]
+        Function that takes a level string and returns list of warning messages.
+    stacklevel : int
+        Stack level for warnings.warn (default 3).
+    """
+    if verify_bids is not False:
+        level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
+        if isinstance(verify_bids, str):
+            level = verify_bids
+        warnings_list = verify_func(level)
+        if warnings_list:
+            if verify_bids is True:
+                raise ValueError(
+                    f"BIDS non-conformities found: {'; '.join(warnings_list)}",
+                )
+            for warning_msg in warnings_list:
+                warnings.warn(warning_msg, UserWarning, stacklevel=stacklevel)

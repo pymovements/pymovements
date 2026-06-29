@@ -114,43 +114,53 @@ def test_phenotype_init_no_metadata_infer(data):
 
 
 @pytest.mark.parametrize(
-    ('data', 'expected_exception', 'expected_message'),
+    ('data', 'verify_bids', 'expected_exception', 'expected_message'),
     [
         pytest.param(
             pl.DataFrame(),
+            True,
             ValueError,
             "data must have column named 'participant_id'",
             id='empty',
         ),
         pytest.param(
             pl.DataFrame({'a': [1]}),
+            True,
             ValueError,
             "data must have column named 'participant_id'",
             id='no_participant_id',
         ),
         pytest.param(
             pl.DataFrame({'a': [1], 'participant_id': ['001']}),
+            True,
             ValueError,
             "first column in data must be named 'participant_id'",
             id='participant_id_not_first_column',
         ),
         pytest.param(
             pl.DataFrame({'subject_id': [1]}),
+            True,
             ValueError,
             "data must have column named 'participant_id'",
             id='subject_id_not_participant_id',
         ),
         pytest.param(
             pl.DataFrame({'participant_id': [1], 'test': [(1, 2)]}),
+            False,
             TypeError,
             r'polars datatype List\(Int64\) has no mapping to bids format descriptor',
             id='list_format_not_supported',
         ),
     ],
 )
-def test_phenotype_init_data_raises(data, expected_exception, expected_message):
+def test_phenotype_init_data_raises(
+    data,
+    verify_bids,
+    expected_exception,
+    expected_message,
+):
     with pytest.raises(expected_exception, match=expected_message):
-        Phenotype(data)
+        Phenotype(data, verify_bids=verify_bids)
 
 
 def test_phenotype_init_no_args():
@@ -267,7 +277,7 @@ def test_phenotype_load_missing_participant_id_raises(make_csv_file):
     path = make_csv_file('acds_adult.tsv', pl.DataFrame({'a': [1, 2]}), separator='\t')
 
     with pytest.raises(ValueError, match='participant_id'):
-        Phenotype.load(path)
+        Phenotype.load(path, verify_bids=True)
 
 
 @pytest.mark.parametrize(
@@ -575,3 +585,83 @@ def test_phenotype_with_derivative_field():
     phenotype = Phenotype(data, metadata)
 
     assert phenotype.metadata['total_score']['Derivative'] is True
+
+
+@pytest.mark.parametrize(
+    ('data', 'level', 'expect_warnings'),
+    [
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01']}),
+            'REQUIRED',
+            False,
+            id='valid',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['01']}),
+            'REQUIRED',
+            True,
+            id='invalid_id',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['sub-01']}),
+            'INVALID',
+            False,
+            id='unknown_level',
+        ),
+    ],
+)
+def test_phenotype_verify_bids_method(data, level, expect_warnings):
+    phenotype = Phenotype(data, verify_bids=False)
+    warnings_list = phenotype.verify_bids(level)  # type: ignore[arg-type]
+    assert (len(warnings_list) > 0) == expect_warnings
+
+
+def test_phenotype_verify_bids_init_raises():
+    with pytest.raises(ValueError, match='BIDS non-conformities found'):
+        Phenotype(
+            pl.DataFrame({'participant_id': ['01']}),
+            verify_bids=True,
+        )
+
+
+def test_phenotype_verify_bids_init_warns():
+    with pytest.warns(UserWarning, match="match 'sub-<label>' pattern"):
+        Phenotype(
+            pl.DataFrame({'participant_id': ['01']}),
+            verify_bids='REQUIRED',
+        )
+
+
+def test_phenotype_verify_bids_init_passes():
+    phenotype = Phenotype(
+        pl.DataFrame({'participant_id': ['sub-01']}),
+        verify_bids=True,
+    )
+    assert phenotype.data.shape == (1, 1)
+
+
+def test_phenotype_verify_bids_save_raises(tmp_path):
+    phenotype = Phenotype(
+        pl.DataFrame({'participant_id': ['01']}),
+        verify_bids=False,
+    )
+    with pytest.raises(ValueError, match='BIDS non-conformities found'):
+        phenotype.save(tmp_path / 'phenotype.tsv', verify_bids=True)
+
+
+def test_phenotype_verify_bids_save_warns(tmp_path):
+    phenotype = Phenotype(
+        pl.DataFrame({'participant_id': ['01']}),
+        verify_bids=False,
+    )
+    with pytest.warns(UserWarning, match="match 'sub-<label>' pattern"):
+        phenotype.save(tmp_path / 'phenotype.tsv', verify_bids='REQUIRED')
+
+
+def test_phenotype_verify_bids_save_passes(tmp_path):
+    phenotype = Phenotype(
+        pl.DataFrame({'participant_id': ['sub-01']}),
+        verify_bids=False,
+    )
+    phenotype.save(tmp_path / 'phenotype.tsv', verify_bids=True)
+    assert (tmp_path / 'phenotype.tsv').exists()

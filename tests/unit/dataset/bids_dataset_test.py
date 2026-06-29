@@ -26,6 +26,7 @@ from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _polars_datatype_to_bids_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_structure
+from pymovements.dataset._bids_dataset import _verify_bids_handler
 
 
 class TestValidateParticipantId:
@@ -99,7 +100,10 @@ class TestValidateParticipantIdFormat:
             ),
             pytest.param(
                 pl.DataFrame({'participant_id': [None]}),
-                [],
+                [
+                    'participant_id column must have string (Utf8) data type',
+                    'participant_id column contains null values',
+                ],
                 id='all_null',
             ),
         ],
@@ -233,3 +237,56 @@ class TestBidsFormatRoundTrip:
             match="unknown bids format descriptor 'unknown'",
         ):
             _bids_format_to_polars_datatype('unknown')
+
+
+class TestVerifyBidsHandler:
+    @pytest.mark.parametrize('verify_bids', [False])
+    def test_false_does_not_call_verify_func(self, verify_bids):
+        def verify_func(level):
+            raise AssertionError('should not be called')
+
+        _verify_bids_handler(verify_bids, verify_func)
+
+    @pytest.mark.parametrize(
+        ('verify_bids', 'expected_level'),
+        [
+            pytest.param(True, 'REQUIRED', id='true'),
+            pytest.param('REQUIRED', 'REQUIRED', id='required'),
+            pytest.param('RECOMMENDED', 'RECOMMENDED', id='recommended'),
+        ],
+    )
+    def test_verify_func_called_with_correct_level(self, verify_bids, expected_level):
+        levels_called = []
+
+        def verify_func(level):
+            levels_called.append(level)
+            return []
+
+        _verify_bids_handler(verify_bids, verify_func)
+        assert levels_called == [expected_level]
+
+    @pytest.mark.parametrize(
+        ('verify_bids',),
+        [
+            pytest.param(True, id='true'),
+            pytest.param('REQUIRED', id='required'),
+            pytest.param('RECOMMENDED', id='recommended'),
+        ],
+    )
+    def test_no_warnings_does_nothing(self, verify_bids):
+        _verify_bids_handler(verify_bids, lambda level: [])
+
+    def test_true_with_warnings_raises(self):
+        with pytest.raises(ValueError, match='BIDS non-conformities found'):
+            _verify_bids_handler(True, lambda level: ['some warning'])
+
+    @pytest.mark.parametrize(
+        'verify_bids',
+        [
+            pytest.param('REQUIRED', id='required'),
+            pytest.param('RECOMMENDED', id='recommended'),
+        ],
+    )
+    def test_string_level_with_warnings_warns(self, verify_bids):
+        with pytest.warns(UserWarning, match='some warning'):
+            _verify_bids_handler(verify_bids, lambda level: ['some warning'])
