@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Unit tests of Participants class functionality."""
-import math
+from math import nan
 
 import polars as pl
 import pytest
@@ -373,7 +373,7 @@ def test_verify_bids_handedness_invalid():
 
 
 def test_verify_bids_na_conformity():
-    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [math.nan]})
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'age': [nan]})
     participants = Participants(data, verify_bids=False)
     warnings_list = participants.verify_bids('REQUIRED')
     assert any("Column 'age' contains invalid null values" in w for w in warnings_list)
@@ -847,7 +847,7 @@ def test_verify_bids_age_over_89():
     [
         pytest.param(
             pl.DataFrame(
-                {'participant_id': ['sub-01'], 'age': [math.nan]},
+                {'participant_id': ['sub-01'], 'age': [nan]},
                 schema={'participant_id': pl.String, 'age': pl.Float64},
             ),
             ["Column 'age' contains invalid null values"],
