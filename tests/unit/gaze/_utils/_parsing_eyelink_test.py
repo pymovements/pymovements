@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
 import datetime
+import importlib
 import re
 import warnings
 from typing import Any
@@ -30,6 +31,31 @@ from polars.testing import assert_frame_equal
 
 from pymovements.gaze._utils import _parsing_eyelink
 from pymovements.gaze._utils._parsing_eyelink import _check_patterns
+
+
+def test_eyelink_regexes_are_not_compiled_during_import(monkeypatch):
+    """Parser-owned regexes should be compiled lazily when parsing starts."""
+
+    def fail_compile(*args, **kwargs):
+        raise AssertionError('regex compiled during module import')
+
+    monkeypatch.setattr(re, 'compile', fail_compile)
+
+    importlib.reload(_parsing_eyelink)
+
+
+def test_eyelink_regex_helpers_accept_precompiled_patterns():
+    """Compiled user-provided patterns should still be accepted by helper wrappers."""
+    compiled_pattern = re.compile(r'MSG\s+(?P<timestamp>\d+)\s+(?P<content>.*)')
+
+    match = _parsing_eyelink._match_regex(compiled_pattern, 'MSG 100 START')
+    search = _parsing_eyelink._search_regex(compiled_pattern, 'prefix MSG 200 END')
+
+    assert match is not None
+    assert match.groupdict() == {'timestamp': '100', 'content': 'START'}
+    assert search is not None
+    assert search.groupdict() == {'timestamp': '200', 'content': 'END'}
+
 
 ASC_TEXT = r"""
 ** DATE: Wed Mar  8 09:25:20 2023
@@ -1465,18 +1491,24 @@ def test_unmatched_blink_no_patterns_warns_and_records_param(make_text_file, eye
 
 
 @pytest.mark.parametrize(
-    ('reccfg_line', 'has_event_filters'),
+    ('reccfg_line', 'has_event_filters', 'tracked_eye'),
     [
         # normal RECCFG without event filter fields
-        ('MSG\t0 RECCFG CR 1000 2 1 R\n', False),
+        ('MSG\t0 RECCFG CR 1000 2 1 L\n', False, 'L'),
+        ('MSG\t0 RECCFG CR 1000 2 1 R\n', False, 'R'),
+        ('MSG\t0 RECCFG CR 1000 2 1 LR\n', False, 'LR'),
+        ('MSG\t0 RECCFG CR 1000 2 1\n', False, None),
         # extended RECCFG with file_event_filter and link_event_filter present
-        ('MSG\t0 RECCFG CR 1000 2 1 2 1 R\n', True),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 L\n', True, 'L'),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 R\n', True, 'R'),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 LR\n', True, 'LR'),
+        ('MSG\t0 RECCFG CR 1000 2 1 2 1 \n', True, None),
     ],
 )
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_reccfg_with_optional_event_filters_parses(
-    make_text_file, reccfg_line, has_event_filters,
+def test_reccfg_with_optional_fields_parses(
+    make_text_file, reccfg_line, has_event_filters, tracked_eye,
 ):
     """RECCFG lines with and without optional event filters should parse without error.
 
@@ -1500,7 +1532,6 @@ def test_reccfg_with_optional_event_filters_parses(
     assert rec_cfg['sampling_rate'] == '1000'
     assert rec_cfg['file_sample_filter'] in {'0', '1', '2'}
     assert rec_cfg['link_sample_filter'] in {'0', '1', '2'}
-    assert rec_cfg['tracked_eye'] in {'L', 'R', 'LR'}
 
     # Optional fields
     if has_event_filters:
@@ -1509,6 +1540,7 @@ def test_reccfg_with_optional_event_filters_parses(
     else:
         assert rec_cfg.get('file_event_filter') is None
         assert rec_cfg.get('link_event_filter') is None
+    assert rec_cfg.get('tracked_eye') == tracked_eye
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')

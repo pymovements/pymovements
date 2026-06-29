@@ -28,13 +28,13 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import prepare_figure
 
 
 def tsplot(
         gaze: Gaze,
         channels: list[str] | None = None,
+        *,
         xlabel: str | None = None,
         n_cols: int | None = None,
         n_rows: int | None = None,
@@ -48,10 +48,7 @@ def tsplot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: bool = True,
-        *,
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
 
@@ -87,14 +84,9 @@ def tsplot(
         Figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     ax: plt.Axes | None
         External axes to draw into when plotting a single channel. Ignored when
         ``n_channels > 1``. (default: None)
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created
-        the figure. (default: None)
 
     Returns
     -------
@@ -135,8 +127,7 @@ def tsplot(
     external_ax = ax is not None
 
     if n_channels == 1:
-        fig, ax, own_figure = prepare_figure(ax, figsize, func_name='tsplot')
-        assert ax is not None
+        fig, ax = prepare_figure(ax, figsize, func_name='tsplot')
         axs = [ax]
     else:
         if external_ax:
@@ -158,7 +149,6 @@ def tsplot(
             },
         )
         axs = axs_grid.flatten()
-        own_figure = True
 
     t = np.arange(n_samples)
     xlims = t.min(), t.max()
@@ -231,13 +221,7 @@ def tsplot(
     if title:
         axs[0].set_title(title)
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='tsplot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
     return fig, axs[0]

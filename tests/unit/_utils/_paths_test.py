@@ -62,112 +62,130 @@ def test_get_filepaths_empty_directory(
     assert get_filepaths(path='tmp', extension=extension, regex=regex) == expected_paths
 
 
-def create_directory(tmp_path, sub_dirs, files):
-    for sub_dir in sub_dirs:
-        dir_path = tmp_path / sub_dir
-        dir_path.mkdir()
-        for file_name in files:
-            file_path = dir_path / file_name
-            file_path.write_text('test')
-
-
 @pytest.mark.parametrize(
-    ('extension', 'regex', 'sub_dirs', 'files', 'expected_paths'),
+    ('files', 'extension', 'regex', 'expected_paths'),
     [
         pytest.param(
+            ['tmp_dir/foo.txt', 'tmp_dir/bar.py'],
             '.txt',
             None,
-            ['tmp_dir'],
-            ['foo.txt', 'bar.py'],
             ['tmp_dir/foo.txt'],
             id='extension_regex_get_filepaths_list',
         ),
         pytest.param(
+            ['tmp_dir/foo.txt', 'tmp_dir/foo.py', 'tmp_dir/bar.py'],
             None,
             re.compile('foo'),
-            ['tmp_dir'],
-            ['foo.txt', 'foo.py', 'bar.py'],
             ['tmp_dir/foo.txt', 'tmp_dir/foo.py'],
             id='regex_get_filepaths_list',
         ),
     ],
 )
 def test_get_filepaths_expected_output(
+        files,
         extension,
         regex,
-        tmp_path,
-        sub_dirs,
-        files,
         expected_paths,
+        make_text_files,
 ):
-    create_directory(tmp_path, sub_dirs, files)
-    ret = get_filepaths(path=tmp_path, extension=extension, regex=regex)
-    expected_list = [tmp_path / pathlib.Path(expected_path) for expected_path in expected_paths]
+    rootpath = make_text_files(files)
+    ret = get_filepaths(path=rootpath, extension=extension, regex=regex)
+    expected_list = [rootpath / pathlib.Path(expected_path) for expected_path in expected_paths]
     assert sorted(ret) == sorted(expected_list)
 
 
 @pytest.mark.parametrize(
-    ('regex', 'sub_dirs', 'files', 'expected_dicts'),
+    ('files', 'regex', 'expected_dicts'),
     [
         pytest.param(
-            re.compile('.*'),
-            ['tmp_dir'],
             [],
+            re.compile('.*'),
             [],
             id='empty_directory_empty_list',
         ),
         pytest.param(
+            ['tmp_dir/foo.txt'],
             re.compile('.*'),
-            ['tmp_dir'],
-            ['foo.txt'],
             [{'filepath': str(Path('tmp_dir/foo.txt'))}],
             id='match_all_no_groups_single_file',
         ),
         pytest.param(
+            ['tmp_dir/foo.txt', 'tmp_dir/bar.py'],
             re.compile('.*'),
-            ['tmp_dir'],
-            ['foo.txt', 'bar.py'],
             [{'filepath': str(Path('tmp_dir/foo.txt'))}, {'filepath': str(Path('tmp_dir/bar.py'))}],
             id='match_all_no_groups_two_files',
         ),
         pytest.param(
+            ['tmp_dir/foo.txt', 'tmp_dir/bar.py'],
             re.compile('foo'),
-            ['tmp_dir'],
-            ['foo.txt', 'bar.py'],
             [{'filepath': str(Path('tmp_dir/foo.txt'))}],
             id='match_substring_single_file_out_of_two_no_groups',
         ),
         pytest.param(
+            ['a/123_456.ext', 'a/456_789.ext'],
             re.compile(r'(?P<foo>\d+)_(?P<bar>\d+).ext'),
-            ['a'],
-            ['123_456.ext', '456_789.ext'],
             [
                 {'foo': '123', 'bar': '456', 'filepath': str(Path('a/123_456.ext'))},
                 {'foo': '456', 'bar': '789', 'filepath': str(Path('a/456_789.ext'))},
             ],
             id='match_groups_two_files',
         ),
+        pytest.param(
+            ['a/123_456.ext', 'a/456_789.ext'],
+            re.compile(r'a/(?P<foo>\d+)_(?P<bar>\d+).ext'),
+            [
+                {'foo': '123', 'bar': '456', 'filepath': str(Path('a/123_456.ext'))},
+                {'foo': '456', 'bar': '789', 'filepath': str(Path('a/456_789.ext'))},
+            ],
+            id='match_groups_relative_path',
+        ),
+        pytest.param(
+            ['123/test.ext', '456/test.ext'],
+            re.compile(r'(?P<foo>\d+)/test.ext'),
+            [
+                {'foo': '123', 'filepath': str(Path('123/test.ext'))},
+                {'foo': '456', 'filepath': str(Path('456/test.ext'))},
+            ],
+            id='match_groups_in_directory_name',
+        ),
+        pytest.param(
+            ['123/321/test.ext', '456/654/test.ext'],
+            re.compile(r'(?P<foo>\d+)/(?P<bar>\d+)/test.ext'),
+            [
+                {'foo': '123', 'bar': '321', 'filepath': str(Path('123/321/test.ext'))},
+                {'foo': '456', 'bar': '654', 'filepath': str(Path('456/654/test.ext'))},
+            ],
+            id='match_groups_in_nested_directories',
+        ),
+        pytest.param(
+            ['123/321.ext', '456/654.ext'],
+            re.compile(r'(?P<foo>\d+)/(?P<bar>\d+).ext'),
+            [
+                {'foo': '123', 'bar': '321', 'filepath': str(Path('123/321.ext'))},
+                {'foo': '456', 'bar': '654', 'filepath': str(Path('456/654.ext'))},
+            ],
+            id='match_groups_in_dirame_and_filename',
+        ),
     ],
 )
 def test_match_filepaths(
-        regex,
-        sub_dirs,
         files,
+        regex,
         expected_dicts,
-        tmp_path,
+        make_text_files,
 ):
-    create_directory(tmp_path, sub_dirs, files)
-    result_dicts = match_filepaths(path=tmp_path, regex=regex)
+    rootpath = make_text_files(files)
+    result_dicts = match_filepaths(path=rootpath, regex=regex)
 
     case = unittest.TestCase()
     case.assertCountEqual(result_dicts, expected_dicts)
 
 
-def test_match_filepaths_not_relative(tmp_path):
-    create_directory(tmp_path, ['tmp_dir'], ['foo.txt'])
-    result_dicts = match_filepaths(path=tmp_path, regex=re.compile('.*'), relative=False)
+def test_match_filepaths_not_relative(make_text_files):
+    rootpath = make_text_files(['tmp_dir/foo.txt'])
+    result_dicts = match_filepaths(path=rootpath, regex=re.compile('.*'), relative=False)
 
-    expected_dicts = [{'filepath': str(tmp_path / 'tmp_dir/foo.txt')}]
+    expected_dicts = [{'filepath': str(rootpath / 'tmp_dir/foo.txt')}]
     case = unittest.TestCase()
     case.assertCountEqual(result_dicts, expected_dicts)
 
@@ -183,9 +201,9 @@ def test_match_filepaths_not_exists_raises_value_error(tmp_path):
     assert str(filepath) in msg
 
 
-def test_match_filepaths_no_directory_raises_value_error(tmp_path):
-    create_directory(tmp_path, ['tmp_dir'], ['foo.txt'])
-    filepath = tmp_path / 'tmp_dir' / 'foo.txt'
+def test_match_filepaths_no_directory_raises_value_error(make_text_files):
+    rootpath = make_text_files(['tmp_dir/foo.txt'])
+    filepath = rootpath / 'tmp_dir' / 'foo.txt'
 
     with pytest.raises(ValueError) as excinfo:
         match_filepaths(path=filepath, regex=re.compile('.*'))

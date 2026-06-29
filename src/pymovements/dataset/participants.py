@@ -52,8 +52,9 @@ class Participants:
 
     Parameters
     ----------
-    data: polars.DataFrame
+    data: polars.DataFrame | None
         The participant data conforming to BIDS (i.e., first column must be named participant_id).
+        If ``None``, initialize an empty dataframe with a ``participant_id`` string column.
     metadata: dict[str, Any] | None
         Additional metadata on participant data conforming to BIDS side car json files.
         If ``None``, initialize an empty dictionary.
@@ -73,12 +74,14 @@ class Participants:
 
     def __init__(
         self,
-        data: polars.DataFrame,
+        data: polars.DataFrame | None = None,
         metadata: dict[str, Any] | None = None,
         *,
         verify_bids: str | bool = False,
         infer_metadata: bool = True,
     ):
+        if data is None:
+            data = polars.DataFrame(schema={'participant_id': polars.String})
         _validate_participant_id_structure(data)
 
         if metadata:
@@ -105,6 +108,40 @@ class Participants:
                     )
                 for warning_msg in warnings_list:
                     warnings.warn(warning_msg, UserWarning, stacklevel=2)
+
+    def update(
+            self,
+            data: polars.DataFrame,
+            metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Update participants data.
+
+        Adds new participants and new columns.
+        Overwrites participant data for participant if it already exists.
+
+        """
+        if 'participant_id' not in data.columns:
+            raise ValueError("data must have column named 'participant_id'")
+
+        # Somehow new columns are not added. Do this manually. Is this a bug in polars update()?
+        new_columns = list(set(data.columns) - set(self.data.columns))
+        if new_columns:
+            new_column_init = {
+                column: polars.lit(None).cast(data[column].dtype)
+                for column in new_columns
+            }
+            self.data = self.data.with_columns(**new_column_init)
+
+        # Update existing data.
+        self.data = self.data.update(
+            data.sort('participant_id'),
+            on='participant_id',
+            how='full',
+            include_nulls=True,
+        ).sort('participant_id')
+
+        if metadata:
+            self.metadata.update(metadata)
 
     @staticmethod
     def load(
@@ -225,7 +262,7 @@ class Participants:
             Separator in the tabular data file.
             (default: ``\t``)
         write_csv_kwargs: dict[str, Any] | None
-            Pass these additional keyword arguments to :py:func:`polars.write_csv`.
+            Pass these additional keyword arguments to :py:meth:`polars.DataFrame.write_csv`.
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
@@ -566,8 +603,6 @@ def _infer_metadata_column_format(
             # infer format from BIDS specification or use polars datatypes of data columns
             if column == 'participant_id':
                 metadata[column]['Format'] = 'string'
-            elif column == 'age':
-                metadata[column]['Format'] = 'number'
             else:
                 # convert polars datatype to bids format descriptor
                 metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)

@@ -582,6 +582,10 @@ def from_asc(
             pl.concat_list([pl.col('pupil_left'), pl.col('pupil_right')]).alias('pupil'),
         ).drop(['pupil_left', 'pupil_right'])
 
+    # Build cal/val frames and consume them from metadata dict
+    calibrations = metadata_to_cal_frame(parsed_metadata)
+    validations = metadata_to_val_frame(parsed_metadata)
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
@@ -592,10 +596,9 @@ def from_asc(
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
         metadata=metadata,
+        calibrations=calibrations,
+        validations=validations,
     )
-    # Build cal/val frames and consume them from metadata dict
-    gaze.calibrations = metadata_to_cal_frame(parsed_metadata)
-    gaze.validations = metadata_to_val_frame(parsed_metadata)
     # Keep remaining metadata privately on Gaze
     gaze._metadata = dict(parsed_metadata)  # pylint: disable=protected-access
     return gaze

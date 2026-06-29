@@ -33,23 +33,22 @@ from typing import overload
 from warnings import warn
 
 import polars
+import yaml
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
+from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
-from pymovements.events import events2segmentation
-from pymovements.events import events2timeratio
-from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
 
-@repr_html(['samples', 'events', 'trial_columns', 'experiment'])
+@repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
 class Gaze:
     """Self-contained data structure containing gaze represented as samples or events.
 
@@ -76,6 +75,13 @@ class Gaze:
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
+    calibrations: polars.DataFrame | None
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
+    validations: polars.DataFrame | None
+        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        accuracy_max. None by default, to be populated by I/O helpers (e.g. from_asc).
+        (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
@@ -120,7 +126,7 @@ class Gaze:
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
         Dictionary containing additional metadata.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session.
@@ -213,9 +219,9 @@ class Gaze:
     >>> experiment = Experiment(1024, 768, 38, 30, 60, 'center', sampling_rate=100)
     >>> gaze = Gaze(samples=df_no_time, experiment=experiment, pixel_columns=['x', 'y'])
     >>> gaze
-    Experiment(screen=Screen(width_px=1024, height_px=768, width_cm=38, height_cm=30,
-     distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None))
+    Experiment(screen=Screen(resolution=(1024, 768), size=(38, 30), distance_cm=60,
+      origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None,
+      version=None, vendor=None, mount=None))
     shape: (3, 2)
     ┌──────┬────────────┐
     │ time ┆ pixel      │
@@ -234,7 +240,7 @@ class Gaze:
 
     experiment: Experiment | None
 
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
 
     messages: polars.DataFrame | None
 
@@ -258,6 +264,8 @@ class Gaze:
             metadata: dict[str, Any] | None = None,
             messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
+            calibrations: polars.DataFrame | None = None,
+            validations: polars.DataFrame | None = None,
             time_column: str | None = None,
             time_unit: str | None = None,
             pixel_columns: list[str] | None = None,
@@ -325,8 +333,15 @@ class Gaze:
         _check_messages(messages)
         self.messages = messages
 
-        self.calibrations = None
-        self.validations = None
+        if calibrations is not None:
+            self.calibrations = calibrations
+        else:
+            self.calibrations = None
+
+        if validations is not None:
+            self.validations = validations
+        else:
+            self.validations = None
 
         # Keep remaining parsed metadata privately if an I/O helper provides it.
         self._metadata = None
@@ -514,18 +529,32 @@ class Gaze:
         gazes: dict[tuple[Any, ...], Gaze] = {}
 
         for key in keys:
-            metadata_split = deepcopy(self.metadata)
+            metadata_split: dict[str, Any] = (
+                deepcopy(self.metadata) if self.metadata else {}
+            )
             if extend_metadata:
                 for by_id, column_name in enumerate(by):
                     metadata_split[column_name] = key[by_id]
+
+            messages = self.messages.clone() if self.messages is not None else None
+            calibrations = (
+                self.calibrations.clone() if self.calibrations is not None else None
+            )
+            validations = (
+                self.validations.clone() if self.validations is not None else None
+            )
 
             gaze_split = Gaze(
                 samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
-                metadata=metadata_split,
+                metadata=metadata_split if (self.metadata is not None or extend_metadata) else None,
+                messages=messages,
+                calibrations=calibrations,
+                validations=validations,
             )
+            gaze_split.n_components = self.n_components
             gazes[key] = gaze_split
 
         if as_dict:
@@ -1074,7 +1103,7 @@ class Gaze:
                 f"No events with name '{name}' found in events.",
             )
 
-        mask_expr = events2segmentation(
+        mask_expr = transforms.events2segmentation(
             events_frame,
             name=name,
             time_column='time',
@@ -1493,7 +1522,7 @@ class Gaze:
                 },
             )
 
-        return events2timeratio(
+        return transforms.events2timeratio(
             events=events_df,
             samples=self.samples,
             name=name,
@@ -1743,7 +1772,7 @@ class Gaze:
             if mode == 'direct':
                 x_eye, y_eye = payload
                 aois = [
-                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
+                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye, max_matches=1)
                     for row in tqdm(self.samples.iter_rows(named=True))
                 ]
             elif mode == 'average_lr':
@@ -1762,7 +1791,9 @@ class Gaze:
                     tmp = dict(row)
                     tmp['__x'] = x_val
                     tmp['__y'] = y_val
-                    aois.append(aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y'))
+                    aois.append(
+                        aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y', max_matches=1),
+                    )
             else:
                 # This branch is unreachable with the current selector:
                 # the flat-components selector only yields 'direct', 'average_lr' or None
@@ -1866,7 +1897,9 @@ class Gaze:
                 tmp_row = dict(row)
                 tmp_row['__x'] = x
                 tmp_row['__y'] = y
-                aois.append(aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y'))
+                aois.append(
+                    aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1),
+                )
 
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
@@ -1944,10 +1977,19 @@ class Gaze:
         Gaze
             A copy of the Gaze.
         """
+        messages = self.messages.clone() if self.messages is not None else None
+        calibrations = self.calibrations.clone() if self.calibrations is not None else None
+        validations = self.validations.clone() if self.validations is not None else None
+
         gaze = Gaze(
             samples=self.samples.clone(),
             experiment=deepcopy(self.experiment),
             events=self.events.clone(),
+            metadata=deepcopy(self.metadata),
+            messages=messages,
+            trial_columns=deepcopy(self.trial_columns),
+            calibrations=calibrations,
+            validations=validations,
         )
         gaze.n_components = self.n_components
         return gaze
@@ -2063,6 +2105,7 @@ class Gaze:
             list_length
             for column in considered_columns
             for list_length in self.samples.get_column(column).list.len().unique().to_list()
+            if list_length is not None
         }
 
         for column_specifier_list in column_specifiers:
@@ -2354,6 +2397,9 @@ class Gaze:
         if time_unit == 's':
             self.samples = self.samples.with_columns(polars.col('time').mul(1000))
 
+        elif time_unit == 'us':
+            self.samples = self.samples.with_columns(polars.col('time').truediv(1000))
+
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
@@ -2367,8 +2413,8 @@ class Gaze:
         elif time_unit != 'ms':
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
-                "Supported units are 's' for seconds, 'ms' for milliseconds and "
-                "'step' for steps.",
+                "Supported units are 's' for seconds, 'ms' for milliseconds, "
+                "'us' for microseconds and 'step' for steps.",
             )
 
         # Convert to int if possible.
@@ -2424,15 +2470,23 @@ class Gaze:
             save_events: bool | None = None,
             save_samples: bool | None = None,
             save_experiment: bool | None = None,
+            save_metadata: bool | None = None,
+            save_messages: bool | None = None,
+            save_calibrations: bool | None = None,
+            save_validations: bool | None = None,
             verbose: int = 1,
             extension: str = 'feather',
     ) -> Gaze:
         """Save data from the Gaze object in the provided directory.
 
-        Depending on parameters, it may save three files:
+        Depending on parameters, it may save multiple files:
         * preprocessed gaze in samples (samples)
         * calculated gaze events (events)
-        * metadatata experiment in YAML file (experiment).
+        * metadata experiment in YAML file (experiment)
+        * additional metadata in YAML file (metadata)
+        * messages from experiment session (messages)
+        * calibrations data (calibrations)
+        * validations data (validations)
 
         Data will be saved as feather or csv files.
 
@@ -2453,11 +2507,38 @@ class Gaze:
             Save samples in sample.{extension} file
         save_experiment: bool | None
             Save experiment metadata in experiment.yaml file
+        save_metadata: bool | None
+            Save metadata dictionary in metadata.yaml file
+        save_messages: bool | None
+            Save messages in messages.{extension} file
+        save_calibrations: bool | None
+            Save calibrations in calibrations.{extension} file
+        save_validations: bool | None
+            Save validations in validations.{extension} file
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
         extension: str
             Extension specifies the fileformat to store the data. (default: 'feather')
+
+        Examples
+        --------
+        Save all available data fields to a directory:
+
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        ...     pixel_columns=['x', 'y'],
+        ...     metadata={'subject_id': 42},
+        ...     messages=pl.DataFrame({'time': [0], 'content': ['start']}),
+        ...     calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+        ...     validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+        ... )
+        >>> _ = gaze.save('./output', save_metadata=True, save_messages=True,
+        ...           save_calibrations=True, save_validations=True, verbose=0)
+        >>> # Creates: samples.feather, events.feather, metadata.yaml,
+        >>> #          messages.feather, calibrations.feather, validations.feather
 
         Raises
         ------
@@ -2485,6 +2566,48 @@ class Gaze:
                 self.experiment.to_yaml(Path(f'{dirpath}/experiment.yaml'))
             elif save_experiment is not None:
                 raise ValueError('no experiment data in the Gaze object')
+
+        if save_metadata is None or save_metadata:
+            if verbose >= 2:
+                print('Saving metadata file to', dirpath)
+            if self.metadata:
+                with open(Path(f"{dirpath}/metadata.yaml"), 'w', encoding='utf-8') as f:
+                    yaml.safe_dump(self.metadata, f, default_flow_style=False)
+            elif save_metadata is not None:
+                raise ValueError('no metadata in the Gaze object')
+
+        if save_messages is None or save_messages:
+            if verbose >= 2:
+                print('Saving messages file to', dirpath)
+            if self.messages is not None:
+                self.save_messages(
+                    Path(f"{dirpath}/messages.{extension}"), verbose=verbose,
+                )
+            elif save_messages is not None:
+                raise ValueError('no messages in the Gaze object')
+
+        if save_calibrations is None or save_calibrations:
+            if verbose >= 2:
+                print('Saving calibrations file to', dirpath)
+            if self.calibrations is not None:
+                self.save_calibrations(
+                    Path(f'{dirpath}/calibrations.{extension}'),
+                    verbose=verbose,
+                )
+            elif save_calibrations is not None:
+                raise ValueError('no calibrations in the Gaze object')
+
+        if save_validations is None or save_validations:
+            if verbose >= 2:
+                print('Saving validations file to', dirpath)
+            if self.validations is not None:
+                self.save_validations(
+                    Path(f'{dirpath}/validations.{extension}'),
+                    verbose=verbose,
+                )
+            elif save_validations is not None:
+                raise ValueError('no validations in the Gaze object')
+
         return self
 
     def save_events(
@@ -2571,6 +2694,132 @@ class Gaze:
             raise ValueError(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
+            )
+
+    def save_messages(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save messages to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        ValueError
+            If messages is None.
+        """
+        if self.messages is None:
+            raise ValueError('No messages in the Gaze object')
+
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving messages to', path)
+
+        if extension == 'feather':
+            self.messages.write_ipc(path)
+        elif extension == 'csv':
+            self.messages.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
+            )
+
+    def save_calibrations(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save calibrations to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        ValueError
+            If calibrations is None.
+        """
+        if self.calibrations is None:
+            raise ValueError('No calibrations in the Gaze object')
+
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving calibrations to', path)
+
+        if extension == 'feather':
+            self.calibrations.write_ipc(path)
+        elif extension == 'csv':
+            self.calibrations.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
+            )
+
+    def save_validations(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save validations to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        ValueError
+            If validations is None.
+        """
+        if self.validations is None:
+            raise ValueError('No validations in the Gaze object')
+
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving validations to', path)
+
+        if extension == 'feather':
+            self.validations.write_ipc(path)
+        elif extension == 'csv':
+            self.validations.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
             )
 
 
