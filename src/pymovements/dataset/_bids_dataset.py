@@ -103,6 +103,8 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
         return 'bool'
     if dtype == polars.String:
         return 'string'
+    if dtype == polars.Null:
+        return 'string'
 
     raise TypeError(
         f"polars datatype {dtype} has no mapping to bids format descriptor. "
