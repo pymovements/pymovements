@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
+# pylint: disable=too-many-lines
 import datetime
 import importlib
 import re
