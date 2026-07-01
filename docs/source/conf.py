@@ -30,6 +30,7 @@
 import importlib.resources
 import inspect
 import os
+import string
 import sys
 from subprocess import CalledProcessError
 from subprocess import run
@@ -47,7 +48,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('src'))))
 # -- Project information -----------------------------------------------------
 
 project = 'pymovements'
-copyright = '2022-2025 The pymovements Project Authors'
+copyright = '2022-2026 The pymovements Project Authors'
 author = 'The pymovements Project Authors'
 
 
@@ -274,13 +275,29 @@ favicons = [
 # -- Options for BibTeX ------------------------------------------------------
 bibtex_bibfiles = ['bibliography.bib']
 bibtex_default_style = 'author_year_style'
-bibtex_reference_style = 'author_year'
+bibtex_reference_style = 'label'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
+    template: str = '{author} et al., {year}'
+
     def format_labels(self, sorted_entries):
+        outputs: list[str] = []
         for entry in sorted_entries:
-            yield f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
+            output = self.template.format(
+                author=entry.persons['author'][0].rich_last_names[0],
+                year=entry.fields['year'],
+            )
+
+            if output in outputs:
+                for suffix_char in string.ascii_lowercase:
+                    suffix_output = output + suffix_char
+                    if suffix_output not in outputs:
+                        output = suffix_output
+                        break
+
+            outputs.append(output)
+            yield output
 
 
 class AuthorYearStyle(PlainStyle):
