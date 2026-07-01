@@ -1,0 +1,186 @@
+# Copyright (c) 2022-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Test pymovements.transforms.norm."""
+import polars as pl
+import pytest
+from polars.testing import assert_series_equal
+
+from pymovements.transforms import norm
+
+
+@pytest.mark.parametrize(
+    ('columns', 'df', 'expected_series'),
+    [
+        pytest.param(
+            ('x', 'y'),
+            pl.DataFrame([
+                pl.Series('x', [], pl.Float64),
+                pl.Series('y', [], pl.Float64),
+            ]),
+            pl.Series(None, [], pl.Float64),
+            id='empty_series_returns_empty_series',
+        ),
+        pytest.param(
+            ('x', 'y'),
+            pl.DataFrame([
+                pl.Series('x', [1], pl.Float64),
+                pl.Series('y', [1], pl.Float64),
+            ]),
+            pl.Series(None, [1.41421356], pl.Float64),
+            id='empty_series_returns_empty_series',
+        ),
+        pytest.param(
+            ('x', 'y'),
+            pl.DataFrame([
+                pl.Series('x', [1, 1], pl.Float64),
+                pl.Series('y', [1, 1], pl.Float64),
+            ]),
+            pl.Series(None, [1.4142, 1.4142], pl.Float64),
+            id='empty_series_returns_empty_series',
+        ),
+    ],
+)
+def test_norm_of_two_columns_returns(columns, df, expected_series):
+    result_df = df.select(
+        norm(columns=columns).alias('norm'),
+    )
+    assert_series_equal(result_df['norm'], expected_series, check_names=False)
+
+
+def test_norm_of_list_column_returns():
+    df = pl.DataFrame(
+        {
+            'velocity': [[3.0, 4.0], [5.0, 12.0]],
+        },
+    )
+
+    result_df = df.select(
+        norm(
+            column='velocity',
+            components=(0, 1),
+        ).alias('norm'),
+    )
+
+    expected = pl.Series(None, [5.0, 13.0], pl.Float64)
+    assert_series_equal(result_df['norm'], expected, check_names=False)
+
+
+def test_norm_of_struct_column_returns():
+    df = pl.DataFrame(
+        {
+            'velocity': [
+                {'x': 3.0, 'y': 4.0},
+                {'x': 5.0, 'y': 12.0},
+            ],
+        },
+    )
+
+    result_df = df.select(
+        norm(
+            column='velocity',
+            components=('x', 'y'),
+        ).alias('norm'),
+    )
+
+    expected = pl.Series(None, [5.0, 13.0], pl.Float64)
+    assert_series_equal(result_df['norm'], expected, check_names=False)
+
+
+def test_norm_raises_for_missing_parent_column():
+    df = pl.DataFrame(
+        {
+            'velocity': [
+                {'x': 3.0, 'y': 4.0},
+            ],
+        },
+    )
+
+    with pytest.raises(pl.exceptions.ColumnNotFoundError, match='position'):
+        df.select(
+            norm(
+                column='position',
+                components=('x', 'y'),
+            ).alias('norm'),
+        )
+
+
+def test_norm_raises_for_missing_field_in_parent_column():
+    df = pl.DataFrame(
+        {
+            'velocity': [
+                {'x': 3.0, 'y': 4.0},
+            ],
+        },
+    )
+
+    with pytest.raises(pl.exceptions.StructFieldNotFoundError, match='z'):
+        df.select(
+            norm(
+                column='velocity',
+                components=('x', 'z'),
+            ).alias('norm'),
+        )
+
+
+def test_norm_raises_when_parent_column_is_not_struct():
+    df = pl.DataFrame(
+        {
+            'velocity': [1.0, 2.0],
+        },
+    )
+
+    with pytest.raises(pl.exceptions.PolarsError):
+        df.select(
+            norm(
+                column='velocity',
+                components=('x', 'y'),
+            ).alias('norm'),
+        )
+
+
+def test_norm_raises_when_components_not_length_2():
+    message = 'components must be of length 2 but is 3'
+    with pytest.raises(ValueError, match=message):
+        norm(column='velocity', components=('x', 'y', 'z'))
+
+
+@pytest.mark.parametrize(
+    'components',
+    [
+        pytest.param((0.1, 0.2), id='tuple_float'),
+        pytest.param((1, 'x'), id='tuple_mixed'),
+    ],
+)
+def test_norm_raises_when_component_elements_unexpected_type(components):
+    message = "elements of 'components' must be either of type int or str but they are"
+    with pytest.raises(TypeError, match=message):
+        norm(column='velocity', components=components)
+
+
+def test_norm_raises_when_components_unexpected_type():
+    message = "'components' must be a sequence but is of type float"
+    with pytest.raises(TypeError, match=message):
+        norm(column='velocity', components=0.1)
+
+
+def test_norm_raises_when_column_and_columns_are_none():
+    message = 'either column or columns must be provided but both are None'
+    with pytest.raises(TypeError, match=message):
+        norm(column=None, columns=None)

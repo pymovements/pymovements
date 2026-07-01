@@ -867,6 +867,30 @@ from pymovements import Gaze
             id='df_three_rows_two_position_float_step_time_converts_to_int_millis',
         ),
 
+        pytest.param(
+            {
+                'samples': pl.from_dict(
+                    {
+                        'time': [1000, 2000, 3000],
+                        'x': [0., 1., 2.],
+                        'y': [3., 4., 5.],
+                    },
+                    schema={'time': pl.Int64, 'x': pl.Float64, 'y': pl.Float64},
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_unit': 'us',
+                'time_column': 'time',
+            },
+            pl.from_dict(
+                {
+                    'time': [1, 2, 3],
+                    'pixel': [[0., 3.], [1., 4.], [2., 5.]],
+                },
+                schema={'time': pl.Int64, 'pixel': pl.List(pl.Float64)},
+            ),
+            2,
+            id='df_three_rows_two_position_int_microseconds_time_converts_to_int_millis',
+        ),
 
         pytest.param(
             {
@@ -1696,8 +1720,8 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
             },
             ValueError,
             "unsupported time unit 'invalid'. "
-            "Supported units are 's' for seconds, 'ms' for milliseconds and "
-            "'step' for steps.",
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
             id='time_unit_unsupported',
         ),
 
