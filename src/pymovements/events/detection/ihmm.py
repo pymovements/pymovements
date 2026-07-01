@@ -288,11 +288,13 @@ def baum_welch(
 
         init = np.log(np.clip(gamma_full[:, 0], 1e-12, 1.0))
 
+        # laplace smoothing for division by 0 errors
+        eps = 1e-12
         for i in range(M):
             denom = np.sum(gamma_full[i, :-1])
             for j in range(M):
                 numer = np.sum(xi[i, j, :])
-                trans[i, j] = np.log(numer / denom)
+                trans[i, j] = np.log((numer + eps) / (denom + eps * M))
 
         for j in range(M):
 
@@ -624,11 +626,16 @@ def collapse_states(
             Same length as onsets.
    """
 
+
     if len(states) == 0 or len(timesteps) == 0:
         return np.array([]), np.array([])
 
     onsets = []
     offsets = []
+
+    #timesteps_diff = np.diff(timesteps)
+    #if (minimum_sample_duration := int(min_duration // timesteps_diff[0])) < 2:
+    #    raise ValueError('minimum_duration must be longer than the equivalent of 2 samples')
 
     i = 0
     while i < len(states):
@@ -814,7 +821,7 @@ def compute_hmm(
 def ihmm(
         velocities: list[list[float]] | list[tuple[float, float]] | np.ndarray,
         timesteps: list[int] | np.ndarray | None = None,
-        minimum_duration: int = 0,
+        minimum_duration: int = 100,
         mu: list[float] | np.ndarray | None = None,
         sigma: list[float] | np.ndarray | None = None,
         init_state: list[float] | np.ndarray | None = None,
@@ -1058,12 +1065,6 @@ def ihmm(
     """
     velocities = np.array(velocities)
 
-    if hmm_parameters_dict is not None:
-        hmm_parameters_dict['mu'] = np.array(hmm_parameters_dict['mu'])
-        hmm_parameters_dict['sigma'] = np.array(hmm_parameters_dict['sigma'])
-        hmm_parameters_dict['init'] = np.array(hmm_parameters_dict['init'])
-        hmm_parameters_dict['trans'] = np.array(hmm_parameters_dict['trans'])
-
     if mu is not None:
         mu = np.array(mu)
     if sigma is not None:
@@ -1078,6 +1079,14 @@ def ihmm(
     if timesteps is None:
         timesteps = np.arange(len(velocities), dtype=np.int64)
     timesteps = np.array(timesteps).flatten()
+
+    if minimum_duration <= 0:
+        raise ValueError('minimum_duration must be greater than 0')
+    if not isinstance(minimum_duration, int):
+        raise TypeError(
+            'minimum_duration must be of type int'
+            f' but is of type {type(minimum_duration)}',
+        )
 
     # Check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)
@@ -1128,6 +1137,13 @@ def ihmm(
                 f' should have fields ${['mu', 'sigma', 'init', 'trans']} but instead has '
                 f'{hmm_parameters_dict.keys()}',
             )
+        
+        hmm_parameters_dict['mu'] = np.array(hmm_parameters_dict['mu'])
+        hmm_parameters_dict['sigma'] = np.array(hmm_parameters_dict['sigma'])
+        hmm_parameters_dict['init'] = np.array(hmm_parameters_dict['init'])
+        hmm_parameters_dict['trans'] = np.array(hmm_parameters_dict['trans'])
+        
+        
         if hmm_parameters_dict['mu'] is not None and hmm_parameters_dict['mu'].shape != (2,):
             raise ValueError(
                 f'mu'
