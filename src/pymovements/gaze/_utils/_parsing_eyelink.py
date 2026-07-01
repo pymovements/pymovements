@@ -112,6 +112,7 @@ BLINK_STOP_REGEX = (
 CALIBRATION_TIMESTAMP_REGEX = r'MSG\s+(?P<timestamp>\d+[.]?\d*)\s+!CAL\s*\n'
 
 CALIBRATION_REGEX = (
+    r'(?:MSG\s+\d+[.]?\d*\s+)?'
     r'>+\s+CALIBRATION\s+\(HV(?P<num_points>\d\d?),'
     r'(?P<type>.*)\).*'
     r'(?P<tracked_eye>RIGHT|LEFT):\s+<{9}'
