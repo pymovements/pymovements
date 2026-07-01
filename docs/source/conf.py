@@ -193,6 +193,8 @@ nitpick_ignore_regex = [
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
+    # generic types https://github.com/sphinx-doc/sphinx/issues/14159
+    (r'py:class', r'.*dict\[str'),
 
     # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
     (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
