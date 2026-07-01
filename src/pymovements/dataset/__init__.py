@@ -25,6 +25,7 @@ from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_library import register_dataset
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.participants import Participants
+from pymovements.dataset.phenotype import Phenotype
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
@@ -37,6 +38,7 @@ __all__ = [
     'DatasetLibrary',
     'DatasetPaths',
     'Participants',
+    'Phenotype',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
