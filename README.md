@@ -132,3 +132,11 @@ software and the following paper:
 In case you want to cite specific parts of the package, like our dataset library or data quality
 reports, please consider citing our other publications listed on our
 [citing page](https://pymovements.readthedocs.io/en/stable/about-us/citing.html).
+
+
+## Acknowledgements
+
+The pymovements project was partially funded by the Swiss National Science Foundation (SNSF) and
+the German Federal Ministry of Education and Research (BMBF). Please refer to our
+[acknowledgements page](https://pymovements.readthedocs.io/en/stable/about-us/acknowledgments.html)
+for a comprehensive overview of funding and support.
