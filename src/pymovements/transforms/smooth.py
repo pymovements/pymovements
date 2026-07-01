@@ -150,7 +150,7 @@ def smooth(
                     pl.col(column)
                     .list.get(component)
                     .map_batches(pad_func, return_dtype=pl.Float64)
-                    .list.explode()
+                    .list.explode(empty_as_null=True)
                     .rolling_mean(window_size=window_length, center=True)
                     .shift(n=pad_kwargs['pad_width'])
                     .slice(pad_kwargs['pad_width'] * 2)
@@ -163,7 +163,7 @@ def smooth(
                 pl.col(column)
                 .list.get(component)
                 .map_batches(pad_func, return_dtype=pl.Float64)
-                .list.explode()
+                .list.explode(empty_as_null=True)
                 .ewm_mean(
                     span=window_length,
                     adjust=False,
