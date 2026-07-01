@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
@@ -35,6 +36,9 @@ from pymovements._utils._html import repr_html
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
+from pymovements.dataset.data_quality import _compute_measures
+from pymovements.dataset.data_quality import DataQualityReport
+from pymovements.dataset.data_quality import GazeDataValidationError
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
@@ -43,6 +47,7 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
+from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
@@ -1239,6 +1244,137 @@ class Dataset:
             extension=extension,
         )
         return self
+
+    def report_data_quality(
+            self,
+            *,
+            output_path: Path | str | None = None,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+    ) -> DataQualityReport:
+        """Run sanity checks and compute data quality measures for all loaded gaze data.
+
+        Three processing stages are executed in sequence:
+
+        1. **Validation checks** — seven stimulus-agnostic checks (see *checks* parameter)
+           that verify column presence, dtypes, temporal continuity, and gaze range.
+        2. **Quality measures** — ``data_loss``, ``std_rms``, ``rms_s2s``, and ``bcea``
+           aggregated at dataset, subject, session, and trial level.
+        3. **BIDS output** (optional) — writes derivative TSV/JSON files and a
+           ``warnings.log`` under ``output_path / 'derivatives' / 'pymovements' /``.
+
+        Parameters
+        ----------
+        output_path : Path | str | None
+            If provided, write BIDS-conformant derivative report files here.
+            (default: None)
+        checks : list[str] | None
+            Check identifiers to run. ``None`` runs all seven checks. Valid identifiers:
+            ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
+            ``'time_column_exists'``, ``'gaze_components_defined'``,
+            ``'trial_continuity'``, ``'sampling_rate_consistency'``, ``'gaze_range'``.
+            (default: None)
+        measures : list[str] | None
+            Measure identifiers to compute. ``None`` computes all four. Valid:
+            ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``, ``'bcea'``.
+            (default: None)
+        levels : list[str] | None
+            Aggregation levels for measures. ``None`` uses all four. Valid:
+            ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
+            (default: None)
+        raise_on_error : bool
+            If ``True``, raise :py:exc:`~pymovements.dataset.GazeDataValidationError`
+            on the first check result with severity ``'error'``. (default: False)
+
+        Returns
+        -------
+        DataQualityReport
+            An object containing all :py:class:`~pymovements.dataset.CheckResult` objects
+            and per-level measure :py:class:`polars.DataFrame` tables.
+
+        Raises
+        ------
+        GazeDataValidationError
+            If *raise_on_error* is ``True`` and any check produces an error result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
+
+        Examples
+        --------
+        >>> import pymovements as pm
+        >>> # dataset = pm.Dataset('ExampleDataset', path='data/')
+        >>> # dataset.load()
+        >>> # report = dataset.report_data_quality()
+        >>> # print(report.summary())
+        """
+        checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
+        levels_to_run = (
+            levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
+        )
+
+        if checks is not None:
+            unknown = checks_to_run - set(_ALL_CHECKS.keys())
+            if unknown:
+                raise ValueError(
+                    f'Unknown check identifier(s) {sorted(unknown)!r}. '
+                    f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
+                )
+
+        # Use real file paths from fileinfo when available; otherwise leave blank.
+        if (
+            isinstance(self.fileinfo, dict)
+            and 'gaze' in self.fileinfo
+            and 'filepath' in self.fileinfo['gaze'].columns
+        ):
+            source_paths: list[str] = self.fileinfo['gaze']['filepath'].cast(pl.Utf8).to_list()
+        else:
+            source_paths = ['' for _ in self.gaze]
+
+        report = DataQualityReport()
+        captured_warnings: list[str] = []
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+
+            for idx, gaze in enumerate(self.gaze):
+                src = source_paths[idx] if idx < len(source_paths) else ''
+                results = gaze.validate(
+                    trial_columns_exist='trial_columns_exist' in checks_to_run,
+                    trial_columns_dtype='trial_columns_dtype' in checks_to_run,
+                    time_column_exists='time_column_exists' in checks_to_run,
+                    gaze_components_defined='gaze_components_defined' in checks_to_run,
+                    trial_continuity='trial_continuity' in checks_to_run,
+                    sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                    gaze_range='gaze_range' in checks_to_run,
+                    source_path=src,
+                )
+                for result in results:
+                    report.check_results.append(result)
+                    if raise_on_error and result.severity == 'error':
+                        raise GazeDataValidationError(
+                            check_id=result.check_id,
+                            message=str(result.message),
+                            affected_files=result.affected_files,
+                        )
+
+            report.measures = _compute_measures(
+                gaze_list=self.gaze,
+                fileinfo=self.fileinfo,
+                levels=levels_to_run,
+                measures=measures,
+            )
+
+            captured_warnings = [str(w.message) for w in caught]
+
+        report.passed = all(r.severity != 'error' for r in report.check_results)
+        report.warning_log = captured_warnings
+
+        if output_path is not None:
+            report.save_bids_report(Path(output_path))
+
+        return report
 
     def download(
             self,

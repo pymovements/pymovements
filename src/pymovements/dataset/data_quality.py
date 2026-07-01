@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2026 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,36 +17,27 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides gaze related functionality."""
-from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.eyetracker import EyeTracker
-from pymovements.gaze.gaze import Gaze
-from pymovements.gaze.gaze_dataframe import GazeDataFrame
-from pymovements.gaze.integration import from_numpy
-from pymovements.gaze.integration import from_pandas
-from pymovements.gaze.io import from_asc
-from pymovements.gaze.io import from_begaze
-from pymovements.gaze.io import from_csv
-from pymovements.gaze.io import from_ipc
+"""Backwards-compatible re-exports of data quality classes and helpers.
+
+All substantive code lives in :py:mod:`pymovements.gaze.quality` so that
+:py:class:`~pymovements.gaze.gaze.Gaze` can import it without creating a
+circular dependency through :py:mod:`pymovements.dataset`.
+"""
+from __future__ import annotations
+
+from pymovements.gaze.quality import _compute_data_loss_simple
+from pymovements.gaze.quality import _compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import GazeDataValidationError
-from pymovements.gaze.screen import Screen
+from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import CheckResult
 
 
 __all__ = [
+    '_ALL_CHECKS',
+    '_compute_data_loss_simple',
+    '_compute_measures',
     'CheckResult',
     'DataQualityReport',
-    'Experiment',
-    'EyeTracker',
-    'from_numpy',
-    'from_pandas',
-    'Gaze',
-    'GazeDataFrame',
     'GazeDataValidationError',
-    'Screen',
-    'from_asc',
-    'from_begaze',
-    'from_csv',
-    'from_ipc',
 ]
