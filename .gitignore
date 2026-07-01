@@ -58,6 +58,7 @@ docs/source/contributing/my_dataset.yaml
 # Testing
 .coverage
 .coverage.*
+.coverage-*
 .DS_Store
 .tox
 benchmark-data.json
