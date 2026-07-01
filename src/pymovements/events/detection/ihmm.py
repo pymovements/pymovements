@@ -626,15 +626,14 @@ def collapse_states(
             Same length as onsets.
    """
 
-
     if len(states) == 0 or len(timesteps) == 0:
         return np.array([]), np.array([])
 
     onsets = []
     offsets = []
 
-    #timesteps_diff = np.diff(timesteps)
-    #if (minimum_sample_duration := int(min_duration // timesteps_diff[0])) < 2:
+    # timesteps_diff = np.diff(timesteps)
+    # if (minimum_sample_duration := int(min_duration // timesteps_diff[0])) < 2:
     #    raise ValueError('minimum_duration must be longer than the equivalent of 2 samples')
 
     i = 0
@@ -1137,13 +1136,12 @@ def ihmm(
                 f' should have fields ${['mu', 'sigma', 'init', 'trans']} but instead has '
                 f'{hmm_parameters_dict.keys()}',
             )
-        
+
         hmm_parameters_dict['mu'] = np.array(hmm_parameters_dict['mu'])
         hmm_parameters_dict['sigma'] = np.array(hmm_parameters_dict['sigma'])
         hmm_parameters_dict['init'] = np.array(hmm_parameters_dict['init'])
         hmm_parameters_dict['trans'] = np.array(hmm_parameters_dict['trans'])
-        
-        
+
         if hmm_parameters_dict['mu'] is not None and hmm_parameters_dict['mu'].shape != (2,):
             raise ValueError(
                 f'mu'
