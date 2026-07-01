@@ -1214,7 +1214,8 @@ def ihmm(
     # collapse states
 
     onsets_arr, offsets_arr = collapse_states(
-        states, timesteps=timesteps_masked, min_duration=minimum_duration)
+        states, timesteps=timesteps_masked, min_duration=minimum_duration,
+    )
 
     # return event frame
 

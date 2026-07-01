@@ -1,18 +1,36 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import numpy as np
 import pytest
 
-from pymovements.events.detection.ihmm import (
-    emit_log_prob,
-    log_sum_exp,
-    baum_forward,
-    baum_backward,
-    baum_welch,
-    viterbi,
-    collapse_states,
-    compute_hmm,
-    ihmm,
-    format_optimal_dict,
-)
+from pymovements.events.detection.ihmm import baum_backward
+from pymovements.events.detection.ihmm import baum_forward
+from pymovements.events.detection.ihmm import baum_welch
+from pymovements.events.detection.ihmm import collapse_states
+from pymovements.events.detection.ihmm import compute_hmm
+from pymovements.events.detection.ihmm import emit_log_prob
+from pymovements.events.detection.ihmm import format_optimal_dict
+from pymovements.events.detection.ihmm import ihmm
+from pymovements.events.detection.ihmm import log_sum_exp
+from pymovements.events.detection.ihmm import viterbi
 
 
 # -----------------------------------------------------------------------------
@@ -83,7 +101,7 @@ def test_log_sum_exp_is_numerically_stable():
     result = log_sum_exp(arr)
 
     expected = -1000.0 + np.log(
-        1 + np.exp(-1.0) + np.exp(-2.0)
+        1 + np.exp(-1.0) + np.exp(-2.0),
     )
 
     assert np.isfinite(result)
@@ -133,20 +151,20 @@ def simple_hmm_params():
             [
                 [0.9, 0.1],
                 [0.2, 0.8],
-            ]
-        )
+            ],
+        ),
     )
 
     velocities = np.array([0.1, -0.2, 9.9, 10.2])
     mask = np.array([True, True, True, True])
 
     return {
-        "mu": mu,
-        "sigma": sigma,
-        "init": init,
-        "trans": trans,
-        "velocities": velocities,
-        "mask": mask,
+        'mu': mu,
+        'sigma': sigma,
+        'init': init,
+        'trans': trans,
+        'velocities': velocities,
+        'mask': mask,
     }
 
 
@@ -154,13 +172,13 @@ def test_baum_forward_shape(simple_hmm_params):
     params = simple_hmm_params
 
     alpha = baum_forward(
-        mu=params["mu"],
-        sigma=params["sigma"],
-        init=params["init"],
-        trans=params["trans"],
-        velocities=params["velocities"],
-        velocities_mask=params["mask"],
-        T=len(params["velocities"]),
+        mu=params['mu'],
+        sigma=params['sigma'],
+        init=params['init'],
+        trans=params['trans'],
+        velocities=params['velocities'],
+        velocities_mask=params['mask'],
+        T=len(params['velocities']),
         M=2,
     )
 
@@ -171,12 +189,12 @@ def test_baum_backward_shape(simple_hmm_params):
     params = simple_hmm_params
 
     beta = baum_backward(
-        mu=params["mu"],
-        sigma=params["sigma"],
-        trans=params["trans"],
-        velocities=params["velocities"],
-        velocities_mask=params["mask"],
-        T=len(params["velocities"]),
+        mu=params['mu'],
+        sigma=params['sigma'],
+        trans=params['trans'],
+        velocities=params['velocities'],
+        velocities_mask=params['mask'],
+        T=len(params['velocities']),
         M=2,
     )
 
@@ -188,23 +206,23 @@ def test_forward_backward_produce_same_log_likelihood(simple_hmm_params):
     params = simple_hmm_params
 
     alpha = baum_forward(
-        mu=params["mu"],
-        sigma=params["sigma"],
-        init=params["init"],
-        trans=params["trans"],
-        velocities=params["velocities"],
-        velocities_mask=params["mask"],
-        T=len(params["velocities"]),
+        mu=params['mu'],
+        sigma=params['sigma'],
+        init=params['init'],
+        trans=params['trans'],
+        velocities=params['velocities'],
+        velocities_mask=params['mask'],
+        T=len(params['velocities']),
         M=2,
     )
 
     beta = baum_backward(
-        mu=params["mu"],
-        sigma=params["sigma"],
-        trans=params["trans"],
-        velocities=params["velocities"],
-        velocities_mask=params["mask"],
-        T=len(params["velocities"]),
+        mu=params['mu'],
+        sigma=params['sigma'],
+        trans=params['trans'],
+        velocities=params['velocities'],
+        velocities_mask=params['mask'],
+        T=len(params['velocities']),
         M=2,
     )
 
@@ -213,14 +231,14 @@ def test_forward_backward_produce_same_log_likelihood(simple_hmm_params):
     backward_terms = []
     for s in range(2):
         backward_terms.append(
-            params["init"][s]
+            params['init'][s]
             + emit_log_prob(
-                mu=params["mu"],
-                sigma=params["sigma"],
-                v=params["velocities"][0],
+                mu=params['mu'],
+                sigma=params['sigma'],
+                v=params['velocities'][0],
                 s=s,
             )
-            + beta[0, s]
+            + beta[0, s],
         )
 
     backward_ll = log_sum_exp(np.array(backward_terms))
@@ -269,8 +287,8 @@ def test_viterbi_prefers_low_velocity_state():
             [
                 [0.95, 0.05],
                 [0.05, 0.95],
-            ]
-        )
+            ],
+        ),
     )
 
     velocities = np.array([0.1, -0.1, 0.0, 0.2])
@@ -303,8 +321,8 @@ def test_viterbi_detects_state_transition():
             [
                 [0.95, 0.05],
                 [0.05, 0.95],
-            ]
-        )
+            ],
+        ),
     )
 
     velocities = np.array([0.0, 0.1, 9.8, 10.2])
@@ -362,15 +380,13 @@ def test_collapse_states_handles_no_fixations():
 
 def test_collapse_states_respects_min_duration():
     """Fixations shorter than min_duration should be filtered out."""
-    
-    states = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0])
-    
-    timesteps = np.array([0, 10, 20, 30, 40, 50, 60, 70,80])
 
-    
+    states = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0])
+
+    timesteps = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80])
+
     onsets, offsets = collapse_states(states, timesteps, min_duration=20)
 
-    
     np.testing.assert_array_equal(onsets, np.array([40]))
     np.testing.assert_array_equal(offsets, np.array([60]))
 
@@ -378,7 +394,7 @@ def test_collapse_states_respects_min_duration():
 def test_collapse_states_handles_empty_input():
     """Empty arrays should return empty arrays."""
     onsets, offsets = collapse_states(np.array([]), np.array([]))
-    
+
     assert len(onsets) == 0
     assert len(offsets) == 0
 
@@ -399,8 +415,8 @@ def test_baum_welch_returns_valid_shapes():
             [
                 [0.9, 0.1],
                 [0.1, 0.9],
-            ]
-        )
+            ],
+        ),
     )
 
     velocities = np.array([0.1, 0.0, 0.2, 10.0, 9.9, 10.2])
@@ -417,10 +433,10 @@ def test_baum_welch_returns_valid_shapes():
         max_iters=10,
     )
 
-    assert result["mu"].shape == (2,)
-    assert result["sigma"].shape == (2,)
-    assert result["init"].shape == (2,)
-    assert result["trans"].shape == (2, 2)
+    assert result['mu'].shape == (2,)
+    assert result['sigma'].shape == (2,)
+    assert result['init'].shape == (2,)
+    assert result['trans'].shape == (2, 2)
 
 
 def test_baum_welch_transition_rows_sum_to_one_in_probability_space():
@@ -434,8 +450,8 @@ def test_baum_welch_transition_rows_sum_to_one_in_probability_space():
             [
                 [0.8, 0.2],
                 [0.2, 0.8],
-            ]
-        )
+            ],
+        ),
     )
 
     velocities = np.array([0.0, 0.1, 10.0, 10.1])
@@ -452,7 +468,7 @@ def test_baum_welch_transition_rows_sum_to_one_in_probability_space():
         max_iters=5,
     )
 
-    trans_probs = np.exp(result["trans"])
+    trans_probs = np.exp(result['trans'])
 
     row_sums = trans_probs.sum(axis=1)
 
@@ -471,7 +487,7 @@ def test_baum_welch_updates_means_toward_observed_clusters():
             10.2,
             9.8,
             10.1,
-        ]
+        ],
     )
 
     mask = np.array([True] * len(velocities))
@@ -487,7 +503,7 @@ def test_baum_welch_updates_means_toward_observed_clusters():
         max_iters=50,
     )
 
-    estimated_mu = np.sort(result["mu"])
+    estimated_mu = np.sort(result['mu'])
 
     assert estimated_mu[0] < 2.0
     assert estimated_mu[1] > 8.0
@@ -542,7 +558,7 @@ def test_compute_hmm_accepts_custom_parameters():
     """Should accept and use custom HMM parameters."""
     velocities = np.array([0.0, 0.1, 10.0, 10.1])
     mask = np.array([True, True, True, True])
-    
+
     mu = np.array([0.0, 10.0])
     sigma = np.array([1.0, 1.0])
     init_state = np.array([0.5, 0.5])
@@ -580,7 +596,7 @@ def test_ihmm_detects_fixation_event_on_synthetic_data():
             [0.1, 0.1],
             [0.0, 0.0],
             [10.0, 10.0],
-        ]
+        ],
     )
 
     events = ihmm(
@@ -604,7 +620,7 @@ def test_ihmm_accepts_integer_timesteps():
             [0.0, 0.0],
             [0.0, 0.0],
             [10.0, 10.0],
-        ]
+        ],
     )
 
     timesteps = np.array([0, 1, 2])
@@ -623,12 +639,12 @@ def test_ihmm_rejects_fractional_timesteps():
         [
             [0.0, 0.0],
             [1.0, 1.0],
-        ]
+        ],
     )
 
     timesteps = np.array([0.0, 1.5])
 
-    with pytest.raises(TypeError, match="timesteps must be of type int"):
+    with pytest.raises(TypeError, match='timesteps must be of type int'):
         ihmm(
             velocities=velocities,
             timesteps=timesteps,
@@ -641,10 +657,10 @@ def test_ihmm_rejects_invalid_mu_shape():
         [
             [0.0, 0.0],
             [1.0, 1.0],
-        ]
+        ],
     )
 
-    with pytest.raises(ValueError, match="mu"):
+    with pytest.raises(ValueError, match='mu'):
         ihmm(
             velocities=velocities,
             mu=[1.0, 2.0, 3.0],
@@ -657,10 +673,10 @@ def test_ihmm_rejects_invalid_transition_shape():
         [
             [0.0, 0.0],
             [1.0, 1.0],
-        ]
+        ],
     )
 
-    with pytest.raises(ValueError, match="transition_probabilities"):
+    with pytest.raises(ValueError, match='transition_probabilities'):
         ihmm(
             velocities=velocities,
             transition_probabilities=[[0.5, 0.5]],
@@ -674,7 +690,7 @@ def test_ihmm_handles_nan_velocities():
             [0.0, 0.0],
             [np.nan, np.nan],
             [10.0, 10.0],
-        ]
+        ],
     )
 
     events = ihmm(
@@ -688,7 +704,7 @@ def test_ihmm_handles_nan_velocities():
 def test_ihmm_rejects_non_integer_minimum_duration():
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
 
-    with pytest.raises(TypeError, match="minimum_duration must be of type int"):
+    with pytest.raises(TypeError, match='minimum_duration must be of type int'):
         ihmm(
             velocities=velocities,
             minimum_duration=1.5,
@@ -698,7 +714,7 @@ def test_ihmm_rejects_non_integer_minimum_duration():
 def test_ihmm_rejects_zero_or_negative_minimum_duration():
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
 
-    with pytest.raises(ValueError, match="minimum_duration must be greater than 0"):
+    with pytest.raises(ValueError, match='minimum_duration must be greater than 0'):
         ihmm(
             velocities=velocities,
             minimum_duration=0,
@@ -713,7 +729,7 @@ def test_ihmm_accepts_hmm_parameters_dict():
             [0.1, 0.1],
             [10.0, 10.0],
             [10.1, 10.1],
-        ]
+        ],
     )
 
     hmm_params = {
@@ -742,7 +758,7 @@ def test_ihmm_rejects_invalid_hmm_parameters_dict_keys():
         'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
     }
 
-    with pytest.raises(ValueError, match="hmm_parameters_dict"):
+    with pytest.raises(ValueError, match='hmm_parameters_dict'):
         ihmm(
             velocities=velocities,
             hmm_parameters_dict=hmm_params,
@@ -759,7 +775,7 @@ def test_ihmm_removes_leading_trailing_nans():
             [0.1, 0.1],
             [10.0, 10.0],
             [np.nan, np.nan],
-        ]
+        ],
     )
 
     events = ihmm(
@@ -778,7 +794,7 @@ def test_ihmm_with_reestimation():
             [0.1, 0.1],
             [10.0, 10.0],
             [10.1, 10.1],
-        ]
+        ],
     )
 
     events = ihmm(
@@ -835,8 +851,8 @@ def test_viterbi_regression_known_path():
             [
                 [0.95, 0.05],
                 [0.10, 0.90],
-            ]
-        )
+            ],
+        ),
     )
 
     velocities = np.array([0.0, 0.1, 5.2, 5.0, 0.0])
