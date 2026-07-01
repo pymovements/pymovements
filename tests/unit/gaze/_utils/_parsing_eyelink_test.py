@@ -594,6 +594,18 @@ def test_metadata_warnings(make_text_file, metadata, expected_msg):
             [{'timestamp': '7045618'}],
             id='cal_timestamp_no_cal_no_val',
         ),
+        pytest.param(
+            'MSG	7045618 !CAL\n'
+            'MSG	7045618 >>>>>>> CALIBRATION (HV9,P-CR) FOR LEFT: <<<<<<<<<\n',
+            [],
+            [{
+                'num_points': '9',
+                'timestamp': '7045618',
+                'tracked_eye': 'LEFT',
+                'type': 'P-CR',
+            }],
+            id='cal_with_msg',
+        ),
     ],
 )
 @pytest.mark.filterwarnings('ignore:No metadata found.')
