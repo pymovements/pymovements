@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides plotting related functionality."""
+from pymovements.plotting.data_loss_histogram import data_loss_histogram
 from pymovements.plotting.heatmap import heatmap
 from pymovements.plotting.main_sequence_plot import main_sequence_plot
 from pymovements.plotting.scanpathplot import scanpathplot
@@ -25,6 +26,7 @@ from pymovements.plotting.traceplot import traceplot
 from pymovements.plotting.tsplot import tsplot
 
 __all__ = [
+    'data_loss_histogram',
     'heatmap',
     'main_sequence_plot',
     'scanpathplot',
