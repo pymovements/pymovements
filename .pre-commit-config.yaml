@@ -59,7 +59,7 @@ repos:
         args: [ --use-current-year ]
         types: [ python ]
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.8.6
+    rev: 0.9.0
     hooks:
       - id: pydoclint
         args: [ "--config=pyproject.toml" ]
@@ -129,7 +129,7 @@ repos:
             '--ignore=D101,D102,D103,D107,D203,D213',
           ]
   - repo: https://github.com/PyCQA/pylint
-    rev: v4.0.5
+    rev: v4.0.6
     hooks:
       - id: pylint
         name: pylint

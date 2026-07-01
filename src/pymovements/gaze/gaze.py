@@ -1912,7 +1912,7 @@ class Gaze:
                 )
 
         aoi_df = polars.concat(aois)
-        self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
+        self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
 
     def nest(
             self,
