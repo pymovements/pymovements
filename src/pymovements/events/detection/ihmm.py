@@ -211,8 +211,12 @@ def baum_welch(
 
     prev_log_likelihood = -np.inf
 
+    # main EM loop
+
     for _ in range(max_iters):
 
+        # forward pass
+            
         alpha = baum_forward(
             mu=mu,
             sigma=sigma,
@@ -224,6 +228,8 @@ def baum_welch(
             M=M,
         )
 
+        # backward pass
+
         beta = baum_backward(
             mu=mu,
             sigma=sigma,
@@ -233,6 +239,8 @@ def baum_welch(
             T=T,
             M=M,
         )
+
+        # e-step
 
         xi = np.zeros((M, M, T - 1))
 
@@ -286,10 +294,12 @@ def baum_welch(
         last = np.exp(last - log_sum_exp(last))
         gamma_full[:, -1] = last
 
+        # m-step
+
         init = np.log(np.clip(gamma_full[:, 0], 1e-12, 1.0))
 
         # laplace smoothing for division by 0 errors
-        eps = 1e-12
+        eps = 1e-12 
         for i in range(M):
             denom = np.sum(gamma_full[i, :-1])
             for j in range(M):
@@ -309,6 +319,8 @@ def baum_welch(
 
             var = np.sum(weights * (vals - mu[j])**2) / total
             sigma[j] = np.sqrt(var)
+
+        # compute log-likelihood for convergence check
 
         alpha_updated = baum_forward(
             mu=mu,
@@ -389,11 +401,15 @@ def baum_forward(
     """
     alpha = np.full((T, M), -np.inf)
 
+    # init step
+
     for s in range(M):
         if velocities_mask[0]:
             alpha[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
         else:
             alpha[0, s] = init[s] + 0
+
+    # induction step
 
     for t in range(1, T):
         for j in range(M):
@@ -465,7 +481,11 @@ def baum_backward(
 
     beta = np.full((T, M), -np.inf)
 
+    # init step
+
     beta[T - 1, :] = 0
+
+    # induction step
 
     for t in range(T - 2, -1, -1):
         for i in range(M):
@@ -632,16 +652,19 @@ def collapse_states(
     onsets = []
     offsets = []
 
-    # timesteps_diff = np.diff(timesteps)
-    # if (minimum_sample_duration := int(min_duration // timesteps_diff[0])) < 2:
-    #    raise ValueError('minimum_duration must be longer than the equivalent of 2 samples')
+    # iterate through the state sequence
 
     i = 0
     while i < len(states):
 
+        # check if state is a fixation
+
         if states[i] == fixation_state:
             onset_idx = i
             onset_time = timesteps[onset_idx]
+
+            # move forward to find the end of the fixation block
+
             j = i
             while j < len(states) and states[j] == fixation_state:
                 j += 1
@@ -650,12 +673,17 @@ def collapse_states(
 
             duration = offset_time - onset_time
 
+            # only keep fixations that meet the minimum duration threshold
+
             if duration >= min_duration:
                 onsets.append(onset_time)
                 offsets.append(offset_time)
 
             i = j
         else:
+
+            # current state is not a fixation so skip it
+
             i += 1
 
     return np.array(onsets), np.array(offsets)
@@ -736,16 +764,17 @@ def compute_hmm(
         State 0 typically represents fixation, State 1 represents saccade.
     """
 
-    # Ignore nan values for default data driven initialization
+    # ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
+    
+    # get or init parameters
 
     if hmm_parameters_dict is not None:
         defaults = hmm_parameters_dict
     else:
+        # data driven initialization
         defaults = {
-            # DATA BASED init  #[1.0, 10.0],
-            'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)],
-            # DATA BASED init   #[1.0, 1.0],
+            'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)], 
             'sigma': [np.sqrt(np.var(velocities_for_init) / 2), np.sqrt(np.var(velocities_for_init))],
             'init': [0.5, 0.5],  # dummy average values should be fine for long sequences
             'trans': [[0.95, 0.05], [0.05, 0.95]],  # based on Salvucci's paper diagram
@@ -771,6 +800,8 @@ def compute_hmm(
     _init = np.log(_init)
     _trans = np.log(_trans)
 
+    # reestimate if needed
+
     if reestimation:
         optimal = baum_welch(
             states=2,
@@ -783,10 +814,10 @@ def compute_hmm(
             max_iters=reestimation_max_iters,
         )
 
-        # reorder to enforce states order (0 fixations)
+        # reorder to enforce states order (0 = fixation)
 
         order = np.argsort(optimal['mu'])
-        # print(order)
+        
 
         optimal['mu'] = np.array(optimal['mu'])[order]
         optimal['sigma'] = np.array(optimal['sigma'])[order]
@@ -1087,7 +1118,7 @@ def ihmm(
             f' but is of type {type(minimum_duration)}',
         )
 
-    # Check that timesteps are integers or are floats without a fractional part.
+    # check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)
     if np.any((timesteps - timesteps_int) != 0):
         raise TypeError('timesteps must be of type int')
@@ -1194,6 +1225,7 @@ def ihmm(
     vel_mask = vel_mask[start:end]
 
     timesteps_masked = timesteps[start:end]
+
     # compute HMM
 
     states = compute_hmm(
