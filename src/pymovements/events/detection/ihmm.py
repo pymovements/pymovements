@@ -216,7 +216,7 @@ def baum_welch(
     for _ in range(max_iters):
 
         # forward pass
-            
+
         alpha = baum_forward(
             mu=mu,
             sigma=sigma,
@@ -299,7 +299,7 @@ def baum_welch(
         init = np.log(np.clip(gamma_full[:, 0], 1e-12, 1.0))
 
         # laplace smoothing for division by 0 errors
-        eps = 1e-12 
+        eps = 1e-12
         for i in range(M):
             denom = np.sum(gamma_full[i, :-1])
             for j in range(M):
@@ -766,7 +766,7 @@ def compute_hmm(
 
     # ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
-    
+
     # get or init parameters
 
     if hmm_parameters_dict is not None:
@@ -774,7 +774,7 @@ def compute_hmm(
     else:
         # data driven initialization
         defaults = {
-            'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)], 
+            'mu': [np.percentile(velocities_for_init, 30), np.percentile(velocities_for_init, 80)],
             'sigma': [np.sqrt(np.var(velocities_for_init) / 2), np.sqrt(np.var(velocities_for_init))],
             'init': [0.5, 0.5],  # dummy average values should be fine for long sequences
             'trans': [[0.95, 0.05], [0.05, 0.95]],  # based on Salvucci's paper diagram
@@ -817,7 +817,6 @@ def compute_hmm(
         # reorder to enforce states order (0 = fixation)
 
         order = np.argsort(optimal['mu'])
-        
 
         optimal['mu'] = np.array(optimal['mu'])[order]
         optimal['sigma'] = np.array(optimal['sigma'])[order]
