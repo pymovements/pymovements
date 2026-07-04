@@ -144,7 +144,7 @@ def baum_welch(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask,
+    velocities_mask : np.ndarray,
     max_iters: int,
     epsilon: float = 1e-4,
 ) -> dict[str, np.ndarray]:
@@ -349,7 +349,7 @@ def baum_forward(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask,
+    velocities_mask: np.ndarray,
     T: int,
     M: int,
 ) -> np.ndarray:
@@ -431,7 +431,7 @@ def baum_backward(
     sigma: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask,
+    velocities_mask : np.ndarray,
     T: int,
     M: int,
 ) -> np.ndarray:
@@ -516,7 +516,7 @@ def viterbi(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask: list[bool],
+    velocities_mask: np.ndarray,
 ) -> np.ndarray:
     """
     Find the most likely sequence of hidden states using the Viterbi algorithm.
@@ -632,6 +632,9 @@ def collapse_states(
         The state label that represents fixation periods.
         All other states are ignored. Default is 0 (commonly used for fixation).
 
+    min_duration: int
+        Minimum fixation duration. The duration should be the same unit as the timesteps array.
+
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
@@ -698,8 +701,8 @@ def compute_hmm(
     sigma: np.ndarray | None,
     init_state: np.ndarray | None,
     transition_probabilities: np.ndarray | None,
-    velocities_mask,
-    hmm_parameters_dict,
+    velocities_mask: np.ndarray,
+    hmm_parameters_dict: dict | None = None,
 ) -> np.ndarray:
     """
     Compute HMM state sequence for velocity data using optional parameter reestimation.
@@ -882,6 +885,9 @@ def ihmm(
     timesteps : list[int] | np.ndarray | None, default=None
         Timestamp indices for each velocity sample. Must be integers.
         If None, uses sequential indices (0, 1, 2, ..., T-1).
+    
+    minimum_duration: int
+        Minimum fixation duration. The duration should be the same unit as the timesteps array.
 
     mu : list[float] | np.ndarray | None, default=None
         Mean velocity for each state (Gaussian emissions).
