@@ -144,7 +144,7 @@ def baum_welch(
     init: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask : np.ndarray,
+    velocities_mask: np.ndarray,
     max_iters: int,
     epsilon: float = 1e-4,
 ) -> dict[str, np.ndarray]:
@@ -431,7 +431,7 @@ def baum_backward(
     sigma: np.ndarray | None,
     trans: np.ndarray | None,
     velocities: list[float] | np.ndarray,
-    velocities_mask : np.ndarray,
+    velocities_mask: np.ndarray,
     T: int,
     M: int,
 ) -> np.ndarray:
@@ -885,7 +885,7 @@ def ihmm(
     timesteps : list[int] | np.ndarray | None, default=None
         Timestamp indices for each velocity sample. Must be integers.
         If None, uses sequential indices (0, 1, 2, ..., T-1).
-    
+
     minimum_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
 
