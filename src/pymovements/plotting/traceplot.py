@@ -23,6 +23,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
+import warnings
 
 from pymovements.gaze.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
@@ -102,6 +103,16 @@ def traceplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+
+    if add_stimulus:
+        DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+
+    if path_to_image_stimulus is not None:
+        DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+
+    if stimulus_origin != "upper":
+        DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+
     # pylint: disable=duplicate-code
     x_signal = gaze.samples[position_column].list.get(0)
     y_signal = gaze.samples[position_column].list.get(1)

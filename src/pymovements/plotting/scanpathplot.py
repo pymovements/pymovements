@@ -146,6 +146,15 @@ def scanpathplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+    if add_stimulus:
+        DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+
+    if path_to_image_stimulus is not None:
+        DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+
+    if stimulus_origin != "upper":
+        DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+
     if events is not None:
         warn(
             DeprecationWarning(
