@@ -32,12 +32,12 @@ import pytest
 
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
+from pymovements.gaze.experiment import Experiment
+from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.quality import _compute_data_loss_simple
 from pymovements.gaze.quality import _compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import GazeDataValidationError
-from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import check_gaze_components_defined
 from pymovements.gaze.validation import check_gaze_range
@@ -1192,6 +1192,7 @@ class TestDatasetReportDataQualityDirect:
     """Tests that call Dataset.report_data_quality() on real Dataset objects."""
 
     def test_basic_call_returns_report(self) -> None:
+        """Basic call returns a DataQualityReport with all 8 check results."""
         ds = _make_real_dataset([_make_real_gaze()])
         report = ds.report_data_quality()
         assert isinstance(report, DataQualityReport)
@@ -1199,17 +1200,20 @@ class TestDatasetReportDataQualityDirect:
         assert len(report.check_results) == 8
 
     def test_subset_checks(self) -> None:
+        """Passing checks= runs only the listed checks."""
         ds = _make_real_dataset([_make_real_gaze()])
         report = ds.report_data_quality(checks=['time_column_exists'])
         assert len(report.check_results) == 1
         assert report.check_results[0].code == 'time_column_exists'
 
     def test_unknown_check_raises_value_error(self) -> None:
+        """Unknown check identifier raises ValueError."""
         ds = _make_real_dataset([_make_real_gaze()])
         with pytest.raises(ValueError, match='Unknown check identifier'):
             ds.report_data_quality(checks=['not_a_valid_check'])
 
     def test_raise_on_error_raises_gaze_validation_error(self) -> None:
+        """raise_on_error=True raises GazeDataValidationError on first error."""
         gaze = _make_gaze(
             pl.DataFrame({'time': [0]}),
             trial_columns=['nonexistent_col'],
@@ -1222,6 +1226,7 @@ class TestDatasetReportDataQualityDirect:
             )
 
     def test_fileinfo_with_filepath_sets_source_paths(self) -> None:
+        """Fileinfo with filepath column sets source paths on check results."""
         gaze = _make_real_gaze()
         fileinfo = {'gaze': pl.DataFrame({'filepath': ['subject1.csv']})}
         ds = _make_real_dataset([gaze], fileinfo=fileinfo)
@@ -1229,16 +1234,19 @@ class TestDatasetReportDataQualityDirect:
         assert report.passed is True
 
     def test_output_path_writes_bids_report(self, tmp_path: Path) -> None:
+        """output_path triggers writing of BIDS derivative files."""
         ds = _make_real_dataset([_make_real_gaze()])
         ds.report_data_quality(output_path=tmp_path)
         assert (tmp_path / 'derivatives' / 'pymovements' / 'dataset_description.json').exists()
 
     def test_levels_parameter_filters_measures(self) -> None:
+        """levels= parameter restricts measure aggregation to requested levels."""
         ds = _make_real_dataset([_make_real_gaze()])
         report = ds.report_data_quality(levels=['dataset'], measures=['data_loss'])
         assert 'dataset' in report.measures
 
     def test_empty_gaze_list_returns_passed_report(self) -> None:
+        """Empty gaze list produces a passed report with no check results."""
         ds = _make_real_dataset([])
         report = ds.report_data_quality()
         assert report.passed is True

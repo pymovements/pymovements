@@ -18,9 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to dataset classes."""
-from pymovements.gaze.quality import CheckResult
-from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import GazeDataValidationError
 from pymovements.dataset.dataset import Dataset
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
@@ -31,6 +28,9 @@ from pymovements.dataset.participants import Participants
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
+from pymovements.gaze.quality import CheckResult
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import GazeDataValidationError
 
 
 __all__ = [

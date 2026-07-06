@@ -36,9 +36,6 @@ from pymovements._utils._html import repr_html
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
-from pymovements.gaze.quality import _compute_measures
-from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import GazeDataValidationError
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
@@ -47,6 +44,9 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
+from pymovements.gaze.quality import _compute_measures
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import GazeDataValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus

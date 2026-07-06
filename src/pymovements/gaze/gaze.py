@@ -47,12 +47,12 @@ from pymovements.gaze.quality import _run_report
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.validation import check_gaze_components_defined
 from pymovements.gaze.validation import check_gaze_range
+from pymovements.gaze.validation import check_max_gap
 from pymovements.gaze.validation import check_sampling_rate_consistency
 from pymovements.gaze.validation import check_time_column_exists
+from pymovements.gaze.validation import check_time_monotone
 from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
-from pymovements.gaze.validation import check_max_gap
-from pymovements.gaze.validation import check_time_monotone
 from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
