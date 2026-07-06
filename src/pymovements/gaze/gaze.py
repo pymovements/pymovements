@@ -200,7 +200,7 @@ class Gaze:
     └──────┴────────────┘
 
     In case your data has no time column available, you can pass an
-    :py:class:`~pymovements.gaze.Experiment` to create a time column with the correct sampling rate
+    :py:class:`~pymovements.Experiment` to create a time column with the correct sampling rate
     during initialization. The time column will be represented in millisecond units.
 
     >>> df_no_time = df.select(polars.exclude('t'))
@@ -1286,7 +1286,7 @@ class Gaze:
         """Calculate event properties for given events.
 
         The calculated event properties are added as columns to
-        :py:attr:`~pymovements.gaze.Gaze.events`.
+        :py:attr:`~pymovements.Gaze.events`.
 
         Parameters
         ----------

@@ -550,7 +550,7 @@ class Events:
         """Return a copy of an Events object.
 
         .. deprecated:: v0.23.0
-           Please use :py:meth:`~pymovements.events.Events.clone()` instead.
+           Please use :py:meth:`~pymovements.Events.clone()` instead.
            This function will be removed in v0.28.0.
 
         Returns

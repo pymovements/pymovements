@@ -70,7 +70,7 @@ class Dataset:
         Dataset definition to initialize dataset with.
     path : str | Path | DatasetPaths
         Path to the dataset directory. You can set up a custom directory structure by passing a
-        :py:class:`~pymovements.dataset.DatasetPaths` instance.
+        :py:class:`~pymovements.DatasetPaths` instance.
     """
 
     participants: Participants
@@ -1362,7 +1362,7 @@ class Dataset:
         Path('/path/to/your/dataset')
 
         If you just want to specify the root directory path which holds all your local datasets, you
-        can create pass a :py:class:`~pymovements.dataset.DatasetPaths` object and set the `root`:
+        can create pass a :py:class:`~pymovements.DatasetPaths` object and set the `root`:
         >>> paths = pm.DatasetPaths(root='/path/to/your/common/root/')
         >>> dataset = pm.Dataset("ToyDataset", path=paths)
         >>> dataset.path# doctest: +SKIP

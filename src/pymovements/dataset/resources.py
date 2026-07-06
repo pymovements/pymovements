@@ -470,10 +470,10 @@ class ResourceDefinitions(list):
 
 
 class _HasResourcesIndexer:
-    """Helper class for :py:meth:`~pymovements.dataset.DatasetDefinition.has_resources` property.
+    """Helper class for :py:meth:`~pymovements.DatasetDefinition.has_resources` property.
 
     Provides dynamic inference on the presence of any
-    :py:meth:`~pymovements.dataset.DatasetDefinition.resources`.
+    :py:meth:`~pymovements.DatasetDefinition.resources`.
     """
 
     def __init__(self, resources: ResourceDefinitions) -> None:
