@@ -194,9 +194,6 @@ nitpick_ignore_regex = [
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
 
-    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
-    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
-    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
     (r'py:class', r'^pymovements\.gaze\.Experiment$'),
 
     # Internal helper functions referenced in docs text
