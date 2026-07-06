@@ -163,20 +163,12 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-    # Our docs might reference a plain "transforms.func" symbol coming from context
-    (r'py:(func|meth|mod)', r'^transforms\..*'),
 
-    # Shorthand alias used in docs for our own package
-    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
 
     # Internal cross-refs to objects/attrs/methods that autosummary may not emit
     (r'py:(obj|attr|meth)', r'^pymovements\..*'),
 
-    # Modules referenced in text but not importable via intersphinx targets
-    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
 
-    # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^\.\.\s+deprecated:$'),
 
 
     # Matplotlib color types referenced in plotting API

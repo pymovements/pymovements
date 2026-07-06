@@ -686,7 +686,7 @@ class Dataset:
         verbose : bool
             If True, show a progress of computation. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to the :func:`~pymovements.transforms.clip()` method.
 
         Returns
         -------
@@ -877,12 +877,12 @@ class Dataset:
         Parameters
         ----------
         method: str
-            Computation method. See :func:`~transforms.pos2vel()` for details.
+            Computation method. See :func:`~pymovements.transforms.pos2vel()` for details.
             (default: 'fivepoint')
         verbose: bool
             If True, show progress of computation. (default: True)
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
+            Additional keyword arguments to be passed to the :func:`~pymovements.transforms.pos2vel()` method.
 
         Returns
         -------

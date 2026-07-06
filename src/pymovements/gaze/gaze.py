@@ -777,7 +777,7 @@ class Gaze:
         output_column : str
             Name of the output column.
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to the :func:`~pymovements.transforms.clip()` method.
 
         Raises
         ------
@@ -884,10 +884,10 @@ class Gaze:
         Parameters
         ----------
         method: str
-            Computation method. See :func:`~transforms.pos2vel()` for details, default: fivepoint.
+            Computation method. See :func:`~pymovements.transforms.pos2vel()` for details, default: fivepoint.
             (default: 'fivepoint')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
+            Additional keyword arguments to be passed to the :func:`~pymovements.transforms.pos2vel()` method.
 
         Raises
         ------
@@ -1008,7 +1008,7 @@ class Gaze:
         ----------
         method: str
             The method to use for smoothing. Choose from ``savitzky_golay``, ``moving_average``,
-            ``exponential_moving_average``. See :func:`~transforms.smooth()` for details.
+            ``exponential_moving_average``. See :func:`~pymovements.transforms.smooth()` for details.
             (default: 'savitzky_golay')
         window_length: int
             For ``moving_average`` this is the window size to calculate the mean of the subsequent
@@ -1027,10 +1027,10 @@ class Gaze:
             which the filter is applied.
             When passing ``None``, no extension padding is used.
             When passing a scalar value, sample series will be padded using the passed value.
-            See :func:`~transforms.smooth()` for details on the padding methods.
+            See :func:`~pymovements.transforms.smooth()` for details on the padding methods.
             (default: 'nearest')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.smooth()` method.
+            Additional keyword arguments to be passed to the :func:`~pymovements.transforms.smooth()` method.
         """
         self.transform(
             'smooth',
