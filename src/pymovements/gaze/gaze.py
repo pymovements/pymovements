@@ -2014,8 +2014,11 @@ class Gaze:
             gaze_components_defined: bool = True,
             time_monotone: bool = True,
             max_gap: bool = True,
+            max_gap_factor: float = 5.0,
             sampling_rate_consistency: bool = True,
+            max_deviation: float = 0.05,
             gaze_range: bool = True,
+            min_fraction: float = 0.95,
             source_path: str = '',
     ) -> list[CheckResult]:
         """Run data quality validation checks on this gaze object.
@@ -2040,13 +2043,24 @@ class Gaze:
             Check that timestamps are strictly monotone increasing within each trial.
             (default: True)
         max_gap : bool
-            Check that no inter-sample gap exceeds 5× the expected inter-sample
-            interval. (default: True)
+            Check that no inter-sample gap exceeds ``max_gap_factor`` times the
+            expected inter-sample interval. (default: True)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Only used when *max_gap* is ``True``. (default: 5.0)
         sampling_rate_consistency : bool
             Check that the empirical median ISI matches the declared sampling rate
-            within 5%. (default: True)
+            within ``max_deviation``. (default: True)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Only used when *sampling_rate_consistency* is ``True``.
+            (default: 0.05, i.e. 5%)
         gaze_range : bool
-            Check that ≥95% of gaze samples fall within screen bounds. (default: True)
+            Check that at least ``min_fraction`` of gaze samples fall within screen
+            bounds. (default: True)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen bounds.
+            Only used when *gaze_range* is ``True``. (default: 0.95, i.e. 95%)
         source_path : str
             Identifier for this gaze object (e.g. a file path). Included in the
             ``sources`` field of any failing :py:class:`CheckResult`.
@@ -2070,21 +2084,26 @@ class Gaze:
         >>> all(r.severity in {'pass', 'warning', 'error'} for r in results)
         True
         """
-        flag_fn_pairs: list[tuple[bool, Callable[[Gaze, str], CheckResult]]] = [
-            (trial_columns_exist, check_trial_columns_exist),
-            (trial_columns_dtype, check_trial_columns_dtype),
-            (time_column_exists, check_time_column_exists),
-            (gaze_components_defined, check_gaze_components_defined),
-            (time_monotone, check_time_monotone),
-            (max_gap, check_max_gap),
-            (sampling_rate_consistency, check_sampling_rate_consistency),
-            (gaze_range, check_gaze_range),
-        ]
-        return [
-            fn(self, source_path)
-            for enabled, fn in flag_fn_pairs
-            if enabled
-        ]
+        results: list[CheckResult] = []
+        if trial_columns_exist:
+            results.append(check_trial_columns_exist(self, source_path))
+        if trial_columns_dtype:
+            results.append(check_trial_columns_dtype(self, source_path))
+        if time_column_exists:
+            results.append(check_time_column_exists(self, source_path))
+        if gaze_components_defined:
+            results.append(check_gaze_components_defined(self, source_path))
+        if time_monotone:
+            results.append(check_time_monotone(self, source_path))
+        if max_gap:
+            results.append(check_max_gap(self, source_path, max_gap_factor=max_gap_factor))
+        if sampling_rate_consistency:
+            results.append(
+                check_sampling_rate_consistency(self, source_path, max_deviation=max_deviation),
+            )
+        if gaze_range:
+            results.append(check_gaze_range(self, source_path, min_fraction=min_fraction))
+        return results
 
     def report_data_quality(
             self,
@@ -2094,6 +2113,9 @@ class Gaze:
             raise_on_error: bool = False,
             output_path: Path | str | None = None,
             source_path: str = '',
+            max_gap_factor: float = 5.0,
+            max_deviation: float = 0.05,
+            min_fraction: float = 0.95,
     ) -> DataQualityReport:
         """Generate a data quality report for this gaze object.
 
@@ -2105,7 +2127,7 @@ class Gaze:
         Parameters
         ----------
         checks : list[str] | None
-            Check identifiers to run. ``None`` runs all seven checks.
+            Check identifiers to run. ``None`` runs all eight checks.
             Valid values: ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
             ``'time_column_exists'``, ``'gaze_components_defined'``,
             ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
@@ -2129,6 +2151,16 @@ class Gaze:
             Identifier for this gaze object (e.g. a file path). Used as
             ``affected_files`` in failing :py:class:`CheckResult` objects.
             (default: ``''``)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Passed to the ``'max_gap'`` check. (default: 5.0)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Passed to the ``'sampling_rate_consistency'`` check.
+            (default: 0.05, i.e. 5%)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen
+            bounds. Passed to the ``'gaze_range'`` check. (default: 0.95)
 
         Returns
         -------
@@ -2164,6 +2196,9 @@ class Gaze:
             raise_on_error=raise_on_error,
             output_path=output_path,
             source_path=source_path,
+            max_gap_factor=max_gap_factor,
+            max_deviation=max_deviation,
+            min_fraction=min_fraction,
         )
 
     def _check_experiment(self) -> None:

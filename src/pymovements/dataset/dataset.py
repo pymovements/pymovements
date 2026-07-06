@@ -1253,12 +1253,15 @@ class Dataset:
             measures: list[str] | None = None,
             levels: list[str] | None = None,
             raise_on_error: bool = False,
+            max_gap_factor: float = 5.0,
+            max_deviation: float = 0.05,
+            min_fraction: float = 0.95,
     ) -> DataQualityReport:
         """Run sanity checks and compute data quality measures for all loaded gaze data.
 
         Three processing stages are executed in sequence:
 
-        1. **Validation checks** — seven stimulus-agnostic checks (see *checks* parameter)
+        1. **Validation checks** — eight stimulus-agnostic checks (see *checks* parameter)
            that verify column presence, dtypes, temporal continuity, and gaze range.
         2. **Quality measures** — ``data_loss``, ``std_rms``, ``rms_s2s``, and ``bcea``
            aggregated at dataset, subject, session, and trial level.
@@ -1288,6 +1291,16 @@ class Dataset:
         raise_on_error : bool
             If ``True``, raise :py:exc:`~pymovements.GazeDataValidationError`
             on the first check result with severity ``'error'``. (default: False)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Passed to the ``'max_gap'`` check. (default: 5.0)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Passed to the ``'sampling_rate_consistency'`` check.
+            (default: 0.05, i.e. 5%)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen bounds.
+            Passed to the ``'gaze_range'`` check. (default: 0.95, i.e. 95%)
 
         Returns
         -------
@@ -1348,8 +1361,11 @@ class Dataset:
                     gaze_components_defined='gaze_components_defined' in checks_to_run,
                     time_monotone='time_monotone' in checks_to_run,
                     max_gap='max_gap' in checks_to_run,
+                    max_gap_factor=max_gap_factor,
                     sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                    max_deviation=max_deviation,
                     gaze_range='gaze_range' in checks_to_run,
+                    min_fraction=min_fraction,
                     source_path=src,
                 )
                 for result in results:

@@ -547,6 +547,9 @@ def _run_report(
         raise_on_error: bool,
         output_path: Path | str | None,
         source_path: str,
+        max_gap_factor: float = 5.0,
+        max_deviation: float = 0.05,
+        min_fraction: float = 0.95,
 ) -> DataQualityReport:
     """Core implementation of ``Gaze.report_data_quality()``.
 
@@ -555,7 +558,7 @@ def _run_report(
     gaze : Any
         The :py:class:`~pymovements.gaze.gaze.Gaze` object to report on.
     checks : list[str] | None
-        Check identifiers to run; ``None`` runs all seven.
+        Check identifiers to run; ``None`` runs all eight.
     measures : list[str] | None
         Measure identifiers to compute; ``None`` computes all four.
     levels : list[str] | None
@@ -566,6 +569,16 @@ def _run_report(
         If given, write BIDS derivative files here.
     source_path : str
         Identifier for the gaze object used in ``affected_files``.
+    max_gap_factor : float
+        Passed to :py:func:`~pymovements.gaze.validation.check_max_gap`.
+        (default: 5.0)
+    max_deviation : float
+        Passed to
+        :py:func:`~pymovements.gaze.validation.check_sampling_rate_consistency`.
+        (default: 0.05)
+    min_fraction : float
+        Passed to :py:func:`~pymovements.gaze.validation.check_gaze_range`.
+        (default: 0.95)
 
     Returns
     -------
@@ -603,8 +616,11 @@ def _run_report(
             gaze_components_defined='gaze_components_defined' in checks_to_run,
             time_monotone='time_monotone' in checks_to_run,
             max_gap='max_gap' in checks_to_run,
+            max_gap_factor=max_gap_factor,
             sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+            max_deviation=max_deviation,
             gaze_range='gaze_range' in checks_to_run,
+            min_fraction=min_fraction,
             source_path=source_path,
         )
         for result in results:

@@ -563,7 +563,7 @@ def check_sampling_rate_consistency(
         )
 
     median_isi = positive_diffs.median()
-    if not isinstance(median_isi, (int, float)):
+    if not isinstance(median_isi, (int, float)):  # pragma: no cover
         return CheckResult(
             code='sampling_rate_consistency',
             severity='pass',

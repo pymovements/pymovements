@@ -365,6 +365,67 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
+    def test_max_gap_single_sample_trial_skipped(self) -> None:
+        # Trial 2 has only 1 sample — the inner `continue` branch is exercised.
+        exp = _exp(sampling_rate=100.0)
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 10, 20, 30], 'trial': [1, 1, 1, 2]}),
+            trial_columns=['trial'],
+            experiment=exp,
+        )
+        results = gaze.validate(
+            trial_columns_exist=False,
+            trial_columns_dtype=False,
+            time_column_exists=False,
+            gaze_components_defined=False,
+            time_monotone=False,
+            max_gap=True,
+            sampling_rate_consistency=False,
+            gaze_range=False,
+        )
+        assert results[0].severity == 'pass'
+
+    def test_custom_max_gap_factor_tighter_triggers_warning(self) -> None:
+        # Default factor 5.0 would pass; factor 1.5 should warn on a 2× ISI gap.
+        exp = _exp(sampling_rate=100.0)
+        # ISI=10ms; gap=15ms → 1.5× ISI; factor=1.0 triggers warning
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 10, 25]}),
+            experiment=exp,
+        )
+        results = gaze.validate(
+            trial_columns_exist=False,
+            trial_columns_dtype=False,
+            time_column_exists=False,
+            gaze_components_defined=False,
+            time_monotone=False,
+            max_gap=True,
+            max_gap_factor=1.0,
+            sampling_rate_consistency=False,
+            gaze_range=False,
+        )
+        assert results[0].severity == 'warning'
+
+    def test_custom_max_deviation_tighter_triggers_warning(self) -> None:
+        # Declared 100 Hz; empirical ~95 Hz (5% deviation); tight tolerance 0.01 → warning
+        exp = _exp(sampling_rate=100.0)
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 10, 21, 32, 43]}),
+            experiment=exp,
+        )
+        results = gaze.validate(
+            trial_columns_exist=False,
+            trial_columns_dtype=False,
+            time_column_exists=False,
+            gaze_components_defined=False,
+            time_monotone=False,
+            max_gap=False,
+            sampling_rate_consistency=True,
+            max_deviation=0.01,
+            gaze_range=False,
+        )
+        assert results[0].severity == 'warning'
+
     def test_sampling_rate_consistency_pass(self) -> None:
         exp = _exp(sampling_rate=100.0)
         gaze = Gaze(
@@ -763,3 +824,48 @@ class TestGazeReportDataQuality:
         report = gaze.report_data_quality(levels=['dataset', 'trial'], measures=['data_loss'])
         assert 'dataset' in report.measures
         assert 'trial' not in report.measures
+
+    def test_custom_max_gap_factor_passed_through_report(self) -> None:
+        # ISI=10ms; gap=15ms; default factor 5.0 → pass; tight factor 1.0 → warning
+        exp = _exp(sampling_rate=100.0)
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 10, 25]}),
+            experiment=exp,
+        )
+        report_default = gaze.report_data_quality(checks=['max_gap'])
+        report_tight = gaze.report_data_quality(checks=['max_gap'], max_gap_factor=1.0)
+        assert report_default.check_results[0].severity == 'pass'
+        assert report_tight.check_results[0].severity == 'warning'
+
+    def test_custom_max_deviation_passed_through_report(self) -> None:
+        # Empirical ~90.9 Hz vs declared 100 Hz (~9% deviation); tight tolerance 0.01 → warning
+        exp = _exp(sampling_rate=100.0)
+        gaze = Gaze(
+            samples=pl.DataFrame({'time': [0, 11, 22, 33, 44]}),
+            experiment=exp,
+        )
+        report_tight = gaze.report_data_quality(
+            checks=['sampling_rate_consistency'], max_deviation=0.01,
+        )
+        assert report_tight.check_results[0].severity == 'warning'
+
+    def test_custom_min_fraction_passed_through_report(self) -> None:
+        # All samples out of pixel range; tight min_fraction=0.99 → warning; loose=0.0 → pass
+        exp = _exp(sampling_rate=1000.0)
+        gaze = Gaze(
+            samples=pl.DataFrame({
+                'time': [0, 1, 2],
+                'px': [9999.0, 9999.0, 9999.0],
+                'py': [9999.0, 9999.0, 9999.0],
+            }),
+            pixel_columns=['px', 'py'],
+            experiment=exp,
+        )
+        report_tight = gaze.report_data_quality(
+            checks=['gaze_range'], min_fraction=0.99,
+        )
+        report_loose = gaze.report_data_quality(
+            checks=['gaze_range'], min_fraction=0.0,
+        )
+        assert report_tight.check_results[0].severity == 'warning'
+        assert report_loose.check_results[0].severity == 'pass'

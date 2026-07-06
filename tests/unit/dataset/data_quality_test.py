@@ -1251,3 +1251,48 @@ class TestDatasetReportDataQualityDirect:
         report = ds.report_data_quality()
         assert report.passed is True
         assert not report.check_results
+
+    def test_custom_max_gap_factor_passed_through(self) -> None:
+        """max_gap_factor is forwarded to the max_gap check."""
+        exp = _simple_experiment(sampling_rate=100.0)
+        # ISI=10ms; gap=15ms; default factor 5.0 → pass; tight factor 1.0 → warning
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 10, 25]}),
+            experiment=exp,
+        )
+        ds = _make_real_dataset([gaze])
+        report_default = ds.report_data_quality(checks=['max_gap'])
+        report_tight = ds.report_data_quality(checks=['max_gap'], max_gap_factor=1.0)
+        assert report_default.check_results[0].severity == 'pass'
+        assert report_tight.check_results[0].severity == 'warning'
+
+    def test_custom_max_deviation_passed_through(self) -> None:
+        """max_deviation is forwarded to the sampling_rate_consistency check."""
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 11, 22, 33, 44]}),
+            experiment=exp,
+        )
+        ds = _make_real_dataset([gaze])
+        report_tight = ds.report_data_quality(
+            checks=['sampling_rate_consistency'], max_deviation=0.01,
+        )
+        assert report_tight.check_results[0].severity == 'warning'
+
+    def test_custom_min_fraction_passed_through(self) -> None:
+        """min_fraction is forwarded to the gaze_range check."""
+        exp = _simple_experiment(sampling_rate=1000.0)
+        gaze = _make_gaze(
+            pl.DataFrame({
+                'time': [0, 1, 2],
+                'px': [9999.0, 9999.0, 9999.0],
+                'py': [9999.0, 9999.0, 9999.0],
+            }),
+            experiment=exp,
+        )
+        gaze.samples = gaze.samples.with_columns(
+            pl.concat_list(['px', 'py']).alias('pixel'),
+        )
+        ds = _make_real_dataset([gaze])
+        report_loose = ds.report_data_quality(checks=['gaze_range'], min_fraction=0.0)
+        assert report_loose.check_results[0].severity == 'pass'
