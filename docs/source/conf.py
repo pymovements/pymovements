@@ -194,7 +194,6 @@ nitpick_ignore_regex = [
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
 
-    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
 
     # Internal helper functions referenced in docs text
     (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
