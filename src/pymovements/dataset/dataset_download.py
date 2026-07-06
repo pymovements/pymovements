@@ -41,6 +41,7 @@ def download_dataset(
         extract: bool = True,
         remove_finished: bool = False,
         resume: bool = True,
+        check_integrity: bool = True,
         verbose: bool = True,
 ) -> None:
     """Download dataset resources.
@@ -69,6 +70,8 @@ def download_dataset(
     resume: bool
         Resume previous extraction by skipping existing files.
         Checks for correct size of existing files but not integrity. (default: True)
+    check_integrity : bool
+        If True, check integrity by using the md5 checksum. (default: True)
     verbose: bool
         If True, show progress of download and print status messages for integrity checking and
         file extraction. (default: True)
@@ -99,9 +102,19 @@ def download_dataset(
             mirrors = definition.mirrors.get(resource.content, None)
 
         if not mirrors:
-            resource.source.download(paths.downloads, verbose=verbose)
+            resource.source.download(
+                target_dirpath=paths.downloads,
+                verbose=verbose,
+                check_integrity=check_integrity,
+            )
         else:
-            _download_resource_with_legacy_mirrors(mirrors, resource, paths.downloads, verbose)
+            _download_resource_with_legacy_mirrors(
+                mirrors=mirrors,
+                resource=resource,
+                target_dirpath=paths.downloads,
+                check_integrity=check_integrity,
+                verbose=verbose,
+            )
 
     if extract:
         extract_dataset(
@@ -177,6 +190,7 @@ def _download_resource_with_legacy_mirrors(
         mirrors: Sequence[str],
         resource: ResourceDefinition,
         target_dirpath: Path,
+        check_integrity: bool,
         verbose: bool,
 ) -> None:
     """Download resource with mirrors."""
@@ -193,6 +207,7 @@ def _download_resource_with_legacy_mirrors(
                 dirpath=target_dirpath,
                 filename=resource.source.filename or '',  # filename should be set in WebSource
                 md5=resource.source.md5,
+                check_integrity=check_integrity,
                 verbose=verbose,
             )
             return  # Download successful
