@@ -166,7 +166,7 @@ nitpick_ignore_regex = [
 
 
     # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+    (r'py:obj', r'^pymovements\..*'),
 
 
 

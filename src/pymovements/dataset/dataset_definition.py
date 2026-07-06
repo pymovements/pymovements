@@ -66,7 +66,7 @@ class DatasetDefinition:
         (default: {})
 
         .. deprecated:: v0.24.0
-           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
+           Please use ``ResourceDefinition.mirrors`` instead.
            This field will be removed in v0.29.0.
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
@@ -184,7 +184,7 @@ class DatasetDefinition:
         (default: None)
 
         .. deprecated:: v0.24.0
-           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
+           Please use ``ResourceDefinition.mirrors``. instead.
            This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
