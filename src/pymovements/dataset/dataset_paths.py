@@ -104,9 +104,9 @@ class DatasetPaths:
             The Path to the raw file.
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            ``Dataset.path``.
+            :py:class:`~pymovements.Dataset`.path.
             This argument is used only for this single call and does not alter
-            ``Dataset.preprocessed_rootpath``. (default: None)
+            :py:class:`~pymovements.Dataset`.preprocessed_rootpath. (default: None)
         extension: str
             extension specifies the fileformat to store the data. (default: 'feather')
 
@@ -147,9 +147,9 @@ class DatasetPaths:
             The Path to the raw file.
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            ``Dataset.path``.
+            :py:class:`~pymovements.Dataset`.path.
             This argument is used only for this single call and does not alter
-            ``Dataset.events_rootpath``.
+            :py:class:`~pymovements.Dataset`.events_rootpath.
             (default: None)
         extension: str
             extension specifies the fileformat to store the data. (default: 'feather')

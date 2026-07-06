@@ -2506,7 +2506,7 @@ class Gaze:
         dirpath: str | Path
             Absolute directory name to save data.
             This argument is used only for this single call and does not alter
-            ``Dataset.events_rootpath``.
+            :py:class:`~pymovements.Dataset`.events_rootpath.
         save_events: bool | None
             Save events in events.{extension} file
         save_samples: bool | None
