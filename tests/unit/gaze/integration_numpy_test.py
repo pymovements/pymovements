@@ -126,6 +126,73 @@ def test_from_numpy_with_schema():
     assert gaze.n_components == 2
 
 
+def test_from_numpy_with_column_indices():
+    array = np.array(
+        [
+            [1, 1, 2, 2],
+            [101, 102, 103, 104],
+            [100, 100, 100, 100],
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+            [9, 8, 7, 6],
+            [5, 4, 3, 2],
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+            [2, 3, 4, 5],
+            [6, 7, 8, 9],
+        ],
+        dtype=np.float64,
+    )
+
+    experiment = Experiment(
+        screen_width_px=1280,
+        screen_height_px=1024,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=None,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+
+    gaze = from_numpy(
+        samples=array,
+        experiment=experiment,
+        trial_columns=[0],
+        time_column=1,
+        time_unit='ms',
+        distance_column=2,
+        pixel_columns=[3, 4],
+        position_columns=[5, 6],
+        velocity_columns=[7, 8],
+        acceleration_columns=[9, 10],
+    )
+
+    expected = pl.DataFrame(
+        {
+            'column_0': [1, 1, 2, 2],
+            'time': [101, 102, 103, 104],
+            'distance': [100, 100, 100, 100],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+            'velocity': [[1, 5], [2, 6], [3, 7], [4, 8]],
+            'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
+        },
+        schema={
+            'column_0': pl.Float64,
+            'time': pl.Int64,
+            'distance': pl.Float64,
+            'pixel': pl.List(pl.Float64),
+            'position': pl.List(pl.Float64),
+            'velocity': pl.List(pl.Float64),
+            'acceleration': pl.List(pl.Float64),
+        },
+    )
+
+    assert_frame_equal(gaze.samples, expected)
+    assert gaze.n_components == 2
+    assert gaze.trial_columns == ['column_0']
+
+
 def test_from_numpy_with_trial_id():
     array = np.array(
         [
