@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Tests for pymovements.dataset.data_quality."""
+"""Tests for pymovements.gaze.quality and pymovements.gaze.validation."""
 from __future__ import annotations
 
 import json
@@ -32,20 +32,21 @@ import pytest
 
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
-from pymovements.dataset.data_quality import _compute_data_loss_simple
-from pymovements.dataset.data_quality import _compute_measures
-from pymovements.dataset.data_quality import DataQualityReport
-from pymovements.dataset.data_quality import GazeDataValidationError
+from pymovements.gaze.quality import _compute_data_loss_simple
+from pymovements.gaze.quality import _compute_measures
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import GazeDataValidationError
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import check_gaze_components_defined
 from pymovements.gaze.validation import check_gaze_range
+from pymovements.gaze.validation import check_max_gap
 from pymovements.gaze.validation import check_sampling_rate_consistency
 from pymovements.gaze.validation import check_time_column_exists
+from pymovements.gaze.validation import check_time_monotone
 from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
-from pymovements.gaze.validation import check_trial_continuity
 from pymovements.gaze.validation import CheckResult
 
 
@@ -93,14 +94,19 @@ def _simple_experiment(sampling_rate: float = 1000.0) -> Experiment:
 class TestCheckResult:
     def test_fields(self) -> None:
         r = CheckResult('my_check', 'pass', 'All good', ['f1.csv'])
-        assert r.check_id == 'my_check'
+        assert r.code == 'my_check'
         assert r.severity == 'pass'
         assert r.message == 'All good'
-        assert r.affected_files == ['f1.csv']
+        assert r.sources == ['f1.csv']
 
-    def test_default_affected_files(self) -> None:
+    def test_default_sources(self) -> None:
         r = CheckResult('x', 'pass', 'ok')
-        assert not r.affected_files
+        assert not r.sources
+
+    def test_frozen(self) -> None:
+        r = CheckResult('x', 'pass', 'ok')
+        with pytest.raises((AttributeError, TypeError)):
+            r.code = 'y'  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
@@ -152,23 +158,23 @@ class TestCheckTrialColumnsExist:
         assert result.severity == 'error'
         assert 'trial' in result.message
 
-    def test_affected_files_set(self) -> None:
+    def test_sources_set_on_error(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0]}),
             trial_columns=['missing'],
         )
         result = check_trial_columns_exist(gaze, source_path='data/s1.csv')
-        assert 'data/s1.csv' in result.affected_files
+        assert 'data/s1.csv' in result.sources
 
-    def test_affected_files_empty_on_pass(self) -> None:
+    def test_sources_set_on_pass(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0]}))
-        result = check_trial_columns_exist(gaze)
-        assert not result.affected_files
+        result = check_trial_columns_exist(gaze, source_path='data/s1.csv')
+        assert 'data/s1.csv' in result.sources
 
-    def test_affected_files_empty_when_no_source_path(self) -> None:
+    def test_sources_empty_when_no_source_path(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0]}), trial_columns=['missing'])
         result = check_trial_columns_exist(gaze, source_path='')
-        assert not result.affected_files
+        assert not result.sources
 
 
 # ---------------------------------------------------------------------------
@@ -250,15 +256,15 @@ class TestCheckTimeColumnExists:
         assert result.severity == 'error'
         assert 'time' in result.message
 
-    def test_affected_files_on_error(self) -> None:
+    def test_sources_on_error(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'x': [0.0]}))
         result = check_time_column_exists(gaze, source_path='s/f.csv')
-        assert 's/f.csv' in result.affected_files
+        assert 's/f.csv' in result.sources
 
-    def test_affected_files_empty_no_source_path(self) -> None:
+    def test_sources_empty_no_source_path(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'x': [0.0]}))
         result = check_time_column_exists(gaze, source_path='')
-        assert not result.affected_files
+        assert not result.sources
 
 
 # ---------------------------------------------------------------------------
@@ -292,33 +298,39 @@ class TestCheckGazeComponentsDefined:
         result = check_gaze_components_defined(gaze)
         assert result.severity == 'error'
 
-    def test_affected_files_on_error(self) -> None:
+    def test_sources_on_error(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0]}))
         result = check_gaze_components_defined(gaze, source_path='data.csv')
-        assert 'data.csv' in result.affected_files
+        assert 'data.csv' in result.sources
 
-    def test_affected_files_empty_no_source_path(self) -> None:
+    def test_sources_empty_no_source_path(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0]}))
         result = check_gaze_components_defined(gaze, source_path='')
-        assert not result.affected_files
+        assert not result.sources
 
 
 # ---------------------------------------------------------------------------
-# check_trial_continuity
+# check_time_monotone
 # ---------------------------------------------------------------------------
 
-class TestCheckTrialContinuity:
-    def test_pass_no_trial_columns(self) -> None:
+class TestCheckTimeMonotone:
+    def test_pass_no_time_column(self) -> None:
+        gaze = _make_gaze(pl.DataFrame({'x': [0.0]}))
+        result = check_time_monotone(gaze)
+        assert result.severity == 'pass'
+        assert 'skipped' in result.message
+
+    def test_pass_monotone_no_trial_columns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1, 2, 3]}))
-        result = check_trial_continuity(gaze)
+        result = check_time_monotone(gaze)
         assert result.severity == 'pass'
 
-    def test_pass_monotone_increasing(self) -> None:
+    def test_pass_monotone_with_trial_columns(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 10, 20, 30], 'trial': [1, 1, 2, 2]}),
             trial_columns=['trial'],
         )
-        result = check_trial_continuity(gaze)
+        result = check_time_monotone(gaze)
         assert result.severity == 'pass'
 
     def test_warning_non_monotone(self) -> None:
@@ -326,8 +338,66 @@ class TestCheckTrialContinuity:
             pl.DataFrame({'time': [0, 20, 10, 30], 'trial': [1, 1, 1, 1]}),
             trial_columns=['trial'],
         )
-        result = check_trial_continuity(gaze)
+        result = check_time_monotone(gaze)
         assert result.severity == 'warning'
+
+    def test_warning_non_monotone_no_trial_columns(self) -> None:
+        gaze = _make_gaze(pl.DataFrame({'time': [0, 20, 10, 30]}))
+        result = check_time_monotone(gaze)
+        assert result.severity == 'warning'
+
+    def test_pass_single_sample_per_trial_skipped(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 1], 'trial': [1, 2]}),
+            trial_columns=['trial'],
+        )
+        result = check_time_monotone(gaze)
+        assert result.severity == 'pass'
+
+    def test_pass_missing_trial_col_in_schema(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 1]}),
+            trial_columns=['nonexistent'],
+        )
+        result = check_time_monotone(gaze)
+        assert result.severity == 'pass'
+
+    def test_sources_on_warning(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 20, 10], 'trial': [1, 1, 1]}),
+            trial_columns=['trial'],
+        )
+        result = check_time_monotone(gaze, source_path='s.csv')
+        assert result.severity == 'warning'
+        assert 's.csv' in result.sources
+
+
+# ---------------------------------------------------------------------------
+# check_max_gap
+# ---------------------------------------------------------------------------
+
+class TestCheckMaxGap:
+    def test_pass_no_time_column(self) -> None:
+        gaze = _make_gaze(pl.DataFrame({'x': [0.0]}))
+        result = check_max_gap(gaze)
+        assert result.severity == 'pass'
+        assert 'skipped' in result.message
+
+    def test_pass_no_experiment(self) -> None:
+        gaze = _make_gaze(pl.DataFrame({'time': [0, 10, 20]}))
+        result = check_max_gap(gaze)
+        assert result.severity == 'pass'
+        assert 'skipped' in result.message
+
+    def test_pass_no_gap(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 10, 20, 30], 'trial': [1, 1, 1, 1]}),
+            trial_columns=['trial'],
+            experiment=exp,
+        )
+        result = check_max_gap(gaze)
+        assert result.severity == 'pass'
 
     def test_warning_gap_exceeds_5x_isi(self) -> None:
         exp = _simple_experiment(sampling_rate=100.0)
@@ -337,43 +407,41 @@ class TestCheckTrialContinuity:
             trial_columns=['trial'],
             experiment=exp,
         )
-        result = check_trial_continuity(gaze)
+        result = check_max_gap(gaze)
         assert result.severity == 'warning'
         assert 'gap' in result.message.lower()
 
-    def test_pass_no_time_column(self) -> None:
+    def test_warning_gap_no_trial_columns(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
         gaze = _make_gaze(
-            pl.DataFrame({'x': [0.0], 'trial': [1]}),
-            trial_columns=['trial'],
+            pl.DataFrame({'time': [0, 10, 20, 120]}),
+            experiment=exp,
         )
-        result = check_trial_continuity(gaze)
-        assert result.severity == 'pass'
-        assert 'skipped' in result.message
-
-    def test_pass_missing_trial_column_in_schema(self) -> None:
-        gaze = _make_gaze(
-            pl.DataFrame({'time': [0, 1]}),
-            trial_columns=['nonexistent'],
-        )
-        result = check_trial_continuity(gaze)
-        assert result.severity == 'pass'
-
-    def test_single_sample_per_trial_skipped(self) -> None:
-        gaze = _make_gaze(
-            pl.DataFrame({'time': [0, 1], 'trial': [1, 2]}),
-            trial_columns=['trial'],
-        )
-        result = check_trial_continuity(gaze)
-        assert result.severity == 'pass'
-
-    def test_affected_files_on_warning(self) -> None:
-        gaze = _make_gaze(
-            pl.DataFrame({'time': [0, 20, 10], 'trial': [1, 1, 1]}),
-            trial_columns=['trial'],
-        )
-        result = check_trial_continuity(gaze, source_path='s.csv')
+        result = check_max_gap(gaze)
         assert result.severity == 'warning'
-        assert 's.csv' in result.affected_files
+
+    def test_custom_max_gap_factor(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        # ISI = 10ms; default factor 5.0 → max 50ms; 60ms gap triggers at factor 5.0
+        # but not at factor 10.0
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 10, 20, 80], 'trial': [1, 1, 1, 1]}),
+            trial_columns=['trial'],
+            experiment=exp,
+        )
+        assert check_max_gap(gaze, max_gap_factor=5.0).severity == 'warning'
+        assert check_max_gap(gaze, max_gap_factor=10.0).severity == 'pass'
+
+    def test_sources_on_warning(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 10, 20, 120], 'trial': [1, 1, 1, 1]}),
+            trial_columns=['trial'],
+            experiment=exp,
+        )
+        result = check_max_gap(gaze, source_path='file.csv')
+        assert result.severity == 'warning'
+        assert 'file.csv' in result.sources
 
 
 # ---------------------------------------------------------------------------
@@ -414,7 +482,7 @@ class TestCheckSamplingRateConsistency:
         assert result.severity == 'pass'
         assert 'skipped' in result.message
 
-    def test_affected_files_on_warning(self) -> None:
+    def test_sources_on_warning(self) -> None:
         exp = _simple_experiment(sampling_rate=100.0)
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 5, 10, 15, 20]}),
@@ -422,7 +490,7 @@ class TestCheckSamplingRateConsistency:
         )
         result = check_sampling_rate_consistency(gaze, source_path='data.asc')
         if result.severity == 'warning':
-            assert 'data.asc' in result.affected_files
+            assert 'data.asc' in result.sources
 
     def test_pass_no_positive_diffs(self) -> None:
         exp = _simple_experiment(sampling_rate=100.0)
@@ -437,6 +505,17 @@ class TestCheckSamplingRateConsistency:
         result = check_sampling_rate_consistency(gaze)
         assert result.severity == 'pass'
         assert 'skipped' in result.message
+
+    def test_custom_max_deviation(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        # Empirical 200 Hz vs declared 100 Hz → 100% deviation
+        # Passes with a very large threshold only
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 5, 10, 15, 20]}),
+            experiment=exp,
+        )
+        assert check_sampling_rate_consistency(gaze, max_deviation=0.05).severity == 'warning'
+        assert check_sampling_rate_consistency(gaze, max_deviation=2.0).severity == 'pass'
 
 
 # ---------------------------------------------------------------------------
@@ -516,7 +595,7 @@ class TestCheckGazeRange:
         result = check_gaze_range(gaze)
         assert result.severity == 'pass'
 
-    def test_affected_files_on_warning(self) -> None:
+    def test_sources_on_warning(self) -> None:
         exp = _simple_experiment()
         gaze = _make_gaze(
             pl.DataFrame({
@@ -527,7 +606,18 @@ class TestCheckGazeRange:
         )
         result = check_gaze_range(gaze, source_path='data.csv')
         assert result.severity == 'warning'
-        assert 'data.csv' in result.affected_files
+        assert 'data.csv' in result.sources
+
+    def test_custom_min_fraction(self) -> None:
+        exp = _simple_experiment()
+        # All out of range → 0% in range
+        gaze = _make_gaze(
+            pl.DataFrame({'time': list(range(20)), 'position': [[-999.0, -999.0]] * 20}),
+            experiment=exp,
+        )
+        assert check_gaze_range(gaze, min_fraction=0.95).severity == 'warning'
+        # Lowering threshold to 0 → always pass
+        assert check_gaze_range(gaze, min_fraction=0.0).severity == 'pass'
 
 
 # ---------------------------------------------------------------------------
@@ -535,13 +625,14 @@ class TestCheckGazeRange:
 # ---------------------------------------------------------------------------
 
 class TestAllChecks:
-    def test_all_seven_checks_registered(self) -> None:
+    def test_all_eight_checks_registered(self) -> None:
         expected = {
             'trial_columns_exist',
             'trial_columns_dtype',
             'time_column_exists',
             'gaze_components_defined',
-            'trial_continuity',
+            'time_monotone',
+            'max_gap',
             'sampling_rate_consistency',
             'gaze_range',
         }
@@ -639,9 +730,9 @@ class TestSaveBidsReport:
 
         tsv = (tmp_path / 'derivatives' / 'pymovements' / 'data_quality_checks.tsv').read_text()
         header_cols = tsv.splitlines()[0].split('\t')
-        assert 'check_id' in header_cols
+        assert 'code' in header_cols
         assert 'severity' in header_cols
-        assert 'affected_files' in header_cols
+        assert 'sources' in header_cols
 
     def test_custom_pipeline_name(self, tmp_path: Path) -> None:
         report = DataQualityReport()
@@ -675,7 +766,7 @@ class TestSaveBidsReport:
         report = DataQualityReport()
         report.save_bids_report(tmp_path)
         tsv = (tmp_path / 'derivatives' / 'pymovements' / 'data_quality_checks.tsv').read_text()
-        assert tsv.startswith('check_id')
+        assert tsv.startswith('code')
 
 
 # ---------------------------------------------------------------------------
@@ -844,7 +935,6 @@ class TestComputeMeasures:
         assert isinstance(result, dict)
 
     def test_trial_no_sampling_rate_skips_data_loss_agg(self) -> None:
-        # sampling_rate is None → data_loss agg skipped, but precision still runs
         gaze = _make_gaze(
             pl.DataFrame({
                 'time': [0, 1, 2, 3],
@@ -852,13 +942,12 @@ class TestComputeMeasures:
                 'position': [[float(i), float(i)] for i in range(4)],
             }),
             trial_columns=['trial'],
-            experiment=None,  # no experiment → no sampling_rate
+            experiment=None,
         )
         result = _compute_measures([gaze], None, ['trial'])
         assert isinstance(result, dict)
 
     def test_partial_precision_measures_only_std_rms(self) -> None:
-        # Only std_rms requested → 'rms_s2s' and 'bcea' branches not taken (385->387 miss)
         exp = _simple_experiment(sampling_rate=1000.0)
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
@@ -871,7 +960,6 @@ class TestComputeMeasures:
             assert 'bcea' not in result['dataset'].columns
 
     def test_partial_precision_measures_only_rms_s2s(self) -> None:
-        # Only rms_s2s → std_rms and bcea branches not taken
         exp = _simple_experiment(sampling_rate=1000.0)
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
@@ -883,7 +971,6 @@ class TestComputeMeasures:
             assert 'std_rms' not in result['dataset'].columns
 
     def test_partial_precision_measures_only_bcea(self) -> None:
-        # Only bcea → std_rms and rms_s2s branches not taken
         exp = _simple_experiment(sampling_rate=1000.0)
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
@@ -895,7 +982,6 @@ class TestComputeMeasures:
             assert 'std_rms' not in result['dataset'].columns
 
     def test_data_loss_polars_error_falls_back_to_simple(self) -> None:
-        # Make data_loss() raise PolarsError → falls back to _compute_data_loss_simple (375-376)
         exp = _simple_experiment(sampling_rate=100.0)
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 10, 20], 'position': [[0.0, 0.0], [1.0, 1.0], None]}),
@@ -909,7 +995,6 @@ class TestComputeMeasures:
         assert isinstance(result, dict)
 
     def test_precision_polars_error_sets_none(self) -> None:
-        # Make _build_precision_agg throw → except sets row values to None (391-394)
         exp = _simple_experiment(sampling_rate=1000.0)
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1, 2], 'position': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]}),
@@ -924,7 +1009,6 @@ class TestComputeMeasures:
         assert isinstance(result, dict)
 
     def test_trial_agg_polars_error_continues(self) -> None:
-        # Make trial group_by().agg() raise → except continue (460-461)
         exp = _simple_experiment(sampling_rate=100.0)
         gaze = _make_gaze(
             pl.DataFrame({
@@ -957,7 +1041,6 @@ class TestDatasetReportDataQuality:
             gaze_list: list[Gaze],
             fileinfo: dict[str, Any] | None = None,
     ) -> object:
-        """Return a minimal object with .gaze and .fileinfo."""
         ds = types.SimpleNamespace()
         ds.gaze = gaze_list
         ds.fileinfo = fileinfo or {}
@@ -972,7 +1055,6 @@ class TestDatasetReportDataQuality:
             raise_on_error: bool = False,
             output_path: Path | None = None,
     ) -> DataQualityReport:
-        """Call validate + _compute_measures the same way Dataset.report_data_quality does."""
         gaze_list: list[Gaze] = getattr(ds, 'gaze', [])
         fileinfo: Any = getattr(ds, 'fileinfo', {})
 
@@ -994,7 +1076,8 @@ class TestDatasetReportDataQuality:
                     trial_columns_dtype='trial_columns_dtype' in checks_to_run,
                     time_column_exists='time_column_exists' in checks_to_run,
                     gaze_components_defined='gaze_components_defined' in checks_to_run,
-                    trial_continuity='trial_continuity' in checks_to_run,
+                    time_monotone='time_monotone' in checks_to_run,
+                    max_gap='max_gap' in checks_to_run,
                     sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
                     gaze_range='gaze_range' in checks_to_run,
                     source_path=src,
@@ -1003,9 +1086,9 @@ class TestDatasetReportDataQuality:
                     report.check_results.append(result)
                     if raise_on_error and result.severity == 'error':
                         raise GazeDataValidationError(
-                            check_id=result.check_id,
+                            check_id=result.code,
                             message=str(result.message),
-                            affected_files=result.affected_files,
+                            affected_files=result.sources,
                         )
             report.measures = _compute_measures(
                 gaze_list,
@@ -1025,16 +1108,16 @@ class TestDatasetReportDataQuality:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1, 2]}))
         ds = self._make_dataset([gaze])
         report = self._call_report(ds)
-        check_ids = [r.check_id for r in report.check_results]
-        assert 'trial_columns_exist' in check_ids
-        assert 'gaze_range' in check_ids
+        check_codes = [r.code for r in report.check_results]
+        assert 'trial_columns_exist' in check_codes
+        assert 'gaze_range' in check_codes
 
     def test_subset_of_checks(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1]}))
         ds = self._make_dataset([gaze])
         report = self._call_report(ds, checks=['time_column_exists'])
         assert len(report.check_results) == 1
-        assert report.check_results[0].check_id == 'time_column_exists'
+        assert report.check_results[0].code == 'time_column_exists'
 
     def test_raise_on_error_raises(self) -> None:
         gaze = _make_gaze(
@@ -1089,7 +1172,6 @@ class TestDatasetReportDataQuality:
 # ---------------------------------------------------------------------------
 
 def _make_real_gaze() -> Gaze:
-    """Return a minimal valid Gaze with time and pixel columns."""
     return Gaze(
         samples=pl.DataFrame(
             {'time': [0, 10, 20], 'x': [1.0, 2.0, 3.0], 'y': [1.0, 2.0, 3.0]},
@@ -1099,7 +1181,6 @@ def _make_real_gaze() -> Gaze:
 
 
 def _make_real_dataset(gaze_list: list[Gaze], fileinfo: object | None = None) -> Dataset:
-    """Return a Dataset with gaze set directly (no file scanning required)."""
     ds = Dataset(DatasetDefinition, path='.')
     ds.gaze = gaze_list
     if fileinfo is not None:
@@ -1115,13 +1196,13 @@ class TestDatasetReportDataQualityDirect:
         report = ds.report_data_quality()
         assert isinstance(report, DataQualityReport)
         assert report.passed is True
-        assert len(report.check_results) == 7
+        assert len(report.check_results) == 8
 
     def test_subset_checks(self) -> None:
         ds = _make_real_dataset([_make_real_gaze()])
         report = ds.report_data_quality(checks=['time_column_exists'])
         assert len(report.check_results) == 1
-        assert report.check_results[0].check_id == 'time_column_exists'
+        assert report.check_results[0].code == 'time_column_exists'
 
     def test_unknown_check_raises_value_error(self) -> None:
         ds = _make_real_dataset([_make_real_gaze()])

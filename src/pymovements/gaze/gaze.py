@@ -51,7 +51,8 @@ from pymovements.gaze.validation import check_sampling_rate_consistency
 from pymovements.gaze.validation import check_time_column_exists
 from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
-from pymovements.gaze.validation import check_trial_continuity
+from pymovements.gaze.validation import check_max_gap
+from pymovements.gaze.validation import check_time_monotone
 from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
@@ -2011,7 +2012,8 @@ class Gaze:
             trial_columns_dtype: bool = True,
             time_column_exists: bool = True,
             gaze_components_defined: bool = True,
-            trial_continuity: bool = True,
+            time_monotone: bool = True,
+            max_gap: bool = True,
             sampling_rate_consistency: bool = True,
             gaze_range: bool = True,
             source_path: str = '',
@@ -2019,7 +2021,7 @@ class Gaze:
         """Run data quality validation checks on this gaze object.
 
         Each check can be individually enabled or disabled via its boolean argument.
-        By default all seven checks are run.
+        By default all eight checks are run.
 
         Parameters
         ----------
@@ -2034,10 +2036,12 @@ class Gaze:
         gaze_components_defined : bool
             Check that at least one coordinate column (pixel, position, velocity or
             acceleration) is present. (default: True)
-        trial_continuity : bool
-            Check that timestamps are strictly monotone increasing within each trial
-            and that no gap exceeds 5× the expected inter-sample interval.
+        time_monotone : bool
+            Check that timestamps are strictly monotone increasing within each trial.
             (default: True)
+        max_gap : bool
+            Check that no inter-sample gap exceeds 5× the expected inter-sample
+            interval. (default: True)
         sampling_rate_consistency : bool
             Check that the empirical median ISI matches the declared sampling rate
             within 5%. (default: True)
@@ -2045,7 +2049,7 @@ class Gaze:
             Check that ≥95% of gaze samples fall within screen bounds. (default: True)
         source_path : str
             Identifier for this gaze object (e.g. a file path). Included in the
-            ``affected_files`` field of any failing :py:class:`CheckResult`.
+            ``sources`` field of any failing :py:class:`CheckResult`.
             (default: ``''``)
 
         Returns
@@ -2071,7 +2075,8 @@ class Gaze:
             (trial_columns_dtype, check_trial_columns_dtype),
             (time_column_exists, check_time_column_exists),
             (gaze_components_defined, check_gaze_components_defined),
-            (trial_continuity, check_trial_continuity),
+            (time_monotone, check_time_monotone),
+            (max_gap, check_max_gap),
             (sampling_rate_consistency, check_sampling_rate_consistency),
             (gaze_range, check_gaze_range),
         ]
@@ -2103,7 +2108,7 @@ class Gaze:
             Check identifiers to run. ``None`` runs all seven checks.
             Valid values: ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
             ``'time_column_exists'``, ``'gaze_components_defined'``,
-            ``'trial_continuity'``, ``'sampling_rate_consistency'``,
+            ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
             ``'gaze_range'``.
         measures : list[str] | None
             Measures to compute. ``None`` computes all four.

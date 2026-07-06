@@ -36,9 +36,9 @@ from pymovements._utils._html import repr_html
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
-from pymovements.dataset.data_quality import _compute_measures
-from pymovements.dataset.data_quality import DataQualityReport
-from pymovements.dataset.data_quality import GazeDataValidationError
+from pymovements.gaze.quality import _compute_measures
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import GazeDataValidationError
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
@@ -1271,10 +1271,11 @@ class Dataset:
             If provided, write BIDS-conformant derivative report files here.
             (default: None)
         checks : list[str] | None
-            Check identifiers to run. ``None`` runs all seven checks. Valid identifiers:
+            Check identifiers to run. ``None`` runs all eight checks. Valid identifiers:
             ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
             ``'time_column_exists'``, ``'gaze_components_defined'``,
-            ``'trial_continuity'``, ``'sampling_rate_consistency'``, ``'gaze_range'``.
+            ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
+            ``'gaze_range'``.
             (default: None)
         measures : list[str] | None
             Measure identifiers to compute. ``None`` computes all four. Valid:
@@ -1345,7 +1346,8 @@ class Dataset:
                     trial_columns_dtype='trial_columns_dtype' in checks_to_run,
                     time_column_exists='time_column_exists' in checks_to_run,
                     gaze_components_defined='gaze_components_defined' in checks_to_run,
-                    trial_continuity='trial_continuity' in checks_to_run,
+                    time_monotone='time_monotone' in checks_to_run,
+                    max_gap='max_gap' in checks_to_run,
                     sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
                     gaze_range='gaze_range' in checks_to_run,
                     source_path=src,
@@ -1354,9 +1356,9 @@ class Dataset:
                     report.check_results.append(result)
                     if raise_on_error and result.severity == 'error':
                         raise GazeDataValidationError(
-                            check_id=result.check_id,
+                            check_id=result.code,
                             message=str(result.message),
-                            affected_files=result.affected_files,
+                            affected_files=result.sources,
                         )
 
             report.measures = _compute_measures(

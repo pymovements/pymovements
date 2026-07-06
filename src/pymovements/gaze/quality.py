@@ -145,12 +145,12 @@ class DataQualityReport:
         >>> isinstance(report.summary(), str)
         True
         """
-        header = f"{'check_id':<35} {'severity':<10} {'n_aff':>5}  message"
+        header = f"{'code':<35} {'severity':<10} {'n_aff':>5}  message"
         separator = '-' * len(header)
         lines = [header, separator]
         for r in self.check_results:
-            n = len(r.affected_files)
-            lines.append(f'{r.check_id:<35} {r.severity:<10} {n:>5}  {r.message}')
+            n = len(r.sources)
+            lines.append(f'{r.code:<35} {r.severity:<10} {n:>5}  {r.message}')
         return '\n'.join(lines)
 
     def save_bids_report(
@@ -208,10 +208,10 @@ class DataQualityReport:
 
         checks_rows = [
             {
-                'check_id': r.check_id,
+                'code': r.code,
                 'severity': r.severity,
                 'message': r.message,
-                'affected_files': ';'.join(r.affected_files),
+                'sources': ';'.join(r.sources),
             }
             for r in self.check_results
         ]
@@ -222,15 +222,18 @@ class DataQualityReport:
         else:
             _write_empty_tsv(
                 deriv_dir / 'data_quality_checks.tsv',
-                ['check_id', 'severity', 'message', 'affected_files'],
+                ['code', 'severity', 'message', 'sources'],
             )
 
         checks_sidecar: dict[str, Any] = {
-            'check_id': {'Description': 'Unique identifier of the validation check.'},
+            'code': {'Description': 'Unique identifier of the validation check.'},
             'severity': {'Description': "Result severity: 'pass', 'warning', or 'error'."},
             'message': {'Description': 'Human-readable description of the check outcome.'},
-            'affected_files': {
-                'Description': 'Semicolon-separated list of affected file paths; empty on pass.',
+            'sources': {
+                'Description': (
+                    'Semicolon-separated list of source file paths that were checked; '
+                    'present for all results.'
+                ),
             },
         }
         _write_json(deriv_dir / 'data_quality_checks.json', checks_sidecar)
@@ -598,7 +601,8 @@ def _run_report(
             trial_columns_dtype='trial_columns_dtype' in checks_to_run,
             time_column_exists='time_column_exists' in checks_to_run,
             gaze_components_defined='gaze_components_defined' in checks_to_run,
-            trial_continuity='trial_continuity' in checks_to_run,
+            time_monotone='time_monotone' in checks_to_run,
+            max_gap='max_gap' in checks_to_run,
             sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
             gaze_range='gaze_range' in checks_to_run,
             source_path=source_path,
@@ -607,9 +611,9 @@ def _run_report(
             report.check_results.append(result)
             if raise_on_error and result.severity == 'error':
                 raise GazeDataValidationError(
-                    check_id=result.check_id,
+                    check_id=result.code,
                     message=str(result.message),
-                    affected_files=result.affected_files,
+                    affected_files=result.sources,
                 )
 
         report.measures = _compute_measures([gaze], None, levels_to_run, measures)
