@@ -2429,7 +2429,7 @@ class Gaze:
                 )
 
     def __eq__(self, other: Gaze) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Gaze` object."""
+        """Check equality between this and another :py:class:`~pymovements.Gaze` object."""
         samples_equal = self.samples.equals(other.samples, null_equal=True)
         events_equal = self.events == other.events
         experiment_equal = self.experiment == other.experiment

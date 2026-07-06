@@ -809,7 +809,7 @@ class Events:
             self.frame = self.frame.drop('location')
 
     def __eq__(self, other: Events) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Events` object."""
+        """Check equality between this and another :py:class:`~pymovements.Events` object."""
         frames_equal = self.frame.equals(other.frame, null_equal=True)
         trial_columns_equal = self.trial_columns == other.trial_columns
         return frames_equal and trial_columns_equal

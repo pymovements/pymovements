@@ -697,12 +697,12 @@ class DatasetDefinition:
         version='v0.23.0',
     )
     def has_resources(self) -> _HasResourcesIndexer:
-        """Checks for resources in :py:attr:`~pymovements.dataset.DatasetDefinition.resources`.
+        """Checks for resources in :py:attr:`~pymovements.DatasetDefinition.resources`.
 
         This read-only property checks if there are any resources set in
-        :py:attr:`~pymovements.dataset.DatasetDefinition.resources`. It can be used as a `bool` or
+        :py:attr:`~pymovements.DatasetDefinition.resources`. It can be used as a `bool` or
         as an indexable class. In a boolean context it checks if there are any resources set in the
-        :py:cls:`~pymovements.dataset.DatasetDefinition`. Furthermore, you can index the property
+        :py:class:`~pymovements.DatasetDefinition`. Furthermore, you can index the property
         to check if there are any resources set for a given content type.
 
         Returns
@@ -712,14 +712,14 @@ class DatasetDefinition:
 
         Examples
         --------
-        This custom :py:cls:`~pymovements.dataset.DatasetDefinition` has no resources defined:
+        This custom :py:class:`~pymovements.DatasetDefinition` has no resources defined:
         >>> import pymovements as pm
         >>> my_definition = pm.DatasetDefinition('MyDatasetWithoutOnlineResources', resources=None)
         >>> my_definition.has_resources# doctest: +SKIP
         False
 
-        A :py:cls:`~pymovements.dataset.DatasetDefinition` from our
-        :py:cls:`~pymovements.dataset.DatasetLibrary` will usually have some online resources
+        A :py:class:`~pymovements.DatasetDefinition` from our
+        :py:class:`~pymovements.DatasetLibrary` will usually have some online resources
         defined:
         >>> definition = pm.DatasetLibrary.get('ToyDataset')
         >>> definition.has_resources# doctest: +SKIP
