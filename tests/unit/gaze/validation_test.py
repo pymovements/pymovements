@@ -140,7 +140,7 @@ class TestGazeValidateDisableChecks:
             sampling_rate_consistency=False,
             gaze_range=False,
         )
-        assert results == []
+        assert not results
 
     def test_enable_only_one_returns_one(self) -> None:
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
