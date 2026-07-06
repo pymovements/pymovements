@@ -2051,13 +2051,13 @@ class Gaze:
         Returns
         -------
         list[CheckResult]
-            One :py:class:`~pymovements.gaze.validation.CheckResult` per enabled
+            One :py:class:`~pymovements.CheckResult` per enabled
             check, in the order listed above.
 
         Examples
         --------
         >>> import polars as pl
-        >>> from pymovements.gaze.gaze import Gaze
+        >>> from pymovements import Gaze
         >>> samples = pl.DataFrame(
         ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
         ... )
@@ -2066,7 +2066,7 @@ class Gaze:
         >>> all(r.severity in {'pass', 'warning', 'error'} for r in results)
         True
         """
-        flag_fn_pairs: list[tuple[bool, object]] = [
+        flag_fn_pairs: list[tuple[bool, Callable[[Gaze, str], CheckResult]]] = [
             (trial_columns_exist, check_trial_columns_exist),
             (trial_columns_dtype, check_trial_columns_dtype),
             (time_column_exists, check_time_column_exists),
@@ -2076,7 +2076,7 @@ class Gaze:
             (gaze_range, check_gaze_range),
         ]
         return [
-            fn(self, source_path)  # type: ignore[operator]
+            fn(self, source_path)
             for enabled, fn in flag_fn_pairs
             if enabled
         ]
@@ -2094,7 +2094,7 @@ class Gaze:
 
         Runs validation checks via :py:meth:`validate` and computes quality
         measures (data loss, fixation precision) for this single gaze file.
-        The result is a :py:class:`~pymovements.gaze.quality.DataQualityReport`
+        The result is a :py:class:`~pymovements.DataQualityReport`
         that can optionally be saved as BIDS-conformant derivative files.
 
         Parameters
@@ -2142,7 +2142,7 @@ class Gaze:
         Examples
         --------
         >>> import polars as pl
-        >>> from pymovements.gaze.gaze import Gaze
+        >>> from pymovements import Gaze
         >>> samples = pl.DataFrame(
         ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
         ... )

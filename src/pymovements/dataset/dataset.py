@@ -1285,13 +1285,13 @@ class Dataset:
             ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
             (default: None)
         raise_on_error : bool
-            If ``True``, raise :py:exc:`~pymovements.dataset.GazeDataValidationError`
+            If ``True``, raise :py:exc:`~pymovements.GazeDataValidationError`
             on the first check result with severity ``'error'``. (default: False)
 
         Returns
         -------
         DataQualityReport
-            An object containing all :py:class:`~pymovements.dataset.CheckResult` objects
+            An object containing all :py:class:`~pymovements.CheckResult` objects
             and per-level measure :py:class:`polars.DataFrame` tables.
 
         Raises
