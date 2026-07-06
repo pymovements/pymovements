@@ -195,8 +195,6 @@ nitpick_ignore_regex = [
     ),
 
 
-    # Internal helper functions referenced in docs text
-    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
 
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
