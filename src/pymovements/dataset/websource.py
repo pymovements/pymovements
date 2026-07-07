@@ -38,37 +38,9 @@ from warnings import warn
 from tqdm.auto import tqdm
 
 from pymovements._version import __version__
+from pymovements.exceptions import ChecksumError
 
 USER_AGENT: str = f'pymovements/{__version__}'
-
-
-@dataclass(slots=True, eq=False)
-class ChecksumError(Exception):
-    """Exception raised when a checksum integrity check fails.
-
-    Attributes
-    ----------
-    expected: str
-        Expected checksum.
-    actual: str
-        Actual checksum.
-    path: Path
-        Path of checked file.
-    algorithm: str
-        Name of the checksum algorithm. (default: 'MD5')
-    """
-
-    expected: str
-    actual: str
-    path: Path
-    algorithm: str = 'MD5'
-
-    def __str__(self) -> str:
-        """Get exception message."""
-        return (
-            f"{self.algorithm} checksum mismatch for file '{self.path}'"
-            f": expected '{self.expected}', got '{self.actual}'"
-        )
 
 
 @dataclass(frozen=True)
