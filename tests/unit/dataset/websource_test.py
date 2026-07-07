@@ -618,34 +618,46 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
     ])
 
 
-def test_websource_checksum(testfiles_dirpath):
-    path = testfiles_dirpath / 'rda_test_file.rda'
+@pytest.mark.parametrize(
+    ('filename', 'expected_checksum'),
+    [
+        pytest.param('rda_test_file.rda', 'db8a1766878007ccfdcbd112cb084249', id='rda'),
+        pytest.param('monocular_example.csv', 'b56e208f6442bab645789defe865183b', id='csv'),
+    ],
+)
+class TestWebSourceChecksum:
+    def test_websource_checksum(self, filename, expected_checksum, testfiles_dirpath):
+        path = testfiles_dirpath / filename
 
-    result = WebSource.checksum(path)
+        result = WebSource.checksum(path)
 
-    assert result == 'db8a1766878007ccfdcbd112cb084249'
+        assert result == expected_checksum
+
+    def test_websource_verify_checksum_success(
+            self, filename, expected_checksum, testfiles_dirpath,
+    ):
+        path = testfiles_dirpath / filename
+
+        WebSource(url='test', md5=expected_checksum).verify_checksum(path)
+
+    def test_websource_verify_checksum_mismatch(
+            self, filename, expected_checksum, testfiles_dirpath,
+    ):
+        path = testfiles_dirpath / filename
+
+        wrong_checksum = '123456'
+
+        with pytest.raises(ChecksumError) as exc:
+            WebSource(url='test', md5=wrong_checksum).verify_checksum(path)
+
+        assert exc.value.actual == expected_checksum
+        assert exc.value.expected == wrong_checksum
+        assert exc.value.path == path
+        assert exc.value.algorithm == 'MD5'
 
 
-def test_websource_verify_checksum_success(testfiles_dirpath):
-    path = testfiles_dirpath / 'rda_test_file.rda'
-
-    WebSource(url='test', md5='db8a1766878007ccfdcbd112cb084249').verify_checksum(path)
-
-
-def test_websource_verify_checksum_mismatch(testfiles_dirpath):
-    path = testfiles_dirpath / 'rda_test_file.rda'
-
-    with pytest.raises(ChecksumError) as exc:
-        WebSource(url='test', md5='123456').verify_checksum(path)
-
-    assert exc.value.actual == 'db8a1766878007ccfdcbd112cb084249'
-    assert exc.value.expected == '123456'
-    assert exc.value.path == path
-    assert exc.value.algorithm == 'MD5'
-
-
-def test_websource_verify_checksum_no_checksum(testfiles_dirpath):
-    path = testfiles_dirpath / 'rda_test_file.rda'
+def test_websource_verify_checksum_no_checksum(make_text_file):
+    path = make_text_file('test.txt', 'test')
 
     message = 'WebSource.md5 must be of type string but got NoneType'
 
