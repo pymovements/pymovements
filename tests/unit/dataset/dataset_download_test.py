@@ -550,7 +550,7 @@ def test_dataset_download_both_mirrors_fail_gaze_only(
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -558,7 +558,7 @@ def test_dataset_download_both_mirrors_fail_gaze_only(
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -594,7 +594,7 @@ def test_dataset_download_precomputed_events_both_mirrors_fail(
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -602,7 +602,7 @@ def test_dataset_download_precomputed_events_both_mirrors_fail(
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -638,7 +638,7 @@ def test_dataset_download_precomputed_reading_measures_both_mirrors_fail(
             dirpath=tmp_path / 'downloads',
             filename='test_rm.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -646,7 +646,7 @@ def test_dataset_download_precomputed_reading_measures_both_mirrors_fail(
             dirpath=tmp_path / 'downloads',
             filename='test_rm.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -681,7 +681,7 @@ def test_dataset_download_precomputed_and_gaze_both_mirrors_fail(
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -689,7 +689,7 @@ def test_dataset_download_precomputed_and_gaze_both_mirrors_fail(
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -716,7 +716,7 @@ def test_dataset_download_first_mirror_gaze_fails(mock_download_file, tmp_path, 
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -724,7 +724,7 @@ def test_dataset_download_first_mirror_gaze_fails(mock_download_file, tmp_path, 
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -752,7 +752,7 @@ def test_dataset_download_first_mirror_precomputed_fails(
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -760,7 +760,7 @@ def test_dataset_download_first_mirror_precomputed_fails(
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -788,7 +788,7 @@ def test_dataset_download_first_mirror_precomputed_fails_rm(
             dirpath=tmp_path / 'downloads',
             filename='test_rm.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -796,7 +796,7 @@ def test_dataset_download_first_mirror_precomputed_fails_rm(
             dirpath=tmp_path / 'downloads',
             filename='test_rm.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -822,7 +822,7 @@ def test_dataset_download_first_mirror_fails(mock_download_file, tmp_path, datas
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -830,7 +830,7 @@ def test_dataset_download_first_mirror_fails(mock_download_file, tmp_path, datas
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -838,7 +838,7 @@ def test_dataset_download_first_mirror_fails(mock_download_file, tmp_path, datas
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
         mock.call(
@@ -846,7 +846,7 @@ def test_dataset_download_first_mirror_fails(mock_download_file, tmp_path, datas
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -878,7 +878,7 @@ def test_dataset_download_file_not_found(mock_download_file, tmp_path, dataset_d
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -909,7 +909,7 @@ def test_dataset_download_file_precomputed_not_found(
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -935,7 +935,7 @@ def test_dataset_download_no_extract(mock_download_file, tmp_path, dataset_defin
             dirpath=tmp_path / 'downloads',
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -961,7 +961,7 @@ def test_dataset_download_precomputed_no_extract(mock_download_file, tmp_path, d
             dirpath=tmp_path / 'downloads',
             filename='test_pc.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])
@@ -989,7 +989,7 @@ def test_dataset_download_precomputed_no_extract_rm(
             dirpath=tmp_path / 'downloads',
             filename='test_rm.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
-            check_integrity=True,
+            verify_checksum=True,
             verbose=True,
         ),
     ])

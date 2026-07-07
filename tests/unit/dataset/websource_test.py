@@ -364,10 +364,12 @@ def test_websource_download_fail(
 
     mock_download_file.assert_has_calls([
         mock.call(
-            source=websource,
+            url='https://example.com/test.gz.tar',
             dirpath=tmp_path,
+            filename='test.gz.tar',
+            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -402,7 +404,7 @@ def test_websource_download_mirror_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror.example.com/test.gz.tar',
@@ -410,7 +412,7 @@ def test_websource_download_mirror_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -448,7 +450,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror1.example.com/test.gz.tar',
@@ -456,7 +458,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror2.example.com/test.gz.tar',
@@ -464,7 +466,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -491,7 +493,7 @@ def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_pa
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror.example.com/test.gz.tar',
@@ -499,7 +501,7 @@ def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_pa
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -531,7 +533,7 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror1.example.com/test.gz.tar',
@@ -539,7 +541,7 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror2.example.com/test.gz.tar',
@@ -547,6 +549,6 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
-            check_integrity=True,
+            verify_checksum=True,
         ),
     ])
