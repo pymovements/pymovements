@@ -169,7 +169,9 @@ class WebSource:
             If :py:attr:`~pymovements.WebSource.md5` is not of type string.
         """
         if not isinstance(self.md5, str):
-            raise TypeError(f"WebSource.md5 must be of type string but got {type(self.md5)}")
+            raise TypeError(
+                f"WebSource.md5 must be of type string but got {type(self.md5).__name__}",
+            )
 
         if not path.is_file():
             raise FileNotFoundError(

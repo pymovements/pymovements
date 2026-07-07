@@ -552,3 +552,47 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             verify_checksum=True,
         ),
     ])
+
+
+def test_websource_checksum(make_text_file):
+    path = make_text_file('test')
+
+    result = WebSource.checksum(path)
+
+    assert result == '68b329da9893e34099c7d8ad5cb9c940'
+
+
+def test_websource_verify_checksum_success(make_text_file):
+    path = make_text_file('test')
+
+    WebSource(url='test', md5='68b329da9893e34099c7d8ad5cb9c940').verify_checksum(path)
+
+
+def test_websource_verify_checksum_mismatch(make_text_file):
+    path = make_text_file('test')
+
+    with pytest.raises(ChecksumError) as exc:
+        WebSource(url='test', md5='123456').verify_checksum(path)
+
+    assert exc.value.actual == '68b329da9893e34099c7d8ad5cb9c940'
+    assert exc.value.expected == '123456'
+    assert exc.value.path == path
+    assert exc.value.algorithm == 'MD5'
+
+
+def test_websource_verify_checksum_no_checksum(make_text_file):
+    path = make_text_file('test')
+
+    message = 'WebSource.md5 must be of type string but got NoneType'
+
+    with pytest.raises(TypeError, match=message):
+        WebSource(url='test', md5=None).verify_checksum(path)
+
+
+def test_websource_verify_checksum_no_file(tmp_path):
+    path = tmp_path / 'test'
+
+    message = 'No such file or directory'
+
+    with pytest.raises(FileNotFoundError, match=message):
+        WebSource(url='test', md5='123456').verify_checksum(path)
