@@ -20,8 +20,11 @@
 """WebSource definition and download helper."""
 from __future__ import annotations
 
+import errno
+import hashlib
+import os
 import urllib.request
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from pathlib import Path
@@ -32,10 +35,37 @@ from warnings import warn
 from tqdm.auto import tqdm
 
 from pymovements._version import __version__
-from pymovements.dataset.dataset_files import ChecksumError
-from pymovements.dataset.dataset_files import DatasetFile
 
 USER_AGENT: str = f'pymovements/{__version__}'
+
+
+@dataclass(slots=True, eq=False)
+class ChecksumError(Exception):
+    """Exception raised when a checksum integrity check fails.
+
+    Attributes
+    ----------
+    expected: str
+        Expected checksum.
+    actual: str
+        Actual checksum.
+    path: Path
+        Path of checked file.
+    algorithm: str
+        Name of the checksum algorithm. (default: 'MD5')
+    """
+
+    expected: str
+    actual: str
+    path: Path
+    algorithm: str = 'MD5'
+
+    def __str__(self) -> str:
+        """Get exception message."""
+        return (
+            f"{self.algorithm} checksum mismatch for file '{self.path}'"
+            f": expected '{self.expected}', got '{self.actual}'"
+        )
 
 
 @dataclass(frozen=True)
@@ -104,10 +134,8 @@ class WebSource:
         # Attempt downloading from primary URL.
         try:
             return _download_file(
-                url=self.url,
+                source=self,
                 dirpath=dirpath,
-                filename=self.filename,
-                md5=self.md5,
                 verbose=verbose,
                 verify_checksum=verify_checksum,
             )
@@ -122,10 +150,8 @@ class WebSource:
             for mirror_idx, mirror_url in enumerate(self.mirrors, start=1):
                 try:
                     return _download_file(
-                        url=mirror_url,
+                        source=replace(self, url=mirror_url)
                         dirpath=dirpath,
-                        filename=self.filename,
-                        md5=self.md5,
                         verbose=verbose,
                         verify_checksum=verify_checksum,
                     )
@@ -210,10 +236,8 @@ class WebSource:
 
 
 def _download_file(
-        url: str,
+        source: WebSource,
         dirpath: Path,
-        filename: str,
-        md5: str | None = None,
         *,
         verify_checksum: bool = True,
         max_redirect_hops: int = 3,
@@ -223,14 +247,10 @@ def _download_file(
 
     Parameters
     ----------
-    url : str
-        URL of file to be downloaded.
+    source : WebSource
+        The source to be downloaded. Ignores :py:attr:`~pymovements.WebSource.mirrors`.
     dirpath : Path
         Path to directory where file will be saved to.
-    filename : str
-        Target filename of saved file.
-    md5 : str | None
-        MD5 checksum of downloaded file. If None, do not check. (default: None)
     verify_checksum : bool
         If True, check integrity by using the md5 checksum. (default: True)
     max_redirect_hops : int
@@ -253,14 +273,14 @@ def _download_file(
     """
     dirpath = dirpath.expanduser()
     dirpath.mkdir(parents=True, exist_ok=True)
-    filepath = dirpath / filename
+    filepath = dirpath / source.filename
 
     if filepath.is_file():
-        if verify_checksum and md5:
+        if verify_checksum and source.md5:
             if verbose:
                 print('Verifying existing file:', filepath)
             try:
-                DatasetFile(filepath).verify_checksum(md5)
+                source.verify_checksum(filepath)
             except ChecksumError as e:
                 if verbose:
                     print('Local file failed checksum verification:')
@@ -277,19 +297,19 @@ def _download_file(
             return filepath
 
     if verbose:
-        print(f'Downloading {url} to {filepath}')
+        print(f'Downloading {source.url} to {filepath}')
 
     # expand redirect chain if needed
-    url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
+    url = _get_redirected_url(url=source.url, max_hops=max_redirect_hops)
 
     # download the file
-    _download_url(url=url, destination=filepath, verbose=verbose)
+    _download_url(url=source.url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
-    if verify_checksum and md5:
+    if verify_checksum and source.md5:
         if verbose:
             print(f'Checking integrity of {filepath.name}')
-        DatasetFile(filepath).verify_checksum(md5)
+        source.verify_checksum(filepath)
 
     return filepath
 
