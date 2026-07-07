@@ -190,7 +190,12 @@ class WebSource:
             If file checksum does not match passed `md5` or `filepath` doesn't exist.
         FileNotFoundError
             If file does not exist.
+        TypeError
+            If :py:attr:`~pymovements.WebSource.md5` is not of type string.
         """
+        if not isinstance(self.md5, str):
+            raise TypeError(f"WebSource.md5 must be of type string but got {type(self.md5)}")
+
         if not path.is_file():
             raise FileNotFoundError(
                 errno.ENOENT,  # errno
