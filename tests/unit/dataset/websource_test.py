@@ -198,6 +198,70 @@ def test_websource_download(tmp_path, verbose):
 
 
 @pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+@pytest.mark.parametrize(
+    'verify_checksum',
+    [
+        pytest.param(False, id='verify_checksum_false'),
+        pytest.param(True, id='verify_checksum_true'),
+    ],
+)
+def test_websource_download_existing_file_verified(tmp_path, verbose, verify_checksum):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+    filepath = source.download(tmp_path, verify_checksum=verify_checksum, verbose=verbose)
+
+    assert filepath.exists()
+    last_mtime = filepath.stat().st_mtime
+
+    new_filepath = source.download(tmp_path, verify_checksum=verify_checksum, verbose=verbose)
+
+    new_mtime = filepath.stat().st_mtime
+
+    assert new_filepath.exists()
+    assert new_filepath == filepath
+    assert new_mtime == last_mtime
+
+
+@pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+def test_websource_download_existing_file_checksum_fail(make_text_file, verbose):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    filepath = make_text_file(source.filename)
+
+    assert filepath.exists()
+    last_mtime = filepath.stat().st_mtime
+
+    new_filepath = source.download(filepath.parent, verify_checksum=True, verbose=verbose)
+
+    new_mtime = filepath.stat().st_mtime
+
+    assert new_filepath.exists()
+    assert new_filepath == filepath
+    assert new_mtime > last_mtime
+
+
+@pytest.mark.network
 def test_websource_download_md5_None(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
@@ -555,33 +619,33 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
 
 
 def test_websource_checksum(make_text_file):
-    path = make_text_file('test')
+    path = make_text_file('test.txt', 'test')
 
     result = WebSource.checksum(path)
 
-    assert result == '68b329da9893e34099c7d8ad5cb9c940'
+    assert result == 'd8e8fca2dc0f896fd7cb4cb0031ba249'
 
 
 def test_websource_verify_checksum_success(make_text_file):
-    path = make_text_file('test')
+    path = make_text_file('test.txt', 'test')
 
-    WebSource(url='test', md5='68b329da9893e34099c7d8ad5cb9c940').verify_checksum(path)
+    WebSource(url='test', md5='d8e8fca2dc0f896fd7cb4cb0031ba249').verify_checksum(path)
 
 
 def test_websource_verify_checksum_mismatch(make_text_file):
-    path = make_text_file('test')
+    path = make_text_file('test.txt', 'test')
 
     with pytest.raises(ChecksumError) as exc:
         WebSource(url='test', md5='123456').verify_checksum(path)
 
-    assert exc.value.actual == '68b329da9893e34099c7d8ad5cb9c940'
+    assert exc.value.actual == 'd8e8fca2dc0f896fd7cb4cb0031ba249'
     assert exc.value.expected == '123456'
     assert exc.value.path == path
     assert exc.value.algorithm == 'MD5'
 
 
 def test_websource_verify_checksum_no_checksum(make_text_file):
-    path = make_text_file('test')
+    path = make_text_file('test.txt', 'test')
 
     message = 'WebSource.md5 must be of type string but got NoneType'
 
@@ -590,7 +654,7 @@ def test_websource_verify_checksum_no_checksum(make_text_file):
 
 
 def test_websource_verify_checksum_no_file(tmp_path):
-    path = tmp_path / 'test'
+    path = tmp_path / 'test.txt'
 
     message = 'No such file or directory'
 

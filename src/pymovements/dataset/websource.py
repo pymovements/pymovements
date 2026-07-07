@@ -278,7 +278,7 @@ def _download_file(
             else:
                 if verbose:
                     print('Using existing verified file:', filepath)
-                    return filepath
+                return filepath
         else:
             if verbose:
                 print('Using existing unverified file:', filepath)
