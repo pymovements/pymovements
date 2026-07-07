@@ -29,8 +29,10 @@ from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from dataclasses import replace
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 from urllib.error import URLError
+from urllib.parse import urlparse
 from warnings import warn
 
 from tqdm.auto import tqdm
@@ -129,8 +131,6 @@ class WebSource:
 
         if self.url is None:
             raise AttributeError('WebSource.url must not be None')
-        if self.filename is None:
-            raise AttributeError('WebSource.filename must not be None')
 
         # Attempt downloading from primary URL.
         try:
@@ -251,6 +251,9 @@ def _download_file(
 ) -> Path:
     """Download a file from a URL and place it in root.
 
+    If :py:attr:`~pymovements.WebSource.filename` is None, infer target filename from
+    :py:attr:`~pymovements.WebSource.url`.
+
     Parameters
     ----------
     source : WebSource
@@ -277,9 +280,18 @@ def _download_file(
     ChecksumError
         If the MD5 checksum of the downloaded file did not match the expected checksum.
     """
+    # expand redirect chain if needed
+    redirected_url = _get_redirected_url(url=source.url, max_hops=max_redirect_hops)
+
+    # if not provided infer target filename from url.
+    if source.filename:
+        filename = source.filename
+    else:
+        filename = PurePosixPath(urlparse(redirected_url).path).name
+
     dirpath = dirpath.expanduser()
     dirpath.mkdir(parents=True, exist_ok=True)
-    filepath = dirpath / source.filename
+    filepath = dirpath / filename
 
     if filepath.is_file():
         if verify_checksum and source.md5:
@@ -304,9 +316,6 @@ def _download_file(
 
     if verbose:
         print(f'Downloading {source.url} to {filepath}')
-
-    # expand redirect chain if needed
-    redirected_url = _get_redirected_url(url=source.url, max_hops=max_redirect_hops)
 
     # download the file
     _download_url(url=redirected_url, destination=filepath, verbose=verbose)
