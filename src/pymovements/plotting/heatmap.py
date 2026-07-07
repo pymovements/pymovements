@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -113,13 +114,13 @@ def heatmap(
         If the experiment property of the Gaze is None
     """
     if add_stimulus:
-        DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+        warn (DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap()."))
 
     if path_to_image_stimulus is not None:
-        DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+        warn (DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap()."))
 
     if stimulus_origin != "upper":
-        DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+        warn (DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap()."))
 
     # Extract x and y positions from the gaze dataframe
     x = gaze.samples[position_column].list.get(0).to_numpy()

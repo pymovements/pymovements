@@ -25,7 +25,7 @@ from pathlib import Path
 import matplotlib.pyplot 
 import PIL.Image
 
-import warnings
+from warnings import warn
 
 from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
@@ -42,22 +42,18 @@ class ImageStimulus:
         Image stimulus list.
     """
 
-    def __init__(self, images: list[Path],origin: str = 'upper') -> None:
+    def __init__(self, images: list[Path], origin: str = 'upper') -> None:
         self.images = images
         self.origin = origin
 
     def show(self, stimulus_id: int , origin: str = 'upper'):
 
-      
-        warnings.warn(
-            "This method is deprecated please use ImageStimulus.plot() instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        warn(DeprecationWarning("This method is deprecated please use ImageStimulus.plot() instead.",))
 
-        #_draw_image_stimulus(self.images[stimulus_id], origin=origin, show=True)
+        self.origin = origin
 
-        self.plot(self.images[stimulus_id], origin=self.origin)
+        self.plot(stimulus_id)
+        
         matplotlib.pyplot.show()
 
 

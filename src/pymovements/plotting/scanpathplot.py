@@ -147,13 +147,13 @@ def scanpathplot(
 
     """
     if add_stimulus:
-        DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+        warn (DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling scanpathplot()."))
 
     if path_to_image_stimulus is not None:
-        DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+        warn (DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling scanpathplot()."))
 
     if stimulus_origin != "upper":
-        DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().")
+        warn (DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling scanpathplot()."))
 
     if events is not None:
         warn(
