@@ -27,7 +27,6 @@ import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
-from dataclasses import replace
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
@@ -107,8 +106,10 @@ class WebSource:
         # Attempt downloading from primary URL.
         try:
             return _download_file(
-                source=self,
+                url=self.url,
                 dirpath=dirpath,
+                filename=self.filename,
+                md5=self.md5,
                 verbose=verbose,
                 verify_checksum=verify_checksum,
             )
@@ -123,8 +124,10 @@ class WebSource:
             for mirror_idx, mirror_url in enumerate(self.mirrors, start=1):
                 try:
                     return _download_file(
-                        source=replace(self, url=mirror_url),
+                        url=mirror_url,
                         dirpath=dirpath,
+                        filename=self.filename,
+                        md5=self.md5,
                         verbose=verbose,
                         verify_checksum=verify_checksum,
                     )
@@ -214,8 +217,10 @@ class WebSource:
 
 
 def _download_file(
-        source: WebSource,
+        url: str,
         dirpath: Path,
+        filename: str | None,
+        md5: str | None = None,
         *,
         verify_checksum: bool = True,
         max_redirect_hops: int = 3,
@@ -223,15 +228,16 @@ def _download_file(
 ) -> Path:
     """Download a file from a URL and place it in root.
 
-    If :py:attr:`~pymovements.WebSource.filename` is None, infer target filename from
-    :py:attr:`~pymovements.WebSource.url`.
-
     Parameters
     ----------
-    source : WebSource
-        The source to be downloaded. Ignores :py:attr:`~pymovements.WebSource.mirrors`.
+    url : str
+        URL of file to be downloaded.
     dirpath : Path
         Path to directory where file will be saved to.
+    filename : str | None
+        Target filename of saved file. Is None, infer target filename from url.
+    md5 : str | None
+        MD5 checksum of downloaded file. If None, do not check. (default: None)
     verify_checksum : bool
         If True, check integrity by using the md5 checksum. (default: True)
     max_redirect_hops : int
@@ -253,12 +259,10 @@ def _download_file(
         If the MD5 checksum of the downloaded file did not match the expected checksum.
     """
     # expand redirect chain if needed
-    redirected_url = _get_redirected_url(url=source.url, max_hops=max_redirect_hops)
+    redirected_url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
 
     # if not provided infer target filename from url.
-    if source.filename:
-        filename = source.filename
-    else:
+    if not filename:
         filename = PurePosixPath(urlparse(redirected_url).path).name
 
     dirpath = dirpath.expanduser()
@@ -266,11 +270,11 @@ def _download_file(
     filepath = dirpath / filename
 
     if filepath.is_file():
-        if verify_checksum and source.md5:
+        if verify_checksum and md5:
             if verbose:
                 print('Verifying existing file:', filepath)
             try:
-                source.verify_checksum(filepath)
+                WebSource(url=url, md5=md5).verify_checksum(filepath)
             except ChecksumError as e:
                 if verbose:
                     print('Local file failed checksum verification:')
@@ -287,16 +291,16 @@ def _download_file(
             return filepath
 
     if verbose:
-        print(f'Downloading {source.url} to {filepath}')
+        print(f'Downloading {url} to {filepath}')
 
     # download the file
     _download_url(url=redirected_url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
-    if verify_checksum and source.md5:
+    if verify_checksum and md5:
         if verbose:
             print(f'Checking integrity of {filepath.name}')
-        source.verify_checksum(filepath)
+        WebSource(url=url, md5=md5).verify_checksum(filepath)
 
     return filepath
 

@@ -329,12 +329,6 @@ def test__DownloadProgressBar_tsize_not_None():
             id='url_none',
         ),
         pytest.param(
-            WebSource(url='https://example.com/test.gz.tar', filename=None),
-            AttributeError,
-            'WebSource.filename must not be None',
-            id='filename_none',
-        ),
-        pytest.param(
             WebSource(url='test.gz.tar', filename='test.gz.tar'),
             ValueError,
             'unknown url type: ',
@@ -370,10 +364,8 @@ def test_websource_download_fail(
 
     mock_download_file.assert_has_calls([
         mock.call(
-            url='https://example.com/test.gz.tar',
+            source=websource,
             dirpath=tmp_path,
-            filename='test.gz.tar',
-            md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
             check_integrity=True,
         ),
