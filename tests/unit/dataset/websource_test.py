@@ -619,33 +619,33 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
 
 
 def test_websource_checksum(testfiles_dirpath):
-    path = testfiles_dirpath / 'monocular_example.csv'
+    path = testfiles_dirpath / 'rda_test_file.rda'
 
     result = WebSource.checksum(path)
 
-    assert result == 'b56e208f6442bab645789defe865183b'
+    assert result == 'db8a1766878007ccfdcbd112cb084249'
 
 
 def test_websource_verify_checksum_success(testfiles_dirpath):
-    path = testfiles_dirpath / 'monocular_example.csv'
+    path = testfiles_dirpath / 'rda_test_file.rda'
 
-    WebSource(url='test', md5='b56e208f6442bab645789defe865183b').verify_checksum(path)
+    WebSource(url='test', md5='db8a1766878007ccfdcbd112cb084249').verify_checksum(path)
 
 
 def test_websource_verify_checksum_mismatch(testfiles_dirpath):
-    path = testfiles_dirpath / 'monocular_example.csv'
+    path = testfiles_dirpath / 'rda_test_file.rda'
 
     with pytest.raises(ChecksumError) as exc:
         WebSource(url='test', md5='123456').verify_checksum(path)
 
-    assert exc.value.actual == 'b56e208f6442bab645789defe865183b'
+    assert exc.value.actual == 'db8a1766878007ccfdcbd112cb084249'
     assert exc.value.expected == '123456'
     assert exc.value.path == path
     assert exc.value.algorithm == 'MD5'
 
 
 def test_websource_verify_checksum_no_checksum(testfiles_dirpath):
-    path = testfiles_dirpath / 'monocular_example.csv'
+    path = testfiles_dirpath / 'rda_test_file.rda'
 
     message = 'WebSource.md5 must be of type string but got NoneType'
 
