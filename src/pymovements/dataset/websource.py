@@ -24,9 +24,10 @@ import errno
 import hashlib
 import os
 import urllib.request
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -150,7 +151,7 @@ class WebSource:
             for mirror_idx, mirror_url in enumerate(self.mirrors, start=1):
                 try:
                     return _download_file(
-                        source=replace(self, url=mirror_url)
+                        source=replace(self, url=mirror_url),
                         dirpath=dirpath,
                         verbose=verbose,
                         verify_checksum=verify_checksum,
@@ -300,10 +301,10 @@ def _download_file(
         print(f'Downloading {source.url} to {filepath}')
 
     # expand redirect chain if needed
-    url = _get_redirected_url(url=source.url, max_hops=max_redirect_hops)
+    redirected_url = _get_redirected_url(url=source.url, max_hops=max_redirect_hops)
 
     # download the file
-    _download_url(url=source.url, destination=filepath, verbose=verbose)
+    _download_url(url=redirected_url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
     if verify_checksum and source.md5:
