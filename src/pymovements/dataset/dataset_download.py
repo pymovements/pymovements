@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from urllib.error import URLError
 from warnings import warn
@@ -203,10 +204,8 @@ def _download_resource_with_legacy_mirrors(
         mirror_url = f'{mirror}{resource.source.url}'
         try:
             _download_file(
-                url=mirror_url,
+                source=replace(resource.source, url=mirror_url),  # replace url with mirror url
                 dirpath=target_dirpath,
-                filename=resource.source.filename or '',  # filename should be set in WebSource
-                md5=resource.source.md5,
                 verify_checksum=verify_checksum,
                 verbose=verbose,
             )
