@@ -145,6 +145,69 @@ class WebSource:
                 f"Downloading resource {self.filename} failed for all mirrors.",
             ) from primary_error
 
+    def verify_checksum(self, path: Path, *, chunk_size: int = 1024 * 1024) -> None:
+        """Verify file integrity by comparing MD5 checksums.
+
+        The checksum from `path` is compared against :py:attr:`~pymovements.WebSource.md5`.
+
+        Parameters
+        ----------
+        path: Path
+            Path to file to verify checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Raises
+        ------
+        ChecksumError
+            If file checksum does not match passed `md5` or `filepath` doesn't exist.
+        FileNotFoundError
+            If file does not exist.
+        """
+        if not path.is_file():
+            raise FileNotFoundError(
+                errno.ENOENT,  # errno
+                os.strerror(errno.ENOENT),  # strerror
+                path,  # filename
+            )
+
+        # Calculate checksum and check for match.
+        actual_checksum = WebSource.checksum(path, chunk_size=chunk_size)
+
+        if actual_checksum != self.md5:
+            raise ChecksumError(
+                expected=self.md5,
+                actual=actual_checksum,
+                path=path,
+                algorithm='MD5',
+            )
+
+    @staticmethod
+    def checksum(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
+        """Calculate MD5 checksum.
+
+        Parameters
+        ----------
+        path: Path
+            Path to file to calculate checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Returns
+        -------
+        str
+            Calculated MD5 checksum.
+        """
+        # Setting the `usedforsecurity` flag does not change anything about the functionality, but
+        # indicates that we are not using the MD5 checksum for cryptography.
+        # This enables its usage in restricted environments like FIPS without raising an error.
+        file_md5 = hashlib.new('md5', usedforsecurity=False)
+
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(chunk_size), b''):
+                file_md5.update(chunk)
+        return file_md5.hexdigest()
+
 
 def _download_file(
         url: str,
