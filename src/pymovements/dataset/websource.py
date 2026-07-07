@@ -20,9 +20,6 @@
 """WebSource definition and download helper."""
 from __future__ import annotations
 
-import errno
-import hashlib
-import os
 import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -35,6 +32,8 @@ from warnings import warn
 from tqdm.auto import tqdm
 
 from pymovements._version import __version__
+from pymovements.dataset.dataset_files import ChecksumError
+from pymovements.dataset.dataset_files import DatasetFile
 
 USER_AGENT: str = f'pymovements/{__version__}'
 
@@ -147,35 +146,6 @@ class WebSource:
             ) from primary_error
 
 
-@dataclass(slots=True, eq=False)
-class ChecksumError(Exception):
-    """Exception raised when a checksum integrity check fails.
-
-    Attributes
-    ----------
-    expected: str
-        Expected checksum.
-    actual: str
-        Actual checksum.
-    path: Path
-        Path of checked file.
-    algorithm: str
-        Name of the checksum algorithm. (default: 'MD5')
-    """
-
-    expected: str
-    actual: str
-    path: Path
-    algorithm: str = 'MD5'
-
-    def __str__(self) -> str:
-        """Get exception message."""
-        return (
-            f"{self.algorithm} checksum mismatch for file '{self.path}'"
-            f": expected '{self.expected}', got '{self.actual}'"
-        )
-
-
 def _download_file(
         url: str,
         dirpath: Path,
@@ -227,7 +197,7 @@ def _download_file(
             if verbose:
                 print('Verifying existing file:', filepath)
             try:
-                _check_integrity(filepath, md5)
+                DatasetFile(filepath).check_integrity(md5)
             except ChecksumError as e:
                 if verbose:
                     print('Local file failed checksum verification:')
@@ -256,7 +226,7 @@ def _download_file(
     if check_integrity and md5:
         if verbose:
             print(f'Checking integrity of {filepath.name}')
-        _check_integrity(filepath=filepath, md5=md5)
+        DatasetFile(filepath).check_integrity(md5)
 
     return filepath
 
@@ -352,65 +322,3 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
         urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
         t.total = t.n
-
-
-def _check_integrity(filepath: Path, md5: str) -> None:
-    """Check file integrity by MD5 checksum.
-
-    Parameters
-    ----------
-    filepath : Path
-        Path to file.
-    md5: str
-        Expected MD5 checksum of file.
-
-    Raises
-    ------
-    ChecksumError
-        If file checksum does not match passed `md5` or `filepath` doesn't exist.
-    FileNotFoundError
-        If file does not exist.
-    """
-    if not filepath.is_file():
-        raise FileNotFoundError(
-            errno.ENOENT,  # errno
-            os.strerror(errno.ENOENT),  # strerror
-            filepath,  # filename
-        )
-
-    # Calculate checksum and check for match.
-    actual_md5 = _calculate_md5(filepath)
-
-    if actual_md5 != md5:
-        raise ChecksumError(
-            expected=md5,
-            actual=actual_md5,
-            path=filepath,
-            algorithm='MD5',
-        )
-
-
-def _calculate_md5(filepath: Path, chunk_size: int = 1024 * 1024) -> str:
-    """Calculate MD5 checksum.
-
-    Parameters
-    ----------
-    filepath : Path
-        Path to file.
-    chunk_size : int
-        Byte size of processed chunks. (default: 1024 * 1024)
-
-    Returns
-    -------
-    str
-        Calculated MD5 checksum.
-    """
-    # Setting the `usedforsecurity` flag does not change anything about the functionality, but
-    # indicates that we are not using the MD5 checksum for cryptography.
-    # This enables its usage in restricted environments like FIPS without raising an error.
-    file_md5 = hashlib.new('md5', usedforsecurity=False)
-
-    with open(filepath, 'rb') as f:
-        for chunk in iter(lambda: f.read(chunk_size), b''):
-            file_md5.update(chunk)
-    return file_md5.hexdigest()

@@ -20,6 +20,9 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
+import errno
+import hashlib
+import os
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -47,6 +50,35 @@ from pymovements.gaze.io import from_ipc
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
+
+
+@dataclass(slots=True, eq=False)
+class ChecksumError(Exception):
+    """Exception raised when a checksum integrity check fails.
+
+    Attributes
+    ----------
+    expected: str
+        Expected checksum.
+    actual: str
+        Actual checksum.
+    path: Path
+        Path of checked file.
+    algorithm: str
+        Name of the checksum algorithm. (default: 'MD5')
+    """
+
+    expected: str
+    actual: str
+    path: Path
+    algorithm: str = 'MD5'
+
+    def __str__(self) -> str:
+        """Get exception message."""
+        return (
+            f"{self.algorithm} checksum mismatch for file '{self.path}'"
+            f": expected '{self.expected}', got '{self.actual}'"
+        )
 
 
 @dataclass
@@ -91,6 +123,64 @@ class DatasetFile:
         if metadata is None:
             metadata = {}
         self.metadata = metadata
+
+    def check_integrity(self, md5: str, *, chunk_size: int = 1024 * 1024) -> None:
+        """Check file integrity by MD5 checksum.
+
+        Parameters
+        ----------
+        md5: str
+            Expected MD5 checksum of file.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Raises
+        ------
+        ChecksumError
+            If file checksum does not match passed `md5` or `filepath` doesn't exist.
+        FileNotFoundError
+            If file does not exist.
+        """
+        if not self.path.is_file():
+            raise FileNotFoundError(
+                errno.ENOENT,  # errno
+                os.strerror(errno.ENOENT),  # strerror
+                self.path,  # filename
+            )
+
+        # Calculate checksum and check for match.
+        actual_md5 = self.calculate_checksum(chunk_size=chunk_size)
+
+        if actual_md5 != md5:
+            raise ChecksumError(
+                expected=md5,
+                actual=actual_md5,
+                path=self.path,
+                algorithm='MD5',
+            )
+
+    def calculate_checksum(self, *, chunk_size: int = 1024 * 1024) -> str:
+        """Calculate MD5 checksum.
+
+        Parameters
+        ----------
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Returns
+        -------
+        str
+            Calculated MD5 checksum.
+        """
+        # Setting the `usedforsecurity` flag does not change anything about the functionality, but
+        # indicates that we are not using the MD5 checksum for cryptography.
+        # This enables its usage in restricted environments like FIPS without raising an error.
+        file_md5 = hashlib.new('md5', usedforsecurity=False)
+
+        with open(self.path, 'rb') as f:
+            for chunk in iter(lambda: f.read(chunk_size), b''):
+                file_md5.update(chunk)
+        return file_md5.hexdigest()
 
 
 def scan_dataset(
