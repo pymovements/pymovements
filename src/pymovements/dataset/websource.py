@@ -86,7 +86,7 @@ class WebSource:
             self,
             target_dirpath: Path | str,
             *,
-            check_integrity: bool = True,
+            verify_checksum: bool = True,
             verbose: bool = True,
     ) -> Path:
         """Download this resource into `target_dirpath`.
@@ -109,7 +109,7 @@ class WebSource:
                 filename=self.filename,
                 md5=self.md5,
                 verbose=verbose,
-                check_integrity=check_integrity,
+                verify_checksum=verify_checksum,
             )
         except (OSError, RuntimeError, ChecksumError) as primary_error:
             # No mirrors to try
@@ -127,7 +127,7 @@ class WebSource:
                         filename=self.filename,
                         md5=self.md5,
                         verbose=verbose,
-                        check_integrity=check_integrity,
+                        verify_checksum=verify_checksum,
                     )
                 # pylint: disable=overlapping-except
                 except (URLError, OSError, RuntimeError) as mirror_error:
@@ -152,7 +152,7 @@ def _download_file(
         filename: str,
         md5: str | None = None,
         *,
-        check_integrity: bool = True,
+        verify_checksum: bool = True,
         max_redirect_hops: int = 3,
         verbose: bool = True,
 ) -> Path:
@@ -168,7 +168,7 @@ def _download_file(
         Target filename of saved file.
     md5 : str | None
         MD5 checksum of downloaded file. If None, do not check. (default: None)
-    check_integrity : bool
+    verify_checksum : bool
         If True, check integrity by using the md5 checksum. (default: True)
     max_redirect_hops : int
         Maximum number of redirect hops allowed. (default: 3)
@@ -193,11 +193,11 @@ def _download_file(
     filepath = dirpath / filename
 
     if filepath.is_file():
-        if check_integrity and md5:
+        if verify_checksum and md5:
             if verbose:
                 print('Verifying existing file:', filepath)
             try:
-                DatasetFile(filepath).check_integrity(md5)
+                DatasetFile(filepath).verify_checksum(md5)
             except ChecksumError as e:
                 if verbose:
                     print('Local file failed checksum verification:')
@@ -210,7 +210,7 @@ def _download_file(
         else:
             if verbose:
                 print('Using existing unverified file:', filepath)
-                print('Please set check_integrity to True if you require checksum verification')
+                print('Please set verify_checksum to True if you require checksum verification.')
             return filepath
 
     if verbose:
@@ -223,10 +223,10 @@ def _download_file(
     _download_url(url=url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
-    if check_integrity and md5:
+    if verify_checksum and md5:
         if verbose:
             print(f'Checking integrity of {filepath.name}')
-        DatasetFile(filepath).check_integrity(md5)
+        DatasetFile(filepath).verify_checksum(md5)
 
     return filepath
 

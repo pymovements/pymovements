@@ -124,12 +124,12 @@ class DatasetFile:
             metadata = {}
         self.metadata = metadata
 
-    def check_integrity(self, md5: str, *, chunk_size: int = 1024 * 1024) -> None:
-        """Check file integrity by MD5 checksum.
+    def verify_checksum(self, checksum: str, *, chunk_size: int = 1024 * 1024) -> None:
+        """Verify file integrity by comparing MD5 checksums.
 
         Parameters
         ----------
-        md5: str
+        checksum: str
             Expected MD5 checksum of file.
         chunk_size : int
             Byte size of processed chunks. (default: 1024 * 1024)
@@ -149,17 +149,17 @@ class DatasetFile:
             )
 
         # Calculate checksum and check for match.
-        actual_md5 = self.calculate_checksum(chunk_size=chunk_size)
+        actual_checksum = self.checksum(chunk_size=chunk_size)
 
-        if actual_md5 != md5:
+        if actual_checksum != checksum:
             raise ChecksumError(
-                expected=md5,
-                actual=actual_md5,
+                expected=checksum,
+                actual=actual_checksum,
                 path=self.path,
                 algorithm='MD5',
             )
 
-    def calculate_checksum(self, *, chunk_size: int = 1024 * 1024) -> str:
+    def checksum(self, *, chunk_size: int = 1024 * 1024) -> str:
         """Calculate MD5 checksum.
 
         Parameters

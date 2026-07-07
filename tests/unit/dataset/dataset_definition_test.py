@@ -1014,7 +1014,7 @@ def test_dataset_definition_has_resources_not_equal():
                         'source': {
                             'url': 'http://my.example.here',
                             'filename': None,
-                            'md5': None,
+                            'checksum': None,
                             'mirrors': None,
                         },
                     },

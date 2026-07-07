@@ -1246,7 +1246,7 @@ class Dataset:
             extract: bool = True,
             remove_finished: bool = False,
             resume: bool = True,
-            check_integrity: bool = True,
+            verify_checksum: bool = True,
             verbose: int = 1,
     ) -> Dataset:
         """Download dataset resources.
@@ -1271,7 +1271,7 @@ class Dataset:
         resume: bool
             Resume previous extraction by skipping existing files.
             Checks for the correct size of existing files but not integrity. (default: True)
-        check_integrity : bool
+        verify_checksum : bool
             If True, check integrity by using the MD5 checksum. (default: True)
         verbose: int
             Verbosity levels: (1) Show download progress bar and print info messages on downloading
@@ -1298,7 +1298,7 @@ class Dataset:
             extract=extract,
             remove_finished=remove_finished,
             resume=resume,
-            check_integrity=check_integrity,
+            verify_checksum=verify_checksum,
             verbose=bool(verbose),
         )
         return self
