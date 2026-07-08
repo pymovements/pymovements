@@ -20,10 +20,11 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
+from warnings import warn
+
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
-from warnings import warn
 
 from pymovements.gaze.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_line_data
@@ -105,14 +106,17 @@ def traceplot(
     """
 
     if add_stimulus:
-        warn ( DeprecationWarning("add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot()."),)
-        
+        warn(DeprecationWarning(
+            'add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().'))
+
     if path_to_image_stimulus is not None:
-        warn (DeprecationWarning("path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot()."),)
-        
-    if stimulus_origin != "upper":
-        warn (DeprecationWarning("stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot()."),)
-        
+        warn(DeprecationWarning(
+            'path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().'))
+
+    if stimulus_origin != 'upper':
+        warn(DeprecationWarning(
+            'stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().'))
+
     # pylint: disable=duplicate-code
     x_signal = gaze.samples[position_column].list.get(0)
     y_signal = gaze.samples[position_column].list.get(1)
