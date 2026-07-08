@@ -21,11 +21,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-import matplotlib.pyplot 
-import PIL.Image
-
 from warnings import warn
+
+import matplotlib.pyplot
+import PIL.Image
 
 from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
@@ -59,14 +58,13 @@ class ImageStimulus:
             Image origin position.
         """
 
-        warn(DeprecationWarning("This method is deprecated please use ImageStimulus.plot() instead.",))
+        warn(DeprecationWarning('This method is deprecated please use ImageStimulus.plot() instead.'))
 
         self.origin = origin
 
         self.plot(stimulus_id)
-        
-        matplotlib.pyplot.show()
 
+        matplotlib.pyplot.show()
 
     def plot(
         self,
@@ -94,9 +92,8 @@ class ImageStimulus:
             fig = ax.figure
         else:
             fig = None
-        
-        return _draw_image_stimulus(self.images[stimulus_id], fig= fig ,ax=ax, origin=self.origin)
 
+        return _draw_image_stimulus(self.images[stimulus_id], fig=fig, ax=ax, origin=self.origin)
 
     @staticmethod
     def from_file(path: str | Path) -> ImageStimulus:
