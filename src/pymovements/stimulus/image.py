@@ -40,6 +40,8 @@ class ImageStimulus:
     ----------
     images: list[Path]
         Image stimulus list.
+    origin : str, default='upper'
+            Image origin position for plotting.
     """
 
     def __init__(self, images: list[Path], origin: str = 'upper') -> None:
@@ -47,6 +49,15 @@ class ImageStimulus:
         self.origin = origin
 
     def show(self, stimulus_id: int , origin: str = 'upper'):
+        """Display an image stimulus.
+
+        Parameters
+        ----------
+        stimulus_id : int
+            Index of the stimulus to display.
+        origin : str, default='upper'
+            Image origin position.
+        """
 
         warn(DeprecationWarning("This method is deprecated please use ImageStimulus.plot() instead.",))
 
@@ -63,12 +74,19 @@ class ImageStimulus:
         *,
         ax: matplotlib.pyplot.Axes | None = None,
     ) -> tuple[matplotlib.pyplot .Figure, matplotlib.pyplot .Axes]:
-        """Show image stimulus.
+        """Plot an image stimulus.
 
         Parameters
         ----------
-        stimulus_id: int
-            Number of stimulus to be shown.
+        stimulus_id : int
+            Index of the stimulus to plot.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw the image on.
+
+        Returns
+        -------
+        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+            Figure and axes containing the plot.
         """
 
         if ax is not None:
