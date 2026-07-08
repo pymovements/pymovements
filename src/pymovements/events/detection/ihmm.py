@@ -1182,19 +1182,19 @@ def ihmm(
             raise ValueError(
                 f'mu'
                 f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict['mu'].shape}',
+                f'{hmm_parameters_dict[2mu"].shape}',
             )
         if hmm_parameters_dict['sigma'] is not None and hmm_parameters_dict['sigma'].shape != (2,):
             raise ValueError(
                 f'sigma'
                 f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict['sigma'].shape}',
+                f'{hmm_parameters_dict["sigma"].shape}',
             )
-        if hmm_parameters_dict['init'] is not None and hmm_parameters_dict['init'].shape != (2,):
+        if hmm_parameters_dict['init'] is not None and hmm_parameters_dict["init"].shape != (2,):
             raise ValueError(
                 f'init_state'
                 f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict['init'].shape}',
+                f'{hmm_parameters_dict["init"].shape}',
             )
         if hmm_parameters_dict['trans'] is not None and hmm_parameters_dict['trans'].shape != (
                 2, 2,
@@ -1202,7 +1202,7 @@ def ihmm(
             raise ValueError(
                 f'transition_probabilities'
                 f' must have shape (2, 2), but shapes are '
-                f'{hmm_parameters_dict['trans'].shape}',
+                f'{hmm_parameters_dict["trans"].shape}',
             )
 
     if reestimation == False and verbose == True:
