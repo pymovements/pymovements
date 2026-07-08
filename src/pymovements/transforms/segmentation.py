@@ -592,7 +592,7 @@ def segmentation2events(
                 f'trial_columns length ({len(trial_columns)}) must match '
                 f'segmentation length ({len(segmentation)})',
             )
-        df = pl.concat([df, trial_columns], how='horizontal')
+        df = pl.concat([df, trial_columns], how='horizontal_extend')
         group_cols.extend(trial_columns.columns)
 
     # Use rle_id to identify contiguous segments
