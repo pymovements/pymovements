@@ -213,7 +213,7 @@ class WebSource:
         file_md5 = hashlib.new('md5', usedforsecurity=False)
 
         with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(chunk_size), b''):
+            while chunk := f.read(chunk_size):
                 file_md5.update(chunk)
         return file_md5.hexdigest()
 
