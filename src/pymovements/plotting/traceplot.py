@@ -106,16 +106,25 @@ def traceplot(
     """
 
     if add_stimulus:
-        warn(DeprecationWarning(
-            'add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().'))
+        warn(
+            DeprecationWarning(
+                'add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().',
+            ),
+        )
 
     if path_to_image_stimulus is not None:
-        warn(DeprecationWarning(
-            'path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().'))
+        warn(
+            DeprecationWarning(
+                'path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().',
+            ),
+        )
 
     if stimulus_origin != 'upper':
-        warn(DeprecationWarning(
-            'stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().'))
+        warn(
+            DeprecationWarning(
+                'stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().',
+            ),
+        )
 
     # pylint: disable=duplicate-code
     x_signal = gaze.samples[position_column].list.get(0)

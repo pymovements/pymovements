@@ -47,7 +47,7 @@ class ImageStimulus:
         self.images = images
         self.origin = origin
 
-    def show(self, stimulus_id: int , origin: str = 'upper'):
+    def show(self, stimulus_id: int, origin: str = 'upper'):
         """Display an image stimulus.
 
         Parameters

@@ -114,16 +114,25 @@ def heatmap(
         If the experiment property of the Gaze is None
     """
     if add_stimulus:
-        warn(DeprecationWarning(
-            'add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap().'))
+        warn(
+            DeprecationWarning(
+                'add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap().',
+            ),
+        )
 
     if path_to_image_stimulus is not None:
-        warn(DeprecationWarning(
-            'path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap().'))
+        warn(
+            DeprecationWarning(
+                'path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap().',
+            ),
+        )
 
     if stimulus_origin != 'upper':
-        warn(DeprecationWarning(
-            'stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap().'))
+        warn(
+            DeprecationWarning(
+                'stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling heatmap().',
+            ),
+        )
 
     # Extract x and y positions from the gaze dataframe
     x = gaze.samples[position_column].list.get(0).to_numpy()
