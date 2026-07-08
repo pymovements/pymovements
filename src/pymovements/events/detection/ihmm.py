@@ -1190,7 +1190,7 @@ def ihmm(
                 f' must have shape (2,), but shapes are '
                 f'{hmm_parameters_dict["sigma"].shape}',
             )
-        if hmm_parameters_dict['init'] is not None and hmm_parameters_dict["init"].shape != (2,):
+        if hmm_parameters_dict['init'] is not None and hmm_parameters_dict['init'].shape != (2,):
             raise ValueError(
                 f'init_state'
                 f' must have shape (2,), but shapes are '
