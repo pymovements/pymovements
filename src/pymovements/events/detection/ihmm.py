@@ -1169,7 +1169,7 @@ def ihmm(
         if list(hmm_parameters_dict.keys()) != ['mu', 'sigma', 'init', 'trans']:
             raise ValueError(
                 f'hmm_parameters_dict'
-                f' should have fields {['mu', 'sigma', 'init', 'trans']} but instead has '
+                f' should have fields {["mu", "sigma", "init", "trans"]} but instead has '
                 f'{hmm_parameters_dict.keys()}',
             )
 
