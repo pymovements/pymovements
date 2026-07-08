@@ -21,9 +21,8 @@
 from __future__ import annotations
 
 import errno
+import hashlib
 import os
-import platform
-import subprocess
 import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -148,7 +147,7 @@ class WebSource:
                 f"Downloading resource {self.filename} failed for all mirrors.",
             ) from primary_error
 
-    def verify_checksum(self, path: Path) -> None:
+    def verify_checksum(self, path: Path, *, chunk_size: int = 1024 * 1024) -> None:
         """Verify file integrity by comparing MD5 checksums.
 
         The checksum from `path` is compared against :py:attr:`~pymovements.WebSource.md5`.
@@ -157,11 +156,15 @@ class WebSource:
         ----------
         path: Path
             Path to file to verify checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
 
         Raises
         ------
         ChecksumError
             If file checksum does not match passed `md5` or `filepath` doesn't exist.
+        FileNotFoundError
+            If file does not exist.
         TypeError
             If :py:attr:`~pymovements.WebSource.md5` is not of type string.
         """
@@ -170,8 +173,15 @@ class WebSource:
                 f"WebSource.md5 must be of type string but got {type(self.md5).__name__}",
             )
 
+        if not path.is_file():
+            raise FileNotFoundError(
+                errno.ENOENT,  # errno
+                os.strerror(errno.ENOENT),  # strerror
+                path,  # filename
+            )
+
         # Calculate checksum and check for match.
-        actual_checksum = WebSource.checksum(path)
+        actual_checksum = WebSource.checksum(path, chunk_size=chunk_size)
 
         if actual_checksum != self.md5:
             raise ChecksumError(
@@ -182,50 +192,30 @@ class WebSource:
             )
 
     @staticmethod
-    def checksum(path: Path) -> str:
+    def checksum(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
         """Calculate MD5 checksum.
 
         Parameters
         ----------
         path: Path
             Path to file to calculate checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
 
         Returns
         -------
         str
             Calculated MD5 checksum.
-
-        Raises
-        ------
-        FileNotFoundError
-            If file does not exist.
         """
-        if not path.is_file():
-            raise FileNotFoundError(
-                errno.ENOENT,  # errno
-                os.strerror(errno.ENOENT),  # strerror
-                path,  # filename
-            )
+        # Setting the `usedforsecurity` flag does not change anything about the functionality, but
+        # indicates that we are not using the MD5 checksum for cryptography.
+        # This enables its usage in restricted environments like FIPS without raising an error.
+        file_md5 = hashlib.new('md5', usedforsecurity=False)
 
-        algorithm = 'MD5'
-        operating_system = platform.system()
-
-        if operating_system == 'Windows':
-            checksum_process = subprocess.run(
-                ['CertUtil', '-hashfile', path, algorithm],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return checksum_process.stdout.split('\n')[1]
-        # else: 'Darwin', 'Linux'
-        checksum_process = subprocess.run(
-            ['openssl', 'dgst', f"-{algorithm}", path],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return checksum_process.stdout.split()[-1]
+        with open(path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                file_md5.update(chunk)
+        return file_md5.hexdigest()
 
 
 def _download_file(
