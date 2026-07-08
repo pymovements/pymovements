@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 from __future__ import annotations
+from pymovements.gaze.transforms_numpy import norm
 
 import warnings
 from typing import Any
@@ -27,7 +28,6 @@ import numpy
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
-
 
 
 def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
@@ -1265,5 +1265,3 @@ def ihmm(
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
-
-from pymovements.gaze.transforms_numpy import norm
