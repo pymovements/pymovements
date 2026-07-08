@@ -1163,9 +1163,13 @@ def ihmm(
             f' values must sum up to one for each state but instead are '
             f'{
                 numpy.sum(
-                    transition_probabilities[0])} and {
+                    transition_probabilities[0]
+                )
+            } and {
                 numpy.sum(
-                    transition_probabilities[1])}',
+                    transition_probabilities[1]
+                )
+            }',
         )
 
     if hmm_parameters_dict is not None:
