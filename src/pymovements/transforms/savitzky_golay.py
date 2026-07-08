@@ -148,7 +148,7 @@ def savitzky_golay(
             pl.col(input_column)
             .list.get(component)
             .map_batches(func, return_dtype=pl.Float64)
-            .list.explode()
+            .list.explode(empty_as_null=True)
             for component in range(n_components)
         ],
     ).alias(output_column)
