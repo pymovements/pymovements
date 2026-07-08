@@ -17,12 +17,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 from __future__ import annotations
+
+import warnings
 from typing import Any
 
 import numpy
-import warnings
 
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
@@ -1161,7 +1161,11 @@ def ihmm(
         raise ValueError(
             f'transition_probabilities'
             f' values must sum up to one for each state but instead are '
-            f'{numpy.sum(transition_probabilities[0])} and {numpy.sum(transition_probabilities[1])}',
+            f'{
+                numpy.sum(
+                    transition_probabilities[0])} and {
+                numpy.sum(
+                    transition_probabilities[1])}',
         )
 
     if hmm_parameters_dict is not None:
