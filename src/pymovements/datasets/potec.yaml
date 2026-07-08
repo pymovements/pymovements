@@ -62,7 +62,7 @@ resources:
   - content: precomputed_reading_measures
     source:
       url: "https://osf.io/download/3ywhz/"
-      filename: "reading_measures.zip"
+      filename: "reading_measures_merged.zip"
       md5: "b7ada7ca91f3a807d873598b821de88d"
     filename_pattern: 'reader{subject_id:d}_{text_id}_merged.tsv'
     filename_pattern_schema_overrides:
