@@ -27,7 +27,7 @@ import numpy
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
-from pymovements.gaze.transforms_numpy import norm
+
 
 
 def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
@@ -1265,3 +1265,5 @@ def ihmm(
     events = Events(name=name, onsets=onsets_arr, offsets=offsets_arr)
 
     return events
+
+from pymovements.gaze.transforms_numpy import norm
