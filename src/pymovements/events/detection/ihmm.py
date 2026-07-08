@@ -1182,7 +1182,7 @@ def ihmm(
             raise ValueError(
                 f'mu'
                 f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict[2mu"].shape}',
+                f'{hmm_parameters_dict["mu"].shape}',
             )
         if hmm_parameters_dict['sigma'] is not None and hmm_parameters_dict['sigma'].shape != (2,):
             raise ValueError(
