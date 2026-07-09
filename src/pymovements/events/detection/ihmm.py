@@ -1102,9 +1102,9 @@ def ihmm(
         )
 
     # convert into velocities (1D velocities vector)
-    #from pymovements.gaze.transforms_numpy import norm
+    # from pymovements.gaze.transforms_numpy import norm
 
-    velocities_1d =  numpy.linalg.norm(velocities, axis=1) #norm(velocities, axis=1)
+    velocities_1d = numpy.linalg.norm(velocities, axis=1)  # norm(velocities, axis=1)
     # velocities_1d = velocities.mean(axis=1)
 
     vel_mask = ~numpy.isnan(velocities_1d)
