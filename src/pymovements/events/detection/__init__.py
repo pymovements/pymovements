@@ -29,6 +29,7 @@
     pymovements.events.fill
     pymovements.events.idt
     pymovements.events.ivt
+    pymovements.events.ihmm
     pymovements.events.microsaccades
 
 """
