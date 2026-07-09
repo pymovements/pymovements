@@ -175,6 +175,9 @@ napoleon_type_aliases = {
     'colors.Colormap': 'matplotlib.colors.Colormap',
     'colors.Normalize': 'matplotlib.colors.Normalize',
 
+    # Project-local typing aliases
+    'ColumnSpecifier': 'str | int',
+
     # Polars (broken intersphinx)
     'pl.DataFrame': 'polars.DataFrame',
     'pl.Series': 'polars.Series',
@@ -226,7 +229,7 @@ nitpick_ignore_regex = [
     ),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
+    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure|ColumnSpecifier)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
