@@ -855,7 +855,7 @@ def compute_hmm(
 
     return states
 
-from pymovements.gaze.transforms_numpy import norm
+
 @register_event_detection
 def ihmm(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray,
@@ -1103,6 +1103,7 @@ def ihmm(
         )
 
     # convert into velocities (1D velocities vector)
+    from pymovements.gaze.transforms_numpy import norm
 
     velocities_1d = norm(velocities, axis=1)
     # velocities_1d = velocities.mean(axis=1)
