@@ -916,9 +916,6 @@ def ihmm(
         If True, performs Baum-Welch reestimation to optimize HMM parameters
         before state decoding. Recommended for robust parameter estimation.
 
-    include_nan : bool, default=False
-        If True, includes NaN values in processing. Currently unused.
-
     verbose : bool, default=False
         If True, prints parameter values and reestimation progress.
         Only effective when reestimation=True.
@@ -1092,7 +1089,7 @@ def ihmm(
                 f'{hmm_parameters_dict["trans"].shape}',
             )
 
-    if reestimation == False and verbose == True:
+    if not reestimation and verbose:
         warnings.warn(
             message=f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.",
         )
