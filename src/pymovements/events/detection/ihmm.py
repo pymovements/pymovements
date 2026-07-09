@@ -1096,7 +1096,6 @@ def ihmm(
         )
 
     # convert into velocities (1D velocities vector)
-    
 
     velocities_1d = norm(velocities, axis=1)
 
