@@ -126,7 +126,31 @@ def test_from_numpy_with_schema():
     assert gaze.n_components == 2
 
 
-def test_from_numpy_with_column_indices():
+@pytest.mark.parametrize(
+    ('schema', 'trial_columns', 'expected_trial_column'),
+    [
+        pytest.param(None, [0], 'column_0', id='no_schema_index_lists'),
+        pytest.param(
+            [
+                'trial_id', 't', 'd', 'x_pix', 'y_pix', 'x_pos',
+                'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc',
+            ],
+            [0],
+            'trial_id',
+            id='schema_index_lists',
+        ),
+        pytest.param(
+            [
+                'trial_id', 't', 'd', 'x_pix', 'y_pix', 'x_pos',
+                'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc',
+            ],
+            0,
+            'trial_id',
+            id='schema_single_trial_index',
+        ),
+    ],
+)
+def test_from_numpy_with_column_indices(schema, trial_columns, expected_trial_column):
     array = np.array(
         [
             [1, 1, 2, 2],
@@ -156,8 +180,9 @@ def test_from_numpy_with_column_indices():
 
     gaze = from_numpy(
         samples=array,
+        schema=schema,
         experiment=experiment,
-        trial_columns=[0],
+        trial_columns=trial_columns,
         time_column=1,
         time_unit='ms',
         distance_column=2,
@@ -169,7 +194,7 @@ def test_from_numpy_with_column_indices():
 
     expected = pl.DataFrame(
         {
-            'column_0': [1, 1, 2, 2],
+            expected_trial_column: [1, 1, 2, 2],
             'time': [101, 102, 103, 104],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
@@ -178,7 +203,7 @@ def test_from_numpy_with_column_indices():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'column_0': pl.Float64,
+            expected_trial_column: pl.Float64,
             'time': pl.Int64,
             'distance': pl.Float64,
             'pixel': pl.List(pl.Float64),
@@ -190,7 +215,7 @@ def test_from_numpy_with_column_indices():
 
     assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
-    assert gaze.trial_columns == ['column_0']
+    assert gaze.trial_columns == [expected_trial_column]
 
 
 def test_from_numpy_with_trial_id():
