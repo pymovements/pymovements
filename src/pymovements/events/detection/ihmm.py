@@ -1094,7 +1094,8 @@ def ihmm(
 
     if not reestimation and verbose:
         warnings.warn(
-            message=f"verbose is:{verbose} but reestimation is {reestimation}, verbose won't have any effect.",
+            message=f"verbose is:{verbose} but reestimation is {reestimation},"
+            f" verbose won't have any effect.",
         )
 
     # convert into velocities (1D velocities vector)
