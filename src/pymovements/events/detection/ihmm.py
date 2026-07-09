@@ -778,10 +778,14 @@ def compute_hmm(
     else:
         # data driven initialization
         defaults = {
-            'mu': [numpy.percentile(velocities_for_init, 30), 
-                   numpy.percentile(velocities_for_init, 80)],
-            'sigma': [numpy.sqrt(numpy.var(velocities_for_init) / 2), 
-                      numpy.sqrt(numpy.var(velocities_for_init))],
+            'mu': [
+                numpy.percentile(velocities_for_init, 30),
+                numpy.percentile(velocities_for_init, 80),
+            ],
+            'sigma': [
+                numpy.sqrt(numpy.var(velocities_for_init) / 2),
+                numpy.sqrt(numpy.var(velocities_for_init)),
+            ],
             'init': [0.5, 0.5],  # dummy average values should be fine for long sequences
             'trans': [[0.95, 0.05], [0.05, 0.95]],  # based on Salvucci's paper diagram
         }
