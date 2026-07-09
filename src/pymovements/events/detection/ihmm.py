@@ -19,7 +19,6 @@
 # SOFTWARE.
 """Provides the implementation for I-HMM algorithm."""
 from __future__ import annotations
-from pymovements.gaze.transforms_numpy import norm
 
 import warnings
 from typing import Any
