@@ -304,8 +304,8 @@ def baum_welch(
         for i in range(M):
             denom = numpy.sum(gamma_full[i, :-1])
             for j in range(M):
-                numer = numpy.sum(xi[i, j, :])
-                trans[i, j] = numpy.log((numer + eps) / (denom + eps * M))
+                numerator = numpy.sum(xi[i, j, :])
+                trans[i, j] = numpy.log((numerator + eps) / (denom + eps * M))
 
         for j in range(M):
 
