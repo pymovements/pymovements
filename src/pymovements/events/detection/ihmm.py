@@ -29,7 +29,6 @@ from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 
 
-
 def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
     """
     Convert an optimization result dictionary into a JSON-serializable format.
