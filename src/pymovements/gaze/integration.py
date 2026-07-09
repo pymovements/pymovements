@@ -130,29 +130,29 @@ def from_numpy(
     orient: Literal['col', 'row']
         Whether to interpret the two-dimensional samples data as columns or as rows.
         (default: 'col')
-    trial_columns: str | int | list[str | int] | None
+    trial_columns: ColumnSpecifier | list[ColumnSpecifier] | None
         The name or index of the trial columns in the samples data frame. If the list is empty or
         None, the samples data frame is assumed to contain only one trial. If the list is not
         empty, the samples data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
-    time_column: str | int | None
+    time_column: ColumnSpecifier | None
         The name or index of the timestamp column in the samples data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the samples data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
-    pixel_columns: list[str | int] | None
+    pixel_columns: list[ColumnSpecifier] | None
         The names or indices of the pixel position columns in the samples data frame.
         (default: None)
-    position_columns: list[str | int] | None
+    position_columns: list[ColumnSpecifier] | None
         The names or indices of the dva position columns in the samples data frame. (default: None)
-    velocity_columns: list[str | int] | None
+    velocity_columns: list[ColumnSpecifier] | None
         The names or indices of the dva velocity columns in the samples data frame. (default: None)
-    acceleration_columns: list[str | int] | None
+    acceleration_columns: list[ColumnSpecifier] | None
         The names or indices of the dva acceleration columns in the samples data frame.
         (default: None)
-    distance_column: str | int | None
+    distance_column: ColumnSpecifier | None
         The name or index of the column containing eye-to-screen distance in millimeters for each
         sample
         in the samples data frame. If specified, the column will be used for pixel to dva
