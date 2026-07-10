@@ -32,7 +32,6 @@ from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
 
 
-
 def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
     """
     Convert an optimization result dictionary into a JSON-serializable format.
@@ -1115,8 +1114,6 @@ def ihmm(
         init_state = numpy.array(init_state)
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
-
-    
 
     if timesteps is None:
         timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
