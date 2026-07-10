@@ -58,7 +58,11 @@ class ImageStimulus:
             Image origin position.
         """
 
-        warn(DeprecationWarning('This method is deprecated please use ImageStimulus.plot() instead.'))
+        warn(
+            DeprecationWarning(
+                'This method is deprecated'
+                ' please use ImageStimulus.plot() instead.'
+        ))
 
         self.origin = origin
 

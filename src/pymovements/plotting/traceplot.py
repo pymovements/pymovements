@@ -108,21 +108,24 @@ def traceplot(
     if add_stimulus:
         warn(
             DeprecationWarning(
-                'add_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().',
+                'add_stimulus is deprecated. Create an ImageStimulus'
+                ' and call ImageStimulus.plot(ax=...) before calling traceplot().',
             ),
         )
 
     if path_to_image_stimulus is not None:
         warn(
             DeprecationWarning(
-                'path_to_image_stimulus is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().',
+                'path_to_image_stimulus is deprecated. Create an ImageStimulus'
+                ' and call ImageStimulus.plot(ax=...) before calling traceplot().',
             ),
         )
 
     if stimulus_origin != 'upper':
         warn(
             DeprecationWarning(
-                'stimulus_origin is deprecated. Create an ImageStimulus and call ImageStimulus.plot(ax=...) before calling traceplot().',
+                'stimulus_origin is deprecated. Create an ImageStimulus'
+                ' and call ImageStimulus.plot(ax=...) before calling traceplot().',
             ),
         )
 
