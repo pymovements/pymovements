@@ -17,7 +17,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 import warnings
 
 import numpy as np
@@ -38,8 +37,11 @@ test_results = []
 
 
 def record(name, passed, detail=''):
-    test_results.append({'test': name, 'passed': bool(
-        passed) if passed is not None else None, 'detail': detail})
+    test_results.append({
+        'test': name, 'passed': bool(
+            passed,
+        ) if passed is not None else None, 'detail': detail,
+    })
     status = 'PASS' if passed else 'FAIL'
     if passed is None:
         status = 'SKIP'
