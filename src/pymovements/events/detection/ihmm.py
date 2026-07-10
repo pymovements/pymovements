@@ -1086,7 +1086,7 @@ def ihmm(
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('ihmm', reestimation=True, name='fixation_ihmm')
-    >>> gaze.events
+    >>> gaze.events.filter_by_name('fixation_ihmm')
     shape: (2, 4)
     ┌───────────────┬───────┬────────┬──────────┐
     │ name          ┆ onset ┆ offset ┆ duration │
