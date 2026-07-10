@@ -987,7 +987,8 @@ def ihmm(
         If transition_probabilities rows don't sum to 1.
     ValueError
         If hmm_parameters_dict has incorrect keys or shapes.
-     Examples
+    
+    Examples
     --------
     Create a synthetic step signal representing gaze segments.
 
