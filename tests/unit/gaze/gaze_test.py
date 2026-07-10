@@ -20,7 +20,6 @@
 """Test all Gaze functionality."""
 from __future__ import annotations
 
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -30,9 +29,7 @@ from polars.testing import assert_frame_equal
 
 from pymovements import Events
 from pymovements import Experiment
-from pymovements import EyeTracker
 from pymovements import Gaze
-from pymovements import Screen
 
 
 @pytest.fixture(name='make_gaze_with_events', scope='function')
@@ -427,6 +424,163 @@ def test_gaze_copy_events(gaze):
     assert_frame_equal(gaze.events.frame, gaze_copy.events.frame)
 
 
+def test_gaze_copy_metadata():
+    gaze_obj = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        metadata={'key': 'value', 'nested': {'inner': 42}},
+    )
+    gaze_copy = gaze_obj.clone()
+
+    assert gaze_copy.metadata is not gaze_obj.metadata
+    assert gaze_copy.metadata == gaze_obj.metadata
+
+    gaze_copy.metadata['key'] = 'modified'
+    assert gaze_obj.metadata['key'] == 'value'
+
+
+def test_gaze_copy_metadata_default():
+    gaze_obj = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+    )
+    gaze_copy = gaze_obj.clone()
+
+    assert gaze_copy.metadata is not gaze_obj.metadata
+    assert gaze_copy.metadata == gaze_obj.metadata
+
+
+def test_gaze_copy_messages():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        messages=pl.DataFrame({'time': [0, 1], 'content': ['msg1', 'msg2']}),
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.messages is not gaze.messages
+    assert_frame_equal(gaze.messages, gaze_copy.messages)
+
+
+def test_gaze_copy_messages_none():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        messages=None,
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.messages is None
+
+
+def test_gaze_copy_trial_columns():
+    gaze = Gaze(
+        pl.DataFrame(
+            schema={'x': pl.Float64, 'y': pl.Float64, 'trial': pl.Int64},
+        ),
+        experiment=None,
+        position_columns=['x', 'y'],
+        trial_columns='trial',
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.trial_columns is not gaze.trial_columns
+    assert gaze_copy.trial_columns == gaze.trial_columns
+
+
+def test_gaze_copy_trial_columns_none():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        trial_columns=None,
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.trial_columns is None
+
+
+@pytest.mark.parametrize(
+    'gaze',
+    [
+        pytest.param(
+            Gaze(
+                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                experiment=None,
+                position_columns=['x', 'y'],
+            ),
+            id='without_calibrations',
+        ),
+    ],
+)
+def test_gaze_copy_calibrations(gaze):
+    gaze.calibrations = pl.DataFrame({'timestamp': [0], 'num_points': [9]})
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.calibrations is not gaze.calibrations
+    assert_frame_equal(gaze.calibrations, gaze_copy.calibrations)
+
+
+def test_gaze_copy_calibrations_none():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.calibrations is None
+
+
+@pytest.mark.parametrize(
+    'gaze',
+    [
+        pytest.param(
+            Gaze(
+                pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+                experiment=None,
+                position_columns=['x', 'y'],
+            ),
+            id='without_validations',
+        ),
+    ],
+)
+def test_gaze_copy_validations(gaze):
+    gaze.validations = pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]})
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.validations is not gaze.validations
+    assert_frame_equal(gaze.validations, gaze_copy.validations)
+
+
+def test_gaze_copy_validations_none():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+    )
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.validations is None
+
+
+def test_gaze_copy_n_components():
+    gaze = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+    )
+    gaze.n_components = 2
+
+    gaze_copy = gaze.clone()
+
+    assert gaze_copy.n_components == 2
+
+
 def test_gaze_split_by_str():
     gaze = Gaze(
         pl.DataFrame(
@@ -450,8 +604,12 @@ def test_gaze_split_by_str():
 
 
 def test_gaze_split_example():
-    samples = pl.from_dict(
-        {'x': range(100), 'y': range(100), 'trial': np.repeat([1, 2, 3, 4, 5], 20)},
+    samples = pl.DataFrame(
+        {
+            'x': list(range(100)),
+            'y': list(range(100)),
+            'trial': [1, 2, 3, 4, 5] * 20,
+        },
     )
     gaze = Gaze(samples=samples, pixel_columns=['x', 'y'], trial_columns='trial')
     gazes = gaze.split(by='trial')
@@ -1342,6 +1500,79 @@ def test_gaze_dataframe_split_events_by_list():
     assert all(gaze.events.frame.n_unique(by) == 1 for gaze in split_gaze)
 
 
+@pytest.mark.parametrize(
+    ('gaze', 'by'),
+    [
+        pytest.param(
+            Gaze(
+                samples=pl.DataFrame(
+                    {'x': [0, 1, 2, 3], 'y': [0, 1, 2, 3], 'trial': [1, 1, 2, 2]},
+                ),
+                experiment=None,
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
+                messages=pl.DataFrame({'time': [0], 'content': ['msg']}),
+            ),
+            'trial',
+            id='with_messages',
+        ),
+        pytest.param(
+            Gaze(
+                samples=pl.DataFrame(
+                    {'x': [0, 1, 2, 3], 'y': [0, 1, 2, 3], 'trial': [1, 1, 2, 2]},
+                ),
+                experiment=None,
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
+                calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+            ),
+            'trial',
+            id='with_calibrations',
+        ),
+        pytest.param(
+            Gaze(
+                samples=pl.DataFrame(
+                    {'x': [0, 1, 2, 3], 'y': [0, 1, 2, 3], 'trial': [1, 1, 2, 2]},
+                ),
+                experiment=None,
+                pixel_columns=['x', 'y'],
+                trial_columns='trial',
+                validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+            ),
+            'trial',
+            id='with_validations',
+        ),
+    ],
+)
+def test_gaze_split_preserves_attributes(gaze, by):
+    split_gazes = gaze.split(by=by)
+
+    for split_gaze in split_gazes:
+        assert split_gaze.messages is not None or gaze.messages is None
+        assert split_gaze.calibrations is not None or gaze.calibrations is None
+        assert split_gaze.validations is not None or gaze.validations is None
+        assert split_gaze.trial_columns == gaze.trial_columns
+        assert split_gaze.n_components == gaze.n_components
+        assert split_gaze.experiment == gaze.experiment
+
+
+def test_gaze_split_preserves_n_components():
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {'x': [0, 1, 2, 3], 'y': [0, 1, 2, 3], 'trial': [1, 1, 2, 2]},
+        ),
+        experiment=None,
+        pixel_columns=['x', 'y'],
+        trial_columns='trial',
+    )
+    gaze.n_components = 2
+
+    split_gazes = gaze.split(by='trial')
+
+    for split_gaze in split_gazes:
+        assert split_gaze.n_components == 2
+
+
 def test_gaze_dataframe_split_default():
     gaze = Gaze(
         pl.DataFrame(
@@ -1505,283 +1736,4 @@ def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed)
         function_name=f'Gaze.{attribute}',
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
-
     )
-
-
-def _create_gaze():
-    # Creating a Gaze object
-    return Gaze(
-        pl.DataFrame(
-            {
-                'x': [0, 1, 2, 3],
-                'y': [1, 1, 0, 0],
-                'pixel': [[260, 150], [270, 120], [271, 122], [240, 22]],
-                'trial_id': [0, 1, 1, 2],
-            },
-            schema={'x': pl.Float64, 'y': pl.Float64, 'pixel': list, 'trial_id': pl.Int8},
-        ),
-        experiment=Experiment(
-            screen=Screen(
-                width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-                distance_cm=68.0, origin='upper left',
-            ), eyetracker=EyeTracker(
-                sampling_rate=1000.0, left=None,
-                right=None, model='MyModel', version=None, vendor=None, mount=None,
-            ),
-        ),
-        position_columns=['x', 'y'],
-        events=Events(
-            pl.DataFrame(
-                {
-                    'name': ['fixation', 'fixation', 'saccade', 'fixation'],
-                    'onset': [0, 1, 2, 3],
-                    'offset': [1, 2, 3, 4],
-                    'trial_id': [0, 1, 1, 2],
-                },
-            ),
-        ),
-    )
-
-
-def test_gaze_save_csv(tmp_path):
-
-    gaze = _create_gaze()
-    # Saving Gaze to tmp_path
-    gaze.save(
-        dirpath=tmp_path,
-        verbose=2,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert os.path.exists(tmp_path / 'events.csv')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_feather(tmp_path):
-    gaze = _create_gaze()
-    # Saving Gaze to tmp_path
-    gaze.save(
-        dirpath=tmp_path,
-        verbose=2,
-        extension='feather',
-    )
-    assert os.path.exists(tmp_path / 'samples.feather')
-    assert os.path.exists(tmp_path / 'events.feather')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_without_events(tmp_path):
-
-    gaze = _create_gaze()
-
-    # Saving Gaze to tmp_path
-    gaze.save(
-        dirpath=tmp_path,
-        save_events=False,
-        verbose=2,
-        extension='csv',
-    )
-    assert not os.path.exists(tmp_path / 'events.csv')
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_without_samples(tmp_path):
-
-    gaze = _create_gaze()
-
-    # Saving Gaze to tmp_path
-    gaze.save(
-        dirpath=tmp_path,
-        save_samples=False,
-        verbose=2,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'events.csv')
-    assert not os.path.exists(tmp_path / 'samples.csv')
-    assert os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_without_experiment(tmp_path):
-
-    gaze = _create_gaze()
-
-    # Saving Gaze to tmp_path
-    gaze.save(
-        dirpath=tmp_path,
-        save_experiment=False,
-        verbose=1,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'events.csv')
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert not os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_with_empty_events(tmp_path):
-
-    gaze = _create_gaze()
-    gaze.events = None
-
-    with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            save_events=True,
-            verbose=2,
-            extension='csv',
-        )
-
-
-def test_gaze_save_wrong_extension_events(tmp_path):
-    gaze = _create_gaze()
-
-    with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            verbose=0,
-            extension='blabla',
-        )
-
-
-def test_gaze_save_wrong_extension_samples(tmp_path):
-    gaze = _create_gaze()
-
-    with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            save_events=False,
-            verbose=1,
-            extension='blabla',
-        )
-
-
-def test_gaze_save_empty_experiment(tmp_path):
-    gaze = _create_gaze()
-    gaze.experiment = None
-
-    gaze.save(
-        dirpath=tmp_path,
-        verbose=1,
-        extension='csv',
-    )
-    assert os.path.exists(tmp_path / 'events.csv')
-    assert os.path.exists(tmp_path / 'samples.csv')
-    assert not os.path.exists(tmp_path / 'experiment.yaml')
-
-
-def test_gaze_save_empty_experiment_true_save(tmp_path):
-    gaze = _create_gaze()
-    gaze.experiment = None
-
-    with pytest.raises(ValueError):
-        gaze.save(
-            dirpath=tmp_path,
-            save_experiment=True,
-            verbose=1,
-            extension='csv',
-        )
-
-
-def test_gaze_save_samples_csv_no_warning_without_nested_columns(tmp_path):
-    gaze = _create_gaze()
-    gaze.unnest()
-
-    assert not any(gaze.samples[column].dtype == pl.List for column in gaze.samples.columns)
-
-    gaze.save(
-        dirpath=tmp_path,
-        save_samples=True,
-        save_events=False,
-        save_experiment=False,
-        verbose=1,
-        extension='csv',
-    )
-
-
-def test_transform_early_return_on_empty_grouped_frames():
-    # Create an empty samples frame with only the trial column so grouping yields no groups
-    samples = pl.DataFrame(schema={'trial': pl.Int64})
-    gaze = Gaze(samples=samples, trial_columns='trial')
-
-    # Calling a transform that would normally require an input column should do nothing
-    # because grouped_frames will be empty and the method returns early.
-    before = gaze.samples.clone()
-    gaze.clip(lower_bound=None, upper_bound=None, input_column='position', output_column='clipped')
-    after = gaze.samples
-
-    # Ensure samples are unchanged (no new columns, still empty)
-    assert before.schema == after.schema
-    assert before.shape == after.shape
-
-
-def test_transform_returns_early_when_groupby_yields_no_groups(monkeypatch):
-    # Create a non-empty samples DataFrame with a trial column so is_empty() is False
-    samples = pl.DataFrame({'trial': [1]})
-    # Creating a Gaze without identifiable components emits a UserWarning
-    with pytest.warns(UserWarning, match='no components could be inferred'):
-        gaze = Gaze(samples=samples, trial_columns='trial')
-
-    # Define a dummy transform callable that does not require n_components or specific columns
-    def dummy_transform(**_kwargs):  # pragma: no cover - exercised via transform
-        return pl.lit(1).alias('dummy')
-
-    # Monkeypatch polars.DataFrame.group_by to return an empty iterable, simulating no groups
-    def fake_group_by(self, keys, maintain_order=True):  # pylint: disable=unused-argument
-        return []
-
-    monkeypatch.setattr(pl.DataFrame, 'group_by', fake_group_by, raising=True)
-
-    before = gaze.samples.clone()
-    # Invoke transform - due to patched group_by producing no groups, it should early-return
-    gaze.transform(dummy_transform)
-    after = gaze.samples
-
-    # Ensure samples are unchanged (no new columns added)
-    assert before.schema == after.schema
-    assert before.shape == after.shape
-
-
-@pytest.mark.parametrize(
-    'trials',
-    [
-        pytest.param([1], id='single_row_single_group'),
-        pytest.param([1, 1, 2], id='multiple_rows_multiple_groups'),
-    ],
-)
-def test_transform_grouped_path_non_empty_samples(trials):
-    # Non-empty samples so the is_empty() guard is False - ensure grouping yields groups
-    samples = pl.DataFrame({'trial': trials})
-
-    # Creating a Gaze without identifiable components emits a UserWarning
-    with pytest.warns(UserWarning, match='no components could be inferred'):
-        gaze = Gaze(samples=samples, trial_columns='trial')
-
-    # Define a simple transform that doesn't require n_components/columns
-    def dummy_transform(**_kwargs):  # pragma: no cover - exercised via transform
-        return pl.lit(7).alias('dummy')
-
-    gaze.transform(dummy_transform)
-
-    # Verify that the transform was applied through the grouped path
-    assert 'dummy' in gaze.samples.columns
-    assert gaze.samples['dummy'].to_list() == [7] * len(trials)
-
-
-def test_transform_grouped_path_empty_samples_early_return():
-    # Empty samples with a trial column: should reach the grouped-path empty check
-    # and return early there (not the earlier n_components guard), so we use a dummy
-    # transform that does not require n_components.
-    samples = pl.DataFrame(schema={'trial': pl.Int64})
-    gaze = Gaze(samples=samples, trial_columns='trial')
-
-    def dummy_transform(**_kwargs):  # pragma: no cover - exercised via transform
-        return pl.lit(1).alias('dummy')
-
-    before = gaze.samples.clone()
-    gaze.transform(dummy_transform)
-    after = gaze.samples
-
-    # Ensure samples are unchanged (no new columns, still empty)
-    assert before.schema == after.schema
-    assert before.shape == after.shape

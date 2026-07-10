@@ -26,12 +26,13 @@ from typing import Any
 
 import numpy as np
 import yaml
+from deprecated.sphinx import deprecated
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.gaze import transforms_numpy
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
+from pymovements.transforms.numpy import pos2vel
 
 
 @repr_html(['eyetracker', 'screen'])
@@ -75,8 +76,8 @@ class Experiment:
     ...     sampling_rate=1000.0,
     ... )
     >>> print(experiment)
-    Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-     distance_cm=68.0, origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
+    Experiment(screen=Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0,
+      origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
       right=None, model=None, version=None, vendor=None, mount=None))
 
     We can also access the screen boundaries in degrees of visual angle via the
@@ -159,10 +160,9 @@ class Experiment:
         ...     "sampling_rate": 1000.0,
         ... })
         >>> print(experiment)
-        Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-                                 distance_cm=68.0, origin=None),
-                   eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
-                                        model=None, version=None, vendor=None, mount=None))
+        Experiment(screen=Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0,
+          origin=None), eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
+          model=None, version=None, vendor=None, mount=None))
 
         The same result using nested dictionaries for `screen` and `eyetracker`:
 
@@ -180,10 +180,9 @@ class Experiment:
         ...     }
         ... })
         >>> print(experiment)
-        Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-                                 distance_cm=68.0, origin='upper left'),
-                   eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
-                                        model=None, version=None, vendor=None, mount=None))
+        Experiment(screen=Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0,
+          origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
+          model=None, version=None, vendor=None, mount=None))
 
         Returns
         -------
@@ -216,6 +215,11 @@ class Experiment:
         """Set sampling rate of experiment."""
         self.eyetracker.sampling_rate = sampling_rate
 
+    @deprecated(
+        reason='Please use pymovements.transforms.pos2vel() instead. '
+               'This method will be removed in v0.32.0.',
+        version='v0.27.1',
+    )
     def pos2vel(
             self,
             arr: list[float] | list[list[float]] | np.ndarray,
@@ -226,6 +230,10 @@ class Experiment:
 
         Methods 'smooth', 'neighbors' and 'preceding' are adapted from
             Engbert et al.: Microsaccade Toolbox 0.9.
+
+        .. deprecated:: v0.27.1
+           Please use :py:func:`~pymovements.transforms.pos2vel` instead.
+           This method will be removed in v0.32.0.
 
         Parameters
         ----------
@@ -262,7 +270,7 @@ class Experiment:
         >>> experiment.pos2vel(
         ...    arr=arr,
         ...    method="smooth",
-        ... )
+        ... )# doctest: +SKIP
         array([[ 500.,  500.],
                [1000., 1000.],
                [1000., 1000.],
@@ -271,7 +279,7 @@ class Experiment:
                [ 500.,  500.]])
         """
         assert self.sampling_rate is not None
-        return transforms_numpy.pos2vel(
+        return pos2vel(
             arr=arr, sampling_rate=self.sampling_rate, method=method, **kwargs,
         )
 

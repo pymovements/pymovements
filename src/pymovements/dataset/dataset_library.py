@@ -27,7 +27,6 @@ from typing import TypeVar
 
 import yaml
 
-from pymovements import datasets
 from pymovements.dataset.dataset_definition import DatasetDefinition
 
 
@@ -128,7 +127,7 @@ def register_dataset(cls: DatasetDefinitionClass) -> DatasetDefinitionClass:
 
 def _add_shipped_datasets() -> None:
     """Add available public datasets via `src/pymovements/datasets/datasets.yaml`."""
-    dataset_definition_files = resources.files(datasets)
+    dataset_definition_files = resources.files('pymovements.datasets')
 
     datasets_list_yaml = dataset_definition_files / 'datasets.yaml'
     # https://github.com/pymovements/pymovements/pull/952#issuecomment-2690742187

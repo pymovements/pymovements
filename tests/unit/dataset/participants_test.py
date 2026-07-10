@@ -28,6 +28,11 @@ from polars.testing import assert_frame_equal
 from pymovements import Participants
 
 
+def test_participants_init_default():
+    participants = Participants()
+    assert_frame_equal(participants.data, pl.DataFrame(schema={'participant_id': pl.String}))
+
+
 @pytest.mark.parametrize(
     'data',
     [
@@ -49,6 +54,11 @@ def test_participants_init_data(data):
         ),
         pytest.param(
             pl.DataFrame({'participant_id': ['1'], 'age': [21]}),
+            {'participant_id': {'Format': 'string'}, 'age': {'Format': 'integer'}},
+            id='age_integer',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1'], 'age': [21.0]}),
             {'participant_id': {'Format': 'string'}, 'age': {'Format': 'number'}},
             id='age_number',
         ),
@@ -250,19 +260,204 @@ def test_participants_load_and_rename_data_from_file(
             ),
             id='autocast_participant_id_to_string',
         ),
-        pytest.param(
-            pl.DataFrame({'participant_id': ['1'], 'age': ['21.3']}),
-            pl.DataFrame(
-                {'participant_id': ['1'], 'age': [21.3]},
-                schema={'participant_id': pl.String, 'age': pl.Float64},
-            ),
-            id='autocast_age_column_to_float',
-        ),
     ],
 )
 def test_participants_init_autocasts(data, expected_data):
     participants = Participants(data)
     assert_frame_equal(participants.data, expected_data)
+
+
+@pytest.mark.parametrize(
+    ('before', 'update_data', 'after'),
+    [
+        pytest.param(
+            pl.DataFrame(schema={'participant_id': pl.String}),
+            pl.DataFrame(schema={'participant_id': pl.String}),
+            pl.DataFrame(schema={'participant_id': pl.String}),
+            id='empty_update_empty',
+        ),
+        pytest.param(
+            pl.DataFrame(schema={'participant_id': pl.String}),
+            pl.DataFrame({'participant_id': ['1']}),
+            pl.DataFrame({'participant_id': ['1']}),
+            id='empty_update_single_participant',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1']}),
+            pl.DataFrame({'participant_id': ['2']}),
+            pl.DataFrame({'participant_id': ['1', '2']}),
+            id='one_participant_update_new_participant',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['3']}),
+            pl.DataFrame({'participant_id': ['2']}),
+            pl.DataFrame({'participant_id': ['2', '3']}),
+            id='one_participant_update_new_participant_sorted',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': 42},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.DataFrame({'participant_id': ['2']}),
+            pl.from_dicts(
+                [
+                    {'participant_id': '1', 'age': 42},
+                    {'participant_id': '2', 'age': None},
+                ],
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            id='one_participant_with_age_update_new_participant_without_age',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': 42},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.DataFrame(
+                {'participant_id': ['2'], 'age': 48},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.from_dicts(
+                [
+                    {'participant_id': '1', 'age': 42},
+                    {'participant_id': '2', 'age': 48},
+                ],
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            id='one_participant_with_age_update_new_participant_with_age',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': 42},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.DataFrame(
+                {'participant_id': ['2'], 'age': 48},
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            pl.from_dicts(
+                [
+                    {'participant_id': '1', 'age': 42},
+                    {'participant_id': '2', 'age': 48},
+                ],
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            id='one_participant_with_age_int_update_new_participant_with_age_float',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': 42},
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            pl.DataFrame(
+                {'participant_id': ['2'], 'age': 48},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.from_dicts(
+                [
+                    {'participant_id': '1', 'age': 42},
+                    {'participant_id': '2', 'age': 48},
+                ],
+                schema={'participant_id': pl.String, 'age': pl.Float64},
+            ),
+            id='one_participant_with_age_float_update_new_participant_with_age_int',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['1'], 'age': 42},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.DataFrame(
+                {'participant_id': ['2'], 'age': '48'},
+                schema={'participant_id': pl.String, 'age': pl.String},
+            ),
+            pl.from_dicts(
+                [
+                    {'participant_id': '1', 'age': 42},
+                    {'participant_id': '2', 'age': 48},
+                ],
+                schema={'participant_id': pl.String, 'age': pl.String},
+            ),
+            id='one_participant_with_age_int_update_new_participant_with_age_str',
+        ),
+        pytest.param(
+            pl.DataFrame({'participant_id': ['1']}),
+            pl.DataFrame(
+                {'participant_id': ['2'], 'age': 36},
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            pl.from_dicts(
+                [
+                    {'participant_id': '1', 'age': None},
+                    {'participant_id': '2', 'age': 36},
+                ],
+                schema={'participant_id': pl.String, 'age': pl.Int64},
+            ),
+            id='one_participant_without_age_update_new_participant_with_age',
+        ),
+    ],
+)
+def test_participants_update_data(before, update_data, after):
+    participants = Participants(before)
+    participants.update(update_data)
+    assert_frame_equal(participants.data, after)
+
+
+@pytest.mark.parametrize(
+    ('before', 'update_metadata', 'after'),
+    [
+        pytest.param(
+            {},
+            {},
+            {},
+            id='empty_with_empty',
+        ),
+        pytest.param(
+            {},
+            {'a': 1},
+            {'a': 1},
+            id='empty_with_single_key',
+        ),
+        pytest.param(
+            {'b': 2},
+            {'a': 1},
+            {'a': 1, 'b': 2},
+            id='one_key_with_other_key',
+        ),
+        pytest.param(
+            {'a': 2},
+            {'a': 1},
+            {'a': 1},
+            id='one_key_with_same_key',
+        ),
+    ],
+)
+def test_participants_update_metadata(before, update_metadata, after):
+    participants = Participants(metadata=before)
+    init_metadata = {**participants.metadata}
+    participants.update(data=participants.data, metadata=update_metadata)
+
+    expected = {**init_metadata, **after}
+    assert participants.metadata == expected
+
+
+@pytest.mark.parametrize(
+    ('before', 'update_data', 'exception', 'message'),
+    [
+        pytest.param(
+            pl.DataFrame(schema={'participant_id': pl.String}),
+            pl.DataFrame({'a': [1]}),
+            ValueError,
+            "data must have column named 'participant_id'",
+            id='no_participant_id',
+        ),
+    ],
+)
+def test_participants_update_raises(before, update_data, exception, message):
+    participants = Participants(before)
+    with pytest.raises(exception, match=message):
+        participants.update(update_data)
 
 
 @pytest.mark.parametrize(

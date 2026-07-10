@@ -113,6 +113,38 @@ def test_make_text_file_rejects_tilde_home(make_text_file):
 
 
 @pytest.mark.parametrize(
+    'files',
+    [
+        [],
+        ['test.txt'],
+        ['test1.txt', 'test2.txt'],
+        ['a/test.txt', 'b/test.txt'],
+        ['a/test1.txt', 'a/test2.txt', 'b/test1.txt', 'b/test2.txt'],
+    ],
+)
+class TestMakeTextFiles:
+
+    def test_make_text_files_returns_path(self, files, make_text_files):
+        result = make_text_files(files)
+        assert isinstance(result, Path)
+
+    def test_make_text_files_created_correct_filepaths(self, files, make_text_files):
+        rootpath = make_text_files(files)
+
+        created_files = set()
+        for path_object in rootpath.rglob('*'):
+            if path_object.is_file():
+                created_files.add(path_object)
+
+        expected_files = {
+            rootpath / relative_filepath
+            for relative_filepath in files
+        }
+
+        assert created_files == expected_files
+
+
+@pytest.mark.parametrize(
     ('filename', 'data', 'header', 'kwargs', 'read_kwargs'),
     [
         pytest.param(

@@ -273,6 +273,7 @@ class TextStimulus:
             row: pl.DataFrame.row,
             x_eye: str,
             y_eye: str,
+            max_matches: int | None = None,
     ) -> pl.DataFrame:
         """Return the AOI that contains the given gaze row.
 
@@ -292,6 +293,10 @@ class TextStimulus:
             Name of the x eye coordinate field in ``row``.
         y_eye: str
             Name of the y eye coordinate field in ``row``.
+        max_matches: int | None
+            If not ``None``, reduce the number of matches to this amount. This may happen in case of
+            overlapping AOIs.
+            (default: None)
 
         Returns
         -------
@@ -311,7 +316,10 @@ class TextStimulus:
         and the lookup returns a single row of `None` values.
 
         """
-        return _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
+        aois = _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
+        if max_matches:
+            aois = aois.head(max_matches)
+        return aois
 
     @staticmethod
     def from_csv(

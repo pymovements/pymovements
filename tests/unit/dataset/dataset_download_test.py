@@ -41,6 +41,8 @@ from pymovements import DatasetPaths
         'CustomGazeOnlyTwoMirrors',
         'CustomGazeOnlyLegacyMirror',
         'CustomGazeOnlyNoMirror',
+        'CustomGazeImageStimuli',
+        'CustomGazeTextStimuli',
         'CustomPrecomputedOnlySingleMirror',
         'CustomPrecomputedOnlyLegacyMirror',
         'CustomPrecomputedOnlyNoMirror',
@@ -50,6 +52,8 @@ from pymovements import DatasetPaths
         'CustomPrecomputedRMOnlySingleMirror',
         'CustomPrecomputedRMOnlyLegacyMirror',
         'CustomPrecomputedRMOnlyNoMirror',
+        'CustomImageStimuli',
+        'CustomTextStimuli',
     ],
 )
 def dataset_definition_fixture(request):  # pylint: disable=too-many-return-statements
@@ -199,6 +203,52 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
                     'source': {
                         'url': 'https://example.com/test.gz.tar',
                         'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
+                },
+            ],
+        )
+
+    if request.param == 'CustomGazeImageStimuli':
+        return DatasetDefinition(
+            name='CustomPublicDataset',
+            resources=[
+                {
+                    'content': 'gaze',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
+                },
+                {
+                    'content': 'imagestimulus',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'stimuli.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
+                },
+            ],
+        )
+
+    if request.param == 'CustomGazeTextStimuli':
+        return DatasetDefinition(
+            name='CustomPublicDataset',
+            resources=[
+                {
+                    'content': 'gaze',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'test.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
+                },
+                {
+                    'content': 'textstimulus',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'stimuli.gz.tar',
                         'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
                     },
                 },
@@ -355,6 +405,36 @@ def dataset_definition_fixture(request):  # pylint: disable=too-many-return-stat
                     'source': {
                         'url': 'https://example.com/test_rm.gz.tar',
                         'filename': 'test_rm.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
+                },
+            ],
+        )
+
+    if request.param == 'CustomImageStimuli':
+        return DatasetDefinition(
+            name='CustomPublicDataset',
+            resources=[
+                {
+                    'content': 'imagestimulus',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'stimuli.gz.tar',
+                        'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
+                    },
+                },
+            ],
+        )
+
+    if request.param == 'CustomTextStimuli':
+        return DatasetDefinition(
+            name='CustomPublicDataset',
+            resources=[
+                {
+                    'content': 'textstimulus',
+                    'source': {
+                        'url': 'https://example.com/test.gz.tar',
+                        'filename': 'stimuli.gz.tar',
                         'md5': '52bbf03a7c50ee7152ccb9d357c2bb30',
                     },
                 },
@@ -1047,6 +1127,42 @@ def test_dataset_extract_remove_finished_true_precomputed(
 @pytest.mark.parametrize(
     'dataset_definition',
     [
+        'CustomGazeImageStimuli',
+        'CustomGazeTextStimuli',
+        'CustomImageStimuli',
+        'CustomTextStimuli',
+    ],
+    indirect=['dataset_definition'],
+)
+def test_dataset_extract_remove_finished_true_stimuli(
+        mock_extract_archive,
+        tmp_path,
+        dataset_definition,
+):
+    mock_extract_archive.return_value = 'path'
+
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    dataset = Dataset(dataset_definition, path=paths)
+    dataset.extract(remove_finished=True, remove_top_level=False, verbose=1)
+
+    mock_extract_archive.assert_has_calls([
+        mock.call(
+            source_path=tmp_path / 'downloads' / 'stimuli.gz.tar',
+            destination_path=tmp_path / 'stimuli',
+            recursive=True,
+            remove_finished=True,
+            remove_top_level=False,
+            resume=True,
+            verbose=1,
+        ),
+    ])
+
+
+@mock.patch('pymovements.dataset.dataset_download.extract_archive')
+@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
+@pytest.mark.parametrize(
+    'dataset_definition',
+    [
         'CustomGazeAndPrecomputedSingleMirror',
         'CustomGazeAndPrecomputedLegacyMirror',
         'CustomGazeAndPrecomputedNoMirror',
@@ -1148,6 +1264,42 @@ def test_dataset_extract_remove_finished_false_precomputed(
         mock.call(
             source_path=tmp_path / 'downloads' / 'test_pc.gz.tar',
             destination_path=tmp_path / 'precomputed_events',
+            recursive=True,
+            remove_finished=False,
+            remove_top_level=True,
+            resume=True,
+            verbose=1,
+        ),
+    ])
+
+
+@mock.patch('pymovements.dataset.dataset_download.extract_archive')
+@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
+@pytest.mark.parametrize(
+    'dataset_definition',
+    [
+        'CustomGazeImageStimuli',
+        'CustomGazeTextStimuli',
+        'CustomImageStimuli',
+        'CustomTextStimuli',
+    ],
+    indirect=['dataset_definition'],
+)
+def test_dataset_extract_remove_finished_false_stimuli(
+        mock_extract_archive,
+        tmp_path,
+        dataset_definition,
+):
+    mock_extract_archive.return_value = 'path'
+
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    dataset = Dataset(dataset_definition, path=paths)
+    dataset.extract()
+
+    mock_extract_archive.assert_has_calls([
+        mock.call(
+            source_path=tmp_path / 'downloads' / 'stimuli.gz.tar',
+            destination_path=tmp_path / 'stimuli',
             recursive=True,
             remove_finished=False,
             remove_top_level=True,

@@ -775,7 +775,9 @@ class Events:
             tmp_row['__y'] = y
 
             try:
-                aoi_row = aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y')
+                aoi_row = aoi_dataframe.get_aoi(
+                    row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1,
+                )
             except (KeyError, TypeError):  # tolerate common lookup/type errors per row
                 aoi_row = _empty_aoi_row()
             else:
@@ -795,7 +797,7 @@ class Events:
             out_rows.append(aoi_row)
 
         aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
-        self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
+        self.frame = pl.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,

@@ -19,6 +19,8 @@
 # SOFTWARE.
 """Tests pymovements asc to csv processing - BeGaze."""
 import datetime
+import importlib
+import re
 from collections.abc import Callable
 from math import nan
 from typing import Any
@@ -31,6 +33,18 @@ from polars.testing import assert_frame_equal
 from pymovements.gaze import io
 from pymovements.gaze._utils import _parsing_begaze
 from pymovements.gaze.experiment import Experiment
+
+
+def test_begaze_regexes_are_not_compiled_during_import(monkeypatch):
+    """Parser-owned regexes should be compiled lazily when parsing starts."""
+
+    def fail_compile(*args, **kwargs):
+        raise AssertionError('regex compiled during module import')
+
+    monkeypatch.setattr(re, 'compile', fail_compile)
+
+    importlib.reload(_parsing_begaze)
+
 
 BEGAZE_TEXT = r"""
 ## [BeGaze]

@@ -39,6 +39,7 @@ from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
@@ -58,6 +59,11 @@ class Dataset:
 
     Initialize the dataset object.
 
+    Attributes
+    ----------
+    participants: Participants
+        Participant data.
+
     Parameters
     ----------
     definition: str | Path | DatasetDefinition | type[DatasetDefinition]
@@ -67,6 +73,8 @@ class Dataset:
         :py:class:`~pymovements.dataset.DatasetPaths` instance.
     """
 
+    participants: Participants
+
     def __init__(
             self,
             definition: str | Path | DatasetDefinition | type[DatasetDefinition],
@@ -74,6 +82,7 @@ class Dataset:
     ):
         self.fileinfo: pl.DataFrame = pl.DataFrame()
         self._files: list[DatasetFile] = []
+        self.participants = Participants()
         self.gaze: list[Gaze] = []
         self.precomputed_events: list[PrecomputedEventDataFrame] = []
         self.precomputed_reading_measures: list[ReadingMeasures] = []
@@ -105,6 +114,7 @@ class Dataset:
     def load(
             self,
             *,
+            participants: bool | None = None,
             events: bool | None = None,
             preprocessed: bool = False,
             stimuli: bool | None = None,
@@ -120,6 +130,10 @@ class Dataset:
 
         Parameters
         ----------
+        participants: bool | None
+            If ``True``, load participants data. If ``None``, load participants data only if
+            available.
+            (default: None)
         events: bool | None
             If ``True``, load previously saved event data. (default: None)
         preprocessed: bool
@@ -127,7 +141,7 @@ class Dataset:
             (default: False)
         stimuli: bool | None
             If ``True``, load stimulus data. If ``None``, load stimulus data only if available.
-            (default: True)
+            (default: None)
         subset:  dict[str, float | int | str | list[float | int | str]] | None
             If specified, load only a subset of the dataset. All keys in the dictionary must be
             present in the fileinfo dataframe inferred by `scan()`. Values can be either
@@ -158,6 +172,15 @@ class Dataset:
             files=self._files,
             subset=subset,
         )
+
+        # Load participants data if desired and if present.
+        if participants is not False:
+            participant_files = any(
+                file.definition is not None and file.definition.content == 'participants'
+                for file in self._files
+            )
+            if participant_files:
+                self.load_participants()
 
         if self.definition.resources.has_content('gaze'):
             self.load_gaze_files(
@@ -243,8 +266,22 @@ class Dataset:
         for gaze, ev in zip(self.gaze, data):
             gaze.events = ev
 
-    def scan(self) -> Dataset:
+    def scan(
+            self,
+            *,
+            participant_key: str = 'participant_id',
+    ) -> Dataset:
         """Infer information from filepaths and filenames.
+
+        Sets :py:attr:`~pymovements.Dataset.fileinfo` and
+        :py:attr:`~pymovements.Dataset.participants`.
+
+        Parameters
+        ----------
+        participant_key: str
+            The participant key used for identifying a participant. See
+            :py:meth:`~pymovements.Dataset.scan_participants` for more details.
+            (default: `'participant_id'`)
 
         Returns
         -------
@@ -261,7 +298,78 @@ class Dataset:
         self.fileinfo, self._files = dataset_files.scan_dataset(
             definition=self.definition, paths=self.paths,
         )
+        self.scan_participants(participant_key=participant_key)
         return self
+
+    def scan_participants(
+            self,
+            *,
+            participant_key: str = 'participant_id',
+    ) -> None:
+        """Scan files for participant metadata.
+
+        Currently only scans file metadata for participant id.
+
+        Parameters
+        ----------
+        participant_key: str
+            The participant key used for identifying a participant. This corresponds to the group
+            name specified in :py:attr:`~pymovements.ResourceDefinition.filename_pattern`. Usually
+            this is `'participant_id'` or `'subject_id'`. Values will be used to fill the
+            `participant_id` column of :py:attr:`~pymovements.Dataset.participants`.
+            (default: `'participant_id'`)
+        """
+        participant_ids = set()
+        for file in self._files:
+            if participant_key in file.metadata:
+                participant_ids.add(file.metadata[participant_key])
+
+        participant_data = pl.from_dict(
+            {'participant_id': list(participant_ids)},
+        ).sort('participant_id')
+
+        if len(participant_data):
+            self.participants.update(participant_data)
+
+    def load_participants(
+            self,
+            *,
+            replace: bool = False,
+    ) -> None:
+        """Load participants file from resources.
+
+        Parameters
+        ----------
+        replace: bool
+            If `True` this will replace :py:attr:`~pymovements.Dataset.participants` with the loaded
+            data. If `False` this will update the existing data in
+            :py:attr:`~pymovements.Dataset.participants` with the loaded data.
+        """
+        participants_files = [
+            file
+            for file in self._files
+            if file.definition and file.definition.content == 'participants'
+        ]
+
+        if len(participants_files) > 1:
+            raise AttributeError('there may be only a single participants resource per dataset')
+        if not participants_files:
+            raise AttributeError('no participant file defined in dataset resources')
+        participants_file = participants_files[0]
+        participants_definition = participants_file.definition
+
+        loaded_participants = Participants.load(
+            path=participants_file.path,
+            **participants_definition.load_kwargs,
+        )
+
+        if replace:
+            self.participants = loaded_participants
+        else:
+            self.participants.update(
+                data=loaded_participants.data,
+                metadata=loaded_participants.metadata,
+            )
 
     def load_gaze_files(
             self,

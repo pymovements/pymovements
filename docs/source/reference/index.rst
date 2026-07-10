@@ -14,6 +14,8 @@
      - Overview of the :py:class:`~pymovements.Gaze` class
    * - :doc:`events`
      - Overview of the :py:class:`~pymovements.Events` class
+   * - :doc:`transforms`
+     - Overview of transformation functions
    * - :doc:`measures`
      - Overview of eye movement measures
    * - :doc:`stimulus`
@@ -34,6 +36,7 @@
    metadata
    gaze
    events
+   transforms
    measures
    stimulus
    synthetic

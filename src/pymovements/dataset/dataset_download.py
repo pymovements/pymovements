@@ -146,6 +146,10 @@ def extract_dataset(
         'gaze': 'raw',
         'precomputed_events': 'precomputed_events',
         'precomputed_reading_measures': 'precomputed_reading_measures',
+        'textstimulus': 'stimuli',
+        'TextStimulus': 'stimuli',
+        'imagestimulus': 'stimuli',
+        'ImageStimulus': 'stimuli',
     }
 
     for content, content_directory in content_dirnames.items():
