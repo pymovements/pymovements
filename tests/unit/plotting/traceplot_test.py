@@ -162,12 +162,14 @@ def gaze_no_exp_fixture():
             {'cval': np.arange(0, 200), 'title': 'foo'},
             id='set_title',
         ),
+        # This test case now expects a DeprecationWarning
         pytest.param(
             {
                 'add_stimulus': True,
                 'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             },
             id='set_stimulus',
+            marks=pytest.mark.filterwarnings("ignore::DeprecationWarning"),
         ),
     ],
 )
@@ -292,3 +294,37 @@ def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
 
     assert fig is not None
     assert ax is not None
+
+
+def test_traceplot_with_image_stimulus(gaze, tmp_path):
+    """Test that traceplot correctly plots with an ImageStimulus."""
+    from pymovements.stimulus.image import from_file
+    
+    image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+    
+   
+    image_stimulus.origin = 'upper'
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+ 
+    image_stimulus.plot(0, ax=ax)
+    
+   
+    with pytest.warns(UserWarning, match='figsize is ignored because an external Axes was provided.'):
+        returned_fig, returned_ax = traceplot(
+            gaze=gaze,
+            position_column='pixel',
+            figsize=(15, 5),
+            ax=ax,
+            savepath=str(tmp_path / 'traceplot_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+    
+    assert len(ax.images) >= 1  # At least the stimulus image
+    
+    assert (tmp_path / 'traceplot_with_stimulus.svg').is_file()
+    
+    plt.close(fig)
