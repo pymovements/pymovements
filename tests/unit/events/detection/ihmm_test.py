@@ -1105,11 +1105,10 @@ def test_case4_trailing_and_ending_fixations():
 
 def test_case5_toy_dataset():
     toy_available = True
-    
+
     dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
     dataset.download()
     dataset.load()
-    
 
     if toy_available:
         dataset.pix2deg()
