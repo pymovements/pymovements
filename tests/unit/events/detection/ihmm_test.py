@@ -144,8 +144,8 @@ def test_format_optimal_dict_converts_to_json_serializable():
 # -----------------------------------------------------------------------------
 
 
-@pytest.fixture
-def hmm_params_fixture():
+
+def hmm_parameters():
     mu = np.array([0.0, 10.0])
     sigma = np.array([1.0, 1.0])
     init = np.log(np.array([0.5, 0.5]))
@@ -162,8 +162,8 @@ def hmm_params_fixture():
     }
 
 
-def test_baum_forward_shape(hmm_params_fixture):
-    params = hmm_params_fixture
+def test_baum_forward_shape():
+    params = hmm_parameters()
 
     alpha = baum_forward(
         mu=params['mu'],
@@ -179,8 +179,8 @@ def test_baum_forward_shape(hmm_params_fixture):
     assert alpha.shape == (4, 2)
 
 
-def test_baum_backward_shape(hmm_params_fixture):
-    params = hmm_params_fixture
+def test_baum_backward_shape():
+    params = hmm_parameters()
 
     beta = baum_backward(
         mu=params['mu'],
@@ -195,9 +195,9 @@ def test_baum_backward_shape(hmm_params_fixture):
     assert beta.shape == (4, 2)
 
 
-def test_forward_backward_produce_same_log_likelihood(hmm_params_fixture):
+def test_forward_backward_produce_same_log_likelihood():
     """Forward and backward algorithms must agree on sequence likelihood."""
-    params = hmm_params_fixture
+    params = hmm_parameters()
 
     alpha = baum_forward(
         mu=params['mu'],
@@ -1195,7 +1195,6 @@ def _print_summary_at_session_end():
     print(summary)
 
     n_run = summary['passed'].notna().sum()
-    n_passed = (summary['passed'] is True).sum()  # noqa: E712
-    # n_failed = (summary['passed'] is False).sum()  # noqa: E712
+    n_passed = summary['passed'].sum()  # True counts as 1, False as 0
     n_skipped = summary['passed'].isna().sum()
     print(f"{n_passed}/{n_run} checks passed" + (f", {n_skipped} skipped" if n_skipped else ''))
