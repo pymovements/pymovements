@@ -21,12 +21,13 @@
 from pathlib import Path
 from unittest.mock import Mock
 
+import matplotlib.pyplot as plt
 import pytest
 from matplotlib import pyplot
 
-from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.image import from_file
 from pymovements.stimulus.image import from_files
+from pymovements.stimulus.image import ImageStimulus
 
 
 @pytest.mark.parametrize(
@@ -129,7 +130,6 @@ def test_plot_image_stimulus(image_path, stimulus_id, monkeypatch):
 )
 def test_plot_image_stimulus_with_custom_axes(image_path, stimulus_id):
     """Test plotting on custom axes."""
-    
 
     fig, ax = pyplot.subplots(figsize=(10, 8))
     image_stimulus = from_file(image_path)
@@ -206,10 +206,17 @@ def test_plot_returns_figure_and_axes(image_path):
 
     assert fig is not None
     assert ax is not None
+<<<<<<< HEAD
     
     assert isinstance(fig, pyplot.Figure)
     assert isinstance(ax, pyplot.Axes)
     pyplot.close(fig)
+=======
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+    plt.close(fig)
+>>>>>>> ae958d8115e062a60909881240b21c93488752ca
 
 
 @pytest.mark.parametrize(
@@ -221,7 +228,6 @@ def test_plot_returns_figure_and_axes(image_path):
 )
 def test_multiple_stimuli(image_path):
     """Test ImageStimulus with multiple images."""
-   
 
     images = [Path(image_path), Path(image_path)]
     image_stimulus = ImageStimulus(images=images)
@@ -229,8 +235,13 @@ def test_multiple_stimuli(image_path):
     assert len(image_stimulus.images) == 2
     fig1, _ = image_stimulus.plot(0)
     assert fig1 is not None
+<<<<<<< HEAD
     
     pyplot.close(fig1)
+=======
+
+    plt.close(fig1)
+>>>>>>> ae958d8115e062a60909881240b21c93488752ca
 
     fig2, _ = image_stimulus.plot(1)
     assert fig2 is not None
@@ -239,7 +250,6 @@ def test_multiple_stimuli(image_path):
 
 def test_from_file_returns_image_stimulus():
     """Test from_file returns ImageStimulus instance."""
-    
 
     result = from_file('tests/files/stimuli/pexels-zoorg-1000498.jpg')
     assert isinstance(result, ImageStimulus)
@@ -248,7 +258,6 @@ def test_from_file_returns_image_stimulus():
 
 def test_from_files_returns_image_stimulus():
     """Test from_files returns ImageStimulus instance."""
-    
 
     result = from_files('tests/files/', r'{book_name}-{page_num}-{line_num}.jpg')
     assert isinstance(result, ImageStimulus)
