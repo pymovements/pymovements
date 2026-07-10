@@ -992,10 +992,10 @@ def ihmm(
     --------
     Create a synthetic step signal representing gaze segments.
 
-    import numpy as np
-    from pymovements.transforms.numpy import pos2vel
-    from pymovements.synthetic import step_function
-    from pymovements.gaze import from_numpy
+    >>> import numpy as np
+    >>> from pymovements.transforms.numpy import pos2vel
+    >>> from pymovements.synthetic import step_function
+    >>> from pymovements.gaze import from_numpy
 
     >>> positions = step_function(
     ...      length=200, steps=[2, 5, 9, 111, 150],
