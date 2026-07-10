@@ -175,7 +175,6 @@ def test_show_method_updates_origin(image_path, monkeypatch):
 
     image_stimulus = from_file(image_path)
     # image_stimulus.origin
-    
 
     with pytest.warns(DeprecationWarning, match='This method is deprecated'):
         image_stimulus.show(0, 'lower')
@@ -206,17 +205,19 @@ def test_plot_returns_figure_and_axes(image_path):
 
     assert fig is not None
     assert ax is not None
-<<<<<<< HEAD
-    
-    assert isinstance(fig, pyplot.Figure)
-    assert isinstance(ax, pyplot.Axes)
-    pyplot.close(fig)
-=======
 
-    assert isinstance(fig, plt.Figure)
-    assert isinstance(ax, plt.Axes)
-    plt.close(fig)
->>>>>>> ae958d8115e062a60909881240b21c93488752ca
+
+<< << << < HEAD
+
+assert isinstance(fig, pyplot.Figure)
+assert isinstance(ax, pyplot.Axes)
+pyplot.close(fig)
+== == == =
+
+assert isinstance(fig, plt.Figure)
+assert isinstance(ax, plt.Axes)
+plt.close(fig)
+>>>>>> > ae958d8115e062a60909881240b21c93488752ca
 
 
 @pytest.mark.parametrize(
@@ -235,17 +236,19 @@ def test_multiple_stimuli(image_path):
     assert len(image_stimulus.images) == 2
     fig1, _ = image_stimulus.plot(0)
     assert fig1 is not None
-<<<<<<< HEAD
-    
-    pyplot.close(fig1)
-=======
 
-    plt.close(fig1)
->>>>>>> ae958d8115e062a60909881240b21c93488752ca
 
-    fig2, _ = image_stimulus.plot(1)
-    assert fig2 is not None
-    pyplot.close(fig2)
+<< << << < HEAD
+
+pyplot.close(fig1)
+== == == =
+
+plt.close(fig1)
+>>>>>> > ae958d8115e062a60909881240b21c93488752ca
+
+fig2, _ = image_stimulus.plot(1)
+assert fig2 is not None
+pyplot.close(fig2)
 
 
 def test_from_file_returns_image_stimulus():
