@@ -31,6 +31,7 @@ from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.gaze import from_numpy
 from pymovements.plotting import scanpathplot
+from pymovements.stimulus.image import from_file
 
 
 @pytest.fixture(name='make_events', scope='function')
@@ -390,7 +391,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
 def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
     """Test that scanpathplot correctly plots with an ImageStimulus."""
-    from pymovements.stimulus.image import from_file
+    
 
     image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
@@ -401,7 +402,8 @@ def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
 
     image_stimulus.plot(0, ax=ax)
 
-    with pytest.warns(UserWarning, match='figsize is ignored because an external Axes was provided.'):
+    with pytest.warns(UserWarning, match='figsize is ignored ' \
+    'because an external Axes was provided.'):
         returned_fig, returned_ax = scanpathplot(
             gaze=gaze,
             ax=ax,

@@ -19,7 +19,7 @@
 # SOFTWARE.
 """Test heatmap."""
 from unittest.mock import Mock
-
+from pymovements.stimulus.image import from_file
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -237,7 +237,7 @@ def test_heatmap_invalid_screen_origin_raises(origin, gaze):
 )
 def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
     """Test that heatmap correctly plots with an ImageStimulus."""
-    from pymovements.stimulus.image import from_file
+
 
     image_path = 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
@@ -248,7 +248,8 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
 
     image_stimulus.plot(0, ax=ax)
 
-    with pytest.warns(UserWarning, match='heatmap: "figsize" is ignored because an external Axes was provided.'):
+    with pytest.warns(UserWarning, match='heatmap: "figsize" is ignored because' \
+    ' an external Axes was provided.'):
         returned_fig, returned_ax = heatmap(
             gaze,
             position_column='pixel',

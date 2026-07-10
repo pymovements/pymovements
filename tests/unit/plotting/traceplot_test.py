@@ -29,6 +29,7 @@ import pytest
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
 from pymovements.plotting import traceplot
+from pymovements.stimulus.image import from_file
 
 
 @pytest.fixture(
@@ -298,7 +299,7 @@ def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
 
 def test_traceplot_with_image_stimulus(gaze, tmp_path):
     """Test that traceplot correctly plots with an ImageStimulus."""
-    from pymovements.stimulus.image import from_file
+    
 
     image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
@@ -309,7 +310,8 @@ def test_traceplot_with_image_stimulus(gaze, tmp_path):
 
     image_stimulus.plot(0, ax=ax)
 
-    with pytest.warns(UserWarning, match='figsize is ignored because an external Axes was provided.'):
+    with pytest.warns(UserWarning, match='figsize is ignored because ' \
+    'an external Axes was provided.'):
         returned_fig, returned_ax = traceplot(
             gaze=gaze,
             position_column='pixel',
