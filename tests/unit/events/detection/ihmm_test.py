@@ -144,7 +144,6 @@ def test_format_optimal_dict_converts_to_json_serializable():
 # -----------------------------------------------------------------------------
 
 
-
 def hmm_parameters():
     mu = np.array([0.0, 10.0])
     sigma = np.array([1.0, 1.0])
