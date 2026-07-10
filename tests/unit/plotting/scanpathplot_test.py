@@ -228,7 +228,7 @@ def gaze_fixture(request, make_gaze):
                 'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             },
             id='set_stimulus',
-            marks=pytest.mark.filterwarnings("ignore::DeprecationWarning"),
+            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
         ),
         pytest.param(
             {
@@ -391,31 +391,28 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
     """Test that scanpathplot correctly plots with an ImageStimulus."""
     from pymovements.stimulus.image import from_file
-    
+
     image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
-    
+
     image_stimulus.origin = 'upper'
-    
-    
+
     fig, ax = plt.subplots(figsize=(15, 5))
-    
-    
+
     image_stimulus.plot(0, ax=ax)
- 
+
     with pytest.warns(UserWarning, match='figsize is ignored because an external Axes was provided.'):
         returned_fig, returned_ax = scanpathplot(
             gaze=gaze,
             ax=ax,
             savepath=str(tmp_path / 'scanpathplot_with_stimulus.svg'),
         )
-    
-    
+
     assert returned_fig is fig
     assert returned_ax is ax
-    
+
     assert len(ax.images) >= 1  # At least the stimulus image
-    
+
     assert (tmp_path / 'scanpathplot_with_stimulus.svg').is_file()
-    
+
     plt.close(fig)

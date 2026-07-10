@@ -320,9 +320,9 @@ def test_traceplot_with_image_stimulus(gaze, tmp_path):
 
     assert returned_fig is fig
     assert returned_ax is ax
-    
-    assert len(ax.images) >= 1  
-    
+
+    assert len(ax.images) >= 1
+
     assert (tmp_path / 'traceplot_with_stimulus.svg').is_file()
 
     plt.close(fig)
