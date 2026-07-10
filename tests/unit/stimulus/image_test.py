@@ -21,7 +21,6 @@
 from pathlib import Path
 from unittest.mock import Mock
 
-import matplotlib.pyplot as plt
 import pytest
 from matplotlib import pyplot
 
@@ -206,17 +205,10 @@ def test_plot_returns_figure_and_axes(image_path):
 
     assert fig is not None
     assert ax is not None
-<<<<<<< HEAD
     
     assert isinstance(fig, pyplot.Figure)
     assert isinstance(ax, pyplot.Axes)
     pyplot.close(fig)
-=======
-
-    assert isinstance(fig, plt.Figure)
-    assert isinstance(ax, plt.Axes)
-    plt.close(fig)
->>>>>>> ae958d8115e062a60909881240b21c93488752ca
 
 
 @pytest.mark.parametrize(
@@ -235,13 +227,8 @@ def test_multiple_stimuli(image_path):
     assert len(image_stimulus.images) == 2
     fig1, _ = image_stimulus.plot(0)
     assert fig1 is not None
-<<<<<<< HEAD
     
     pyplot.close(fig1)
-=======
-
-    plt.close(fig1)
->>>>>>> ae958d8115e062a60909881240b21c93488752ca
 
     fig2, _ = image_stimulus.plot(1)
     assert fig2 is not None
