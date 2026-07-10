@@ -24,11 +24,13 @@ import warnings
 from typing import Any
 
 import numpy
+import polars
 
 from pymovements._utils import _checks
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
+
 
 
 def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
@@ -988,7 +990,7 @@ def ihmm(
     ValueError
         If hmm_parameters_dict has incorrect keys or shapes.
 
-    Examples
+     Examples
     --------
     Create a synthetic step signal representing gaze segments.
 
@@ -996,33 +998,32 @@ def ihmm(
     >>> from pymovements.transforms.numpy import pos2vel
     >>> from pymovements.synthetic import step_function
     >>> from pymovements.gaze import from_numpy
-
     >>> positions = step_function(
-    ...      length=200, steps=[2, 5, 9, 111, 150],
-    ...      values=[(1., 2.), (2., 3.), (3., 4.), (1., 1.), (2., 2.)],
-    ...      start_value=(0., 0.),)
+    ...         length=500,
+    ...         steps=[50, 250, 450, 650, 750],
+    ...         values=[(5., 5.), (10., 10.), (5., 5.), (15., 15.), (5., 5.)],
+    ...         start_value=(0., 0.))
 
     >>> positions.shape
-    (200, 2)
+    (500, 2)
 
     Transform into velocities
 
     >>> velocities = pos2vel(positions)
     >>> velocities.shape
-    (200, 2)
+    (500, 2)
 
     Apply event detection algorithm on numpy array:
 
-    >>> ihmm(velocities,minimum_duration=2)
-    shape: (3, 4)
+    >>> ihmm(velocities)
+    shape: (2, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
     │ ---      ┆ ---   ┆ ---    ┆ ---      │
     │ str      ┆ i64   ┆ i64    ┆ i64      │
     ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 11    ┆ 108    ┆ 97       │
-    │ fixation ┆ 113   ┆ 147    ┆ 34       │
-    │ fixation ┆ 152   ┆ 199    ┆ 47       │
+    │ fixation ┆ 52    ┆ 247    ┆ 195      │
+    │ fixation ┆ 252   ┆ 447    ┆ 195      │
     └──────────┴───────┴────────┴──────────┘
 
     Run fixation detection with custom HMM parameters:
@@ -1031,81 +1032,80 @@ def ihmm(
     ...         'sigma': [1.3220152347857494, 87.32409626093246],
     ...         'init': [1.e+00, 1.e-12],
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
-    >>> ihmm(velocities, hmm_parameters_dict = dict,minimum_duration=2)
-    shape(4,4)
+    >>> ihmm(velocities, hmm_parameters_dict = dict)
+    shape: (2, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
     │ ---      ┆ ---   ┆ ---    ┆ ---      │
     │ str      ┆ i64   ┆ i64    ┆ i64      │
     ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 0     ┆ 0      ┆ 0        │
-    │ fixation ┆ 11    ┆ 108    ┆ 97       │
-    │ fixation ┆ 113   ┆ 147    ┆ 34       │
-    │ fixation ┆ 152   ┆ 199    ┆ 47       │
+    │ fixation ┆ 52    ┆ 247    ┆ 195      │
+    │ fixation ┆ 252   ┆ 447    ┆ 195      │
     └──────────┴───────┴────────┴──────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
     >>> from pymovements import Experiment
     >>> gaze = from_numpy(
-    ... 	velocity=velocities.T,
-    ...		time=numpy.arange(len(velocities)),)
+    ...         velocity=velocities.T,
+    ...         time=np.arange(len(velocities)),)
     >>> gaze
-    shape: (200, 2)
-    ┌──────┬──────────────────────────┐
-    │ time ┆ velocity                 │
-    │ ---  ┆ ---                      │
-    │ i64  ┆ list[f64]                │
-    ╞══════╪══════════════════════════╡
-    │ 0    ┆ [0.0, 0.0]               │
-    │ 1    ┆ [500.0, 1000.0]          │
-    │ 2    ┆ [333.333333, 666.666667] │
-    │ 3    ┆ [333.333333, 500.0]      │
-    │ 4    ┆ [333.333333, 333.333333] │
-    │ …    ┆ …                        │
-    │ 195  ┆ [0.0, 0.0]               │
-    │ 196  ┆ [0.0, 0.0]               │
-    │ 197  ┆ [0.0, 0.0]               │
-    │ 198  ┆ [0.0, 0.0]               │
-    │ 199  ┆ [0.0, 0.0]               │
-    └──────┴──────────────────────────┘
+    shape: (500, 2)
+    ┌──────┬────────────┐
+    │ time ┆ velocity   │
+    │ ---  ┆ ---        │
+    │ i64  ┆ list[f64]  │
+    ╞══════╪════════════╡
+    │ 0    ┆ [0.0, 0.0] │
+    │ 1    ┆ [0.0, 0.0] │
+    │ 2    ┆ [0.0, 0.0] │
+    │ 3    ┆ [0.0, 0.0] │
+    │ 4    ┆ [0.0, 0.0] │
+    │ …    ┆ …          │
+    │ 495  ┆ [0.0, 0.0] │
+    │ 496  ┆ [0.0, 0.0] │
+    │ 497  ┆ [0.0, 0.0] │
+    │ 498  ┆ [0.0, 0.0] │
+    │ 499  ┆ [0.0, 0.0] │
+    └──────┴────────────┘
 
     Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
 
-    >>> gaze.detect('ihmm',minimum_duration=2)
+    >>> gaze.detect('ihmm')
     >>> gaze.events
-    shape: (3, 4)
+    shape: (2, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
     │ ---      ┆ ---   ┆ ---    ┆ ---      │
     │ str      ┆ i64   ┆ i64    ┆ i64      │
     ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 11    ┆ 108    ┆ 97       │
-    │ fixation ┆ 113   ┆ 147    ┆ 34       │
-    │ fixation ┆ 152   ┆ 199    ┆ 47       │
+    │ fixation ┆ 52    ┆ 247    ┆ 195      │
+    │ fixation ┆ 252   ┆ 447    ┆ 195      │
     └──────────┴───────┴────────┴──────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
-    >>> gaze.detect('idt', reestimation=True, hmm_parameters_dict = dict, name='fixation_ihmm')
-    >>> gaze.events.filter_by_name('fixation_ihmm')
-    shape: (8, 4)
+    >>> gaze.detect('ihmm', reestimation=True, name='fixation_ihmm')
+    >>> gaze.events
+    shape: (2, 4)
     ┌───────────────┬───────┬────────┬──────────┐
     │ name          ┆ onset ┆ offset ┆ duration │
     │ ---           ┆ ---   ┆ ---    ┆ ---      │
     │ str           ┆ i64   ┆ i64    ┆ i64      │
     ╞═══════════════╪═══════╪════════╪══════════╡
-    │ fixation_ihmm ┆ 0     ┆ 0      ┆ 0        │
-    │ fixation_ihmm ┆ 11    ┆ 108    ┆ 97       │
-    │ fixation_ihmm ┆ 113   ┆ 147    ┆ 34       │
-    │ fixation_ihmm ┆ 152   ┆ 199    ┆ 47       │
-    │ fixation_ihmm ┆ 0     ┆ 0      ┆ 0        │
-    │ fixation_ihmm ┆ 11    ┆ 108    ┆ 97       │
-    │ fixation_ihmm ┆ 113   ┆ 147    ┆ 34       │
-    │ fixation_ihmm ┆ 152   ┆ 199    ┆ 47       │
+    │ fixation_ihmm ┆ 52    ┆ 247    ┆ 195      │
+    │ fixation_ihmm ┆ 252   ┆ 447    ┆ 195      │
     └───────────────┴───────┴────────┴──────────┘
     """
+    if isinstance(velocities, polars.Series):
+        if not isinstance(velocities.dtype, polars.List):
+            raise TypeError(f'velocities dtype must be List but is {velocities.dtype}')
+        if not (velocities.list.len() == 2).all():
+            list_lengths = velocities.list.len().unique().to_list()
+            raise ValueError(f'velocities must be 2D list but list lengths are: {list_lengths}')
+        velocities = numpy.vstack([velocities.list.get(0), velocities.list.get(1)]).transpose()
     velocities = numpy.array(velocities)
+    _checks.check_shapes(velocities=velocities)
 
     if mu is not None:
         mu = numpy.array(mu)
@@ -1116,7 +1116,7 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
 
-    _checks.check_shapes(velocities=velocities)
+    
 
     if timesteps is None:
         timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
