@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+"""Tests functionality of the IDT algorithm."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -144,24 +145,13 @@ def test_format_optimal_dict_converts_to_json_serializable():
 
 
 @pytest.fixture
-def simple_hmm_params():
+def hmm_params_fixture():
     mu = np.array([0.0, 10.0])
     sigma = np.array([1.0, 1.0])
-
     init = np.log(np.array([0.5, 0.5]))
-
-    trans = np.log(
-        np.array(
-            [
-                [0.9, 0.1],
-                [0.2, 0.8],
-            ],
-        ),
-    )
-
+    trans = np.log(np.array([[0.9, 0.1], [0.2, 0.8]]))
     velocities = np.array([0.1, -0.2, 9.9, 10.2])
     mask = np.array([True, True, True, True])
-
     return {
         'mu': mu,
         'sigma': sigma,
@@ -172,8 +162,8 @@ def simple_hmm_params():
     }
 
 
-def test_baum_forward_shape(simple_hmm_params):
-    params = simple_hmm_params
+def test_baum_forward_shape(hmm_params_fixture):
+    params = hmm_params_fixture
 
     alpha = baum_forward(
         mu=params['mu'],
@@ -189,8 +179,8 @@ def test_baum_forward_shape(simple_hmm_params):
     assert alpha.shape == (4, 2)
 
 
-def test_baum_backward_shape(simple_hmm_params):
-    params = simple_hmm_params
+def test_baum_backward_shape(hmm_params_fixture):
+    params = hmm_params_fixture
 
     beta = baum_backward(
         mu=params['mu'],
@@ -205,9 +195,9 @@ def test_baum_backward_shape(simple_hmm_params):
     assert beta.shape == (4, 2)
 
 
-def test_forward_backward_produce_same_log_likelihood(simple_hmm_params):
+def test_forward_backward_produce_same_log_likelihood(hmm_params_fixture):
     """Forward and backward algorithms must agree on sequence likelihood."""
-    params = simple_hmm_params
+    params = hmm_params_fixture
 
     alpha = baum_forward(
         mu=params['mu'],
@@ -1115,13 +1105,11 @@ def test_case4_trailing_and_ending_fixations():
 
 def test_case5_toy_dataset():
     toy_available = True
-    try:
-        dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
-        dataset.download()
-        dataset.load()
-    except Exception as exc:  # e.g. no network access in this environment
-        toy_available = False
-        print(f"Skipping toy dataset test — could not download/load ToyDataset ({exc})")
+    
+    dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
+    dataset.download()
+    dataset.load()
+    
 
     if toy_available:
         dataset.pix2deg()
@@ -1207,7 +1195,7 @@ def _print_summary_at_session_end():
     print(summary)
 
     n_run = summary['passed'].notna().sum()
-    n_passed = (summary['passed'] == True).sum()  # noqa: E712
-    n_failed = (summary['passed'] == False).sum()  # noqa: E712
+    n_passed = (summary['passed'] is True).sum()  # noqa: E712
+    # n_failed = (summary['passed'] is False).sum()  # noqa: E712
     n_skipped = summary['passed'].isna().sum()
     print(f"{n_passed}/{n_run} checks passed" + (f", {n_skipped} skipped" if n_skipped else ''))
