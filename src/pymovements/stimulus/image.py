@@ -89,7 +89,7 @@ class ImageStimulus:
         ax : matplotlib.axes.Axes
             Axes to draw the image on.
             (default: None)
-            
+
 
         Returns
         -------
