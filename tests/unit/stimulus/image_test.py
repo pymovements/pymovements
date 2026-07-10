@@ -204,7 +204,7 @@ def test_plot_returns_figure_and_axes(image_path):
 
     assert fig is not None
     assert ax is not None
-    
+
     assert isinstance(fig, pyplot.Figure)
     assert isinstance(ax, pyplot.Axes)
     pyplot.close(fig)
@@ -226,7 +226,7 @@ def test_multiple_stimuli(image_path):
     assert len(image_stimulus.images) == 2
     fig1, _ = image_stimulus.plot(0)
     assert fig1 is not None
-    
+
     pyplot.close(fig1)
 
     fig2, _ = image_stimulus.plot(1)
