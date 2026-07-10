@@ -28,8 +28,8 @@
     pymovements.events.blink
     pymovements.events.fill
     pymovements.events.idt
-    pymovements.events.ivt
     pymovements.events.ihmm
+    pymovements.events.ivt
     pymovements.events.microsaccades
 
 """
@@ -50,8 +50,8 @@ __all__ = [
     'blink',
     'fill',
     'idt',
-    'ivt',
     'ihmm',
+    'ivt',
     'microsaccades',
     'out_of_screen',
 ]
