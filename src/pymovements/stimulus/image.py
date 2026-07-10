@@ -39,8 +39,10 @@ class ImageStimulus:
     ----------
     images: list[Path]
         Image stimulus list.
-    origin : str, default='upper'
-            Image origin position for plotting.
+    origin : str
+        Image origin position for plotting.
+        (default: 'upper')
+
     """
 
     def __init__(self, images: list[Path], origin: str = 'upper') -> None:
@@ -54,8 +56,9 @@ class ImageStimulus:
         ----------
         stimulus_id : int
             Index of the stimulus to display.
-        origin : str, default='upper'
-            Image origin position.
+        origin : str
+            Image origin position for plotting.
+        (default: 'upper')
         """
 
         warn(
