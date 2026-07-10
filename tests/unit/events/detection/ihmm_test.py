@@ -19,9 +19,10 @@
 # SOFTWARE.
 import numpy as np
 import pandas as pd
-import pymovements as pm
 import pytest
 
+import pymovements as pm
+from pymovements.events.detection.idt import idt
 from pymovements.events.detection.ihmm import baum_backward
 from pymovements.events.detection.ihmm import baum_forward
 from pymovements.events.detection.ihmm import baum_welch
@@ -32,7 +33,6 @@ from pymovements.events.detection.ihmm import format_optimal_dict
 from pymovements.events.detection.ihmm import ihmm
 from pymovements.events.detection.ihmm import log_sum_exp
 from pymovements.events.detection.ihmm import viterbi
-from pymovements.events.detection.idt import idt
 from pymovements.gaze.transforms_numpy import pos2vel
 from pymovements.synthetic import step_function
 
@@ -917,8 +917,11 @@ test_results = []
 
 
 def record(name, passed, detail=''):
-    test_results.append({'test': name, 'passed': bool(
-        passed) if passed is not None else None, 'detail': detail})
+    test_results.append({
+        'test': name, 'passed': bool(
+            passed,
+        ) if passed is not None else None, 'detail': detail,
+    })
     status = 'PASS' if passed else 'FAIL'
     if passed is None:
         status = 'SKIP'
