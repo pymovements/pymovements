@@ -86,8 +86,10 @@ class ImageStimulus:
         ----------
         stimulus_id : int
             Index of the stimulus to plot.
-        ax : matplotlib.axes.Axes, optional
+        ax : matplotlib.axes.Axes
             Axes to draw the image on.
+            (default: None)
+            
 
         Returns
         -------
