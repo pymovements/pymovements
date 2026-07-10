@@ -23,7 +23,6 @@ from unittest.mock import Mock
 
 import pytest
 from matplotlib import pyplot
-import matplotlib.pyplot as plt
 
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.image import from_file
@@ -132,14 +131,14 @@ def test_plot_image_stimulus_with_custom_axes(image_path, stimulus_id):
     """Test plotting on custom axes."""
     
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = pyplot.subplots(figsize=(10, 8))
     image_stimulus = from_file(image_path)
 
     returned_fig, returned_ax = image_stimulus.plot(stimulus_id, ax=ax)
 
     assert returned_fig is fig
     assert returned_ax is ax
-    plt.close(fig)
+    pyplot.close(fig)
 
 
 @pytest.mark.parametrize(
@@ -175,7 +174,8 @@ def test_show_method_updates_origin(image_path, monkeypatch):
     monkeypatch.setattr(pyplot, 'show', mock)
 
     image_stimulus = from_file(image_path)
-    image_stimulus.origin
+    # image_stimulus.origin
+    
 
     with pytest.warns(DeprecationWarning, match='This method is deprecated'):
         image_stimulus.show(0, 'lower')
@@ -207,9 +207,9 @@ def test_plot_returns_figure_and_axes(image_path):
     assert fig is not None
     assert ax is not None
     
-    assert isinstance(fig, plt.Figure)
-    assert isinstance(ax, plt.Axes)
-    plt.close(fig)
+    assert isinstance(fig, pyplot.Figure)
+    assert isinstance(ax, pyplot.Axes)
+    pyplot.close(fig)
 
 
 @pytest.mark.parametrize(
@@ -230,11 +230,11 @@ def test_multiple_stimuli(image_path):
     fig1, _ = image_stimulus.plot(0)
     assert fig1 is not None
     
-    plt.close(fig1)
+    pyplot.close(fig1)
 
     fig2, _ = image_stimulus.plot(1)
     assert fig2 is not None
-    plt.close(fig2)
+    pyplot.close(fig2)
 
 
 def test_from_file_returns_image_stimulus():
