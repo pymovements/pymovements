@@ -248,7 +248,6 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
 
     image_stimulus.plot(0, ax=ax)
 
-  
     with pytest.warns(UserWarning, match='heatmap: "figsize" is ignored because an external Axes was provided.'):
         returned_fig, returned_ax = heatmap(
             gaze,
@@ -258,13 +257,10 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
             savepath=str(tmp_path / 'heatmap_with_stimulus.svg'),
         )
 
-   
     assert returned_fig is fig
     assert returned_ax is ax
 
-    
-    assert len(ax.images) >= 2 
-
+    assert len(ax.images) >= 2
 
     assert (tmp_path / 'heatmap_with_stimulus.svg').is_file()
 
