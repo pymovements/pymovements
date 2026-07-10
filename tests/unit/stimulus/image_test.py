@@ -173,7 +173,7 @@ def test_show_method_updates_origin(image_path, monkeypatch):
     monkeypatch.setattr(pyplot, 'show', mock)
 
     image_stimulus = from_file(image_path)
-    image_stimulus.origin
+    # image_stimulus.origin
 
     with pytest.warns(DeprecationWarning, match='This method is deprecated'):
         image_stimulus.show(0, 'lower')
