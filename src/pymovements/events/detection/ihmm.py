@@ -991,10 +991,10 @@ def ihmm(
     --------
     Create a synthetic step signal representing gaze segments.
 
-    >>> import numpy as np
-    >>> from pymovements.transforms.numpy import pos2vel
-    >>> from pymovements.synthetic import step_function
-    >>> from pymovements.gaze import from_numpy
+    import numpy as np
+    from pymovements.transforms.numpy import pos2vel
+    from pymovements.synthetic import step_function
+    from pymovements.gaze import from_numpy
 
     >>> positions = step_function(
     ...      length=200, steps=[2, 5, 9, 111, 150],
@@ -1012,7 +1012,7 @@ def ihmm(
 
     Apply event detection algorithm on numpy array:
 
-    >>> ihmm(velocities)
+    >>> ihmm(velocities,minimum_duration=2)
     shape: (3, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
@@ -1030,7 +1030,7 @@ def ihmm(
     ...         'sigma': [1.3220152347857494, 87.32409626093246],
     ...         'init': [1.e+00, 1.e-12],
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
-    >>> ihmm(velocities, hmm_parameters_dict = dict)
+    >>> ihmm(velocities, hmm_parameters_dict = dict,minimum_duration=2)
     shape(4,4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
@@ -1071,7 +1071,7 @@ def ihmm(
 
     Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
 
-    >>> gaze.detect('ihmm')
+    >>> gaze.detect('ihmm',minimum_duration=2)
     >>> gaze.events
     shape: (3, 4)
     ┌──────────┬───────┬────────┬──────────┐
@@ -1087,7 +1087,7 @@ def ihmm(
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('idt', reestimation=True, hmm_parameters_dict = dict, name='fixation_ihmm')
-    >>> gaze.events.filter_by_name('fixation_idt')
+    >>> gaze.events.filter_by_name('fixation_ihmm')
     shape: (8, 4)
     ┌───────────────┬───────┬────────┬──────────┐
     │ name          ┆ onset ┆ offset ┆ duration │
