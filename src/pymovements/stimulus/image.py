@@ -58,7 +58,7 @@ class ImageStimulus:
             Index of the stimulus to display.
         origin : str
             Image origin position for plotting.
-        (default: 'upper')
+            (default: 'upper')
         """
 
         warn(
