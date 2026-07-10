@@ -34,8 +34,8 @@ from pymovements.events.detection.ihmm import format_optimal_dict
 from pymovements.events.detection.ihmm import ihmm
 from pymovements.events.detection.ihmm import log_sum_exp
 from pymovements.events.detection.ihmm import viterbi
-from pymovements.transforms.numpy import pos2vel
 from pymovements.synthetic import step_function
+from pymovements.transforms.numpy import pos2vel
 
 
 # -----------------------------------------------------------------------------
