@@ -227,6 +227,7 @@ def test_heatmap_invalid_screen_origin_raises(origin, gaze):
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
         pm.plotting.heatmap(gaze)
 
+
 @pytest.mark.parametrize(
     ('origin'),
     (
@@ -237,19 +238,19 @@ def test_heatmap_invalid_screen_origin_raises(origin, gaze):
 def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
     """Test that heatmap correctly plots with an ImageStimulus."""
     from pymovements.stimulus.image import from_file
-    
+
     image_path = 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
-    
+
     # Set the origin on the image stimulus object
     image_stimulus.origin = origin
-    
+
     # Create figure and axes first
     fig, ax = plt.subplots(figsize=(15, 10))
-    
+
     # Plot the image stimulus on the axes
     image_stimulus.plot(0, ax=ax)
-    
+
     # Then plot the heatmap on the same axes
     # Use pytest.warns to catch the UserWarning about figsize being ignored
     with pytest.warns(UserWarning, match='heatmap: "figsize" is ignored because an external Axes was provided.'):
@@ -260,16 +261,16 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
             ax=ax,
             savepath=str(tmp_path / 'heatmap_with_stimulus.svg'),
         )
-    
+
     # Verify we got the same figure and axes back
     assert returned_fig is fig
     assert returned_ax is ax
-    
+
     # Verify the image was actually drawn (check if image exists in axes)
     # The image should be the first child of the axes
     assert len(ax.images) >= 2  # At least the stimulus image + heatmap
-    
+
     # Verify the file was saved
     assert (tmp_path / 'heatmap_with_stimulus.svg').is_file()
-    
+
     plt.close(fig)
