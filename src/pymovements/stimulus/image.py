@@ -61,8 +61,9 @@ class ImageStimulus:
         warn(
             DeprecationWarning(
                 'This method is deprecated'
-                ' please use ImageStimulus.plot() instead.'
-        ))
+                ' please use ImageStimulus.plot() instead.',
+            ),
+        )
 
         self.origin = origin
 
