@@ -96,8 +96,8 @@ class DataQualityReport:
     Produced by :py:meth:`~pymovements.gaze.gaze.Gaze.report_data_quality`
     and :py:meth:`~pymovements.Dataset.report_data_quality`.
 
-    The read-only :attr:`passed` property returns ``True`` when no check result
-    has severity ``'error'``.
+    The read-only :attr:`~pymovements.DataQualityReport.passed` property returns
+    ``True`` when no check result has severity ``'error'``.
 
     Attributes
     ----------
