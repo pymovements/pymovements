@@ -28,20 +28,14 @@ from pymovements.dataset.participants import Participants
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
-from pymovements.gaze.quality import CheckResult
-from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import GazeDataValidationError
 
 
 __all__ = [
-    'CheckResult',
-    'DataQualityReport',
     'Dataset',
     'DatasetDefinition',
     'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
-    'GazeDataValidationError',
     'Participants',
     'register_dataset',
     'ResourceDefinition',

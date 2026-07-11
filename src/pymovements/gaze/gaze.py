@@ -43,8 +43,8 @@ from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
-from pymovements.gaze.quality import _run_report
 from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import run_report
 from pymovements.gaze.validation import check_gaze_components_defined
 from pymovements.gaze.validation import check_gaze_range
 from pymovements.gaze.validation import check_max_gap
@@ -2107,6 +2107,7 @@ class Gaze:
 
     def report_data_quality(
             self,
+            *,
             checks: list[str] | None = None,
             measures: list[str] | None = None,
             levels: list[str] | None = None,
@@ -2141,7 +2142,7 @@ class Gaze:
             (meaningful for a single file; pass ``'subject'`` or ``'session'``
             explicitly if needed).
         raise_on_error : bool
-            If ``True``, raise :py:class:`~GazeDataValidationError` on the
+            If ``True``, raise :py:class:`~ValidationError` on the
             first error-severity check result. (default: ``False``)
         output_path : Path | str | None
             If given, write BIDS-conformant derivative files here via
@@ -2170,7 +2171,7 @@ class Gaze:
 
         Raises
         ------
-        GazeDataValidationError
+        ValidationError
             If *raise_on_error* is ``True`` and any check produces an error
             result.
         ValueError
@@ -2188,7 +2189,7 @@ class Gaze:
         >>> report.passed
         True
         """
-        return _run_report(
+        return run_report(
             gaze=self,
             checks=checks,
             measures=measures,

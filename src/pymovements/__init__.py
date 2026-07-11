@@ -28,14 +28,11 @@ from pymovements import synthetic
 from pymovements import transforms
 from pymovements import warnings
 from pymovements._version import __version__
-from pymovements.dataset import CheckResult
-from pymovements.dataset import DataQualityReport
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
 from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
-from pymovements.dataset import GazeDataValidationError
 from pymovements.dataset import Participants
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
@@ -50,6 +47,9 @@ from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
 from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
+from pymovements.gaze.quality import CheckResult
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import ValidationError
 from pymovements.measure import EVENT_MEASURES
 from pymovements.measure import EventProcessor
 from pymovements.measure import EventSamplesProcessor
@@ -70,7 +70,7 @@ __all__ = [
     'DatasetLibrary',
     'DatasetPaths',
     'datasets',
-    'GazeDataValidationError',
+    'ValidationError',
     'Participants',
     'register_dataset',
     'ResourceDefinition',

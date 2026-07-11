@@ -44,9 +44,9 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
-from pymovements.gaze.quality import _compute_measures
+from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import GazeDataValidationError
+from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus.image import ImageStimulus
@@ -1289,7 +1289,7 @@ class Dataset:
             ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
             (default: None)
         raise_on_error : bool
-            If ``True``, raise :py:exc:`~pymovements.GazeDataValidationError`
+            If ``True``, raise :py:exc:`~pymovements.ValidationError`
             on the first check result with severity ``'error'``. (default: False)
         max_gap_factor : float
             Maximum allowed inter-sample gap as a multiple of the expected ISI.
@@ -1310,7 +1310,7 @@ class Dataset:
 
         Raises
         ------
-        GazeDataValidationError
+        ValidationError
             If *raise_on_error* is ``True`` and any check produces an error result.
         ValueError
             If any name in *checks* is not a valid check identifier.
@@ -1346,8 +1346,7 @@ class Dataset:
         else:
             source_paths = ['' for _ in self.gaze]
 
-        report = DataQualityReport()
-        captured_warnings: list[str] = []
+        check_results: list = []
 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter('always')
@@ -1369,15 +1368,15 @@ class Dataset:
                     source_path=src,
                 )
                 for result in results:
-                    report.check_results.append(result)
+                    check_results.append(result)
                     if raise_on_error and result.severity == 'error':
-                        raise GazeDataValidationError(
+                        raise ValidationError(
                             check_id=result.code,
                             message=str(result.message),
                             affected_files=result.sources,
                         )
 
-            report.measures = _compute_measures(
+            measure_results = compute_measures(
                 gaze_list=self.gaze,
                 fileinfo=self.fileinfo,
                 levels=levels_to_run,
@@ -1386,8 +1385,11 @@ class Dataset:
 
             captured_warnings = [str(w.message) for w in caught]
 
-        report.passed = all(r.severity != 'error' for r in report.check_results)
-        report.warning_log = captured_warnings
+        report = DataQualityReport(
+            check_results=check_results,
+            measures=measure_results,
+            warning_log=captured_warnings,
+        )
 
         if output_path is not None:
             report.save_bids_report(Path(output_path))

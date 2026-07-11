@@ -21,7 +21,7 @@ in different formats.
     DatasetDefinition
     DatasetLibrary
     DatasetPaths
-    GazeDataValidationError
+    ValidationError
     ResourceDefinition
     ResourceDefinitions
     WebSource

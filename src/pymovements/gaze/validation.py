@@ -441,16 +441,16 @@ def check_max_gap(
     if 'time' not in gaze.samples.columns:
         return CheckResult(
             code='max_gap',
-            severity='pass',
-            message="No 'time' column available; check skipped.",
+            severity='error',
+            message="No 'time' column available; check could not be performed.",
             sources=sources,
         )
 
     if gaze.experiment is None or gaze.experiment.sampling_rate is None:
         return CheckResult(
             code='max_gap',
-            severity='pass',
-            message='No declared sampling_rate available; check skipped.',
+            severity='error',
+            message='No declared sampling_rate available; check could not be performed.',
             sources=sources,
         )
 

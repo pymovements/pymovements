@@ -29,7 +29,7 @@ from pymovements.gaze.io import from_begaze
 from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import GazeDataValidationError
+from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.screen import Screen
 from pymovements.gaze.validation import CheckResult
 
@@ -43,7 +43,7 @@ __all__ = [
     'from_pandas',
     'Gaze',
     'GazeDataFrame',
-    'GazeDataValidationError',
+    'ValidationError',
     'Screen',
     'from_asc',
     'from_begaze',

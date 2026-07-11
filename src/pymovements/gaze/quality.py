@@ -30,11 +30,12 @@ compatibility.
 from __future__ import annotations
 
 import json
-import warnings as _warnings
+import warnings
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from typing import TYPE_CHECKING
 
 import polars as pl
 
@@ -46,15 +47,18 @@ from pymovements.measure.samples.measures import data_loss
 from pymovements.measure.samples.measures import rms_s2s
 from pymovements.measure.samples.measures import std_rms
 
+if TYPE_CHECKING:
+    from pymovements.gaze.gaze import Gaze
+
 
 __all__ = [
     'CheckResult',
     'DataQualityReport',
-    'GazeDataValidationError',
+    'ValidationError',
 ]
 
 
-class GazeDataValidationError(Exception):
+class ValidationError(Exception):
     """Raised when a validation check produces an error-severity result.
 
     Parameters
@@ -68,10 +72,10 @@ class GazeDataValidationError(Exception):
 
     Examples
     --------
-    >>> from pymovements.gaze.quality import GazeDataValidationError
+    >>> from pymovements.gaze.quality import ValidationError
     >>> try:
-    ...     raise GazeDataValidationError('time_column_exists', 'missing', ['f.csv'])
-    ... except GazeDataValidationError as exc:
+    ...     raise ValidationError('time_column_exists', 'missing', ['f.csv'])
+    ... except ValidationError as exc:
     ...     print(exc.check_id)
     time_column_exists
     """
@@ -87,7 +91,7 @@ class GazeDataValidationError(Exception):
         super().__init__(message)
 
 
-@dataclass
+@dataclass(frozen=True)
 class DataQualityReport:
     """Aggregated output of a data quality run.
 
@@ -102,8 +106,9 @@ class DataQualityReport:
         Quality measures keyed by aggregation level:
         ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
     passed : bool
-        ``True`` if no check result has severity ``'error'``. Computed from
-        ``check_results`` at construction time.
+        ``True`` if every check result has severity ``'pass'`` or
+        ``'warning'`` (i.e. no ``'error'``). Computed from
+        ``check_results`` on each access.
     warning_log : list[str]
         Python warnings captured during the run. Written to ``warnings.log``
         by :py:meth:`save_bids_report`.
@@ -120,12 +125,12 @@ class DataQualityReport:
 
     check_results: list[CheckResult] = field(default_factory=list)
     measures: dict[str, pl.DataFrame] = field(default_factory=dict)
-    passed: bool = field(init=False)
-    warning_log: list[str] = field(default_factory=list, init=False, repr=False)
+    warning_log: list[str] = field(default_factory=list, repr=False)
 
-    def __post_init__(self) -> None:
-        """Initialise ``passed`` from ``check_results``."""
-        self.passed = all(r.severity != 'error' for r in self.check_results)
+    @property
+    def passed(self) -> bool:
+        """Return True if no check result has severity 'error'."""
+        return all(r.severity in {'pass', 'warning'} for r in self.check_results)
 
     def summary(self) -> str:
         """Return a formatted summary table of all check results.
@@ -464,7 +469,7 @@ def _compute_trial_rows(
     return trial_rows
 
 
-def _compute_measures(
+def compute_measures(
         gaze_list: list[Any],
         fileinfo: Any,
         levels: list[str],
@@ -539,8 +544,8 @@ def _compute_measures(
     return results
 
 
-def _run_report(
-        gaze: Any,
+def run_report(
+        gaze: Gaze,
         checks: list[str] | None,
         measures: list[str] | None,
         levels: list[str] | None,
@@ -555,7 +560,7 @@ def _run_report(
 
     Parameters
     ----------
-    gaze : Any
+    gaze : Gaze
         The :py:class:`~pymovements.gaze.gaze.Gaze` object to report on.
     checks : list[str] | None
         Check identifiers to run; ``None`` runs all eight.
@@ -564,7 +569,7 @@ def _run_report(
     levels : list[str] | None
         Aggregation levels; ``None`` defaults to ``['dataset', 'trial']``.
     raise_on_error : bool
-        Raise :py:class:`GazeDataValidationError` on the first error result.
+        Raise :py:class:`ValidationError` on the first error result.
     output_path : Path | str | None
         If given, write BIDS derivative files here.
     source_path : str
@@ -587,7 +592,7 @@ def _run_report(
 
     Raises
     ------
-    GazeDataValidationError
+    ValidationError
         If *raise_on_error* is ``True`` and any check produces an error.
     ValueError
         If any name in *checks* is not a valid check identifier.
@@ -603,13 +608,12 @@ def _run_report(
 
     levels_to_run = levels if levels is not None else ['dataset', 'trial']
 
-    report = DataQualityReport()
-    captured: list[str] = []
+    check_results: list[CheckResult] = []
 
-    with _warnings.catch_warnings(record=True) as caught:
-        _warnings.simplefilter('always')
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
 
-        results = gaze.validate(
+        validate_results = gaze.validate(
             trial_columns_exist='trial_columns_exist' in checks_to_run,
             trial_columns_dtype='trial_columns_dtype' in checks_to_run,
             time_column_exists='time_column_exists' in checks_to_run,
@@ -623,20 +627,23 @@ def _run_report(
             min_fraction=min_fraction,
             source_path=source_path,
         )
-        for result in results:
-            report.check_results.append(result)
+        for result in validate_results:
+            check_results.append(result)
             if raise_on_error and result.severity == 'error':
-                raise GazeDataValidationError(
+                raise ValidationError(
                     check_id=result.code,
                     message=str(result.message),
                     affected_files=result.sources,
                 )
 
-        report.measures = _compute_measures([gaze], None, levels_to_run, measures)
+        measure_results = compute_measures([gaze], None, levels_to_run, measures)
         captured = [str(w.message) for w in caught]
 
-    report.passed = all(r.severity != 'error' for r in report.check_results)
-    report.warning_log = captured
+    report = DataQualityReport(
+        check_results=check_results,
+        measures=measure_results,
+        warning_log=captured,
+    )
 
     if output_path is not None:
         report.save_bids_report(Path(output_path))

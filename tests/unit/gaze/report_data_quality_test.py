@@ -28,7 +28,7 @@ import pytest
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.quality import DataQualityReport
-from pymovements.gaze.quality import GazeDataValidationError
+from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import CheckResult
 
 pytestmark = pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
@@ -743,7 +743,7 @@ class TestGazeReportDataQuality:
             pl.DataFrame({'time': [0], 'trial': [1]}),
             trial_columns=['missing_col'],
         )
-        with pytest.raises(GazeDataValidationError):
+        with pytest.raises(ValidationError):
             gaze.report_data_quality(
                 checks=['trial_columns_exist'],
                 raise_on_error=True,
