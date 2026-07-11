@@ -98,6 +98,9 @@ class DataQualityReport:
     Produced by :py:meth:`~pymovements.gaze.gaze.Gaze.report_data_quality`
     and :py:meth:`~pymovements.Dataset.report_data_quality`.
 
+    The read-only :attr:`passed` property returns ``True`` when no check result
+    has severity ``'error'``.
+
     Attributes
     ----------
     check_results : list[CheckResult]
@@ -105,10 +108,6 @@ class DataQualityReport:
     measures : dict[str, pl.DataFrame]
         Quality measures keyed by aggregation level:
         ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
-    passed : bool
-        ``True`` if every check result has severity ``'pass'`` or
-        ``'warning'`` (i.e. no ``'error'``). Computed from
-        ``check_results`` on each access.
     warning_log : list[str]
         Python warnings captured during the run. Written to ``warnings.log``
         by :py:meth:`save_bids_report`.
