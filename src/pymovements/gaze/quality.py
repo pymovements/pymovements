@@ -20,12 +20,10 @@
 """Data quality report classes and measure computation for Gaze objects.
 
 Placing these here (inside the ``gaze`` package) avoids a circular import:
-``gaze.gaze`` cannot import from ``dataset.data_quality`` because
-``dataset.__init__`` imports ``dataset.dataset`` which imports
-``pymovements.gaze.Gaze``. Keeping the classes in the ``gaze`` package
-breaks that cycle while letting :py:class:`~pymovements.Dataset` re-export
-them from :py:mod:`~pymovements.dataset.data_quality` for backwards
-compatibility.
+``gaze.gaze`` cannot import from ``dataset`` because ``dataset.__init__``
+imports ``dataset.dataset`` which imports ``pymovements.gaze.Gaze``. Keeping
+the classes in the ``gaze`` package breaks that cycle while still allowing
+:py:class:`~pymovements.Dataset` to use them.
 """
 from __future__ import annotations
 

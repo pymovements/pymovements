@@ -2142,7 +2142,7 @@ class Gaze:
             (meaningful for a single file; pass ``'subject'`` or ``'session'``
             explicitly if needed).
         raise_on_error : bool
-            If ``True``, raise :py:class:`~ValidationError` on the
+            If ``True``, raise :py:exc:`~pymovements.ValidationError` on the
             first error-severity check result. (default: ``False``)
         output_path : Path | str | None
             If given, write BIDS-conformant derivative files here via
@@ -2171,7 +2171,7 @@ class Gaze:
 
         Raises
         ------
-        ValidationError
+        pymovements.ValidationError
             If *raise_on_error* is ``True`` and any check produces an error
             result.
         ValueError
