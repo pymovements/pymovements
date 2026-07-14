@@ -57,7 +57,7 @@ __all__ = [
 
 
 class ValidationError(Exception):
-    """Raised when a validation check produces an error-severity result.
+    """Raised when a validation check produces a ``'fail'`` or ``'error'``-severity result.
 
     Parameters
     ----------
@@ -97,7 +97,7 @@ class DataQualityReport:
     and :py:meth:`~pymovements.Dataset.report_data_quality`.
 
     The read-only :attr:`~pymovements.DataQualityReport.passed` property returns
-    ``True`` when no check result has severity ``'error'``.
+    ``True`` when no check result has severity ``'fail'`` or ``'error'``.
 
     Attributes
     ----------
@@ -126,7 +126,7 @@ class DataQualityReport:
 
     @property
     def passed(self) -> bool:
-        """Return True if no check result has severity 'error'."""
+        """Return True if no check result has severity 'fail' or 'error'."""
         return all(r.severity in {'pass', 'warning'} for r in self.check_results)
 
     def summary(self) -> str:
@@ -229,7 +229,7 @@ class DataQualityReport:
 
         checks_sidecar: dict[str, Any] = {
             'code': {'Description': 'Unique identifier of the validation check.'},
-            'severity': {'Description': "Result severity: 'pass', 'warning', or 'error'."},
+            'severity': {'Description': "Result severity: 'pass', 'warning', 'fail', or 'error'."},
             'message': {'Description': 'Human-readable description of the check outcome.'},
             'sources': {
                 'Description': (
@@ -566,7 +566,7 @@ def run_report(
     levels : list[str] | None
         Aggregation levels; ``None`` defaults to ``['dataset', 'trial']``.
     raise_on_error : bool
-        Raise :py:class:`ValidationError` on the first error result.
+        Raise :py:class:`ValidationError` on the first ``'fail'`` or ``'error'`` result.
     output_path : Path | str | None
         If given, write BIDS derivative files here.
     source_path : str
@@ -626,7 +626,7 @@ def run_report(
         )
         for result in validate_results:
             check_results.append(result)
-            if raise_on_error and result.severity == 'error':
+            if raise_on_error and result.severity in {'fail', 'error'}:
                 raise ValidationError(
                     check_id=result.code,
                     message=str(result.message),

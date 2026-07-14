@@ -2081,7 +2081,7 @@ class Gaze:
         ... )
         >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
         >>> results = gaze.validate()
-        >>> all(r.severity in {'pass', 'warning', 'error'} for r in results)
+        >>> all(r.severity in {'pass', 'warning', 'fail', 'error'} for r in results)
         True
         """
         results: list[CheckResult] = []
@@ -2143,7 +2143,7 @@ class Gaze:
             explicitly if needed).
         raise_on_error : bool
             If ``True``, raise :py:exc:`~pymovements.ValidationError` on the
-            first error-severity check result. (default: ``False``)
+            first ``'fail'`` or ``'error'``-severity check result. (default: ``False``)
         output_path : Path | str | None
             If given, write BIDS-conformant derivative files here via
             :py:meth:`~DataQualityReport.save_bids_report`.

@@ -140,25 +140,25 @@ class TestCheckTrialColumnsExist:
         result = check_trial_columns_exist(gaze)
         assert result.severity == 'pass'
 
-    def test_error_column_absent(self) -> None:
+    def test_fail_column_absent(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1]}),
             trial_columns=['trial_id'],
         )
         result = check_trial_columns_exist(gaze)
-        assert result.severity == 'error'
+        assert result.severity == 'fail'
         assert 'trial_id' in result.message
 
-    def test_error_partial_absence(self) -> None:
+    def test_fail_partial_absence(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1], 'subject': [1, 1]}),
             trial_columns=['subject', 'trial'],
         )
         result = check_trial_columns_exist(gaze)
-        assert result.severity == 'error'
+        assert result.severity == 'fail'
         assert 'trial' in result.message
 
-    def test_sources_set_on_error(self) -> None:
+    def test_sources_set_on_fail(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0]}),
             trial_columns=['missing'],
@@ -244,19 +244,19 @@ class TestCheckTimeColumnExists:
         result = check_time_column_exists(gaze)
         assert result.severity == 'pass'
 
-    def test_error_time_absent(self) -> None:
+    def test_fail_time_absent(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'x': [1.0, 2.0]}))
         result = check_time_column_exists(gaze)
-        assert result.severity == 'error'
+        assert result.severity == 'fail'
         assert 'time' in result.message
 
-    def test_error_time_string_dtype(self) -> None:
+    def test_fail_time_string_dtype(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': ['t0', 't1']}))
         result = check_time_column_exists(gaze)
-        assert result.severity == 'error'
+        assert result.severity == 'fail'
         assert 'time' in result.message
 
-    def test_sources_on_error(self) -> None:
+    def test_sources_on_fail(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'x': [0.0]}))
         result = check_time_column_exists(gaze, source_path='s/f.csv')
         assert 's/f.csv' in result.sources
@@ -293,12 +293,12 @@ class TestCheckGazeComponentsDefined:
         result = check_gaze_components_defined(gaze)
         assert result.severity == 'pass'
 
-    def test_error_no_coordinate_columns(self) -> None:
+    def test_fail_no_coordinate_columns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0], 'trial': [1]}))
         result = check_gaze_components_defined(gaze)
-        assert result.severity == 'error'
+        assert result.severity == 'fail'
 
-    def test_sources_on_error(self) -> None:
+    def test_sources_on_fail(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0]}))
         result = check_gaze_components_defined(gaze, source_path='data.csv')
         assert 'data.csv' in result.sources
@@ -643,7 +643,7 @@ class TestAllChecks:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1]}))
         result = _ALL_CHECKS[check_id](gaze, '')
         assert isinstance(result, CheckResult)
-        assert result.severity in {'pass', 'warning', 'error'}
+        assert result.severity in {'pass', 'warning', 'fail', 'error'}
 
 
 # ---------------------------------------------------------------------------
@@ -663,6 +663,12 @@ class TestDataQualityReport:
     def test_passed_false_when_error_present(self) -> None:
         report = DataQualityReport(
             check_results=[CheckResult('a', 'error', 'broken', ['f.csv'])],
+        )
+        assert report.passed is False
+
+    def test_passed_false_when_fail_present(self) -> None:
+        report = DataQualityReport(
+            check_results=[CheckResult('a', 'fail', 'broken', ['f.csv'])],
         )
         assert report.passed is False
 
@@ -1083,7 +1089,7 @@ class TestDatasetReportDataQuality:
                 )
                 for result in results:
                     check_results.append(result)
-                    if raise_on_error and result.severity == 'error':
+                    if raise_on_error and result.severity in {'fail', 'error'}:
                         raise ValidationError(
                             check_id=result.code,
                             message=str(result.message),

@@ -1290,7 +1290,7 @@ class Dataset:
             (default: None)
         raise_on_error : bool
             If ``True``, raise :py:exc:`~pymovements.ValidationError`
-            on the first check result with severity ``'error'``. (default: False)
+            on the first check result with severity ``'fail'`` or ``'error'``. (default: False)
         max_gap_factor : float
             Maximum allowed inter-sample gap as a multiple of the expected ISI.
             Passed to the ``'max_gap'`` check. (default: 5.0)
@@ -1369,7 +1369,7 @@ class Dataset:
                 )
                 for result in results:
                     check_results.append(result)
-                    if raise_on_error and result.severity == 'error':
+                    if raise_on_error and result.severity in {'fail', 'error'}:
                         raise ValidationError(
                             check_id=result.code,
                             message=str(result.message),

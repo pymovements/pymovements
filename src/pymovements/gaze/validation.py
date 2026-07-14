@@ -40,7 +40,10 @@ class CheckResult:
     code : str
         Short identifier, e.g. ``'trial_columns_exist'``.
     severity : str
-        One of ``'pass'``, ``'warning'``, or ``'error'``.
+        One of ``'pass'``, ``'warning'``, ``'fail'``, or ``'error'``.
+        ``'fail'`` means the check ran but the data did not satisfy the
+        criterion. ``'error'`` means a precondition for the check was not met
+        so the check could not be performed.
     message : str
         Human-readable description of the outcome.
     sources : list[str]
@@ -73,7 +76,7 @@ def check_trial_columns_exist(gaze: Gaze, source_path: str = '') -> CheckResult:
     Returns
     -------
     CheckResult
-        Severity ``'error'`` if any declared trial column is absent from the schema;
+        Severity ``'fail'`` if any declared trial column is absent from the schema;
         ``'pass'`` otherwise.
 
     Examples
@@ -103,7 +106,7 @@ def check_trial_columns_exist(gaze: Gaze, source_path: str = '') -> CheckResult:
     if missing:
         return CheckResult(
             code='trial_columns_exist',
-            severity='error',
+            severity='fail',
             message=(
                 f'trial_columns {missing!r} not found in sample schema. '
                 f'Available columns: {gaze.samples.columns!r}'
@@ -204,7 +207,7 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
     Returns
     -------
     CheckResult
-        Severity ``'error'`` if the column is absent or has a non-numeric dtype;
+        Severity ``'fail'`` if the column is absent or has a non-numeric dtype;
         ``'pass'`` otherwise.
 
     Examples
@@ -224,7 +227,7 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
     if 'time' not in gaze.samples.columns:
         return CheckResult(
             code='time_column_exists',
-            severity='error',
+            severity='fail',
             message=(
                 "No 'time' column found in the sample schema. "
                 'Specify time_column during Gaze initialisation or provide an Experiment '
@@ -236,7 +239,7 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
     if not gaze.samples['time'].dtype.is_numeric():
         return CheckResult(
             code='time_column_exists',
-            severity='error',
+            severity='fail',
             message=(
                 f"'time' column has dtype {gaze.samples['time'].dtype!r} which is not numeric. "
                 'Timestamps must be numeric (integer or float).'
@@ -269,7 +272,7 @@ def check_gaze_components_defined(gaze: Gaze, source_path: str = '') -> CheckRes
     Returns
     -------
     CheckResult
-        Severity ``'error'`` if none of the expected coordinate columns is present;
+        Severity ``'fail'`` if none of the expected coordinate columns is present;
         ``'pass'`` otherwise.
 
     Examples
@@ -291,7 +294,7 @@ def check_gaze_components_defined(gaze: Gaze, source_path: str = '') -> CheckRes
     if not present:
         return CheckResult(
             code='gaze_components_defined',
-            severity='error',
+            severity='fail',
             message=(
                 'No gaze coordinate columns found (expected at least one of '
                 f'{sorted(coordinate_cols)!r}). '

@@ -94,7 +94,7 @@ class TestGazeValidateContract:
     def test_all_severities_valid(self) -> None:
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         for r in gaze.validate():
-            assert r.severity in {'pass', 'warning', 'error'}
+            assert r.severity in {'pass', 'warning', 'fail', 'error'}
 
     def test_check_codes_unique_in_result(self) -> None:
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
@@ -200,15 +200,15 @@ class TestGazeValidateOrder:
 # ---------------------------------------------------------------------------
 
 class TestGazeValidateSourcePath:
-    def test_error_includes_source_path(self) -> None:
+    def test_fail_includes_source_path(self) -> None:
         gaze = _make_gaze(
             samples=pl.DataFrame({'time': [0]}),
             trial_columns=['missing_column'],
         )
         results = gaze.validate(source_path='data/subject01.csv')
-        error_results = [r for r in results if r.severity == 'error']
-        assert error_results, 'Expected at least one error result'
-        for r in error_results:
+        fail_results = [r for r in results if r.severity == 'fail']
+        assert fail_results, 'Expected at least one fail result'
+        for r in fail_results:
             assert 'data/subject01.csv' in r.sources
 
     def test_pass_results_have_source_path(self) -> None:
@@ -250,7 +250,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_trial_columns_exist_error(self) -> None:
+    def test_trial_columns_exist_fail(self) -> None:
         gaze = _make_gaze(
             samples=pl.DataFrame({'time': [0, 1]}),
             trial_columns=['nonexistent'],
@@ -265,7 +265,7 @@ class TestGazeValidateCheckOutcomes:
             sampling_rate_consistency=False,
             gaze_range=False,
         )
-        assert results[0].severity == 'error'
+        assert results[0].severity == 'fail'
 
     def test_trial_columns_dtype_warning_on_float(self) -> None:
         gaze = Gaze(
@@ -284,7 +284,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_time_column_exists_error(self) -> None:
+    def test_time_column_exists_fail(self) -> None:
         gaze = Gaze(samples=pl.DataFrame({'x': [1.0, 2.0]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -296,9 +296,9 @@ class TestGazeValidateCheckOutcomes:
             sampling_rate_consistency=False,
             gaze_range=False,
         )
-        assert results[0].severity == 'error'
+        assert results[0].severity == 'fail'
 
-    def test_gaze_components_defined_error(self) -> None:
+    def test_gaze_components_defined_fail(self) -> None:
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -310,7 +310,7 @@ class TestGazeValidateCheckOutcomes:
             sampling_rate_consistency=False,
             gaze_range=False,
         )
-        assert results[0].severity == 'error'
+        assert results[0].severity == 'fail'
 
     def test_gaze_components_defined_pass_with_position(self) -> None:
         gaze = Gaze(
@@ -777,9 +777,9 @@ class TestGazeReportDataQuality:
             checks=['trial_columns_exist'],
             source_path='subject01/run01.csv',
         )
-        errors = [r for r in report.check_results if r.severity == 'error']
-        assert len(errors) == 1
-        assert 'subject01/run01.csv' in errors[0].sources
+        fails = [r for r in report.check_results if r.severity == 'fail']
+        assert len(fails) == 1
+        assert 'subject01/run01.csv' in fails[0].sources
 
     def test_warning_log_captured(self) -> None:
         gaze = self._clean_gaze()
