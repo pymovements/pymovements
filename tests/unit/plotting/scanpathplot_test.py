@@ -225,12 +225,13 @@ def gaze_fixture(request, make_gaze):
         # This test case now expects DeprecationWarning for add_stimulus
         pytest.param(
             {
-                'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            'add_stimulus': True,
+            'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            'stimulus_origin': 'lower',  # This will trigger the warning
             },
-            id='set_stimulus',
-            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
-        ),
+                id='set_stimulus_with_origin',
+                marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
+            ),
         pytest.param(
             {
                 'add_arrows': True,
