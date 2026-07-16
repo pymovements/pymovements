@@ -329,3 +329,37 @@ def test_traceplot_with_image_stimulus(gaze, tmp_path):
     assert (tmp_path / 'traceplot_with_stimulus.svg').is_file()
 
     plt.close(fig)
+
+def test_traceplot_deprecated_parameters(gaze):
+    """Test that deprecated parameters trigger warnings in traceplot."""
+    
+    # Test add_stimulus deprecation
+    with pytest.deprecated_call():
+        traceplot(
+            gaze=gaze,
+            add_stimulus=True,
+            path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
+        )
+    
+    # Test path_to_image_stimulus deprecation
+    with pytest.deprecated_call():
+        traceplot(
+            gaze=gaze,
+            path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
+        )
+    
+    # Test stimulus_origin deprecation
+    with pytest.deprecated_call():
+        traceplot(
+            gaze=gaze,
+            stimulus_origin='lower',
+        )
+    
+    # Test all three together
+    with pytest.deprecated_call():
+        traceplot(
+            gaze=gaze,
+            add_stimulus=True,
+            path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            stimulus_origin='lower',
+        )
