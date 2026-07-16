@@ -393,6 +393,12 @@ def test__DownloadProgressBar_tsize_not_None():
             id='url_none',
         ),
         pytest.param(
+            WebSource(url='https://example.com/test.gz.tar', filename=None),
+            AttributeError,
+            'WebSource.filename must not be None',
+            id='filename_none',
+        ),
+        pytest.param(
             WebSource(url='test.gz.tar', filename='test.gz.tar'),
             ValueError,
             'unknown url type: ',
