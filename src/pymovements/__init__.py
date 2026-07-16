@@ -40,6 +40,7 @@ from pymovements.dataset import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
+from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
 from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
@@ -98,6 +99,7 @@ __all__ = [
     'transforms',
 
     'exceptions',
+    'ChecksumError',
     'UnknownFileType',
     'UnknownMeasure',
 
