@@ -269,10 +269,11 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
 
     plt.close(fig)
 
+
 def test_heatmap_deprecated_parameters(args, position_column_mapping):
     """Test that deprecated parameters trigger warnings in heatmap."""
     position_column = position_column_mapping[args[1]]
-    
+
     # Test add_stimulus deprecation
     with pytest.deprecated_call():
         heatmap(
@@ -281,7 +282,7 @@ def test_heatmap_deprecated_parameters(args, position_column_mapping):
             add_stimulus=True,
             path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
         )
-    
+
     # Test path_to_image_stimulus deprecation
     with pytest.deprecated_call():
         heatmap(
@@ -289,7 +290,7 @@ def test_heatmap_deprecated_parameters(args, position_column_mapping):
             position_column=position_column,
             path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
         )
-    
+
     # Test stimulus_origin deprecation
     with pytest.deprecated_call():
         heatmap(
@@ -297,7 +298,7 @@ def test_heatmap_deprecated_parameters(args, position_column_mapping):
             position_column=position_column,
             stimulus_origin='lower',
         )
-    
+
     # Test all three together
     with pytest.deprecated_call():
         heatmap(
