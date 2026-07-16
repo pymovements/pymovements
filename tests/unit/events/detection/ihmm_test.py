@@ -23,7 +23,6 @@ import pandas as pd
 import polars as pl
 import pytest
 
-
 import pymovements as pm
 from pymovements.events.detection.idt import idt
 from pymovements.events.detection.ihmm import baum_backward
