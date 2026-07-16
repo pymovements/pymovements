@@ -1186,7 +1186,7 @@ def test_case6_regular_dataset():
     assert_algorithms_agree('Regular dataset', ihmmEvents, idtEvents, min_overlap=0.6)
 
 
-#---
+# ---
 
 def test_ihmm_rejects_hmm_parameters_dict_with_invalid_mu_shape():
     """hmm_parameters_dict with invalid mu shape should raise ValueError."""
