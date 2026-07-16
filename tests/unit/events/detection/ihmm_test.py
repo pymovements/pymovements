@@ -1198,20 +1198,19 @@ def _print_summary_at_session_end():
     print(f"{n_passed}/{n_run} checks passed" + (f", {n_skipped} skipped" if n_skipped else ''))
 
 
-
 # ---
 
 def test_ihmm_rejects_hmm_parameters_dict_with_invalid_mu_shape():
     """hmm_parameters_dict with invalid mu shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     hmm_params = {
         'mu': np.array([0.0, 10.0, 5.0]),  # shape (3,) instead of (2,)
         'sigma': np.array([1.0, 1.0]),
         'init': np.array([0.5, 0.5]),
         'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
     }
-    
+
     with pytest.raises(ValueError, match='mu.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1223,14 +1222,14 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_mu_shape():
 def test_ihmm_rejects_hmm_parameters_dict_with_invalid_sigma_shape():
     """hmm_parameters_dict with invalid sigma shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     hmm_params = {
         'mu': np.array([0.0, 10.0]),
         'sigma': np.array([1.0, 1.0, 2.0]),  # shape (3,) instead of (2,)
         'init': np.array([0.5, 0.5]),
         'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
     }
-    
+
     with pytest.raises(ValueError, match='sigma.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1242,14 +1241,14 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_sigma_shape():
 def test_ihmm_rejects_hmm_parameters_dict_with_invalid_init_shape():
     """hmm_parameters_dict with invalid init shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     hmm_params = {
         'mu': np.array([0.0, 10.0]),
         'sigma': np.array([1.0, 1.0]),
         'init': np.array([0.5, 0.5, 0.0]),  # shape (3,) instead of (2,)
         'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
     }
-    
+
     with pytest.raises(ValueError, match='init_state.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1261,14 +1260,15 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_init_shape():
 def test_ihmm_rejects_hmm_parameters_dict_with_invalid_trans_shape():
     """hmm_parameters_dict with invalid trans shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     hmm_params = {
         'mu': np.array([0.0, 10.0]),
         'sigma': np.array([1.0, 1.0]),
         'init': np.array([0.5, 0.5]),
-        'trans': np.array([[0.95, 0.05], [0.05, 0.95], [0.1, 0.9]]),  # shape (3, 2) instead of (2, 2)
+        # shape (3, 2) instead of (2, 2)
+        'trans': np.array([[0.95, 0.05], [0.05, 0.95], [0.1, 0.9]]),
     }
-    
+
     with pytest.raises(ValueError, match='transition_probabilities.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1280,14 +1280,14 @@ def test_ihmm_rejects_hmm_parameters_dict_with_invalid_trans_shape():
 def test_ihmm_rejects_hmm_parameters_dict_with_mu_none_and_invalid_shape():
     """hmm_parameters_dict with mu=None should still validate other parameters."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     hmm_params = {
         'mu': None,
-        'sigma': np.array([1.0, 1.0, 2.0]),  
+        'sigma': np.array([1.0, 1.0, 2.0]),
         'init': np.array([0.5, 0.5]),
         'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
     }
-    
+
     with pytest.raises(ValueError, match='mu.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1299,9 +1299,9 @@ def test_ihmm_rejects_hmm_parameters_dict_with_mu_none_and_invalid_shape():
 def test_ihmm_rejects_transition_probabilities_row_sums_greater_than_one():
     """Transition probabilities with row sum > 1 should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
-    transition_probabilities = np.array([[0.6, 0.6], [0.9, 0.2]])  
-    
+
+    transition_probabilities = np.array([[0.6, 0.6], [0.9, 0.2]])
+
     with pytest.raises(ValueError, match='transition_probabilities values must sum up to one'):
         ihmm(
             velocities=velocities,
@@ -1313,9 +1313,9 @@ def test_ihmm_rejects_transition_probabilities_row_sums_greater_than_one():
 def test_ihmm_rejects_sigma_with_invalid_shape():
     """sigma parameter with invalid shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     sigma = np.array([1.0, 1.0, 2.0])  # shape (3,) instead of (2,)
-    
+
     with pytest.raises(ValueError, match='sigma.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1327,9 +1327,9 @@ def test_ihmm_rejects_sigma_with_invalid_shape():
 def test_ihmm_rejects_init_state_with_invalid_shape():
     """init_state parameter with invalid shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
-    
+
     init_state = np.array([0.5, 0.5, 0.0])  # shape (3,) instead of (2,)
-    
+
     with pytest.raises(ValueError, match='init_state.*must have shape'):
         ihmm(
             velocities=velocities,
@@ -1341,16 +1341,16 @@ def test_ihmm_rejects_init_state_with_invalid_shape():
 def test_ihmm_handles_polars_series_with_correct_structure():
     """polars Series with 2D list structure should be processed correctly."""
     import polars as pl
-    
+
     # Create a polars Series with 2D velocity data
     velocity_data = [[0.0, 0.0], [0.1, 0.1], [10.0, 10.0], [10.1, 10.1]]
     series = pl.Series(velocity_data)
-    
+
     events = ihmm(
         velocities=series,
         minimum_duration=1,
     )
-    
+
     assert events is not None
     assert n_events(events) >= 1
 
@@ -1358,9 +1358,9 @@ def test_ihmm_handles_polars_series_with_correct_structure():
 def test_ihmm_rejects_polars_series_with_non_list_dtype():
     """polars Series with non-list dtype should raise TypeError."""
     import polars as pl
-    
+
     series = pl.Series([1, 2, 3, 4])  # int dtype, not List
-    
+
     with pytest.raises(TypeError, match='velocities dtype must be List'):
         ihmm(
             velocities=series,
@@ -1371,11 +1371,11 @@ def test_ihmm_rejects_polars_series_with_non_list_dtype():
 def test_ihmm_rejects_polars_series_with_inconsistent_list_lengths():
     """polars Series with inconsistent list lengths should raise ValueError."""
     import polars as pl
-    
+
     # Some lists have length 2, others have length 3
     velocity_data = [[0.0, 0.0], [0.1, 0.1, 0.2], [10.0, 10.0]]
     series = pl.Series(velocity_data)
-    
+
     with pytest.raises(ValueError, match='velocities must be 2D list'):
         ihmm(
             velocities=series,
@@ -1386,7 +1386,7 @@ def test_ihmm_rejects_polars_series_with_inconsistent_list_lengths():
 def test_ihmm_warns_when_verbose_true_without_reestimation():
     """Verbose=True with reestimation=False should issue a warning."""
     velocities = np.array([[0.0, 0.0], [0.1, 0.1]])
-    
+
     with pytest.warns(UserWarning, match='verbose is:True but reestimation is False'):
         ihmm(
             velocities=velocities,
@@ -1404,9 +1404,9 @@ def test_ihmm_verbose_output_with_reestimation(capsys):
             [0.1, 0.1],
             [10.0, 10.0],
             [10.1, 10.1],
-        ]
+        ],
     )
-    
+
     ihmm(
         velocities=velocities,
         reestimation=True,
@@ -1414,9 +1414,9 @@ def test_ihmm_verbose_output_with_reestimation(capsys):
         verbose=True,
         minimum_duration=1,
     )
-    
+
     captured = capsys.readouterr()
-    assert "Optimal parameters found by reestimation are:" in captured.out
+    assert 'Optimal parameters found by reestimation are:' in captured.out
 
 
 def test_baum_welch_handles_masked_velocities_in_xi_computation():
@@ -1425,10 +1425,10 @@ def test_baum_welch_handles_masked_velocities_in_xi_computation():
     sigma = np.array([1.0, 1.0])
     init = np.log(np.array([0.5, 0.5]))
     trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
-    
+
     velocities = np.array([0.0, np.nan, 10.0])
     mask = np.array([True, False, True])
-    
+
     result = baum_welch(
         states=2,
         mu=mu.copy(),
@@ -1439,7 +1439,7 @@ def test_baum_welch_handles_masked_velocities_in_xi_computation():
         velocities_mask=mask,
         max_iters=5,
     )
-    
+
     assert result['mu'].shape == (2,)
     assert result['sigma'].shape == (2,)
     assert all(np.isfinite(result['trans'].flatten()))
