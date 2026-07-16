@@ -1445,16 +1445,15 @@ def test_baum_welch_handles_masked_velocities_in_xi_computation():
     assert all(np.isfinite(result['trans'].flatten()))
 
 
-
 def test_baum_forward_initialization_with_masked_first_observation():
     mu = np.array([0.0, 10.0])
     sigma = np.array([1.0, 1.0])
-    init = np.log(np.array([0.7, 0.3]))  
+    init = np.log(np.array([0.7, 0.3]))
     trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
-    
+
     velocities = np.array([np.nan, 0.1, 10.0])
     mask = np.array([False, True, True])  # First observation is masked
-    
+
     alpha = baum_forward(
         mu=mu,
         sigma=sigma,
@@ -1465,15 +1464,14 @@ def test_baum_forward_initialization_with_masked_first_observation():
         T=3,
         M=2,
     )
-    
-    
+
     expected_alpha_0 = init.copy()
-    
+
     np.testing.assert_array_almost_equal(alpha[0], expected_alpha_0, decimal=12)
-    
 
     assert np.all(np.isfinite(alpha[1]))
     assert np.all(np.isfinite(alpha[2]))
+
 
 def test_baum_forward_initialization_with_unmasked_first_observation():
 
@@ -1481,10 +1479,10 @@ def test_baum_forward_initialization_with_unmasked_first_observation():
     sigma = np.array([1.0, 1.0])
     init = np.log(np.array([0.7, 0.3]))
     trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
-    
+
     velocities = np.array([0.0, 0.1, 10.0])
     mask = np.array([True, True, True])  # All observations are unmasked
-    
+
     alpha = baum_forward(
         mu=mu,
         sigma=sigma,
@@ -1495,18 +1493,17 @@ def test_baum_forward_initialization_with_unmasked_first_observation():
         T=3,
         M=2,
     )
-    
-    
+
     expected_alpha_0 = np.array([
         init[0] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=0),
         init[1] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=1),
     ])
-    
+
     np.testing.assert_array_almost_equal(alpha[0], expected_alpha_0, decimal=12)
-    
-    init_only = init.copy()  
+
+    init_only = init.copy()
     assert not np.allclose(alpha[0], init_only), \
-        "alpha[0] should include emission probability, not just init"
+        'alpha[0] should include emission probability, not just init'
 
 
 def test_baum_forward_initialization_masked_vs_unmasked_comparison():
@@ -1515,8 +1512,8 @@ def test_baum_forward_initialization_masked_vs_unmasked_comparison():
     sigma = np.array([1.0, 1.0])
     init = np.log(np.array([0.5, 0.5]))
     trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
-    
-    velocities = np.array([5.0, 0.1, 10.0])  
+
+    velocities = np.array([5.0, 0.1, 10.0])
     mask_unmasked = np.array([True, True, True])
     alpha_unmasked = baum_forward(
         mu=mu,
@@ -1528,7 +1525,7 @@ def test_baum_forward_initialization_masked_vs_unmasked_comparison():
         T=3,
         M=2,
     )
-    
+
     mask_masked = np.array([False, True, True])
     alpha_masked = baum_forward(
         mu=mu,
@@ -1540,12 +1537,11 @@ def test_baum_forward_initialization_masked_vs_unmasked_comparison():
         T=3,
         M=2,
     )
-    
+
     np.testing.assert_array_almost_equal(alpha_masked[0], init, decimal=12)
-    
+
     assert not np.allclose(alpha_unmasked[0], alpha_masked[0])
-    
-  
+
     assert np.all(np.isfinite(alpha_unmasked[2]))
     assert np.all(np.isfinite(alpha_masked[2]))
 
@@ -1556,10 +1552,10 @@ def test_baum_forward_handles_mixed_masked_unmasked_observations():
     sigma = np.array([1.0, 1.0])
     init = np.log(np.array([0.5, 0.5]))
     trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
-    
+
     velocities = np.array([np.nan, 0.1, 10.0, 10.1])
     mask = np.array([False, True, True, True])  # Only first is masked
-    
+
     alpha = baum_forward(
         mu=mu,
         sigma=sigma,
@@ -1570,8 +1566,7 @@ def test_baum_forward_handles_mixed_masked_unmasked_observations():
         T=4,
         M=2,
     )
-    
-  
+
     assert np.allclose(alpha[0], init)
 
     assert np.all(np.isfinite(alpha[1]))
