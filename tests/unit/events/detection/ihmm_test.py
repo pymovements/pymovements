@@ -20,7 +20,6 @@
 """Tests functionality of the IHMM algorithm."""
 import numpy as np
 import pandas as pd
-import polars as pl
 import pytest
 
 import pymovements as pm
