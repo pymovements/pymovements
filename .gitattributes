@@ -1,2 +1,2 @@
-*.csv text eol=lf
 src/pymovements/_version.py export-subst
+tests/files text eol=lf
