@@ -49,7 +49,8 @@ class WebSource:
     url: str
         Primary URL of the resource to be downloaded.
     filename: str | None
-        Optional target filename. If not provided, the basename of the URL path is used.
+        Optional target filename. Must be provided for calling
+        :py:meth:`~pymovements.WebSource.download`.
     md5: str | None
         Optional MD5 checksum for integrity verification.
     mirrors: list[str] | None
