@@ -21,6 +21,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+import polars as pl
 
 import pymovements as pm
 from pymovements.events.detection.idt import idt
@@ -1340,7 +1341,7 @@ def test_ihmm_rejects_init_state_with_invalid_shape():
 
 def test_ihmm_handles_polars_series_with_correct_structure():
     """polars Series with 2D list structure should be processed correctly."""
-    import polars as pl
+    
 
     # Create a polars Series with 2D velocity data
     velocity_data = [[0.0, 0.0], [0.1, 0.1], [10.0, 10.0], [10.1, 10.1]]
@@ -1357,7 +1358,7 @@ def test_ihmm_handles_polars_series_with_correct_structure():
 
 def test_ihmm_rejects_polars_series_with_non_list_dtype():
     """polars Series with non-list dtype should raise TypeError."""
-    import polars as pl
+    
 
     series = pl.Series([1, 2, 3, 4])  # int dtype, not List
 
@@ -1370,7 +1371,7 @@ def test_ihmm_rejects_polars_series_with_non_list_dtype():
 
 def test_ihmm_rejects_polars_series_with_inconsistent_list_lengths():
     """polars Series with inconsistent list lengths should raise ValueError."""
-    import polars as pl
+
 
     # Some lists have length 2, others have length 3
     velocity_data = [[0.0, 0.0], [0.1, 0.1, 0.2], [10.0, 10.0]]
