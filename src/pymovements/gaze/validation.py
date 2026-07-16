@@ -41,13 +41,20 @@ class CheckResult:
         Short identifier, e.g. ``'trial_columns_exist'``.
     severity : str
         One of ``'pass'``, ``'warning'``, ``'fail'``, or ``'error'``.
-        ``'fail'`` means the check ran but the data did not satisfy the
-        criterion. ``'error'`` means a precondition for the check was not met
-        so the check could not be performed.
+        See the notes section for the semantics of each class.
     message : str
         Human-readable description of the outcome.
     sources : list[str]
         File paths of source files that were checked.
+
+    Notes
+    -----
+    On the meaning of each severity class:
+
+    - ``'pass'``: the check ran and the data satisfied the criterion
+    - ``'fail'``: the check ran but the data did not satisfy a required criterion
+    - ``'warning'``: the check ran but the data did not satisfy a warning-level criterion
+    - ``'error'``: a precondition for the check was not met so the check could not be performed.
 
     Examples
     --------
