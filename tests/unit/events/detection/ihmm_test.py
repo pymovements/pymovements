@@ -20,8 +20,9 @@
 """Tests functionality of the IHMM algorithm."""
 import numpy as np
 import pandas as pd
-import pytest
 import polars as pl
+import pytest
+
 
 import pymovements as pm
 from pymovements.events.detection.idt import idt
