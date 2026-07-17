@@ -121,8 +121,8 @@ def compute_reading_measures(
         if cur_fix_word_idx == right_most_word:
             word_dict[cur_fix_word_idx]['RBRT'] += int(cur_fix_dur)
         if (
-                word_dict[cur_fix_word_idx]['FRT'] == 0 and
-                (not next_fix_word_idx == cur_fix_word_idx or next_fix_dur == 0)
+            word_dict[cur_fix_word_idx]['FRT'] == 0 and
+            (not next_fix_word_idx == cur_fix_word_idx or next_fix_dur == 0)
         ):
             word_dict[cur_fix_word_idx]['FRT'] = word_dict[cur_fix_word_idx]['TFT']
         if word_dict[cur_fix_word_idx]['SL_in'] == 0:

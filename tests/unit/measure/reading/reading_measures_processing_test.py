@@ -23,6 +23,34 @@ import pytest
 
 from pymovements import Dataset
 from pymovements import ReadingMeasures
+from pymovements.measure.reading.processing import compute_reading_measures
+
+
+@pytest.mark.parametrize(
+    'fixations_df, aoi_df',
+    [
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 2, 3],
+                    'duration': [100, 100, 100, 100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 3],
+                    'character': ['a', 'b', 'c'],
+                },
+            ),
+            id='standard',
+        ),
+    ],
+)
+def test_compute_reading_measures(fixations_df, aoi_df):
+    result = compute_reading_measures(fixations_df, aoi_df)
+    assert isinstance(result, pl.DataFrame)
+    assert len(result) == len(aoi_df)
+    assert 'FFD' in result.columns
 
 
 @pytest.mark.parametrize(
@@ -45,7 +73,6 @@ def test_reading_measures_processing(
     detection_method, minimum_duration, dispersion_threshold,
     velocity_threshold, expected_event_properties, use_save_path, tmp_path,
 ):
-    assert False
     # Create the dataset
     dataset = Dataset('PoTeC', path='data/PoTeC')
     dataset.load(subset={'subject_id': 5, 'text_id': 'b0'})
