@@ -25,13 +25,13 @@ from pymovements.measure.reading.processing import compute_reading_measures
 
 
 @pytest.mark.parametrize(
-    'fixations_df, aoi_df',
+    'fixations_df, aoi_df, expected_results',
     [
         pytest.param(
             pl.DataFrame(
                 {
                     'aoi': [1, 2, 2, 3],
-                    'duration': [100, 100, 100, 100],
+                    'duration': [100, 110, 120, 130],
                 },
             ),
             pl.DataFrame(
@@ -40,12 +40,62 @@ from pymovements.measure.reading.processing import compute_reading_measures
                     'character': ['a', 'b', 'c'],
                 },
             ),
-            id='standard',
+            {
+                0: {'FFD': 100, 'TFT': 100, 'FPRT': 100, 'TFC': 1},
+                1: {'FFD': 110, 'TFT': 230, 'FPRT': 230, 'TFC': 2},
+                2: {'FFD': 130, 'TFT': 130, 'FPRT': 130, 'TFC': 1},
+            },
+            id='forward',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 1, 3],
+                    'duration': [100, 110, 120, 130],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 3],
+                    'character': ['a', 'b', 'c'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 220, 'FPRT': 100, 'RRT': 120, 'TFC': 2},
+                1: {'FFD': 110, 'TFT': 110, 'FPRT': 110, 'TFC': 1},
+                2: {'FFD': 130, 'TFT': 130, 'FPRT': 130, 'TFC': 1},
+            },
+            id='regression',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 3],
+                    'duration': [100, 130],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 3],
+                    'character': ['a', 'b', 'c'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 100, 'TFC': 1},
+                1: {'FFD': 0, 'TFT': 0, 'TFC': 0},
+                2: {'FFD': 130, 'TFT': 130, 'TFC': 1},
+            },
+            id='skipping',
         ),
     ],
 )
-def test_compute_reading_measures(fixations_df, aoi_df):
+def test_compute_reading_measures(fixations_df, aoi_df, expected_results):
     result = compute_reading_measures(fixations_df, aoi_df)
     assert isinstance(result, pl.DataFrame)
     assert len(result) == len(aoi_df)
-    assert 'FFD' in result.columns
+
+    for word_idx, expected in expected_results.items():
+        row = result.filter(pl.col('word_index') == word_idx)
+        assert not row.is_empty()
+        for col, val in expected.items():
+            assert row[col][0] == val

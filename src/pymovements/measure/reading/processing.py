@@ -20,46 +20,44 @@
 """Reading measure processing functions."""
 from __future__ import annotations
 
-import pandas as pd
+import polars as pl
 
 
 def compute_reading_measures(
-        fixations_df: pd.DataFrame,
-        aoi_df: pd.DataFrame,
-) -> pd.DataFrame:
+        fixations_df: pl.DataFrame,
+        aoi_df: pl.DataFrame,
+) -> pl.DataFrame:
     """Compute reading measures from fixation sequences.
 
     Parameters
     ----------
-    fixations_df : pd.DataFrame
+    fixations_df : pl.DataFrame
         DataFrame with fixation data, containing columns 'index', 'duration',
         'aoi', 'word_roi_str'.
-    aoi_df : pd.DataFrame
+    aoi_df : pl.DataFrame
         DataFrame with AOI data, containing columns 'word_index', 'word',
         and the AOIs of each word.
 
     Returns
     -------
-    pd.DataFrame
+    pl.DataFrame
         DataFrame with computed reading measures.
     """
     # Append an extra dummy fixation to have the next fixation for the actual last fixation.
-    fixations_df = pd.concat(
-        [
-            fixations_df,
-            pd.DataFrame(
-                [[0 for _ in range(len(fixations_df.columns))]],
-                columns=fixations_df.columns,
-            ),
-        ],
-        ignore_index=True,
+    dummy_fixation = pl.DataFrame(
+        {col: [0] for col in fixations_df.columns},
+        schema=fixations_df.schema,
     )
+    fixations_df = pl.concat([fixations_df, dummy_fixation])
 
     # Adjust AOI indices (fix off by one error).
-    aoi_df['aoi'] = aoi_df['aoi'] - 1
+    aoi_df = aoi_df.with_columns(
+        (pl.col('aoi') - 1).alias('aoi'),
+    )
+
     # Get original words of the text and their indices.
-    text_aois = aoi_df['aoi'].tolist()
-    text_strs = aoi_df['character'].tolist()
+    text_aois = aoi_df['aoi'].to_list()
+    text_strs = aoi_df['character'].to_list()
 
     # Initialize dictionary for reading measures per word.
     word_dict = {
@@ -76,17 +74,17 @@ def compute_reading_measures(
     right_most_word, cur_fix_word_idx, next_fix_word_idx, next_fix_dur = -1, -1, -1, -1
 
     # Iterate over fixation data.
-    for _, fixation in fixations_df.iterrows():
+    for fixation in fixations_df.to_dicts():
         try:
             aoi = int(fixation['aoi']) - 1
-        except ValueError:
+        except (ValueError, TypeError):
             continue
 
         # Update variables.
         last_fix_word_idx = cur_fix_word_idx
         cur_fix_word_idx = next_fix_word_idx
         cur_fix_dur = next_fix_dur
-        if pd.isna(cur_fix_dur):
+        if cur_fix_dur is None:
             continue
 
         next_fix_word_idx = aoi
@@ -131,7 +129,7 @@ def compute_reading_measures(
             word_dict[cur_fix_word_idx]['SL_out'] = next_fix_word_idx - cur_fix_word_idx
 
     # Finalize reading measures.
-    rm_df = pd.DataFrame()
+    rm_list = []
     for _, word_rm in sorted(word_dict.items()):
         if word_rm['FFD'] == word_rm['FPRT']:
             word_rm['SFD'] = word_rm['FFD']
@@ -142,6 +140,6 @@ def compute_reading_measures(
         word_rm['Fix'] = int(word_rm['TFT'] > 0)
         word_rm['RPD_inc'] = word_rm['RPD_exc'] + word_rm['RBRT']
 
-        rm_df = pd.concat([rm_df, pd.DataFrame([word_rm])])
+        rm_list.append(word_rm)
 
-    return rm_df
+    return pl.DataFrame(rm_list)
