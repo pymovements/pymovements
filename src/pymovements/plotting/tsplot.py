@@ -185,8 +185,8 @@ def tsplot(
             ylim_abs = np.nanmax(np.abs(arr[channel_id]))
             ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
         elif not share_y and not zero_centered_yaxis:
-            ylim_max = np.nanmax(arr)
-            ylim_min = np.nanmin(arr)
+            ylim_max = np.nanmax(arr[channel_id])
+            ylim_min = np.nanmin(arr[channel_id])
             ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
         if xlims[0] != xlims[1]:
