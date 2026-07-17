@@ -25,9 +25,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
-import pymovements as pm
+from pymovements import Experiment
+from pymovements.gaze import from_numpy
+from pymovements.plotting import traceplot
 
 
 @pytest.fixture(
@@ -59,7 +60,7 @@ def gaze_fixture(request):
 
     arr = np.column_stack((x, y)).transpose()
 
-    experiment = pm.Experiment(
+    experiment = Experiment(
         screen_width_px=1280,
         screen_height_px=1024,
         screen_width_cm=38,
@@ -69,7 +70,7 @@ def gaze_fixture(request):
         sampling_rate=1000.0,
     )
 
-    gaze = pm.gaze.from_numpy(
+    gaze = from_numpy(
         samples=arr,
         schema=['x_pix', 'y_pix'],
         experiment=experiment,
@@ -89,7 +90,7 @@ def gaze_no_exp_fixture():
     y = np.arange(-100, 100)
     arr = np.column_stack((x, y)).transpose()
 
-    gaze_no_exp = pm.gaze.from_numpy(
+    gaze_no_exp = from_numpy(
         samples=arr,
         schema=['x_pix', 'y_pix'],
         experiment=None,
@@ -170,35 +171,31 @@ def gaze_no_exp_fixture():
         ),
     ],
 )
-def test_traceplot_show(gaze, kwargs, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-    pm.plotting.traceplot(gaze=gaze, **kwargs)
+def test_traceplot_returns_fig_and_axes(gaze, kwargs):
+    fig, ax = traceplot(gaze=gaze, **kwargs)
 
-    mock.assert_called_once()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_traceplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
-    pm.plotting.traceplot(gaze=gaze, show=False)
+    traceplot(gaze=gaze)
 
     mock.assert_not_called()
 
 
-def test_traceplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    pm.plotting.traceplot(
+def test_traceplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
+    traceplot(
         gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+        savepath=str(filepath),
     )
 
-    mock.assert_called_once()
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(
@@ -214,24 +211,19 @@ def test_traceplot_save(gaze, monkeypatch, tmp_path):
         ),
     ],
 )
-def test_traceplot_exceptions(gaze, kwargs, exception, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
+def test_traceplot_exceptions(gaze, kwargs, exception):
     with pytest.raises(exception):
-        pm.plotting.traceplot(gaze=gaze, **kwargs)
+        traceplot(gaze=gaze, **kwargs)
 
 
 def test_traceplot_no_experiment(gaze_no_exp):
     # Should not raise any exception
-    pm.plotting.traceplot(gaze_no_exp, show=False)
+    traceplot(gaze_no_exp)
 
 
 def test_set_screen_axes_valid(gaze):
-    _, ax = pm.plotting.traceplot(
-        gaze=gaze,
-        show=False,
-    )
+    _, ax = traceplot(gaze=gaze)
+
     assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
     assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
     assert ax.get_aspect() == 1
@@ -241,7 +233,7 @@ def test_set_screen_axes_valid(gaze):
 def test_set_screen_axes_invalid_origin(origin, gaze):
     gaze.experiment.screen.origin = origin
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
-        pm.plotting.traceplot(gaze=gaze, show=False)
+        traceplot(gaze=gaze)
 
 
 @pytest.mark.parametrize(
@@ -261,7 +253,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
     assert ax.get_aspect() != 'equal'
     # Call traceplot; should return silently, without ValueError
     # _set_screen_axes() should return early without modifying axes
-    pm.plotting.traceplot(gaze=gaze, show=False, ax=ax, figsize=None)
+    traceplot(gaze=gaze, ax=ax, figsize=None)
 
     # Axes limits should be finite numbers, not NaN/None
     xlim, ylim = ax.get_xlim(), ax.get_ylim()
@@ -296,7 +288,7 @@ def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
         at_index=pos_index,
     )
 
-    fig, ax = pm.plotting.traceplot(gaze=gaze, show=False)
+    fig, ax = traceplot(gaze=gaze)
 
     assert fig is not None
     assert ax is not None

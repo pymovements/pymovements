@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides top-level access to submodules."""
-from pymovements import datasets
 from pymovements import events
 from pymovements import exceptions
 from pymovements import gaze
@@ -26,18 +25,22 @@ from pymovements import measure
 from pymovements import plotting
 from pymovements import stimulus
 from pymovements import synthetic
-from pymovements import utils
+from pymovements import transforms
 from pymovements import warnings
 from pymovements._version import __version__
 from pymovements.dataset import Dataset
 from pymovements.dataset import DatasetDefinition
+from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
+from pymovements.dataset import Participants
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
+from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
 from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
@@ -59,12 +62,14 @@ from pymovements.warnings import ExperimentalWarning
 __all__ = [
     'Dataset',
     'DatasetDefinition',
+    'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
-    'datasets',
+    'Participants',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
+    'WebSource',
 
     'events',
     'Events',
@@ -91,15 +96,15 @@ __all__ = [
     'plotting',
     'stimulus',
     'synthetic',
+    'transforms',
 
     'exceptions',
+    'ChecksumError',
     'UnknownFileType',
     'UnknownMeasure',
 
     'warnings',
     'ExperimentalWarning',
-
-    'utils',
 
     'text',
 

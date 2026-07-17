@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 from pymovements import Events
 from pymovements import Experiment
@@ -240,18 +239,17 @@ def gaze_fixture(request, make_gaze):
         ),
     ],
 )
-def test_scanpathplot_show(gaze, kwargs, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-    scanpathplot(gaze=gaze, **kwargs)
+def test_scanpathplot_returns_fig_and_axes(gaze, kwargs):
+    fig, ax = scanpathplot(gaze=gaze, **kwargs)
 
-    mock.assert_called_once()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_scanpathplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
-    scanpathplot(gaze=gaze, show=False)
+    scanpathplot(gaze=gaze)
 
     mock.assert_not_called()
 
@@ -273,25 +271,22 @@ def test_scanpathplot_filter_events_plots_expected_circles(
         make_gaze_param, event_name, expected_n_circles, make_gaze,
 ):
     gaze = make_gaze(make_gaze_param)
-    _, ax = scanpathplot(gaze=gaze, event_name=event_name, show=False)
+    _, ax = scanpathplot(gaze=gaze, event_name=event_name)
 
     assert all(isinstance(patch, plt.Circle) for patch in ax.patches)
     assert len(ax.patches) == expected_n_circles
 
 
-def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
+def test_scanpathplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
+
     scanpathplot(
         gaze=gaze,
-        show=False,
-        savepath=str(
-            tmp_path /
-            'test.svg',
-        ),
+        savepath=str(filepath),
     )
 
-    mock.assert_called_once()
+    assert filepath.is_file()
 
 
 @pytest.mark.parametrize(
@@ -307,10 +302,7 @@ def test_scanpathplot_save(gaze, monkeypatch, tmp_path):
         ),
     ],
 )
-def test_scanpathplot_exceptions(gaze, kwargs, exception, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
+def test_scanpathplot_exceptions(gaze, kwargs, exception):
     with pytest.raises(exception):
         scanpathplot(gaze=gaze, **kwargs)
 
@@ -348,14 +340,12 @@ def test_scanpathplot_no_experiment(gaze):
     # test if gaze is not None and gaze.experiment is not None:
     gaze.experiment = None
     # Should not raise any exception
-    scanpathplot(gaze=gaze, show=False)
+    scanpathplot(gaze=gaze)
 
 
 def test_set_screen_axes_valid(gaze):
-    _, ax = scanpathplot(
-        gaze=gaze,
-        show=False,
-    )
+    _, ax = scanpathplot(gaze=gaze)
+
     assert ax.get_xlim() == (0, gaze.experiment.screen.width_px)
     assert ax.get_ylim() == (gaze.experiment.screen.height_px, 0)
     assert ax.get_aspect() == 1
@@ -365,7 +355,7 @@ def test_set_screen_axes_valid(gaze):
 def test_set_screen_axes_invalid_origin(origin, gaze):
     gaze.experiment.screen.origin = origin
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
-        scanpathplot(gaze=gaze, show=False)
+        scanpathplot(gaze=gaze)
 
 
 @pytest.mark.parametrize(
@@ -385,7 +375,7 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
     # Call scanpathplot; should return silently, without ValueError
     # _set_screen_axes() should return early without modifying axes
-    scanpathplot(gaze=gaze, show=False, ax=ax, figsize=None)
+    scanpathplot(gaze=gaze, ax=ax, figsize=None)
 
     # Axes limits should be finite numbers, not NaN/None
     xlim, ylim = ax.get_xlim(), ax.get_ylim()

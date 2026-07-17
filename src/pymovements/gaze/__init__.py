@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides gaze related functionality."""
-from pymovements.gaze import transforms
-from pymovements.gaze import transforms_numpy
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.gaze import Gaze
@@ -41,8 +39,6 @@ __all__ = [
     'Gaze',
     'GazeDataFrame',
     'Screen',
-    'transforms_numpy',
-    'transforms',
     'from_asc',
     'from_begaze',
     'from_csv',

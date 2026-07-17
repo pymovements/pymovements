@@ -173,7 +173,9 @@ def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
         ),
         # branch: elif repr(obj) in ['True', 'False']
         pytest.param(
-            _HasResourcesIndexer(ResourceDefinitions([{'content': 'test', 'filename': 'f'}])),
+            _HasResourcesIndexer(
+                ResourceDefinitions([{'content': 'test', 'filename_pattern': 'f'}]),
+            ),
             'True',
             False,
             id='boolean_like_true',

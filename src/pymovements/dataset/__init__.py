@@ -20,19 +20,25 @@
 """Provides access to dataset classes."""
 from pymovements.dataset.dataset import Dataset
 from pymovements.dataset.dataset_definition import DatasetDefinition
+from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_library import DatasetLibrary
 from pymovements.dataset.dataset_library import register_dataset
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.participants import Participants
 from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
 
 
 __all__ = [
     'Dataset',
     'DatasetDefinition',
+    'DatasetFile',
     'DatasetLibrary',
     'DatasetPaths',
+    'Participants',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
+    'WebSource',
 ]

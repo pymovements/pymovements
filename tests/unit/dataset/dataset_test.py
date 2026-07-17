@@ -210,13 +210,9 @@ def mock_toy(
         eyes,
         remote=False,
         stimulus=False,
-        extract=_UNSET,
         filename_format_schema_overrides=_UNSET,
         testfiles_dirpath=None,
 ):
-    if extract is _UNSET:
-        extract = None
-
     if filename_format_schema_overrides is _UNSET:
         filename_format_schema_overrides = {
             'gaze': {'subject_id': pl.Int64},
@@ -588,7 +584,6 @@ def mock_toy(
             sampling_rate=1000,
         ),
         resources=resource_definitions,
-        extract=extract,
     )
 
     return {

@@ -191,20 +191,20 @@ def _attr_inline_details_html(obj: object) -> tuple[str, bool]:
         is_expandable = False
 
     elif isinstance(obj, pl.DataFrame):
-        inline_details = f"DataFrame ({len(obj.columns)} columns, {len(obj)} rows)"
+        inline_details = f'DataFrame ({len(obj.columns)} columns, {len(obj)} rows)'
 
     elif isinstance(obj, list):
-        inline_details = f"list ({len(obj)} items)"
+        inline_details = f'list ({len(obj)} items)'
         if len(obj) == 0:
             is_expandable = False
 
     elif isinstance(obj, tuple):
-        inline_details = f"tuple ({len(obj)} items)"
+        inline_details = f'tuple ({len(obj)} items)'
         if len(obj) == 0:
             is_expandable = False
 
     elif isinstance(obj, dict):
-        inline_details = f"dict ({len(obj)} items)"
+        inline_details = f'dict ({len(obj)} items)'
         if len(obj) == 0:
             is_expandable = False
 

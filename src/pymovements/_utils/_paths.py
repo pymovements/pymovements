@@ -125,15 +125,27 @@ def match_filepaths(
                 relative=relative, relative_anchor=relative_anchor,
             )
             match_dicts.extend(recursive_results)
-        elif match := regex.match(childpath.name):
-            match_dict = match.groupdict()
+        else:
+            match_on_filename = regex.match(childpath.name)
 
-            filepath = childpath
-            if relative:
-                # mypy is unaware that 'relative_anchor' can never be None (l.116)
-                assert relative_anchor is not None
-                filepath = filepath.relative_to(relative_anchor)
+            match_on_relative_path = None
+            if relative_anchor is not None:
+                match_on_relative_path = regex.match(
+                    childpath.relative_to(relative_anchor).as_posix(),
+                )
 
-            match_dict['filepath'] = str(filepath)
-            match_dicts.append(match_dict)
+            match = match_on_filename or match_on_relative_path
+
+            if match:
+                match_dict = match.groupdict()
+
+                filepath = childpath
+                if relative:
+                    # mypy is unaware that 'relative_anchor' can never be None
+                    assert relative_anchor is not None
+                    filepath = filepath.relative_to(relative_anchor)
+
+                match_dict['filepath'] = str(filepath)
+                match_dicts.append(match_dict)
+
     return match_dicts

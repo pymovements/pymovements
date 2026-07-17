@@ -31,10 +31,12 @@ import polars as pl
 import pytest
 from matplotlib.lines import Line2D
 
-import pymovements as pm
+from pymovements import Events
+from pymovements.plotting import main_sequence_plot
 
 
-def _make_events() -> pm.Events:
+@pytest.fixture(name='events', scope='function')
+def events_fixture():
     # Build a minimal Events with saccades and necessary columns
     df = pl.DataFrame(
         {
@@ -47,11 +49,17 @@ def _make_events() -> pm.Events:
             'peak_velocity': [100.0, 250.0, 80.0],
         },
     )
-    return pm.Events(df)
+    yield Events(df)
 
 
-def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(monkeypatch):
-    events = _make_events()
+def test_main_sequence_plot_returns_fig_and_axes(events):
+    fig, ax = main_sequence_plot(events)
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+
+
+def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(events, monkeypatch):
     fig, ax = plt.subplots()
 
     # Ensure we don't accidentally show/close
@@ -63,11 +71,9 @@ def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(monkey
     # With an external ax and default figsize parameter present,
     # a UserWarning should be raised that figsize is ignored.
     with pytest.warns(UserWarning):
-        ret_fig, ret_ax = pm.plotting.main_sequence_plot(
+        ret_fig, ret_ax = main_sequence_plot(
             events=events,
             ax=ax,
-            show=False,
-            closefig=False,
         )
 
     # It should return the same fig/ax and plot into the provided ax (through ax.scatter path)
@@ -82,36 +88,23 @@ def test_main_sequence_plot_with_external_ax_uses_ax_and_warns_on_figsize(monkey
     close_mock.assert_not_called()
 
 
-def make_events(rows: list[dict]) -> pm.Events:
-    return pm.Events(pl.DataFrame(rows))
+def test_scanpathplot_save(events, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
 
+    main_sequence_plot(
+        events=events,
+        savepath=str(filepath),
+    )
 
-def test_main_sequence_plot_deprecated_event_df_path_warns_and_plots(monkeypatch):
-    # event_df path triggers the deprecation branch (97->98)
-    df = pl.DataFrame({
-        'trial': [1, 1],
-        'name': ['saccade', 'saccade'],
-        'onset': [0, 10],
-        'offset': [5, 15],
-        'duration': [5, 5],
-        'amplitude': [2.0, 4.0],
-        'peak_velocity': [100.0, 200.0],
-    })
-    event_df = pm.Events(df)
-
-    show_called = []
-    monkeypatch.setattr(plt, 'show', lambda: show_called.append(True))
-
-    with pytest.warns(DeprecationWarning):
-        fig, ax = pm.plotting.main_sequence_plot(event_df=event_df, show=False)
-    assert fig is ax.figure
+    assert filepath.is_file()
 
 
 def test_main_sequence_plot_raises_on_empty_events():
     # Covers 108->109: not events -> ValueError
-    empty_events = make_events([])
+    empty_events = Events(pl.DataFrame())
     with pytest.raises(ValueError):
-        pm.plotting.main_sequence_plot(events=empty_events, show=False)
+        main_sequence_plot(events=empty_events)
 
 
 def test_main_sequence_plot_raises_when_no_saccades():
@@ -126,9 +119,9 @@ def test_main_sequence_plot_raises_when_no_saccades():
         'amplitude': [1.0, 1.0],
         'peak_velocity': [10.0, 20.0],
     })
-    events = pm.Events(df)
+    events = Events(df)
     with pytest.raises(ValueError):
-        pm.plotting.main_sequence_plot(events=events, show=False)
+        main_sequence_plot(events=events)
 
 
 def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
@@ -142,9 +135,9 @@ def test_main_sequence_plot_keyerror_when_missing_peak_velocity():
         'amplitude': [2.0, 4.0],
         # 'peak_velocity' intentionally missing
     })
-    events = pm.Events(df)
+    events = Events(df)
     with pytest.raises(KeyError):
-        pm.plotting.main_sequence_plot(events=events, show=False)
+        main_sequence_plot(events=events)
 
 
 def test_main_sequence_plot_keyerror_when_missing_amplitude():
@@ -158,9 +151,9 @@ def test_main_sequence_plot_keyerror_when_missing_amplitude():
         # 'amplitude' intentionally missing
         'peak_velocity': [100.0, 200.0],
     })
-    events = pm.Events(df)
+    events = Events(df)
     with pytest.raises(KeyError):
-        pm.plotting.main_sequence_plot(events=events, show=False)
+        main_sequence_plot(events=events)
 
 
 def test_main_sequence_plot_sets_title():
@@ -173,40 +166,34 @@ def test_main_sequence_plot_sets_title():
         'amplitude': [2.0, 4.0],
         'peak_velocity': [100.0, 200.0],
     })
-    events = pm.Events(df)
-    _, ax = pm.plotting.main_sequence_plot(events=events, title='Main Sequence', show=False)
+    events = Events(df)
+    _, ax = main_sequence_plot(events=events, title='Main Sequence')
     assert ax.get_title() == 'Main Sequence'
 
 
-def test_main_sequence_plot_measure_s_adds_text():
-    events = _make_events()
-    _, ax = pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='s', show=False)
+def test_main_sequence_plot_measure_s_adds_text(events):
+    _, ax = main_sequence_plot(events=events, fit=True, fit_measure='s')
     # one text object (annotation) expected
     legend_tokens = any('S' in text.get_text() for text in ax.get_legend().get_texts())
     assert legend_tokens
 
 
-def test_main_sequence_plot_measure_invalid_raises():
-    events = _make_events()
+def test_main_sequence_plot_measure_invalid_raises(events):
     with pytest.raises(ValueError):
-        pm.plotting.main_sequence_plot(events=events, fit=True, fit_measure='banana', show=False)
+        main_sequence_plot(events=events, fit=True, fit_measure='banana')
 
 
-def test_main_sequence_plot_fit_false_no_line():
-    events = _make_events()
-    _, ax = pm.plotting.main_sequence_plot(events=events, fit=False, show=False)
+def test_main_sequence_plot_fit_false_no_line(events):
+    _, ax = main_sequence_plot(events=events, fit=False)
     # there should be no extra line2D beyond the default axes spines; at least 1 scatter exists
     assert not any(isinstance(artist, Line2D) for artist in ax.lines)
 
 
-def test_main_sequence_plot_fit_with_measure_false_draws_unlabeled_line():
-    events = _make_events()
-
-    _, ax = pm.plotting.main_sequence_plot(
+def test_main_sequence_plot_fit_with_measure_false_draws_unlabeled_line(events):
+    _, ax = main_sequence_plot(
         events=events,
         fit=True,
         fit_measure=False,
-        show=False,
     )
 
     # We expect at least one line (the fit line)

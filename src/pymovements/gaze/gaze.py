@@ -32,25 +32,23 @@ from typing import Literal
 from typing import overload
 from warnings import warn
 
-import numpy as np
 import polars
+import yaml
 from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
+from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
-from pymovements.events import events2segmentation
-from pymovements.events import events2timeratio
-from pymovements.gaze import transforms
 from pymovements.gaze.experiment import Experiment
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
 
-@repr_html(['samples', 'events', 'trial_columns', 'experiment'])
+@repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
 class Gaze:
     """Self-contained data structure containing gaze represented as samples or events.
 
@@ -77,6 +75,13 @@ class Gaze:
         the input data frame is assumed to contain only one trial. If the list is not empty,
         the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
+    calibrations: polars.DataFrame | None
+        The calibrations from the data: timestamp, num_points, tracked eye, tracking_mode.
+        None by default, to be populated by I/O helpers (e.g. from_asc). (default: None)
+    validations: polars.DataFrame | None
+        The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
+        accuracy_max. None by default, to be populated by I/O helpers (e.g. from_asc).
+        (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. This column will be renamed to
         ``time``. (default: None)
@@ -121,7 +126,7 @@ class Gaze:
         A dataframe of events in the gaze signal.
     experiment : Experiment | None
         The experiment definition.
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
         Dictionary containing additional metadata.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session.
@@ -214,9 +219,9 @@ class Gaze:
     >>> experiment = Experiment(1024, 768, 38, 30, 60, 'center', sampling_rate=100)
     >>> gaze = Gaze(samples=df_no_time, experiment=experiment, pixel_columns=['x', 'y'])
     >>> gaze
-    Experiment(screen=Screen(width_px=1024, height_px=768, width_cm=38, height_cm=30,
-     distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None))
+    Experiment(screen=Screen(resolution=(1024, 768), size=(38, 30), distance_cm=60,
+      origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None,
+      version=None, vendor=None, mount=None))
     shape: (3, 2)
     ┌──────┬────────────┐
     │ time ┆ pixel      │
@@ -235,7 +240,7 @@ class Gaze:
 
     experiment: Experiment | None
 
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] | None
 
     messages: polars.DataFrame | None
 
@@ -259,6 +264,8 @@ class Gaze:
             metadata: dict[str, Any] | None = None,
             messages: polars.DataFrame | None = None,
             trial_columns: str | list[str] | None = None,
+            calibrations: polars.DataFrame | None = None,
+            validations: polars.DataFrame | None = None,
             time_column: str | None = None,
             time_unit: str | None = None,
             pixel_columns: list[str] | None = None,
@@ -326,8 +333,15 @@ class Gaze:
         _check_messages(messages)
         self.messages = messages
 
-        self.calibrations = None
-        self.validations = None
+        if calibrations is not None:
+            self.calibrations = calibrations
+        else:
+            self.calibrations = None
+
+        if validations is not None:
+            self.validations = validations
+        else:
+            self.validations = None
 
         # Keep remaining parsed metadata privately if an I/O helper provides it.
         self._metadata = None
@@ -406,7 +420,7 @@ class Gaze:
         First let's create a simple samples dataframe:
 
         >>> import numpy as np
-        >>> import polars as pl
+        >>> import polars
         >>> import pymovements as pm
         >>> samples = polars.from_dict(
         ...     {'x': range(100), 'y': range(100), 'trial': np.repeat([1, 2, 3, 4, 5], 20)},
@@ -515,18 +529,32 @@ class Gaze:
         gazes: dict[tuple[Any, ...], Gaze] = {}
 
         for key in keys:
-            metadata_split = deepcopy(self.metadata)
+            metadata_split: dict[str, Any] = (
+                deepcopy(self.metadata) if self.metadata else {}
+            )
             if extend_metadata:
                 for by_id, column_name in enumerate(by):
                     metadata_split[column_name] = key[by_id]
+
+            messages = self.messages.clone() if self.messages is not None else None
+            calibrations = (
+                self.calibrations.clone() if self.calibrations is not None else None
+            )
+            validations = (
+                self.validations.clone() if self.validations is not None else None
+            )
 
             gaze_split = Gaze(
                 samples=grouped_samples.get(key, polars.DataFrame(schema=self.samples.schema)),
                 events=grouped_events.get(key, None),
                 experiment=self.experiment,
                 trial_columns=self.trial_columns,
-                metadata=metadata_split,
+                metadata=metadata_split if (self.metadata is not None or extend_metadata) else None,
+                messages=messages,
+                calibrations=calibrations,
+                validations=validations,
             )
+            gaze_split.n_components = self.n_components
             gazes[key] = gaze_split
 
         if as_dict:
@@ -1048,12 +1076,12 @@ class Gaze:
 
         Examples
         --------
-        >>> import polars as pl
+        >>> import polars
         >>> import pymovements as pm
         >>>
         >>> gaze = pm.Gaze(
-        ...     samples=pl.DataFrame({
-        ...         'time': pl.Series(range(6), dtype=pl.Int64),
+        ...     samples=polars.DataFrame({
+        ...         'time': polars.Series(range(6), dtype=polars.Int64),
         ...         'pixel': [[1.0, 2.0]] * 6,
         ...     }),
         ...     events=pm.Events(name='blink', onsets=[2], offsets=[3]),
@@ -1075,7 +1103,7 @@ class Gaze:
                 f"No events with name '{name}' found in events.",
             )
 
-        mask_expr = events2segmentation(
+        mask_expr = transforms.events2segmentation(
             events_frame,
             name=name,
             time_column='time',
@@ -1345,8 +1373,19 @@ class Gaze:
         if isinstance(method, str):
             method = SampleMeasureLibrary.get(method)
 
-        if 'column_dtype' in inspect.getfullargspec(method).args:
+        # Automatically infer optional method arguments from experiment.
+        method_args = (
+            inspect.getfullargspec(method).args
+            + inspect.getfullargspec(method).kwonlyargs
+        )
+
+        if 'column_dtype' in method_args and 'column_dtype' not in kwargs:
             kwargs['column_dtype'] = self.samples[kwargs['column']].dtype
+        if 'time_column' in method_args and 'time_column' not in kwargs:
+            kwargs['time_column'] = 'time'
+        if 'sampling_rate' in method_args and 'sampling_rate' not in kwargs:
+            if self.experiment and self.experiment.sampling_rate is not None:
+                kwargs['sampling_rate'] = self.experiment.sampling_rate
 
         if self.trial_columns is None:
             return self.samples.select(method(**kwargs))
@@ -1416,10 +1455,10 @@ class Gaze:
 
         Examples
         --------
-        >>> import polars as pl
+        >>> import polars
         >>> import pymovements as pm
         >>> gaze = pm.Gaze(
-        ...     samples=pl.DataFrame({
+        ...     samples=polars.DataFrame({
         ...         'time': [0, 1, 2, 3],
         ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
         ...     }),
@@ -1450,7 +1489,7 @@ class Gaze:
         """
         if not isinstance(name, str) or not name:
             raise ValueError(
-                f"name must be a non-empty string, but got: {name!r}",
+                f'name must be a non-empty string, but got: {name!r}',
             )
 
         if not isinstance(time_column, str):
@@ -1462,7 +1501,7 @@ class Gaze:
         if time_column not in self.samples.columns:
             raise ValueError(
                 f"time_column '{time_column}' not found in samples. "
-                f"Available columns: {self.samples.columns}",
+                f'Available columns: {self.samples.columns}',
             )
 
         if sampling_rate is None and self.experiment is not None:
@@ -1483,7 +1522,7 @@ class Gaze:
                 },
             )
 
-        return events2timeratio(
+        return transforms.events2timeratio(
             events=events_df,
             samples=self.samples,
             name=name,
@@ -1575,13 +1614,15 @@ class Gaze:
         # (by unnesting) or keep list columns intact and extract per-row. By default,
         # preserve_structure=True attempts to unnest.
         if preserve_structure:
-            try:
-                self.unnest()
-            except (Warning, ValueError, AttributeError):  # tolerate common cases
-                # - Warning: nothing to unnest when no list columns exist
-                # - ValueError/AttributeError: shape or configuration-related issues
-                # In all these cases: continue without failing and use fallback logic.
-                pass
+            nested_columns = _get_nested_columns(self.samples)
+            if nested_columns:
+                try:
+                    self.unnest(nested_columns)
+                except (ValueError, AttributeError):  # pragma: no cover
+                    # tolerate common cases
+                    # - ValueError/AttributeError: shape or configuration-related issues
+                    # In all these cases: continue without failing and use fallback logic.
+                    pass
 
         pix_column_canditates = ['pixel_' + suffix for suffix in component_suffixes]
         pixel_columns = [c for c in pix_column_canditates if c in self.samples.columns]
@@ -1731,7 +1772,7 @@ class Gaze:
             if mode == 'direct':
                 x_eye, y_eye = payload
                 aois = [
-                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye)
+                    aoi_dataframe.get_aoi(row=row, x_eye=x_eye, y_eye=y_eye, max_matches=1)
                     for row in tqdm(self.samples.iter_rows(named=True))
                 ]
             elif mode == 'average_lr':
@@ -1750,7 +1791,9 @@ class Gaze:
                     tmp = dict(row)
                     tmp['__x'] = x_val
                     tmp['__y'] = y_val
-                    aois.append(aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y'))
+                    aois.append(
+                        aoi_dataframe.get_aoi(row=tmp, x_eye='__x', y_eye='__y', max_matches=1),
+                    )
             else:
                 # This branch is unreachable with the current selector:
                 # the flat-components selector only yields 'direct', 'average_lr' or None
@@ -1854,10 +1897,12 @@ class Gaze:
                 tmp_row = dict(row)
                 tmp_row['__x'] = x
                 tmp_row['__y'] = y
-                aois.append(aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y'))
+                aois.append(
+                    aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1),
+                )
 
         aoi_df = polars.concat(aois)
-        self.samples = polars.concat([self.samples, aoi_df], how='horizontal')
+        self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
 
     def nest(
             self,
@@ -1917,71 +1962,12 @@ class Gaze:
         Warning
             If no columns to unnest exist and none are specified.
         """
-        if input_columns is None:
-            cols = ['pixel', 'position', 'velocity', 'acceleration']
-            input_columns = [col for col in cols if col in self.samples.columns]
-
-            if len(input_columns) == 0:
-                raise Warning(
-                    'No columns to unnest. '
-                    'Please specify columns to unnest via the "input_columns" argument.',
-                )
-
-        if isinstance(input_columns, str):
-            input_columns = [input_columns]
-
-        # no support for custom output columns if more than one input column will be unnested
-        if output_columns is not None and not len(input_columns) == 1:
-            raise ValueError(
-                'You cannot specify output columns if you want to unnest more than '
-                'one input column. Please specify output suffixes or use a single '
-                'input column instead.',
-            )
-
-        check_is_mutual_exclusive(
-            output_columns=output_columns,
+        self.samples = _unnest_list_columns(
+            df=self.samples,
+            input_columns=input_columns,
             output_suffixes=output_suffixes,
+            output_columns=output_columns,
         )
-
-        self._check_n_components()
-        assert self.n_components in {2, 4, 6}
-
-        col_names = [output_columns] if output_columns is not None else []
-
-        if output_columns is None and output_suffixes is None:
-            if self.n_components == 2:
-                output_suffixes = ['_x', '_y']
-            elif self.n_components == 4:
-                output_suffixes = ['_xl', '_yl', '_xr', '_yr']
-            else:  # This must be 6 as we already have checked our n_components.
-                output_suffixes = ['_xl', '_yl', '_xr', '_yr', '_xa', '_ya']
-
-        if output_suffixes:
-            col_names = [
-                [f'{input_col}{suffix}' for suffix in output_suffixes]
-                for input_col in input_columns
-            ]
-
-        if len([
-            name for name_list in col_names for name in name_list
-        ]) != self.n_components * len(input_columns):
-            raise ValueError(
-                f'Number of output columns / suffixes ({len(col_names[0])}) '
-                f'must match number of components ({self.n_components})',
-            )
-
-        if len({name for name_list in col_names for name in name_list}) != len(
-                [name for name_list in col_names for name in name_list],
-        ):
-            raise ValueError('Output columns / suffixes must be unique')
-
-        for input_col, column_names in zip(input_columns, col_names):
-            self.samples = self.samples.with_columns(
-                [
-                    polars.col(input_col).list.get(component_id).alias(names)
-                    for component_id, names in enumerate(column_names)
-                ],
-            ).drop(input_col)
 
     def clone(self) -> Gaze:
         """Return a copy of the Gaze.
@@ -1991,10 +1977,19 @@ class Gaze:
         Gaze
             A copy of the Gaze.
         """
+        messages = self.messages.clone() if self.messages is not None else None
+        calibrations = self.calibrations.clone() if self.calibrations is not None else None
+        validations = self.validations.clone() if self.validations is not None else None
+
         gaze = Gaze(
             samples=self.samples.clone(),
             experiment=deepcopy(self.experiment),
             events=self.events.clone(),
+            metadata=deepcopy(self.metadata),
+            messages=messages,
+            trial_columns=deepcopy(self.trial_columns),
+            calibrations=calibrations,
+            validations=validations,
         )
         gaze.n_components = self.n_components
         return gaze
@@ -2110,6 +2105,7 @@ class Gaze:
             list_length
             for column in considered_columns
             for list_length in self.samples.get_column(column).list.len().unique().to_list()
+            if list_length is not None
         }
 
         for column_specifier_list in column_specifiers:
@@ -2220,12 +2216,7 @@ class Gaze:
                     'eye_components must not be None if passing position to event detection',
                 )
 
-            kwargs['positions'] = np.vstack(
-                [
-                    samples.get_column('position').list.get(eye_component)
-                    for eye_component in eye_components
-                ],
-            ).transpose()
+            kwargs['positions'] = samples.get_column('position').list.gather(eye_components)
 
         if 'velocities' in method_args:
             if 'velocity' not in samples.columns:
@@ -2239,12 +2230,7 @@ class Gaze:
                     'eye_components must not be None if passing velocity to event detection',
                 )
 
-            kwargs['velocities'] = np.vstack(
-                [
-                    samples.get_column('velocity').list.get(eye_component)
-                    for eye_component in eye_components
-                ],
-            ).transpose()
+            kwargs['velocities'] = samples.get_column('velocity').list.gather(eye_components)
 
         if 'pixels' in method_args and 'pixels' not in kwargs:
             if 'pixel' not in samples.columns:
@@ -2258,12 +2244,21 @@ class Gaze:
                     'eye_components must not be None if passing pixel to event detection',
                 )
 
-            kwargs['pixels'] = np.vstack(
-                [
-                    samples.get_column('pixel').list.get(eye_component)
-                    for eye_component in eye_components
-                ],
-            ).transpose()
+            kwargs['pixels'] = samples.get_column('pixel').list.gather(eye_components)
+
+        if 'pupil' in method_args and 'pupil' not in kwargs:
+            if 'pupil' not in samples.columns:
+                raise polars.exceptions.ColumnNotFoundError(
+                    f'Column \'pupil\' not found.'
+                    f' Available columns are: {samples.columns}',
+                )
+            pupil_series = samples.get_column('pupil')
+            if isinstance(pupil_series.dtype, polars.List):
+                # Binocular: [left, right] — pick eye based on eye_components
+                eye_idx = 1 if eye_components and eye_components[0] in {2, 3} else 0
+                kwargs['pupil'] = pupil_series.list.get(eye_idx)
+            else:
+                kwargs['pupil'] = pupil_series
 
         if method.__name__ == 'out_of_screen' and self.experiment is not None:
             if 'x_min' not in kwargs:
@@ -2279,7 +2274,7 @@ class Gaze:
             kwargs['events'] = events
 
         if 'timesteps' in method_args and 'time' in samples.columns:
-            kwargs['timesteps'] = samples.get_column('time').to_numpy()
+            kwargs['timesteps'] = samples.get_column('time')
 
         return kwargs
 
@@ -2402,6 +2397,9 @@ class Gaze:
         if time_unit == 's':
             self.samples = self.samples.with_columns(polars.col('time').mul(1000))
 
+        elif time_unit == 'us':
+            self.samples = self.samples.with_columns(polars.col('time').truediv(1000))
+
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
@@ -2415,8 +2413,8 @@ class Gaze:
         elif time_unit != 'ms':
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
-                "Supported units are 's' for seconds, 'ms' for milliseconds and "
-                "'step' for steps.",
+                "Supported units are 's' for seconds, 'ms' for milliseconds, "
+                "'us' for microseconds and 'step' for steps.",
             )
 
         # Convert to int if possible.
@@ -2472,15 +2470,23 @@ class Gaze:
             save_events: bool | None = None,
             save_samples: bool | None = None,
             save_experiment: bool | None = None,
+            save_metadata: bool | None = None,
+            save_messages: bool | None = None,
+            save_calibrations: bool | None = None,
+            save_validations: bool | None = None,
             verbose: int = 1,
             extension: str = 'feather',
     ) -> Gaze:
         """Save data from the Gaze object in the provided directory.
 
-        Depending on parameters, it may save three files:
+        Depending on parameters, it may save multiple files:
         * preprocessed gaze in samples (samples)
         * calculated gaze events (events)
-        * metadatata experiment in YAML file (experiment).
+        * metadata experiment in YAML file (experiment)
+        * additional metadata in YAML file (metadata)
+        * messages from experiment session (messages)
+        * calibrations data (calibrations)
+        * validations data (validations)
 
         Data will be saved as feather or csv files.
 
@@ -2501,11 +2507,38 @@ class Gaze:
             Save samples in sample.{extension} file
         save_experiment: bool | None
             Save experiment metadata in experiment.yaml file
+        save_metadata: bool | None
+            Save metadata dictionary in metadata.yaml file
+        save_messages: bool | None
+            Save messages in messages.{extension} file
+        save_calibrations: bool | None
+            Save calibrations in calibrations.{extension} file
+        save_validations: bool | None
+            Save validations in validations.{extension} file
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
         extension: str
             Extension specifies the fileformat to store the data. (default: 'feather')
+
+        Examples
+        --------
+        Save all available data fields to a directory:
+
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame({'x': [1, 2], 'y': [3, 4]}),
+        ...     pixel_columns=['x', 'y'],
+        ...     metadata={'subject_id': 42},
+        ...     messages=pl.DataFrame({'time': [0], 'content': ['start']}),
+        ...     calibrations=pl.DataFrame({'timestamp': [0], 'num_points': [9]}),
+        ...     validations=pl.DataFrame({'timestamp': [0], 'accuracy_avg': [0.5]}),
+        ... )
+        >>> _ = gaze.save('./output', save_metadata=True, save_messages=True,
+        ...           save_calibrations=True, save_validations=True, verbose=0)
+        >>> # Creates: samples.feather, events.feather, metadata.yaml,
+        >>> #          messages.feather, calibrations.feather, validations.feather
 
         Raises
         ------
@@ -2533,6 +2566,48 @@ class Gaze:
                 self.experiment.to_yaml(Path(f'{dirpath}/experiment.yaml'))
             elif save_experiment is not None:
                 raise ValueError('no experiment data in the Gaze object')
+
+        if save_metadata is None or save_metadata:
+            if verbose >= 2:
+                print('Saving metadata file to', dirpath)
+            if self.metadata:
+                with open(Path(f"{dirpath}/metadata.yaml"), 'w', encoding='utf-8') as f:
+                    yaml.safe_dump(self.metadata, f, default_flow_style=False)
+            elif save_metadata is not None:
+                raise ValueError('no metadata in the Gaze object')
+
+        if save_messages is None or save_messages:
+            if verbose >= 2:
+                print('Saving messages file to', dirpath)
+            if self.messages is not None:
+                self.save_messages(
+                    Path(f"{dirpath}/messages.{extension}"), verbose=verbose,
+                )
+            elif save_messages is not None:
+                raise ValueError('no messages in the Gaze object')
+
+        if save_calibrations is None or save_calibrations:
+            if verbose >= 2:
+                print('Saving calibrations file to', dirpath)
+            if self.calibrations is not None:
+                self.save_calibrations(
+                    Path(f'{dirpath}/calibrations.{extension}'),
+                    verbose=verbose,
+                )
+            elif save_calibrations is not None:
+                raise ValueError('no calibrations in the Gaze object')
+
+        if save_validations is None or save_validations:
+            if verbose >= 2:
+                print('Saving validations file to', dirpath)
+            if self.validations is not None:
+                self.save_validations(
+                    Path(f'{dirpath}/validations.{extension}'),
+                    verbose=verbose,
+                )
+            elif save_validations is not None:
+                raise ValueError('no validations in the Gaze object')
+
         return self
 
     def save_events(
@@ -2599,24 +2674,152 @@ class Gaze:
         ValueError
             If file extension in path is not in list of valid extensions.
         """
-        gaze = self.clone()
+        samples = self.samples
         extension = path.suffix[1:]
 
-        if extension == 'csv':
-            gaze.unnest()
+        # Unnest list columns if necessary.
+        nested_columns = _get_nested_columns(samples)
+        if extension == 'csv' and nested_columns:
+            samples = _unnest_list_columns(samples, nested_columns)
 
         if verbose >= 2:
             print('Saving samples to', path)
 
         if extension == 'feather':
-            gaze.samples.write_ipc(path)
+            samples.write_ipc(path)
         elif extension == 'csv':
-            gaze.samples.write_csv(path)
+            samples.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
                 f'unsupported file format "{extension}".'
                 f'Supported formats are: {valid_extensions}',
+            )
+
+    def save_messages(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save messages to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        ValueError
+            If messages is None.
+        """
+        if self.messages is None:
+            raise ValueError('No messages in the Gaze object')
+
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving messages to', path)
+
+        if extension == 'feather':
+            self.messages.write_ipc(path)
+        elif extension == 'csv':
+            self.messages.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
+            )
+
+    def save_calibrations(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save calibrations to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        ValueError
+            If calibrations is None.
+        """
+        if self.calibrations is None:
+            raise ValueError('No calibrations in the Gaze object')
+
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving calibrations to', path)
+
+        if extension == 'feather':
+            self.calibrations.write_ipc(path)
+        elif extension == 'csv':
+            self.calibrations.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
+            )
+
+    def save_validations(
+        self,
+        path: Path,
+        *,
+        verbose: int = 1,
+    ) -> None:
+        """Save validations to file.
+
+        Parameters
+        ----------
+        path: Path
+            File to save data.
+        verbose: int
+            Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
+            (default: 1)
+
+        Raises
+        ------
+        ValueError
+            If file extension in path is not in list of valid extensions.
+        ValueError
+            If validations is None.
+        """
+        if self.validations is None:
+            raise ValueError('No validations in the Gaze object')
+
+        extension = path.suffix[1:]
+
+        if verbose >= 2:
+            print('Saving validations to', path)
+
+        if extension == 'feather':
+            self.validations.write_ipc(path)
+        elif extension == 'csv':
+            self.validations.write_csv(path)
+        else:
+            valid_extensions = ['csv', 'feather']
+            raise ValueError(
+                f'unsupported file format "{extension}".'
+                f"Supported formats are: {valid_extensions}",
             )
 
 
@@ -2703,3 +2906,148 @@ def _check_messages(messages: polars.DataFrame) -> None:
             raise TypeError(
                 "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
             )
+
+
+def _unnest_list_columns(
+        df: polars.DataFrame,
+        input_columns: list[str] | str | None = None,
+        *,
+        output_suffixes: list[str] | None = None,
+        output_columns: list[str] | None = None,
+) -> polars.DataFrame:
+    """Explode a column of type ``polars.List`` into one column for each list component.
+
+    The unnested columns will be dropped. from the returned data frame.
+
+    Parameters
+    ----------
+    df: polars.DataFrame
+        Unnest columns from that dataframe.
+    input_columns: list[str] | str | None
+        Name(s) of input column(s) to be unnested into several component columns.
+        If None all list columns 'pixel', 'position', 'velocity' and
+        'acceleration' will be unnested if existing. (default: None)
+    output_suffixes: list[str] | None
+        Suffixes to append to the column names. (default: None)
+    output_columns: list[str] | None
+        Name of the resulting tuple columns. (default: None)
+
+    Returns
+    -------
+    polars.DataFrame
+        Dataframe with unnested columns. Unnested columns are dropped.
+
+    Raises
+    ------
+    ValueError
+        If both output_columns and output_suffixes are specified.
+        If number of output columns / suffixes does not match number of components.
+        If output columns / suffixes are not unique.
+        If no columns to unnest exist and none are specified.
+        If output columns are specified and more than one input column is specified.
+    AttributeError
+        If number of components is not 2, 4 or 6.
+    Warning
+        If no columns to unnest exist and none are specified.
+    """
+    if input_columns is None:
+        input_columns = [column for column in df.columns if df[column].dtype == polars.List]
+
+        if len(input_columns) == 0:
+            warn(
+                'No columns to unnest. '
+                'Please specify columns to unnest via the "input_columns" argument.',
+            )
+
+    if isinstance(input_columns, str):
+        input_columns = [input_columns]
+
+    check_is_mutual_exclusive(
+        output_columns=output_columns,
+        output_suffixes=output_suffixes,
+    )
+
+    column_map = {}
+    if output_columns:
+        # no support for custom output columns if more than one input column will be unnested
+        if not len(input_columns) == 1:
+            raise ValueError(
+                'You cannot specify output columns if you want to unnest more than '
+                'one input column. Please specify output suffixes or use a single '
+                'input column instead.',
+            )
+        if len({*output_columns}) != len(output_columns):
+            raise ValueError('Output columns must be unique')
+        column_map = {input_columns[0]: output_columns}
+    elif output_suffixes is None:
+        # Dynamically infer component suffixes.
+        column_map = {
+            input_column: [
+                input_column + output_suffix
+                for output_suffix in _infer_list_unnest_suffixes(df[input_column])
+            ]
+            for input_column in input_columns
+        }
+    else:  # explicit output_suffixes
+        if len({*output_suffixes}) != len(output_suffixes):
+            raise ValueError('Output suffixes must be unique')
+        column_map = {
+            input_column: [input_column + output_suffix for output_suffix in output_suffixes]
+            for input_column in input_columns
+        }
+
+    for input_column, _output_columns in column_map.items():
+        n_components = _infer_list_n_components(df[input_column])
+        if len(_output_columns) != n_components:
+            raise ValueError(
+                f"Number of output columns for column '{input_column}' ({_output_columns}) "
+                f'must match number of components ({n_components})',
+            )
+
+        df = df.with_columns(
+            [
+                polars.col(input_column).list.get(component_id).alias(output_column)
+                for component_id, output_column in enumerate(_output_columns)
+            ],
+        )
+    df = df.drop(input_columns)
+    return df
+
+
+def _get_nested_columns(df: polars.DataFrame) -> list[str]:
+    """Get column names of nested columns."""
+    return [column for column in df.columns if df[column].dtype == polars.List]
+
+
+def _infer_list_n_components(series: polars.Series) -> int:
+    """Dynamically infer number of list components in series."""
+    n_component_candidates = series.list.len().unique()
+    if len(n_component_candidates) != 1:
+        raise ValueError(
+            'number of components inconsistent in column '
+            f"'{series.name}': {n_component_candidates}",
+        )
+    return n_component_candidates[0]
+
+
+def _infer_list_unnest_suffixes(series: polars.Series) -> list[str]:
+    """Dynamically infer component suffixes from series.
+
+    Number of components must be either 2, 4 or 6:
+
+    - 2 components: ``_x``, ``_y``
+    - 4 components: ``_xl``, ``_yl``, ``_xr``, ``_yr``
+    - 6 components: ``_xl``, ``_yl``, ``_xr``, ``_yr``, ``_xa``, ``_ya``
+    """
+    n_components = _infer_list_n_components(series)
+    if n_components not in {2, 4, 6}:
+        raise ValueError(
+            'Inferring suffixes only possible for list lengths of 2, 4 or 6,'
+            f" but list length of column '{series.name}' is: {n_components}.",
+        )
+    if n_components == 2:
+        return ['_x', '_y']
+    if n_components == 4:
+        return ['_xl', '_yl', '_xr', '_yr']
+    # This must be 6 as we already have checked our n_components.
+    return ['_xl', '_yl', '_xr', '_yr', '_xa', '_ya']

@@ -2,11 +2,23 @@ name: "UCL"
 
 long_name: "University College London corpus"
 
+description: |
+  UCL dataset :cite:p:`UCL`.
+
+    UCL is a dataset of word-by-word reading times collected through
+    self-paced reading and eye-tracking experiments to evaluate
+    computational psycholinguistic models of English sentence comprehension.
+    361 sentences from narrative sources, ensuring they were understandable without context,
+    and recorded reading times from participants using both methods.
+
+    For more details check out the original paper :cite:p:`UCL`.
+
 resources:
   - content: precomputed_events
-    url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
-    filename: "UCL_events.zip"
-    md5: "77e3c0cacccb0a074a55d23aa8531ca5"
+    source:
+      url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
+      filename: "UCL_events.zip"
+      md5: "77e3c0cacccb0a074a55d23aa8531ca5"
     filename_pattern: "eyetracking.fix"
     load_kwargs:
       read_csv_kwargs:
@@ -15,9 +27,10 @@ resources:
           - "NaN"
 
   - content: precomputed_reading_measures
-    url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
-    filename: "UCL_measures.zip"
-    md5: "77e3c0cacccb0a074a55d23aa8531ca5"
+    source:
+      url: "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-012-0313-y/MediaObjects/13428_2012_313_MOESM1_ESM.zip"
+      filename: "UCL_measures.zip"
+      md5: "77e3c0cacccb0a074a55d23aa8531ca5"
     filename_pattern: "eyetracking.RT"
     load_kwargs:
       read_csv_kwargs:

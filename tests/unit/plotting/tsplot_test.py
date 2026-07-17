@@ -24,9 +24,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
-import pymovements as pm
+from pymovements import Experiment
+from pymovements.gaze import from_numpy
+from pymovements.plotting import tsplot
 
 
 @pytest.fixture(
@@ -54,7 +55,7 @@ def gaze_fixture(request):
 
     arr = np.column_stack((x, y)).transpose()
 
-    experiment = pm.Experiment(
+    experiment = Experiment(
         screen_width_px=1280,
         screen_height_px=1024,
         screen_width_cm=38,
@@ -64,7 +65,7 @@ def gaze_fixture(request):
         sampling_rate=1000.0,
     )
 
-    gaze = pm.gaze.from_numpy(
+    gaze = from_numpy(
         samples=arr,
         schema=['x_pix', 'y_pix'],
         experiment=experiment,
@@ -106,35 +107,35 @@ def gaze_fixture(request):
         ),
     ],
 )
-def test_tsplot_show(gaze, kwargs, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
+def test_tsplot_returns_fig_and_axes(gaze, kwargs):
     gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
-    pm.plotting.tsplot(gaze=gaze, **kwargs)
+    fig, ax = tsplot(gaze=gaze, **kwargs)
 
-    mock.assert_called_once()
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
 
 
 def test_tsplot_noshow(gaze, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
     gaze.unnest('pixel', ['x_pix', 'y_pix'])
-    pm.plotting.tsplot(gaze=gaze, show=False)
+    tsplot(gaze=gaze)
 
     mock.assert_not_called()
 
 
-def test_tsplot_save(gaze, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
-    gaze.unnest('pixel', ['x_pix', 'y_pix'])
-    pm.plotting.tsplot(gaze=gaze, show=False, savepath=str(tmp_path / 'test.svg'))
+def test_tsplot_save(gaze, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
 
-    mock.assert_called_once()
+    gaze.unnest('pixel', ['x_pix', 'y_pix'])
+    tsplot(gaze=gaze, savepath=str(filepath))
+
+    assert filepath.is_file()
 
 
 def test_tsplot_sets_title(gaze):
-    _, ax = pm.plotting.tsplot(gaze, title='My Title', show=False)
+    _, ax = tsplot(gaze, title='My Title')
     assert ax.get_title() == 'My Title'
 
 
@@ -162,7 +163,23 @@ def test_tsplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
         at_index=pos_index,
     )
 
-    fig, ax = pm.plotting.tsplot(gaze=gaze, show=False)
+    fig, ax = tsplot(gaze=gaze)
 
     assert fig is not None
     assert ax is not None
+
+
+def test_tsplot_external_ax_ignored_when_multi_channel(gaze):
+    # prepare fresh gaze with two channels unnested
+    gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
+
+    fig, ax = plt.subplots()
+    with pytest.warns(UserWarning):
+        # Using external ax but with two channels -> expect warning and a new figure
+        ret_fig, ret_ax = tsplot(
+            gaze,
+            channels=['x_pix', 'y_pix'],
+            ax=ax,
+        )
+    assert ret_ax is not ax
+    assert ret_fig is not fig

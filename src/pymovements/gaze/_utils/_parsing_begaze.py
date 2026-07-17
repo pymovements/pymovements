@@ -45,10 +45,10 @@ from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys,
     check_nan
 
 # Regular expressions for BeGaze header metadata lines with named groups.
-# Note: we compile regexes for performance and to support minor whitespace variations.
-BEGAZE_META_REGEXES: list[re.Pattern[str]] = [
-    re.compile(r'^##\s+Date:\s+(?P<date>.+?)\s*$'),
-    re.compile(r'^##\s+Sample\s+Rate:\s+(?P<sampling_rate>.+?)\s*$'),  # cast to float later
+# Regexes are compiled lazily so importing the parser does not pay the setup cost.
+BEGAZE_META_REGEXES = [
+    r'^##\s+Date:\s+(?P<date>.+?)\s*$',
+    r'^##\s+Sample\s+Rate:\s+(?P<sampling_rate>.+?)\s*$',  # cast to float later
 ]
 
 
@@ -58,7 +58,8 @@ def _parse_begaze_meta_line(line: str) -> dict[str, Any]:
     Returns an empty dict when the line does not match any known pattern.
     Performs light casting for known fields (e.g., float for sampling rate, datetime for date).
     """
-    for regex in BEGAZE_META_REGEXES:
+    for pattern in BEGAZE_META_REGEXES:
+        regex = re.compile(pattern)
         if match := regex.match(line):
             groupdict = match.groupdict()
             # Casting and processing for known fields
@@ -371,7 +372,7 @@ def parse_begaze(
         if key in metadata and metadata[key] not in ('', None) and metadata[key] != value:
             warnings.warn(
                 f"BeGaze parser: metadata key '{key}' is being overwritten "
-                f"(old={metadata[key]!r}, new={value!r}).",
+                f'(old={metadata[key]!r}, new={value!r}).',
                 RuntimeWarning,
             )
         metadata[key] = value
