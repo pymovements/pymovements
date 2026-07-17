@@ -44,8 +44,14 @@ def compute_reading_measures(
         DataFrame with computed reading measures.
     """
     # Append an extra dummy fixation to have the next fixation for the actual last fixation.
+    dummy_fixation_dict: dict[str, list[int] | list[str]] = {}
+    for col, dtype in fixations_df.schema.items():
+        if dtype == pl.String:
+            dummy_fixation_dict[col] = ['']
+        else:
+            dummy_fixation_dict[col] = [0]
     dummy_fixation = pl.DataFrame(
-        {col: [0] for col in fixations_df.columns},
+        dummy_fixation_dict,
         schema=fixations_df.schema,
     )
     fixations_df = pl.concat([fixations_df, dummy_fixation])
@@ -70,6 +76,14 @@ def compute_reading_measures(
         } for word_index, word in zip(text_aois, text_strs)
     }
 
+    # Add a catch-all entry for the dummy fixation and invalid AOIs
+    word_dict[-1] = {
+        'word': None, 'word_index': -1,
+        'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
+        'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
+        'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
+    }
+
     # Variables to track fixation progress.
     right_most_word, cur_fix_word_idx, next_fix_word_idx, next_fix_dur = -1, -1, -1, -1
 
@@ -77,6 +91,8 @@ def compute_reading_measures(
     for fixation in fixations_df.to_dicts():
         try:
             aoi = int(fixation['aoi']) - 1
+            if aoi not in word_dict:
+                continue
         except (ValueError, TypeError):
             continue
 
@@ -130,7 +146,9 @@ def compute_reading_measures(
 
     # Finalize reading measures.
     rm_list = []
-    for _, word_rm in sorted(word_dict.items()):
+    for word_idx, word_rm in sorted(word_dict.items()):
+        if word_idx == -1:
+            continue
         if word_rm['FFD'] == word_rm['FPRT']:
             word_rm['SFD'] = word_rm['FFD']
         word_rm['RRT'] = word_rm['TFT'] - word_rm['FPRT']

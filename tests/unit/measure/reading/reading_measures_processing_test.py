@@ -87,6 +87,99 @@ from pymovements.measure.reading.processing import compute_reading_measures
             },
             id='skipping',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 0, 2],
+                    'duration': [100, 100, 100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2],
+                    'character': ['a', 'b'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 100, 'TFC': 1},
+                1: {'FFD': 100, 'TFT': 100, 'TFC': 1},
+            },
+            id='out_of_bounds_aois',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1],
+                    'duration': [100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1],
+                    'character': ['a'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SFD': 100},
+            },
+            id='single_word_sfd',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 3],
+                    'duration': [100, 100, 100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 4],
+                    'character': ['a', 'd'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 100},
+                3: {'FFD': 0, 'TFT': 0},
+            },
+            id='missing_aois_in_middle',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': pl.Series(['not_an_int'], dtype=pl.Utf8),
+                    'duration': [100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1],
+                    'character': ['a'],
+                },
+            ),
+            {
+                0: {'FFD': 0, 'TFT': 0},
+            },
+            id='invalid_type_aoi',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1],
+                    'duration': [None],
+                },
+                schema={'aoi': pl.Int64, 'duration': pl.Int64},
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1],
+                    'character': ['a'],
+                },
+            ),
+            {
+                0: {'FFD': 0, 'TFT': 0},
+            },
+            id='null_duration',
+        ),
     ],
 )
 def test_compute_reading_measures(fixations_df, aoi_df, expected_results):

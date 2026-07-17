@@ -27,7 +27,16 @@ from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
+from pymovements.measure.reading.measures import first_pass_fixation_count
 from pymovements.measure.reading.measures import first_pass_reading_time
+from pymovements.measure.reading.measures import first_reading_time
+from pymovements.measure.reading.measures import landing_position
+from pymovements.measure.reading.measures import regression_count_in
+from pymovements.measure.reading.measures import regression_count_out
+from pymovements.measure.reading.measures import regression_path_duration
+from pymovements.measure.reading.measures import rereading_time
+from pymovements.measure.reading.measures import saccade_length_in
+from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
@@ -110,7 +119,7 @@ def test_annotate_fixations(annotated_events):
 def test_all_tokens_from_aois(all_tokens):
     assert 'word_idx' in all_tokens.columns
     assert 'word' in all_tokens.columns
-    assert all_tokens.height == 2  # 2 unique words: The, quick
+    assert all_tokens.height == 2
 
 
 def test_reading_measures_init_none():
@@ -160,3 +169,71 @@ def test_compute_total_fixation_count(annotated_events):
     assert 'TFC' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['TFC'][0] == 1
     assert result.filter(pl.col('word_idx') == 1)['TFC'][0] == 1
+
+
+def test_first_pass_fixation_count(annotated_events):
+    result = first_pass_fixation_count(annotated_events)
+    assert 'FPFC' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['FPFC'][0] == 1
+
+
+def test_first_reading_time(annotated_events):
+    result = first_reading_time(annotated_events)
+    assert 'FRT' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['FRT'][0] == 200
+
+
+def test_rereading_time(annotated_events):
+    result = rereading_time(annotated_events)
+    assert 'RRT' in result.columns
+    assert result.is_empty()
+
+
+def test_regression_count_in(annotated_events):
+    result = regression_count_in(annotated_events)
+    assert 'TRC_in' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['TRC_in'][0] == 0
+
+
+def test_regression_count_out(annotated_events):
+    result = regression_count_out(annotated_events)
+    assert 'TRC_out' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['TRC_out'][0] == 0
+
+
+def test_landing_position(annotated_events):
+    result = landing_position(annotated_events)
+    assert 'LP' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['LP'][0] == 0
+
+
+def test_saccade_length_in(annotated_events):
+    result = saccade_length_in(annotated_events)
+    assert 'SL_in' in result.columns
+    assert result.filter(pl.col('word_idx') == 1)['SL_in'][0] == 1
+
+
+def test_saccade_length_out(annotated_events):
+    result = saccade_length_out(annotated_events)
+    assert 'SL_out' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['SL_out'][0] == 1
+
+
+def test_regression_path_duration(annotated_events):
+    result = regression_path_duration(annotated_events)
+    assert 'RPD_inc' in result.columns
+    assert 'RPD_exc' in result.columns
+    assert result.filter(pl.col('word_idx') == 0)['RPD_inc'][0] == 200
+
+
+def test_regression_path_duration_no_first_pass():
+    df = pl.DataFrame({
+        'trial': ['1'],
+        'page': ['1'],
+        'word_idx': [0],
+        'onset': [0],
+        'duration': [100],
+        'is_first_pass': [False],
+    })
+    result = regression_path_duration(df)
+    assert result['RPD_inc'][0] == 0

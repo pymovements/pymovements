@@ -554,5 +554,24 @@ def test_annotate_fixations(events):
         'delta_in', 'delta_out', 'is_reg_in', 'is_reg_out',
         'is_first_fix', 'is_first_pass',
     ]
+    expected_length = len(
+        events.filter(
+            (pl.col('name') == 'fixation') & (pl.col('word_idx').is_not_null()),
+        ),
+    )
+
     assert all(col in result.columns for col in expected_columns)
-    assert len(result) == len(events.filter(pl.col('name') == 'fixation'))
+    assert len(result) == expected_length
+
+
+def test_annotate_fixations_default_groups():
+    events = pl.DataFrame({
+        'trial': ['1'],
+        'stimulus': ['s'],
+        'page': ['p'],
+        'name': ['fixation'],
+        'word_idx': [1],
+        'onset': [0],
+    })
+    result = annotate_fixations(events)
+    assert 'run_id' in result.columns
