@@ -18,7 +18,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to reading measure classes and functions."""
+from pymovements.measure.reading.annotation import annotate_delta_in
+from pymovements.measure.reading.annotation import annotate_delta_out
 from pymovements.measure.reading.annotation import annotate_fixations
+from pymovements.measure.reading.annotation import annotate_is_first_fixation
+from pymovements.measure.reading.annotation import annotate_is_first_pass
+from pymovements.measure.reading.annotation import annotate_is_reg_in
+from pymovements.measure.reading.annotation import annotate_is_reg_out
+from pymovements.measure.reading.annotation import annotate_next_word_idx
+from pymovements.measure.reading.annotation import annotate_prev_word_idx
+from pymovements.measure.reading.annotation import annotate_run_id
 from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
@@ -46,6 +55,15 @@ __all__ = [
     'compute_reading_measures',
     # main entry points
     'annotate_fixations',
+    'annotate_run_id',
+    'annotate_prev_word_idx',
+    'annotate_next_word_idx',
+    'annotate_delta_in',
+    'annotate_delta_out',
+    'annotate_is_reg_in',
+    'annotate_is_reg_out',
+    'annotate_is_first_fixation',
+    'annotate_is_first_pass',
     'build_word_level_table',
     # word/token utilities
     'all_tokens_from_aois',
