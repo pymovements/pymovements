@@ -23,7 +23,23 @@ from __future__ import annotations
 import polars as pl
 
 
-def annotate_run_id(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_run_id(fixations: pl.DataFrame, group_columns: list[str]) -> pl.DataFrame:
+    """Annotate fixations with run IDs.
+
+    A run is a contiguous sequence of fixations on the same word.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain a ``word_idx`` column.
+    group_columns : list[str]
+        Column names used to partition the data into independent reading sequences.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``run_id`` column.
+    """
     return fixations.with_columns(
         (pl.col('word_idx') != pl.col('word_idx').shift().over(group_columns))
         .fill_null(True).cast(pl.Int8)
@@ -31,43 +47,137 @@ def annotate_run_id(fixations: pl. DataFrame, group_columns: list[str]) -> pl.Da
     )
 
 
-def annotate_prev_word_idx(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_prev_word_idx(fixations: pl.DataFrame, group_columns: list[str]) -> pl.DataFrame:
+    """Annotate fixations with the word index of the previous fixation.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain a ``word_idx`` column.
+    group_columns : list[str]
+        Column names used to partition the data into independent reading sequences.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``prev_word_idx`` column.
+    """
     return fixations.with_columns(
         pl.col('word_idx').shift().over(group_columns).alias('prev_word_idx'),
     )
 
 
-def annotate_next_word_idx(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_next_word_idx(fixations: pl.DataFrame, group_columns: list[str]) -> pl.DataFrame:
+    """Annotate fixations with the word index of the next fixation.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain a ``word_idx`` column.
+    group_columns : list[str]
+        Column names used to partition the data into independent reading sequences.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``next_word_idx`` column.
+    """
     return fixations.with_columns(
         pl.col('word_idx').shift(-1).over(group_columns).alias('next_word_idx'),
     )
 
 
-def annotate_delta_in(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_delta_in(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Annotate fixations with the difference in word index from the previous fixation.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain ``word_idx`` and ``prev_word_idx`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``delta_in`` column.
+    """
     return fixations.with_columns(
         (pl.col('word_idx') - pl.col('prev_word_idx')).alias('delta_in'),
     )
 
 
-def annotate_delta_out(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_delta_out(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Annotate fixations with the difference in word index to the next fixation.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain ``word_idx`` and ``next_word_idx`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``delta_out`` column.
+    """
     return fixations.with_columns(
         (pl.col('next_word_idx') - pl.col('word_idx')).alias('delta_out'),
     )
 
 
-def annotate_is_reg_in(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_is_reg_in(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Annotate fixations with a flag indicating a regression in.
+
+    A regression in occurs when the fixation arrives from a higher-index word.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain a ``delta_in`` column.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``is_reg_in`` column.
+    """
     return fixations.with_columns(
         (pl.col('delta_in') < 0).alias('is_reg_in'),
     )
 
 
-def annotate_is_reg_out(fixations: pl. DataFrame, group_columns: list[str]) -> pl.DataFrame:
+def annotate_is_reg_out(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Annotate fixations with a flag indicating a regression out.
+
+    A regression out occurs when the fixation departs to a lower-index word.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain a ``delta_out`` column.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``is_reg_out`` column.
+    """
     return fixations.with_columns(
         (pl.col('delta_out') < 0).alias('is_reg_out'),
     )
 
 
 def annotate_is_first_fixation(fixations: pl.DataFrame, group_columns: list[str]) -> pl.DataFrame:
+    """Annotate fixations with a flag indicating the first fixation on a word.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain a ``word_idx`` column.
+    group_columns : list[str]
+        Column names used to partition the data into independent reading sequences.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``is_first_fix`` column.
+    """
     return fixations.with_columns(
         pl.col('word_idx')
         .cum_count()
@@ -78,6 +188,26 @@ def annotate_is_first_fixation(fixations: pl.DataFrame, group_columns: list[str]
 
 
 def annotate_is_first_pass(fixations: pl.DataFrame, group_columns: list[str]) -> pl.DataFrame:
+    """Annotate fixations with a flag indicating if it belongs to a first-pass reading.
+
+    First-pass is defined at the *run* level. A run qualifies as first-pass if:
+    1. It is the first time the reader enters the word.
+    2. The word is entered from the left (forward reading direction).
+    3. No words with a higher index have been fixated before.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation-level DataFrame. Must contain ``word_idx``, ``run_id``, ``prev_word_idx`` and
+        ``onset`` columns.
+    group_columns : list[str]
+        Column names used to partition the data into independent reading sequences.
+
+    Returns
+    -------
+    pl.DataFrame
+        Input DataFrame with an additional ``is_first_pass`` column.
+    """
     def _mark_first_pass(fixation_group: pl.DataFrame) -> pl.DataFrame:
         """Mark fixations that belong to the first-pass reading of a word.
 
@@ -208,10 +338,10 @@ def annotate_fixations(
     # -----------------------------------------------------
     fixations = annotate_prev_word_idx(fixations, group_columns)
     fixations = annotate_next_word_idx(fixations, group_columns)
-    fixations = annotate_delta_in(fixations, group_columns)  # requires prev_word_idx annotation
-    fixations = annotate_delta_out(fixations, group_columns)  # requires next_word_idx annotation
-    fixations = annotate_is_reg_in(fixations, group_columns)  # requires delta_in annotation
-    fixations = annotate_is_reg_out(fixations, group_columns)  # requires delta_out annotation
+    fixations = annotate_delta_in(fixations)  # requires prev_word_idx annotation
+    fixations = annotate_delta_out(fixations)  # requires next_word_idx annotation
+    fixations = annotate_is_reg_in(fixations)  # requires delta_in annotation
+    fixations = annotate_is_reg_out(fixations)  # requires delta_out annotation
 
     # -------------------------------------------------
     # First fixation on word
@@ -223,23 +353,4 @@ def annotate_fixations(
     # -------------------------------------------------
     fixations = annotate_is_first_pass(fixations, group_columns)
 
-    return fixations.select(
-        [
-            'trial',
-            'page',
-            'fixation_id',
-            'onset',
-            'word_idx',
-            'char_idx',
-            'char',
-            'run_id',
-            'is_first_pass',
-            'duration',
-            'word',
-            'prev_word_idx',
-            'next_word_idx',
-            'is_reg_in',
-            'is_reg_out',
-            'is_first_fix',
-        ],
-    )
+    return fixations

@@ -22,7 +22,7 @@ import polars as pl
 import pytest
 
 from pymovements.events import Events
-from pymovements.measure.reading.annotate import annotate_fixations
+from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration

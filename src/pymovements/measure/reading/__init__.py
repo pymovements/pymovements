@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to reading measure classes and functions."""
-from pymovements.measure.reading.annotate import annotate_fixations
+from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
