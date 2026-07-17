@@ -180,6 +180,44 @@ from pymovements.measure.reading.processing import compute_reading_measures
             },
             id='null_duration',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 1],
+                    'duration': [100, 100, 100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2],
+                    'character': ['a', 'b'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 200, 'TFC': 2, 'TRC_out': 1},
+                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'TRC_out': 1},
+            },
+            id='trc_out',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 1, 2],
+                    'duration': [100, 100, 100, 100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2],
+                    'character': ['a', 'b'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 200, 'TRC_out': 0, 'FPRT': 100},
+                1: {'FFD': 100, 'TFT': 200, 'TRC_out': 2, 'FPRT': 100},
+            },
+            id='trc_out_multiple_passes',
+        ),
     ],
 )
 def test_compute_reading_measures(fixations_df, aoi_df, expected_results):

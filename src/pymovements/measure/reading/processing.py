@@ -106,7 +106,7 @@ def compute_reading_measures(
         next_fix_word_idx = aoi
         next_fix_dur = fixation['duration']
 
-        if next_fix_dur == 0:
+        if next_fix_dur == 0 and not next_fix_word_idx == -1:
             next_fix_word_idx = cur_fix_word_idx
 
         right_most_word = max(right_most_word, cur_fix_word_idx)
