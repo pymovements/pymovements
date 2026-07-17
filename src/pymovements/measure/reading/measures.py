@@ -195,8 +195,8 @@ def rereading_time(fixations: pl.DataFrame) -> pl.DataFrame:
 # ---------------------------
 
 
-def trc_in_out(fixations: pl.DataFrame) -> pl.DataFrame:
-    """Compute regression counts into and out of each word (TRC_in, TRC_out).
+def regression_count_in(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute regression counts into each word (TRC_in).
 
     Parameters
     ----------
@@ -207,12 +207,31 @@ def trc_in_out(fixations: pl.DataFrame) -> pl.DataFrame:
     Returns
     -------
     pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, ``word_idx``,
-        ``TRC_in``, and ``TRC_out``.
+        DataFrame with columns ``trial``, ``page``, ``word_idx``, and ``TRC_in``.
     """
     return fixations.group_by(['trial', 'page', 'word_idx']).agg(
         [
             pl.col('is_reg_in').sum().alias('TRC_in'),
+        ],
+    )
+
+
+def regression_count_out(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute regression counts out of each word (TRC_out).
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation table containing at least ``trial``, ``page``,
+        ``word_idx``, ``is_reg_in``, and ``is_reg_out`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame with columns ``trial``, ``page``, ``word_idx``, and ``TRC_out``.
+    """
+    return fixations.group_by(['trial', 'page', 'word_idx']).agg(
+        [
             pl.col('is_reg_out').sum().alias('TRC_out'),
         ],
     )

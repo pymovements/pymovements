@@ -24,28 +24,25 @@ import polars as pl
 
 
 def annotate_fixations(
-    gaze_events: pl.DataFrame,
+    events: pl.DataFrame,
     group_columns: list[str] | None = None,
 ) -> pl.DataFrame:
     """Annotate fixations with run- and pass-level information.
 
     Computes the following per-fixation annotations:
 
-    * **run_id** – integer ID for each contiguous sequence of fixations
-      on the same word.
-    * **prev_word_idx / next_word_idx** – word indices of the
-      immediately preceding and following fixations.
-    * **is_reg_in / is_reg_out** – whether the fixation arrives from a
-      higher-index word (regression in) or departs to a lower-index
-      word (regression out).
-    * **is_first_fix** – whether this is the first fixation ever on the
-      word within the trial.
-    * **is_first_pass** – whether the fixation belongs to the first-pass
-      reading episode of the word (see :func:`_mark_first_pass`).
+    * **run_id**: integer ID for each contiguous sequence of fixations on the same word.
+    * **prev_word_idx / next_word_idx**: word indices of the immediately preceding and following
+      fixations.
+    * **is_reg_in / is_reg_out**: whether the fixation arrives from a higher-index word
+      (regression in) or departs to a lower-index word (regression out).
+    * **is_first_fix**: whether this is the first fixation ever on the word within the trial.
+    * **is_first_pass**: whether the fixation belongs to the first-pass reading episode of the word
+      (see :func:`_mark_first_pass`).
 
     Parameters
     ----------
-    gaze_events : pl.DataFrame
+    events : pl.DataFrame
         DataFrame containing pymovements fixation events mapped to AOIs.
         Must contain at least ``name``, ``word_idx``, and ``onset``
         columns, plus whatever columns are listed in ``group_columns``.
@@ -66,8 +63,8 @@ def annotate_fixations(
     if group_columns is None:
         group_columns = ['trial', 'stimulus', 'page']
 
-    fix = (
-        gaze_events.filter(
+    fixations = (
+        events.filter(
             (pl.col('name') == 'fixation') & (pl.col('word_idx').is_not_null()),
         )
         .with_row_index('fixation_id')
@@ -77,34 +74,34 @@ def annotate_fixations(
     # -------------------------------------------------
     # Reading runs (contiguous fixations on the same word)
     # -------------------------------------------------
-    fix = fix.with_columns(
+    fixations = fixations.with_columns(
         (pl.col('word_idx') != pl.col('word_idx').shift().over(group_columns))
         .fill_null(True)
         .alias('new_run'),
     )
 
-    fix = fix.with_columns(
+    fixations = fixations.with_columns(
         pl.col('new_run').cast(pl.Int8).cum_sum().over(group_columns).alias('run_id'),
     )
 
     # -----------------------------------------------------
     # Neighbouring fixated words (for regression detection)
     # -----------------------------------------------------
-    fix = fix.with_columns(
+    fixations = fixations.with_columns(
         [
             pl.col('word_idx').shift().over(group_columns).alias('prev_word_idx'),
             pl.col('word_idx').shift(-1).over(group_columns).alias('next_word_idx'),
         ],
     )
 
-    fix = fix.with_columns(
+    fixations = fixations.with_columns(
         [
             (pl.col('word_idx') - pl.col('prev_word_idx')).alias('delta_in'),
             (pl.col('next_word_idx') - pl.col('word_idx')).alias('delta_out'),
         ],
     )
 
-    fix = fix.with_columns(
+    fixations = fixations.with_columns(
         [
             (pl.col('delta_in') < 0).alias('is_reg_in'),
             (pl.col('delta_out') < 0).alias('is_reg_out'),
@@ -114,7 +111,7 @@ def annotate_fixations(
     # -------------------------------------------------
     # First fix on word
     # -------------------------------------------------
-    fix = fix.with_columns(
+    fixations = fixations.with_columns(
         pl.col('word_idx')
         .cum_count()
         .over(group_columns + ['word_idx'])
@@ -126,7 +123,7 @@ def annotate_fixations(
     # First-pass flag (word-level first reading episode)
     # -------------------------------------------------
 
-    def _mark_first_pass(df: pl.DataFrame) -> pl.DataFrame:
+    def _mark_first_pass(fixation_group: pl.DataFrame) -> pl.DataFrame:
         """Mark fixations that belong to the first-pass reading of a word.
 
         First-pass is defined at the *run* level. A run qualifies as
@@ -143,7 +140,7 @@ def annotate_fixations(
 
         Parameters
         ----------
-        df : pl.DataFrame
+        fixation_group : pl.DataFrame
             Single-group fixation DataFrame sorted by ``onset``,
             annotated with ``run_id`` and ``prev_word_idx``.
 
@@ -153,7 +150,7 @@ def annotate_fixations(
             Input DataFrame with an additional boolean column
             ``is_first_pass``.
         """
-        df = df.sort('onset')
+        fixation_group = fixation_group.sort('onset')
 
         first_pass_flags: list[bool] = []
 
@@ -164,7 +161,7 @@ def annotate_fixations(
         # set of words that have been entered at the start of any prior run
         words_ever_entered: set[int] = set()
 
-        for row in df.iter_rows(named=True):
+        for row in fixation_group.iter_rows(named=True):
             w = row['word_idx']
             run = row['run_id']
             prev_w = row['prev_word_idx']
@@ -195,11 +192,11 @@ def annotate_fixations(
 
             prev_run = run
 
-        return df.with_columns(pl.Series('is_first_pass', first_pass_flags))
+        return fixation_group.with_columns(pl.Series('is_first_pass', first_pass_flags))
 
-    fix = fix.group_by(*group_columns, maintain_order=True).map_groups(_mark_first_pass)
+    fixations = fixations.group_by(*group_columns, maintain_order=True).map_groups(_mark_first_pass)
 
-    return fix.select(
+    return fixations.select(
         [
             'trial',
             'page',
