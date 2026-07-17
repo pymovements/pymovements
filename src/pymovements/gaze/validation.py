@@ -319,7 +319,6 @@ def check_gaze_components_defined(gaze: Gaze, source_path: str = '') -> CheckRes
     )
 
 
-
 def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
     """Check that timestamps are strictly monotone increasing within each trial.
 
