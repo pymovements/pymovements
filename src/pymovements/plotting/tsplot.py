@@ -28,6 +28,7 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
+from pymovements.gaze.gaze import _unnest_list_columns
 from pymovements.plotting._matplotlib import prepare_figure
 
 
@@ -99,9 +100,18 @@ def tsplot(
         If array has more than two dimensions.
     """
     if channels is None:
-        channels = [c for c in gaze.samples.columns if gaze.samples[c].dtype != pl.List]
+        # Select all numeric (and nested numeric) channels
+        channels = [
+            c
+            for c in gaze.samples.columns
+            if gaze.samples[c].dtype.is_numeric() or (
+                gaze.samples[c].dtype == pl.List and gaze.samples[c].dtype.inner.is_numeric()
+            )
+        ]
 
-    arr = gaze.samples[channels].to_numpy().transpose()
+    df = _unnest_list_columns(gaze.samples[channels])
+    channels = df.columns
+    arr = df.to_numpy().transpose()
 
     if arr.ndim == 1:
         arr = np.expand_dims(arr, axis=0)
