@@ -21,7 +21,8 @@
 import polars as pl
 import pytest
 
-import pymovements as pm
+from pymovements import Dataset
+from pymovements import ReadingMeasures
 
 
 @pytest.mark.parametrize(
@@ -45,7 +46,7 @@ def test_reading_measures_processing(
     velocity_threshold, expected_event_properties, use_save_path, tmp_path,
 ):
     # Create the dataset
-    dataset = pm.Dataset('PoTeC', path='data/PoTeC')
+    dataset = Dataset('PoTeC', path='data/PoTeC')
     dataset.load(subset={'subject_id': 5, 'text_id': 'b0'})
     dataset.pix2deg()
     dataset.pos2vel()
@@ -62,7 +63,7 @@ def test_reading_measures_processing(
     dataset.compute_event_properties(expected_event_properties)
 
     # Create the ReadingMeasures object
-    reading_measures = pm.reading_measures.ReadingMeasures()
+    reading_measures = ReadingMeasures()
     aoi_dict = {'b0': 'tests/files/potec_word_aoi_b0.tsv'}
 
     # Determine the save path based on the use_save_path parameter
