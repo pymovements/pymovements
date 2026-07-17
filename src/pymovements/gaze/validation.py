@@ -375,7 +375,7 @@ def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
                 ),
                 sources=sources,
             )
-        groups = gaze.split()
+        groups = gaze.split(by=gaze.trial_columns, as_dict=False)
     else:
         groups = [gaze]
 
@@ -484,7 +484,7 @@ def check_max_gap(
                 ),
                 sources=sources,
             )
-        groups = gaze.split()
+        groups = gaze.split(by=gaze.trial_columns, as_dict=False)
     else:
         groups = [gaze]
 
