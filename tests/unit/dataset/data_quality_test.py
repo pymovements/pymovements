@@ -49,6 +49,8 @@ from pymovements.gaze.validation import check_trial_columns_dtype
 from pymovements.gaze.validation import check_trial_columns_exist
 from pymovements.gaze.validation import CheckResult
 
+pytestmark = pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
+
 
 # ---------------------------------------------------------------------------
 # Helper factories
@@ -333,18 +335,18 @@ class TestCheckTimeMonotone:
         result = check_time_monotone(gaze)
         assert result.severity == 'pass'
 
-    def test_warning_non_monotone(self) -> None:
+    def test_fail_non_monotone(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 20, 10, 30], 'trial': [1, 1, 1, 1]}),
             trial_columns=['trial'],
         )
         result = check_time_monotone(gaze)
-        assert result.severity == 'warning'
+        assert result.severity == 'fail'
 
-    def test_warning_non_monotone_no_trial_columns(self) -> None:
+    def test_fail_non_monotone_no_trial_columns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 20, 10, 30]}))
         result = check_time_monotone(gaze)
-        assert result.severity == 'warning'
+        assert result.severity == 'fail'
 
     def test_pass_single_sample_per_trial_skipped(self) -> None:
         gaze = _make_gaze(
@@ -354,22 +356,34 @@ class TestCheckTimeMonotone:
         result = check_time_monotone(gaze)
         assert result.severity == 'pass'
 
-    def test_pass_missing_trial_col_in_schema(self) -> None:
+    def test_error_missing_trial_col_in_schema(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 1]}),
             trial_columns=['nonexistent'],
         )
         result = check_time_monotone(gaze)
-        assert result.severity == 'pass'
+        assert result.severity == 'error'
+        assert 'nonexistent' in result.message
 
-    def test_sources_on_warning(self) -> None:
+    def test_sources_on_fail(self) -> None:
         gaze = _make_gaze(
             pl.DataFrame({'time': [0, 20, 10], 'trial': [1, 1, 1]}),
             trial_columns=['trial'],
         )
         result = check_time_monotone(gaze, source_path='s.csv')
-        assert result.severity == 'warning'
+        assert result.severity == 'fail'
         assert 's.csv' in result.sources
+
+    def test_error_missing_trial_col_in_max_gap(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0, 10, 20]}),
+            trial_columns=['nonexistent'],
+            experiment=exp,
+        )
+        result = check_max_gap(gaze)
+        assert result.severity == 'error'
+        assert 'nonexistent' in result.message
 
 
 # ---------------------------------------------------------------------------

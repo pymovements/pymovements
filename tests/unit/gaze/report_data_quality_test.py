@@ -328,7 +328,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_time_monotone_warning_on_non_monotone(self) -> None:
+    def test_time_monotone_fail_on_non_monotone(self) -> None:
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 20, 10, 30], 'trial': [1, 1, 1, 1]}),
             trial_columns=['trial'],
@@ -343,7 +343,7 @@ class TestGazeValidateCheckOutcomes:
             sampling_rate_consistency=False,
             gaze_range=False,
         )
-        assert results[0].severity == 'warning'
+        assert results[0].severity == 'fail'
 
     def test_max_gap_warning_on_large_gap(self) -> None:
         exp = _exp(sampling_rate=100.0)

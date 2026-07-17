@@ -319,16 +319,6 @@ def check_gaze_components_defined(gaze: Gaze, source_path: str = '') -> CheckRes
     )
 
 
-def _get_trial_groups(gaze: Gaze) -> list[pl.DataFrame]:
-    """Return per-trial sub-DataFrames, or the whole frame as a single group."""
-    cols = gaze.trial_columns
-    if not cols:
-        return [gaze.samples.select(['time'])]
-    missing = [c for c in cols if c not in gaze.samples.columns]
-    if missing:
-        return []
-    return gaze.samples.select(cols + ['time']).partition_by(cols, maintain_order=True)
-
 
 def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
     """Check that timestamps are strictly monotone increasing within each trial.
@@ -346,8 +336,10 @@ def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
     Returns
     -------
     CheckResult
-        Severity ``'warning'`` if any trial contains non-strictly-increasing
-        timestamps; ``'pass'`` otherwise or when preconditions are not met.
+        Severity ``'fail'`` if any trial contains non-strictly-increasing
+        timestamps; ``'error'`` if declared ``trial_columns`` are absent from
+        the sample schema; ``'pass'`` otherwise or when the ``'time'`` column
+        is missing.
 
     Examples
     --------
@@ -371,16 +363,30 @@ def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
             sources=sources,
         )
 
-    groups = _get_trial_groups(gaze)
-    non_monotone: list[str] = []
+    if gaze.trial_columns:
+        missing = [c for c in gaze.trial_columns if c not in gaze.samples.columns]
+        if missing:
+            return CheckResult(
+                code='time_monotone',
+                severity='error',
+                message=(
+                    f'trial_columns {missing!r} not found in sample schema; '
+                    'check could not be performed.'
+                ),
+                sources=sources,
+            )
+        groups = gaze.split()
+    else:
+        groups = [gaze]
 
-    for grp in groups:
-        times = grp['time'].to_list()
+    non_monotone: list[str] = []
+    for part in groups:
+        times = part.samples['time'].to_list()
         if len(times) < 2:
             continue
         if any(times[i + 1] - times[i] <= 0 for i in range(len(times) - 1)):
             if gaze.trial_columns:
-                key_vals = {c: grp[c][0] for c in gaze.trial_columns if c in grp.columns}
+                key_vals = {c: part.samples[c][0] for c in gaze.trial_columns}
                 non_monotone.append(str(key_vals))
             else:
                 non_monotone.append('(single trial)')
@@ -388,7 +394,7 @@ def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
     if non_monotone:
         return CheckResult(
             code='time_monotone',
-            severity='warning',
+            severity='fail',
             message=(
                 f'Non-monotone timestamps in {len(non_monotone)} trial(s): '
                 f"{non_monotone[:3]}{'...' if len(non_monotone) > 3 else ''}"
@@ -465,16 +471,31 @@ def check_max_gap(
         )
 
     max_gap_ms = max_gap_factor * (1000.0 / gaze.experiment.sampling_rate)
-    groups = _get_trial_groups(gaze)
-    gap_trials: list[str] = []
 
-    for grp in groups:
-        times = grp['time'].to_list()
+    if gaze.trial_columns:
+        missing = [c for c in gaze.trial_columns if c not in gaze.samples.columns]
+        if missing:
+            return CheckResult(
+                code='max_gap',
+                severity='error',
+                message=(
+                    f'trial_columns {missing!r} not found in sample schema; '
+                    'check could not be performed.'
+                ),
+                sources=sources,
+            )
+        groups = gaze.split()
+    else:
+        groups = [gaze]
+
+    gap_trials: list[str] = []
+    for part in groups:
+        times = part.samples['time'].to_list()
         if len(times) < 2:
             continue
         if any(times[i + 1] - times[i] > max_gap_ms for i in range(len(times) - 1)):
             if gaze.trial_columns:
-                key_vals = {c: grp[c][0] for c in gaze.trial_columns if c in grp.columns}
+                key_vals = {c: part.samples[c][0] for c in gaze.trial_columns}
                 gap_trials.append(str(key_vals))
             else:
                 gap_trials.append('(single trial)')
@@ -573,15 +594,7 @@ def check_sampling_rate_consistency(
         )
 
     median_isi = positive_diffs.median()
-    if not isinstance(median_isi, (int, float)):  # pragma: no cover
-        return CheckResult(
-            code='sampling_rate_consistency',
-            severity='pass',
-            message='Could not compute median ISI; check skipped.',
-            sources=sources,
-        )
-
-    empirical_isi = float(median_isi)
+    empirical_isi = float(median_isi)  # type: ignore[arg-type]
     empirical_rate = 1000.0 / empirical_isi
     deviation = abs(empirical_rate - declared_rate) / declared_rate
 
