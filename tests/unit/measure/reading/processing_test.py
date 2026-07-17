@@ -218,6 +218,26 @@ from pymovements.measure.reading.processing import compute_reading_measures
             },
             id='trc_out_multiple_passes',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 2, 3],
+                    'duration': [100, 100, 0, 100],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'aoi': [1, 2, 3],
+                    'character': ['a', 'b', 'c'],
+                },
+            ),
+            {
+                0: {'FFD': 100, 'TFT': 100},
+                1: {'FFD': 100, 'TFT': 100},
+                2: {'FFD': 100, 'TFT': 100},
+            },
+            id='zero_duration_fixation',
+        ),
     ],
 )
 def test_compute_reading_measures(fixations_df, aoi_df, expected_results):
