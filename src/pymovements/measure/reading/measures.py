@@ -397,7 +397,6 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
     return fixations.group_by('trial', 'page', maintain_order=True).map_groups(per_group)
 
 
-
 # ---------------------------
 # Word-level table
 # ---------------------------
@@ -437,11 +436,13 @@ def build_word_level_table(
     fprt = first_pass_reading_time(fixations)
     frt = first_reading_time(fixations)
     rrt = rereading_time(fixations)
-    fpfc = first_pass_fixationsation_count(fixations)
-    trc = trc_in_out(fixations)
+    fpfc = first_pass_fixation_count(fixations)
+    trc_in = regression_count_in(fixations)
+    trc_out = regression_count_out(fixations)
+    regression_count_out(fixations)
     lp = landing_position(fixations)
-    sl_in = sl_in(fixations)
-    sl_out = sl_out(fixations)
+    sl_in = saccade_length_in(fixations)
+    sl_out = saccade_length_out(fixations)
     rpd = regression_path_duration(fixations)
 
     return (
@@ -452,7 +453,8 @@ def build_word_level_table(
         .join(frt, on=['trial', 'page', 'word_idx'], how='left')
         .join(rrt, on=['trial', 'page', 'word_idx'], how='left')
         .join(fpfc, on=['trial', 'page', 'word_idx'], how='left')
-        .join(trc, on=['trial', 'page', 'word_idx'], how='left')
+        .join(trc_in, on=['trial', 'page', 'word_idx'], how='left')
+        .join(trc_out, on=['trial', 'page', 'word_idx'], how='left')
         .join(lp, on=['trial', 'page', 'word_idx'], how='left')
         .join(sl_in, on=['trial', 'page', 'word_idx'], how='left')
         .join(sl_out, on=['trial', 'page', 'word_idx'], how='left')

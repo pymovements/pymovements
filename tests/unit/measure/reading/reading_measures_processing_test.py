@@ -20,9 +20,59 @@
 """Reading measure tests."""
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import Dataset
 from pymovements import ReadingMeasures
+from pymovements.measure.reading.annotate import annotate_run_id
+
+
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame(
+                data={
+                    'trial': [],
+                    'stimulus': [],
+                    'page': [],
+                    'name': [],
+                    'word_idx': [],
+                },
+                schema={
+                    'trial': pl.String,
+                    'stimulus': pl.String,
+                    'page': pl.String,
+                    'name': pl.String,
+                    'word_idx': pl.Int64,
+                },
+            ),
+            pl.DataFrame(
+                data={
+                    'trial': [],
+                    'stimulus': [],
+                    'page': [],
+                    'name': [],
+                    'word_idx': [],
+                    'run_id': [],
+                },
+                schema={
+                    'trial': pl.String,
+                    'stimulus': pl.String,
+                    'page': pl.String,
+                    'name': pl.String,
+                    'word_idx': pl.Int64,
+                    'run_id': pl.Int64,
+                },
+            ),
+            id='empty',
+        ),
+    ],
+)
+def test_annotate_run_id(fixations, expected):
+    result = annotate_run_id(fixations, ['trial', 'stimulus', 'page'])
+
+    assert_frame_equal(result, expected)
 
 
 @pytest.mark.parametrize(
@@ -45,6 +95,7 @@ def test_reading_measures_processing(
     detection_method, minimum_duration, dispersion_threshold,
     velocity_threshold, expected_event_properties, use_save_path, tmp_path,
 ):
+    assert False
     # Create the dataset
     dataset = Dataset('PoTeC', path='data/PoTeC')
     dataset.load(subset={'subject_id': 5, 'text_id': 'b0'})

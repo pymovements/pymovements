@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to reading measure classes and functions."""
+from pymovements.measure.reading.annotate import annotate_fixations
 from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
@@ -26,13 +27,13 @@ from pymovements.measure.reading.measures import first_pass_fixation_count
 from pymovements.measure.reading.measures import first_pass_reading_time
 from pymovements.measure.reading.measures import first_reading_time
 from pymovements.measure.reading.measures import landing_position
-from pymovements.measure.reading.measures import rereading_time
+from pymovements.measure.reading.measures import regression_count_in
+from pymovements.measure.reading.measures import regression_count_out
 from pymovements.measure.reading.measures import regression_path_duration
+from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
-from pymovements.measure.reading.measures import trc_in_out
-from pymovements.measure.reading.processing import annotate_fixations
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.measure.reading.words import mark_skipped_tokens
 from pymovements.measure.reading.words import repair_word_labels
@@ -56,9 +57,10 @@ __all__ = [
     'first_reading_time',
     'landing_position',
     'rereading_time',
+    'regression_count_in',
+    'regression_count_out',
     'regression_path_duration',
     'saccade_length_in',
     'saccade_length_out',
     'total_fixation_count',
-    'trc_in_out',
 ]

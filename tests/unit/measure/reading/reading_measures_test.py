@@ -22,12 +22,12 @@ import polars as pl
 import pytest
 
 from pymovements.events import Events
+from pymovements.measure.reading.annotate import annotate_fixations
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
 from pymovements.measure.reading.measures import first_pass_reading_time
 from pymovements.measure.reading.measures import total_fixation_count
-from pymovements.measure.reading.processing import annotate_fixations
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
@@ -113,7 +113,7 @@ def test_all_tokens_from_aois(all_tokens):
 
 
 def test_build_word_level_table(annotated_events, all_tokens):
-    result = build_word_level_table(words=all_tokens, fix=annotated_events)
+    result = build_word_level_table(words=all_tokens, fixations=annotated_events)
     assert result.height == 2  # one row per word
     assert 'FFD' in result.columns
     assert 'TFT' in result.columns
