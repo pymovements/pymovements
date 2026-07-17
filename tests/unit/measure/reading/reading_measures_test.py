@@ -22,6 +22,7 @@ import polars as pl
 import pytest
 
 from pymovements.events import Events
+from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
@@ -110,6 +111,20 @@ def test_all_tokens_from_aois(all_tokens):
     assert 'word_idx' in all_tokens.columns
     assert 'word' in all_tokens.columns
     assert all_tokens.height == 2  # 2 unique words: The, quick
+
+
+def test_reading_measures_init_none():
+    reading_measures = ReadingMeasures()
+    assert isinstance(reading_measures.frame, pl.DataFrame)
+    assert reading_measures.frame.is_empty()
+
+
+def test_reading_measures_init_df():
+    df = pl.DataFrame({'a': [1, 2, 3]})
+    reading_measures = ReadingMeasures(df)
+    assert isinstance(reading_measures.frame, pl.DataFrame)
+    assert reading_measures.frame.shape == (3, 1)
+    assert reading_measures.frame['a'].to_list() == [1, 2, 3]
 
 
 def test_build_word_level_table(annotated_events, all_tokens):
