@@ -20,7 +20,6 @@
 """Reading measure tests."""
 import polars as pl
 import pytest
-from polars.testing import assert_frame_equal
 
 from pymovements import Dataset
 from pymovements import ReadingMeasures

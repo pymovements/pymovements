@@ -279,6 +279,9 @@ def annotate_is_first_pass(fixations: pl.DataFrame, group_columns: list[str]) ->
 
         return fixation_group.with_columns(pl.Series('is_first_pass', first_pass_flags))
 
+    if fixations.is_empty():
+        return fixations.with_columns(pl.Series('is_first_pass', [], dtype=pl.Boolean))
+
     return fixations.group_by(group_columns, maintain_order=True).map_groups(_mark_first_pass)
 
 

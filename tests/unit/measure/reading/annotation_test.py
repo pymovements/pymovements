@@ -89,7 +89,24 @@ from pymovements.measure.reading.annotation import annotate_run_id
                 },
                 schema_overrides={'run_id': pl.Int64},
             ),
-            id='runs',
+            id='single_trial',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={
+                    'trial': ['1', '1', '2', '2'],
+                    'word_idx': [1, 1, 1, 2],
+                },
+            ),
+            pl.DataFrame(
+                data={
+                    'trial': ['1', '1', '2', '2'],
+                    'word_idx': [1, 1, 1, 2],
+                    'run_id': [1, 1, 1, 2],
+                },
+                schema_overrides={'run_id': pl.Int64},
+            ),
+            id='two_trials',
         ),
     ],
 )
@@ -98,113 +115,437 @@ def test_annotate_run_id(fixations, expected):
     assert_frame_equal(result, expected)
 
 
-def test_annotate_prev_word_idx():
-    fixations = pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2]})
-    expected = pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2], 'prev_word_idx': [None, 1]})
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2]}),
+            pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2], 'prev_word_idx': [None, 1]}),
+            id='single_trial',
+        ),
+        pytest.param(
+            pl.DataFrame({'trial': ['1', '2'], 'word_idx': [1, 2]}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'word_idx': [1, 2],
+                'prev_word_idx': [None, None],
+            }).with_columns(pl.col('prev_word_idx').cast(pl.Int64)),
+            id='two_trials',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={'trial': [], 'word_idx': []},
+                schema={'trial': pl.String, 'word_idx': pl.Int64},
+            ),
+            pl.DataFrame(
+                data={'trial': [], 'word_idx': [], 'prev_word_idx': []},
+                schema={'trial': pl.String, 'word_idx': pl.Int64, 'prev_word_idx': pl.Int64},
+            ),
+            id='empty',
+        ),
+    ],
+)
+def test_annotate_prev_word_idx(fixations, expected):
     result = annotate_prev_word_idx(fixations, ['trial'])
     assert_frame_equal(result, expected)
 
 
-def test_annotate_next_word_idx():
-    fixations = pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2]})
-    expected = pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2], 'next_word_idx': [2, None]})
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2]}),
+            pl.DataFrame({'trial': ['1', '1'], 'word_idx': [1, 2], 'next_word_idx': [2, None]}),
+            id='single_trial',
+        ),
+        pytest.param(
+            pl.DataFrame({'trial': ['1', '2'], 'word_idx': [1, 2]}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'word_idx': [1, 2],
+                'next_word_idx': [None, None],
+            }).with_columns(pl.col('next_word_idx').cast(pl.Int64)),
+            id='two_trials',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={'trial': [], 'word_idx': []},
+                schema={'trial': pl.String, 'word_idx': pl.Int64},
+            ),
+            pl.DataFrame(
+                data={'trial': [], 'word_idx': [], 'next_word_idx': []},
+                schema={'trial': pl.String, 'word_idx': pl.Int64, 'next_word_idx': pl.Int64},
+            ),
+            id='empty',
+        ),
+    ],
+)
+def test_annotate_next_word_idx(fixations, expected):
     result = annotate_next_word_idx(fixations, ['trial'])
     assert_frame_equal(result, expected)
 
 
-def test_annotate_delta_in():
-    fixations = pl.DataFrame({'trial': ['1'], 'word_idx': [2], 'prev_word_idx': [1]})
-    expected = pl.DataFrame({
-        'trial': ['1'], 'word_idx': [2],
-        'prev_word_idx': [1], 'delta_in': [1],
-    })
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'word_idx': [2], 'prev_word_idx': [1]}),
+            pl.DataFrame({'word_idx': [2], 'prev_word_idx': [1], 'delta_in': [1]}),
+            id='standard',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'prev_word_idx': [3]}),
+            pl.DataFrame({'word_idx': [1], 'prev_word_idx': [3], 'delta_in': [-2]}),
+            id='regression',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'word_idx': [1], 'prev_word_idx': [None]},
+                schema={'word_idx': pl.Int64, 'prev_word_idx': pl.Int64},
+            ),
+            pl.DataFrame({
+                'word_idx': [1],
+                'prev_word_idx': [None],
+                'delta_in': [None],
+            }).with_columns([
+                pl.col('prev_word_idx').cast(pl.Int64),
+                pl.col('delta_in').cast(pl.Int64),
+            ]),
+            id='start_of_sequence',
+        ),
+    ],
+)
+def test_annotate_delta_in(fixations, expected):
     result = annotate_delta_in(fixations)
     assert_frame_equal(result, expected)
 
 
-def test_annotate_delta_out():
-    fixations = pl.DataFrame({'trial': ['1'], 'word_idx': [1], 'next_word_idx': [2]})
-    expected = pl.DataFrame({
-        'trial': ['1'], 'word_idx': [1],
-        'next_word_idx': [2], 'delta_out': [1],
-    })
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'next_word_idx': [2]}),
+            pl.DataFrame({'word_idx': [1], 'next_word_idx': [2], 'delta_out': [1]}),
+            id='standard',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [3], 'next_word_idx': [1]}),
+            pl.DataFrame({'word_idx': [3], 'next_word_idx': [1], 'delta_out': [-2]}),
+            id='regression',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'word_idx': [1], 'next_word_idx': [None]},
+                schema={'word_idx': pl.Int64, 'next_word_idx': pl.Int64},
+            ),
+            pl.DataFrame({
+                'word_idx': [1],
+                'next_word_idx': [None],
+                'delta_out': [None],
+            }).with_columns([
+                pl.col('next_word_idx').cast(pl.Int64),
+                pl.col('delta_out').cast(pl.Int64),
+            ]),
+            id='end_of_sequence',
+        ),
+    ],
+)
+def test_annotate_delta_out(fixations, expected):
     result = annotate_delta_out(fixations)
     assert_frame_equal(result, expected)
 
 
-def test_annotate_is_reg_in():
-    fixations = pl.DataFrame({'trial': ['1', '1'], 'delta_in': [1, -1]})
-    expected = pl.DataFrame({'trial': ['1', '1'], 'delta_in': [1, -1], 'is_reg_in': [False, True]})
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'delta_in': [1, -1]}),
+            pl.DataFrame({'delta_in': [1, -1], 'is_reg_in': [False, True]}),
+            id='standard',
+        ),
+        pytest.param(
+            pl.DataFrame({'delta_in': [0, 2]}),
+            pl.DataFrame({'delta_in': [0, 2], 'is_reg_in': [False, False]}),
+            id='no_regression',
+        ),
+        pytest.param(
+            pl.DataFrame({'delta_in': [None]}, schema={'delta_in': pl.Int64}),
+            pl.DataFrame(
+                {'delta_in': [None], 'is_reg_in': [None]},
+                schema={'delta_in': pl.Int64, 'is_reg_in': pl.Boolean},
+            ),
+            id='null_delta',
+        ),
+    ],
+)
+def test_annotate_is_reg_in(fixations, expected):
     result = annotate_is_reg_in(fixations)
     assert_frame_equal(result, expected)
 
 
-def test_annotate_is_reg_out():
-    fixations = pl.DataFrame({'trial': ['1', '1'], 'delta_out': [1, -1]})
-    expected = pl.DataFrame({
-        'trial': ['1', '1'], 'delta_out': [
-            1, -1,
-        ], 'is_reg_out': [False, True],
-    })
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'delta_out': [1, -1]}),
+            pl.DataFrame({'delta_out': [1, -1], 'is_reg_out': [False, True]}),
+            id='standard',
+        ),
+        pytest.param(
+            pl.DataFrame({'delta_out': [0, 2]}),
+            pl.DataFrame({'delta_out': [0, 2], 'is_reg_out': [False, False]}),
+            id='no_regression',
+        ),
+        pytest.param(
+            pl.DataFrame({'delta_out': [None]}, schema={'delta_out': pl.Int64}),
+            pl.DataFrame(
+                {'delta_out': [None], 'is_reg_out': [None]},
+                schema={'delta_out': pl.Int64, 'is_reg_out': pl.Boolean},
+            ),
+            id='null_delta',
+        ),
+    ],
+)
+def test_annotate_is_reg_out(fixations, expected):
     result = annotate_is_reg_out(fixations)
     assert_frame_equal(result, expected)
 
 
-def test_annotate_is_first_fixation():
-    fixations = pl.DataFrame({'trial': ['1', '1', '1'], 'word_idx': [1, 1, 2]})
-    expected = pl.DataFrame({
-        'trial': ['1', '1', '1'],
-        'word_idx': [1, 1, 2],
-        'is_first_fix': [True, False, True],
-    })
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({'trial': ['1', '1', '1'], 'word_idx': [1, 1, 2]}),
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'word_idx': [1, 1, 2],
+                'is_first_fix': [True, False, True],
+            }),
+            id='single_trial',
+        ),
+        pytest.param(
+            pl.DataFrame({'trial': ['1', '2'], 'word_idx': [1, 1]}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'word_idx': [1, 1],
+                'is_first_fix': [True, True],
+            }),
+            id='two_trials',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={'trial': [], 'word_idx': []},
+                schema={'trial': pl.String, 'word_idx': pl.Int64},
+            ),
+            pl.DataFrame(
+                data={'trial': [], 'word_idx': [], 'is_first_fix': []},
+                schema={'trial': pl.String, 'word_idx': pl.Int64, 'is_first_fix': pl.Boolean},
+            ),
+            id='empty',
+        ),
+    ],
+)
+def test_annotate_is_first_fixation(fixations, expected):
     result = annotate_is_first_fixation(fixations, ['trial'])
     assert_frame_equal(result, expected)
 
 
-def test_annotate_is_first_pass():
-    fixations = pl.DataFrame({
-        'trial': ['1', '1', '1', '1', '1'],
-        'onset': [0, 1, 2, 3, 4],
-        'word_idx': [1, 1, 2, 1, 3],
-        'run_id': [1, 1, 2, 3, 4],
-        'prev_word_idx': [None, 1, 1, 2, 1],
-    })
-    # word 1: first run (0,1) is first pass. Second run (3) is not (revisit).
-    # word 2: first run (2) is first pass.
-    # word 3: first run (4) is first pass.
-    expected = fixations.with_columns(
-        pl.Series('is_first_pass', [True, True, True, False, True]),
-    )
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1', '1'],
+                'onset': [0, 1, 2, 3, 4],
+                'word_idx': [1, 1, 2, 1, 3],
+                'run_id': [1, 1, 2, 3, 4],
+                'prev_word_idx': [None, 1, 1, 2, 1],
+            }),
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1', '1'],
+                'onset': [0, 1, 2, 3, 4],
+                'word_idx': [1, 1, 2, 1, 3],
+                'run_id': [1, 1, 2, 3, 4],
+                'prev_word_idx': [None, 1, 1, 2, 1],
+                'is_first_pass': [True, True, True, False, True],
+            }),
+            id='single_trial',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'onset': [0, 0],
+                'word_idx': [1, 1],
+                'run_id': [1, 1],
+                'prev_word_idx': [None, None],
+            }),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'onset': [0, 0],
+                'word_idx': [1, 1],
+                'run_id': [1, 1],
+                'prev_word_idx': [None, None],
+                'is_first_pass': [True, True],
+            }),
+            id='two_trials',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={
+                    'trial': [],
+                    'onset': [],
+                    'word_idx': [],
+                    'run_id': [],
+                    'prev_word_idx': [],
+                },
+                schema={
+                    'trial': pl.String,
+                    'onset': pl.Int64,
+                    'word_idx': pl.Int64,
+                    'run_id': pl.Int64,
+                    'prev_word_idx': pl.Int64,
+                },
+            ),
+            pl.DataFrame(
+                data={
+                    'trial': [],
+                    'onset': [],
+                    'word_idx': [],
+                    'run_id': [],
+                    'prev_word_idx': [],
+                    'is_first_pass': [],
+                },
+                schema={
+                    'trial': pl.String,
+                    'onset': pl.Int64,
+                    'word_idx': pl.Int64,
+                    'run_id': pl.Int64,
+                    'prev_word_idx': pl.Int64,
+                    'is_first_pass': pl.Boolean,
+                },
+            ),
+            id='empty',
+        ),
+    ],
+)
+def test_annotate_is_first_pass(fixations, expected):
     result = annotate_is_first_pass(fixations, ['trial'])
     assert_frame_equal(result, expected)
 
 
-def test_annotate_is_first_pass_regression_skip():
-    # word 1 -> word 3 -> word 2.
-    # word 2 should NOT be first pass because word 3 was already seen.
-    fixations = pl.DataFrame({
-        'trial': ['1', '1', '1'],
-        'onset': [0, 1, 2],
-        'word_idx': [1, 3, 2],
-        'run_id': [1, 2, 3],
-        'prev_word_idx': [None, 1, 3],
-    })
-    expected = fixations.with_columns(
-        pl.Series('is_first_pass', [True, True, False]),
-    )
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'onset': [0, 1, 2],
+                'word_idx': [1, 3, 2],
+                'run_id': [1, 2, 3],
+                'prev_word_idx': [None, 1, 3],
+            }),
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'onset': [0, 1, 2],
+                'word_idx': [1, 3, 2],
+                'run_id': [1, 2, 3],
+                'prev_word_idx': [None, 1, 3],
+                'is_first_pass': [True, True, False],
+            }),
+            id='skip_regression',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'onset': [0, 1, 2],
+                'word_idx': [1, 2, 3],
+                'run_id': [1, 2, 3],
+                'prev_word_idx': [None, 1, 2],
+            }),
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'onset': [0, 1, 2],
+                'word_idx': [1, 2, 3],
+                'run_id': [1, 2, 3],
+                'prev_word_idx': [None, 1, 2],
+                'is_first_pass': [True, True, True],
+            }),
+            id='forward',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'onset': [0, 1, 2],
+                'word_idx': [2, 1, 3],
+                'run_id': [1, 2, 3],
+                'prev_word_idx': [None, 2, 1],
+            }),
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'onset': [0, 1, 2],
+                'word_idx': [2, 1, 3],
+                'run_id': [1, 2, 3],
+                'prev_word_idx': [None, 2, 1],
+                'is_first_pass': [True, False, True],
+            }),
+            id='regression_entry',
+        ),
+    ],
+)
+def test_annotate_is_first_pass_regression_skip(fixations, expected):
     result = annotate_is_first_pass(fixations, ['trial'])
     assert_frame_equal(result, expected)
 
 
-def test_annotate_fixations():
-    events = pl.DataFrame({
-        'trial': ['1', '1', '1'],
-        'stimulus': ['s', 's', 's'],
-        'page': ['p', 'p', 'p'],
-        'name': ['fixation', 'fixation', 'fixation'],
-        'word_idx': [1, 2, 1],
-        'onset': [0, 100, 200],
-    })
+@pytest.mark.parametrize(
+    'events',
+    [
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'stimulus': ['s', 's', 's'],
+                'page': ['p', 'p', 'p'],
+                'name': ['fixation', 'fixation', 'fixation'],
+                'word_idx': [1, 2, 1],
+                'onset': [0, 100, 200],
+            }),
+            id='single_trial',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'stimulus': ['s', 's'],
+                'page': ['p', 'p'],
+                'name': ['fixation', 'fixation'],
+                'word_idx': [1, 1],
+                'onset': [0, 0],
+            }),
+            id='two_trials',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                data={
+                    'trial': [],
+                    'stimulus': [],
+                    'page': [],
+                    'name': [],
+                    'word_idx': [],
+                    'onset': [],
+                },
+                schema={
+                    'trial': pl.String,
+                    'stimulus': pl.String,
+                    'page': pl.String,
+                    'name': pl.String,
+                    'word_idx': pl.Int64,
+                    'onset': pl.Int64,
+                },
+            ),
+            id='empty',
+        ),
+    ],
+)
+def test_annotate_fixations(events):
     result = annotate_fixations(events, group_columns=['trial', 'stimulus', 'page'])
 
     expected_columns = [
@@ -214,6 +555,4 @@ def test_annotate_fixations():
         'is_first_fix', 'is_first_pass',
     ]
     assert all(col in result.columns for col in expected_columns)
-    assert len(result) == 3
-    assert result['run_id'].to_list() == [1, 2, 3]
-    assert result['is_first_pass'].to_list() == [True, True, False]
+    assert len(result) == len(events.filter(pl.col('name') == 'fixation'))
