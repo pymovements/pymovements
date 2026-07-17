@@ -34,6 +34,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.measure.reading.words import mark_skipped_tokens
 from pymovements.measure.reading.words import repair_word_labels
@@ -42,6 +43,7 @@ from pymovements.measure.reading.words import repair_word_labels
 __all__ = [
     # data container
     'ReadingMeasures',
+    'compute_reading_measures',
     # main entry points
     'annotate_fixations',
     'build_word_level_table',

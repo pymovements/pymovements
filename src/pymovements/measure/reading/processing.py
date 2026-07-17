@@ -1,0 +1,147 @@
+# Copyright (c) 2023-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Reading measure processing functions."""
+from __future__ import annotations
+
+import pandas as pd
+
+
+def compute_reading_measures(
+        fixations_df: pd.DataFrame,
+        aoi_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compute reading measures from fixation sequences.
+
+    Parameters
+    ----------
+    fixations_df : pd.DataFrame
+        DataFrame with fixation data, containing columns 'index', 'duration',
+        'aoi', 'word_roi_str'.
+    aoi_df : pd.DataFrame
+        DataFrame with AOI data, containing columns 'word_index', 'word',
+        and the AOIs of each word.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with computed reading measures.
+    """
+    # Append an extra dummy fixation to have the next fixation for the actual last fixation.
+    fixations_df = pd.concat(
+        [
+            fixations_df,
+            pd.DataFrame(
+                [[0 for _ in range(len(fixations_df.columns))]],
+                columns=fixations_df.columns,
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    # Adjust AOI indices (fix off by one error).
+    aoi_df['aoi'] = aoi_df['aoi'] - 1
+    # Get original words of the text and their indices.
+    text_aois = aoi_df['aoi'].tolist()
+    text_strs = aoi_df['character'].tolist()
+
+    # Initialize dictionary for reading measures per word.
+    word_dict = {
+        int(word_index): {
+            'word': word,
+            'word_index': word_index,
+            'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
+            'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
+            'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
+        } for word_index, word in zip(text_aois, text_strs)
+    }
+
+    # Variables to track fixation progress.
+    right_most_word, cur_fix_word_idx, next_fix_word_idx, next_fix_dur = -1, -1, -1, -1
+
+    # Iterate over fixation data.
+    for _, fixation in fixations_df.iterrows():
+        try:
+            aoi = int(fixation['aoi']) - 1
+        except ValueError:
+            continue
+
+        # Update variables.
+        last_fix_word_idx = cur_fix_word_idx
+        cur_fix_word_idx = next_fix_word_idx
+        cur_fix_dur = next_fix_dur
+        if pd.isna(cur_fix_dur):
+            continue
+
+        next_fix_word_idx = aoi
+        next_fix_dur = fixation['duration']
+
+        if next_fix_dur == 0:
+            next_fix_word_idx = cur_fix_word_idx
+
+        right_most_word = max(right_most_word, cur_fix_word_idx)
+
+        if cur_fix_word_idx == -1:
+            continue
+
+        # Update reading measures for the current word.
+        word_dict[cur_fix_word_idx]['TFT'] += int(cur_fix_dur)
+        word_dict[cur_fix_word_idx]['TFC'] += 1
+        if word_dict[cur_fix_word_idx]['FD'] == 0:
+            word_dict[cur_fix_word_idx]['FD'] += int(cur_fix_dur)
+
+        if right_most_word == cur_fix_word_idx:
+            if word_dict[cur_fix_word_idx]['TRC_out'] == 0:
+                word_dict[cur_fix_word_idx]['FPRT'] += int(cur_fix_dur)
+                if last_fix_word_idx < cur_fix_word_idx:
+                    word_dict[cur_fix_word_idx]['FFD'] += int(cur_fix_dur)
+        else:
+            word_dict[right_most_word]['RPD_exc'] += int(cur_fix_dur)
+
+        if cur_fix_word_idx < last_fix_word_idx:
+            word_dict[cur_fix_word_idx]['TRC_in'] += 1
+        if cur_fix_word_idx > next_fix_word_idx:
+            word_dict[cur_fix_word_idx]['TRC_out'] += 1
+        if cur_fix_word_idx == right_most_word:
+            word_dict[cur_fix_word_idx]['RBRT'] += int(cur_fix_dur)
+        if (
+                word_dict[cur_fix_word_idx]['FRT'] == 0 and
+                (not next_fix_word_idx == cur_fix_word_idx or next_fix_dur == 0)
+        ):
+            word_dict[cur_fix_word_idx]['FRT'] = word_dict[cur_fix_word_idx]['TFT']
+        if word_dict[cur_fix_word_idx]['SL_in'] == 0:
+            word_dict[cur_fix_word_idx]['SL_in'] = cur_fix_word_idx - last_fix_word_idx
+        if word_dict[cur_fix_word_idx]['SL_out'] == 0:
+            word_dict[cur_fix_word_idx]['SL_out'] = next_fix_word_idx - cur_fix_word_idx
+
+    # Finalize reading measures.
+    rm_df = pd.DataFrame()
+    for _, word_rm in sorted(word_dict.items()):
+        if word_rm['FFD'] == word_rm['FPRT']:
+            word_rm['SFD'] = word_rm['FFD']
+        word_rm['RRT'] = word_rm['TFT'] - word_rm['FPRT']
+        word_rm['FPF'] = int(word_rm['FFD'] > 0)
+        word_rm['RR'] = int(word_rm['RRT'] > 0)
+        word_rm['FPReg'] = int(word_rm['RPD_exc'] > 0)
+        word_rm['Fix'] = int(word_rm['TFT'] > 0)
+        word_rm['RPD_inc'] = word_rm['RPD_exc'] + word_rm['RBRT']
+
+        rm_df = pd.concat([rm_df, pd.DataFrame([word_rm])])
+
+    return rm_df
