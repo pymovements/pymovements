@@ -23,10 +23,10 @@ import pytest
 
 from pymovements.events import Events
 from pymovements.measure.reading.measures import build_word_level_table
-from pymovements.measure.reading.measures import compute_first_duration
-from pymovements.measure.reading.measures import compute_first_fixation_duration
-from pymovements.measure.reading.measures import compute_first_pass_reading_time
-from pymovements.measure.reading.measures import compute_total_fixation_count
+from pymovements.measure.reading.measures import first_duration
+from pymovements.measure.reading.measures import first_fixation_duration
+from pymovements.measure.reading.measures import first_pass_reading_time
+from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import annotate_fixations
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
@@ -52,7 +52,7 @@ CHAR_AOI_DF = pl.DataFrame({
 def fixture_stimulus() -> TextStimulus:
     def _make_stimulus() -> TextStimulus:
         return TextStimulus(
-            aois=CHAR_AOI_DF,
+            aois=CHAR_AOI_DF.clone(),
             aoi_column='char',
             start_x_column='top_left_x',
             start_y_column='top_left_y',
@@ -94,7 +94,7 @@ def fixture_all_tokens(stimulus: TextStimulus) -> pl.DataFrame:
     return all_tokens_from_aois(stimulus.aois, trial='trial_1')
 
 
-def test_map_to_aois_adds_word_columns(mapped_events):
+def test_fixture_mapped_events_has_word_and_char_columns(mapped_events):
     assert 'word_idx' in mapped_events.columns
     assert 'word' in mapped_events.columns
     assert 'char_idx' in mapped_events.columns
@@ -122,26 +122,26 @@ def test_build_word_level_table(annotated_events, all_tokens):
 
 
 def test_compute_first_duration(annotated_events):
-    result = compute_first_duration(annotated_events)
+    result = first_duration(annotated_events)
     assert 'FD' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FD'][0] == 200
     assert result.filter(pl.col('word_idx') == 1)['FD'][0] == 200
 
 
 def test_compute_first_fixation_duration(annotated_events):
-    result = compute_first_fixation_duration(annotated_events)
+    result = first_fixation_duration(annotated_events)
     assert 'FFD' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FFD'][0] == 200
 
 
 def test_compute_first_pass_reading_time(annotated_events):
-    result = compute_first_pass_reading_time(annotated_events)
+    result = first_pass_reading_time(annotated_events)
     assert 'FPRT' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FPRT'][0] == 200
 
 
 def test_compute_total_fixation_count(annotated_events):
-    result = compute_total_fixation_count(annotated_events)
+    result = total_fixation_count(annotated_events)
     assert 'TFC' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['TFC'][0] == 1
     assert result.filter(pl.col('word_idx') == 1)['TFC'][0] == 1

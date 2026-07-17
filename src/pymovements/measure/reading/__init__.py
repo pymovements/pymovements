@@ -20,18 +20,18 @@
 """Provides access to reading measure classes and functions."""
 from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.reading.measures import build_word_level_table
-from pymovements.measure.reading.measures import compute_first_duration
-from pymovements.measure.reading.measures import compute_first_fixation_duration
-from pymovements.measure.reading.measures import compute_first_pass_fixation_count
-from pymovements.measure.reading.measures import compute_first_pass_reading_time
-from pymovements.measure.reading.measures import compute_first_reading_time
-from pymovements.measure.reading.measures import compute_landing_position
-from pymovements.measure.reading.measures import compute_rereading_time
-from pymovements.measure.reading.measures import compute_rpd_measures
-from pymovements.measure.reading.measures import compute_sl_in
-from pymovements.measure.reading.measures import compute_sl_out
-from pymovements.measure.reading.measures import compute_total_fixation_count
-from pymovements.measure.reading.measures import compute_trc_in_out
+from pymovements.measure.reading.measures import first_duration
+from pymovements.measure.reading.measures import first_fixation_duration
+from pymovements.measure.reading.measures import first_pass_fixation_count
+from pymovements.measure.reading.measures import first_pass_reading_time
+from pymovements.measure.reading.measures import first_reading_time
+from pymovements.measure.reading.measures import landing_position
+from pymovements.measure.reading.measures import rereading_time
+from pymovements.measure.reading.measures import regression_path_duration
+from pymovements.measure.reading.measures import saccade_length_in
+from pymovements.measure.reading.measures import saccade_length_out
+from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.measures import trc_in_out
 from pymovements.measure.reading.processing import annotate_fixations
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.measure.reading.words import mark_skipped_tokens
@@ -49,16 +49,16 @@ __all__ = [
     'mark_skipped_tokens',
     'repair_word_labels',
     # individual measures (for users who want just one or two)
-    'compute_first_duration',
-    'compute_first_fixation_duration',
-    'compute_first_pass_fixation_count',
-    'compute_first_pass_reading_time',
-    'compute_first_reading_time',
-    'compute_landing_position',
-    'compute_rereading_time',
-    'compute_rpd_measures',
-    'compute_sl_in',
-    'compute_sl_out',
-    'compute_total_fixation_count',
-    'compute_trc_in_out',
+    'first_duration',
+    'first_fixation_duration',
+    'first_pass_fixation_count',
+    'first_pass_reading_time',
+    'first_reading_time',
+    'landing_position',
+    'rereading_time',
+    'regression_path_duration',
+    'saccade_length_in',
+    'saccade_length_out',
+    'total_fixation_count',
+    'trc_in_out',
 ]
