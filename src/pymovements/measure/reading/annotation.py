@@ -300,7 +300,7 @@ def annotate_fixations(
       (regression in) or departs to a lower-index word (regression out).
     * **is_first_fix**: whether this is the first fixation ever on the word within the trial.
     * **is_first_pass**: whether the fixation belongs to the first-pass reading episode of the word
-      (see :func:`_mark_first_pass`).
+      (see :func:`~pymovements.measure.reading.annotate_is_first_pass`).
 
     Parameters
     ----------

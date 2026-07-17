@@ -419,7 +419,7 @@ def build_word_level_table(
         ``word_idx`` columns (one row per word).
     fixations : pl.DataFrame
         Annotated fixation table as produced by
-        :func:`~pymovements.measure.reading.processing.annotate_fixations`.
+        :func:`~pymovements.measure.reading.annotate_fixations`.
 
     Returns
     -------
