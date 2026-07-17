@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
+import pandas as pd
 import polars as pl
 from tqdm.auto import tqdm
 
@@ -43,7 +44,9 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
+from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
+from pymovements.stimulus import text
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
 from pymovements.warnings import ExperimentalWarning
@@ -1098,6 +1101,81 @@ class Dataset:
             name=name,
             verbose=verbose,
         )
+
+    def compute_reading_measures(
+            self,
+            aoi_dict: dict[str, str | Path],
+            save_path: str | Path | None = None,
+    ) -> ReadingMeasures:
+        """Map fixations to AOIs and compute reading measures for an entire dataset.
+
+        Parameters
+        ----------
+        aoi_dict : dict[str, str | Path]
+            A dictionary mapping text IDs to their corresponding AOI file paths.
+        save_path : str | Path | None
+            The directory path where the computed reading measures CSV files will be saved.
+            If ``None``, no files are saved to disk. (default: None)
+
+        Returns
+        -------
+        ReadingMeasures
+            Returns a ReadingMeasures object containing the computed reading measures.
+        """
+        reading_measures_list = []
+
+        for event_idx in tqdm(range(len(self.events))):
+            tmp_df = self.events[event_idx]
+            if tmp_df.frame.is_empty():
+                print('+ skip due to empty DF')
+                continue
+            text_id = tmp_df['text_id'][0]
+            aoi_text_stimulus = text.from_file(
+                aoi_dict[text_id],
+                aoi_column='character',
+                start_x_column='start_x',
+                start_y_column='start_y',
+                end_x_column='end_x',
+                end_y_column='end_y',
+                page_column='page',
+                custom_read_kwargs={'separator': '\t'},
+            )
+
+            self.events[event_idx].map_to_aois(aoi_text_stimulus)
+
+        for _fix_file in self.events:
+            if _fix_file.frame.is_empty():
+                print('+ skip due to empty DF')
+                continue
+            fixations_df = _fix_file.frame.to_pandas()
+
+            text_id = fixations_df.iloc[0]['text_id']
+            subject_id = int(fixations_df.iloc[0]['subject_id'])
+            aoi_df = pd.read_csv(aoi_dict[text_id], delimiter='\t')
+
+            rm_df = compute_reading_measures(
+                fixations_df=fixations_df,
+                aoi_df=aoi_df,
+            )
+
+            rm_df['subject_id'] = subject_id
+            rm_df['text_id'] = text_id
+
+            # Append the computed reading measures DataFrame to the list
+            reading_measures_list.append(rm_df)
+
+            # Save to CSV if save_path is provided
+            if save_path is not None:
+                rm_filename = f'{subject_id}-{text_id}-reading_measures.csv'
+                path_save_rm_file = Path(save_path) / rm_filename
+                rm_df.to_csv(path_save_rm_file, index=False)
+
+        if reading_measures_list:
+            combined_df = pl.concat([pl.from_pandas(df) for df in reading_measures_list])
+        else:
+            combined_df = pl.DataFrame()
+
+        return ReadingMeasures(combined_df)
 
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.

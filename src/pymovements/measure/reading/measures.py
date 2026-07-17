@@ -439,7 +439,6 @@ def build_word_level_table(
     fpfc = first_pass_fixation_count(fixations)
     trc_in = regression_count_in(fixations)
     trc_out = regression_count_out(fixations)
-    regression_count_out(fixations)
     lp = landing_position(fixations)
     sl_in = saccade_length_in(fixations)
     sl_out = saccade_length_out(fixations)

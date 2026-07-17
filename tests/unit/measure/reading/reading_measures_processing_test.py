@@ -22,7 +22,6 @@ import polars as pl
 import pytest
 
 from pymovements import Dataset
-from pymovements import ReadingMeasures
 from pymovements.measure.reading.processing import compute_reading_measures
 
 
@@ -90,15 +89,13 @@ def test_reading_measures_processing(
     dataset.detect(detection_method, **detection_params)
     dataset.compute_event_properties(expected_event_properties)
 
-    # Create the ReadingMeasures object
-    reading_measures = ReadingMeasures()
     aoi_dict = {'b0': 'tests/files/potec_word_aoi_b0.tsv'}
 
     # Determine the save path based on the use_save_path parameter
     save_path = tmp_path if use_save_path else None
 
     # Process the dataset and potentially save to CSV
-    reading_measures.process_dataset(dataset, aoi_dict, save_path=save_path)
+    reading_measures = dataset.compute_reading_measures(aoi_dict, save_path=save_path)
 
     # Example of an expected DataFrame schema check (adjust as needed)
     expected_columns = [
@@ -106,7 +103,7 @@ def test_reading_measures_processing(
         'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
         'TRC_in', 'SL_in', 'SL_out', 'TFC',
     ]
-    result_frame = reading_measures.frame[0]
+    result_frame = reading_measures.frame
 
     # Check that the resulting DataFrame has the expected columns
     assert set(result_frame.columns) == set(
