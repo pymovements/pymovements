@@ -591,7 +591,9 @@ def _validate_age(data: polars.DataFrame) -> list[str]:
 
     # Check dtype
     if not data['age'].dtype.is_numeric():
-        validation_warnings.append("Column 'age' must be of numeric type (integer or float)")
+        validation_warnings.append(
+            f"Column 'age' must be of numeric type (integer or float), got '{data['age'].dtype}'",
+        )
 
     ages = data['age'].drop_nulls().to_list()
     for age in ages:
