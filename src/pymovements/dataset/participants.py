@@ -546,12 +546,7 @@ def _validate_participant_id(data: polars.DataFrame) -> list[str]:
     if data.columns[0] != 'participant_id':
         validation_warnings.append('participant_id column must be the first column')
 
-    # Check dtype
-    if not data['participant_id'].dtype.is_temporal(
-    ) and data['participant_id'].dtype != polars.String:  # String is preferred
-        # Just check if it's generally string-like if we can't be sure, but BIDS wants strings.
-        pass
-
+    # Check dtype. BIDS wants strings.
     if data['participant_id'].dtype != polars.String:
         validation_warnings.append('participant_id column must have string (Utf8) data type')
 
