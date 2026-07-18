@@ -1101,7 +1101,7 @@ class Dataset:
             verbose=verbose,
         )
 
-    def compute_reading_measures(
+    def measure_reading(
             self,
             aoi_dict: dict[str, str | Path],
             save_path: str | Path | None = None,
