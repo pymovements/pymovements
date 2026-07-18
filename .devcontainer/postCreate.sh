@@ -3,8 +3,14 @@ set -euo pipefail
 
 cd /workspaces/pymovements
 
-python -m pip install --upgrade pip
-pip install -e ".[dev,docs]"
+# Initialize a virtual environment inside your workspace container 
+# This eliminates the "site-packages is not writeable" warning entirely
+uv venv .venv
+source .venv/bin/activate
+
+# Use uv instead of pip for lightning-fast concurrent downloads
+uv pip install --upgrade pip
+uv pip install -e ".[dev,docs]"
 
 if [ -f .pre-commit-config.yaml ]; then
   pre-commit install || true
