@@ -31,14 +31,10 @@ from pymovements import Gaze
 
 @pytest.fixture(name='dummy_dataset')
 def fixture_dummy_dataset(tmp_path):
-    """Create a dummy dataset with fixation events."""
-    # Define a minimal dataset
     definition = DatasetDefinition(name='dummy')
     dataset = Dataset(definition, path=tmp_path)
 
-    # Create dummy fixation events for one trial
     # We need 'subject_id' and 'text_id' in trial_columns for compute_reading_measures to work
-    # as it accesses them from events.frame
     fixation_data = pl.DataFrame({
         'name': ['fixation', 'fixation', 'fixation', 'fixation'],
         'onset': [0, 200, 400, 600],
@@ -51,13 +47,11 @@ def fixture_dummy_dataset(tmp_path):
     })
     events = Events(fixation_data, trial_columns=['subject_id', 'text_id'])
 
-    # Create an empty events object to test skip branch
     empty_events = Events(
         pl.DataFrame(schema=fixation_data.schema),
         trial_columns=['subject_id', 'text_id'],
     )
 
-    # Create a dummy gaze object to satisfy Dataset.events setter requirements
     gaze1 = Gaze(events=events)
     gaze2 = Gaze(events=empty_events)
     dataset.gaze = [gaze1, gaze2]
@@ -65,25 +59,12 @@ def fixture_dummy_dataset(tmp_path):
     return dataset
 
 
-@pytest.mark.parametrize(
-    'use_save_path',
-    [
-        pytest.param(False, id='no_save_path'),
-        pytest.param(True, id='with_save_path'),
-    ],
-)
-def test_reading_measures_processing(dummy_dataset, use_save_path, tmp_path, make_example_file):
-    """Test compute_reading_measures using a dummy dataset."""
+def test_compute_reading_measures(dummy_dataset, make_example_file):
     aoi_path = make_example_file('potec_word_aoi_b0.tsv')
     aoi_dict = {'b0': aoi_path}
 
-    # Determine the save path based on the use_save_path parameter
-    save_path = tmp_path if use_save_path else None
+    reading_measures = dummy_dataset.compute_reading_measures(aoi_dict)
 
-    # Process the dataset
-    reading_measures = dummy_dataset.compute_reading_measures(aoi_dict, save_path=save_path)
-
-    # Expected columns in the resulting ReadingMeasures frame
     expected_columns = [
         'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT',
         'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
@@ -91,17 +72,26 @@ def test_reading_measures_processing(dummy_dataset, use_save_path, tmp_path, mak
     ]
     result_frame = reading_measures.frame
 
-    # Check that the resulting DataFrame has the expected columns
     assert set(result_frame.columns) == set(expected_columns)
 
-    # Basic validation of content
     assert len(result_frame) > 0
     assert (result_frame['subject_id'] == 5).all()
     assert (result_frame['text_id'] == 'b0').all()
 
-    # If use_save_path is True, check that the file is saved correctly
-    if use_save_path:
-        expected_file = Path(save_path) / '5-b0-reading_measures.csv'
-        assert expected_file.is_file()
-        saved_df = pl.read_csv(expected_file)
-        assert set(saved_df.columns) == set(expected_columns)
+
+def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_file):
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+
+    dummy_dataset.compute_reading_measures(aoi_dict, save_path=tmp_path)
+
+    expected_columns = [
+        'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT',
+        'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
+        'TRC_in', 'SL_in', 'SL_out', 'TFC',
+    ]
+    expected_file = Path(tmp_path) / '5-b0-reading_measures.csv'
+
+    assert expected_file.is_file()
+    saved_df = pl.read_csv(expected_file)
+    assert set(saved_df.columns) == set(expected_columns)
