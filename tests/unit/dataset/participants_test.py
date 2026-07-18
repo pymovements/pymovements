@@ -650,7 +650,11 @@ def test_participants_save_metadata_warning(tmp_path):
 def test_verify_bids_invalid_level():
     data = pl.DataFrame({'participant_id': ['sub-01']})
     participants = Participants(data, verify_bids=False)
-    assert not participants.verify_bids('INVALID')  # type: ignore[arg-type]
+    with pytest.raises(
+        ValueError,
+        match="Unknown verification level '{level}'. Supported values are"
+    ):
+        participants.verify_bids('INVALID')  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

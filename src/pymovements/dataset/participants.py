@@ -433,6 +433,11 @@ class Participants:
         if level in {'REQUIRED', 'RECOMMENDED'}:
             warnings_list.extend(_validate_participant_id(self.data))
             warnings_list.extend(_check_na_conformity(self.data))
+        else:
+            raise ValueError(
+                "Unknown verification level '{level}'. "
+                "Supported values are 'RECOMMENDED' and 'REQUIRED'",
+            )
 
         if level == 'RECOMMENDED':
             # Check for recommended columns
