@@ -31,6 +31,7 @@ from pymovements import Gaze
 
 @pytest.fixture(name='dummy_dataset')
 def fixture_dummy_dataset(tmp_path):
+    """Create a dummy dataset with some fixation events and some empty events."""
     definition = DatasetDefinition(name='dummy')
     dataset = Dataset(definition, path=tmp_path)
 
@@ -41,25 +42,18 @@ def fixture_dummy_dataset(tmp_path):
         'offset': [100, 300, 500, 700],
         'duration': [100, 100, 100, 100],
         'location_x': [100, 140, 200, 10000],  # 100->AOI 1, 140->AOI 2, 200->AOI 3
-        'location_y': [50, 50, 50, 50],  # y=50 is within y bounds (21-99)
+        'location_y': [50, 50, 50, 50],
         'subject_id': [5, 5, 5, 5],
         'text_id': ['b0', 'b0', 'b0', 'b0'],
     })
     events = Events(fixation_data, trial_columns=['subject_id', 'text_id'])
-
-    empty_events = Events(
-        pl.DataFrame(schema=fixation_data.schema),
-        trial_columns=['subject_id', 'text_id'],
-    )
-
-    gaze1 = Gaze(events=events)
-    gaze2 = Gaze(events=empty_events)
-    dataset.gaze = [gaze1, gaze2]
+    dataset.gaze = [Gaze(events=events)]
 
     return dataset
 
 
 def test_compute_reading_measures(dummy_dataset, make_example_file):
+    """Test the core compute_reading_measures functionality."""
     aoi_path = make_example_file('potec_word_aoi_b0.tsv')
     aoi_dict = {'b0': aoi_path}
 
@@ -80,6 +74,7 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
 
 
 def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_file):
+    """Test saving computed reading measures to CSV files."""
     aoi_path = make_example_file('potec_word_aoi_b0.tsv')
     aoi_dict = {'b0': aoi_path}
 
@@ -95,3 +90,32 @@ def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_fil
     assert expected_file.is_file()
     saved_df = pl.read_csv(expected_file)
     assert set(saved_df.columns) == set(expected_columns)
+
+
+def test_compute_reading_measures_empty_dataset(tmp_path):
+    """Test compute_reading_measures with a dataset containing only empty events."""
+    definition = DatasetDefinition(name='dummy')
+    dataset = Dataset(definition, path=tmp_path)
+
+    empty_events = Events(
+        pl.DataFrame(
+            schema={
+                'name': pl.String,
+                'onset': pl.Int64,
+                'offset': pl.Int64,
+                'duration': pl.Int64,
+                'location_x': pl.Float64,
+                'location_y': pl.Float64,
+                'subject_id': pl.Int64,
+                'text_id': pl.String,
+            },
+        ),
+        trial_columns=['subject_id', 'text_id'],
+    )
+
+    dataset.gaze = [Gaze(events=empty_events)]
+
+    reading_measures = dataset.compute_reading_measures(aoi_dict={})
+
+    assert reading_measures.frame.is_empty()
+    assert isinstance(reading_measures.frame, pl.DataFrame)
