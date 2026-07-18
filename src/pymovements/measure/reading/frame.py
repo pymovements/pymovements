@@ -31,10 +31,13 @@ class ReadingMeasures:
 
     Parameters
     ----------
-    reading_measure_df: pl.DataFrame
-        A reading measure dataframe.
+    reading_measure_df: pl.DataFrame | None
+        A reading measure dataframe. (default: None)
     """
 
-    def __init__(self, reading_measure_df: pl.DataFrame) -> None:
-
-        self.frame = reading_measure_df.clone()
+    def __init__(self, reading_measure_df: pl.DataFrame | None = None) -> None:
+        self.frame: pl.DataFrame
+        if reading_measure_df is None:
+            self.frame = pl.DataFrame()
+        else:
+            self.frame = reading_measure_df

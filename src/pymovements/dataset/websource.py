@@ -20,7 +20,9 @@
 """WebSource definition and download helper."""
 from __future__ import annotations
 
+import errno
 import hashlib
+import os
 import urllib.request
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -33,6 +35,7 @@ from warnings import warn
 from tqdm.auto import tqdm
 
 from pymovements._version import __version__
+from pymovements.exceptions import ChecksumError
 
 USER_AGENT: str = f'pymovements/{__version__}'
 
@@ -46,7 +49,8 @@ class WebSource:
     url: str
         Primary URL of the resource to be downloaded.
     filename: str | None
-        Optional target filename. If not provided, the basename of the URL path is used.
+        Optional target filename. Must be provided for calling
+        :py:meth:`~pymovements.WebSource.download`.
     md5: str | None
         Optional MD5 checksum for integrity verification.
     mirrors: list[str] | None
@@ -85,12 +89,13 @@ class WebSource:
             self,
             target_dirpath: Path | str,
             *,
+            verify_checksum: bool = True,
             verbose: bool = True,
     ) -> Path:
         """Download this resource into `target_dirpath`.
 
         Tries the primary `url` first, then any `mirrors` in order. Integrity is
-        validated via MD5 when provided. Returns the local file path.
+        validated via MD5 when available. Returns the local file path.
         """
         dirpath = Path(target_dirpath).expanduser()
 
@@ -107,8 +112,9 @@ class WebSource:
                 filename=self.filename,
                 md5=self.md5,
                 verbose=verbose,
+                verify_checksum=verify_checksum,
             )
-        except (OSError, RuntimeError) as primary_error:
+        except (OSError, RuntimeError, ChecksumError) as primary_error:
             # No mirrors to try
             if not self.mirrors:
                 raise RuntimeError(f"Downloading resource {self.url} failed.") from primary_error
@@ -124,6 +130,7 @@ class WebSource:
                         filename=self.filename,
                         md5=self.md5,
                         verbose=verbose,
+                        verify_checksum=verify_checksum,
                     )
                 # pylint: disable=overlapping-except
                 except (URLError, OSError, RuntimeError) as mirror_error:
@@ -141,6 +148,76 @@ class WebSource:
                 f"Downloading resource {self.filename} failed for all mirrors.",
             ) from primary_error
 
+    def verify_checksum(self, path: Path, *, chunk_size: int = 1024 * 1024) -> None:
+        """Verify file integrity by comparing MD5 checksums.
+
+        The checksum from `path` is compared against :py:attr:`~pymovements.WebSource.md5`.
+
+        Parameters
+        ----------
+        path: Path
+            Path to file to verify checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Raises
+        ------
+        ChecksumError
+            If file checksum does not match passed `md5` or `filepath` doesn't exist.
+        FileNotFoundError
+            If file does not exist.
+        TypeError
+            If :py:attr:`~pymovements.WebSource.md5` is not of type string.
+        """
+        if not isinstance(self.md5, str):
+            raise TypeError(
+                f"WebSource.md5 must be of type string but got {type(self.md5).__name__}",
+            )
+
+        if not path.is_file():
+            raise FileNotFoundError(
+                errno.ENOENT,  # errno
+                os.strerror(errno.ENOENT),  # strerror
+                path,  # filename
+            )
+
+        # Calculate checksum and check for match.
+        actual_checksum = WebSource.checksum(path, chunk_size=chunk_size)
+
+        if actual_checksum != self.md5:
+            raise ChecksumError(
+                expected=self.md5,
+                actual=actual_checksum,
+                path=path,
+                algorithm='MD5',
+            )
+
+    @staticmethod
+    def checksum(path: Path, *, chunk_size: int = 1024 * 1024) -> str:
+        """Calculate MD5 checksum.
+
+        Parameters
+        ----------
+        path: Path
+            Path to file to calculate checksum for.
+        chunk_size : int
+            Byte size of processed chunks. (default: 1024 * 1024)
+
+        Returns
+        -------
+        str
+            Calculated MD5 checksum.
+        """
+        # Setting the `usedforsecurity` flag does not change anything about the functionality, but
+        # indicates that we are not using the MD5 checksum for cryptography.
+        # This enables its usage in restricted environments like FIPS without raising an error.
+        file_md5 = hashlib.new('md5', usedforsecurity=False)
+
+        with open(path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                file_md5.update(chunk)
+        return file_md5.hexdigest()
+
 
 def _download_file(
         url: str,
@@ -148,6 +225,7 @@ def _download_file(
         filename: str,
         md5: str | None = None,
         *,
+        verify_checksum: bool = True,
         max_redirect_hops: int = 3,
         verbose: bool = True,
 ) -> Path:
@@ -163,6 +241,8 @@ def _download_file(
         Target filename of saved file.
     md5 : str | None
         MD5 checksum of downloaded file. If None, do not check. (default: None)
+    verify_checksum : bool
+        If True, check integrity by using the md5 checksum. (default: True)
     max_redirect_hops : int
         Maximum number of redirect hops allowed. (default: 3)
     verbose : bool
@@ -178,45 +258,48 @@ def _download_file(
     ------
     OSError
         If the download process failed.
-    RuntimeError
+    ChecksumError
         If the MD5 checksum of the downloaded file did not match the expected checksum.
     """
     dirpath = dirpath.expanduser()
     dirpath.mkdir(parents=True, exist_ok=True)
     filepath = dirpath / filename
 
-    # check if file is already present locally
-    if _check_integrity(filepath, md5):
-        if verbose:
-            print('Using already downloaded and verified file:', filepath)
-        return filepath
+    if filepath.is_file():
+        if verify_checksum and md5:
+            if verbose:
+                print('Verifying existing file:', filepath)
+            try:
+                WebSource(url=url, md5=md5).verify_checksum(filepath)
+            except ChecksumError as e:
+                if verbose:
+                    print('Local file failed checksum verification:')
+                    print(f"expected '{e.expected}', got '{e.actual}'")
+                    print('Re-downloading file.')
+            else:
+                if verbose:
+                    print('Using existing verified file:', filepath)
+                return filepath
+        else:
+            if verbose:
+                print('Using existing unverified file:', filepath)
+                print('Please set verify_checksum to True if you require checksum verification.')
+            return filepath
 
     if verbose:
         print(f'Downloading {url} to {filepath}')
 
     # expand redirect chain if needed
-    url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
+    redirected_url = _get_redirected_url(url=url, max_hops=max_redirect_hops)
 
     # download the file
-    try:
-        _download_url(url=url, destination=filepath, verbose=verbose)
-
-    except OSError as e:
-        if url[:5] == 'https':
-            print('Download failed. Trying https -> http instead.')
-            url = url.replace('https:', 'http:')
-
-            if verbose:
-                print(f'Downloading {url} to {filepath}')
-            _download_url(url=url, destination=filepath, verbose=verbose)
-        else:
-            raise e
+    _download_url(url=redirected_url, destination=filepath, verbose=verbose)
 
     # check integrity of downloaded file
-    if verbose:
-        print(f'Checking integrity of {filepath.name}')
-    if not _check_integrity(filepath=filepath, md5=md5):
-        raise RuntimeError(f'File {filepath} not found or download corrupted.')
+    if verify_checksum and md5:
+        if verbose:
+            print(f'Checking integrity of {filepath.name}')
+        WebSource(url=url, md5=md5).verify_checksum(filepath)
 
     return filepath
 
@@ -312,55 +395,3 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
     with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
         urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
         t.total = t.n
-
-
-def _check_integrity(filepath: Path, md5: str | None = None) -> bool:
-    """Check file integrity by MD5 checksum.
-
-    Parameters
-    ----------
-    filepath : Path
-        Path to file.
-    md5: str | None
-        Expected MD5 checksum of file. If None, do not check. (default: None)
-
-    Returns
-    -------
-    bool
-        True if file checksum matches passed `md5` or if passed `md5` is None. False if file
-        checksum does not match passed `md5` or `filepath` doesn't exist.
-    """
-    if not filepath.is_file():
-        return False
-    if md5 is None:
-        return True
-
-    # Calculate checksum and check for match.
-    file_md5 = _calculate_md5(filepath)
-    return file_md5 == md5
-
-
-def _calculate_md5(filepath: Path, chunk_size: int = 1024 * 1024) -> str:
-    """Calculate MD5 checksum.
-
-    Parameters
-    ----------
-    filepath : Path
-        Path to file.
-    chunk_size : int
-        Byte size of processed chunks. (default: 1024 * 1024)
-
-    Returns
-    -------
-    str
-        Calculated MD5 checksum.
-    """
-    # Setting the `usedforsecurity` flag does not change anything about the functionality, but
-    # indicates that we are not using the MD5 checksum for cryptography.
-    # This enables its usage in restricted environments like FIPS without raising an error.
-    file_md5 = hashlib.new('md5', usedforsecurity=False)
-
-    with open(filepath, 'rb') as f:
-        for chunk in iter(lambda: f.read(chunk_size), b''):
-            file_md5.update(chunk)
-    return file_md5.hexdigest()
