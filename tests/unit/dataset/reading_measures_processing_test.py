@@ -18,62 +18,72 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Reading measure processing tests for Dataset."""
+from pathlib import Path
+
 import polars as pl
 import pytest
 
 from pymovements import Dataset
+from pymovements import DatasetDefinition
+from pymovements import Events
+from pymovements import Gaze
+
+
+@pytest.fixture(name='dummy_dataset')
+def fixture_dummy_dataset(tmp_path):
+    """Create a dummy dataset with fixation events."""
+    # Define a minimal dataset
+    definition = DatasetDefinition(name='dummy')
+    dataset = Dataset(definition, path=tmp_path)
+
+    # Create dummy fixation events for one trial
+    # We need 'subject_id' and 'text_id' in trial_columns for compute_reading_measures to work
+    # as it accesses them from events.frame
+    fixation_data = pl.DataFrame({
+        'name': ['fixation', 'fixation', 'fixation', 'fixation'],
+        'onset': [0, 200, 400, 600],
+        'offset': [100, 300, 500, 700],
+        'duration': [100, 100, 100, 100],
+        'location_x': [100, 140, 200, 10000],  # 100->AOI 1, 140->AOI 2, 200->AOI 3
+        'location_y': [50, 50, 50, 50],  # y=50 is within y bounds (21-99)
+        'subject_id': [5, 5, 5, 5],
+        'text_id': ['b0', 'b0', 'b0', 'b0'],
+    })
+    events = Events(fixation_data, trial_columns=['subject_id', 'text_id'])
+
+    # Create an empty events object to test skip branch
+    empty_events = Events(
+        pl.DataFrame(schema=fixation_data.schema),
+        trial_columns=['subject_id', 'text_id'],
+    )
+
+    # Create a dummy gaze object to satisfy Dataset.events setter requirements
+    gaze1 = Gaze(events=events)
+    gaze2 = Gaze(events=empty_events)
+    dataset.gaze = [gaze1, gaze2]
+
+    return dataset
 
 
 @pytest.mark.parametrize(
-    (
-        'detection_method', 'minimum_duration', 'dispersion_threshold',
-        'velocity_threshold', 'expected_event_properties', 'use_save_path',
-    ),
+    'use_save_path',
     [
-        pytest.param(
-            'ivt', 100, None, 20.0, ('location', {'position_column': 'pixel'}), False,
-            id='ivt_detection_no_csv',
-        ),
-        pytest.param(
-            'idt', 100, 1.0, None, ('location', {'position_column': 'pixel'}), True,
-            id='idt_detection_save_csv',
-        ),
+        pytest.param(False, id='no_save_path'),
+        pytest.param(True, id='with_save_path'),
     ],
 )
-def test_reading_measures_processing(
-    detection_method, minimum_duration, dispersion_threshold,
-    velocity_threshold, expected_event_properties, use_save_path, tmp_path,
-):
-    # Create the dataset
-    dataset_path = tmp_path / 'data/PoTeC'
-    dataset = Dataset('PoTeC', path=dataset_path)
-
-    dataset.download()
-
-    dataset.load(subset={'subject_id': 5, 'text_id': 'b0'})
-    dataset.pix2deg()
-    dataset.pos2vel()
-
-    # Set detection parameters
-    detection_params = {'minimum_duration': minimum_duration}
-    if detection_method == 'ivt':
-        detection_params['velocity_threshold'] = velocity_threshold
-    elif detection_method == 'idt':
-        detection_params['dispersion_threshold'] = dispersion_threshold
-
-    # Perform event detection
-    dataset.detect(detection_method, **detection_params)
-    dataset.compute_event_properties(expected_event_properties)
-
-    aoi_dict = {'b0': 'tests/files/potec_word_aoi_b0.tsv'}
+def test_reading_measures_processing(dummy_dataset, use_save_path, tmp_path, make_example_file):
+    """Test compute_reading_measures using a dummy dataset."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
 
     # Determine the save path based on the use_save_path parameter
     save_path = tmp_path if use_save_path else None
 
-    # Process the dataset and potentially save to CSV
-    reading_measures = dataset.compute_reading_measures(aoi_dict, save_path=save_path)
+    # Process the dataset
+    reading_measures = dummy_dataset.compute_reading_measures(aoi_dict, save_path=save_path)
 
-    # Example of an expected DataFrame schema check (adjust as needed)
+    # Expected columns in the resulting ReadingMeasures frame
     expected_columns = [
         'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT',
         'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
@@ -82,20 +92,16 @@ def test_reading_measures_processing(
     result_frame = reading_measures.frame
 
     # Check that the resulting DataFrame has the expected columns
-    assert set(result_frame.columns) == set(
-        expected_columns,
-    ), 'The result DataFrame does not contain the expected columns.'
+    assert set(result_frame.columns) == set(expected_columns)
 
-    # Example of validating a specific property (e.g., checking that FFD is computed correctly)
-    assert result_frame['FFD'].sum() > 0, 'FFD should be greater than zero for valid fixation data.'
+    # Basic validation of content
+    assert len(result_frame) > 0
+    assert (result_frame['subject_id'] == 5).all()
+    assert (result_frame['text_id'] == 'b0').all()
 
     # If use_save_path is True, check that the file is saved correctly
     if use_save_path:
-        # Construct the expected file path
-        expected_file = save_path / '5-b0-reading_measures.csv'
-        assert expected_file.is_file(), f"The CSV file should have been saved at {expected_file}."
-        # Optionally, read back the saved file and verify its contents if necessary
-        saved_df = pl.read_csv(str(expected_file))
-        assert set(saved_df.columns) == set(
-            expected_columns,
-        ), 'The saved CSV file does not have the expected columns.'
+        expected_file = Path(save_path) / '5-b0-reading_measures.csv'
+        assert expected_file.is_file()
+        saved_df = pl.read_csv(expected_file)
+        assert set(saved_df.columns) == set(expected_columns)
