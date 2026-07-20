@@ -43,7 +43,9 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
+from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
+from pymovements.stimulus import text
 from pymovements.stimulus.image import ImageStimulus
 from pymovements.stimulus.text import TextStimulus
 from pymovements.warnings import ExperimentalWarning
@@ -1099,6 +1101,79 @@ class Dataset:
             verbose=verbose,
         )
 
+    def measure_reading(
+            self,
+            aoi_dict: dict[str, str | Path],
+            save_path: str | Path | None = None,
+    ) -> ReadingMeasures:
+        """Map fixations to AOIs and compute reading measures for an entire dataset.
+
+        Parameters
+        ----------
+        aoi_dict : dict[str, str | Path]
+            A dictionary mapping text IDs to their corresponding AOI file paths.
+        save_path : str | Path | None
+            The directory path where the computed reading measures CSV files will be saved.
+            If ``None``, no files are saved to disk. (default: None)
+
+        Returns
+        -------
+        ReadingMeasures
+            Returns a ReadingMeasures object containing the computed reading measures.
+        """
+        reading_measures_list = []
+
+        for events in tqdm(self.events):
+            if events.frame.is_empty():
+                print('+ skip due to empty DF')
+                continue
+            text_id = events.frame['text_id'][0]
+            aoi_text_stimulus = text.from_file(
+                aoi_dict[text_id],
+                aoi_column='character',
+                start_x_column='start_x',
+                start_y_column='start_y',
+                end_x_column='end_x',
+                end_y_column='end_y',
+                page_column='page',
+                custom_read_kwargs={'separator': '\t'},
+            )
+
+            events.map_to_aois(aoi_text_stimulus)
+
+            fixations = events.filter_by_name('fixation')
+
+            text_id = fixations['text_id'][0]
+            subject_id = int(fixations['subject_id'][0])
+
+            aoi_df = pl.read_csv(aoi_dict[text_id], separator='\t')
+
+            rm_df = compute_reading_measures(
+                fixations_df=fixations,
+                aoi_df=aoi_df,
+            )
+
+            rm_df = rm_df.with_columns([
+                pl.lit(subject_id).alias('subject_id'),
+                pl.lit(text_id).alias('text_id'),
+            ])
+
+            # Append the computed reading measures DataFrame to the list
+            reading_measures_list.append(rm_df)
+
+            # Save to CSV if save_path is provided
+            if save_path is not None:
+                rm_filename = f'{subject_id}-{text_id}-reading_measures.csv'
+                path_save_rm_file = Path(save_path) / rm_filename
+                rm_df.write_csv(path_save_rm_file)
+
+        if reading_measures_list:
+            combined_df = pl.concat(reading_measures_list)
+        else:
+            combined_df = pl.DataFrame()
+
+        return ReadingMeasures(combined_df)
+
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
 
@@ -1246,6 +1321,7 @@ class Dataset:
             extract: bool = True,
             remove_finished: bool = False,
             resume: bool = True,
+            verify_checksum: bool = True,
             verbose: int = 1,
     ) -> Dataset:
         """Download dataset resources.
@@ -1270,6 +1346,8 @@ class Dataset:
         resume: bool
             Resume previous extraction by skipping existing files.
             Checks for the correct size of existing files but not integrity. (default: True)
+        verify_checksum : bool
+            If True, check integrity by using the MD5 checksum. (default: True)
         verbose: int
             Verbosity levels: (1) Show download progress bar and print info messages on downloading
             and extracting archive files without printing messages for recursive archive extraction.
@@ -1295,6 +1373,7 @@ class Dataset:
             extract=extract,
             remove_finished=remove_finished,
             resume=resume,
+            verify_checksum=verify_checksum,
             verbose=bool(verbose),
         )
         return self
