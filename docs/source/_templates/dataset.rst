@@ -19,7 +19,7 @@ How to Download
 
     # Initialize the dataset object with its name
     # Specify your local directory for saving and loading data
-    dataset = pm.Dataset(name='{{ data['name'] }}', path='path/to/your/data/directory')
+    dataset = pm.Dataset('{{ data['name'] }}', path='path/to/your/data/directory')
 
     # Download the dataset and extract all archives.
     dataset.download()
