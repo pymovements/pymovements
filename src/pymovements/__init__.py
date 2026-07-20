@@ -40,6 +40,7 @@ from pymovements.dataset import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 from pymovements.events import EventDataFrame
 from pymovements.events import Events
+from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
 from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
@@ -47,6 +48,7 @@ from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
 from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
+from pymovements.measure import annotate_fixations
 from pymovements.measure import EVENT_MEASURES
 from pymovements.measure import EventProcessor
 from pymovements.measure import EventSamplesProcessor
@@ -88,6 +90,7 @@ __all__ = [
     'register_event_measure',
     'EventProcessor',
     'EventSamplesProcessor',
+    'annotate_fixations',
     'ReadingMeasures',
     'SampleMeasureLibrary',
     'register_sample_measure',
@@ -98,6 +101,7 @@ __all__ = [
     'transforms',
 
     'exceptions',
+    'ChecksumError',
     'UnknownFileType',
     'UnknownMeasure',
 
