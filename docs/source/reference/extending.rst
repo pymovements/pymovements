@@ -12,12 +12,3 @@ Extending the API
 
     register_dataset
     register_sample_measure
-
-.. rubric:: Exceptions
-
-.. autosummary::
-    :toctree: api
-    :nosignatures:
-    :template: class.rst
-
-    UnknownMeasure
