@@ -307,7 +307,7 @@ def saccade_length_out(fixations: pl.DataFrame) -> pl.DataFrame:
     )
 
     last_fixations = (
-        fixations.join(first_run, on=['trial', 'page', 'word_idx'])
+        fixations.join(first_run, on=['trial', 'page', 'word_idx'], nulls_equal=True)
         .filter(pl.col('run_id') == pl.col('first_run'))
         .group_by(['trial', 'page', 'word_idx'])
         .agg(pl.all().sort_by('onset').last())
@@ -445,19 +445,19 @@ def build_word_level_table(
     rpd = regression_path_duration(fixations)
 
     return (
-        words.join(tfc, on=['trial', 'page', 'word_idx'], how='left')
-        .join(fd, on=['trial', 'page', 'word_idx'], how='left')
-        .join(ffd, on=['trial', 'page', 'word_idx'], how='left')
-        .join(fprt, on=['trial', 'page', 'word_idx'], how='left')
-        .join(frt, on=['trial', 'page', 'word_idx'], how='left')
-        .join(rrt, on=['trial', 'page', 'word_idx'], how='left')
-        .join(fpfc, on=['trial', 'page', 'word_idx'], how='left')
-        .join(trc_in, on=['trial', 'page', 'word_idx'], how='left')
-        .join(trc_out, on=['trial', 'page', 'word_idx'], how='left')
-        .join(lp, on=['trial', 'page', 'word_idx'], how='left')
-        .join(sl_in, on=['trial', 'page', 'word_idx'], how='left')
-        .join(sl_out, on=['trial', 'page', 'word_idx'], how='left')
-        .join(rpd, on=['trial', 'page', 'word_idx'], how='left')
+        words.join(tfc, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(fd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(ffd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(fprt, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(frt, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(rrt, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(fpfc, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(trc_in, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(trc_out, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(lp, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(sl_in, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(sl_out, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
+        .join(rpd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
         .with_columns(
             [
                 pl.col('TFC').fill_null(0),
