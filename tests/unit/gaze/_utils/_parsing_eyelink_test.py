@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
-# pylint: disable=too-many-lines
 import datetime
 import importlib
 import re
@@ -1113,7 +1112,7 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file)
     # Now the parser should warn (e.g. missing samples or sampling rate) and
     # set data-loss metrics to None.
     with pytest.warns(Warning):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+        _, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
 
 
 def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file):
