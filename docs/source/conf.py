@@ -219,6 +219,9 @@ nitpick_ignore_regex = [
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
 
+    # Explicit :py:attr: cross-references to class attributes — broken until #713 is resolved
+    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
 ]
