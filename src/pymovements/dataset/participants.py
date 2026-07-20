@@ -84,7 +84,6 @@ class Participants:
     ):
         if data is None:
             data = polars.DataFrame(schema={'participant_id': polars.String})
-
         if verify_bids is not False:
             _validate_participant_id_structure(data)
 
@@ -419,6 +418,11 @@ class Participants:
         if level in {'REQUIRED', 'RECOMMENDED'}:
             warnings_list.extend(_validate_participant_id_format(self.data))
             warnings_list.extend(_check_na_conformity(self.data))
+        else:
+            raise ValueError(
+                "Unknown verification level '{level}'. "
+                "Supported values are 'RECOMMENDED' and 'REQUIRED'",
+            )
 
         if level == 'RECOMMENDED':
             # Check for recommended columns
@@ -526,7 +530,9 @@ def _validate_age(data: polars.DataFrame) -> list[str]:
 
     # Check dtype
     if not data['age'].dtype.is_numeric():
-        validation_warnings.append("Column 'age' must be of numeric type (integer or float)")
+        validation_warnings.append(
+            f"Column 'age' must be of numeric type (integer or float), got '{data['age'].dtype}'",
+        )
 
     ages = data['age'].drop_nulls().to_list()
     for age in ages:
