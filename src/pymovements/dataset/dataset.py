@@ -1164,6 +1164,8 @@ class Dataset:
             rm_df = compute_reading_measures(
                 fixations=fixations,
                 aois=aoi_df,
+                word_index_column=word_index_column,
+                word_column=word_column,
             )
 
             rm_df = rm_df.with_columns([
