@@ -32,6 +32,8 @@ def compute_reading_measures(
 ) -> pl.DataFrame:
     """Compute reading measures from fixation sequences.
 
+    This function expects fixations annotated with AOI data.
+
     Parameters
     ----------
     fixations : pl.DataFrame
