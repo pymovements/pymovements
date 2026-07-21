@@ -100,7 +100,7 @@ class Events:
 
     trial_columns: list[str] | None
 
-    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
+    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Duration('ms'), 'offset': pl.Duration('ms')}
 
     def __init__(
             self,
@@ -158,8 +158,8 @@ class Events:
 
                 data_dict = {
                     'name': pl.Series(name, dtype=pl.Utf8),
-                    'onset': pl.Series(onsets, dtype=pl.Float64),
-                    'offset': pl.Series(offsets, dtype=pl.Float64),
+                    'onset': pl.Series(onsets, dtype=pl.Duration('ms')),
+                    'offset': pl.Series(offsets, dtype=pl.Duration('ms')),
                 }
 
                 if trials is not None:
@@ -171,8 +171,8 @@ class Events:
             else:
                 data_dict = {
                     'name': pl.Series([], dtype=pl.Utf8),
-                    'onset': pl.Series([], dtype=pl.Float64),
-                    'offset': pl.Series([], dtype=pl.Float64),
+                    'onset': pl.Series([], dtype=pl.Duration('ms')),
+                    'offset': pl.Series([], dtype=pl.Duration('ms')),
                 }
                 self.trial_columns = None
 
@@ -187,19 +187,6 @@ class Events:
             ]
             self.frame = self.frame.select(
                 [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
-            )
-
-        # Convert to int if possible.
-        all_decimals = self.frame.select(
-            pl.all_horizontal(
-                pl.col('onset', 'offset').round()
-                .eq(pl.col('onset', 'offset'))
-                .all(),
-            ),
-        ).item()
-        if all_decimals:
-            self.frame = self.frame.with_columns(
-                pl.col('onset', 'offset').cast(pl.Int64),
             )
 
         if 'duration' not in self.frame.columns:
@@ -882,7 +869,7 @@ class Events:
         # Step 3: Create a 'group' identifier for merging
         events = events.with_columns(
             # calculate when gap is null or > max_gap
-            (pl.col('gap').is_null() | (pl.col('gap') > max_gap))
+            (pl.col('gap').is_null() | (pl.col('gap').dt.total_milliseconds() > max_gap))
             .cast(pl.Int64)
             # cumulative sum (of ones) in 'group' to assign a unique group number
             # to each sequence of events to be merged

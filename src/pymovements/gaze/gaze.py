@@ -2274,7 +2274,11 @@ class Gaze:
             kwargs['events'] = events
 
         if 'timesteps' in method_args and 'time' in samples.columns:
-            kwargs['timesteps'] = samples.get_column('time')
+            timesteps_series = samples.get_column('time')
+            if isinstance(timesteps_series.dtype, polars.Duration):
+                kwargs['timesteps'] = timesteps_series.dt.total_milliseconds()
+            else:
+                kwargs['timesteps'] = timesteps_series
 
         return kwargs
 
@@ -2393,40 +2397,41 @@ class Gaze:
             self._convert_time_units(time_unit)
 
     def _convert_time_units(self, time_unit: str | None) -> None:
-        """Convert the time column to milliseconds based on the specified time unit."""
+        """Convert the time column to ``polars.Duration('ms')``."""
         if time_unit == 's':
-            self.samples = self.samples.with_columns(polars.col('time').mul(1000))
+            self.samples = self.samples.with_columns(
+                (polars.col('time') * 1000).round().cast(polars.Duration('ms')),
+            )
 
         elif time_unit == 'us':
-            self.samples = self.samples.with_columns(polars.col('time').truediv(1000))
+            self.samples = self.samples.with_columns(
+                (polars.col('time') / 1000).round().cast(polars.Duration('ms')),
+            )
 
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
-                    polars.col('time').mul(1000).truediv(self.experiment.sampling_rate),
+                    (polars.col('time') * 1000 / self.experiment.sampling_rate).round().cast(
+                        polars.Duration('ms'),
+                    ),
                 )
             else:
                 raise ValueError(
                     "experiment with sampling rate must be specified if time_unit is 'step'",
                 )
 
-        elif time_unit != 'ms':
+        elif time_unit == 'ms':
+            if not isinstance(self.samples.schema['time'], polars.Duration):
+                self.samples = self.samples.with_columns(
+                    polars.col('time').round().cast(polars.Duration('ms')),
+                )
+
+        else:
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
                 "Supported units are 's' for seconds, 'ms' for milliseconds, "
                 "'us' for microseconds and 'step' for steps.",
             )
-
-        # Convert to int if possible.
-        if self.samples.schema['time'] == polars.Float64:
-            all_decimals = self.samples.select(
-                polars.col('time').round().eq(polars.col('time')).all(),
-            ).item()
-
-            if all_decimals:
-                self.samples = self.samples.with_columns(
-                    polars.col('time').cast(polars.Int64),
-                )
 
     def __eq__(self, other: Gaze) -> bool:
         """Check equality between this and another :py:cls:`~pymovements.Gaze` object."""

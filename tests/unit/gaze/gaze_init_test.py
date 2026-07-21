@@ -1115,6 +1115,12 @@ from pymovements import Gaze
 )
 def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_components):
     gaze = Gaze(**init_kwargs)
+    if 'time' in expected_samples.columns:
+        time_dtype = expected_samples.schema['time']
+        if time_dtype in (pl.Float64, pl.Int64, pl.Int32, pl.Float32):
+            expected_samples = expected_samples.with_columns(
+                pl.col('time').round().cast(pl.Duration('ms')),
+            )
     assert_frame_equal(gaze.samples, expected_samples)
     assert gaze.n_components == expected_n_components
 

@@ -27,9 +27,19 @@ from polars.testing import assert_frame_equal
 from pymovements import Events
 
 
+_EVENT_TIME_COLS = ['onset', 'offset', 'duration']
+
+
+def _cast_event_time_to_duration(df: pl.DataFrame) -> pl.DataFrame:
+    cols = [c for c in _EVENT_TIME_COLS if c in df.columns]
+    if cols:
+        return df.with_columns(pl.col(cols).cast(pl.Duration('ms')))
+    return df
+
+
 @pytest.fixture(name='expected_schema_after_init')
 def fixture_dataset():
-    schema = {'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64}
+    schema = {'name': pl.Utf8, 'onset': pl.Duration('ms'), 'offset': pl.Duration('ms'), 'duration': pl.Duration('ms')}
     yield schema
 
 
@@ -221,7 +231,7 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             [pl.DataFrame()], {},
             pl.DataFrame(
                 {}, schema={
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64,
+                    'name': pl.Utf8, 'onset': pl.Duration('ms'), 'offset': pl.Duration('ms'), 'duration': pl.Duration('ms'),
                 },
             ),
             id='dataframe_arg_no_kwargs',
@@ -327,7 +337,7 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
 def test_init_expected_df(args, kwargs, expected_df):
     events = Events(*args, **kwargs)
 
-    assert_frame_equal(events.frame, expected_df)
+    assert_frame_equal(events.frame, _cast_event_time_to_duration(expected_df))
 
 
 @pytest.mark.parametrize(
@@ -1300,4 +1310,4 @@ def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
 )
 def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
-    assert_frame_equal(events.frame, result_frame)
+    assert_frame_equal(events.frame, _cast_event_time_to_duration(result_frame))

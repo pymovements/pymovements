@@ -106,9 +106,9 @@ def resample(
 
     resample_step_us = int(resample_step_us)
 
-    # Create microsecond precision datetime column from millisecond time column
+    # Create microsecond precision datetime column from millisecond Duration time column
     samples = samples.with_columns(
-        pl.col('time').cast(pl.Float64).mul(1000).cast(pl.Datetime('us')).alias('datetime'),
+        pl.col('time').dt.total_milliseconds().mul(1000).cast(pl.Datetime('us')).alias('datetime'),
     )
 
     # Sort columns by datetime
@@ -146,18 +146,8 @@ def resample(
         time_column='datetime',
         every=f'{resample_step_us}us',
     ).with_columns(
-        pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
+        pl.col('datetime').cast(pl.Float64).truediv(1000).cast(pl.Duration('ms')).alias('time'),
     ).drop('datetime')
-
-    # Convert time column to integer if all values are integers
-    all_decimals = samples.select(
-        pl.col('time').round().eq(pl.col('time')).all(),
-    ).item()
-
-    if all_decimals:
-        samples = samples.with_columns(
-            pl.col('time').cast(pl.Int64),
-        )
 
     # Fill null values with specified strategy
     if columns is not None and fill_null_strategy is not None:
