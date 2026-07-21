@@ -165,6 +165,14 @@ def test_wisdom_of_the_crowd_tie():
     res = da.wisdom_of_the_crowd([[100.0], [200.0]])
     assert res == [100.0]
 
+    assign1 = [100.0]
+    assign2 = [200.0]
+    assign3 = [200.0]
+    assign4 = [300.0]
+    assign5 = [300.0]
+    res = da.wisdom_of_the_crowd([assign1, assign2, assign3, assign4, assign5])
+    assert res == [200.0]
+
 
 def test_dynamic_time_warping():
     seq1 = np.array([[0, 0], [1, 1], [2, 2]])
