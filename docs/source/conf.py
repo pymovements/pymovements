@@ -31,7 +31,6 @@ import importlib.resources
 import inspect
 import os
 import sys
-import urllib.request
 from subprocess import CalledProcessError
 from subprocess import run
 
@@ -85,31 +84,6 @@ def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
 
 
-def builder_inited_handler(app):
-    """So we do not need to have the logo in the repo.
-
-    Get it at build time and add a `viewBox`, needed to have the right aspect ratio.
-    """
-    url = 'https://www.daad.de/_nuxt/logo-light.1I6xeyd5.svg'
-    static_dir = os.path.join(app.srcdir, '_static')
-    os.makedirs(static_dir, exist_ok=True)
-    daad_path = os.path.join(static_dir, 'daad-logo.svg')
-
-    try:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            svg_content = response.read().decode('utf-8')
-    except Exception as e:
-        raise RuntimeError(
-            f"Failed to download DAAD logo from {url}: {e}",
-        )
-
-    if 'viewBox' not in svg_content:
-        svg_content = svg_content.replace('<svg', '<svg viewBox="0 0 380 102"', 1)
-
-    with open(daad_path, 'w') as f:
-        f.write(svg_content)
-
-
 def doctree_resolved_handler(app, doctree, docname):
     """Open all external links in a new tab."""
     from docutils import nodes
@@ -125,7 +99,6 @@ def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
-    app.connect('builder-inited', builder_inited_handler)
     app.connect('doctree-resolved', doctree_resolved_handler)
 
 

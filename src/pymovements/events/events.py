@@ -241,7 +241,7 @@ class Events:
         join_on: str | list[str]
             Columns to join event properties on.
         """
-        self.frame = self.frame.join(event_properties, on=join_on, how='left')
+        self.frame = self.frame.join(event_properties, on=join_on, how='left', nulls_equal=True)
 
     def drop(
             self,

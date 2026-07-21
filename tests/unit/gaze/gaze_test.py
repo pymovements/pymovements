@@ -1690,6 +1690,33 @@ def test_gaze_compute_event_properties_overwrites_column(existing_amplitude, exp
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
 
 
+def test_gaze_compute_event_properties_null_trial():
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1, 2, 3],
+                'x': [0, 1, 2, 3],
+                'y': [0, 1, 2, 3],
+                'trial_id': [1, 1, None, None],
+            },
+        ),
+        position_columns=['x', 'y'],
+        trial_columns=['trial_id'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 1],
+                    'offset': [2, 3],
+                    'trial_id': [1, None],
+                },
+            ),
+        ),
+    )
+    gaze.compute_event_properties('location')
+    assert gaze.events.frame['location'].to_list() == [[0.5, 0.5], [2.5, 2.5]]
+
+
 @pytest.mark.parametrize(
     ('gaze', 'attribute'),
     [
