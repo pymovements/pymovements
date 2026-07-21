@@ -110,3 +110,75 @@ def test_add_corrected_fixations_empty_fixations(sample_events_and_aois):
     empty_events_df = pl.DataFrame({'name': ['saccade'], 'trial': ['TRIAL1']})
     res_df = add_corrected_fixations(empty_events_df, aois_df)
     assert res_df.height == 1
+
+
+def test_get_lines_of_text_from_aois_top_left_y():
+    aois_df = pl.DataFrame({
+        'top_left_y': [80.0, 180.0],
+        'height': [40.0, 40.0],
+    })
+    line_Y = _get_lines_of_text_from_aois(aois_df)
+    assert line_Y == [100.0, 200.0]
+
+
+def test_create_corrected_fixations_locations_split_columns():
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location_x': [100.0, 200.0],
+        'location_y': [105.0, 198.0],
+    })
+    aois_df = pl.DataFrame({
+        'start_y': [80.0, 180.0],
+        'height': [40.0, 40.0],
+    })
+    locs = create_corrected_fixations_locations(events_df, aois_df, algorithm='attach')
+    assert locs.shape == (2, 2)
+    np.testing.assert_array_equal(locs[:, 1], [100.0, 200.0])
+
+
+def test_add_corrected_fixations_1d_and_split_columns(monkeypatch):
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location_x': [100.0, 200.0],
+        'location_y': [105.0, 198.0],
+    })
+    aois_df = pl.DataFrame({
+        'start_y': [80.0, 180.0],
+        'height': [40.0, 40.0],
+    })
+
+    monkeypatch.setattr(
+        'pymovements.events.correction.fixation_correction.create_corrected_fixations_locations',
+        lambda *args, **kwargs: np.array([100.0, 200.0]),
+    )
+
+    res_df = add_corrected_fixations(events_df, aois_df, algorithm='attach')
+    assert res_df.height == 4
+    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
+    assert corrected_rows.height == 2
+    assert 'location_x' in corrected_rows.columns
+    assert 'location_y' in corrected_rows.columns
+    np.testing.assert_array_equal(corrected_rows['location_x'].to_list(), [100.0, 200.0])
+    np.testing.assert_array_equal(corrected_rows['location_y'].to_list(), [100.0, 200.0])
+
+
+def test_add_corrected_fixations_1d_with_location_list(monkeypatch):
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location': [[100.0, 105.0], [200.0, 198.0]],
+    })
+    aois_df = pl.DataFrame({
+        'start_y': [80.0, 180.0],
+        'height': [40.0, 40.0],
+    })
+
+    monkeypatch.setattr(
+        'pymovements.events.correction.fixation_correction.create_corrected_fixations_locations',
+        lambda *args, **kwargs: np.array([100.0, 200.0]),
+    )
+
+    res_df = add_corrected_fixations(events_df, aois_df, algorithm='attach')
+    assert res_df.height == 4
+    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
+    assert corrected_rows['location'].to_list() == [[100.0, 100.0], [200.0, 200.0]]
+
