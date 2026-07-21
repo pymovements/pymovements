@@ -220,7 +220,6 @@ EXPECTED_METADATA_EYELINK = {
     'validations': [],
     'resolution': (1280.0, 1024.0),
     'DISPLAY_COORDS': (0.0, 0.0, 1279.0, 1023.0),
-    'total_recording_duration_ms': 12.0,
     'datetime': datetime.datetime(2023, 3, 8, 9, 25, 20),
     'mount_configuration': {
         'mount_type': 'Desktop',
@@ -1153,7 +1152,7 @@ def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file
     """Write a minimal asc file with RECCFG, START, and END to exercise recording_config block.
 
     The RECCFG line provides a sampling rate of 1000 Hz and the START/END span 1000 ms,
-    so expected number of samples = 1000 and total_recording_duration_ms should be 1000.0.
+    so the expected number of samples is 1000.
     """
     content = (
         'MSG 0 RECCFG CR 1000 0 0 LR\n'
@@ -1167,8 +1166,7 @@ def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file
     with pytest.warns(UserWarning):
         _, _, metadata, _ = _parsing_eyelink.parse_eyelink(str(p))
 
-    # Duration should be 1000 ms
-    assert metadata['total_recording_duration_ms'] == 1000.0
+    assert 'total_recording_duration_ms' not in metadata
 
 
 def test_check_reccfg_key_warns_on_empty_config() -> None:

@@ -300,6 +300,30 @@ def my_test_measure(column: str) -> pl.Expr:
 
         pytest.param(
             {
+                'samples': pl.DataFrame({'time': [10, 15, 12]}),
+            },
+            'duration',
+            {},
+            pl.DataFrame({'duration': [5]}),
+            id='duration_complete_gaze',
+        ),
+
+        pytest.param(
+            {
+                'samples': pl.DataFrame({
+                    'time': [10, 15, 20, 28],
+                    'trial': [1, 1, 2, 2],
+                }),
+                'trial_columns': 'trial',
+            },
+            'duration',
+            {},
+            pl.DataFrame({'trial': [1, 2], 'duration': [5, 8]}),
+            id='duration_two_trials',
+        ),
+
+        pytest.param(
+            {
                 'samples': pl.from_dict(
                     data={
                         'A': [1000, 1001, 1002, 1003],
