@@ -100,7 +100,7 @@ class Events:
 
     trial_columns: list[str] | None
 
-    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Duration('ms'), 'offset': pl.Duration('ms')}
+    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
 
     def __init__(
             self,
@@ -158,8 +158,8 @@ class Events:
 
                 data_dict = {
                     'name': pl.Series(name, dtype=pl.Utf8),
-                    'onset': pl.Series(onsets, dtype=pl.Duration('ms')),
-                    'offset': pl.Series(offsets, dtype=pl.Duration('ms')),
+                    'onset': pl.Series(onsets, dtype=pl.Float64),
+                    'offset': pl.Series(offsets, dtype=pl.Float64),
                 }
 
                 if trials is not None:
@@ -171,8 +171,8 @@ class Events:
             else:
                 data_dict = {
                     'name': pl.Series([], dtype=pl.Utf8),
-                    'onset': pl.Series([], dtype=pl.Duration('ms')),
-                    'offset': pl.Series([], dtype=pl.Duration('ms')),
+                    'onset': pl.Series([], dtype=pl.Float64),
+                    'offset': pl.Series([], dtype=pl.Float64),
                 }
                 self.trial_columns = None
 
@@ -188,6 +188,11 @@ class Events:
             self.frame = self.frame.select(
                 [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
             )
+
+        # Convert onset and offset to Duration('ms').
+        self.frame = self.frame.with_columns(
+            pl.col('onset', 'offset').round().cast(pl.Duration('ms')),
+        )
 
         if 'duration' not in self.frame.columns:
             self._add_duration_property()

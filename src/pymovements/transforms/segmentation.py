@@ -418,16 +418,24 @@ def events2timeratio(
         else:
             dt_ms = float(dt_ms)
 
+    # Use Duration-compatible expression if columns are Duration type.
+    time_dtype = samples[time_column].dtype
+    dt_expr: float | pl.Expr
+    if isinstance(time_dtype, pl.Duration):
+        dt_expr = pl.duration(milliseconds=dt_ms)
+    else:
+        dt_expr = dt_ms
+
     # Event ratio considering trial columns
     if trial_columns:
         event_durations = (
             relevant_events.group_by(trial_columns, maintain_order=True)
-            .agg((pl.col(offset_column) - pl.col(onset_column) + pl.duration(milliseconds=dt_ms)).alias('duration'))
+            .agg((pl.col(offset_column) - pl.col(onset_column) + dt_expr).alias('duration'))
             .with_columns(pl.col('duration').list.sum())
         )
 
         sample_time_ranges = samples.group_by(trial_columns, maintain_order=True).agg(
-            (pl.col(time_column).max() - pl.col(time_column).min() + pl.duration(milliseconds=dt_ms)).alias('time_range'),
+            (pl.col(time_column).max() - pl.col(time_column).min() + dt_expr).alias('time_range'),
         )
 
         trial_ratios = event_durations.join(
@@ -468,12 +476,12 @@ def events2timeratio(
 
     total_duration = (
         relevant_events.select(
-            pl.col(offset_column) - pl.col(onset_column) + pl.duration(milliseconds=dt_ms),
+            pl.col(offset_column) - pl.col(onset_column) + dt_expr,
         ).sum()
     ).item()
 
     time_range = samples.select(
-        pl.col(time_column).max() - pl.col(time_column).min() + pl.duration(milliseconds=dt_ms),
+        pl.col(time_column).max() - pl.col(time_column).min() + dt_expr,
     ).item()
 
     return pl.lit(total_duration / time_range).alias(f'event_ratio_{name}')
