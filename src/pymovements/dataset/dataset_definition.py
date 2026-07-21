@@ -35,7 +35,6 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
-from pymovements.dataset.resources import _HasResourcesIndexer
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
@@ -322,7 +321,6 @@ class DatasetDefinition:
         self.experiment = experiment
 
         self.resources = self._initialize_resources(resources=resources)
-        self._has_resources = _HasResourcesIndexer(resources=self.resources)
 
         if mirrors is None:
             self.mirrors = {}
