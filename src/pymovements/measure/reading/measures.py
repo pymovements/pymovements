@@ -396,6 +396,71 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
 
     return fixations.group_by('trial', 'page', maintain_order=True).map_groups(per_group)
 
+# ---------------------------
+# Summary measures
+# ---------------------------
+
+
+def fixation_outside_aoi_percentage_by_count(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute the percentage of fixations outside any AOI, by count.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation table containing at least ``trial``, ``page``,
+        and ``word_idx`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame with columns ``trial``, ``page``, and ``FOAC``.
+    """
+    return (
+        fixations.group_by(['trial', 'page'])
+        .agg(
+            [
+                (pl.col('word_idx').is_null()).sum().alias('fix_outside_aoi'),
+                pl.len().alias('total_fixations'),
+            ],
+        )
+        .with_columns(
+            (pl.col('fix_outside_aoi') / pl.col('total_fixations')).alias('FOAC'),
+        )
+        .select(['trial', 'page', 'FOAC'])
+    )
+
+
+def fixation_outside_aoi_percentage_by_duration(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute the percentage of fixation duration outside any AOI.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation table containing at least ``trial``, ``page``,
+        ``word_idx``, and ``duration`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame with columns ``trial``, ``page``, and ``FOAD``.
+    """
+    return (
+        fixations.group_by(['trial', 'page'])
+        .agg(
+            [
+                pl.when(pl.col('word_idx').is_null())
+                .then(pl.col('duration'))
+                .otherwise(0)
+                .sum()
+                .alias('duration_outside_aoi'),
+                pl.col('duration').sum().alias('total_duration'),
+            ],
+        )
+        .with_columns(
+            (pl.col('duration_outside_aoi') / pl.col('total_duration')).alias('FOAD'),
+        )
+        .select(['trial', 'page', 'FOAD'])
+    )
 
 # ---------------------------
 # Word-level table
