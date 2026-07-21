@@ -857,7 +857,7 @@ def test_dataset_download_raises_exception(
         ),
     ],
 )
-def test_dataset_download_legacy_mirror_raises_exception(
+def test_dataset_download_websource_missing_attributes_raises_exception(
         init_kwargs, expected_exception, expected_msg, tmp_path,
 ):
     dataset_definition = DatasetDefinition(**init_kwargs)
