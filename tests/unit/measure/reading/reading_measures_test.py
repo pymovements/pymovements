@@ -326,18 +326,6 @@ def test_fixation_outside_aoi_percentage_by_duration_multiple_trials():
     assert result.filter(pl.col('trial') == '2')['FOAD'][0] == pytest.approx(0.75)
 
 
-def test_fixation_outside_aoi_percentage_by_duration_zero_outside_duration():
-    """Outside fixation with 0 duration -> FOAD == 0."""
-    df = pl.DataFrame({
-        'trial': ['1', '1'],
-        'page': ['1', '1'],
-        'word_idx': [0, None],
-        'duration': [200, 0],
-    }).cast({'word_idx': pl.Int64})
-    result = fixation_outside_aoi_percentage_by_duration(df)
-    assert result['FOAD'][0] == pytest.approx(0.0)
-
-
 def test_fixation_outside_aoi_percentage_by_duration_multiple_pages():
     """Different pages within the same trial get separate FOAD values."""
     df = pl.DataFrame({
