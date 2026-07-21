@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout pymovements repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup python
         uses: actions/setup-python@v5
@@ -27,7 +27,7 @@ jobs:
       - name: Install pymovements
         run: python -m pip install -e .
 
-      - name: Write dataset docpage RST files
+      - name: Write dataset docpage files
         run: python src/pymovements/_scripts/write_dataset_docpages.py
 
       - name: Commit changes
