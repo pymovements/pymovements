@@ -695,16 +695,13 @@ def parse_eyelink(
             stop_recording_timestamp = match.groupdict()['timestamp']
 
             try:
-                block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
+                float(stop_recording_timestamp) - float(start_recording_timestamp)
             except UnboundLocalError:
                 warnings.warn(
                     'END recording message without associated START recording message. '
                     f"File '{filepath}' may be corrupted. "
                     'Total recording duration may be incorrect.',
                 )
-            else:  # this will only be executed if no exception was raised in the try block.
-                total_recording_duration += block_duration
-
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
@@ -841,7 +838,6 @@ def parse_eyelink(
     pre_processed_metadata['calibrations'] = calibrations
     pre_processed_metadata['validations'] = validations
     pre_processed_metadata['recording_config'] = recording_config
-    pre_processed_metadata['total_recording_duration_ms'] = total_recording_duration
 
     gaze_schema_overrides = {
         'time': pl.Float64,

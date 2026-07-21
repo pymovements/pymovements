@@ -15,6 +15,7 @@ Measures
     data_loss
     dispersion
     disposition
+    duration
     location
     null_ratio
     peak_velocity
