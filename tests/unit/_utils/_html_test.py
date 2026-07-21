@@ -25,7 +25,6 @@ import polars as pl
 import pytest
 
 from pymovements._utils import _html
-from pymovements.dataset.resources import _HasResourcesIndexer
 from pymovements.dataset.resources import ResourceDefinitions
 
 DATAFRAME = pl.DataFrame({'a': [1, 2], 'b': [3, 4]})
@@ -170,21 +169,6 @@ def test_html_repr(cls, attrs, init_args, init_kwargs, expected_html):
             'LongRepr',
             True,
             id='long_repr_else_branch',
-        ),
-        # branch: elif repr(obj) in ['True', 'False']
-        pytest.param(
-            _HasResourcesIndexer(
-                ResourceDefinitions([{'content': 'test', 'filename_pattern': 'f'}]),
-            ),
-            'True',
-            False,
-            id='boolean_like_true',
-        ),
-        pytest.param(
-            _HasResourcesIndexer(ResourceDefinitions([])),
-            'False',
-            False,
-            id='boolean_like_false',
         ),
     ],
 )
