@@ -940,7 +940,7 @@ def parse_eyelink(
         pre_processed_metadata['data_loss_ratio_blinks'] = None
 
     gaze_schema_overrides = {
-        'time': pl.Duration('ms'),
+        'time': pl.Float64,
     }
 
     if is_binocular:
@@ -965,8 +965,8 @@ def parse_eyelink(
     event_schema_overrides = {
         'name': pl.String,
         'eye': pl.String,
-        'onset': pl.Duration('ms'),
-        'offset': pl.Duration('ms'),
+        'onset': pl.Float64,
+        'offset': pl.Float64,
     }
     if schema is not None:
         event_schema_overrides.update(schema)
