@@ -29,6 +29,8 @@ import polars as pl
 import pyreadr
 import pytest
 from polars.testing import assert_frame_equal
+from tests.unit.helpers import to_duration
+
 
 from pymovements import DatasetDefinition
 from pymovements import Experiment
@@ -267,7 +269,7 @@ def test_load_eyelink_file_has_expected_samples(
         dataset_definition=DatasetDefinition(**definition_kwargs),
     )
 
-    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
+    assert_frame_equal(gaze.samples, to_duration(expected_samples), check_column_order=False)
     assert gaze.experiment is not None
 
 
@@ -449,7 +451,7 @@ def test_load_example_gaze_file(
         },
     )
 
-    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
+    assert_frame_equal(gaze.samples, to_duration(expected_df), check_column_order=False)
 
 
 @pytest.mark.parametrize(
@@ -1297,8 +1299,8 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     expected_df_non_nan = expected_df.filter(pl.Series(mask))
     gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
     assert_frame_equal(
-        gaze_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
-        expected_df_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        gaze_non_nan.select(['time', 'pixel']),
+        to_duration(expected_df_non_nan.select(['time', 'pixel'])),
         check_column_order=False,
     )
 

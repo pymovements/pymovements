@@ -54,6 +54,9 @@ from pymovements.warnings import ExperimentalWarning
 
 # pylint: disable=too-many-lines
 
+from tests.unit.helpers import to_duration
+
+
 EXPECTED_AOI_MULTIPLEYE_STIMULI_TOY_X_1_TEXT_1_1 = pl.DataFrame(
     {
         'char_idx': [
@@ -825,7 +828,7 @@ def test_load_correct_raw_gazes(gaze_dataset_configuration):
     for result_gaze, expected_gaze in zip(dataset.gaze, expected_gazes):
         assert_frame_equal(
             result_gaze.samples,
-            expected_gaze.samples,
+            to_duration(expected_gaze.samples),
             check_column_order=False,
         )
 
@@ -936,7 +939,7 @@ def test_load_correct_preprocessed_gazes(gaze_dataset_configuration):
     for result_gaze, expected_gaze in zip(dataset.gaze, expected_gazes):
         assert_frame_equal(
             result_gaze.samples,
-            expected_gaze.samples,
+            to_duration(expected_gaze.samples),
             check_column_order=False,
         )
 
@@ -956,7 +959,7 @@ def test_load_correct_events_list(gaze_dataset_configuration):
 
     expected_events_list = gaze_dataset_configuration['events_list']
     for result_events, expected_events in zip(dataset.events, expected_events_list):
-        assert_frame_equal(result_events.frame, expected_events)
+        assert_frame_equal(result_events.frame, to_duration(expected_events))
 
 
 @pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
@@ -1287,9 +1290,9 @@ def test_detect_events_auto_eye(detect_event_kwargs, gaze_dataset_configuration)
         'task': pl.String,
         'trial': pl.Int64,
         'name': pl.String,
-        'onset': pl.Int64,
-        'offset': pl.Int64,
-        'duration': pl.Int64,
+        'onset': pl.Duration('ms'),
+        'offset': pl.Duration('ms'),
+        'duration': pl.Duration('ms'),
     }
     for result_events in dataset.events:
         assert result_events.schema == expected_schema
@@ -1336,9 +1339,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
             'task': pl.String,
             'trial': pl.Int64,
             'name': pl.String,
-            'onset': pl.Int64,
-            'offset': pl.Int64,
-            'duration': pl.Int64,
+            'onset': pl.Duration('ms'),
+            'offset': pl.Duration('ms'),
+            'duration': pl.Duration('ms'),
         }
 
         for result_events in dataset.events:
@@ -1368,9 +1371,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'task': pl.String,
                 'trial': pl.Int64,
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('ms'),
+                'offset': pl.Duration('ms'),
+                'duration': pl.Duration('ms'),
             },
             id='two-saccade-runs',
         ),
@@ -1389,9 +1392,9 @@ def test_detect_events_explicit_eye(detect_event_kwargs, gaze_dataset_configurat
                 'task': pl.String,
                 'trial': pl.Int64,
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('ms'),
+                'offset': pl.Duration('ms'),
+                'duration': pl.Duration('ms'),
             },
             id='one-saccade-one-fixation-run',
         ),
@@ -1569,7 +1572,7 @@ def test_clear_events(events_init, events_expected, tmp_path):
     dataset.clear_events()
 
     for events_df_result, events_df_expected in zip(dataset.events, events_expected):
-        assert_frame_equal(events_df_result.frame, events_df_expected.frame)
+        assert_frame_equal(events_df_result.frame, to_duration(events_df_expected.frame))
 
 
 @pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
@@ -2112,9 +2115,9 @@ def test_event_dataframe_add_property_has_expected_height(
             {'event_properties': 'peak_velocity'},
             {
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('ms'),
+                'offset': pl.Duration('ms'),
+                'duration': pl.Duration('ms'),
                 'peak_velocity': pl.Float64,
             },
             id='single_event_peak_velocity',
@@ -2123,9 +2126,9 @@ def test_event_dataframe_add_property_has_expected_height(
             {'event_properties': 'location'},
             {
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('ms'),
+                'offset': pl.Duration('ms'),
+                'duration': pl.Duration('ms'),
                 'location': pl.List(pl.Float64),
             },
             id='single_event_position',

@@ -24,6 +24,8 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.unit.helpers import to_duration
+
 
 import pymovements as pm
 from pymovements.synthetic import step_function
@@ -967,7 +969,7 @@ from pymovements.synthetic import step_function
 @pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
 def test_gaze_detect(method, kwargs, gaze, expected):
     gaze.detect(method, **kwargs)
-    assert_frame_equal(gaze.events.frame, expected.frame, check_row_order=False)
+    assert_frame_equal(gaze.events.frame, to_duration(expected.frame), check_row_order=False)
 
 
 @pytest.mark.parametrize(
@@ -1027,7 +1029,7 @@ def test_gaze_detect(method, kwargs, gaze, expected):
 def test_gaze_detect_with_warning(method, kwargs, gaze, expected):
     with pytest.warns(UserWarning, match='No events were detected'):
         gaze.detect(method, **kwargs)
-    assert_frame_equal(gaze.events.frame, expected.frame, check_row_order=False)
+    assert_frame_equal(gaze.events.frame, to_duration(expected.frame), check_row_order=False)
 
 
 def test_gaze_detect_custom_method_no_arguments():
@@ -1040,7 +1042,7 @@ def test_gaze_detect_custom_method_no_arguments():
 
     with pytest.warns(UserWarning, match='No events were detected'):
         gaze.detect(custom_method)
-    assert_frame_equal(gaze.events.frame, expected.frame)
+    assert_frame_equal(gaze.events.frame, to_duration(expected.frame))
 
 
 @pytest.mark.parametrize(
