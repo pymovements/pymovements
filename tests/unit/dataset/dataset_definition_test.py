@@ -330,7 +330,6 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'description': None,
                 'distance_column': None,
                 'experiment': None,
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
@@ -382,7 +381,6 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                         'width_px': 1280,
                     },
                 },
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
@@ -431,7 +429,6 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                         'width_px': None,
                     },
                 },
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
@@ -473,7 +470,6 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                         'width_px': None,
                     },
                 },
-                'mirrors': {},
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
@@ -535,7 +531,6 @@ def test_dataset_definition_to_yaml_equal_dicts(definition, tmp_path):
     assert definition.to_dict() == yaml_dict
 
 
-@pytest.mark.filterwarnings('ignore:DatasetDefinition.mirrors is deprecated.*:DeprecationWarning')
 def test_write_yaml_already_existing_dataset_definition_w_tuple_screen(tmp_path):
     tmp_file = tmp_path / 'tmp.yaml'
     definition = DatasetLibrary.get('ToyDatasetEyeLink')
@@ -780,7 +775,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'name': '.',
                 'long_name': None,
                 'description': None,
-                'mirrors': {},
                 'resources': [],
                 'experiment': None,
                 'column_map': None,
@@ -804,7 +798,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'name': '.',
                 'long_name': None,
                 'description': None,
-                'mirrors': {},
                 'resources': [],
                 'experiment': None,
                 'column_map': None,
@@ -828,7 +821,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'name': '.',
                 'long_name': None,
                 'description': None,
-                'mirrors': {},
                 'resources': [],
                 'experiment': {
                     'eyetracker': {
@@ -912,7 +904,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'distance_column': None,
                 'experiment': None,
                 'long_name': None,
-                'mirrors': {},
                 'name': '.',
                 'pixel_columns': None,
                 'position_columns': None,
@@ -993,7 +984,6 @@ def test_dataset_definition_has_resources_not_equal():
                 'distance_column': None,
                 'experiment': None,
                 'long_name': None,
-                'mirrors': {},
                 'name': '.',
                 'pixel_columns': None,
                 'position_columns': None,
@@ -1039,11 +1029,6 @@ def test_dataset_to_dict_exclude_none(dataset_definition, exclude_none, expected
             {'has_files': {'gaze': True}},
             '0.28.0',
             id='has_files',
-        ),
-        pytest.param(
-            {'mirrors': {'gaze': ['https://mirror.com']}},
-            '0.29.0',
-            id='mirrors',
         ),
         pytest.param(
             {
