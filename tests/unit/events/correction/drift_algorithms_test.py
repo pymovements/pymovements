@@ -183,4 +183,3 @@ def test_dynamic_time_warping():
     seq2 = np.array([[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [2.0, 2.0]])
     cost, path = da.dynamic_time_warping(seq1, seq2)
     assert len(path) == len(seq1)
-

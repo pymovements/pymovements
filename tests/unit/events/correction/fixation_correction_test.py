@@ -181,4 +181,3 @@ def test_add_corrected_fixations_1d_with_location_list(monkeypatch):
     assert res_df.height == 4
     corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
     assert corrected_rows['location'].to_list() == [[100.0, 100.0], [200.0, 200.0]]
-
