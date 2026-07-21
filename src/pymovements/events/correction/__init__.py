@@ -17,33 +17,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Provides event related functionality."""
-from pymovements.events import correction
-from pymovements.events.detection import blink
-from pymovements.events.detection import fill
-from pymovements.events.detection import idt
-from pymovements.events.detection import ivt
-from pymovements.events.detection import microsaccades
-from pymovements.events.detection import out_of_screen
-from pymovements.events.detection.library import EventDetectionLibrary
-from pymovements.events.detection.library import register_event_detection
-from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
-from pymovements.events.precomputed import PrecomputedEventDataFrame
-
+"""Fixation drift correction module."""
+from pymovements.events.correction.fixation_correction import add_corrected_fixations
+from pymovements.events.correction.fixation_correction import (
+    create_corrected_fixations_locations,
+)
 
 __all__ = [
-    'EventDetectionLibrary',
-    'register_event_detection',
-    'blink',
-    'correction',
-    'fill',
-    'idt',
-    'ivt',
-    'microsaccades',
-    'out_of_screen',
-
-    'PrecomputedEventDataFrame',
-    'Events',
-    'EventDataFrame',
+    'add_corrected_fixations',
+    'create_corrected_fixations_locations',
 ]
