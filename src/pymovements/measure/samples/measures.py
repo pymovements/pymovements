@@ -199,6 +199,29 @@ def dispersion(
 
 
 @register_sample_measure
+def duration(*, time_column: str = 'time') -> pl.Expr:
+    """Duration spanned by a group of samples.
+
+    The duration is defined as the difference between the maximum and minimum
+    timestamps in the group. When used with :meth:`pymovements.Gaze.measure_samples`,
+    the duration is calculated for the complete recording or separately for each
+    trial, depending on whether trial columns are configured.
+
+    Parameters
+    ----------
+    time_column: str
+        Name of the timestamp column. (default: 'time')
+
+    Returns
+    -------
+    pl.Expr
+        The duration of the sample group.
+    """
+    timestamps = pl.col(time_column)
+    return (timestamps.max() - timestamps.min()).alias('duration')
+
+
+@register_sample_measure
 def disposition(
         *,
         position_column: str = 'position',
