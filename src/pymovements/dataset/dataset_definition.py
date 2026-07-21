@@ -58,17 +58,10 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
-    mirrors: dict[str, Sequence[str]]
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-        (default: {})
-
-        .. deprecated:: v0.24.0
-           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors` instead.
-           This field will be removed in v0.29.0.
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
-        - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
+        - `resource`: The url suffix of the resource.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
@@ -170,17 +163,10 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
-    mirrors: dict[str, Sequence[str]] | None
-        A list of mirrors of the dataset. Each entry must be of type `str` and end with a '/'.
-        (default: None)
-
-        .. deprecated:: v0.24.0
-           Please use :py:attr:`~pymovements.ResourceDefinition.mirrors`. instead.
-           This field will be removed in v0.29.0.
     resources: ResourceDefinitions | ResourcesLike | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
-        - `resource`: The url suffix of the resource. This will be concatenated with the mirror.
+        - `source`: The url suffix of the resource.
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
@@ -275,8 +261,6 @@ class DatasetDefinition:
 
     description: str | None = None
 
-    mirrors: dict[str, Sequence[str]] = field(default_factory=dict)
-
     resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
 
     experiment: Experiment | None = field(default_factory=Experiment)
@@ -300,7 +284,6 @@ class DatasetDefinition:
             *,
             long_name: str | None = None,
             description: str | None = None,
-            mirrors: dict[str, Sequence[str]] | None = None,
             resources: ResourceDefinitions | ResourcesLike | None = None,
             experiment: Experiment | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
@@ -321,18 +304,6 @@ class DatasetDefinition:
         self.experiment = experiment
 
         self.resources = self._initialize_resources(resources=resources)
-
-        if mirrors is None:
-            self.mirrors = {}
-        else:
-            warn(
-                DeprecationWarning(
-                    'DatasetDefinition.mirrors is deprecated since version v0.24.0. '
-                    'Please specify ResourceDefinition.mirrors instead. '
-                    'This field will be removed in v0.29.0.',
-                ),
-            )
-            self.mirrors = mirrors
 
         if trial_columns is not None:
             warn(
