@@ -80,7 +80,12 @@ def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_fil
     aoi_path = make_example_file('potec_word_aoi_b0.tsv')
     aoi_dict = {'b0': aoi_path}
 
-    dummy_dataset.measure_reading(aoi_dict, save_path=tmp_path)
+    dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+        save_path=tmp_path,
+    )
 
     expected_columns = [
         'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT',
