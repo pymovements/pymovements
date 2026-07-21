@@ -413,6 +413,7 @@ def events2timeratio(
             sample_time_ranges,
             on=trial_columns,
             how='full',
+            nulls_equal=True,
         ).with_columns(
             (pl.col('duration') / pl.col('time_range')).alias(f'event_ratio_{name}'),
         )
