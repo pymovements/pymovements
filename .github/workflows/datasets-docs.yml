@@ -1,4 +1,4 @@
-name: autofix.ci
+name: dataset-docs
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  autofix:
+  generate:
     name: regenerate dataset docs
     runs-on: ubuntu-latest
     steps:
