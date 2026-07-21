@@ -75,8 +75,9 @@ def test_compare(sample_fixations_and_lines):
 
 def test_merge_ltr_and_rtl(sample_fixations_and_lines):
     fixations_XY, line_Y = sample_fixations_and_lines
+    rank_warning = np.RankWarning if hasattr(np, 'RankWarning') else np.exceptions.RankWarning
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore', np.exceptions.RankWarning)
+        warnings.simplefilter('ignore', rank_warning)
         res_ltr = da.merge(fixations_XY, line_Y, text_right_to_left=False)
         res_rtl = da.merge(fixations_XY, line_Y, text_right_to_left=True)
     assert res_ltr.shape == fixations_XY.shape
