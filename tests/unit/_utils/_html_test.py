@@ -25,7 +25,6 @@ import polars as pl
 import pytest
 
 from pymovements._utils import _html
-from pymovements.dataset.resources import ResourceDefinitions
 
 DATAFRAME = pl.DataFrame({'a': [1, 2], 'b': [3, 4]})
 
