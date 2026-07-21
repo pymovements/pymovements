@@ -133,7 +133,7 @@ def chain(
     dist_X = abs(np.diff(fixation_XY[:, 0]))
     dist_Y = abs(np.diff(fixation_XY[:, 1]))
     end_chain_indices: list[int] = list(
-        (np.where(np.logical_or(dist_X > x_thresh, dist_Y > y_thresh))[0] + 1).tolist()
+        (np.where(np.logical_or(dist_X > x_thresh, dist_Y > y_thresh))[0] + 1).tolist(),
     )
     end_chain_indices.append(n)
     start_of_chain = 0
@@ -244,10 +244,10 @@ def compare(
 ######################################################################
 
 phases = [
-    {"min_i": 3, "min_j": 3, "no_constraints": False},  # Phase 1
-    {"min_i": 1, "min_j": 3, "no_constraints": False},  # Phase 2
-    {"min_i": 1, "min_j": 1, "no_constraints": False},  # Phase 3
-    {"min_i": 1, "min_j": 1, "no_constraints": True},   # Phase 4
+    {'min_i': 3, 'min_j': 3, 'no_constraints': False},  # Phase 1
+    {'min_i': 1, 'min_j': 3, 'no_constraints': False},  # Phase 2
+    {'min_i': 1, 'min_j': 1, 'no_constraints': False},  # Phase 3
+    {'min_i': 1, 'min_j': 1, 'no_constraints': True},   # Phase 4
 ]
 
 
@@ -293,11 +293,11 @@ def merge(
 
     if text_right_to_left:
         sequence_boundaries = list(
-            (np.where(np.logical_or(diff_X > 0, dist_Y > y_thresh))[0] + 1).tolist()
+            (np.where(np.logical_or(diff_X > 0, dist_Y > y_thresh))[0] + 1).tolist(),
         )
     else:
         sequence_boundaries = list(
-            (np.where(np.logical_or(diff_X < 0, dist_Y > y_thresh))[0] + 1).tolist()
+            (np.where(np.logical_or(diff_X < 0, dist_Y > y_thresh))[0] + 1).tolist(),
         )
 
     sequence_starts = [0] + sequence_boundaries
@@ -311,20 +311,20 @@ def merge(
             best_merger = None
             best_error = np.inf
             for i in range(len(sequences) - 1):
-                if len(sequences[i]) < phase["min_i"]:
+                if len(sequences[i]) < phase['min_i']:
                     continue
                 for j in range(i + 1, len(sequences)):
-                    if len(sequences[j]) < phase["min_j"]:
+                    if len(sequences[j]) < phase['min_j']:
                         continue
                     candidate_XY = fixation_XY[sequences[i] + sequences[j]]
                     gradient, intercept = np.polyfit(
-                        candidate_XY[:, 0], candidate_XY[:, 1], 1
+                        candidate_XY[:, 0], candidate_XY[:, 1], 1,
                     )
                     residuals = candidate_XY[:, 1] - (
                         gradient * candidate_XY[:, 0] + intercept
                     )
                     error = np.sqrt(sum(residuals**2) / len(candidate_XY))
-                    if phase["no_constraints"] or (
+                    if phase['no_constraints'] or (
                         abs(gradient) < g_thresh and error < e_thresh
                     ):
                         if error < best_error:
@@ -440,7 +440,7 @@ def segment(
     saccades_ordered_by_length = np.argsort(diff_X)
 
     if text_right_to_left:
-        line_change_indices = saccades_ordered_by_length[-(m - 1) :]
+        line_change_indices = saccades_ordered_by_length[-(m - 1):]
     else:
         line_change_indices = saccades_ordered_by_length[: m - 1]
 
@@ -626,7 +626,7 @@ def dynamic_time_warping(
         for j in range(n2):
             this_cost = np.sqrt(sum((sequence1[i] - sequence2[j]) ** 2))
             dtw_cost[i + 1, j + 1] = this_cost + min(
-                dtw_cost[i, j + 1], dtw_cost[i + 1, j], dtw_cost[i, j]
+                dtw_cost[i, j + 1], dtw_cost[i + 1, j], dtw_cost[i, j],
             )
     dtw_cost = dtw_cost[1:, 1:]
     dtw_path: list[list[int]] = [[] for _ in range(n1)]
@@ -701,16 +701,18 @@ def slice(
     dist_X = abs(np.diff(fixation_XY[:, 0]))
     dist_Y = abs(np.diff(fixation_XY[:, 1]))
     end_run_indices = list(
-        (np.where(np.logical_or(dist_X > x_thresh, dist_Y > y_thresh))[0] + 1).tolist()
+        (np.where(np.logical_or(dist_X > x_thresh, dist_Y > y_thresh))[0] + 1).tolist(),
     )
     run_starts = [0] + end_run_indices
     run_ends = end_run_indices + [n]
     runs = [list(range(start, end)) for start, end in zip(run_starts, run_ends)]
 
     # 2. Determine starting run
-    longest_run_i = int(np.argmax(
-        [fixation_XY[run[-1], 0] - fixation_XY[run[0], 0] for run in runs]
-    ))
+    longest_run_i = int(
+        np.argmax(
+            [fixation_XY[run[-1], 0] - fixation_XY[run[0], 0] for run in runs],
+        ),
+    )
     proto_lines[0] = runs.pop(longest_run_i)
 
     # 3. Group runs into proto lines
@@ -737,8 +739,8 @@ def slice(
                     np.logical_and(
                         run_differences * direction >= w_thresh,
                         run_differences * direction < n_thresh,
-                    )
-                )[0]
+                    ),
+                )[0],
             )
 
             for index in merge_into_current:
@@ -750,7 +752,7 @@ def slice(
                 average_x, average_y = np.mean(proto_line_XY, axis=0)
                 adjacent_y = average_y + line_height * direction
                 phantom_proto_lines[proto_line_i + direction] = np.array(
-                    [[average_x, adjacent_y]]
+                    [[average_x, adjacent_y]],
                 )
 
             for index in sorted(merge_into_current + merge_into_adjacent, reverse=True):

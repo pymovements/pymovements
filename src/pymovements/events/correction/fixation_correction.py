@@ -181,7 +181,7 @@ def create_corrected_fixations_locations(
         candidate_y_list: list[np.ndarray | list[float]] = []
         for candidate_algo in woc_algos:
             res = create_corrected_fixations_locations(
-                events, aois, algorithm=candidate_algo, **kwargs
+                events, aois, algorithm=candidate_algo, **kwargs,
             )
             y_vals = res[:, 1] if res.ndim == 2 else res
             candidate_y_list.append(y_vals)
@@ -241,7 +241,7 @@ def add_corrected_fixations(
         return events_frame
 
     corrected_locs = create_corrected_fixations_locations(
-        fixation_events, trial_aois, algorithm=algorithm, **kwargs
+        fixation_events, trial_aois, algorithm=algorithm, **kwargs,
     )
 
     corrected_rows = []

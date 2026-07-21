@@ -26,11 +26,9 @@ import polars as pl
 import pytest
 
 import pymovements as pm
-from pymovements.events.correction.fixation_correction import (
-    _get_lines_of_text_from_aois,
-    add_corrected_fixations,
-    create_corrected_fixations_locations,
-)
+from pymovements.events.correction.fixation_correction import _get_lines_of_text_from_aois
+from pymovements.events.correction.fixation_correction import add_corrected_fixations
+from pymovements.events.correction.fixation_correction import create_corrected_fixations_locations
 
 
 @pytest.fixture
