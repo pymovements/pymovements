@@ -32,7 +32,8 @@ def compute_reading_measures(
 ) -> pl.DataFrame:
     """Compute reading measures from fixation sequences.
 
-    This function expects fixations annotated with AOI data.
+    This function expects fixations annotated with AOI data. See
+    :py:meth:`~pymovements.Events.map_to_aois` for further details.
 
     Parameters
     ----------
