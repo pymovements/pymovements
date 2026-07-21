@@ -246,6 +246,7 @@ class DatasetDefinition:
 
     Notes
     -----
+
     .. deprecated:: v0.25.0
        The ``custom_read_kwargs`` attribute is deprecated.
        Please specify :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
@@ -459,8 +460,8 @@ class DatasetDefinition:
         Namedgroups will appear in the `fileinfo` dataframe.
 
         .. deprecated:: v0.23.0
-        Please use ResourceDefinition.filename_pattern instead.
-        This property will be removed in v0.28.0.
+           Please use ResourceDefinition.filename_pattern instead.
+           This property will be removed in v0.28.0.
 
         Returns
         -------
@@ -517,8 +518,8 @@ class DatasetDefinition:
         This casts specific named groups to a particular datatype.
 
         .. deprecated:: v0.23.0
-        Please use ResourceDefinition.filename_pattern_schema_overrides instead.
-        This property will be removed in v0.28.0.
+           Please use ResourceDefinition.filename_pattern_schema_overrides instead.
+           This property will be removed in v0.28.0.
 
         Returns
         -------
