@@ -25,7 +25,7 @@ from pymovements.measure.reading.processing import compute_reading_measures
 
 
 @pytest.mark.parametrize(
-    'fixations_df, aoi_df, expected_results',
+    'fixations, aois, expected_results',
     [
         pytest.param(
             pl.DataFrame(
@@ -240,10 +240,10 @@ from pymovements.measure.reading.processing import compute_reading_measures
         ),
     ],
 )
-def test_compute_reading_measures(fixations_df, aoi_df, expected_results):
-    result = compute_reading_measures(fixations_df, aoi_df)
+def test_compute_reading_measures(fixations, aois, expected_results):
+    result = compute_reading_measures(fixations, aois)
     assert isinstance(result, pl.DataFrame)
-    assert len(result) == len(aoi_df)
+    assert len(result) == len(aois)
 
     for word_idx, expected in expected_results.items():
         row = result.filter(pl.col('word_index') == word_idx)

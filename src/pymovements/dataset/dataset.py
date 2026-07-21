@@ -1149,8 +1149,8 @@ class Dataset:
             aoi_df = pl.read_csv(aoi_dict[text_id], separator='\t')
 
             rm_df = compute_reading_measures(
-                fixations_df=fixations,
-                aoi_df=aoi_df,
+                fixations=fixations,
+                aois=aoi_df,
             )
 
             rm_df = rm_df.with_columns([
