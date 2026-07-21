@@ -1718,6 +1718,88 @@ def test_gaze_compute_event_properties_null_trial():
 
 
 @pytest.mark.parametrize(
+    ('trial_data', 'kwargs', 'expected_samples_kept', 'expected_events_kept'),
+    [
+        pytest.param(
+            {
+                'trial': ['a', 'a', 'b', None],
+                'page': [0, 1, None, 0],
+            },
+            {'columns': ['trial', 'page']},
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+            id='none_dropped',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'columns': ['trial', 'page']},
+            [0, 1, 3],
+            [0, 1, 3],
+            id='some_dropped',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {'columns': ['trial', 'page'], 'criterion': 'any'},
+            [1],
+            [1],
+            id='some_dropped_with_any',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'columns': ['trial', 'page'], 'events': False},
+            [0, 1, 3],
+            [0, 1, 2, 3],
+            id='some_dropped_without_events',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {'columns': ['trial', 'page'], 'criterion': 'any', 'events': False},
+            [1],
+            [0, 1, 2, 3],
+            id='some_dropped_with_any_without_events',
+        ),
+    ],
+)
+def test_gaze_drop_nulls(trial_data, kwargs, expected_samples_kept, expected_events_kept):
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': range(len(trial_data['trial'])),
+                'x': range(len(trial_data['trial'])),
+                'y': range(len(trial_data['trial'])),
+                **trial_data,
+            },
+        ),
+        pixel_columns=['x', 'y'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'] * len(trial_data['trial']),
+                    'onset': range(len(trial_data['trial'])),
+                    'offset': range(1, len(trial_data['trial']) + 1),
+                    **trial_data,
+                },
+            ),
+        ),
+    )
+    gaze.drop_nulls(**kwargs)
+    assert gaze.samples['time'].to_list() == expected_samples_kept
+    assert gaze.events.frame['onset'].to_list() == expected_events_kept
+
+
+@pytest.mark.parametrize(
     ('gaze', 'attribute'),
     [
         pytest.param(

@@ -26,6 +26,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from typing import Literal
 from warnings import warn
 
 import polars as pl
@@ -1189,6 +1190,31 @@ class Dataset:
             gaze.events = Events()
 
         return self
+
+    def drop_nulls(
+        self, columns: list[str], criterion: Literal['all', 'any'] = 'all',
+        samples: bool = True, events: bool = True,
+    ) -> None:
+        """Drop samples and events with null values in the specified columns.
+
+        Parameters
+        ----------
+        columns: list[str] | None
+            List of column names to check for null values.
+        criterion: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. (default: 'all')
+        samples: bool
+            If True, drop matching samples. (default: True)
+        events: bool
+            If True, drop matching events. (default: True)
+        """
+        if samples:
+            for gaze in self.gaze:
+                gaze.drop_nulls(columns, criterion=criterion, events=events)
+        elif events:
+            for events_ in self.events:
+                events_.drop_nulls(columns, criterion=criterion)
 
     def save(
             self,
