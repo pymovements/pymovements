@@ -56,6 +56,7 @@ References & Citations:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 import numpy as np
 from scipy.optimize import minimize
@@ -397,10 +398,9 @@ def regress(
         return float(-sum(density.max(axis=1)))
 
     best_fit = minimize(fit_lines, [0, 0, 0])
-    line_assignments = fit_lines(best_fit.x, True)
-    if isinstance(line_assignments, np.ndarray):
-        for fixation_i, line_i in enumerate(line_assignments):
-            fixation_XY[fixation_i, 1] = line_Y[line_i]
+    line_assignments = cast(np.ndarray, fit_lines(best_fit.x, True))
+    for fixation_i, line_i in enumerate(line_assignments):
+        fixation_XY[fixation_i, 1] = line_Y[line_i]
     return fixation_XY
 
 
@@ -547,9 +547,8 @@ def stretch(
         return float(sum(abs(candidate_Y - corrected_Y)))
 
     best_fit = minimize(fit_lines, [1, 0], bounds=[scale_bounds, offset_bounds])
-    res = fit_lines(best_fit.x, return_correction=True)
-    if isinstance(res, np.ndarray):
-        fixation_XY[:, 1] = res
+    res = cast(np.ndarray, fit_lines(best_fit.x, return_correction=True))
+    fixation_XY[:, 1] = res
     return fixation_XY
 
 
@@ -765,7 +764,7 @@ def slice(
     # 4. Assign leftover runs
     for run in runs:
         best_pl_distance = np.inf
-        best_pl_assignment: int | None = None
+        best_pl_assignment = next(iter(proto_lines))
         for proto_line_i in proto_lines:
             if proto_lines[proto_line_i]:
                 proto_line_XY = fixation_XY[proto_lines[proto_line_i]]
@@ -775,12 +774,11 @@ def slice(
                 y - proto_line_XY[np.argmin(abs(proto_line_XY[:, 0] - x)), 1]
                 for x, y in fixation_XY[run]
             ]
-            pl_distance = abs(np.mean(y_diffs))
+            pl_distance = float(abs(np.mean(y_diffs)))
             if pl_distance < best_pl_distance:
                 best_pl_distance = pl_distance
                 best_pl_assignment = proto_line_i
-        if best_pl_assignment is not None:
-            proto_lines[best_pl_assignment].extend(run)
+        proto_lines[best_pl_assignment].extend(run)
 
     # 5. Prune proto lines
     while len(proto_lines) > len(line_Y):
@@ -826,12 +824,6 @@ def wisdom_of_the_crowd(
         candidates = list(row)
         candidate_counts = {y: candidates.count(y) for y in set(candidates)}
         best_count = max(candidate_counts.values())
-        best_candidates = [y for y, c in candidate_counts.items() if c == best_count]
-        if len(best_candidates) == 1:
-            correction.append(best_candidates[0])
-        else:
-            for y in row:
-                if y in best_candidates:
-                    correction.append(y)
-                    break
+        best_candidates = {y for y, c in candidate_counts.items() if c == best_count}
+        correction.append(next(y for y in row if y in best_candidates))
     return correction
