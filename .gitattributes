@@ -1,2 +1,3 @@
 src/pymovements/_version.py export-subst
 tests/files/* text eol=lf
+tests/files/Sentences.xlsx -text
