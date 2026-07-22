@@ -65,6 +65,14 @@ class Dataset:
     ----------
     participants: Participants
         Participant data.
+    fileinfo: pl.DataFrame
+        Parsed file information.
+    gaze: list[Gaze]
+        Gaze objects containing loaded samples.
+    events: tuple[Events, ...]
+        Event dataframes for all gaze objects.
+    path: Path
+        Path to the dataset directory.
 
     Parameters
     ----------
@@ -76,6 +84,10 @@ class Dataset:
     """
 
     participants: Participants
+    fileinfo: pl.DataFrame
+    gaze: list[Gaze]
+    events: tuple[Events, ...]
+    path: Path
 
     def __init__(
             self,
@@ -663,7 +675,7 @@ class Dataset:
     ) -> Dataset:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is clipped.
 
@@ -746,7 +758,7 @@ class Dataset:
     def pix2deg(self, verbose: bool = True) -> Dataset:
         """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -777,7 +789,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -822,7 +834,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting acceleration columns.
 
@@ -865,7 +877,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze velocities in dva/s from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting velocity columns.
 
@@ -911,7 +923,7 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
@@ -958,7 +970,7 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
@@ -1313,7 +1325,7 @@ class Dataset:
         """Download dataset resources.
 
         This downloads all resources of the dataset. Per default this also extracts all archives
-        into :py:meth:`Dataset.paths.raw`,
+        into :py:attr:`~pymovements.DatasetPaths.raw`,
         To save space on your device, you can remove the archive files after
         successful extraction with ``remove_finished=True``.
 

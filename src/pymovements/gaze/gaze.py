@@ -142,6 +142,12 @@ class Gaze:
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
         accuracy_max.
         None by default, to be populated by I/O helpers (e.g. from_asc).
+    schema: polars.type_aliases.SchemaDict
+        Schema of the samples dataframe.
+    columns: list[str]
+        List of column names in the samples dataframe.
+    frame: polars.DataFrame
+        Gaze samples dataframe.
 
     Notes
     -----

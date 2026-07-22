@@ -39,6 +39,13 @@ from pymovements.transforms.numpy import pos2vel
 class Experiment:
     """Experiment class for holding experiment properties.
 
+    Attributes
+    ----------
+    screen: Screen
+        Screen configuration for the experiment.
+    eyetracker: EyeTracker
+        Eye tracker configuration for the experiment.
+
     Parameters
     ----------
     screen_width_px: int | None
@@ -93,6 +100,9 @@ class Experiment:
     >>> experiment.screen.y_max_dva# doctest:+ELLIPSIS
     12.42...
     """
+
+    screen: Screen
+    eyetracker: EyeTracker
 
     def __init__(
             self,

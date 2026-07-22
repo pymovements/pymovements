@@ -29,6 +29,13 @@ from pymovements._utils._html import repr_html
 class DatasetPaths:
     """Defines the paths of a dataset.
 
+    Attributes
+    ----------
+    raw: Path
+        The path to the raw data directory.
+    downloads: Path
+        The path to the downloads directory.
+
     Parameters
     ----------
     root: str | Path
@@ -63,6 +70,9 @@ class DatasetPaths:
         Name of directory under dataset path that will be used to store stimuli data.
         Can be `.` if stimuli data is located in dataset path.
     """
+
+    raw: Path
+    downloads: Path
 
     def __init__(
             self,

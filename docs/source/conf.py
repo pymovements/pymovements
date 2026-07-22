@@ -199,21 +199,13 @@ nitpick_ignore_regex = [
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),
 
-
-
-    # Residual autosummary cross-refs to attributes/methods on our high-level classes
-    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
-
-    # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
-    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment|ResourceDefinition)\..*'),
-
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
 ]
 
 
 # -- Options for autosummary -------------------------------------------------
-numpydoc_show_class_members = False
+numpydoc_show_class_members = True
 numpydoc_class_members_toctree = False
 autosummary_generate = True
 autosummary_generate_overwrite = True

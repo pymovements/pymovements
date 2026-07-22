@@ -48,6 +48,14 @@ class ResourceDefinition:
         The content type of the resource.
     source: WebSource | None
         The source of the downloadable resource. (default: None)
+    url: str | None
+        The URL to the downloadable resource. (default: None)
+    filename: str | None
+        The target filename of the downloadable resource. (default: None)
+    md5: str | None
+        The MD5 checksum of the downloadable resource. (default: None)
+    mirrors: list[str] | None
+        A list of additional mirror URLs to download the resource. (default: None)
     filename_pattern: str | None
         The filename pattern of the resource files. Named groups will
         be parsed as metadata will appear in the `fileinfo` dataframe. (default: None)
