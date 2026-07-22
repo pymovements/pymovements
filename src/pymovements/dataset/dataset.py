@@ -127,8 +127,9 @@ class Dataset:
     ) -> Dataset:
         """Parse file information and load all gaze files.
 
-        The parsed file information is assigned to the :py:attr:`~pymovements.Dataset.fileinfo` attribute.
-        All gaze files will be loaded as dataframes and assigned to the :py:attr:`~pymovements.Dataset.gaze` attribute.
+        The parsed file information is assigned to the :py:attr:`~pymovements.Dataset.fileinfo`
+        attribute. All gaze files will be loaded as dataframes and assigned to the
+        :py:attr:`~pymovements.Dataset.gaze` attribute.
 
         Parameters
         ----------
@@ -699,8 +700,9 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes present in the `gaze` attribute, or
-            if the :py:attr:`~pymovements.Dataset.experiment` is ``None``.
+            If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes
+            present in the :py:attr:`~pymovements.Dataset.gaze` attribute, or if the
+            :py:attr:`~pymovements.Dataset.experiment` is ``None``.
         """
         return self.apply(
             'clip',
