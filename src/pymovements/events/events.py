@@ -241,7 +241,7 @@ class Events:
         join_on: str | list[str]
             Columns to join event properties on.
         """
-        self.frame = self.frame.join(event_properties, on=join_on, how='left')
+        self.frame = self.frame.join(event_properties, on=join_on, how='left', nulls_equal=True)
 
     def drop(
             self,
@@ -797,7 +797,7 @@ class Events:
             out_rows.append(aoi_row)
 
         aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
-        self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
+        self.frame = pl.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,

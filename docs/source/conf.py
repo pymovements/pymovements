@@ -85,10 +85,22 @@ def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
 
 
+def doctree_resolved_handler(app, doctree, docname):
+    """Open all external links in a new tab."""
+    from docutils import nodes
+
+    for node in doctree.traverse(nodes.reference):
+        uri = node.get('refuri', '')
+        if uri.startswith(('http://', 'https://')):
+            node['target'] = '_blank'
+            node['rel'] = 'noopener noreferrer'
+
+
 def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
+    app.connect('doctree-resolved', doctree_resolved_handler)
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -194,6 +206,8 @@ nitpick_ignore_regex = [
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
+    # generic types https://github.com/sphinx-doc/sphinx/issues/14159
+    (r'py:class', r'.*dict\[str'),
 
     # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
     (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),

@@ -326,7 +326,7 @@ def from_numpy(
         sample_components.append(sample_component)
         distance_column = 'distance'
 
-    samples = pl.concat(sample_components, how='horizontal')
+    samples = pl.concat(sample_components, how='horizontal_extend')
     return Gaze(
         samples=samples,
         experiment=experiment,
