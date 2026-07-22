@@ -730,7 +730,8 @@ def save_events(
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)
@@ -798,7 +799,8 @@ def save_preprocessed(
     paths: DatasetPaths
         Path of directory containing event files.
     preprocessed_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)

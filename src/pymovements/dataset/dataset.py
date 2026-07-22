@@ -1155,8 +1155,8 @@ class Dataset:
             aoi_df = pl.read_csv(aoi_dict[text_id], separator='\t')
 
             rm_df = compute_reading_measures(
-                fixations_df=fixations,
-                aoi_df=aoi_df,
+                fixations=fixations,
+                aois=aoi_df,
             )
 
             rm_df = rm_df.with_columns([
@@ -1216,9 +1216,11 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1243,7 +1245,8 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1285,7 +1288,8 @@ class Dataset:
         Parameters
         ----------
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)

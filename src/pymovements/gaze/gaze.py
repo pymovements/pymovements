@@ -261,6 +261,10 @@ class Gaze:
     # Private leftover metadata from parsing (without calibrations/validations)
     _metadata: dict[str, Any] | None
 
+    schema: polars.type_aliases.SchemaDict
+    columns: list[str]
+    frame: polars.DataFrame
+
     def __init__(
             self,
             samples: polars.DataFrame | None = None,

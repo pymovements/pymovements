@@ -25,6 +25,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import field
 from dataclasses import KW_ONLY
 from dataclasses import replace
 from typing import Any
@@ -110,6 +111,11 @@ class ResourceDefinition:
     load_function: str | None = None
     load_kwargs: dict[str, Any]
 
+    url: str | None = field(default=None, init=False, repr=False)
+    filename: str | None = field(default=None, init=False, repr=False)
+    md5: str | None = field(default=None, init=False, repr=False)
+    mirrors: list[str] | None = field(default=None, init=False, repr=False)
+
     def __init__(
             self,
             content: str,
@@ -155,7 +161,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def url(self) -> str | None:
+    def url(self) -> str | None:  # noqa: F811
         """The URL to the downloadable resource.
 
         .. deprecated:: v0.26.2
@@ -187,7 +193,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def filename(self) -> str | None:
+    def filename(self) -> str | None:  # noqa: F811
         """The target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.2
@@ -219,7 +225,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def md5(self) -> str | None:
+    def md5(self) -> str | None:  # noqa: F811
         """The MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.2
@@ -251,7 +257,7 @@ class ResourceDefinition:
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def mirrors(self) -> list[str] | None:
+    def mirrors(self) -> list[str] | None:  # noqa: F811
         """A list of additional mirror URLs to download the resource.
 
         .. deprecated:: v0.26.2
