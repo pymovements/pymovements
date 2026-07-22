@@ -1995,22 +1995,22 @@ class Gaze:
         return gaze
 
     def drop_nulls(
-        self, columns: list[str], criterion: Literal[
-            'all',
-            'any',
-        ] = 'all', events: bool = True,
+        self,
+        subset: list[str] | None = None,
+        how: Literal['all', 'any'] = 'any',
+        events: bool = True,
     ) -> None:
-        """Drop samples and events with null values in the specified columns.
+        """Drop samples and events with null values.
 
         Parameters
         ----------
-        columns: list[str]
-            List of column names to check for null values.
-        criterion: Literal['all', 'any']
+        subset: list[str] | None
+            List of column names to check for null values. By default, all columns are considered.
+        how: Literal['all', 'any']
             If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
-            where *all* of the specified columns are null. (default: 'all')
+            where *all* of the specified columns are null. (default: 'any')
         events: bool
-            If True, also drop matching events. `columns` must exist in both the samples and the
+            If True, also drop matching events. `subset` must exist in both the samples and the
             events dataframe.
 
         Raises
@@ -2018,18 +2018,21 @@ class Gaze:
         ValueError
             If `events` is True but the specified columns don't exist.
         """
-        condition = polars.any_horizontal if criterion == 'any' else polars.all_horizontal
+        if subset is None:
+            subset = self.samples.columns
+
+        condition = polars.any_horizontal if how == 'any' else polars.all_horizontal
 
         if events:
-            if not all(column in self.events.frame.columns for column in columns):
+            if not all(column in self.events.frame.columns for column in subset):
                 raise ValueError(
-                    f'Not all columns {columns} exist in events. '
+                    f'Not all columns {subset} exist in events. '
                     'Use events=False to only remove samples',
                 )
 
-        self.samples = self.samples.remove(condition(polars.col(columns).is_null()))
+        self.samples = self.samples.remove(condition(polars.col(subset).is_null()))
         if events:
-            self.events.drop_nulls(columns, criterion=criterion)
+            self.events.drop_nulls(subset, how=how)
 
     def _check_experiment(self) -> None:
         """Check if the experiment attribute has been set.

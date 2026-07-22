@@ -1192,18 +1192,18 @@ class Dataset:
         return self
 
     def drop_nulls(
-        self, columns: list[str], criterion: Literal['all', 'any'] = 'all',
+        self, subset: list[str] | None = None, how: Literal['all', 'any'] = 'any',
         samples: bool = True, events: bool = True,
     ) -> None:
-        """Drop samples and events with null values in the specified columns.
+        """Drop samples and events with null values.
 
         Parameters
         ----------
-        columns: list[str]
-            List of column names to check for null values.
-        criterion: Literal['all', 'any']
+        subset: list[str] | None
+            List of column names to check for null values. By default, all columns are checked.
+        how: Literal['all', 'any']
             If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
-            where *all* of the specified columns are null. (default: 'all')
+            where *all* of the specified columns are null. (default: 'any')
         samples: bool
             If True, drop matching samples. (default: True)
         events: bool
@@ -1211,10 +1211,10 @@ class Dataset:
         """
         if samples:
             for gaze in self.gaze:
-                gaze.drop_nulls(columns, criterion=criterion, events=events)
+                gaze.drop_nulls(subset, how=how, events=events)
         elif events:
             for events_ in self.events:
-                events_.drop_nulls(columns, criterion=criterion)
+                events_.drop_nulls(subset, how=how)
 
     def save(
             self,
