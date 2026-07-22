@@ -60,6 +60,8 @@ from pymovements.events.events import Events
 def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     """Calculate line positions of text based on AOIs.
 
+    Assumes that the line of text is vertically centered within each AOI.
+
     Parameters
     ----------
     aois: pl.DataFrame
@@ -71,9 +73,31 @@ def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
         Line center y-coordinates of the text.
     """
     y_col = 'start_y' if 'start_y' in aois.columns else 'top_left_y'
-    heights = list(set(aois['height']))
-    height = heights[0]
-    return [float(line + height / 2.0) for line in sorted(set(aois[y_col]))]
+
+    # Assumes text is vertically centered within each AOI bounding box
+    if 'line_idx' in aois.columns:
+        return (
+            aois.filter(pl.col('line_idx').is_not_null())
+            .group_by('line_idx')
+            .agg(
+                (pl.col(y_col) + pl.col('height') / 2.0)
+                .mean()
+                .alias('line_center'),
+            )
+            .sort('line_idx')['line_center']
+            .to_list()
+        )
+
+    return (
+        aois.group_by(y_col)
+        .agg(
+            (pl.col(y_col) + pl.col('height') / 2.0)
+            .mean()
+            .alias('line_center'),
+        )
+        .sort(y_col)['line_center']
+        .to_list()
+    )
 
 
 def create_corrected_fixations_locations(

@@ -121,6 +121,25 @@ def test_get_lines_of_text_from_aois_top_left_y():
     assert line_Y == [100.0, 200.0]
 
 
+def test_get_lines_of_text_from_aois_varying_heights():
+    aois_df = pl.DataFrame({
+        'start_y': [80.0, 80.0, 180.0],
+        'height': [40.0, 60.0, 40.0],
+    })
+    line_Y = _get_lines_of_text_from_aois(aois_df)
+    assert line_Y == [105.0, 200.0]
+
+
+def test_get_lines_of_text_from_aois_with_line_idx():
+    aois_df = pl.DataFrame({
+        'line_idx': [0, 0, 1],
+        'top_left_y': [80.0, 80.0, 180.0],
+        'height': [40.0, 50.0, 40.0],
+    })
+    line_Y = _get_lines_of_text_from_aois(aois_df)
+    assert line_Y == [102.5, 200.0]
+
+
 def test_create_corrected_fixations_locations_split_columns():
     events_df = pl.DataFrame({
         'name': ['fixation', 'fixation'],
