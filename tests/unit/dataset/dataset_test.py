@@ -33,6 +33,7 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.unit.helpers import to_duration
 
 from pymovements import __version__
 from pymovements import Dataset
@@ -51,10 +52,7 @@ from pymovements.events import microsaccades
 from pymovements.exceptions import UnknownMeasure
 from pymovements.stimulus.text import TextStimulus
 from pymovements.warnings import ExperimentalWarning
-
 # pylint: disable=too-many-lines
-
-from tests.unit.helpers import to_duration
 
 
 EXPECTED_AOI_MULTIPLEYE_STIMULI_TOY_X_1_TEXT_1_1 = pl.DataFrame(

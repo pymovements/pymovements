@@ -31,7 +31,6 @@ import pytest
 from polars.testing import assert_frame_equal
 from tests.unit.helpers import to_duration
 
-
 from pymovements import DatasetDefinition
 from pymovements import Experiment
 from pymovements import Gaze

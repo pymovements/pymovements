@@ -26,7 +26,6 @@ import pytest
 from polars.testing import assert_frame_equal
 from tests.unit.helpers import to_duration
 
-
 import pymovements as pm
 from pymovements.synthetic import step_function
 

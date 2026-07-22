@@ -77,7 +77,8 @@ from pymovements.gaze import from_csv
                 'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
             },
             (10, 3),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
+            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64),
+             'position': pl.List(pl.Float64)},
             id='csv_bino_shape',
         ),
 
@@ -97,7 +98,8 @@ from pymovements.gaze import from_csv
                 'auto_column_detect': True,
             },
             (10, 3),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
+            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64),
+             'position': pl.List(pl.Float64)},
             id='csv_bino_shape_auto_column_detect',
         ),
 
@@ -110,7 +112,8 @@ from pymovements.gaze import from_csv
                 'position_columns': ['position_x', 'position_y'],
             },
             (103, 3),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64)},
+            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Float64),
+             'position': pl.List(pl.Float64)},
             id='csv_missing_values',
         ),
 

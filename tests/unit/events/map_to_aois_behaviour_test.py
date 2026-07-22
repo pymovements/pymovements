@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import polars as pl
 import pytest
+from tests.unit.helpers import to_duration
 
 from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus
@@ -436,12 +437,10 @@ def test_map_to_aois_preserves_saccades_with_structure(
         },
     )
 
-    original = base.clone()
+    original = to_duration(base.clone())
 
     events = Events(data=base)
     events.map_to_aois(simple_stimulus, preserve_structure=True)
-
-    # only middle fixation is inside AOI 'A'
     labels = events.frame.get_column('label').to_list()
     assert labels == [None, 'A', None]
 
@@ -483,12 +482,10 @@ def test_map_to_aois_preserves_saccades_without_structure(
         },
     )
 
-    original = base.clone()
+    original = to_duration(base.clone())
 
     events = Events(data=base)
     events.map_to_aois(simple_stimulus, preserve_structure=False)
-
-    # only middle fixation is inside AOI 'A'
     labels = events.frame.get_column('label').to_list()
     assert labels == [None, 'A', None]
 

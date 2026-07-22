@@ -20,6 +20,8 @@
 """Provides the implementation of the event fill function."""
 from __future__ import annotations
 
+from datetime import timedelta
+
 import numpy
 import polars
 
@@ -66,21 +68,27 @@ def fill(
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
     for row in events.frame.iter_rows(named=True):
-        if row['onset'] > numpy.max(timesteps):  # event onset after last timestep
+        onset = row['onset']
+        offset = row['offset']
+        if isinstance(onset, timedelta):
+            onset = onset.total_seconds() * 1000
+            offset = offset.total_seconds() * 1000
+
+        if onset > numpy.max(timesteps):
             continue
 
-        if row['offset'] - 1 < numpy.min(timesteps):  # event offset before first timestep
+        if offset - 1 < numpy.min(timesteps):
             continue
 
-        if row['onset'] < numpy.min(timesteps):  # event onset before first timestep
+        if onset < numpy.min(timesteps):
             idx_onset = 0
         else:
-            idx_onset = numpy.where(timesteps == row['onset'])[0][0]
+            idx_onset = numpy.where(timesteps == onset)[0][0]
 
-        if row['offset'] > numpy.max(timesteps):  # event offset after last timestep
+        if offset > numpy.max(timesteps):
             idx_offset = len(timesteps) - 1
         else:
-            idx_offset = numpy.where(timesteps == row['offset'] - 1)[0][0]
+            idx_offset = numpy.where(timesteps == offset - 1)[0][0]
 
         events_mask[idx_onset:idx_offset + 1] = True
 

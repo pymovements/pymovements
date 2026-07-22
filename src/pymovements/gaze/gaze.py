@@ -1387,20 +1387,27 @@ class Gaze:
             if self.experiment and self.experiment.sampling_rate is not None:
                 kwargs['sampling_rate'] = self.experiment.sampling_rate
 
+        time_col = kwargs.get('time_column', 'time')
+        samples = self.samples
+        if time_col in samples.columns and samples.schema[time_col] == polars.Duration('ms'):
+            samples = samples.with_columns(
+                samples[time_col].dt.total_milliseconds().alias(time_col),
+            )
+
         if self.trial_columns is None:
-            return self.samples.select(method(**kwargs))
+            return samples.select(method(**kwargs))
 
         # Group measure values by trial columns.
         return polars.concat(
             [
                 df.select(
                     [  # add trial columns first, then add column for measure.
-                        polars.lit(value).cast(self.samples.schema[name]).alias(name)
+                        polars.lit(value).cast(samples.schema[name]).alias(name)
                         for name, value in zip(self.trial_columns, trial_values)
                     ] + [method(**kwargs)],
                 )
                 for trial_values, df in
-                self.samples.group_by(self.trial_columns, maintain_order=True)
+                samples.group_by(self.trial_columns, maintain_order=True)
             ],
         )
 
@@ -2411,9 +2418,9 @@ class Gaze:
         elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
-                    (polars.col('time') * 1000 / self.experiment.sampling_rate).round().cast(
-                        polars.Duration('ms'),
-                    ),
+                    (polars.col('time') * 1000 / self.experiment.sampling_rate)
+                    .round()
+                    .cast(polars.Duration('ms')),
                 )
             else:
                 raise ValueError(
@@ -2423,7 +2430,7 @@ class Gaze:
         elif time_unit == 'ms':
             if not isinstance(self.samples.schema['time'], polars.Duration):
                 self.samples = self.samples.with_columns(
-                    polars.col('time').round().cast(polars.Duration('ms')),
+                    polars.col('time').cast(polars.Duration('ms')),
                 )
 
         else:
@@ -2648,6 +2655,14 @@ class Gaze:
         if extension == 'feather':
             events_out.write_ipc(path)
         elif extension == 'csv':
+            duration_cols = [
+                c for c in events_out.columns
+                if isinstance(events_out.schema[c], polars.Duration)
+            ]
+            if duration_cols:
+                events_out = events_out.with_columns(
+                    [polars.col(c).dt.total_milliseconds() for c in duration_cols],
+                )
             events_out.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
@@ -2693,6 +2708,14 @@ class Gaze:
         if extension == 'feather':
             samples.write_ipc(path)
         elif extension == 'csv':
+            duration_cols = [
+                c for c in samples.columns
+                if isinstance(samples.schema[c], polars.Duration)
+            ]
+            if duration_cols:
+                samples = samples.with_columns(
+                    [polars.col(c).dt.total_milliseconds() for c in duration_cols],
+                )
             samples.write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']

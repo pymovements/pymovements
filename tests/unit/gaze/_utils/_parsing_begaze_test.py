@@ -29,6 +29,7 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.unit.helpers import to_duration
 
 from pymovements.gaze import io
 from pymovements.gaze._utils import _parsing_begaze
@@ -346,7 +347,7 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
     )
     assert_frame_equal(
         gaze.samples.select(expected_samples.columns),
-        expected_samples,
+        to_duration(expected_samples),
         check_column_order=False,
         rel_tol=0,
     )
@@ -358,7 +359,7 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
     common_cols = [c for c in BEGAZE_EXPECTED_EVENT_DF.columns if c in ev_actual.columns]
     assert_frame_equal(
         ev_actual.select(common_cols),
-        BEGAZE_EXPECTED_EVENT_DF.select(common_cols),
+        to_duration(BEGAZE_EXPECTED_EVENT_DF.select(common_cols)),
         check_column_order=False,
         rel_tol=0,
     )

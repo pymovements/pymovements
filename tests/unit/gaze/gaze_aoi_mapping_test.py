@@ -23,6 +23,7 @@ from typing import Any
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.unit.helpers import to_duration
 
 import pymovements as pm
 from pymovements import Gaze
@@ -1129,7 +1130,10 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    assert_frame_equal(
+        gaze.samples,
+        to_duration(EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}']),
+    )
 
 
 @pytest.mark.filterwarnings('ignore:GazeDataFrame contains data but no.*:UserWarning')
@@ -1187,7 +1191,10 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(gaze.samples, EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}'])
+    assert_frame_equal(
+        gaze.samples,
+        to_duration(EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}']),
+    )
 
 
 def test_map_to_aois_raises_value_error(make_example_file):

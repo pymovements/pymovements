@@ -23,14 +23,18 @@ from __future__ import annotations
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.unit.helpers import to_duration
 
 from pymovements import Events
-from tests.unit.helpers import to_duration
 
 
 @pytest.fixture(name='expected_schema_after_init')
 def fixture_dataset():
-    schema = {'name': pl.Utf8, 'onset': pl.Duration('ms'), 'offset': pl.Duration('ms'), 'duration': pl.Duration('ms')}
+    schema = {
+        'name': pl.Utf8,
+        'onset': pl.Duration('ms'),
+        'offset': pl.Duration('ms'),
+        'duration': pl.Duration('ms')}
     yield schema
 
 
