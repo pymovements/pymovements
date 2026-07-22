@@ -401,8 +401,8 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
 # ---------------------------
 
 
-def fixation_outside_aoi_percentage_by_count(fixations: pl.DataFrame) -> pl.DataFrame:
-    """Compute the percentage of fixations outside any AOI, by count.
+def non_aoi_fixation_ratio_by_count(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute the ratio of fixations outside any AOI, by count.
 
     Parameters
     ----------
@@ -413,8 +413,8 @@ def fixation_outside_aoi_percentage_by_count(fixations: pl.DataFrame) -> pl.Data
     Returns
     -------
     pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, and ``FOAC``
-        (Fixation Outside AOI by Count: proportion of fixations
+        DataFrame with columns ``trial``, ``page``, and ``NAFC``
+        (Non-AOI Fixation Ratio by Count: proportion of fixations
         without a mapped word, 0.0 to 1.0).
     """
     return (
@@ -429,14 +429,14 @@ def fixation_outside_aoi_percentage_by_count(fixations: pl.DataFrame) -> pl.Data
             pl.when(pl.col('total_fixations') > 0)
             .then(pl.col('fix_outside_aoi') / pl.col('total_fixations'))
             .otherwise(None)
-            .alias('FOAC'),
+            .alias('NAFC'),
         )
-        .select(['trial', 'page', 'FOAC'])
+        .select(['trial', 'page', 'NAFC'])
     )
 
 
-def fixation_outside_aoi_percentage_by_duration(fixations: pl.DataFrame) -> pl.DataFrame:
-    """Compute the percentage of fixation duration outside any AOI.
+def non_aoi_fixation_ratio_by_duration(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute the ratio of fixation duration outside any AOI.
 
     Parameters
     ----------
@@ -447,8 +447,8 @@ def fixation_outside_aoi_percentage_by_duration(fixations: pl.DataFrame) -> pl.D
     Returns
     -------
     pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, and ``FOAD``
-        (Fixation Outside AOI by Duration: proportion of fixation
+        DataFrame with columns ``trial``, ``page``, and ``NAFD``
+        (Non-AOI Fixation Ratio by Duration: proportion of fixation
         duration without a mapped word, 0.0 to 1.0).
     """
     return (
@@ -467,9 +467,9 @@ def fixation_outside_aoi_percentage_by_duration(fixations: pl.DataFrame) -> pl.D
             pl.when(pl.col('total_duration') > 0)
             .then(pl.col('duration_outside_aoi') / pl.col('total_duration'))
             .otherwise(None)
-            .alias('FOAD'),
+            .alias('NAFD'),
         )
-        .select(['trial', 'page', 'FOAD'])
+        .select(['trial', 'page', 'NAFD'])
     )
 
 # ---------------------------

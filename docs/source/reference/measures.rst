@@ -81,6 +81,8 @@ Measures
     saccade_length_in
     saccade_length_out
     total_fixation_count
+    non_aoi_fixation_ratio_by_count
+    non_aoi_fixation_ratio_by_duration
 
 .. rubric:: Annotations
 
