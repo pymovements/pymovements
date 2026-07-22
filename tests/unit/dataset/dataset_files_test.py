@@ -526,7 +526,7 @@ def test_load_gaze_file_has_correct_metadata(
             'stimuli/pexels-zoorg-1000498.jpg',
             'imagestimulus',
             {},
-            {'key': 'value'},
+            {'foo': 'bar'},
             id='image',
         ),
     ],
@@ -542,7 +542,7 @@ def test_load_stimulus_file_has_correct_metadata(
         file,
     )
 
-    assert stimulus.metadata == metadata
+    assert stimulus.metadata is metadata
 
 
 @pytest.mark.parametrize(
