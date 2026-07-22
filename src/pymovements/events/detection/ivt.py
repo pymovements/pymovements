@@ -105,25 +105,25 @@ def ivt(
 
     >>> ivt(velocities)
     shape: (1, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 9     ┆ 110    ┆ 101      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 9ms          ┆ 110ms        ┆ 101ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Run fixation detection with custom parameters:
 
     >>> ivt(velocities, minimum_duration = 50, velocity_threshold=30)
     shape: (1, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 9     ┆ 199    ┆ 190      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 9ms          ┆ 199ms        ┆ 190ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Polars series are also supported as input. Let's create a nested position series from our numpy
     array:
@@ -151,13 +151,13 @@ def ivt(
 
     >>> ivt(velocity_series)
     shape: (1, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 9     ┆ 110    ┆ 101      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 9ms          ┆ 110ms        ┆ 101ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -168,49 +168,49 @@ def ivt(
     ... )
     >>> gaze
     shape: (200, 2)
-    ┌──────┬──────────────┐
-    │ time ┆ velocity     │
-    │ ---  ┆ ---          │
-    │ i64  ┆ list[f64]    │
-    ╞══════╪══════════════╡
-    │ 0    ┆ [0.0, 0.0]   │
-    │ 1    ┆ [0.0, 0.0]   │
-    │ 2    ┆ [10.0, 20.0] │
-    │ 3    ┆ [10.0, 20.0] │
-    │ 4    ┆ [10.0, 20.0] │
-    │ …    ┆ …            │
-    │ 195  ┆ [0.0, 0.0]   │
-    │ 196  ┆ [0.0, 0.0]   │
-    │ 197  ┆ [0.0, 0.0]   │
-    │ 198  ┆ [0.0, 0.0]   │
-    │ 199  ┆ [0.0, 0.0]   │
-    └──────┴──────────────┘
+    ┌──────────────┬──────────────┐
+    │ time         ┆ velocity     │
+    │ ---          ┆ ---          │
+    │ duration[ms] ┆ list[f64]    │
+    ╞══════════════╪══════════════╡
+    │ 0ms          ┆ [0.0, 0.0]   │
+    │ 1ms          ┆ [0.0, 0.0]   │
+    │ 2ms          ┆ [10.0, 20.0] │
+    │ 3ms          ┆ [10.0, 20.0] │
+    │ 4ms          ┆ [10.0, 20.0] │
+    │ …            ┆ …            │
+    │ 195ms        ┆ [0.0, 0.0]   │
+    │ 196ms        ┆ [0.0, 0.0]   │
+    │ 197ms        ┆ [0.0, 0.0]   │
+    │ 198ms        ┆ [0.0, 0.0]   │
+    │ 199ms        ┆ [0.0, 0.0]   │
+    └──────────────┴──────────────┘
 
     Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
 
     >>> gaze.detect('ivt')
     >>> gaze.events
     shape: (1, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 9     ┆ 110    ┆ 101      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 9ms          ┆ 110ms        ┆ 101ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('ivt', minimum_duration = 50, velocity_threshold=30, name='fixation_ivt')
     >>> gaze.events.filter_by_name('fixation_ivt')
     shape: (1, 4)
-    ┌──────────────┬───────┬────────┬──────────┐
-    │ name         ┆ onset ┆ offset ┆ duration │
-    │ ---          ┆ ---   ┆ ---    ┆ ---      │
-    │ str          ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════════╪═══════╪════════╪══════════╡
-    │ fixation_ivt ┆ 9     ┆ 199    ┆ 190      │
-    └──────────────┴───────┴────────┴──────────┘
+    ┌──────────────┬──────────────┬──────────────┬──────────────┐
+    │ name         ┆ onset        ┆ offset       ┆ duration     │
+    │ ---          ┆ ---          ┆ ---          ┆ ---          │
+    │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation_ivt ┆ 9ms          ┆ 199ms        ┆ 190ms        │
+    └──────────────┴──────────────┴──────────────┴──────────────┘
     """
     numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(velocities, polars.Series):

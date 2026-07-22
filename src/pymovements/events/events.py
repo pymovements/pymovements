@@ -84,16 +84,16 @@ class Events:
     ... )
     >>> event
     shape: (4, 4)
-    ┌──────────┬─────────┬─────────┬──────────┐
-    │ name     ┆ onset   ┆ offset  ┆ duration │
-    │ ---      ┆ ---     ┆ ---     ┆ ---      │
-    │ str      ┆ i64     ┆ i64     ┆ i64      │
-    ╞══════════╪═════════╪═════════╪══════════╡
-    │ fixation ┆ 1988147 ┆ 1988322 ┆ 175      │
-    │ fixation ┆ 1988351 ┆ 1988546 ┆ 195      │
-    │ fixation ┆ 1988592 ┆ 1988736 ┆ 144      │
-    │ fixation ┆ 1988788 ┆ 1989013 ┆ 225      │
-    └──────────┴─────────┴─────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 33m 8s 147ms ┆ 33m 8s 322ms ┆ 175ms        │
+    │ fixation ┆ 33m 8s 351ms ┆ 33m 8s 546ms ┆ 195ms        │
+    │ fixation ┆ 33m 8s 592ms ┆ 33m 8s 736ms ┆ 144ms        │
+    │ fixation ┆ 33m 8s 788ms ┆ 33m 9s 13ms  ┆ 225ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
     """
 
     frame: pl.DataFrame
@@ -358,114 +358,114 @@ class Events:
         ... )
         >>> events
         shape: (8, 4)
-        ┌──────────────────┬───────┬────────┬──────────┐
-        │ name             ┆ onset ┆ offset ┆ duration │
-        │ ---              ┆ ---   ┆ ---    ┆ ---      │
-        │ str              ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════════╪═══════╪════════╪══════════╡
-        │ saccade          ┆ 90    ┆ 100    ┆ 10       │
-        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
-        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
-        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
-        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
-        │ microsaccade     ┆ 115   ┆ 124    ┆ 9        │
-        │ microsaccade     ┆ 145   ┆ 157    ┆ 12       │
-        │ saccade          ┆ 175   ┆ 199    ┆ 24       │
-        └──────────────────┴───────┴────────┴──────────┘
+        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
+        │ name             ┆ onset        ┆ offset       ┆ duration     │
+        │ ---              ┆ ---          ┆ ---          ┆ ---          │
+        │ str              ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
+        │ saccade          ┆ 90ms         ┆ 100ms        ┆ 10ms         │
+        │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
+        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
+        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
+        │ microsaccade     ┆ 115ms        ┆ 124ms        ┆ 9ms          │
+        │ microsaccade     ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        │ saccade          ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        └──────────────────┴──────────────┴──────────────┴──────────────┘
 
         All fixations:
 
         >>> events.filter_by_name('fixation')
         shape: (4, 4)
-        ┌──────────────────┬───────┬────────┬──────────┐
-        │ name             ┆ onset ┆ offset ┆ duration │
-        │ ---              ┆ ---   ┆ ---    ┆ ---      │
-        │ str              ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════════╪═══════╪════════╪══════════╡
-        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
-        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
-        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
-        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
-        └──────────────────┴───────┴────────┴──────────┘
+        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
+        │ name             ┆ onset        ┆ offset       ┆ duration     │
+        │ ---              ┆ ---          ┆ ---          ┆ ---          │
+        │ str              ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
+        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
+        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
+        └──────────────────┴──────────────┴──────────────┴──────────────┘
 
         Exact match for fixation:
 
         >>> events.filter_by_name('^fixation$')
         shape: (1, 4)
-        ┌──────────┬───────┬────────┬──────────┐
-        │ name     ┆ onset ┆ offset ┆ duration │
-        │ ---      ┆ ---   ┆ ---    ┆ ---      │
-        │ str      ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════╪═══════╪════════╪══════════╡
-        │ fixation ┆ 99    ┆ 176    ┆ 77       │
-        └──────────┴───────┴────────┴──────────┘
+        ┌──────────┬──────────────┬──────────────┬──────────────┐
+        │ name     ┆ onset        ┆ offset       ┆ duration     │
+        │ ---      ┆ ---          ┆ ---          ┆ ---          │
+        │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation ┆ 99ms         ┆ 176ms        ┆ 77ms         │
+        └──────────┴──────────────┴──────────────┴──────────────┘
 
         Prefix match:
 
         >>> events.filter_by_name('^fixation_')
         shape: (3, 4)
-        ┌──────────────────┬───────┬────────┬──────────┐
-        │ name             ┆ onset ┆ offset ┆ duration │
-        │ ---              ┆ ---   ┆ ---    ┆ ---      │
-        │ str              ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════════╪═══════╪════════╪══════════╡
-        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
-        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
-        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
-        └──────────────────┴───────┴────────┴──────────┘
+        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
+        │ name             ┆ onset        ┆ offset       ┆ duration     │
+        │ ---              ┆ ---          ┆ ---          ┆ ---          │
+        │ str              ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
+        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
+        └──────────────────┴──────────────┴──────────────┴──────────────┘
 
         Suffix match:
 
         >>> events.filter_by_name('ivt$')
         shape: (1, 4)
-        ┌──────────────┬───────┬────────┬──────────┐
-        │ name         ┆ onset ┆ offset ┆ duration │
-        │ ---          ┆ ---   ┆ ---    ┆ ---      │
-        │ str          ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════╪═══════╪════════╪══════════╡
-        │ fixation_ivt ┆ 100   ┆ 178    ┆ 78       │
-        └──────────────┴───────┴────────┴──────────┘
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation_ivt ┆ 100ms         ┆ 178ms        ┆ 78ms         │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
 
         All saccade variants:
 
         >>> events.filter_by_name('saccade')
         shape: (4, 4)
-        ┌──────────────┬───────┬────────┬──────────┐
-        │ name         ┆ onset ┆ offset ┆ duration │
-        │ ---          ┆ ---   ┆ ---    ┆ ---      │
-        │ str          ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════╪═══════╪════════╪══════════╡
-        │ saccade      ┆ 90    ┆ 100    ┆ 10       │
-        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
-        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
-        │ saccade      ┆ 175   ┆ 199    ┆ 24       │
-        └──────────────┴───────┴────────┴──────────┘
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ saccade      ┆ 90ms         ┆ 100ms        ┆ 10ms         │
+        │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
+        │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        │ saccade      ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
 
         Only microsaccades:
 
         >>> events.filter_by_name('microsaccade')
         shape: (2, 4)
-        ┌──────────────┬───────┬────────┬──────────┐
-        │ name         ┆ onset ┆ offset ┆ duration │
-        │ ---          ┆ ---   ┆ ---    ┆ ---      │
-        │ str          ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════╪═══════╪════════╪══════════╡
-        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
-        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
-        └──────────────┴───────┴────────┴──────────┘
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
+        │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
 
         Exact match for saccade:
 
         >>> events.filter_by_name('^saccade$')
         shape: (2, 4)
-        ┌─────────┬───────┬────────┬──────────┐
-        │ name    ┆ onset ┆ offset ┆ duration │
-        │ ---     ┆ ---   ┆ ---    ┆ ---      │
-        │ str     ┆ i64   ┆ i64    ┆ i64      │
-        ╞═════════╪═══════╪════════╪══════════╡
-        │ saccade ┆ 90    ┆ 100    ┆ 10       │
-        │ saccade ┆ 175   ┆ 199    ┆ 24       │
-        └─────────┴───────┴────────┴──────────┘
+        ┌─────────┬──────────────┬──────────────┬──────────────┐
+        │ name    ┆ onset        ┆ offset       ┆ duration     │
+        │ ---     ┆ ---          ┆ ---          ┆ ---          │
+        │ str     ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞═════════╪══════════════╪══════════════╪══════════════╡
+        │ saccade ┆ 90ms         ┆ 100ms        ┆ 10ms         │
+        │ saccade ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        └─────────┴──────────────┴──────────────┴──────────────┘
 
         Returns
         -------
@@ -856,13 +856,13 @@ class Events:
         >>> events.merge_subsequent_close_events(name='fixation', max_gap=10)
         >>> events.frame
         shape: (1, 4)
-        ┌──────────┬───────┬────────┬──────────┐
-        │ name     ┆ onset ┆ offset ┆ duration │
-        │ ---      ┆ ---   ┆ ---    ┆ ---      │
-        │ str      ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════╪═══════╪════════╪══════════╡
-        │ fixation ┆ 0     ┆ 90     ┆ 90       │
-        └──────────┴───────┴────────┴──────────┘
+        ┌──────────┬──────────────┬──────────────┬──────────────┐
+        │ name     ┆ onset        ┆ offset       ┆ duration     │
+        │ ---      ┆ ---          ┆ ---          ┆ ---          │
+        │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        ╞══════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation ┆ 0ms          ┆ 90ms         ┆ 90ms         │
+        └──────────┴──────────────┴──────────────┴──────────────┘
 
         This combined all the smaller events into a single event with longer duration.
 

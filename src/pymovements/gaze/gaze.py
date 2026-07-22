@@ -189,15 +189,15 @@ class Gaze:
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')
     >>> gaze
     shape: (3, 2)
-    ┌──────┬────────────┐
-    │ time ┆ pixel      │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 1000 ┆ [0.1, 0.1] │
-    │ 1001 ┆ [0.2, 0.2] │
-    │ 1002 ┆ [0.3, 0.3] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ pixel      │
+    │ ---          ┆ ---        │
+    │ duration[ms] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 1s           ┆ [0.1, 0.1] │
+    │ 1s 1ms       ┆ [0.2, 0.2] │
+    │ 1s 2ms       ┆ [0.3, 0.3] │
+    └──────────────┴────────────┘
 
     In case your data has no time column available, you can pass an
     :py:class:`~pymovements.gaze.Experiment` to create a time column with the correct sampling rate
@@ -219,19 +219,17 @@ class Gaze:
     >>> experiment = Experiment(1024, 768, 38, 30, 60, 'center', sampling_rate=100)
     >>> gaze = Gaze(samples=df_no_time, experiment=experiment, pixel_columns=['x', 'y'])
     >>> gaze
-    Experiment(screen=Screen(resolution=(1024, 768), size=(38, 30), distance_cm=60,
-      origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None,
-      version=None, vendor=None, mount=None))
+    Experiment(screen=Screen(resolution=(1024, 768), size=(38, 30), distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None, version=None, vendor=None, mount=None))
     shape: (3, 2)
-    ┌──────┬────────────┐
-    │ time ┆ pixel      │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.1, 0.1] │
-    │ 10   ┆ [0.2, 0.2] │
-    │ 20   ┆ [0.3, 0.3] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ pixel      │
+    │ ---          ┆ ---        │
+    │ duration[ms] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0ms          ┆ [0.1, 0.1] │
+    │ 10ms         ┆ [0.2, 0.2] │
+    │ 20ms         ┆ [0.3, 0.3] │
+    └──────────────┴────────────┘
     """
 
     samples: polars.DataFrame
@@ -933,17 +931,17 @@ class Gaze:
         >>> gaze = Gaze(samples=df, time_column='time', pixel_columns=['x', 'y'])
         >>> gaze.samples
         shape: (5, 2)
-        ┌──────┬───────────┐
-        │ time ┆ pixel     │
-        │ ---  ┆ ---       │
-        │ i64  ┆ list[i64] │
-        ╞══════╪═══════════╡
-        │ 0    ┆ [1, 1]    │
-        │ 1    ┆ [2, 2]    │
-        │ 2    ┆ [3, 3]    │
-        │ 3    ┆ [4, 4]    │
-        │ 4    ┆ [5, 5]    │
-        └──────┴───────────┘
+        ┌──────────────┬───────────┐
+        │ time         ┆ pixel     │
+        │ ---          ┆ ---       │
+        │ duration[ms] ┆ list[i64] │
+        ╞══════════════╪═══════════╡
+        │ 0ms          ┆ [1, 1]    │
+        │ 1ms          ┆ [2, 2]    │
+        │ 2ms          ┆ [3, 3]    │
+        │ 3ms          ┆ [4, 4]    │
+        │ 4ms          ┆ [5, 5]    │
+        └──────────────┴───────────┘
 
         We can now upsample the Gaze to 2000Hz by interpolating the values in
         the pixel column.
@@ -955,36 +953,38 @@ class Gaze:
         ... )
         >>> gaze.samples
         shape: (9, 2)
-        ┌──────┬────────────┐
-        │ time ┆ pixel      │
-        │ ---  ┆ ---        │
-        │ f64  ┆ list[f64]  │
-        ╞══════╪════════════╡
-        │ 0.0  ┆ [1.0, 1.0] │
-        │ 0.5  ┆ [1.5, 1.5] │
-        │ 1.0  ┆ [2.0, 2.0] │
-        │ 1.5  ┆ [2.5, 2.5] │
-        │ 2.0  ┆ [3.0, 3.0] │
-        │ 2.5  ┆ [3.5, 3.5] │
-        │ 3.0  ┆ [4.0, 4.0] │
-        │ 3.5  ┆ [4.5, 4.5] │
-        │ 4.0  ┆ [5.0, 5.0] │
-        └──────┴────────────┘
+        ┌──────────────┬────────────┐
+        │ time         ┆ pixel      │
+        │ ---          ┆ ---        │
+        │ duration[ms] ┆ list[f64]  │
+        ╞══════════════╪════════════╡
+        │ 0ms          ┆ [1.0, 1.0] │
+        │ 0ms          ┆ [1.5, 1.5] │
+        │ 1ms          ┆ [2.0, 2.0] │
+        │ 1ms          ┆ [2.5, 2.5] │
+        │ 2ms          ┆ [3.0, 3.0] │
+        │ 2ms          ┆ [3.5, 3.5] │
+        │ 3ms          ┆ [4.0, 4.0] │
+        │ 3ms          ┆ [4.5, 4.5] │
+        │ 4ms          ┆ [5.0, 5.0] │
+        └──────────────┴────────────┘
 
         Downsample the Gaze to 500Hz results in the following DataFrame.
 
         >>> gaze.resample(resampling_rate=500)
         >>> gaze.samples
-        shape: (3, 2)
-        ┌──────┬────────────┐
-        │ time ┆ pixel      │
-        │ ---  ┆ ---        │
-        │ i64  ┆ list[f64]  │
-        ╞══════╪════════════╡
-        │ 0    ┆ [1.0, 1.0] │
-        │ 2    ┆ [3.0, 3.0] │
-        │ 4    ┆ [5.0, 5.0] │
-        └──────┴────────────┘
+        shape: (5, 2)
+        ┌──────────────┬────────────┐
+        │ time         ┆ pixel      │
+        │ ---          ┆ ---        │
+        │ duration[ms] ┆ list[f64]  │
+        ╞══════════════╪════════════╡
+        │ 0ms          ┆ [1.0, 1.0] │
+        │ 0ms          ┆ [1.5, 1.5] │
+        │ 2ms          ┆ [3.0, 3.0] │
+        │ 2ms          ┆ [3.5, 3.5] │
+        │ 4ms          ┆ [5.0, 5.0] │
+        └──────────────┴────────────┘
         """
         self.transform(
             'resample',
