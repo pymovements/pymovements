@@ -139,8 +139,9 @@ class Dataset:
     ) -> Dataset:
         """Parse file information and load all gaze files.
 
-        The parsed file information is assigned to the `fileinfo` attribute.
-        All gaze files will be loaded as dataframes and assigned to the `gaze` attribute.
+        The parsed file information is assigned to the :py:attr:`~pymovements.Dataset.fileinfo`
+        attribute. All gaze files will be loaded as dataframes and assigned to the
+        :py:attr:`~pymovements.Dataset.gaze` attribute.
 
         Parameters
         ----------
@@ -703,8 +704,9 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes
+            present in the :py:attr:`~pymovements.Dataset.gaze` attribute, or if the
+            :py:attr:`~pymovements.Dataset.experiment` is ``None``.
         """
         return self.apply(
             'clip',
@@ -775,8 +777,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
         """
         return self.apply('pix2deg', verbose=verbose)
 
@@ -813,8 +815,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
         """
         return self.apply(
             'deg2pix',
@@ -857,8 +859,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
         """
         return self.apply(
             'pos2acc',
@@ -900,8 +902,8 @@ class Dataset:
         Raises
         ------
         AttributeError
-            If `gaze` is None or there are no gaze dataframes present in the `gaze` attribute, or
-            if the experiment is None.
+            If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
+            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 

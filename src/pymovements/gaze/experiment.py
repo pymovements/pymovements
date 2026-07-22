@@ -250,8 +250,8 @@ class Experiment:
         arr: list[float] | list[list[float]] | np.ndarray
             Continuous 2D position time series.
         method: str
-            Computation method.
-                See :func:`~pymovements.transforms.pos2vel` for details. (default: .smooth.)
+            Computation method. See :func:`~pymovements.transforms.pos2vel` for details.
+            (default: ``'smooth'``)
         **kwargs: int | float | str
             Additional keyword arguments used for savitzky golay method.
 
