@@ -126,13 +126,13 @@ def test_create_corrected_fixations_locations_missing_word_x_coords_warns(
     events_df, aois_df = sample_events_and_aois
     aois_no_x = aois_df.drop(['start_x', 'end_x'])
     with pytest.warns(
-        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are not available",
+        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are missing",
     ):
         locs = create_corrected_fixations_locations(events_df, aois_no_x)
         assert locs.shape == (6, 2)
 
     with pytest.warns(
-        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are not available",
+        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are missing",
     ):
         locs2 = create_corrected_fixations_locations(
             events_df, aois_no_x, algorithm=['attach', 'compare'],

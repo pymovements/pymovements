@@ -129,10 +129,10 @@ def create_corrected_fixations_locations(
     aois: pl.DataFrame
         AOIs dataframe for line position extraction.
     algorithm: str | list[str]
-        Name of drift algorithm or a list of algorithm names to combine via Wisdom of the Crowd
-        (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which includes all
-        drift algorithms. If word X coordinates ('start_x', 'end_x') are not present in aois,
-        'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
+        Name of a single drift algorithm or a list of algorithm names to combine via Wisdom of
+        the Crowd (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which
+        includes all drift algorithms. If word X coordinates ('start_x', 'end_x') are missing in
+        aois, 'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
     **kwargs: Any
         Additional keyword arguments passed to underlying drift correction algorithm.
 
@@ -171,8 +171,9 @@ def create_corrected_fixations_locations(
                 candidate_algos.append(algo)
         if excluded_algos:
             warnings.warn(
-                "Word X coordinates ('start_x', 'end_x') are not available in aois. "
-                f"Automatically excluding {excluded_algos} from Wisdom of the Crowd ensemble.",
+                "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
+                'As a consequence, algorithms requiring word X coordinates '
+                f"({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -181,9 +182,9 @@ def create_corrected_fixations_locations(
             candidate_algos = list(ALL_DRIFT_ALGORITHMS)
             if not (word_xy_arg is not None or _has_word_x_coords(aois, kwargs)):
                 warnings.warn(
-                    "Word X coordinates ('start_x', 'end_x') are not available in aois. "
-                    "Automatically excluding 'compare' and 'warp' from Wisdom of the Crowd "
-                    'ensemble.',
+                    "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
+                    "As a consequence, 'compare' and 'warp' algorithms are excluded from "
+                    'Wisdom of the Crowd ensemble.',
                     UserWarning,
                     stacklevel=2,
                 )
