@@ -1799,6 +1799,35 @@ def test_gaze_drop_nulls(trial_data, kwargs, expected_samples_kept, expected_eve
     assert gaze.events.frame['onset'].to_list() == expected_events_kept
 
 
+def test_gaze_drop_nulls_raises_missing_columns():
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': range(4),
+                'x': range(4),
+                'y': range(4),
+                'trial': [1, 1, None, None],
+                'page': [1, 1, None, None],
+            },
+        ),
+        pixel_columns=['x', 'y'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'] * 4,
+                    'onset': range(4),
+                    'offset': range(1, 5),
+                    'trial': [1, 1, None, None],
+                },
+            ),
+        ),
+    )
+    with pytest.raises(ValueError, match=r"Not all columns \['trial', 'page'\] exist in events.*"):
+        gaze.drop_nulls(['trial', 'page'])
+    assert len(gaze.samples) == 4
+    assert len(gaze.events.frame) == 4
+
+
 @pytest.mark.parametrize(
     ('gaze', 'attribute'),
     [
