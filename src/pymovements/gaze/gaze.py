@@ -885,8 +885,7 @@ class Gaze:
         Parameters
         ----------
         method: str
-            Computation method.
-            See :func:`~pymovements.transforms.pos2vel()` for details, default: fivepoint.
+            Computation method. See :func:`~pymovements.transforms.pos2vel()` for details.
             (default: 'fivepoint')
 
         **kwargs: int | float | str
