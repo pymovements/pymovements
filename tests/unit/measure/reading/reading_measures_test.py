@@ -20,6 +20,7 @@
 """Reading measure tests."""
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
@@ -246,40 +247,71 @@ def test_regression_path_duration_no_first_pass():
 # ---------------------------
 
 
-def test_fixation_outside_aoi_percentage_by_count_all_inside():
-    """All fixations have a word_idx (inside AOI) -> FOAC == 0."""
-    df = pl.DataFrame({
-        'trial': ['1', '1', '1'],
-        'page': ['1', '1', '1'],
-        'word_idx': [0, 1, 2],
-    })
-    result = fixation_outside_aoi_percentage_by_count(df)
-    assert 'FOAC' in result.columns
-    assert result['FOAC'][0] == pytest.approx(0.0)
-
-
-def test_fixation_outside_aoi_percentage_by_count_mixed():
-    """Mix of inside / outside fixations -> FOAC == 0.5."""
-    df = pl.DataFrame({
-        'trial': ['1', '1', '1', '1'],
-        'page': ['1', '1', '1', '1'],
-        'word_idx': [0, None, 1, None],
-    }).cast({'word_idx': pl.Int64})
-    result = fixation_outside_aoi_percentage_by_count(df)
-    assert result['FOAC'][0] == pytest.approx(0.5)
-
-
-def test_fixation_outside_aoi_percentage_by_count_multiple_trials():
-    """Each trial/page group gets its own FOAC value."""
-    df = pl.DataFrame({
-        'trial': ['1', '1', '2', '2', '2'],
-        'page': ['1', '1', '1', '1', '1'],
-        'word_idx': [0, None, None, None, 0],
-    }).cast({'word_idx': pl.Int64})
-    result = fixation_outside_aoi_percentage_by_count(df).sort('trial')
-    assert result.height == 2
-    assert result.filter(pl.col('trial') == '1')['FOAC'][0] == pytest.approx(0.5)
-    assert result.filter(pl.col('trial') == '2')['FOAC'][0] == pytest.approx(2 / 3)
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        # All fixations inside AOI -> FOAC == 0.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'page': ['1', '1', '1'],
+                'word_idx': [0, 1, 2],
+            }),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'FOAC': [0.0],
+            }),
+        ),
+        # All fixations outside AOI -> FOAC == 1.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [None, None],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'FOAC': [1.0],
+            }),
+        ),
+        # Mix of inside / outside fixations -> FOAC == 0.5
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, 1, None],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'FOAC': [0.5],
+            }),
+        ),
+        # Multiple trials get separate FOAC values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '2', '2', '2'],
+                'page': ['1', '1', '1', '1', '1'],
+                'word_idx': [0, None, None, None, 0],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'page': ['1', '1'],
+                'FOAC': [0.5, 2 / 3],
+            }),
+        ),
+        # Empty fixations table yields empty output DataFrame
+        (
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'word_idx': pl.Int64}),
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'FOAC': pl.Float64}),
+        ),
+    ],
+)
+def test_fixation_outside_aoi_percentage_by_count(fixations, expected):
+    result = fixation_outside_aoi_percentage_by_count(fixations)
+    assert_frame_equal(result, expected)
 
 
 # ---------------------------
@@ -287,54 +319,98 @@ def test_fixation_outside_aoi_percentage_by_count_multiple_trials():
 # ---------------------------
 
 
-def test_fixation_outside_aoi_percentage_by_duration_all_inside():
-    """All fixations inside AOI -> FOAD == 0."""
-    df = pl.DataFrame({
-        'trial': ['1', '1'],
-        'page': ['1', '1'],
-        'word_idx': [0, 1],
-        'duration': [100, 200],
-    })
-    result = fixation_outside_aoi_percentage_by_duration(df)
-    assert 'FOAD' in result.columns
-    assert result['FOAD'][0] == pytest.approx(0.0)
-
-
-def test_fixation_outside_aoi_percentage_by_duration_mixed():
-    """Duration-weighted percentage: outside=150, total=400 -> 0.375."""
-    df = pl.DataFrame({
-        'trial': ['1', '1', '1', '1'],
-        'page': ['1', '1', '1', '1'],
-        'word_idx': [0, None, 1, None],
-        'duration': [100, 50, 150, 100],
-    }).cast({'word_idx': pl.Int64})
-    result = fixation_outside_aoi_percentage_by_duration(df)
-    assert result['FOAD'][0] == pytest.approx(150 / 400)
-
-
-def test_fixation_outside_aoi_percentage_by_duration_multiple_trials():
-    """Each trial/page group gets its own FOAD value."""
-    df = pl.DataFrame({
-        'trial': ['1', '1', '2', '2'],
-        'page': ['1', '1', '1', '1'],
-        'word_idx': [0, None, None, 0],
-        'duration': [100, 100, 300, 100],
-    }).cast({'word_idx': pl.Int64})
-    result = fixation_outside_aoi_percentage_by_duration(df).sort('trial')
-    assert result.height == 2
-    assert result.filter(pl.col('trial') == '1')['FOAD'][0] == pytest.approx(0.5)
-    assert result.filter(pl.col('trial') == '2')['FOAD'][0] == pytest.approx(0.75)
-
-
-def test_fixation_outside_aoi_percentage_by_duration_multiple_pages():
-    """Different pages within the same trial get separate FOAD values."""
-    df = pl.DataFrame({
-        'trial': ['1', '1', '1', '1'],
-        'page': ['p1', 'p1', 'p2', 'p2'],
-        'word_idx': [0, None, None, None],
-        'duration': [100, 100, 200, 200],
-    }).cast({'word_idx': pl.Int64})
-    result = fixation_outside_aoi_percentage_by_duration(df).sort('page')
-    assert result.height == 2
-    assert result.filter(pl.col('page') == 'p1')['FOAD'][0] == pytest.approx(0.5)
-    assert result.filter(pl.col('page') == 'p2')['FOAD'][0] == pytest.approx(1.0)
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        # All fixations inside AOI -> FOAD == 0.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [0, 1],
+                'duration': [100, 200],
+            }),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'FOAD': [0.0],
+            }),
+        ),
+        # All fixations outside AOI -> FOAD == 1.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [None, None],
+                'duration': [50, 150],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'FOAD': [1.0],
+            }),
+        ),
+        # Mixed fixations -> FOAD == 150 / 400
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, 1, None],
+                'duration': [100, 50, 150, 100],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'FOAD': [150 / 400],
+            }),
+        ),
+        # Zero total duration yields None for FOAD
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [0, 1],
+                'duration': [0, 0],
+            }),
+            pl.DataFrame(
+                {
+                    'trial': ['1'],
+                    'page': ['1'],
+                    'FOAD': [None],
+                },
+                schema={'trial': pl.String, 'page': pl.String, 'FOAD': pl.Float64},
+            ),
+        ),
+        # Multiple trials get separate FOAD values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '2', '2'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, None, 0],
+                'duration': [100, 100, 300, 100],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'page': ['1', '1'],
+                'FOAD': [0.5, 0.75],
+            }),
+        ),
+        # Multiple pages get separate FOAD values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['p1', 'p1', 'p2', 'p2'],
+                'word_idx': [0, None, None, None],
+                'duration': [100, 100, 200, 200],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['p1', 'p2'],
+                'FOAD': [0.5, 1.0],
+            }),
+        ),
+    ],
+)
+def test_fixation_outside_aoi_percentage_by_duration(fixations, expected):
+    result = fixation_outside_aoi_percentage_by_duration(fixations)
+    assert_frame_equal(result, expected, atol=1e-5)

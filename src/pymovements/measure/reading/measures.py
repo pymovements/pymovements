@@ -413,10 +413,12 @@ def fixation_outside_aoi_percentage_by_count(fixations: pl.DataFrame) -> pl.Data
     Returns
     -------
     pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, and ``FOAC``.
+        DataFrame with columns ``trial``, ``page``, and ``FOAC``
+        (Fixation Outside AOI by Count: proportion of fixations
+        without a mapped word, 0.0 to 1.0).
     """
     return (
-        fixations.group_by(['trial', 'page'])
+        fixations.group_by(['trial', 'page'], maintain_order=True)
         .agg(
             [
                 (pl.col('word_idx').is_null()).sum().alias('fix_outside_aoi'),
@@ -424,7 +426,10 @@ def fixation_outside_aoi_percentage_by_count(fixations: pl.DataFrame) -> pl.Data
             ],
         )
         .with_columns(
-            (pl.col('fix_outside_aoi') / pl.col('total_fixations')).alias('FOAC'),
+            pl.when(pl.col('total_fixations') > 0)
+            .then(pl.col('fix_outside_aoi') / pl.col('total_fixations'))
+            .otherwise(None)
+            .alias('FOAC'),
         )
         .select(['trial', 'page', 'FOAC'])
     )
@@ -442,10 +447,12 @@ def fixation_outside_aoi_percentage_by_duration(fixations: pl.DataFrame) -> pl.D
     Returns
     -------
     pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, and ``FOAD``.
+        DataFrame with columns ``trial``, ``page``, and ``FOAD``
+        (Fixation Outside AOI by Duration: proportion of fixation
+        duration without a mapped word, 0.0 to 1.0).
     """
     return (
-        fixations.group_by(['trial', 'page'])
+        fixations.group_by(['trial', 'page'], maintain_order=True)
         .agg(
             [
                 pl.when(pl.col('word_idx').is_null())
@@ -457,7 +464,10 @@ def fixation_outside_aoi_percentage_by_duration(fixations: pl.DataFrame) -> pl.D
             ],
         )
         .with_columns(
-            (pl.col('duration_outside_aoi') / pl.col('total_duration')).alias('FOAD'),
+            pl.when(pl.col('total_duration') > 0)
+            .then(pl.col('duration_outside_aoi') / pl.col('total_duration'))
+            .otherwise(None)
+            .alias('FOAD'),
         )
         .select(['trial', 'page', 'FOAD'])
     )
