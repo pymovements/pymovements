@@ -48,6 +48,7 @@ Supported Drift Correction Algorithms
 """
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import numpy as np
@@ -100,10 +101,17 @@ def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     )
 
 
-DEFAULT_WOC_ALGORITHMS: list[str] = [
-    'attach', 'chain', 'cluster', 'merge', 'regress',
-    'segment', 'slice', 'split', 'stretch',
+ALL_DRIFT_ALGORITHMS: list[str] = [
+    'attach', 'chain', 'cluster', 'compare', 'merge', 'regress',
+    'segment', 'slice', 'split', 'stretch', 'warp',
 ]
+
+
+def _has_word_x_coords(aois: pl.DataFrame, kwargs: dict[str, Any]) -> bool:
+    """Check if word X coordinates are available in kwargs or aois DataFrame."""
+    if 'word_XY' in kwargs:
+        return True
+    return 'start_x' in aois.columns and 'end_x' in aois.columns
 
 
 def create_corrected_fixations_locations(
@@ -122,7 +130,9 @@ def create_corrected_fixations_locations(
         AOIs dataframe for line position extraction.
     algorithm: str | list[str]
         Name of drift algorithm or a list of algorithm names to combine via Wisdom of the Crowd
-        (WoC) ensemble correction. Default is 'wisdom_of_the_crowd'.
+        (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which includes all
+        drift algorithms. If word X coordinates ('start_x', 'end_x') are not present in aois,
+        'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
     **kwargs: Any
         Additional keyword arguments passed to underlying drift correction algorithm.
 
@@ -141,6 +151,9 @@ def create_corrected_fixations_locations(
 
     fixationXY_arr = np.array(fixationXY)
 
+    kwargs_copy = dict(kwargs)
+    word_xy_arg = kwargs_copy.pop('word_XY', None)
+
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) == 0:
             raise ValueError('At least one algorithm must be provided in the algorithm list.')
@@ -148,21 +161,54 @@ def create_corrected_fixations_locations(
             return create_corrected_fixations_locations(
                 events, aois, algorithm=algorithm[0], **kwargs,
             )
-        candidate_algos = list(algorithm)
+        candidate_algos = []
+        has_word_coords = word_xy_arg is not None or _has_word_x_coords(aois, kwargs)
+        excluded_algos = []
+        for algo in algorithm:
+            if algo in {'compare', 'warp'} and not has_word_coords:
+                excluded_algos.append(algo)
+            else:
+                candidate_algos.append(algo)
+        if excluded_algos:
+            warnings.warn(
+                "Word X coordinates ('start_x', 'end_x') are not available in aois. "
+                f"Automatically excluding {excluded_algos} from Wisdom of the Crowd ensemble.",
+                UserWarning,
+                stacklevel=2,
+            )
     elif isinstance(algorithm, str):
         if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
-            candidate_algos = list(DEFAULT_WOC_ALGORITHMS)
+            candidate_algos = list(ALL_DRIFT_ALGORITHMS)
+            if not (word_xy_arg is not None or _has_word_x_coords(aois, kwargs)):
+                warnings.warn(
+                    "Word X coordinates ('start_x', 'end_x') are not available in aois. "
+                    "Automatically excluding 'compare' and 'warp' from Wisdom of the Crowd "
+                    'ensemble.',
+                    UserWarning,
+                    stacklevel=2,
+                )
+                candidate_algos = [
+                    algo for algo in candidate_algos if algo not in {'compare', 'warp'}
+                ]
         else:
-            if algorithm in {'compare', 'warp'} and 'word_XY' not in kwargs:
-                word_x = (aois['start_x'] + aois['end_x']) / 2.0
-                word_y = (aois['start_y'] + aois['end_y']) / 2.0
-                target_arg = np.column_stack([word_x.to_numpy(), word_y.to_numpy()])
+            if algorithm in {'compare', 'warp'}:
+                if word_xy_arg is not None:
+                    target_arg = word_xy_arg
+                elif _has_word_x_coords(aois, kwargs):
+                    word_x = (aois['start_x'] + aois['end_x']) / 2.0
+                    word_y = (aois['start_y'] + aois['end_y']) / 2.0
+                    target_arg = np.column_stack([word_x.to_numpy(), word_y.to_numpy()])
+                else:
+                    raise ValueError(
+                        f"Algorithm '{algorithm}' requires word X coordinates ('start_x', 'end_x') "
+                        "in aois DataFrame or 'word_XY' keyword argument.",
+                    )
             else:
                 target_arg = np.array(_get_lines_of_text_from_aois(aois))
 
             func = getattr(da, algorithm)
             # pylint: disable=too-many-function-args
-            return func(fixationXY_arr, target_arg, **kwargs)
+            return func(fixationXY_arr, target_arg, **kwargs_copy)
     else:
         raise TypeError('algorithm must be a string or a list of strings.')
 
@@ -193,7 +239,9 @@ def add_corrected_fixations(
     aois: pl.DataFrame
         Stimulus AOIs DataFrame.
     algorithm: str | list[str]
-        Name of drift algorithm or list of algorithm names. (default: 'wisdom_of_the_crowd')
+        Name of drift algorithm or list of algorithm names. Default is 'wisdom_of_the_crowd'.
+        If word X coordinates ('start_x', 'end_x') are not present in aois, 'compare' and 'warp'
+        are automatically excluded from the Wisdom of the Crowd ensemble with a UserWarning.
     trial_id: str | None
         Optional trial identifier to filter events and AOIs. (default: None)
     **kwargs: Any

@@ -120,6 +120,44 @@ def test_create_corrected_fixations_locations_invalid_type_raises(sample_events_
         )
 
 
+def test_create_corrected_fixations_locations_missing_word_x_coords_warns(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    aois_no_x = aois_df.drop(['start_x', 'end_x'])
+    with pytest.warns(
+        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are not available",
+    ):
+        locs = create_corrected_fixations_locations(events_df, aois_no_x)
+        assert locs.shape == (6, 2)
+
+    with pytest.warns(
+        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are not available",
+    ):
+        locs2 = create_corrected_fixations_locations(
+            events_df, aois_no_x, algorithm=['attach', 'compare'],
+        )
+        assert locs2.shape == (6, 2)
+
+
+def test_create_corrected_fixations_locations_single_compare_missing_x_coords_raises(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    aois_no_x = aois_df.drop(['start_x', 'end_x'])
+    with pytest.raises(ValueError, match="Algorithm 'compare' requires word X coordinates"):
+        create_corrected_fixations_locations(events_df, aois_no_x, algorithm='compare')
+
+
+def test_create_corrected_fixations_locations_explicit_word_xy(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    word_XY = np.array([[100.0, 100.0], [200.0, 200.0]])
+    locs = create_corrected_fixations_locations(
+        events_df, aois_df, algorithm='compare', word_XY=word_XY, n_nearest_lines=2,
+    )
+    assert locs.shape == (6, 2)
+
+
 def test_create_corrected_fixations_locations_invalid_location_raises():
     events_df = pl.DataFrame({'name': ['fixation'], 'trial': ['TRIAL1']})
     aois_df = pl.DataFrame({'start_y': [80.0], 'height': [40.0]})
