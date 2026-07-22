@@ -81,8 +81,8 @@ class Experiment:
       right=None, model=None, version=None, vendor=None, mount=None))
 
     We can also access the screen boundaries in degrees of visual angle via the
-    :py:attr:`~pymovements.Screen` object. This only works if the
-    `distance_cm` attribute is specified.
+    :py:attr:`~pymovements.Experiment.screen` attribute. This only works if the
+    :py:attr:`~pymovements.Screen.distance_cm` attribute is specified.
 
     >>> experiment.screen.x_min_dva# doctest:+ELLIPSIS
     -15.59...
