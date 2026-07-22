@@ -126,6 +126,71 @@ def test_from_numpy_with_schema():
     assert gaze.n_components == 2
 
 
+def test_from_numpy_with_schema_column_indices():
+    array = np.array(
+        [
+            [101, 102, 103, 104],
+            [100, 100, 100, 100],
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+            [9, 8, 7, 6],
+            [5, 4, 3, 2],
+            [1, 2, 3, 4],
+            [5, 6, 7, 8],
+            [2, 3, 4, 5],
+            [6, 7, 8, 9],
+        ],
+        dtype=np.float64,
+    )
+
+    schema = ['t', 'd', 'x_pix', 'y_pix', 'x_pos', 'y_pos', 'x_vel', 'y_vel', 'x_acc', 'y_acc']
+
+    experiment = Experiment(
+        screen_width_px=1280,
+        screen_height_px=1024,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=None,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+
+    gaze = from_numpy(
+        samples=array,
+        schema=schema,
+        experiment=experiment,
+        time_column=0,
+        time_unit='ms',
+        distance_column=1,
+        pixel_columns=[2, 3],
+        position_columns=[4, 5],
+        velocity_columns=[6, 7],
+        acceleration_columns=[8, 9],
+    )
+
+    expected = pl.DataFrame(
+        {
+            'time': [101, 102, 103, 104],
+            'distance': [100, 100, 100, 100],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+            'velocity': [[1, 5], [2, 6], [3, 7], [4, 8]],
+            'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
+        },
+        schema={
+            'time': pl.Int64,
+            'distance': pl.Float64,
+            'pixel': pl.List(pl.Float64),
+            'position': pl.List(pl.Float64),
+            'velocity': pl.List(pl.Float64),
+            'acceleration': pl.List(pl.Float64),
+        },
+    )
+
+    assert_frame_equal(gaze.samples, expected)
+    assert gaze.n_components == 2
+
+
 def test_from_numpy_with_trial_id():
     array = np.array(
         [
@@ -156,6 +221,56 @@ def test_from_numpy_with_trial_id():
         trial_columns='trial_id',
         time_column='t',
         pixel_columns=['x_pix', 'y_pix'],
+    )
+
+    expected = pl.DataFrame(
+        {
+            'trial_id': [1, 1, 2, 2],
+            'time': [101, 102, 103, 104],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+        },
+        schema={
+            'trial_id': pl.Float64,
+            'time': pl.Int64,
+            'pixel': pl.List(pl.Float64),
+        },
+    )
+
+    assert_frame_equal(gaze.samples, expected)
+    assert gaze.n_components == 2
+    assert gaze.trial_columns == ['trial_id']
+
+
+def test_from_numpy_with_trial_id_column_index():
+    array = np.array(
+        [
+            [1, 1, 2, 2],
+            [101, 102, 103, 104],
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+        ],
+        dtype=np.float64,
+    )
+
+    schema = ['trial_id', 't', 'x_pix', 'y_pix']
+
+    experiment = Experiment(
+        screen_width_px=1280,
+        screen_height_px=1024,
+        screen_width_cm=38,
+        screen_height_cm=30,
+        distance_cm=None,
+        origin='upper left',
+        sampling_rate=1000.0,
+    )
+
+    gaze = from_numpy(
+        samples=array,
+        schema=schema,
+        experiment=experiment,
+        trial_columns=0,
+        time_column='t',
+        pixel_columns=[2, 3],
     )
 
     expected = pl.DataFrame(

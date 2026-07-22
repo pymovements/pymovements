@@ -33,6 +33,55 @@ from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 
 
+def _resolve_column_index(
+        column: str | int | None,
+        available_columns: list[str],
+) -> str | None:
+    """Resolve a single integer column index to its column name.
+
+    Parameters
+    ----------
+    column: str | int | None
+        A column name, a column index, or None.
+    available_columns: list[str]
+        The list of column names to resolve an integer index against.
+
+    Returns
+    -------
+    str | None
+        The resolved column name, or None if ``column`` is None.
+    """
+    if isinstance(column, int):
+        return available_columns[column]
+    return column
+
+
+def _resolve_column_indices(
+        columns: list[str] | list[int] | None,
+        available_columns: list[str],
+) -> list[str] | None:
+    """Resolve integer column indices to their column names.
+
+    Parameters
+    ----------
+    columns: list[str] | list[int] | None
+        A list of column names/indices, or None.
+    available_columns: list[str]
+        The list of column names to resolve integer indices against.
+
+    Returns
+    -------
+    list[str] | None
+        The resolved column names, or None if ``columns`` is None.
+    """
+    if columns is None:
+        return None
+    return [
+        available_columns[column] if isinstance(column, int) else column
+        for column in columns
+    ]
+
+
 def from_numpy(
         samples: np.ndarray | None = None,
         experiment: Experiment | None = None,
@@ -47,14 +96,14 @@ def from_numpy(
         distance: np.ndarray | None = None,
         schema: list[str] | None = None,
         orient: Literal['col', 'row'] = 'col',
-        trial_columns: str | list[str] | None = None,
-        time_column: str | None = None,
+        trial_columns: str | int | list[str] | list[int] | None = None,
+        time_column: str | int | None = None,
         time_unit: str | None = None,
-        pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
-        velocity_columns: list[str] | None = None,
-        acceleration_columns: list[str] | None = None,
-        distance_column: str | None = None,
+        pixel_columns: list[str] | list[int] | None = None,
+        position_columns: list[str] | list[int] | None = None,
+        velocity_columns: list[str] | list[int] | None = None,
+        acceleration_columns: list[str] | list[int] | None = None,
+        distance_column: str | int | None = None,
         data: np.ndarray | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a numpy array.
@@ -96,31 +145,37 @@ def from_numpy(
     orient: Literal['col', 'row']
         Whether to interpret the two-dimensional samples data as columns or as rows.
         (default: 'col')
-    trial_columns: str | list[str] | None
-        The name of the trial columns in the samples data frame. If the list is empty or None,
-        the samples data frame is assumed to contain only one trial. If the list is not empty,
-        the samples data frame is assumed to contain multiple trials, and the transformation
-        methods will be applied to each trial separately. (default: None)
-    time_column: str | None
-        The name of the timestamp column in the samples data frame. (default: None)
+    trial_columns: str | int | list[str] | list[int] | None
+        The name(s) or index/indices (into ``schema``) of the trial columns in the samples data
+        frame. If the list is empty or None, the samples data frame is assumed to contain only
+        one trial. If the list is not empty, the samples data frame is assumed to contain multiple
+        trials, and the transformation methods will be applied to each trial separately.
+        (default: None)
+    time_column: str | int | None
+        The name or index (into ``schema``) of the timestamp column in the samples data frame.
+        (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the samples data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
-    pixel_columns: list[str] | None
-        The name of the pixel position columns in the samples data frame. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the samples data frame. (default: None)
-    velocity_columns: list[str] | None
-        The name of the dva velocity columns in the samples data frame. (default: None)
-    acceleration_columns: list[str] | None
-        The name of the dva acceleration columns in the samples data frame. (default: None)
-    distance_column: str | None
-        The name of the column containing eye-to-screen distance in millimeters for each sample
-        in the samples data frame. If specified, the column will be used for pixel to dva
-        transformations. If not specified, the constant eye-to-screen distance will be taken from
-        the experiment definition. (default: None)
+    pixel_columns: list[str] | list[int] | None
+        The name(s) or index/indices (into ``schema``) of the pixel position columns in the
+        samples data frame. (default: None)
+    position_columns: list[str] | list[int] | None
+        The name(s) or index/indices (into ``schema``) of the dva position columns in the samples
+        data frame. (default: None)
+    velocity_columns: list[str] | list[int] | None
+        The name(s) or index/indices (into ``schema``) of the dva velocity columns in the samples
+        data frame. (default: None)
+    acceleration_columns: list[str] | list[int] | None
+        The name(s) or index/indices (into ``schema``) of the dva acceleration columns in the
+        samples data frame. (default: None)
+    distance_column: str | int | None
+        The name or index (into ``schema``) of the column containing eye-to-screen distance in
+        millimeters for each sample in the samples data frame. If specified, the column will be
+        used for pixel to dva transformations. If not specified, the constant eye-to-screen
+        distance will be taken from the experiment definition. (default: None)
     data: np.ndarray | None
         Two-dimensional samples data represented as a numpy ndarray. (default: None)
         .. deprecated:: v0.23.0
@@ -254,18 +309,27 @@ def from_numpy(
     _checks.check_is_mutual_exclusive(samples=samples, distance=distance)
 
     if samples is not None:
+        samples_df = pl.from_numpy(data=samples, schema=schema, orient=orient)
+        available_columns = samples_df.columns
+
+        resolved_trial_columns: str | list[str] | None
+        if isinstance(trial_columns, list):
+            resolved_trial_columns = _resolve_column_indices(trial_columns, available_columns)
+        else:
+            resolved_trial_columns = _resolve_column_index(trial_columns, available_columns)
+
         return Gaze(
-            samples=pl.from_numpy(data=samples, schema=schema, orient=orient),
+            samples=samples_df,
             experiment=experiment,
             events=events,
-            trial_columns=trial_columns,
-            time_column=time_column,
+            trial_columns=resolved_trial_columns,
+            time_column=_resolve_column_index(time_column, available_columns),
             time_unit=time_unit,
-            pixel_columns=pixel_columns,
-            position_columns=position_columns,
-            velocity_columns=velocity_columns,
-            acceleration_columns=acceleration_columns,
-            distance_column=distance_column,
+            pixel_columns=_resolve_column_indices(pixel_columns, available_columns),
+            position_columns=_resolve_column_indices(position_columns, available_columns),
+            velocity_columns=_resolve_column_indices(velocity_columns, available_columns),
+            acceleration_columns=_resolve_column_indices(acceleration_columns, available_columns),
+            distance_column=_resolve_column_index(distance_column, available_columns),
         )
 
     # Initialize with an empty DataFrame, as every column specifier could be None.
