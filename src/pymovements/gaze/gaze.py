@@ -1549,17 +1549,17 @@ class Gaze:
             offset_column=offset_column,
         )
 
-    @property
+    @property  # type: ignore[no-redef]
     def schema(self) -> polars.type_aliases.SchemaDict:
-        """Schema of samples dataframe."""
+        """Return schema of samples dataframe."""
         return self.samples.schema
 
-    @property
+    @property  # type: ignore[no-redef]
     def columns(self) -> list[str]:
-        """List of column names in samples dataframe."""
+        """Return list of column names in samples dataframe."""
         return self.samples.columns
 
-    @property
+    @property  # type: ignore[no-redef]
     @deprecated(
         reason='Please use Gaze.samples instead. '
                'This property will be removed in v0.28.0.',

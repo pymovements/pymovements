@@ -224,7 +224,7 @@ class Dataset:
 
         return self
 
-    @property
+    @property  # type: ignore[no-redef]
     def events(self) -> tuple[Events, ...]:
         """Return ``Events`` for all ``Gaze`` objects in the ``Dataset``.
 
@@ -560,7 +560,7 @@ class Dataset:
             events_dirname=events_dirname,
             extension=extension,
         )
-        self.events = events
+        self.events = events  # type: ignore[assignment]
         return self
 
     def load_stimuli(self) -> None:
@@ -1419,9 +1419,9 @@ class Dataset:
         )
         return self
 
-    @property
+    @property  # type: ignore[no-redef]
     def path(self) -> Path:
-        """The path to the dataset directory.
+        """Return the path to the dataset directory.
 
         The dataset path points to the dataset directory under the root path. Per default, the
         dataset path points to the exact same directory as the root path. Add ``dataset_dirname``

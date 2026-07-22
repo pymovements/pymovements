@@ -342,9 +342,9 @@ class DatasetPaths:
         """
         return self.dataset / self._preprocessed
 
-    @property
+    @property  # type: ignore[no-redef]
     def raw(self) -> Path:
-        """The path to the directory of the raw data.
+        """Return the path to the directory of the raw data.
 
         The path points to the raw data directory under the dataset path.
 
@@ -470,9 +470,9 @@ class DatasetPaths:
         """
         return self.dataset / self._precomputed_reading_measures
 
-    @property
+    @property  # type: ignore[no-redef]
     def downloads(self) -> Path:
-        """The path to the directory of the raw data.
+        """Return the path to the directory of the raw data.
 
         The download path points to the download directory under the root path.
 

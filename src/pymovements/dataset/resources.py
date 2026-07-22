@@ -49,14 +49,6 @@ class ResourceDefinition:
         The content type of the resource.
     source: WebSource | None
         The source of the downloadable resource. (default: None)
-    url: str | None
-        The URL to the downloadable resource. (default: None)
-    filename: str | None
-        The target filename of the downloadable resource. (default: None)
-    md5: str | None
-        The MD5 checksum of the downloadable resource. (default: None)
-    mirrors: list[str] | None
-        A list of additional mirror URLs to download the resource. (default: None)
     filename_pattern: str | None
         The filename pattern of the resource files. Named groups will
         be parsed as metadata will appear in the `fileinfo` dataframe. (default: None)
@@ -68,6 +60,14 @@ class ResourceDefinition:
         by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
     load_kwargs: dict[str, Any]
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
+    url: str | None
+        The URL to the downloadable resource. (default: None)
+    filename: str | None
+        The target filename of the downloadable resource. (default: None)
+    md5: str | None
+        The MD5 checksum of the downloadable resource. (default: None)
+    mirrors: list[str] | None
+        A list of additional mirror URLs to download the resource. (default: None)
 
     Parameters
     ----------
@@ -155,14 +155,14 @@ class ResourceDefinition:
             load_kwargs = {}
         self.load_kwargs = load_kwargs
 
-    @property
+    @property  # type: ignore[no-redef]
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
     def url(self) -> str | None:  # noqa: F811
-        """The URL to the downloadable resource.
+        """Return the URL to the downloadable resource.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -187,14 +187,14 @@ class ResourceDefinition:
         else:
             self.source = replace(self.source, url=data)
 
-    @property
+    @property  # type: ignore[no-redef]
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
     def filename(self) -> str | None:  # noqa: F811
-        """The target filename of the downloadable resource. This may be an archive.
+        """Return the target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -219,14 +219,14 @@ class ResourceDefinition:
         else:
             self.source = replace(self.source, filename=data)
 
-    @property
+    @property  # type: ignore[no-redef]
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
     def md5(self) -> str | None:  # noqa: F811
-        """The MD5 checksum of the downloadable resource.
+        """Return the MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -251,14 +251,14 @@ class ResourceDefinition:
         else:
             self.source = replace(self.source, md5=data)
 
-    @property
+    @property  # type: ignore[no-redef]
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
     def mirrors(self) -> list[str] | None:  # noqa: F811
-        """A list of additional mirror URLs to download the resource.
+        """Return the list of additional mirror URLs.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -331,6 +331,10 @@ class ResourceDefinition:
             ``dict`` representation of ``ResourceDefinition``.
         """
         data = asdict(self)
+
+        # Remove deprecated property fields (derived from source)
+        for attr in ('url', 'filename', 'md5', 'mirrors'):
+            data.pop(attr, None)
 
         # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:
