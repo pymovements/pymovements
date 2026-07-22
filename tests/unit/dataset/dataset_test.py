@@ -2271,7 +2271,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
     [
         pytest.param(
             {
-                'columns': ['time'],
+                'subset': ['time'],
                 'events': False,
             },
             1,
@@ -2280,7 +2280,7 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
         ),
         pytest.param(
             {
-                'columns': ['onset', 'offset'],
+                'subset': ['onset', 'offset'],
                 'samples': False,
             },
             0,
