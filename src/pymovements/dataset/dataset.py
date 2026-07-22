@@ -1199,7 +1199,7 @@ class Dataset:
 
         Parameters
         ----------
-        columns: list[str] | None
+        columns: list[str]
             List of column names to check for null values.
         criterion: Literal['all', 'any']
             If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
