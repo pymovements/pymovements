@@ -57,9 +57,8 @@ class ResourceDefinition:
     load_function: str | None
         The name of the function used to load the data files. If None, the function is determined
         by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
-    load_kwargs: dict[str, Any] | None
+    load_kwargs: dict[str, Any]
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
-        (default: None)
 
     Parameters
     ----------
@@ -101,7 +100,7 @@ class ResourceDefinition:
     filename_pattern_schema_overrides: dict[str, type] | None = None
 
     load_function: str | None = None
-    load_kwargs: dict[str, Any] | None = None
+    load_kwargs: dict[str, Any]
 
     def __init__(
             self,
@@ -137,6 +136,9 @@ class ResourceDefinition:
         self.filename_pattern = filename_pattern
         self.filename_pattern_schema_overrides = filename_pattern_schema_overrides
         self.load_function = load_function
+
+        if load_kwargs is None:
+            load_kwargs = {}
         self.load_kwargs = load_kwargs
 
     @property
@@ -462,38 +464,6 @@ class ResourceDefinitions(list):
         """
         return any(resource.content == content for resource in self)
 
-
-class _HasResourcesIndexer:
-    """Helper class for :py:meth:`~pymovements.dataset.DatasetDefinition.has_resources` property.
-
-    Provides dynamic inference on the presence of any
-    :py:meth:`~pymovements.dataset.DatasetDefinition.resources`.
-    """
-
-    def __init__(self, resources: ResourceDefinitions) -> None:
-        self._resources = resources
-
-    def set_resources(self, resources: ResourceDefinitions) -> None:
-        """Set dataset definition resources for lookup."""
-        self._resources = resources
-
-    def __getitem__(self, key: str) -> bool:
-        """Lookup if resources of specific content are set."""
-        return self.__bool__() and self._resources.has_content(key)
-
-    def __bool__(self) -> bool:
-        """Lookup if resources of any content are set."""
-        return bool(self._resources)
-
-    def __eq__(self, other: Any) -> bool:
-        """Return self == other.
-
-        Automatically casts to bool if compared to a boolean.
-        """
-        if isinstance(other, bool):  # Needed to check equality against booleans.
-            return self.__bool__() == other
-        return super().__eq__(other)
-
-    def __repr__(self) -> str:
-        """Return string with boolean value whether any resources are set."""
-        return str(self.__bool__())
+    def __getitem__(self, index: int) -> ResourceDefinition:
+        """Get ``ResourceDefinition`` at index."""
+        return super().__getitem__(index)

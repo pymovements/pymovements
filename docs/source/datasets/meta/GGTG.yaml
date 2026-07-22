@@ -46,11 +46,23 @@ resources:
   source:
     url: https://osf.io/download/udmrk/
     filename: measures.zip
-    md5: 63d33923d04f56c95a3d52e5b89a4ebd
+    md5: 21a3a929a16239147b81f44f6deed938
   filename_pattern: '{subject_id}.csv'
   load_kwargs:
     trial_columns:
     - stimulus
+- content: textstimulus
+  source:
+    url: https://osf.io/download/wtv8d/
+    filename: aoi-csvs.zip
+    md5: 0132c0d8dbcb04d2ecc25ade707f231d
+  filename_pattern: '{stimulus}.(?P<unit>word|char).csv'
+  load_kwargs:
+    aoi_column: content
+    start_x_column: left
+    end_x_column: right
+    start_y_column: top
+    end_y_column: bottom
 experiment:
   eyetracker:
     sampling_rate: 1000

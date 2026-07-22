@@ -14,6 +14,8 @@
      - Overview of the :py:class:`~pymovements.Gaze` class
    * - :doc:`events`
      - Overview of the :py:class:`~pymovements.Events` class
+   * - :doc:`transforms`
+     - Overview of transformation functions
    * - :doc:`measures`
      - Overview of eye movement measures
    * - :doc:`stimulus`
@@ -22,6 +24,8 @@
      - Overview of data generation functionality
    * - :doc:`plotting`
      - Overview of plotting functionality
+   * - :doc:`exceptions`
+     - Overview of exceptions
    * - :doc:`extending`
      - Overview on how to extend pymovements with your own functions
 
@@ -34,8 +38,10 @@
    metadata
    gaze
    events
+   transforms
    measures
    stimulus
    synthetic
    plotting
+   exceptions
    extending

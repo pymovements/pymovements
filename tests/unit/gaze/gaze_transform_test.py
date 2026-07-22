@@ -45,7 +45,7 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            pm.gaze.transforms.downsample, {'factor': 1},
+            pm.transforms.downsample, {'factor': 1},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -825,7 +825,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            pm.gaze.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
+            pm.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {

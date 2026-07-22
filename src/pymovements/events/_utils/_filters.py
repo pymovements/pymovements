@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from pymovements.gaze.transforms_numpy import consecutive
+from pymovements.transforms.numpy import consecutive
 
 
 def filter_candidates_remove_nans(

@@ -164,7 +164,7 @@ class WritingSystem:
         )
 
 
-@repr_html(['aois'])
+@repr_html(['aois', 'metadata'])
 class TextStimulus:
     """A DataFrame for the text stimulus that the gaze data was recorded on.
 
@@ -200,6 +200,8 @@ class TextStimulus:
         Writing system of the text. If ``writing_system`` is a string,
         :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` is used for initialization.
         (default: ``'left-to-right'``)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     """
 
     def __init__(
@@ -216,6 +218,7 @@ class TextStimulus:
             page_column: str | None = None,
             trial_column: str | None = None,
             writing_system: WritingSystem | str = 'left-to-right',
+            metadata: dict[str, Any] | None = None,
     ) -> None:
 
         self.aois = aois.clone()
@@ -228,6 +231,7 @@ class TextStimulus:
         self.end_y_column = end_y_column
         self.page_column = page_column
         self.trial_column = trial_column
+        self.metadata = metadata if metadata is not None else {}
 
         if isinstance(writing_system, str):
             self.writing_system = WritingSystem.from_descriptor(writing_system)
@@ -273,6 +277,7 @@ class TextStimulus:
             row: pl.DataFrame.row,
             x_eye: str,
             y_eye: str,
+            max_matches: int | None = None,
     ) -> pl.DataFrame:
         """Return the AOI that contains the given gaze row.
 
@@ -292,6 +297,10 @@ class TextStimulus:
             Name of the x eye coordinate field in ``row``.
         y_eye: str
             Name of the y eye coordinate field in ``row``.
+        max_matches: int | None
+            If not ``None``, reduce the number of matches to this amount. This may happen in case of
+            overlapping AOIs.
+            (default: None)
 
         Returns
         -------
@@ -311,7 +320,10 @@ class TextStimulus:
         and the lookup returns a single row of `None` values.
 
         """
-        return _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
+        aois = _get_aoi(self, row=row, x_eye=x_eye, y_eye=y_eye)
+        if max_matches:
+            aois = aois.head(max_matches)
+        return aois
 
     @staticmethod
     def from_csv(
@@ -327,6 +339,7 @@ class TextStimulus:
             page_column: str | None = None,
             trial_column: str | None = None,
             writing_system: WritingSystem | str = 'left-to-right',
+            metadata: dict[str, Any] | None = None,
             read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
@@ -363,6 +376,8 @@ class TextStimulus:
             Writing system of the text. If ``writing_system`` is a string,
             :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
             (default: ``'left-to-right'``)
+        metadata: dict[str, Any] | None
+            Dictionary containing additional metadata. (default: None)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -398,6 +413,7 @@ class TextStimulus:
             page_column=page_column,
             trial_column=trial_column,
             writing_system=writing_system,
+            metadata=metadata,
         )
 
 
@@ -446,6 +462,7 @@ def from_file(
         trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
         writing_system: WritingSystem | str = 'left-to-right',
+        metadata: dict[str, Any] | None = None,
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -482,6 +499,8 @@ def from_file(
     writing_system: WritingSystem | str
         Text writing system. See TextStimulus.__init__ for details.
         (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
 
     Returns
@@ -502,6 +521,7 @@ def from_file(
         trial_column=trial_column,
         read_csv_kwargs=custom_read_kwargs,
         writing_system=writing_system,
+        metadata=metadata,
     )
 
 

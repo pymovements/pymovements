@@ -51,7 +51,8 @@ def extract_archive(
     """Extract an archive.
 
     The archive type and possible compression are automatically detected from the file name.
-    If the file is compressed but not an archive, the call is dispatched to :py:func:`_decompress`.
+    If the file is compressed but not an archive, the file is decompressed into
+    ``destination_path``.
 
     Parameters
     ----------

@@ -241,7 +241,7 @@ class Events:
         join_on: str | list[str]
             Columns to join event properties on.
         """
-        self.frame = self.frame.join(event_properties, on=join_on, how='left')
+        self.frame = self.frame.join(event_properties, on=join_on, how='left', nulls_equal=True)
 
     def drop(
             self,
@@ -550,7 +550,7 @@ class Events:
         """Return a copy of an Events object.
 
         .. deprecated:: v0.23.0
-           Please use :py:meth:`~pymovements.events.Events.clone()` instead.
+           Please use :py:meth:`~pymovements.Events.clone()` instead.
            This function will be removed in v0.28.0.
 
         Returns
@@ -775,7 +775,9 @@ class Events:
             tmp_row['__y'] = y
 
             try:
-                aoi_row = aoi_dataframe.get_aoi(row=tmp_row, x_eye='__x', y_eye='__y')
+                aoi_row = aoi_dataframe.get_aoi(
+                    row=tmp_row, x_eye='__x', y_eye='__y', max_matches=1,
+                )
             except (KeyError, TypeError):  # tolerate common lookup/type errors per row
                 aoi_row = _empty_aoi_row()
             else:
@@ -795,7 +797,7 @@ class Events:
             out_rows.append(aoi_row)
 
         aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
-        self.frame = pl.concat([self.frame, aoi_df], how='horizontal')
+        self.frame = pl.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,
@@ -807,7 +809,7 @@ class Events:
             self.frame = self.frame.drop('location')
 
     def __eq__(self, other: Events) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Events` object."""
+        """Check equality between this and another :py:class:`~pymovements.Events` object."""
         frames_equal = self.frame.equals(other.frame, null_equal=True)
         trial_columns_equal = self.trial_columns == other.trial_columns
         return frames_equal and trial_columns_equal
