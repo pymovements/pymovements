@@ -150,14 +150,14 @@ class Dataset:
             float, int , str or a list of these. (default: None)
         events_dirname: str | None
             One-time usage of an alternative directory name to load data relative to
-            :py:attr:`~pymovements.Dataset`.path.
+            :py:attr:`~pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.events_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to load data relative to
-            :py:attr:`~pymovements.Dataset`.path.
+            :py:attr:`~pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.preprocessed_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -275,7 +275,7 @@ class Dataset:
     ) -> Dataset:
         """Infer information from filepaths and filenames.
 
-        Sets :py:attr:`~pymovements.Dataset`.fileinfo and
+        Sets :py:attr:`~pymovements.Dataset.fileinfo` and
         :py:attr:`~pymovements.Dataset.participants`.
 
         Parameters
@@ -388,9 +388,9 @@ class Dataset:
             (default: False)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset`.path.
+            :py:attr:`~pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.preprocessed_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -530,9 +530,9 @@ class Dataset:
         ----------
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset`.path.
+            :py:attr:`~pymovements.Dataset.path`.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.events_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`.
             (default: 'feather')
@@ -1214,11 +1214,11 @@ class Dataset:
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to dataset path.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.events_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to dataset path.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.preprocessed_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1245,7 +1245,7 @@ class Dataset:
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to dataset path.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.events_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1289,7 +1289,7 @@ class Dataset:
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to dataset path.
             This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset`.preprocessed_rootpath. (default: None)
+            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
