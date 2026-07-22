@@ -45,7 +45,7 @@ class ImageStimulus:
 
     def __init__(self, images: list[Path], metadata: dict[str, Any] | None = None) -> None:
         self.images = images
-        self.metadata = metadata or {}
+        self.metadata = metadata if metadata is not None else {}
 
     def show(self, stimulus_id: int, origin: str = 'upper') -> None:
         """Show image stimulus.

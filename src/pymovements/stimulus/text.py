@@ -231,7 +231,7 @@ class TextStimulus:
         self.end_y_column = end_y_column
         self.page_column = page_column
         self.trial_column = trial_column
-        self.metadata = metadata or {}
+        self.metadata = metadata if metadata is not None else {}
 
         if isinstance(writing_system, str):
             self.writing_system = WritingSystem.from_descriptor(writing_system)
