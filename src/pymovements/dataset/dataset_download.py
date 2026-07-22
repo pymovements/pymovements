@@ -21,16 +21,10 @@
 from __future__ import annotations
 
 import shutil
-from collections.abc import Sequence
-from pathlib import Path
-from urllib.error import URLError
-from warnings import warn
 
 from pymovements.dataset._utils._archives import extract_archive
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
-from pymovements.dataset.resources import ResourceDefinition
-from pymovements.dataset.websource import _download_file
 from pymovements.exceptions import UnknownFileType
 
 
@@ -95,26 +89,11 @@ def download_dataset(
         )
 
     for resource in downloadable_resources:
-        if not definition.mirrors:
-            mirrors = None
-        else:
-            # legacy mirrors defined mirror for each content type.
-            mirrors = definition.mirrors.get(resource.content, None)
-
-        if not mirrors:
-            resource.source.download(
-                target_dirpath=paths.downloads,
-                verbose=verbose,
-                verify_checksum=verify_checksum,
-            )
-        else:
-            _download_resource_with_legacy_mirrors(
-                mirrors=mirrors,
-                resource=resource,
-                target_dirpath=paths.downloads,
-                verify_checksum=verify_checksum,
-                verbose=verbose,
-            )
+        resource.source.download(
+            target_dirpath=paths.downloads,
+            verbose=verbose,
+            verify_checksum=verify_checksum,
+        )
 
     if extract:
         extract_dataset(
@@ -184,44 +163,3 @@ def extract_dataset(
                     )
                 except UnknownFileType:  # just copy file to target if not an archive.
                     shutil.copy(source_path, destination_dirpath / resource.source.filename)
-
-
-def _download_resource_with_legacy_mirrors(
-        mirrors: Sequence[str],
-        resource: ResourceDefinition,
-        target_dirpath: Path,
-        verify_checksum: bool,
-        verbose: bool,
-) -> None:
-    """Download resource with mirrors."""
-    if resource.source is None or resource.source.url is None:
-        raise AttributeError('WebSource.url must not be None')
-    if resource.source.filename is None:
-        raise AttributeError('WebSource.filename must not be None')
-
-    for mirror_idx, mirror in enumerate(mirrors, start=1):
-        mirror_url = f'{mirror}{resource.source.url}'
-        try:
-            _download_file(
-                url=mirror_url,
-                dirpath=target_dirpath,
-                filename=resource.source.filename,
-                md5=resource.source.md5,
-                verify_checksum=verify_checksum,
-                verbose=verbose,
-            )
-            return  # Download successful
-        # pylint: disable=overlapping-except
-        except (URLError, OSError, RuntimeError) as error:
-            # Error downloading the resource, try next mirror
-            if mirror_idx < len(mirrors):
-                warning = UserWarning(
-                    f'Downloading resource from mirror {mirror_url} failed.'
-                    f' Trying next mirror ({len(mirrors) - mirror_idx} remaining).',
-                )
-                warning.__cause__ = error
-                warn(warning)
-
-    raise RuntimeError(
-        f'Downloading resource {resource.source.url} failed for all mirrors.',
-    )
