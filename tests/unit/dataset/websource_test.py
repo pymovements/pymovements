@@ -27,6 +27,7 @@ import pytest
 
 from pymovements.dataset.websource import _DownloadProgressBar
 from pymovements.dataset.websource import _get_redirected_url
+from pymovements.dataset.websource import ChecksumError
 from pymovements.dataset.websource import WebSource
 
 
@@ -197,6 +198,70 @@ def test_websource_download(tmp_path, verbose):
 
 
 @pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+@pytest.mark.parametrize(
+    'verify_checksum',
+    [
+        pytest.param(False, id='verify_checksum_false'),
+        pytest.param(True, id='verify_checksum_true'),
+    ],
+)
+def test_websource_download_existing_file_verified(tmp_path, verbose, verify_checksum):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+    filepath = source.download(tmp_path, verify_checksum=verify_checksum, verbose=verbose)
+
+    assert filepath.exists()
+    last_mtime = filepath.stat().st_mtime
+
+    new_filepath = source.download(tmp_path, verify_checksum=verify_checksum, verbose=verbose)
+
+    new_mtime = filepath.stat().st_mtime
+
+    assert new_filepath.exists()
+    assert new_filepath == filepath
+    assert new_mtime == last_mtime
+
+
+@pytest.mark.network
+@pytest.mark.parametrize(
+    'verbose',
+    [
+        pytest.param(False, id='verbose_false'),
+        pytest.param(True, id='verbose_true'),
+    ],
+)
+def test_websource_download_existing_file_checksum_fail(make_text_file, verbose):
+    source = WebSource(
+        url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
+        filename='pymovements-0.4.0.tar.gz',
+        md5='52bbf03a7c50ee7152ccb9d357c2bb30',
+    )
+
+    filepath = make_text_file(source.filename)
+
+    assert filepath.exists()
+    last_mtime = filepath.stat().st_mtime
+
+    new_filepath = source.download(filepath.parent, verify_checksum=True, verbose=verbose)
+
+    new_mtime = filepath.stat().st_mtime
+
+    assert new_filepath.exists()
+    assert new_filepath == filepath
+    assert new_mtime > last_mtime
+
+
+@pytest.mark.network
 def test_websource_download_md5_None(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
@@ -254,7 +319,7 @@ def test_websource_download_http_failure(tmp_path):
 
 
 @pytest.mark.network
-def test_websource_download_with_invalid_md5(tmp_path):
+def test_websource_download_file_not_found(tmp_path):
     source = WebSource(
         url='https://github.com/pymovements/pymovements/archive/refs/tags/v0.4.0.tar.gz',
         filename='pymovements-0.4.0.tar.gz',
@@ -264,8 +329,11 @@ def test_websource_download_with_invalid_md5(tmp_path):
     with pytest.raises(RuntimeError) as excinfo:
         source.download(tmp_path)
 
-    message = f"File {tmp_path / source.filename} not found or download corrupted."
-    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    message = (
+        f"MD5 checksum mismatch for file '{tmp_path / source.filename}'"
+        f": expected '{source.md5}', got '52bbf03a7c50ee7152ccb9d357c2bb30'"
+    )
+    assert isinstance(excinfo.value.__cause__, ChecksumError)
     assert str(excinfo.value.__cause__) == message
 
 
@@ -371,6 +439,7 @@ def test_websource_download_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -405,6 +474,7 @@ def test_websource_download_mirror_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror.example.com/test.gz.tar',
@@ -412,6 +482,7 @@ def test_websource_download_mirror_fail(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -449,6 +520,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror1.example.com/test.gz.tar',
@@ -456,6 +528,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror2.example.com/test.gz.tar',
@@ -463,6 +536,7 @@ def test_websource_download_fail_two_mirrors(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -489,6 +563,7 @@ def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_pa
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror.example.com/test.gz.tar',
@@ -496,6 +571,7 @@ def test_websource_download_first_mirror(mock_download_file, side_effect, tmp_pa
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
 
@@ -527,6 +603,7 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror1.example.com/test.gz.tar',
@@ -534,6 +611,7 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
         mock.call(
             url='https://mirror2.example.com/test.gz.tar',
@@ -541,5 +619,62 @@ def test_websource_download_first_of_two_mirrors_gaze_fails(
             filename='test.gz.tar',
             md5='52bbf03a7c50ee7152ccb9d357c2bb30',
             verbose=True,
+            verify_checksum=True,
         ),
     ])
+
+
+@pytest.mark.parametrize(
+    ('filename', 'expected_checksum'),
+    [
+        pytest.param('rda_test_file.rda', 'db8a1766878007ccfdcbd112cb084249', id='rda'),
+        pytest.param('monocular_example.csv', 'b56e208f6442bab645789defe865183b', id='csv'),
+    ],
+)
+class TestWebSourceChecksum:
+    def test_websource_checksum(self, filename, expected_checksum, testfiles_dirpath):
+        path = testfiles_dirpath / filename
+
+        result = WebSource.checksum(path)
+
+        assert result == expected_checksum
+
+    def test_websource_verify_checksum_success(
+            self, filename, expected_checksum, testfiles_dirpath,
+    ):
+        path = testfiles_dirpath / filename
+
+        WebSource(url='test', md5=expected_checksum).verify_checksum(path)
+
+    def test_websource_verify_checksum_mismatch(
+            self, filename, expected_checksum, testfiles_dirpath,
+    ):
+        path = testfiles_dirpath / filename
+
+        wrong_checksum = '123456'
+
+        with pytest.raises(ChecksumError) as exc:
+            WebSource(url='test', md5=wrong_checksum).verify_checksum(path)
+
+        assert exc.value.actual == expected_checksum
+        assert exc.value.expected == wrong_checksum
+        assert exc.value.path == path
+        assert exc.value.algorithm == 'MD5'
+
+
+def test_websource_verify_checksum_no_checksum(make_text_file):
+    path = make_text_file('test.txt', 'test')
+
+    message = 'WebSource.md5 must be of type string but got NoneType'
+
+    with pytest.raises(TypeError, match=message):
+        WebSource(url='test', md5=None).verify_checksum(path)
+
+
+def test_websource_verify_checksum_no_file(tmp_path):
+    path = tmp_path / 'test.txt'
+
+    message = 'No such file or directory'
+
+    with pytest.raises(FileNotFoundError, match=message):
+        WebSource(url='test', md5='123456').verify_checksum(path)
