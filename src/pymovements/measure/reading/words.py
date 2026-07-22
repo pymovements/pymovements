@@ -144,6 +144,7 @@ def mark_skipped_tokens(
         fixated_tokens,
         on=['trial', 'page', 'word_idx'],
         how='left',
+        nulls_equal=True,
     )
 
     return out.with_columns(
