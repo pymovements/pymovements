@@ -19,83 +19,32 @@
 # SOFTWARE.
 """Module for fixation drift correction routines.
 
-References & Citations
-----------------------
-- **Abdulin & Komogortsev (2015)**: Abdulin, E. R., & Komogortsev, O. V. (2015).
-  Person verification via eye movement-driven text reading model.
-  In *2015 IEEE 7th International Conference on Biometrics Theory, Applications
-  and Systems (BTAS)* (pp. 1-8). IEEE.
-  https://doi.org/10.1109/BTAS.2015.7358786
-- **Al Madi (2025)**: Al Madi, N. (2025).
-  Identifying Eye Movement Patterns for An Adaptive Approach to Correcting
-  Eye Tracking Data in Reading Tasks.
-  *Proceedings of the ACM on Human-Computer Interaction*, 9(PACMHCI), 1-16.
-  https://osf.io/khrqp/overview
-- **Carr et al. (2022)**: Carr, J. W., Pescuma, V. N., Furlan, M., Ktori, M.,
-  & Crepaldi, D. (2022).
-  Algorithms for the automated correction of vertical drift in eye-tracking data.
-  *Behavior Research Methods*, 54(1), 287-310.
-  https://doi.org/10.3758/s13428-021-01554-0
-- **Cohen (2013)**: Cohen, A. L. (2013).
-  Software for the automatic correction of recorded eye fixation locations
-  in reading experiments.
-  *Behavior Research Methods*, 45(3), 679-683.
-  https://doi.org/10.3758/s13428-012-0280-3
-- **Glandorf & Schroeder (2021)**: Glandorf, D., & Schroeder, S. (2021).
-  Slice: an algorithm to assign fixations in multi-line texts.
-  *Procedia Computer Science*, 192, 2971-2979.
-  https://doi.org/10.1016/j.procs.2021.09.069
-- **Lima Sanches et al. (2015)**: Lima Sanches, C., Kise, K., & Augereau, O. (2015).
-  Eye gaze and text line matching for reading analysis.
-  In *Proceedings of the 2015 ACM International Joint Conference on Pervasive
-  and Ubiquitous Computing and Proceedings of the 2015 ACM International Symposium
-  on Wearable Computers (UbiComp '15)* (pp. 1227-1233).
-  https://doi.org/10.1145/2800835.2807936
-- **Lohmeier (2015)**: Lohmeier, S. (2015).
-  *Experimental evaluation and modelling of the comprehension of indirect anaphors
-  in a programming language* (Master's thesis). Technische Universität Berlin.
-- **Mercier et al. (2024a)**: Mercier, T. M., Budka, M., Vasilev, M. R.,
-  Kirkby, J. A., Angele, B., & Slattery, T. J. (2024).
-  Dual input stream transformer for vertical drift correction in eye-tracking reading data.
-  *IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)*, 46(12),
-  8715-8726. https://doi.org/10.1109/TPAMI.2024.3430686
-- **Mercier et al. (2024b)**: Mercier, T. M., Budka, M., Angele, B.,
-  Vasilev, M. R., Slattery, T. J., & Kirkby, J. A. (2024).
-  GazeGenie: Enhancing Multi-Line Reading Research with an Innovative User-Friendly Tool.
-  *arXiv preprint arXiv:2410.11873*.
-  https://doi.org/10.48550/arXiv.2410.11873
-- **Špakov et al. (2019)**: Špakov, O., Istance, H., Hyrskykari, A.,
-  Siirtola, H., & Räihä, K.-J. (2019).
-  Improving the performance of eye trackers with limited spatial accuracy and low
-  sampling rates for reading analysis by heuristic fixation-to-word mapping.
-  *Behavior Research Methods*, 51(6), 2661-2687.
-  https://doi.org/10.3758/s13428-018-1120-x
-
 Supported Drift Correction Algorithms
 -------------------------------------
 - **wisdom_of_the_crowd** (or **woc**) : *(Default)* Ensemble correction method combining
-  predictions across multiple algorithms via majority voting per fixation (Mercier et al., 2024b).
-- **attach** : Snaps each fixation to the vertically closest line of text (Carr et al., 2022).
+  predictions across multiple algorithms via majority voting per fixation
+  (:cite:p:`Mercier2024b`).
+- **attach** : Snaps each fixation to the vertically closest line of text (:cite:p:`Carr2022`).
 - **chain** : Groups fixations into reading chains based on spatio-temporal distance thresholds
-  and aligns each chain to line centers (Carr et al., 2022).
+  and aligns each chain to line centers (:cite:p:`Carr2022`).
 - **cluster** : Uses K-Means clustering to group fixation Y-coordinates into clusters matching
-  text lines (Carr et al., 2022).
+  text lines (:cite:p:`Carr2022`).
 - **compare** : Matches fixation sequences to candidate text line paths using Dynamic Time
-  Warping (DTW) (Lima Sanches et al., 2015; Carr et al., 2022).
+  Warping (DTW) (:cite:p:`LimaSanches2015,Carr2022`).
 - **merge** : Forms progressive sequences and iteratively merges sequences belonging to the same
-  text line (Špakov et al., 2019; Carr et al., 2022).
+  text line (:cite:p:`Spakov2019,Carr2022`).
 - **regress** : Fits a linear regression model (slope, offset, std) to estimate line assignments
-  (Cohen, 2013; Carr et al., 2022).
+  (:cite:p:`Cohen2013,Carr2022`).
 - **segment** : Segments fixations into line subsequences using return sweep identification
-  (Abdulin & Komogortsev, 2015; Carr et al., 2022).
+  (:cite:p:`Abdulin2015,Carr2022`).
 - **slice** : Slices fixation sequence into proto-lines based on vertical drift thresholds
-  (Glandorf & Schroeder, 2021).
+  (:cite:p:`Glandorf2021`).
 - **split** : Splits fixations into line subsequences using K-Means return sweep identification
-  (Carr et al., 2022).
+  (:cite:p:`Carr2022`).
 - **stretch** : Fits scale and offset parameters to stretch or compress fixations onto line
-  centers (Lohmeier, 2015; Carr et al., 2022).
+  centers (:cite:p:`Lohmeier2015,Carr2022`).
 - **warp** : Dynamic Time Warping (DTW) alignment between fixations and word centroids
-  (Carr et al., 2022).
+  (:cite:p:`Carr2022`).
 """
 from __future__ import annotations
 

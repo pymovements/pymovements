@@ -20,38 +20,16 @@
 """Algorithms for vertical drift correction in gaze data recorded during reading tasks.
 
 References & Citations:
-- Abdulin, E. R., & Komogortsev, O. V. (2015). Person verification via eye movement-driven
-  text reading model. In 2015 IEEE 7th International Conference on Biometrics Theory,
-  Applications and Systems (BTAS) (pp. 1-8). IEEE. https://doi.org/10.1109/BTAS.2015.7358786
-- Al Madi, N. (2025). Identifying Eye Movement Patterns for An Adaptive Approach to Correcting
-  Eye Tracking Data in Reading Tasks. Proceedings of the ACM on Human-Computer Interaction,
-  9(PACMHCI), 1-16. https://osf.io/khrqp/overview
-- Carr, J. W., Pescuma, V. N., Furlan, M., Ktori, M., & Crepaldi, D. (2022). Algorithms for
-  the automated correction of vertical drift in eye-tracking data. Behavior Research Methods,
-  54(1), 287-310. https://doi.org/10.3758/s13428-021-01554-0
-- Cohen, A. L. (2013). Software for the automatic correction of recorded eye fixation
-  locations in reading experiments. Behavior Research Methods, 45(3), 679-683.
-  https://doi.org/10.3758/s13428-012-0280-3
-- Glandorf, D., & Schroeder, S. (2021). Slice: an algorithm to assign fixations in multi-line
-  texts. Procedia Computer Science, 192, 2971-2979. https://doi.org/10.1016/j.procs.2021.09.069
-- Lima Sanches, C., Kise, K., & Augereau, O. (2015). Eye gaze and text line matching for reading
-  analysis. In Proceedings of the 2015 ACM International Joint Conference on Pervasive and
-  Ubiquitous Computing and Proceedings of the 2015 ACM International Symposium on Wearable
-  Computers (UbiComp '15) (pp. 1227-1233). https://doi.org/10.1145/2800835.2807936
-- Lohmeier, S. (2015). Experimental evaluation and modelling of the comprehension of indirect
-  anaphors in a programming language (Master's thesis). Technische Universität Berlin.
-- Mercier, T. M., Budka, M., Vasilev, M. R., Kirkby, J. A., Angele, B., & Slattery, T. J. (2024).
-  Dual input stream transformer for vertical drift correction in eye-tracking reading data.
-  IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 46(12), 8715-8726.
-  https://doi.org/10.1109/TPAMI.2024.3430686
-- Mercier, T. M., Budka, M., Angele, B., Vasilev, M. R., Slattery, T. J., & Kirkby, J. A. (2024).
-  GazeGenie: Enhancing Multi-Line Reading Research with an Innovative User-Friendly Tool.
-  arXiv preprint arXiv:2410.11873. https://doi.org/10.48550/arXiv.2410.11873
-- Špakov, O., Istance, H., Hyrskykari, A., Siirtola, H., & Räihä, K.-J.
-  (2019). Improving the
-  performance of eye trackers with limited spatial accuracy and low sampling rates for reading
-  analysis by heuristic fixation-to-word mapping. Behavior Research Methods, 51(6), 2661-2687.
-  https://doi.org/10.3758/s13428-018-1120-x
+- :cite:p:`Abdulin2015`
+- :cite:p:`AlMadi2025`
+- :cite:p:`Carr2022`
+- :cite:p:`Cohen2013`
+- :cite:p:`Glandorf2021`
+- :cite:p:`LimaSanches2015`
+- :cite:p:`Lohmeier2015`
+- :cite:p:`Mercier2024a`
+- :cite:p:`Mercier2024b`
+- :cite:p:`Spakov2019`
 """
 from __future__ import annotations
 
@@ -74,7 +52,7 @@ def attach(
 ) -> np.ndarray:
     """Attach each fixation to the vertically closest text line center.
 
-    Reference: Carr et al. (2022).
+    Reference: :cite:p:`Carr2022`.
 
     Parameters
     ----------
@@ -110,7 +88,7 @@ def chain(
 ) -> np.ndarray:
     """Group fixations into reading chains based on distance thresholds and align to lines.
 
-    Reference: Carr et al. (2022).
+    Reference: :cite:p:`Carr2022`.
 
     Parameters
     ----------
@@ -157,7 +135,7 @@ def cluster(
 ) -> np.ndarray:
     """Cluster Y-coordinates into clusters matching text lines using K-Means.
 
-    Reference: Carr et al. (2022).
+    Reference: :cite:p:`Carr2022`.
 
     Parameters
     ----------
@@ -197,7 +175,7 @@ def compare(
 ) -> np.ndarray:
     """Match fixation lines to candidate text lines using Dynamic Time Warping (DTW).
 
-    Reference: Lima Sanches et al. (2015); Carr et al. (2022).
+    Reference: :cite:p:`LimaSanches2015,Carr2022`.
 
     Parameters
     ----------
@@ -263,7 +241,7 @@ def merge(
 ) -> np.ndarray:
     """Form progressive sequences and iteratively merge sequences belonging to the same text line.
 
-    Reference: Špakov et al. (2019); Carr et al. (2022).
+    Reference: :cite:p:`Spakov2019,Carr2022`.
 
     Parameters
     ----------
@@ -358,7 +336,7 @@ def regress(
 ) -> np.ndarray:
     """Fit linear regression parameters (slope, offset, std) to align fixations to lines of text.
 
-    Reference: Cohen (2013); Carr et al. (2022).
+    Reference: :cite:p:`Cohen2013,Carr2022`.
 
     Parameters
     ----------
@@ -416,7 +394,7 @@ def segment(
 ) -> np.ndarray:
     """Segment fixations into m line subsequences using return sweeps.
 
-    Reference: Abdulin & Komogortsev (2015); Carr et al. (2022).
+    Reference: :cite:p:`Abdulin2015,Carr2022`.
 
     Parameters
     ----------
@@ -464,7 +442,7 @@ def split(
 ) -> np.ndarray:
     """Split fixation sequence into line subsequences using K-Means return sweep identification.
 
-    Reference: Carr et al. (2022).
+    Reference: :cite:p:`Carr2022`.
 
     Parameters
     ----------
@@ -513,7 +491,7 @@ def stretch(
 ) -> np.ndarray:
     """Fit scale and offset bounds to stretch/compress fixations onto line centers.
 
-    Reference: Lohmeier (2015); Carr et al. (2022).
+    Reference: :cite:p:`Lohmeier2015,Carr2022`.
 
     Parameters
     ----------
@@ -563,7 +541,7 @@ def warp(
 ) -> np.ndarray:
     """Dynamic Time Warping alignment between fixation sequence and word positions.
 
-    Reference: Carr et al. (2022).
+    Reference: :cite:p:`Carr2022`.
 
     Parameters
     ----------
@@ -667,7 +645,7 @@ def slice(
 ) -> np.ndarray:
     """Slice algorithm to assign fixations in multi-line reading tasks.
 
-    Reference: Glandorf & Schroeder (2021).
+    Reference: :cite:p:`Glandorf2021`.
 
     Parameters
     ----------
@@ -806,7 +784,7 @@ def wisdom_of_the_crowd(
 ) -> list[float]:
     """Ensemble correction choosing line assignment with most votes across algorithms.
 
-    Reference: Mercier et al. (2024b).
+    Reference: :cite:p:`Mercier2024b`.
 
     Parameters
     ----------
