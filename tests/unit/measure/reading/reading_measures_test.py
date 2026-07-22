@@ -413,4 +413,4 @@ def test_fixation_outside_aoi_percentage_by_count(fixations, expected):
 )
 def test_fixation_outside_aoi_percentage_by_duration(fixations, expected):
     result = fixation_outside_aoi_percentage_by_duration(fixations)
-    assert_frame_equal(result, expected, atol=1e-5)
+    assert_frame_equal(result, expected, abs_tol=1e-5)
