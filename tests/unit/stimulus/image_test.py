@@ -29,15 +29,32 @@ from pymovements.stimulus.image import from_files
 
 
 @pytest.mark.parametrize(
-    ('image_path'),
+    ('image_path', 'metadata'),
     (
-        pytest.param('tests/files/stimuli/pexels-zoorg-1000498.jpg', id='image_path_str'),
-        pytest.param(Path('tests/files/stimuli/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
+        pytest.param(
+            'tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            None,
+            id='image_path_str',
+        ),
+        pytest.param(
+            Path('tests/files/stimuli/pexels-zoorg-1000498.jpg'),
+            None,
+            id='image_path_Path',
+        ),
+        pytest.param(
+            'tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            {'key': 'value'},
+            id='image_path_str_metadata',
+        ),
     ),
 )
-def test_image_stimulus_from_file(image_path):
-    image_stimulus = from_file(image_path)
+def test_image_stimulus_from_file(image_path, metadata):
+    image_stimulus = from_file(image_path, metadata=metadata)
     assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    if metadata is None:
+        assert image_stimulus.metadata == {}
+    else:
+        assert image_stimulus.metadata == metadata
 
 
 @pytest.mark.parametrize(

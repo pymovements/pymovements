@@ -216,10 +216,11 @@ EXPECTED_DF = pl.DataFrame(
 
 
 @pytest.mark.parametrize(
-    ('filename', 'custom_read_kwargs', 'expected'),
+    ('filename', 'custom_read_kwargs', 'metadata', 'expected'),
     [
         pytest.param(
             'stimuli/toy_text_aoi.csv',
+            None,
             None,
             EXPECTED_DF,
             id='toy_text_1_1_aoi',
@@ -227,12 +228,20 @@ EXPECTED_DF = pl.DataFrame(
         pytest.param(
             'stimuli/toy_text_aoi.csv',
             {'separator': ','},
+            None,
             EXPECTED_DF,
             id='toy_text_1_1_aoi_sep',
         ),
+        pytest.param(
+            'stimuli/toy_text_aoi.csv',
+            None,
+            {'key': 'value'},
+            EXPECTED_DF,
+            id='toy_text_1_1_aoi_metadata',
+        ),
     ],
 )
-def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file):
+def test_text_stimulus(filename, custom_read_kwargs, metadata, expected, make_example_file):
     aoi_file = make_example_file(filename)
     aois = text.from_file(
         aoi_file,
@@ -243,6 +252,7 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
         height_column='height',
         page_column='page',
         custom_read_kwargs=custom_read_kwargs,
+        metadata=metadata,
     )
     head = aois.aois.head(12)
 
@@ -251,6 +261,10 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
         expected,
     )
     assert len(aois.aois.columns) == len(expected.columns)
+    if metadata is None:
+        assert aois.metadata == {}
+    else:
+        assert aois.metadata == metadata
 
 
 def test_text_stimulus_unsupported_format(make_example_file):
