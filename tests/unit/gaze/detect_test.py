@@ -24,7 +24,7 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.unit.helpers import to_duration
+from tests.fixtures.duration_fixtures import to_duration
 
 import pymovements as pm
 from pymovements.synthetic import step_function
@@ -357,7 +357,7 @@ from pymovements.synthetic import step_function
             pm.events.Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099.9],
+                offsets=[1099],
             ),
             id='ivt_constant_position_single_fixation_with_timesteps_float',
         ),

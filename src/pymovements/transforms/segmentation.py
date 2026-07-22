@@ -271,6 +271,8 @@ def events2segmentation(
 
     # Create polars-compatible padding values for Duration columns.
     onset_dtype = relevant_events[onset_column].dtype
+    pad_before_dur: float | timedelta
+    pad_after_dur: float | timedelta
     if isinstance(onset_dtype, pl.Duration):
         pad_before_dur = timedelta(milliseconds=pad_before)
         pad_after_dur = timedelta(milliseconds=pad_after)

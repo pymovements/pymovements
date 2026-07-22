@@ -191,13 +191,13 @@ class Events:
 
         # Convert onset, offset, and duration to Duration('ms').
         time_cols = [
-            c for c in ['onset', 'offset', 'duration']
+            c for c in ('onset', 'offset', 'duration')
             if c in self.frame.columns
             and not isinstance(self.frame.schema[c], pl.Duration)
         ]
         if time_cols:
             self.frame = self.frame.with_columns(
-                pl.col(time_cols).round().cast(pl.Duration('ms')),
+                pl.col(time_cols).cast(pl.Float64).round().cast(pl.Duration('ms')),
             )
 
         if 'duration' not in self.frame.columns:

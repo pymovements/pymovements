@@ -20,6 +20,7 @@
 """Provides the scanpath plotting function."""
 from __future__ import annotations
 
+import datetime
 import math
 from warnings import warn
 
@@ -187,9 +188,12 @@ def scanpathplot(
     )
 
     for row in fixations.iter_rows(named=True):
+        duration = row['duration']
+        if isinstance(duration, datetime.timedelta):
+            duration = duration.total_seconds() * 1000
         fixation = Circle(
             row[position_column],
-            math.sqrt(row['duration']),
+            math.sqrt(duration),
             color=color,
             fill=True,
             alpha=alpha,

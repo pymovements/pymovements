@@ -23,7 +23,7 @@ from __future__ import annotations
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.unit.helpers import to_duration
+from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import Events
 
@@ -34,7 +34,8 @@ def fixture_dataset():
         'name': pl.Utf8,
         'onset': pl.Duration('ms'),
         'offset': pl.Duration('ms'),
-        'duration': pl.Duration('ms')}
+        'duration': pl.Duration('ms'),
+    }
     yield schema
 
 
@@ -226,7 +227,10 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             [pl.DataFrame()], {},
             pl.DataFrame(
                 {}, schema={
-                    'name': pl.Utf8, 'onset': pl.Duration('ms'), 'offset': pl.Duration('ms'), 'duration': pl.Duration('ms'),
+                    'name': pl.Utf8,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='dataframe_arg_no_kwargs',

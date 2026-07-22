@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Reading measure tests."""
+import datetime
+
 import polars as pl
 import pytest
 
@@ -148,20 +150,20 @@ def test_build_word_level_table(annotated_events, all_tokens):
 def test_compute_first_duration(annotated_events):
     result = first_duration(annotated_events)
     assert 'FD' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['FD'][0] == 200
-    assert result.filter(pl.col('word_idx') == 1)['FD'][0] == 200
+    assert result.filter(pl.col('word_idx') == 0)['FD'][0] == datetime.timedelta(milliseconds=200)
+    assert result.filter(pl.col('word_idx') == 1)['FD'][0] == datetime.timedelta(milliseconds=200)
 
 
 def test_compute_first_fixation_duration(annotated_events):
     result = first_fixation_duration(annotated_events)
     assert 'FFD' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['FFD'][0] == 200
+    assert result.filter(pl.col('word_idx') == 0)['FFD'][0] == datetime.timedelta(milliseconds=200)
 
 
 def test_compute_first_pass_reading_time(annotated_events):
     result = first_pass_reading_time(annotated_events)
     assert 'FPRT' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['FPRT'][0] == 200
+    assert result.filter(pl.col('word_idx') == 0)['FPRT'][0] == datetime.timedelta(milliseconds=200)
 
 
 def test_compute_total_fixation_count(annotated_events):
@@ -180,7 +182,7 @@ def test_first_pass_fixation_count(annotated_events):
 def test_first_reading_time(annotated_events):
     result = first_reading_time(annotated_events)
     assert 'FRT' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['FRT'][0] == 200
+    assert result.filter(pl.col('word_idx') == 0)['FRT'][0] == datetime.timedelta(milliseconds=200)
 
 
 def test_rereading_time(annotated_events):
@@ -223,7 +225,11 @@ def test_regression_path_duration(annotated_events):
     result = regression_path_duration(annotated_events)
     assert 'RPD_inc' in result.columns
     assert 'RPD_exc' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['RPD_inc'][0] == 200
+    assert result.filter(
+        pl.col('word_idx') == 0,
+    )['RPD_inc'][0] == datetime.timedelta(
+        milliseconds=200,
+    )
 
 
 def test_regression_path_duration_no_first_pass():

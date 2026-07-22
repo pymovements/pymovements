@@ -21,6 +21,7 @@
 
 pytest_plugins = [
     'tests.fixtures.deprecation_fixtures',
+    'tests.fixtures.duration_fixtures',
     'tests.fixtures.file_fixtures',
     'tests.fixtures.gaze_fixtures',
     'tests.fixtures.plotting_fixtures',

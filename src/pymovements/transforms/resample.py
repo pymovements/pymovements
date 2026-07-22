@@ -112,7 +112,8 @@ def resample(
     if time_is_duration:
         samples = samples.with_columns(
             pl.col('time').dt.total_milliseconds().mul(
-                1000).cast(pl.Datetime('us')).alias('datetime'),
+                1000,
+            ).cast(pl.Datetime('us')).alias('datetime'),
         )
     else:
         samples = samples.with_columns(
@@ -203,7 +204,7 @@ def resample(
         # Replace the pre-existing NaN values with Null
         samples = _apply_on_columns(
             samples,
-            columns=[column for column in columns if not samples[column].dtype.is_temporal()],
+            columns=[column for column in columns if samples[column].dtype.is_numeric()],
             transformation=lambda series: series.fill_nan(None),
             n_components=n_components,
         )

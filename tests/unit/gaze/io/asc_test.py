@@ -68,7 +68,7 @@ def test_from_asc_has_expected_samples(
 
     if 'time' in expected_samples.columns:
         expected_samples = expected_samples.with_columns(
-            pl.col('time').round().cast(pl.Duration('ms')),
+            pl.col('time').cast(pl.Duration('ms')),
         )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
@@ -183,7 +183,7 @@ def test_from_asc_example_file_has_expected_samples(
     gaze = from_asc(filepath, **kwargs)
     if 'time' in expected_samples.columns:
         expected_samples = expected_samples.with_columns(
-            pl.col('time').round().cast(pl.Duration('ms')),
+            pl.col('time').cast(pl.Duration('ms')),
         )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 

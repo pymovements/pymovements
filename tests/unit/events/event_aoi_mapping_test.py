@@ -21,7 +21,7 @@
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.unit.helpers import to_duration
+from tests.fixtures.duration_fixtures import to_duration
 
 import pymovements as pm
 

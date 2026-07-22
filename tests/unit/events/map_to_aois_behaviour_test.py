@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import polars as pl
 import pytest
-from tests.unit.helpers import to_duration
+from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements.events import Events
 from pymovements.stimulus.text import TextStimulus

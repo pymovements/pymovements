@@ -444,7 +444,7 @@ def build_word_level_table(
     sl_out = saccade_length_out(fixations)
     rpd = regression_path_duration(fixations)
 
-    return (
+    result = (
         words.join(tfc, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
         .join(fd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
         .join(ffd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
@@ -458,38 +458,48 @@ def build_word_level_table(
         .join(sl_in, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
         .join(sl_out, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
         .join(rpd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .with_columns(
-            [
-                pl.col('TFC').fill_null(0),
-                pl.col('FD').fill_null(0),
-                pl.col('FFD').fill_null(0),
-                pl.col('FPRT').fill_null(0),
-                pl.col('FRT').fill_null(0),
-                pl.col('RRT').fill_null(0),
-                pl.col('FPFC').fill_null(0),
-                pl.col('TRC_in').fill_null(0),
-                pl.col('TRC_out').fill_null(0),
-                pl.col('LP').fill_null(0),
-                pl.col('SL_in').fill_null(0),
-                pl.col('SL_out').fill_null(0),
-                pl.col('RPD_inc').fill_null(0),
-                pl.col('RPD_exc').fill_null(0),
-                pl.col('RBRT').fill_null(0),
-            ],
+    )
+
+    # Convert Duration columns to numeric milliseconds.
+    dur_cols = [
+        c for c in result.columns if isinstance(result.schema[c], pl.Duration)
+    ]
+    if dur_cols:
+        result = result.with_columns(
+            [pl.col(c).dt.total_milliseconds() for c in dur_cols],
         )
-        # ---- derived measures ----
-        .with_columns(
-            [
-                # total fixation time
-                (pl.col('FPRT') + pl.col('RRT')).alias('TFT'),
-                # binary indicators
-                (pl.col('FPRT') > 0).cast(pl.Int8).alias('FPF'),
-                (pl.col('RRT') > 0).cast(pl.Int8).alias('RR'),
-                # single-fixation duration
-                pl.when(pl.col('FPFC') == 1)
-                .then(pl.col('FFD'))
-                .otherwise(0)
-                .alias('SFD'),
-            ],
-        )
+
+    result = result.with_columns(
+        [
+            pl.col('TFC').fill_null(0),
+            pl.col('FD').fill_null(0),
+            pl.col('FFD').fill_null(0),
+            pl.col('FPRT').fill_null(0),
+            pl.col('FRT').fill_null(0),
+            pl.col('RRT').fill_null(0),
+            pl.col('FPFC').fill_null(0),
+            pl.col('TRC_in').fill_null(0),
+            pl.col('TRC_out').fill_null(0),
+            pl.col('LP').fill_null(0),
+            pl.col('SL_in').fill_null(0),
+            pl.col('SL_out').fill_null(0),
+            pl.col('RPD_inc').fill_null(0),
+            pl.col('RPD_exc').fill_null(0),
+            pl.col('RBRT').fill_null(0),
+        ],
+    )
+    # ---- derived measures ----
+    return result.with_columns(
+        [
+            # total fixation time
+            (pl.col('FPRT') + pl.col('RRT')).alias('TFT'),
+            # binary indicators
+            (pl.col('FPRT') > 0).cast(pl.Int8).alias('FPF'),
+            (pl.col('RRT') > 0).cast(pl.Int8).alias('RR'),
+            # single-fixation duration
+            pl.when(pl.col('FPFC') == 1)
+            .then(pl.col('FFD'))
+            .otherwise(0)
+            .alias('SFD'),
+        ],
     )

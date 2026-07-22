@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Shared test helpers."""
+"""Fixture helpers for Duration type handling."""
 from __future__ import annotations
 
 import polars as pl
@@ -35,9 +35,10 @@ def to_duration(df: pl.DataFrame) -> pl.DataFrame:
     -------
     pl.DataFrame
         DataFrame with applicable columns cast to ``pl.Duration('ms')``.
+
     """
     cols = [
-        c for c in ['time', 'onset', 'offset', 'duration']
+        c for c in ('time', 'onset', 'offset', 'duration')
         if c in df.columns and df.schema[c] not in (pl.Duration('ms'),)
     ]
     if cols:
