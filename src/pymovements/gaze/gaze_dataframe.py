@@ -187,7 +187,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     >>> experiment = Experiment(1024, 768, 38, 30, 60, 'center', sampling_rate=100)
     >>> gaze = Gaze(samples=df_no_time, experiment=experiment, pixel_columns=['x', 'y'])
     >>> gaze
-    Experiment(screen=Screen(resolution=(1024, 768), size=(38, 30), distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None, version=None, vendor=None, mount=None))
+    Experiment(screen=Screen(resolution=(1024, 768), size=(38, 30), distance_cm=60, origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None, version=None, vendor=None, mount=None))  # noqa: E501  # pylint: disable=line-too-long
     shape: (3, 2)
     ┌──────────────┬────────────┐
     │ time         ┆ pixel      │
