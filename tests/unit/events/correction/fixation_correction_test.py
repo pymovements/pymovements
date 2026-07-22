@@ -78,8 +78,80 @@ def test_create_corrected_fixations_locations_specific_algos(sample_events_and_a
         'regress', 'segment', 'slice', 'split', 'stretch', 'warp',
     )
     for algo in algos:
-        locs = create_corrected_fixations_locations(events_df, aois_df, algorithm=algo)
+        locs = create_corrected_fixations_locations(events_df, aois_df, algorithm=algo, woc=False)
         assert locs.shape == (6, 2)
+
+
+def test_create_corrected_fixations_locations_woc_custom_list(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    locs = create_corrected_fixations_locations(
+        events_df, aois_df, algorithm=['attach', 'chain', 'cluster'], woc=True,
+    )
+    assert locs.shape == (6, 2)
+
+
+def test_create_corrected_fixations_locations_woc_false_list_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(
+        ValueError, match='Passing a list of algorithms is not allowed when woc=False',
+    ):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm=['attach', 'chain'], woc=False,
+        )
+
+
+def test_create_corrected_fixations_locations_woc_true_single_algo_warns(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.warns(UserWarning, match='woc is True, but only one algorithm'):
+        locs = create_corrected_fixations_locations(
+            events_df, aois_df, algorithm=['attach'], woc=True,
+        )
+        assert locs.shape == (6, 2)
+
+    with pytest.warns(UserWarning, match='woc is True, but only one algorithm'):
+        locs2 = create_corrected_fixations_locations(
+            events_df, aois_df, algorithm='attach', woc=True,
+        )
+        assert locs2.shape == (6, 2)
+
+
+def test_create_corrected_fixations_locations_woc_false_woc_algo_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(
+        ValueError, match='A single algorithm name must be specified when woc=False',
+    ):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm='wisdom_of_the_crowd', woc=False,
+        )
+
+    with pytest.raises(
+        ValueError, match='A single algorithm name must be specified when woc=False',
+    ):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm=None, woc=False,
+        )
+
+
+def test_create_corrected_fixations_locations_empty_list_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(ValueError, match='At least one algorithm must be provided'):
+        create_corrected_fixations_locations(events_df, aois_df, algorithm=[])
+
+
+def test_create_corrected_fixations_locations_woc_string(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    locs = create_corrected_fixations_locations(
+        events_df, aois_df, algorithm='wisdom_of_the_crowd', woc=True,
+    )
+    assert locs.shape == (6, 2)
+
+
+def test_create_corrected_fixations_locations_invalid_type_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(TypeError, match='algorithm must be a string, a list of strings, or None'):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm=123,  # type: ignore[arg-type]
+        )
 
 
 def test_create_corrected_fixations_locations_invalid_location_raises():
@@ -97,10 +169,25 @@ def test_add_corrected_fixations_default_woc(sample_events_and_aois):
     assert corrected_rows.height == 6
 
 
+def test_add_corrected_fixations_algorithm_list(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    res_df = add_corrected_fixations(
+        events_df, aois_df, algorithm=['attach', 'chain'], woc=True,
+    )
+    assert res_df.height == 12
+    assert res_df.filter(pl.col('name') == 'fixation_corrected_wisdom_of_the_crowd').height == 6
+
+    with pytest.warns(UserWarning, match='woc is True, but only one algorithm'):
+        res_single = add_corrected_fixations(
+            events_df, aois_df, algorithm=['attach'], woc=True,
+        )
+    assert res_single.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
+
+
 def test_add_corrected_fixations_events_object(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events_obj = pm.Events(events_df)
-    res_df = add_corrected_fixations(events_obj, aois_df, algorithm='chain')
+    res_df = add_corrected_fixations(events_obj, aois_df, algorithm='chain', woc=False)
     assert res_df.height == 12
     assert res_df.filter(pl.col('name') == 'fixation_corrected_chain').height == 6
 
@@ -150,7 +237,7 @@ def test_create_corrected_fixations_locations_split_columns():
         'start_y': [80.0, 180.0],
         'height': [40.0, 40.0],
     })
-    locs = create_corrected_fixations_locations(events_df, aois_df, algorithm='attach')
+    locs = create_corrected_fixations_locations(events_df, aois_df, algorithm='attach', woc=False)
     assert locs.shape == (2, 2)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 200.0])
 

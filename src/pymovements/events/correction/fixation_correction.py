@@ -48,6 +48,7 @@ Supported Drift Correction Algorithms
 """
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import numpy as np
@@ -100,10 +101,17 @@ def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     )
 
 
+DEFAULT_WOC_ALGORITHMS: list[str] = [
+    'attach', 'chain', 'cluster', 'merge', 'regress',
+    'segment', 'slice', 'split', 'stretch',
+]
+
+
 def create_corrected_fixations_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
-    algorithm: str = 'wisdom_of_the_crowd',
+    algorithm: str | list[str] | None = None,
+    woc: bool = True,
     **kwargs: Any,
 ) -> np.ndarray:
     """Correct fixations based on the specified drift algorithm and AOIs.
@@ -114,20 +122,15 @@ def create_corrected_fixations_locations(
         Gaze events dataframe.
     aois: pl.DataFrame
         AOIs dataframe for line position extraction.
-    algorithm: str
-        Name of drift algorithm:
-        - 'wisdom_of_the_crowd' or 'woc' (default)
-        - 'attach'
-        - 'chain'
-        - 'cluster'
-        - 'compare'
-        - 'merge'
-        - 'regress'
-        - 'segment'
-        - 'slice'
-        - 'split'
-        - 'stretch'
-        - 'warp'
+    algorithm: str | list[str] | None
+        Name of drift algorithm or a list of algorithm names. If woc=True and algorithm=None,
+        defaults to the full list of supported WoC algorithms. If woc=False, a single algorithm
+        name must be provided.
+    woc: bool
+        Whether to apply Wisdom of the Crowd ensemble correction. If True (default), combines
+        predictions across a list of algorithms. If True and a single algorithm is passed, a
+        warning is issued and the single algorithm is applied directly. If False and a list of
+        algorithms is passed, a ValueError is raised. (default: True)
     **kwargs: Any
         Additional keyword arguments passed to underlying drift correction algorithm.
 
@@ -146,38 +149,69 @@ def create_corrected_fixations_locations(
 
     fixationXY_arr = np.array(fixationXY)
 
-    if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
-        woc_algos = (
-            'attach', 'chain', 'cluster', 'merge', 'regress',
-            'segment', 'slice', 'split', 'stretch',
-        )
-        candidate_y_list: list[np.ndarray | list[float]] = []
-        for candidate_algo in woc_algos:
-            res = create_corrected_fixations_locations(
-                events, aois, algorithm=candidate_algo, **kwargs,
+    if algorithm is None:
+        if not woc:
+            raise ValueError('A single algorithm name must be specified when woc=False.')
+        candidate_algos = list(DEFAULT_WOC_ALGORITHMS)
+    elif isinstance(algorithm, list):
+        if not woc:
+            raise ValueError('Passing a list of algorithms is not allowed when woc=False.')
+        if len(algorithm) == 0:
+            raise ValueError('At least one algorithm must be provided in the algorithm list.')
+        if len(algorithm) == 1:
+            warnings.warn(
+                f"woc is True, but only one algorithm ('{algorithm[0]}') was provided. "
+                f"Applying '{algorithm[0]}' directly.",
+                UserWarning,
+                stacklevel=2,
             )
-            y_vals = res[:, 1] if res.ndim == 2 else res
-            candidate_y_list.append(y_vals)
-        corrected_y = da.wisdom_of_the_crowd(candidate_y_list)
-        return np.column_stack([fixationXY_arr[:, 0], corrected_y])
+            return create_corrected_fixations_locations(
+                events, aois, algorithm=algorithm[0], woc=False, **kwargs,
+            )
+        candidate_algos = algorithm
+    elif isinstance(algorithm, str):
+        if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
+            if not woc:
+                raise ValueError('A single algorithm name must be specified when woc=False.')
+            candidate_algos = list(DEFAULT_WOC_ALGORITHMS)
+        else:
+            if woc:
+                warnings.warn(
+                    f"woc is True, but only one algorithm ('{algorithm}') was provided. "
+                    f"Applying '{algorithm}' directly.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            if algorithm in {'compare', 'warp'} and 'word_XY' not in kwargs:
+                word_x = (aois['start_x'] + aois['end_x']) / 2.0
+                word_y = (aois['start_y'] + aois['end_y']) / 2.0
+                target_arg = np.column_stack([word_x.to_numpy(), word_y.to_numpy()])
+            else:
+                target_arg = np.array(_get_lines_of_text_from_aois(aois))
 
-    if algorithm in {'compare', 'warp'} and 'word_XY' not in kwargs:
-        word_x = (aois['start_x'] + aois['end_x']) / 2.0
-        word_y = (aois['start_y'] + aois['end_y']) / 2.0
-        target_arg = np.column_stack([word_x.to_numpy(), word_y.to_numpy()])
+            func = getattr(da, algorithm)
+            # pylint: disable=too-many-function-args
+            return func(fixationXY_arr, target_arg, **kwargs)
     else:
-        target_arg = np.array(_get_lines_of_text_from_aois(aois))
+        raise TypeError('algorithm must be a string, a list of strings, or None.')
 
-    func = getattr(da, algorithm)
-    # pylint: disable=too-many-function-args
-    return func(fixationXY_arr, target_arg, **kwargs)
+    candidate_y_list: list[np.ndarray | list[float]] = []
+    for candidate_algo in candidate_algos:
+        res = create_corrected_fixations_locations(
+            events, aois, algorithm=candidate_algo, woc=False, **kwargs,
+        )
+        y_vals = res[:, 1] if res.ndim == 2 else res
+        candidate_y_list.append(y_vals)
+    corrected_y = da.wisdom_of_the_crowd(candidate_y_list)
+    return np.column_stack([fixationXY_arr[:, 0], corrected_y])
 
 
 def add_corrected_fixations(
     events: Events | pl.DataFrame,
     aois: pl.DataFrame,
-    algorithm: str = 'wisdom_of_the_crowd',
+    algorithm: str | list[str] | None = None,
     trial_id: str | None = None,
+    woc: bool = True,
     **kwargs: Any,
 ) -> pl.DataFrame:
     """Correct fixations for a trial using specified drift algorithm and append corrected events.
@@ -188,10 +222,13 @@ def add_corrected_fixations(
         Events object or Polars DataFrame containing gaze events.
     aois: pl.DataFrame
         Stimulus AOIs DataFrame.
-    algorithm: str
-        Name of drift algorithm. (default: 'wisdom_of_the_crowd')
+    algorithm: str | list[str] | None
+        Name of drift algorithm or list of algorithm names. If woc=True and algorithm=None,
+        defaults to the full list of supported WoC algorithms.
     trial_id: str | None
         Optional trial identifier to filter events and AOIs. (default: None)
+    woc: bool
+        Whether to apply Wisdom of the Crowd ensemble correction. (default: True)
     **kwargs: Any
         Additional keyword arguments passed to underlying drift correction algorithm.
 
@@ -214,14 +251,24 @@ def add_corrected_fixations(
         return events_frame
 
     corrected_locs = create_corrected_fixations_locations(
-        fixation_events, trial_aois, algorithm=algorithm, **kwargs,
+        fixation_events, trial_aois, algorithm=algorithm, woc=woc, **kwargs,
     )
+
+    if isinstance(algorithm, list):
+        if woc and len(algorithm) > 1:
+            algo_name = 'wisdom_of_the_crowd'
+        else:
+            algo_name = algorithm[0]
+    elif isinstance(algorithm, str) and algorithm.lower() not in {'wisdom_of_the_crowd', 'woc'}:
+        algo_name = algorithm
+    else:
+        algo_name = 'wisdom_of_the_crowd'
 
     corrected_rows = []
     is_1d = corrected_locs.ndim == 1
     for i, row in enumerate(fixation_events.iter_rows(named=True)):
         row_copy = dict(row)
-        row_copy['name'] = f'fixation_corrected_{algorithm}'
+        row_copy['name'] = f'fixation_corrected_{algo_name}'
         if is_1d:
             orig_x = row.get('location_x', row.get('location', [0.0, 0.0])[0])
             loc_corr = [float(orig_x), float(corrected_locs[i])]
