@@ -286,6 +286,22 @@ def from_numpy(
     _checks.check_is_mutual_exclusive(samples=samples, acceleration=acceleration)
     _checks.check_is_mutual_exclusive(samples=samples, distance=distance)
 
+    if samples is None:
+        if trial_columns is not None:
+            raise ValueError('trial_columns can only be used when samples is provided')
+        if time_column is not None:
+            raise ValueError('time_column can only be used when samples is provided')
+        if pixel_columns is not None:
+            raise ValueError('pixel_columns can only be used when samples is provided')
+        if position_columns is not None:
+            raise ValueError('position_columns can only be used when samples is provided')
+        if velocity_columns is not None:
+            raise ValueError('velocity_columns can only be used when samples is provided')
+        if acceleration_columns is not None:
+            raise ValueError('acceleration_columns can only be used when samples is provided')
+        if distance_column is not None:
+            raise ValueError('distance_column can only be used when samples is provided')
+
     if samples is not None:
         samples_frame = pl.from_numpy(data=samples, schema=schema, orient=orient)
         available_columns = samples_frame.columns
