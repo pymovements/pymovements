@@ -48,14 +48,19 @@ def _resolve_column(column: str | int | None, columns: list[str]) -> str | None:
     """Resolve a column name or index against a dataframe's columns."""
     if column is None:
         return None
-    if isinstance(column, int):
+    if isinstance(column, int) and not isinstance(column, bool):
         try:
             return columns[column]
         except IndexError as error:
             raise IndexError(
                 f'column index {column} is out of bounds for {len(columns)} columns.',
             ) from error
-    return column
+    elif isinstance(column, str):
+        return column
+    else:
+        raise TypeError(
+            f'column specifiers must be of type int or str but got {type(column).__name__}',
+        )
 
 
 def _resolve_columns(

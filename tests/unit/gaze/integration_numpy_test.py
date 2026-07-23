@@ -480,7 +480,8 @@ def test_from_numpy_bool_index_raises():
     array = np.array([[10, 20], [30, 40]])
     schema = ['col0', 'col1']
 
-    with pytest.raises(Exception):
+    expected_msg = 'column specifiers must be of type int or str but got bool'
+    with pytest.raises(TypeError, match=expected_msg):
         from_numpy(samples=array, schema=schema, time_column=True)
 
 
