@@ -27,6 +27,7 @@ import pytest
 
 import pymovements as pm
 from pymovements.events.correction.fixation_correction import _get_lines_of_text_from_aois
+from pymovements.events.correction.fixation_correction import _has_word_x_coords
 from pymovements.events.correction.fixation_correction import add_corrected_fixations
 from pymovements.events.correction.fixation_correction import create_corrected_fixations_locations
 
@@ -62,6 +63,15 @@ def test_get_lines_of_text_from_aois(sample_events_and_aois):
     _, aois_df = sample_events_and_aois
     line_Y = _get_lines_of_text_from_aois(aois_df)
     assert line_Y == [100.0, 200.0, 300.0]
+
+
+def test_has_word_x_coords(sample_events_and_aois):
+    _, aois_df = sample_events_and_aois
+    aois_no_x = aois_df.drop(['start_x', 'end_x'])
+
+    assert _has_word_x_coords(aois_no_x, {'word_XY': np.array([[5, 5]])}) is True
+    assert _has_word_x_coords(aois_df, {}) is True
+    assert _has_word_x_coords(aois_no_x, {}) is False
 
 
 def test_create_corrected_fixations_locations_default_woc(sample_events_and_aois):
