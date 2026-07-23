@@ -1112,9 +1112,15 @@ class Dataset:
     def measure_reading(
             self,
             aoi_dict: dict[str, str | Path],
+            *,
             save_path: str | Path | None = None,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
     ) -> ReadingMeasures:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
+
+        This method expects fixations annotated with AOI data. See
+        :py:meth:`~pymovements.Dataset.map_to_aois` for further details.
 
         Parameters
         ----------
@@ -1123,6 +1129,13 @@ class Dataset:
         save_path : str | Path | None
             The directory path where the computed reading measures CSV files will be saved.
             If ``None``, no files are saved to disk. (default: None)
+        word_index_column : str
+            Shared column name in fixations and AOIs that corresponds to the word index of
+            the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in AOIs with the content within each AOI.
+            (default: ``'word'``)
 
         Returns
         -------
@@ -1159,6 +1172,8 @@ class Dataset:
             rm_df = compute_reading_measures(
                 fixations=fixations,
                 aois=aoi_df,
+                word_index_column=word_index_column,
+                word_column=word_column,
             )
 
             rm_df = rm_df.with_columns([
