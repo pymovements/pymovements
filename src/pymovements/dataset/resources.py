@@ -25,7 +25,6 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
-from dataclasses import field
 from dataclasses import KW_ONLY
 from dataclasses import replace
 from typing import Any
@@ -97,7 +96,7 @@ class ResourceDefinition:
     load_kwargs: dict[str, Any] | None
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
         (default: None)
-    """
+    """  # noqa: DOC602,DOC603
 
     content: str
 
@@ -110,11 +109,6 @@ class ResourceDefinition:
 
     load_function: str | None = None
     load_kwargs: dict[str, Any]
-
-    url: str | None = field(default=None, init=False, repr=False)
-    filename: str | None = field(default=None, init=False, repr=False)
-    md5: str | None = field(default=None, init=False, repr=False)
-    mirrors: list[str] | None = field(default=None, init=False, repr=False)
 
     def __init__(
             self,
@@ -331,10 +325,6 @@ class ResourceDefinition:
             ``dict`` representation of ``ResourceDefinition``.
         """
         data = asdict(self)
-
-        # Remove deprecated property fields (derived from source)
-        for attr in ('url', 'filename', 'md5', 'mirrors'):
-            data.pop(attr, None)
 
         # Exclude fields that evaluate to False (False, None, [], {})
         if exclude_none:

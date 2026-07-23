@@ -706,7 +706,7 @@ class Dataset:
         AttributeError
             If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes
             present in the :py:attr:`~pymovements.Dataset.gaze` attribute, or if the
-            :py:attr:`~pymovements.Dataset.experiment` is ``None``.
+            ``experiment`` is ``None``.
         """
         return self.apply(
             'clip',
@@ -778,7 +778,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pix2deg', verbose=verbose)
 
@@ -816,7 +816,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'deg2pix',
@@ -860,7 +860,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'pos2acc',
@@ -903,7 +903,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
