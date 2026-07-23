@@ -1120,7 +1120,7 @@ class Dataset:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
 
         This method expects fixations annotated with AOI data. See
-        :py:meth:`~pymovements.Dataset.map_to_aois` for further details.
+        :py:meth:`~pymovements.Events.map_to_aois` for further details.
 
         Parameters
         ----------
