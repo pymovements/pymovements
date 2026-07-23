@@ -31,7 +31,6 @@ import importlib.resources
 import inspect
 import os
 import sys
-import urllib.request
 from subprocess import CalledProcessError
 from subprocess import run
 
@@ -85,31 +84,6 @@ def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
 
 
-def builder_inited_handler(app):
-    """So we do not need to have the logo in the repo.
-
-    Get it at build time and add a `viewBox`, needed to have the right aspect ratio.
-    """
-    url = 'https://www.daad.de/_nuxt/logo-light.1I6xeyd5.svg'
-    static_dir = os.path.join(app.srcdir, '_static')
-    os.makedirs(static_dir, exist_ok=True)
-    daad_path = os.path.join(static_dir, 'daad-logo.svg')
-
-    try:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            svg_content = response.read().decode('utf-8')
-    except Exception as e:
-        raise RuntimeError(
-            f"Failed to download DAAD logo from {url}: {e}",
-        )
-
-    if 'viewBox' not in svg_content:
-        svg_content = svg_content.replace('<svg', '<svg viewBox="0 0 380 102"', 1)
-
-    with open(daad_path, 'w') as f:
-        f.write(svg_content)
-
-
 def doctree_resolved_handler(app, doctree, docname):
     """Open all external links in a new tab."""
     from docutils import nodes
@@ -125,7 +99,6 @@ def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
-    app.connect('builder-inited', builder_inited_handler)
     app.connect('doctree-resolved', doctree_resolved_handler)
 
 
@@ -205,21 +178,12 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-    # Our docs might reference a plain "transforms.func" symbol coming from context
-    (r'py:(func|meth|mod)', r'^transforms\..*'),
 
-    # Shorthand alias used in docs for our own package
-    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
 
     # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+    (r'py:obj', r'^pymovements\..*'),
 
-    # Modules referenced in text but not importable via intersphinx targets
-    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
 
-    # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^UnknownMeasure$'),
-    (r'py:exc', r'^\.\.\s+deprecated:$'),
 
 
     # Matplotlib color types referenced in plotting API
@@ -238,16 +202,13 @@ nitpick_ignore_regex = [
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),
 
-    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
-    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
-    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
-    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
 
-    # Internal helper functions referenced in docs text
-    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
 
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+
+    # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
+    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment|ResourceDefinition)\..*'),
 
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
