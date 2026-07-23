@@ -175,21 +175,12 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-    # Our docs might reference a plain "transforms.func" symbol coming from context
-    (r'py:(func|meth|mod)', r'^transforms\..*'),
 
-    # Shorthand alias used in docs for our own package
-    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
 
     # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+    (r'py:obj', r'^pymovements\..*'),
 
-    # Modules referenced in text but not importable via intersphinx targets
-    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
 
-    # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^UnknownMeasure$'),
-    (r'py:exc', r'^\.\.\s+deprecated:$'),
 
 
     # Matplotlib color types referenced in plotting API
@@ -208,16 +199,13 @@ nitpick_ignore_regex = [
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),
 
-    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
-    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
-    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
-    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
 
-    # Internal helper functions referenced in docs text
-    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
 
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+
+    # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
+    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment|ResourceDefinition)\..*'),
 
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
