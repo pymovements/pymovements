@@ -200,7 +200,7 @@ class Gaze:
     └──────┴────────────┘
 
     In case your data has no time column available, you can pass an
-    :py:class:`~pymovements.gaze.Experiment` to create a time column with the correct sampling rate
+    :py:class:`~pymovements.Experiment` to create a time column with the correct sampling rate
     during initialization. The time column will be represented in millisecond units.
 
     >>> df_no_time = df.select(polars.exclude('t'))
@@ -777,7 +777,8 @@ class Gaze:
         output_column : str
             Name of the output column.
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.clip()` method.
 
         Raises
         ------
@@ -884,10 +885,12 @@ class Gaze:
         Parameters
         ----------
         method: str
-            Computation method. See :func:`~transforms.pos2vel()` for details, default: fivepoint.
+            Computation method. See :func:`~pymovements.transforms.pos2vel()` for details.
             (default: 'fivepoint')
+
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.pos2vel()` method.
 
         Raises
         ------
@@ -1008,7 +1011,8 @@ class Gaze:
         ----------
         method: str
             The method to use for smoothing. Choose from ``savitzky_golay``, ``moving_average``,
-            ``exponential_moving_average``. See :func:`~transforms.smooth()` for details.
+            ``exponential_moving_average``.
+            See :func:`~pymovements.transforms.smooth()` for details.
             (default: 'savitzky_golay')
         window_length: int
             For ``moving_average`` this is the window size to calculate the mean of the subsequent
@@ -1027,10 +1031,11 @@ class Gaze:
             which the filter is applied.
             When passing ``None``, no extension padding is used.
             When passing a scalar value, sample series will be padded using the passed value.
-            See :func:`~transforms.smooth()` for details on the padding methods.
+            See :func:`~pymovements.transforms.smooth()` for details on the padding methods.
             (default: 'nearest')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.smooth()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.smooth()` method.
         """
         self.transform(
             'smooth',
@@ -1286,7 +1291,7 @@ class Gaze:
         """Calculate event properties for given events.
 
         The calculated event properties are added as columns to
-        :py:attr:`~pymovements.gaze.Gaze.events`.
+        :py:attr:`~pymovements.Gaze.events`.
 
         Parameters
         ----------
@@ -2469,7 +2474,7 @@ class Gaze:
                 )
 
     def __eq__(self, other: Gaze) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Gaze` object."""
+        """Check equality between this and another :py:class:`~pymovements.Gaze` object."""
         samples_equal = self.samples.equals(other.samples, null_equal=True)
         events_equal = self.events == other.events
         experiment_equal = self.experiment == other.experiment
@@ -2540,7 +2545,7 @@ class Gaze:
         dirpath: str | Path
             Absolute directory name to save data.
             This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.events_rootpath`.
+            :py:attr:`~pymovements.Dataset.events_rootpath`.
         save_events: bool | None
             Save events in events.{extension} file
         save_samples: bool | None
