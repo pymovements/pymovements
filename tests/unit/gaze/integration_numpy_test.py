@@ -535,7 +535,7 @@ def test_from_numpy_negative_index():
         ),
     ],
 )
-def test_from_numpy_interaction_error(kwargs, expected_msg):
+def test_from_numpy_columns_provided_without_samples_raises(kwargs, expected_msg):
     time = np.array([1, 2, 3])
     with pytest.raises(ValueError, match=expected_msg):
         from_numpy(time=time, **kwargs)
