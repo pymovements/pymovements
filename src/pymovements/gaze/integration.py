@@ -49,7 +49,12 @@ def _resolve_column(column: str | int | None, columns: list[str]) -> str | None:
     if column is None:
         return None
     if isinstance(column, int):
-        return columns[column]
+        try:
+            return columns[column]
+        except IndexError as error:
+            raise IndexError(
+                f'column index {column} is out of bounds for {len(columns)} columns.',
+            ) from error
     return column
 
 

@@ -278,17 +278,17 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'column_0': [1, 2], 'time': [101, 102], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'column_0': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
             ),
-            ['trial_id'],
+            ['column_0'],
             id='no_schema_all_indices',
         ),
         pytest.param(
