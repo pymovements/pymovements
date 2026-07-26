@@ -1329,7 +1329,7 @@ def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose
                 'trial': [None, 'a', 'b', None],
                 'page': [None, 1, None, 0],
             },
-            {'subset': ['trial', 'page']},
+            {},
             [1],
             id='some_dropped_any',
         ),

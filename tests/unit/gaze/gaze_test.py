@@ -1745,7 +1745,7 @@ def test_gaze_compute_event_properties_null_trial():
                 'trial': [None, 'a', 'b', None],
                 'page': [None, 1, None, 0],
             },
-            {'subset': ['trial', 'page']},
+            {},
             [1],
             [1],
             id='some_dropped_any',

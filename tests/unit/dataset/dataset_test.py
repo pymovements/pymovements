@@ -2287,6 +2287,15 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
             1,
             id='events_only',
         ),
+        pytest.param(
+            {
+                'samples': False,
+                'events': False,
+            },
+            0,
+            0,
+            id='none',
+        ),
     ],
 )
 def test_drop_nulls(
