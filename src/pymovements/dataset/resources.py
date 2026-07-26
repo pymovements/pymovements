@@ -151,8 +151,8 @@ class ResourceDefinition:
         """The URL to the downloadable resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -183,8 +183,8 @@ class ResourceDefinition:
         """The target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -215,8 +215,8 @@ class ResourceDefinition:
         """The MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -247,8 +247,8 @@ class ResourceDefinition:
         """A list of additional mirror URLs to download the resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
