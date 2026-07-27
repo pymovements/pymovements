@@ -28,7 +28,7 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
-from pymovements.gaze.gaze import _unnest_list_columns
+from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.plotting._matplotlib import prepare_figure
 
 
@@ -109,7 +109,7 @@ def tsplot(
             )
         ]
 
-    df = _unnest_list_columns(gaze.samples[channels])
+    df = unnest_list_columns(gaze.samples[channels])
     channels = df.columns
     arr = df.to_numpy().transpose()
 
