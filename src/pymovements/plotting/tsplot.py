@@ -47,6 +47,7 @@ def tsplot(
         show_yticks: bool = True,
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
+        plot_events: bool = False,
         savepath: str | None = None,
         ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -82,6 +83,8 @@ def tsplot(
         Figure size. (default: (15, 5))
     title: str | None
         Figure title. (default: None)
+    plot_events: bool
+        Whether to plot events as shaded areas. (default: False)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
     ax: plt.Axes | None
@@ -107,10 +110,8 @@ def tsplot(
         arr = np.expand_dims(arr, axis=0)
 
     channel_axis = 0
-    sample_axis = 1
 
     n_channels = arr.shape[channel_axis]
-    n_samples = arr.shape[sample_axis]
 
     if n_cols is None:
         if n_channels % 2 == 0:
@@ -150,7 +151,8 @@ def tsplot(
         )
         axs = axs_grid.flatten()
 
-    t = np.arange(n_samples)
+    # t = np.arange(n_samples)
+    t = gaze.samples['time'].to_numpy()
     xlims = t.min(), t.max()
 
     y_pad_factor = 1.1
@@ -164,6 +166,9 @@ def tsplot(
         ylim_max = np.nanmax(arr)
         ylim_min = np.nanmin(arr)
         ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+
+    events = gaze.events.frame
+    event_colors = dict(zip(events['name'].unique(), plt.cm.tab10.colors))
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
@@ -217,6 +222,20 @@ def tsplot(
         # set x label on all axes
         # share_y=True will automatically hide those that are not on the bottom
         ax.set_xlabel(xlabel)
+
+        # plot events as shaded areas
+        if plot_events:
+            # only add each event to the legend once
+            add_to_legend = set(event_colors) if channel_id == 0 else set()
+            for event in gaze.events.frame.iter_rows(named=True):
+                event_name = event['name']
+                ax.axvspan(
+                    event['onset'], event['offset'],
+                    alpha=0.5,
+                    label=event_name if event_name in add_to_legend else None,
+                    color=event_colors[event_name],
+                )
+                add_to_legend.discard(event_name)
 
     if title:
         axs[0].set_title(title)
