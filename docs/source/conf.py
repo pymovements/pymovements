@@ -277,7 +277,7 @@ favicons = [
 # -- Options for BibTeX ------------------------------------------------------
 bibtex_bibfiles = ['bibliography.bib']
 bibtex_default_style = 'author_year_style'
-bibtex_reference_style = 'label'
+bibtex_reference_style = 'author_year_style'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
@@ -309,6 +309,7 @@ class AuthorYearStyle(PlainStyle):
 
 
 register_plugin('pybtex.style.formatting', 'author_year_style', AuthorYearStyle)
+register_plugin('pybtex.style.referencing', 'author_year_style', AuthorYearStyle)
 
 
 def getrev():
