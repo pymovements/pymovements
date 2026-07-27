@@ -48,11 +48,7 @@ def _make_entry(last_name: str, year: str) -> Entry:
         ),
         pytest.param(
             [('Smith', '2020'), ('Jones', '2021'), ('Brown', '2019')],
-            [
-                'Smith et al., 2020',
-                'Jones et al., 2021',
-                'Brown et al., 2019',
-            ],
+            ['Smith et al., 2020', 'Jones et al., 2021', 'Brown et al., 2019'],
             id='multiple_distinct_entries',
         ),
         pytest.param(
@@ -62,20 +58,12 @@ def _make_entry(last_name: str, year: str) -> Entry:
         ),
         pytest.param(
             [('Smith', '2020'), ('Smith', '2020'), ('Smith', '2020')],
-            [
-                'Smith et al., 2020',
-                'Smith et al., 2020a',
-                'Smith et al., 2020b',
-            ],
+            ['Smith et al., 2020', 'Smith et al., 2020a', 'Smith et al., 2020b'],
             id='three_duplicates',
         ),
         pytest.param(
             [('Smith', '2020'), ('Jones', '2021'), ('Smith', '2020')],
-            [
-                'Smith et al., 2020',
-                'Jones et al., 2021',
-                'Smith et al., 2020a',
-            ],
+            ['Smith et al., 2020', 'Jones et al., 2021', 'Smith et al., 2020a'],
             id='duplicates_mixed_with_unique',
         ),
         pytest.param(
