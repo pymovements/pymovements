@@ -1205,7 +1205,7 @@ class Dataset:
             return self
 
         for gaze in self.gaze:
-            gaze.events = Events()
+            gaze.clear_events()
 
         return self
 
