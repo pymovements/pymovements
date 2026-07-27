@@ -286,20 +286,22 @@ class AuthorYearLabelStyle(BaseLabelStyle):
     def format_labels(self, sorted_entries):
         outputs: list[str] = []
         for entry in sorted_entries:
-            output = self.template.format(
+            candidate = self.template.format(
                 author=entry.persons['author'][0].rich_last_names[0],
                 year=entry.fields['year'],
             )
 
-            if output in outputs:
+            if candidate in outputs:
                 for suffix_char in string.ascii_lowercase:
-                    suffix_output = output + suffix_char
-                    if suffix_output not in outputs:
-                        output = suffix_output
+                    suffix_candidate = candidate + suffix_char
+                    if suffix_candidate not in outputs:
+                        candidate = suffix_candidate
                         break
+                else:
+                    raise ValueError(f"character suffixes exhausted for '{candidate}'")
 
-            outputs.append(output)
-            yield output
+            outputs.append(candidate)
+            yield candidate
 
 
 class AuthorYearStyle(PlainStyle):
