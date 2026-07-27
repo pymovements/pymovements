@@ -1283,3 +1283,25 @@ def test_detect_with_events_trial_columns_warns_on_any_empty_trial():
     # Now we expect a warning because the second trial has no events
     with pytest.warns(UserWarning, match='detect_only_once: No events were detected.'):
         gaze.detect(detect_only_once)
+
+
+def test_detect_clear():
+    """Test that clear=True clears existing events before detection."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+        events=pm.Events(name='fixation', onsets=[0], offsets=[10]),
+    )
+    # Ensure events are present before detection
+    assert not gaze.events.frame.is_empty()
+
+    # Use a dummy detect function that returns new events
+    def dummy_detect(**_kwargs):
+        return pm.Events(name='fixation', onsets=[20], offsets=[30])
+
+    gaze.detect(dummy_detect, clear=True)
+
+    # After detection, the events should be replaced with the new events
+    expected_events = pm.Events(name='fixation', onsets=[20], offsets=[30])
+    assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
