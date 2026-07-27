@@ -168,7 +168,7 @@ def tsplot(
         ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
     events = gaze.events.frame
-    event_colors = dict(zip(events['name'].unique(), plt.cm.tab10.colors))
+    event_colors = dict(zip(sorted(events['name'].unique()), plt.colormaps['tab10'].colors))
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
