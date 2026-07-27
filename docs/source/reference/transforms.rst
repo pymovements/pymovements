@@ -14,13 +14,16 @@ Transforms
     :template: function.rst
 
     center_origin
+    clip
     downsample
     norm
     pix2deg
     deg2pix
     pos2acc
     pos2vel
+    resample
     savitzky_golay
+    smooth
 
 .. rubric:: Segmentation Methods
 
