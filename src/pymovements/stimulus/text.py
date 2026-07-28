@@ -164,7 +164,7 @@ class WritingSystem:
         )
 
 
-@repr_html(['aois'])
+@repr_html(['aois', 'metadata'])
 class TextStimulus:
     """A DataFrame for the text stimulus that the gaze data was recorded on.
 
@@ -200,6 +200,8 @@ class TextStimulus:
         Writing system of the text. If ``writing_system`` is a string,
         :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` is used for initialization.
         (default: ``'left-to-right'``)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     """
 
     def __init__(
@@ -216,6 +218,7 @@ class TextStimulus:
             page_column: str | None = None,
             trial_column: str | None = None,
             writing_system: WritingSystem | str = 'left-to-right',
+            metadata: dict[str, Any] | None = None,
     ) -> None:
 
         self.aois = aois.clone()
@@ -228,6 +231,7 @@ class TextStimulus:
         self.end_y_column = end_y_column
         self.page_column = page_column
         self.trial_column = trial_column
+        self.metadata = metadata if metadata is not None else {}
 
         if isinstance(writing_system, str):
             self.writing_system = WritingSystem.from_descriptor(writing_system)
@@ -335,6 +339,7 @@ class TextStimulus:
             page_column: str | None = None,
             trial_column: str | None = None,
             writing_system: WritingSystem | str = 'left-to-right',
+            metadata: dict[str, Any] | None = None,
             read_csv_kwargs: dict[str, Any] | None = None,
     ) -> TextStimulus:
         """Load text stimulus from file.
@@ -371,6 +376,8 @@ class TextStimulus:
             Writing system of the text. If ``writing_system`` is a string,
             :py:meth:`~pymovements.stimulus.WritingSystem.from_descriptor()` for initialization.
             (default: ``'left-to-right'``)
+        metadata: dict[str, Any] | None
+            Dictionary containing additional metadata. (default: None)
         read_csv_kwargs: dict[str, Any] | None
             Custom read keyword arguments for polars. (default: None)
 
@@ -406,6 +413,7 @@ class TextStimulus:
             page_column=page_column,
             trial_column=trial_column,
             writing_system=writing_system,
+            metadata=metadata,
         )
 
 
@@ -454,6 +462,7 @@ def from_file(
         trial_column: str | None = None,
         custom_read_kwargs: dict[str, Any] | None = None,
         writing_system: WritingSystem | str = 'left-to-right',
+        metadata: dict[str, Any] | None = None,
 ) -> TextStimulus:
     """Load text stimulus from file.
 
@@ -490,6 +499,8 @@ def from_file(
     writing_system: WritingSystem | str
         Text writing system. See TextStimulus.__init__ for details.
         (default: WritingSystem(horizontal, top-to-bottom, left-to-right))
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
 
     Returns
@@ -510,6 +521,7 @@ def from_file(
         trial_column=trial_column,
         read_csv_kwargs=custom_read_kwargs,
         writing_system=writing_system,
+        metadata=metadata,
     )
 
 

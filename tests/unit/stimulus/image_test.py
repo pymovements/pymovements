@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Image stimulus class."""
-from pathlib import Path
+from copy import deepcopy
 from unittest.mock import Mock
 
 import pytest
@@ -29,37 +29,54 @@ from pymovements.stimulus.image import from_files
 from pymovements.stimulus.image import ImageStimulus
 
 
-@pytest.mark.parametrize(
-    ('image_path'),
-    (
-        pytest.param('tests/files/stimuli/pexels-zoorg-1000498.jpg', id='image_path_str'),
-        pytest.param(Path('tests/files/stimuli/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
-    ),
-)
-def test_image_stimulus_from_file(image_path):
+def test_image_stimulus_from_file_has_correct_path(make_example_file):
+    example_file = 'stimuli/pexels-zoorg-1000498.jpg'
+    image_path = make_example_file(example_file)
     image_stimulus = from_file(image_path)
-    assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    assert image_stimulus.images[0] == image_path
+
+
+def test_image_stimulus_from_file_has_correct_path_str(make_example_file):
+    example_file = 'stimuli/pexels-zoorg-1000498.jpg'
+    image_path = make_example_file(example_file)
+    image_stimulus = from_file(str(image_path))
+    assert image_stimulus.images[0] == image_path
+
+
+def test_image_stimulus_from_file_has_correct_metadata_default(make_example_file):
+    example_file = 'stimuli/pexels-zoorg-1000498.jpg'
+    image_path = make_example_file(example_file)
+    image_stimulus = from_file(image_path)
+    assert image_stimulus.metadata == {}
 
 
 @pytest.mark.parametrize(
-    ('path'),
+    'metadata',
     (
-        pytest.param('tests/files/', id='image_path_str'),
-        pytest.param(Path('tests/files/'), id='image_path_Path'),
+        pytest.param({}, id='empty'),
+        pytest.param({'key': 'value'}, id='dict'),
     ),
 )
-def test_image_stimulus_from_files(path):
-    image_stimulus = from_files(path, r'{book_name}-{page_num}-{line_num}.jpg')
-    assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
+def test_image_stimulus_from_file_has_correct_metadata(metadata, make_example_file):
+    metadata_pre = deepcopy(metadata)
+    image_path = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
+    image_stimulus = from_file(image_path, metadata=metadata)
+    assert image_stimulus.metadata == metadata_pre
+    assert image_stimulus.metadata is metadata
 
 
-@pytest.mark.parametrize(
-    ('image_path'),
-    (
-        pytest.param('tests/files/stimuli/pexels-zoorg-1000498.jpg', id='image_path_str'),
-        pytest.param(Path('tests/files/stimuli/pexels-zoorg-1000498.jpg'), id='image_path_Path'),
-    ),
-)
+def test_image_stimulus_from_files(testfiles_dirpath):
+    dirpath = testfiles_dirpath / 'stimuli'
+    image_stimulus = from_files(dirpath, r'{book_name}-{page_num}-{line_num}.jpg')
+    assert image_stimulus.images[0] == dirpath / 'pexels-zoorg-1000498.jpg'
+
+
+def test_image_stimulus_from_files_str(testfiles_dirpath):
+    dirpath = testfiles_dirpath / 'stimuli'
+    image_stimulus = from_files(dirpath, r'{book_name}-{page_num}-{line_num}.jpg')
+    assert image_stimulus.images[0] == dirpath / 'pexels-zoorg-1000498.jpg'
+
+
 @pytest.mark.parametrize(
     ('stimulus_id'),
     (
@@ -73,13 +90,14 @@ def test_image_stimulus_from_files(path):
         pytest.param('lower', id='origin_lower'),
     ),
 )
-def test_not_showing_image_stimulus_from_file(image_path, stimulus_id, origin, monkeypatch):
+def test_not_showing_image_stimulus_from_file(stimulus_id, origin, make_example_file, monkeypatch):
+    image_path = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
     mock = Mock()
     monkeypatch.setattr(pyplot, 'show', mock)
     image_stimulus = from_file(image_path)
-    assert image_stimulus.images[0].as_posix() == 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    assert image_stimulus.images[0] == image_path
     with pytest.warns(DeprecationWarning, match='This method is deprecated'):
-        image_stimulus.show(stimulus_id, origin)
+      image_stimulus.show(stimulus_id, origin)
     pyplot.close()
     mock.assert_called_once()
 

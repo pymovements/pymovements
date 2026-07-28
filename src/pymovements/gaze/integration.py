@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import warnings
 from typing import Literal
+from typing import overload
 
 import numpy as np
 import pandas as pd
@@ -31,6 +32,45 @@ from pymovements._utils import _checks
 from pymovements.events.events import Events
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
+
+
+@overload
+def _resolve_column(column: None, columns: list[str]) -> None:
+    ...
+
+
+@overload
+def _resolve_column(column: str | int, columns: list[str]) -> str:
+    ...
+
+
+def _resolve_column(column: str | int | None, columns: list[str]) -> str | None:
+    """Resolve a column name or index against a dataframe's columns."""
+    if column is None:
+        return None
+    if isinstance(column, int) and not isinstance(column, bool):
+        try:
+            return columns[column]
+        except IndexError as error:
+            raise IndexError(
+                f'column index {column} is out of bounds for {len(columns)} columns.',
+            ) from error
+    elif isinstance(column, str):
+        return column
+    else:
+        raise TypeError(
+            f'column specifiers must be of type int or str but got {type(column).__name__}',
+        )
+
+
+def _resolve_columns(
+        columns: list[str | int] | None,
+        available_columns: list[str],
+) -> list[str] | None:
+    """Resolve a list of column names or indices against a dataframe's columns."""
+    if columns is None:
+        return None
+    return [_resolve_column(column, available_columns) for column in columns]
 
 
 def from_numpy(
@@ -47,14 +87,14 @@ def from_numpy(
         distance: np.ndarray | None = None,
         schema: list[str] | None = None,
         orient: Literal['col', 'row'] = 'col',
-        trial_columns: str | list[str] | None = None,
-        time_column: str | None = None,
+        trial_columns: str | int | list[str | int] | None = None,
+        time_column: str | int | None = None,
         time_unit: str | None = None,
-        pixel_columns: list[str] | None = None,
-        position_columns: list[str] | None = None,
-        velocity_columns: list[str] | None = None,
-        acceleration_columns: list[str] | None = None,
-        distance_column: str | None = None,
+        pixel_columns: list[str | int] | None = None,
+        position_columns: list[str | int] | None = None,
+        velocity_columns: list[str | int] | None = None,
+        acceleration_columns: list[str | int] | None = None,
+        distance_column: str | int | None = None,
         data: np.ndarray | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a numpy array.
@@ -96,28 +136,31 @@ def from_numpy(
     orient: Literal['col', 'row']
         Whether to interpret the two-dimensional samples data as columns or as rows.
         (default: 'col')
-    trial_columns: str | list[str] | None
-        The name of the trial columns in the samples data frame. If the list is empty or None,
-        the samples data frame is assumed to contain only one trial. If the list is not empty,
-        the samples data frame is assumed to contain multiple trials, and the transformation
+    trial_columns: str | int | list[str | int] | None
+        The name or index of the trial columns in the samples data frame. If the list is empty or
+        None, the samples data frame is assumed to contain only one trial. If the list is not
+        empty, the samples data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
-    time_column: str | None
-        The name of the timestamp column in the samples data frame. (default: None)
+    time_column: str | int | None
+        The name or index of the timestamp column in the samples data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the samples data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds, and 'step' for steps. If the unit is
         'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
-    pixel_columns: list[str] | None
-        The name of the pixel position columns in the samples data frame. (default: None)
-    position_columns: list[str] | None
-        The name of the dva position columns in the samples data frame. (default: None)
-    velocity_columns: list[str] | None
-        The name of the dva velocity columns in the samples data frame. (default: None)
-    acceleration_columns: list[str] | None
-        The name of the dva acceleration columns in the samples data frame. (default: None)
-    distance_column: str | None
-        The name of the column containing eye-to-screen distance in millimeters for each sample
+    pixel_columns: list[str | int] | None
+        The names or indices of the pixel position columns in the samples data frame.
+        (default: None)
+    position_columns: list[str | int] | None
+        The names or indices of the dva position columns in the samples data frame. (default: None)
+    velocity_columns: list[str | int] | None
+        The names or indices of the dva velocity columns in the samples data frame. (default: None)
+    acceleration_columns: list[str | int] | None
+        The names or indices of the dva acceleration columns in the samples data frame.
+        (default: None)
+    distance_column: str | int | None
+        The name or index of the column containing eye-to-screen distance in millimeters for each
+        sample
         in the samples data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
@@ -253,19 +296,42 @@ def from_numpy(
     _checks.check_is_mutual_exclusive(samples=samples, acceleration=acceleration)
     _checks.check_is_mutual_exclusive(samples=samples, distance=distance)
 
+    if samples is None:
+        if trial_columns is not None:
+            raise ValueError('trial_columns can only be used when samples is provided')
+        if time_column is not None:
+            raise ValueError('time_column can only be used when samples is provided')
+        if pixel_columns is not None:
+            raise ValueError('pixel_columns can only be used when samples is provided')
+        if position_columns is not None:
+            raise ValueError('position_columns can only be used when samples is provided')
+        if velocity_columns is not None:
+            raise ValueError('velocity_columns can only be used when samples is provided')
+        if acceleration_columns is not None:
+            raise ValueError('acceleration_columns can only be used when samples is provided')
+        if distance_column is not None:
+            raise ValueError('distance_column can only be used when samples is provided')
+
     if samples is not None:
+        samples_frame = pl.from_numpy(data=samples, schema=schema, orient=orient)
+        available_columns = samples_frame.columns
+        resolved_trial_columns = (
+            _resolve_columns(trial_columns, available_columns)
+            if isinstance(trial_columns, list)
+            else _resolve_column(trial_columns, available_columns)
+        )
         return Gaze(
-            samples=pl.from_numpy(data=samples, schema=schema, orient=orient),
+            samples=samples_frame,
             experiment=experiment,
             events=events,
-            trial_columns=trial_columns,
-            time_column=time_column,
+            trial_columns=resolved_trial_columns,
+            time_column=_resolve_column(time_column, available_columns),
             time_unit=time_unit,
-            pixel_columns=pixel_columns,
-            position_columns=position_columns,
-            velocity_columns=velocity_columns,
-            acceleration_columns=acceleration_columns,
-            distance_column=distance_column,
+            pixel_columns=_resolve_columns(pixel_columns, available_columns),
+            position_columns=_resolve_columns(position_columns, available_columns),
+            velocity_columns=_resolve_columns(velocity_columns, available_columns),
+            acceleration_columns=_resolve_columns(acceleration_columns, available_columns),
+            distance_column=_resolve_column(distance_column, available_columns),
         )
 
     # Initialize with an empty DataFrame, as every column specifier could be None.
@@ -283,7 +349,7 @@ def from_numpy(
         sample_components.append(sample_component)
         time_column = 'time'
 
-    pixel_columns = None
+    generated_pixel_columns = None
     if pixel is not None:
         sample_component = pl.from_numpy(
             data=pixel, orient=orient,
@@ -291,9 +357,9 @@ def from_numpy(
             pl.all().name.prefix('pixel_'),
         )
         sample_components.append(sample_component)
-        pixel_columns = sample_component.columns
+        generated_pixel_columns = sample_component.columns
 
-    position_columns = None
+    generated_position_columns = None
     if position is not None:
         sample_component = pl.from_numpy(
             data=position, orient=orient,
@@ -301,9 +367,9 @@ def from_numpy(
             pl.all().name.prefix('position_'),
         )
         sample_components.append(sample_component)
-        position_columns = sample_component.columns
+        generated_position_columns = sample_component.columns
 
-    velocity_columns = None
+    generated_velocity_columns = None
     if velocity is not None:
         sample_component = pl.from_numpy(
             data=velocity, orient=orient,
@@ -311,14 +377,14 @@ def from_numpy(
             pl.all().name.prefix('velocity_'),
         )
         sample_components.append(sample_component)
-        velocity_columns = sample_component.columns
+        generated_velocity_columns = sample_component.columns
 
-    acceleration_columns = None
+    generated_acceleration_columns = None
     if acceleration is not None:
         sample_component = pl.from_numpy(data=acceleration, orient=orient)
         sample_component = sample_component.select(pl.all().name.prefix('acceleration_'))
         sample_components.append(sample_component)
-        acceleration_columns = sample_component.columns
+        generated_acceleration_columns = sample_component.columns
 
     distance_column = None
     if distance is not None:
@@ -334,10 +400,10 @@ def from_numpy(
         time_column=time_column,
         time_unit=time_unit,
         trial_columns=trial_columns,
-        pixel_columns=pixel_columns,
-        position_columns=position_columns,
-        velocity_columns=velocity_columns,
-        acceleration_columns=acceleration_columns,
+        pixel_columns=generated_pixel_columns,
+        position_columns=generated_position_columns,
+        velocity_columns=generated_velocity_columns,
+        acceleration_columns=generated_acceleration_columns,
         distance_column=distance_column,
     )
 

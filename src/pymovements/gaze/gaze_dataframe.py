@@ -168,7 +168,7 @@ class GazeDataFrame(metaclass=DeprecatedMetaClass):
     └──────┴────────────┘
 
     In case your data has no time column available, you can pass an
-    :py:class:`~pymovements.gaze.Experiment` to create a time column with the correct sampling rate
+    :py:class:`~pymovements.Experiment` to create a time column with the correct sampling rate
     during initialization. The time column will be represented in millisecond units.
 
     >>> df_no_time = df.select(pl.exclude('t'))

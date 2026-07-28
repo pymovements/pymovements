@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from warnings import warn
+from typing import Any
 
 import matplotlib.pyplot
 import PIL.Image
@@ -31,7 +32,7 @@ from pymovements._utils._paths import get_filepaths
 from pymovements._utils._strings import curly_to_regex
 
 
-@repr_html()
+@repr_html(['images', 'metadata'])
 class ImageStimulus:
     """A DataFrame for image stimulus.
 
@@ -42,12 +43,15 @@ class ImageStimulus:
     origin : str
         Image origin position for plotting.
         (default: 'upper')
-
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata.
+        (default: None)
     """
 
     def __init__(self, images: list[Path], origin: str = 'upper') -> None:
         self.images = images
         self.origin = origin
+        self.metadata = metadata if metadata is not None else {}
 
     def show(self, stimulus_id: int, origin: str = 'upper'):
         """Display an image stimulus.
@@ -106,36 +110,40 @@ class ImageStimulus:
         return _draw_image_stimulus(self.images[stimulus_id], fig=fig, ax=ax, origin=self.origin)
 
     @staticmethod
-    def from_file(path: str | Path) -> ImageStimulus:
+    def from_file(path: str | Path, metadata: dict[str, Any] | None = None) -> ImageStimulus:
         """Load image stimulus from file.
 
         Parameters
         ----------
         path:  str | Path
             Path to image file to be read.
+        metadata: dict[str, Any] | None
+            Dictionary containing additional metadata. (default: None)
 
         Returns
         -------
         ImageStimulus
             Returns an ImageStimulus initialized with the image stimulus file.
         """
-        return ImageStimulus(images=[Path(path)])
+        return ImageStimulus(images=[Path(path)], metadata=metadata)
 
 
-def from_file(image_path: str | Path) -> ImageStimulus:
+def from_file(image_path: str | Path, metadata: dict[str, Any] | None = None) -> ImageStimulus:
     """Load image stimulus from file.
 
     Parameters
     ----------
     image_path:  str | Path
         Path to file to be read.
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
 
     Returns
     -------
     ImageStimulus
         Returns the image stimulus file.
     """
-    return ImageStimulus.from_file(path=image_path)
+    return ImageStimulus.from_file(path=image_path, metadata=metadata)
 
 
 def from_files(path: str | Path, filename_format: str) -> ImageStimulus:

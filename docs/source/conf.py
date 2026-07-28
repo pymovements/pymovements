@@ -30,6 +30,7 @@
 import importlib.resources
 import inspect
 import os
+import string
 import sys
 from subprocess import CalledProcessError
 from subprocess import run
@@ -47,7 +48,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('src'))))
 # -- Project information -----------------------------------------------------
 
 project = 'pymovements'
-copyright = '2022-2025 The pymovements Project Authors'
+copyright = '2022-2026 The pymovements Project Authors'
 author = 'The pymovements Project Authors'
 
 
@@ -84,10 +85,22 @@ def config_inited_handler(app, config):
     os.makedirs(os.path.join(app.srcdir, app.config.generated_path), exist_ok=True)
 
 
+def doctree_resolved_handler(app, doctree, docname):
+    """Open all external links in a new tab."""
+    from docutils import nodes
+
+    for node in doctree.traverse(nodes.reference):
+        uri = node.get('refuri', '')
+        if uri.startswith(('http://', 'https://')):
+            node['target'] = '_blank'
+            node['rel'] = 'noopener noreferrer'
+
+
 def setup(app):
     app.add_config_value('REVISION', 'master', 'env')
     app.add_config_value('generated_path', '_generated', 'env')
     app.connect('config-inited', config_inited_handler)
+    app.connect('doctree-resolved', doctree_resolved_handler)
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -163,21 +176,12 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-    # Our docs might reference a plain "transforms.func" symbol coming from context
-    (r'py:(func|meth|mod)', r'^transforms\..*'),
 
-    # Shorthand alias used in docs for our own package
-    (r'py:(class|mod|func|meth|obj|attr)', r'^pm\..*'),
 
     # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:(obj|attr|meth)', r'^pymovements\..*'),
+    (r'py:obj', r'^pymovements\..*'),
 
-    # Modules referenced in text but not importable via intersphinx targets
-    (r'py:mod', r'^pymovements\.events(?:\.event_properties)?$'),
 
-    # Custom exception names mentioned in text but not importable as a symbol
-    (r'py:exc', r'^UnknownMeasure$'),
-    (r'py:exc', r'^\.\.\s+deprecated:$'),
 
 
     # Matplotlib color types referenced in plotting API
@@ -187,23 +191,22 @@ nitpick_ignore_regex = [
     ),
 
     # Project-internal typing aliases used only in docs
-    (r'py:class', r'^(?:ResourcesLike|DatasetDefinitionClass|SampleMeasure)$'),
+    (r'py:class', r'^(?:DatasetDefinitionClass|SampleMeasure)$'),
     # Fully-qualified generic forms that appear in docstrings
     (
         r'py:class', r'^pymovements\.(?:dataset\.dataset_library\.'
         r'DatasetDefinitionClass|measure\.samples\.library\.SampleMeasure)$',
     ),
+    # generic types https://github.com/sphinx-doc/sphinx/issues/14159
+    (r'py:class', r'.*dict\[str'),
 
-    # Fully-qualified references to our classes that aren't resolvable via intersphinx inventory
-    (r'py:class', r'^pymovements\.dataset\.(?:Dataset|DatasetDefinition|DatasetPaths)$'),
-    (r'py:class', r'^pymovements\.datasets\.Dataset$'),
-    (r'py:class', r'^pymovements\.gaze\.Experiment$'),
 
-    # Internal helper functions referenced in docs text
-    (r'py:func', r'^(?:events\.engbert\.compute_threshold|_decompress)$'),
 
     # Residual autosummary cross-refs to attributes/methods on our high-level classes
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
+
+    # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
+    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment|ResourceDefinition)\..*'),
 
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
@@ -274,13 +277,31 @@ favicons = [
 # -- Options for BibTeX ------------------------------------------------------
 bibtex_bibfiles = ['bibliography.bib']
 bibtex_default_style = 'author_year_style'
-bibtex_reference_style = 'author_year'
+bibtex_reference_style = 'label'
 
 
 class AuthorYearLabelStyle(BaseLabelStyle):
+    template: str = '{author} et al., {year}'
+
     def format_labels(self, sorted_entries):
+        outputs: list[str] = []
         for entry in sorted_entries:
-            yield f'{entry.persons["author"][0].rich_last_names[0]} et al., {entry.fields["year"]}'
+            candidate = self.template.format(
+                author=entry.persons['author'][0].rich_last_names[0],
+                year=entry.fields['year'],
+            )
+
+            if candidate in outputs:
+                for suffix_char in string.ascii_lowercase:
+                    suffix_candidate = candidate + suffix_char
+                    if suffix_candidate not in outputs:
+                        candidate = suffix_candidate
+                        break
+                else:
+                    raise ValueError(f"character suffixes exhausted for '{candidate}'")
+
+            outputs.append(candidate)
+            yield candidate
 
 
 class AuthorYearStyle(PlainStyle):
