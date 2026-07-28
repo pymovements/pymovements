@@ -23,7 +23,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import PIL.Image
 from deprecated.sphinx import deprecated
 
@@ -82,27 +82,27 @@ class ImageStimulus:
 
         self.plot(stimulus_id)
 
-        matplotlib.pyplot.show()
+        plt.show()
 
     def plot(
         self,
         stimulus_id: int,
         *,
-        ax: matplotlib.pyplot.Axes | None = None,
-    ) -> tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]:
+        ax: plt.Axes | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Plot an image stimulus.
 
         Parameters
         ----------
         stimulus_id : int
             Index of the stimulus to plot.
-        ax : matplotlib.pyplot.Axes | None
+        ax : plt.Axes | None
             Axes to draw the image on.
             (default: None)
 
         Returns
         -------
-        tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]
+        tuple[plt.Figure, plt.Axes]
             Figure and axes containing the plot.
         """
         if ax is not None:
@@ -174,9 +174,9 @@ def _draw_image_stimulus(
         show: bool = False,
         figsize: tuple[float, float] = (15, 10),
         extent: list[float] | None = None,
-        fig: matplotlib.pyplot.figure | None = None,
-        ax: matplotlib.pyplot.Axes | None = None,
-) -> tuple[matplotlib.pyplot.figure, matplotlib.pyplot.Axes]:
+        fig: plt.figure | None = None,
+        ax: plt.Axes | None = None,
+) -> tuple[plt.figure, plt.Axes]:
     """Draw stimulus.
 
     Parameters
@@ -191,15 +191,15 @@ def _draw_image_stimulus(
         Size of the figure. (default: (15, 10))
     extent: list[float] | None
         Extent of image. (default: None)
-    fig: matplotlib.pyplot.figure | None
+    fig: plt.figure | None
         Matplotlib canvas. (default: None)
-    ax: matplotlib.pyplot.Axes | None
+    ax: plt.Axes | None
         Matplotlib axes. (default: None)
 
     Returns
     -------
-    fig: matplotlib.pyplot.figure
-    ax: matplotlib.pyplot.Axes
+    fig: plt.figure
+    ax: plt.Axes
     """
     try:
         img = PIL.Image.open(image_stimulus)
@@ -210,9 +210,9 @@ def _draw_image_stimulus(
         ) from exception
 
     if not fig:
-        fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize)
     assert ax
     ax.imshow(img, origin=origin, extent=extent)
     if show:
-        matplotlib.pyplot.show()
+        plt.show()
     return fig, ax
