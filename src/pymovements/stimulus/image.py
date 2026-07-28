@@ -67,7 +67,7 @@ class ImageStimulus:
         """Display an image stimulus.
 
         .. deprecated:: v0.28.0
-           Please use :py:meth:`~pymovements.stimulus.ImageStimulus.plot` instead.
+           Please use :py:meth:`~pymovements.ImageStimulus.plot` instead.
            This method will be removed in v0.33.0.
 
         Parameters
