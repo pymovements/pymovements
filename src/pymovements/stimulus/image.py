@@ -48,7 +48,12 @@ class ImageStimulus:
         (default: None)
     """
 
-    def __init__(self, images: list[Path], origin: str = 'upper') -> None:
+    def __init__(
+            self,
+            images: list[Path],
+            origin: str = 'upper',
+            metadata: dict[str, Any] | None = None,
+    ) -> None:
         self.images = images
         self.origin = origin
         self.metadata = metadata if metadata is not None else {}
