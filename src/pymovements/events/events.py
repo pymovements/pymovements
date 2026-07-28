@@ -617,6 +617,27 @@ class Events:
             for frame in event_dfs
         ]
 
+    def drop_nulls(
+        self,
+        subset: list[str] | None = None,
+        how: Literal['all', 'any'] = 'any',
+    ) -> None:
+        """Drop events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. By default, all columns are checked.
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. (default: 'any')
+        """
+        if subset is None:
+            subset = self.frame.columns
+
+        condition = pl.any_horizontal if how == 'any' else pl.all_horizontal
+        self.frame = self.frame.remove(condition(pl.col(subset).is_null()))
+
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add minimal schema columns to :py:class:`polars.DataFrame` if they are missing.
 

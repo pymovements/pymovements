@@ -1301,3 +1301,50 @@ def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
 def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
     assert_frame_equal(events.frame, result_frame)
+
+
+@pytest.mark.parametrize(
+    ('trial_data', 'kwargs', 'expected_events_kept'),
+    [
+        pytest.param(
+            {
+                'trial': ['a', 'a', 'b', None],
+                'page': [0, 1, None, 0],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 2, 3],
+            id='none_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 3],
+            id='some_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {},
+            [1],
+            id='some_dropped_any',
+        ),
+    ],
+)
+def test_events_drop_nulls(trial_data, kwargs, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation'] * len(trial_data['trial']),
+                'onset': range(len(trial_data['trial'])),
+                'offset': range(1, len(trial_data['trial']) + 1),
+                **trial_data,
+            },
+        ),
+    )
+    events.drop_nulls(**kwargs)
+    assert events.frame['onset'].to_list() == expected_events_kept
