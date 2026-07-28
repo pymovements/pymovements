@@ -163,7 +163,6 @@ def gaze_no_exp_fixture():
             {'cval': np.arange(0, 200), 'title': 'foo'},
             id='set_title',
         ),
-        # This test case now expects a DeprecationWarning
         pytest.param(
             {
                 'add_stimulus': True,
@@ -299,7 +298,6 @@ def test_traceplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
 
 def test_traceplot_with_image_stimulus(gaze, tmp_path):
     """Test that traceplot correctly plots with an ImageStimulus."""
-
     image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
 
@@ -331,36 +329,28 @@ def test_traceplot_with_image_stimulus(gaze, tmp_path):
     plt.close(fig)
 
 
-def test_traceplot_deprecated_parameters(gaze):
-    """Test that deprecated parameters trigger warnings in traceplot."""
+@pytest.mark.parametrize('gaze', ['200'], indirect=True)
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_traceplot_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        traceplot(gaze=gaze, **{deprecated_argument: value})
 
-    # Test add_stimulus deprecation
-    with pytest.deprecated_call():
-        traceplot(
-            gaze=gaze,
-            add_stimulus=True,
-            path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
-        )
-
-    # Test path_to_image_stimulus deprecation
-    with pytest.deprecated_call():
-        traceplot(
-            gaze=gaze,
-            path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
-        )
-
-    # Test stimulus_origin deprecation
-    with pytest.deprecated_call():
-        traceplot(
-            gaze=gaze,
-            stimulus_origin='lower',
-        )
-
-    # Test all three together
-    with pytest.deprecated_call():
-        traceplot(
-            gaze=gaze,
-            add_stimulus=True,
-            path_to_image_stimulus='./tests/files/stimuli/pexels-zoorg-1000498.jpg',
-            stimulus_origin='lower',
-        )
+    assert_deprecation_is_removed(
+        function_name=f"traceplot argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )

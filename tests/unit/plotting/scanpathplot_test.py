@@ -222,7 +222,6 @@ def gaze_fixture(request, make_gaze):
             },
             id='set_traceplot_and_cbar',
         ),
-        # This test case now expects DeprecationWarning for add_stimulus
         pytest.param(
             {
                 'add_stimulus': True,
@@ -392,7 +391,6 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
 def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
     """Test that scanpathplot correctly plots with an ImageStimulus."""
-
     image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
     image_stimulus = from_file(image_path)
 
@@ -420,3 +418,30 @@ def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
     assert (tmp_path / 'scanpathplot_with_stimulus.svg').is_file()
 
     plt.close(fig)
+
+
+@pytest.mark.parametrize('gaze', ['1_fixation'], indirect=True)
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_scanpathplot_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        scanpathplot(gaze=gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"scanpathplot argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )

@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Test Image stimulus class."""
 from copy import deepcopy
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -96,13 +97,11 @@ def test_not_showing_image_stimulus_from_file(stimulus_id, origin, make_example_
     monkeypatch.setattr(pyplot, 'show', mock)
     image_stimulus = from_file(image_path)
     assert image_stimulus.images[0] == image_path
-    with pytest.warns(DeprecationWarning, match='This method is deprecated'):
+    with pytest.warns(DeprecationWarning, match='Please use ImageStimulus.plot'):
         image_stimulus.show(stimulus_id, origin)
     pyplot.close()
     mock.assert_called_once()
 
-
-# NEW TESTS BELOW
 
 @pytest.mark.parametrize(
     ('image_path'),
@@ -147,7 +146,6 @@ def test_plot_image_stimulus(image_path, stimulus_id, monkeypatch):
 )
 def test_plot_image_stimulus_with_custom_axes(image_path, stimulus_id):
     """Test plotting on custom axes."""
-
     fig, ax = pyplot.subplots(figsize=(10, 8))
     image_stimulus = from_file(image_path)
 
@@ -172,7 +170,7 @@ def test_show_method_deprecation(image_path, monkeypatch):
 
     image_stimulus = from_file(image_path)
 
-    with pytest.warns(DeprecationWarning, match='This method is deprecated'):
+    with pytest.warns(DeprecationWarning, match='Please use ImageStimulus.plot'):
         image_stimulus.show(0, 'upper')
 
     mock.assert_called_once()
@@ -193,11 +191,27 @@ def test_show_method_updates_origin(image_path, monkeypatch):
     image_stimulus = from_file(image_path)
     # image_stimulus.origin
 
-    with pytest.warns(DeprecationWarning, match='This method is deprecated'):
+    with pytest.warns(DeprecationWarning, match='Please use ImageStimulus.plot'):
         image_stimulus.show(0, 'lower')
 
     assert image_stimulus.origin == 'lower'
     mock.assert_called_once()
+
+
+def test_show_is_deprecated_and_removed_as_scheduled(assert_deprecation_is_removed, monkeypatch):
+    mock = Mock()
+    monkeypatch.setattr(pyplot, 'show', mock)
+
+    image_stimulus = from_file('tests/files/stimuli/pexels-zoorg-1000498.jpg')
+
+    with pytest.raises(DeprecationWarning) as info:
+        image_stimulus.show(0, 'upper')
+
+    assert_deprecation_is_removed(
+        function_name='ImageStimulus.show',
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )
 
 
 def test_plot_with_invalid_stimulus_id_raises_error():
@@ -237,7 +251,6 @@ def test_plot_returns_figure_and_axes(image_path):
 )
 def test_multiple_stimuli(image_path):
     """Test ImageStimulus with multiple images."""
-
     images = [Path(image_path), Path(image_path)]
     image_stimulus = ImageStimulus(images=images)
 
@@ -254,7 +267,6 @@ def test_multiple_stimuli(image_path):
 
 def test_from_file_returns_image_stimulus():
     """Test from_file returns ImageStimulus instance."""
-
     result = from_file('tests/files/stimuli/pexels-zoorg-1000498.jpg')
     assert isinstance(result, ImageStimulus)
     assert len(result.images) == 1
@@ -262,7 +274,6 @@ def test_from_file_returns_image_stimulus():
 
 def test_from_files_returns_image_stimulus():
     """Test from_files returns ImageStimulus instance."""
-
     result = from_files('tests/files/', r'{book_name}-{page_num}-{line_num}.jpg')
     assert isinstance(result, ImageStimulus)
     assert len(result.images) >= 1

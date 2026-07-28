@@ -22,10 +22,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from warnings import warn
 
 import matplotlib.pyplot
 import PIL.Image
+from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
@@ -58,8 +58,17 @@ class ImageStimulus:
         self.origin = origin
         self.metadata = metadata if metadata is not None else {}
 
-    def show(self, stimulus_id: int, origin: str = 'upper'):
+    @deprecated(
+        reason='Please use ImageStimulus.plot() instead. '
+               'This method will be removed in v0.33.0.',
+        version='v0.28.0',
+    )
+    def show(self, stimulus_id: int, origin: str = 'upper') -> None:
         """Display an image stimulus.
+
+        .. deprecated:: v0.28.0
+           Please use :py:meth:`~pymovements.stimulus.ImageStimulus.plot` instead.
+           This method will be removed in v0.33.0.
 
         Parameters
         ----------
@@ -69,14 +78,6 @@ class ImageStimulus:
             Image origin position for plotting.
             (default: 'upper')
         """
-
-        warn(
-            DeprecationWarning(
-                'This method is deprecated'
-                ' please use ImageStimulus.plot() instead.',
-            ),
-        )
-
         self.origin = origin
 
         self.plot(stimulus_id)
@@ -88,26 +89,23 @@ class ImageStimulus:
         stimulus_id: int,
         *,
         ax: matplotlib.pyplot.Axes | None = None,
-    ) -> tuple[matplotlib.pyplot .Figure, matplotlib.pyplot .Axes]:
+    ) -> tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]:
         """Plot an image stimulus.
 
         Parameters
         ----------
         stimulus_id : int
             Index of the stimulus to plot.
-        ax : matplotlib.axes.Axes
+        ax : matplotlib.pyplot.Axes | None
             Axes to draw the image on.
             (default: None)
 
-
         Returns
         -------
-        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
+        tuple[matplotlib.pyplot.Figure, matplotlib.pyplot.Axes]
             Figure and axes containing the plot.
         """
-
         if ax is not None:
-
             fig = ax.figure
         else:
             fig = None

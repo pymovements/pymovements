@@ -149,24 +149,27 @@ def scanpathplot(
     if add_stimulus:
         warn(
             DeprecationWarning(
-                'add_stimulus is deprecated. Create an ImageStimulus'
-                ' and call ImageStimulus.plot(ax=...) before calling traceplot().',
+                "scanpathplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
             ),
         )
 
     if path_to_image_stimulus is not None:
         warn(
             DeprecationWarning(
-                'path_to_image_stimulus is deprecated. Create an ImageStimulus'
-                ' and call ImageStimulus.plot(ax=...) before calling traceplot().',
+                "scanpathplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
             ),
         )
 
     if stimulus_origin != 'upper':
         warn(
             DeprecationWarning(
-                'stimulus_origin is deprecated. Create an ImageStimulus'
-                ' and call ImageStimulus.plot(ax=...) before calling traceplot().',
+                "scanpathplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
             ),
         )
 
