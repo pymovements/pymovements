@@ -97,7 +97,7 @@ def test_not_showing_image_stimulus_from_file(stimulus_id, origin, make_example_
     image_stimulus = from_file(image_path)
     assert image_stimulus.images[0] == image_path
     with pytest.warns(DeprecationWarning, match='This method is deprecated'):
-      image_stimulus.show(stimulus_id, origin)
+        image_stimulus.show(stimulus_id, origin)
     pyplot.close()
     mock.assert_called_once()
 

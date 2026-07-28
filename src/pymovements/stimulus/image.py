@@ -21,8 +21,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from warnings import warn
 from typing import Any
+from warnings import warn
 
 import matplotlib.pyplot
 import PIL.Image
