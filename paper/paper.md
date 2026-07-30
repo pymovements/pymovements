@@ -8,38 +8,38 @@ tags:
 authors:
   - name: Daniel G. Krakowczyk
     orcid: 0009-0009-5100-0733
-    affiliation: "1, 2"
+    affiliation: '1, 2'
     corresponding: true
   - name: David R. Reich
     orcid: 0000-0002-3524-3788
-    affiliation: "1, 2"
+    affiliation: '1, 2'
   - name: Carlson Moses Büth
     orcid: 0000-0003-2298-8438
-    affiliation: 1
+    affiliation: '1'
   - name: Paul Prasse
     orcid: 0000-0003-1842-3645
-    affiliation: 2
+    affiliation: '2'
   - name: Andreas Säuberli
     orcid: 0000-0001-9613-334X
-    affiliation: 3
+    affiliation: '3'
   - name: Deborah N. Jakobi
     orcid: 0000-0002-9719-6673
-    affiliation: 1
+    affiliation: '1'
   - name: Jakob Chwastek
     orcid: 0000-0001-7092-6245
-    affiliation: 2
+    affiliation: '2'
   - name: Anastassia Shaitarova
     orcid: 0000-0003-3124-190X
-    affiliation: 1
+    affiliation: '1'
   - name: Bernhard Angele
     orcid: 0000-0001-8989-8555
-    affiliation: 4
+    affiliation: '4'
   - name: Paweł Kasprowski
     orcid: 0000-0002-2090-335X
-    affiliation: 5
+    affiliation: '5'
   - name: Lena A. Jäger
     orcid: 0000-0001-9018-9713
-    affiliation: 1
+    affiliation: '1'
 affiliations:
   - name: University of Zurich, Switzerland
     index: 1
@@ -51,7 +51,7 @@ affiliations:
     index: 4
   - name: Silesian University of Technology, Gliwice, Poland
     index: 5
-date:
+date: XX XX 2026
 bibliography: paper.bib
 ---
 
@@ -70,127 +70,141 @@ velocities, and segmenting the recording into discrete events such as
 fixations, saccades, and blinks.
 
 `pymovements` is an open-source Python package that provides tested,
-documented building blocks for such processing pipelines, including parsers
-for common eye-tracker file formats, a library of preprocessing
+documented building blocks for such processing pipelines: parsers for
+common eye-tracker file formats, a library of preprocessing
 transformations, established algorithms for detecting fixations, saccades,
-and blinks, a collection of event- and reading-level measures, and plotting
-utilities for inspecting the resulting data. It also includes a catalog of
+and blinks, a collection of event- and reading-level measures, and
+data-quality measures for assessing the reliability of recordings. It adds
+plotting utilities for inspecting the resulting data, and a catalog of
 publicly available eye-tracking datasets that users can download and load
 into a standardized representation, without having to harmonize each
 dataset's idiosyncratic format themselves.
 
-# Statement of Need
+# Statement of need
 
-Eye-tracking researchers often rely on a range of lab-specific scripts and
-single-purpose tools to preprocess gaze data, several of which are
-published without systematic test coverage or ongoing maintenance
-[@Acland2016; @Doucette2019; @GhoseSrinivasan2021; @Kubler2020; @Sogo2019].
-This makes it difficult to reproduce or compare analyses across studies,
-since a nominally identical processing step, such as detecting fixations,
-can differ between implementations without either author being aware of it.
+Eye-tracking preprocessing pipelines are frequently implemented
+independently across laboratories, producing inconsistent filtering, event
+detection, and data-handling procedures. This variability makes it
+difficult to reproduce or compare analyses across studies, because a
+nominally identical processing step, such as detecting fixations, can
+differ between implementations without either author being aware of it.
 `pymovements` was introduced to give research groups a shared, tested, and
 openly licensed interface for these steps, so that processing is
 documented, versioned, and citable rather than re-implemented per project
-[@pymovementsPaper]. Event detection algorithms such as the
+[@pymovementsPaper]. Widely used event-detection algorithms, including the
 velocity-threshold identification (I-VT) and dispersion-threshold
-identification (I-DT) methods [@SalvucciGoldberg2000], and the microsaccade
-detection algorithm of [@EngbertKliegl2003] as implemented in the
-Microsaccade Toolbox [@Engbert2015], are widely used but exist scattered
-across research code bases and publication-specific scripts. `pymovements`
-packages these algorithms, together with blink detection following
-[@Hershman2018; @Nystrom2024], into that single tested library.
+identification (I-DT) methods [@SalvucciGoldberg2000] and the microsaccade
+detection algorithm of @EngbertKliegl2003 as implemented in the
+Microsaccade Toolbox [@Engbert2015], otherwise exist scattered across
+research code bases and publication-specific scripts; `pymovements`
+packages them, together with blink detection following @Hershman2018 and
+@Nystrom2024, into a single tested library with a consistent interface.
 
 Two further, related problems motivated recent additions to the package.
 First, there has been no consensus on which properties of a recording setup
 or which data-quality metrics should be reported alongside a shared
-eye-tracking dataset, which `pymovements`' data-quality reporting
+eye-tracking dataset, a gap the package's data-quality reporting
 functionality was developed to address [@Jakobi2024]. Second, existing
 public datasets are scattered across repositories with non-standardized
-formats and incomplete metadata, motivating the package's dataset library,
+formats and incomplete metadata, motivating the package's dataset catalog,
 which lets researchers download and load more than 35 public eye-tracking
-datasets through a single interface, and lets dataset authors contribute
-their own dataset definitions to increase visibility of their work
+datasets through a single interface and lets dataset authors contribute
+their own datasets to increase the visibility of their work
 [@Krakowczyk2025].
 
+# State of the field
+
+Several open-source tools address individual parts of the eye-tracking
+workflow. In Python, `cili` [@Acland2016] handles fixation and pupil data,
+`sideeye` [@Doucette2019] computes reading measures from fixation reports,
+`PyTrack` [@GhoseSrinivasan2021] and the Perception Engineer's Toolbox
+[@Kubler2020] extract gaze features, and `GazeParser` [@Sogo2019] covers
+recording and parsing. These tools each target a specific stage of the
+workflow and vary in their test coverage, documentation, and ongoing
+maintenance.
+
+None of them spans the full path from raw vendor files through coordinate
+transforms and event detection to reading-level measures within a single,
+tested Python package, and none offers a standardized, community-extensible
+layer for discovering, downloading, and harmonizing published datasets.
+`pymovements` was built to fill that gap rather than to duplicate any
+single existing tool: where established algorithms exist, it reimplements
+them behind one consistent interface [@SalvucciGoldberg2000;
+@EngbertKliegl2003; @Carr2022] rather than replacing them, and it adds the
+dataset-harmonization layer that has no counterpart among the tools above.
+
+[add more tools: (eyekit, popEye, gazeR, eyetrackingR), event-detection
+tools (REMoDNaV, I2MC), and the proprietary SR Research Data Viewer as a
+closed-source baseline]
+
+# Software design
+
+`pymovements` is organized around a single in-memory representation, the
+`Gaze` object, which stores raw samples together with the experiment
+metadata (screen geometry, sampling rate, and eye-tracker parameters) that
+downstream operations require. Keeping the signal and its acquisition
+context together lets steps such as pixel-to-degree conversion be expressed
+without the user re-supplying calibration parameters at each call. The
+object is backed by the `polars` dataframe library [@polars] rather than
+`pandas`: its columnar, Rust-based engine provides the throughput needed to
+process large raw gaze recordings, and its explicit, typed schema is used
+to validate a dataset's declared configuration at load time and to surface
+misconfigurations as structured reports instead of silent errors deeper in
+the pipeline.
+
+Extensibility is a primary design goal. Preprocessing transforms,
+event-detection algorithms, and measures are each exposed through
+registries  so that a research group can add and dispatch its own methods
+without modifying the package. Public datasets are described declaratively
+as dataset definitions that point at the resources published by each
+dataset's original authors rather than redistributing any data; this keeps
+the catalog legally and ethically able to grow, lets definitions be
+contributed as lightweight YAML files by researchers without deep Python
+experience, and is backed by automated checks that the referenced resources
+remain reachable. Interoperability with the broader research-data ecosystem
+is pursued by treating the Brain Imaging Data Structure (BIDS) standard
+[@Gorgolewski2016] as a metadata target for participant and phenotype data
+rather than defining a custom format. The package is developed under
+continuous integration with automated testing and mandatory line-by-line
+code review; the substantial engineering effort of the project lies in this
+implementation and its coherent integration of otherwise scattered methods
+rather than in any single new algorithm.
+
+# Research impact
+
 `pymovements` has been in active development since 2022 and has been the
-subject of four peer-reviewed papers: three at the ACM Symposium on Eye
-Tracking Research and Applications (ETRA) [@pymovementsPaper; @Jakobi2024;
-@Krakowczyk2025] and one at the MultiplEYE Final Conference [@Krakowczyk2026].
-It is developed collaboratively by more than 50 contributors across multiple
-research laboratories. `pymovements` is central to the MultiplEYE COST Action
-(CA21131), serving as the main backend of its data preprocessing pipeline,
-with continuous exchange between the two projects [@Krakowczyk2026]. Through
-the COST Action, which provided funding, four multi-day contributor meetings
-brought together contributors from across Europe to jointly design and
-implement core features of the package. The
-dataset library has also begun to attract contributions from researchers
-outside the core team, supported by a dedicated dataset contribution guide
-that lowers the barrier to adding new datasets and encourages the community
-to share their own.
+subject of four peer-reviewed publications: three at the ACM Symposium on
+Eye Tracking Research and Applications [@pymovementsPaper; @Jakobi2024;
+@Krakowczyk2025] and one at the MultiplEYE Final Conference
+[@Krakowczyk2026]. It serves as the main backend of the data-preprocessing
+pipeline of the MultiplEYE COST Action (CA21131), a pan-European
+reading-research consortium, with continuous exchange between the two
+projects; four multi-day contributor meetings funded through the COST
+Action brought together contributors from across Europe to jointly design
+and implement core features of the package [@Krakowczyk2026]. The project
+has more than 50 contributors from multiple laboratories and is distributed
+via PyPI and conda-forge, with more than 90,000 downloads from PyPI
+[@pepyPymovements] and over 58,000 from conda-forge [@condaforgePymovements]
+as of July 2026. Its dataset catalog has begun to receive contributions
+from researchers outside the core team, supported by a dedicated dataset
+contribution guide that lowers the barrier to adding new datasets.
 
-# Functionality
+[DANIEL: JOSS weighs third-party research output most heavily here. Please
+add citations to publications by authors who are *not* co-authors of this
+paper and who used pymovements in their analyses]
 
-The central data structure of `pymovements` is the `Gaze` object,
-backed by the `polars` dataframe library [@polars], which holds raw
-gaze samples alongside experiment and eye-tracker metadata. Around
-this data structure, the package provides:
+# AI usage disclosure
 
-- **Dataset library**: definitions for dozens of publicly available
-  eye-tracking datasets (reading corpora, free-viewing, and other
-  paradigms), each with automatic download, checksum verification, and
-  loading into a unified representation via the `Dataset` API.
-  `pymovements` does not host or redistribute any dataset resources itself;
-  it only points to and downloads the resources published by each dataset's
-  original authors, to whom users are instructed to give credit. Dataset
-  definitions can be contributed by their original authors to increase the
-  visibility of their published datasets [@Krakowczyk2025].
-- **BIDS-compliant metadata**, reflecting a recent focus on interoperability
-  with established data standards: `pymovements` supports loading and
-  validating participant data as well as phenotype and assessment data
-  following the Brain Imaging Data Structure (BIDS) specification
-  [@Gorgolewski2016].
-- **Readers** for common formats, including EyeLink ASCII (`.asc`), BeGaze,
-  CSV, and Arrow IPC files, as well as construction from existing `numpy`
-  or `pandas` data via `from_numpy`/`from_pandas`.
-- **Preprocessing transforms**, including pixel-to-degrees and
-  degrees-to-pixels conversion, position-to-velocity and
-  position-to-acceleration computation, resampling, smoothing (including
-  Savitzky-Golay filtering, [@SavitzkyGolay1964]), clipping, and
-  normalization.
-- **Event detection**, including the I-VT and I-DT algorithms
-  [@SalvucciGoldberg2000], the microsaccades algorithm [@EngbertKliegl2003;
-  @Engbert2015], blink detection [@Hershman2018; @Nystrom2024], and
-  detection of samples falling outside the screen area, all exposed through
-  an extensible `EventDetectionLibrary`.
-- **Fixation drift correction**, offering eleven automated vertical
-  drift-correction algorithms for multi-line reading data, together with a
-  "Wisdom of the Crowd" ensemble method that combines their predictions by
-  majority vote, following the taxonomy of [@Carr2022].
-- **Measures**, computed either per event (e.g. amplitude, duration, peak
-  velocity) or per sample (e.g. data loss, null ratio), as well as a
-  dedicated set of reading measures for use in psycholinguistic reading
-  studies, including the proportion of fixations (and fixation duration)
-  falling outside any defined area of interest, a data-quality indicator of
-  whether drift correction is needed. Areas of interest can be defined over
-  text and image stimuli.
-- **Data validation and quality reports**, cross-checking a dataset's
-  declared configuration (columns, dtypes, gaze components) against the
-  actual schema of the loaded data at load time, and surfacing the result
-  as a structured, human-readable data-quality report following the
-  reporting standards proposed in [@Jakobi2024].
-- **Plotting**, including scanpath plots, gaze heatmaps, time-series
-  traces, main-sequence plots, and data-loss histograms, for visual
-  inspection of raw data and detected events.
-
-The package is tested with a continuous integration suite, distributed via
-PyPI and conda-forge, and documented with a user guide, tutorials, and a
-full API reference.
-
-# Conflicts of Interest
-
-The authors declare that they have no competing interests. The funding
-bodies listed in the Acknowledgements had no role in the design of the
-software or in the writing of this paper.
+Generative AI tools were used, under human direction, in developing both
+the software and this paper. Anthropic's Claude and JetBrains' Junie
+assisted some contributors with code generation and review, and Claude was
+used to draft and copy-edit this paper. Every change to the codebase
+requires an approving line-by-line review from at least one maintainer
+before merging, enforced by the repository's branch protection, so no
+AI-assisted contribution reaches the released package without human review.
+All design decisions were made by the human authors, who reviewed and
+validated the AI-assisted outputs in this paper and take responsibility for
+its content.
 
 # Acknowledgements
 
@@ -203,6 +217,7 @@ Artificial Intelligence (ELIZA), and the Romanian National Research Council
 Development and Innovation Funding (UEFISCDI) under grant
 PN-IV-P2-2.1-TE-2023-2007 (InstRead). It was further supported by work from
 European Cooperation in Science and Technology (COST) and the COST Action
-MultiplEYE (CA21131).
+MultiplEYE (CA21131). The funding bodies had no role in the design of the
+software or in the writing of this paper.
 
 # References
