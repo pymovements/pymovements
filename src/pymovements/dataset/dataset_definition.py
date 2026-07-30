@@ -36,13 +36,14 @@ from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
 from pymovements.dataset.resources import ResourceDefinitions
+from pymovements.dataset.websource import WebSource
 from pymovements.gaze.experiment import Experiment
 
 
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 
-@repr_html(['name', 'long_name', 'description', 'experiment', 'resources'])
+@repr_html(['name', 'long_name', 'description', 'experiment', 'resources', 'sources'])
 @dataclass
 class DatasetDefinition:
     """Definition to initialize a :py:class:`~Dataset`.
@@ -64,6 +65,10 @@ class DatasetDefinition:
         - `md5`: The MD5 checksum of the respective file.
 
         (default: ResourceDefinitions())
+    sources: dict[str, WebSource]
+        A mapping of names to dataset sources. Entries can be referenced from
+        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
+        (default: {})
     experiment: Experiment | None
         The experiment definition. (default: None)
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -169,6 +174,10 @@ class DatasetDefinition:
         - `md5`: The MD5 checksum of the respective file.
 
         (default: None)
+    sources: dict[str, WebSource | dict[str, Any]] | None
+        A mapping of names to dataset sources. Entries can be referenced from
+        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
+        (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -221,6 +230,10 @@ class DatasetDefinition:
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. This column will be renamed to ``distance``. (default: None)
 
+        .. deprecated:: v0.25.0
+           Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
+           This field will be removed in v0.30.0.
+
     Notes
     -----
     .. deprecated:: v0.25.0
@@ -261,6 +274,8 @@ class DatasetDefinition:
 
     resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
 
+    sources: dict[str, WebSource] = field(default_factory=dict)
+
     experiment: Experiment | None = field(default_factory=Experiment)
 
     custom_read_kwargs: dict[str, dict[str, Any]] | None = None
@@ -283,6 +298,7 @@ class DatasetDefinition:
             long_name: str | None = None,
             description: str | None = None,
             resources: ResourceDefinitions | Sequence[dict[str, Any]] | None = None,
+            sources: dict[str, WebSource | dict[str, Any]] | None = None,
             experiment: Experiment | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
             column_map: dict[str, str] | None = None,
@@ -302,6 +318,10 @@ class DatasetDefinition:
         self.experiment = experiment
 
         self.resources = self._initialize_resources(resources=resources)
+        self.sources = self._initialize_sources(sources=sources)
+
+        self._validate_sources(self.sources)
+        self._validate_resource_sources(self.resources, self.sources)
 
         if trial_columns is not None:
             warn(
@@ -404,6 +424,84 @@ class DatasetDefinition:
             self.custom_read_kwargs = custom_read_kwargs
 
     @staticmethod
+    def _validate_sources(
+            sources: dict[str, WebSource],
+    ) -> None:
+        """Validate sources for uniqueness.
+
+        Parameters
+        ----------
+        sources : dict[str, WebSource]
+            Mapping of source names to sources to validate.
+        """
+        filenames: set[str] = set()
+        for source in sources.values():
+            if source.filename is not None:
+                if source.filename in filenames:
+                    raise ValueError(f"Duplicate source filename: '{source.filename}'")
+                filenames.add(source.filename)
+
+    @staticmethod
+    def _validate_resource_sources(
+            resources: ResourceDefinitions,
+            sources: dict[str, WebSource],
+    ) -> None:
+        """Validate resource source references.
+
+        Parameters
+        ----------
+        resources : ResourceDefinitions
+            Resource definitions to validate source references against.
+        sources : dict[str, WebSource]
+            Mapping of source names to sources to validate against.
+        """
+        referenced_names: set[str] = set()
+
+        for resource in resources:
+            # A string source is a reference to a named entry in ``sources``.
+            if isinstance(resource.source, str):
+                if resource.source not in sources:
+                    raise ValueError(f"Dangling source reference: '{resource.source}'")
+                referenced_names.add(resource.source)
+
+        unused_names = sources.keys() - referenced_names
+        if unused_names:
+            name = sorted(unused_names)[0]
+            raise ValueError(f"Unused source: '{name}' is not referenced by any resource.")
+
+    @staticmethod
+    def _initialize_sources(
+            sources: dict[str, WebSource | dict[str, Any]] | None,
+    ) -> dict[str, WebSource]:
+        """Initialize sources mapping, converting dict values to ``WebSource`` if necessary."""
+        if sources is None:
+            return {}
+
+        return {
+            name: source if isinstance(source, WebSource) else WebSource.from_dict(source)
+            for name, source in sources.items()
+        }
+
+    @staticmethod
+    def _initialize_resources(
+            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None,
+    ) -> ResourceDefinitions:
+        """Initialize ``ResourceDefinitions`` instance if necessary."""
+        if isinstance(resources, ResourceDefinitions):
+            return resources
+
+        if resources is None:
+            return ResourceDefinitions()
+
+        if isinstance(resources, Sequence):
+            return ResourceDefinitions(resources)
+
+        raise TypeError(
+            f'resources is of type {type(resources).__name__} but must be of type'
+            ' ResourceDefinitions or a list of dicts.',
+        )
+
+    @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
         """Load a dataset definition from a YAML file.
 
@@ -425,6 +523,7 @@ class DatasetDefinition:
             data['experiment'] = Experiment.from_dict(data['experiment'])
 
         data = reverse_substitute_types(data)
+
         # Initialize DatasetDefinition with YAML data
         return DatasetDefinition(**data)
 
@@ -467,6 +566,12 @@ class DatasetDefinition:
                     del data[key]
 
         # Convert those object fields to dictionaries.
+        if 'sources' in data and data['sources'] is not None:
+            data['sources'] = {
+                name: source.to_dict(exclude_none=exclude_none)
+                for name, source in self.sources.items()
+            }
+
         if 'experiment' in data and data['experiment'] is not None:
             data['experiment'] = data['experiment'].to_dict(exclude_none=exclude_none)
         if 'resources' in data and data['resources'] is not None:
@@ -500,22 +605,3 @@ class DatasetDefinition:
 
         with open(path, 'w', encoding='utf-8') as f:
             yaml.dump(data, f, sort_keys=False)
-
-    def _initialize_resources(
-            self,
-            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None,
-    ) -> ResourceDefinitions:
-        """Initialize ``ResourceDefinitions`` instance if necessary."""
-        if isinstance(resources, ResourceDefinitions):
-            return resources
-
-        if resources is None:
-            return ResourceDefinitions()
-
-        if isinstance(resources, Sequence):
-            return ResourceDefinitions(resources)
-
-        raise TypeError(
-            f'resources is of type {type(resources).__name__} but must be of type'
-            ' ResourceDefinitions or a list of dicts.',
-        )

@@ -45,8 +45,10 @@ class ResourceDefinition:
     ----------
     content: str
         The content type of the resource.
-    source: WebSource | None
-        The source of the downloadable resource. (default: None)
+    source: str | WebSource | None
+        The source of the downloadable resource, either an inline :py:class:`~.WebSource` or a
+        string referencing a key of
+        :py:attr:`~pymovements.DatasetDefinition.sources`. (default: None)
     filename_pattern: str | None
         The filename pattern of the resource files. Named groups will
         be parsed as metadata will appear in the `fileinfo` dataframe. (default: None)
@@ -63,8 +65,10 @@ class ResourceDefinition:
     ----------
     content: str
         The content type of the resource.
-    source: WebSource | None
-        The source of the downloadable resource. (default: None)
+    source: str | WebSource | None
+        The source of the downloadable resource, either an inline :py:class:`~.WebSource` or a
+        string referencing a key of
+        :py:attr:`~pymovements.DatasetDefinition.sources`. (default: None)
     url: str | None
         The URL to the downloadable resource. (default: None)
     filename: str | None
@@ -93,7 +97,7 @@ class ResourceDefinition:
 
     _: KW_ONLY
 
-    source: WebSource | None = None
+    source: str | WebSource | None = None
 
     filename_pattern: str | None = None
     filename_pattern_schema_overrides: dict[str, type] | None = None
@@ -105,7 +109,7 @@ class ResourceDefinition:
             self,
             content: str,
             *,
-            source: WebSource | None = None,
+            source: str | WebSource | None = None,
             url: str | None = None,
             filename: str | None = None,
             mirrors: list[str] | None = None,
@@ -140,6 +144,16 @@ class ResourceDefinition:
             load_kwargs = {}
         self.load_kwargs = load_kwargs
 
+    def _resolved_websource(self, attr: str) -> WebSource | None:
+        """Return ``source`` if unresolved, raising if it has been hoisted to a name reference."""
+        if isinstance(self.source, str):
+            raise AttributeError(
+                f"ResourceDefinition.{attr} is not available because this resource's source "
+                f"has been resolved to the named reference '{self.source}'. "
+                'Access DatasetDefinition.sources instead.',
+            )
+        return self.source
+
     @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
@@ -158,7 +172,8 @@ class ResourceDefinition:
         str | None
             The URL to the downloadable resource.
         """
-        return self.source.url if self.source else None
+        source = self._resolved_websource('url')
+        return source.url if source else None
 
     @url.setter
     @deprecated(
@@ -167,10 +182,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def url(self, data: str) -> None:
-        if self.source is None:
+        source = self._resolved_websource('url')
+        if source is None:
             self.source = WebSource(url=data)
         else:
-            self.source = replace(self.source, url=data)
+            self.source = replace(source, url=data)
 
     @property
     @deprecated(
@@ -190,7 +206,8 @@ class ResourceDefinition:
         str | None
             The target filename of the downloadable resource. This may be an archive.
         """
-        return self.source.filename if self.source else None
+        source = self._resolved_websource('filename')
+        return source.filename if source else None
 
     @filename.setter
     @deprecated(
@@ -199,10 +216,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def filename(self, data: str) -> None:
-        if self.source is None:
+        source = self._resolved_websource('filename')
+        if source is None:
             self.source = WebSource(url=None, filename=data)  # type: ignore[arg-type]
         else:
-            self.source = replace(self.source, filename=data)
+            self.source = replace(source, filename=data)
 
     @property
     @deprecated(
@@ -222,7 +240,8 @@ class ResourceDefinition:
         str | None
             The MD5 checksum of the downloadable resource.
         """
-        return self.source.md5 if self.source else None
+        source = self._resolved_websource('md5')
+        return source.md5 if source else None
 
     @md5.setter
     @deprecated(
@@ -231,10 +250,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def md5(self, data: str) -> None:
-        if self.source is None:
+        source = self._resolved_websource('md5')
+        if source is None:
             self.source = WebSource(url=None, md5=data)  # type: ignore[arg-type]
         else:
-            self.source = replace(self.source, md5=data)
+            self.source = replace(source, md5=data)
 
     @property
     @deprecated(
@@ -254,7 +274,8 @@ class ResourceDefinition:
         list[str] | None
             A list of additional mirror URLs to download the resource.
         """
-        return self.source.mirrors if self.source else None
+        source = self._resolved_websource('mirrors')
+        return source.mirrors if source else None
 
     @mirrors.setter
     @deprecated(
@@ -263,10 +284,11 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def mirrors(self, data: list[str]) -> None:
-        if self.source is None:
+        source = self._resolved_websource('mirrors')
+        if source is None:
             self.source = WebSource(url=None, mirrors=data)  # type: ignore[arg-type]
         else:
-            self.source = replace(self.source, mirrors=data)
+            self.source = replace(source, mirrors=data)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
@@ -295,8 +317,13 @@ class ResourceDefinition:
             dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
             dictionary['url'] = url
 
-        if 'source' in dictionary and isinstance(dictionary['source'], dict):
-            dictionary['source'] = WebSource.from_dict(dictionary['source'])
+        if 'source' in dictionary and dictionary['source'] is not None:
+            if isinstance(dictionary['source'], dict):
+                dictionary['source'] = WebSource.from_dict(dictionary['source'])
+            elif not isinstance(dictionary['source'], (str, WebSource)):
+                raise TypeError(
+                    f"source must be str, WebSource or dict, but is {type(dictionary['source'])}",
+                )
 
         return ResourceDefinition(**dictionary)
 
@@ -324,7 +351,7 @@ class ResourceDefinition:
                     del data[key]
 
         # Convert source object field to dictionary.
-        if 'source' in data and data['source'] is not None and self.source is not None:
+        if 'source' in data and isinstance(self.source, WebSource):
             data['source'] = self.source.to_dict(exclude_none=exclude_none)
 
         return data

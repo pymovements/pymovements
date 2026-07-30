@@ -25,7 +25,48 @@ import shutil
 from pymovements.dataset._utils._archives import extract_archive
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.resources import ResourceDefinition
+from pymovements.dataset.websource import WebSource
 from pymovements.exceptions import UnknownFileType
+
+
+def _resolve_source(
+        definition: DatasetDefinition,
+        resource: ResourceDefinition,
+) -> WebSource | None:
+    """Resolve a resource's source reference to a ``WebSource``.
+
+    A resource ``source`` may be a ``WebSource`` (inline) or a string that references a key
+    of :py:attr:`~pymovements.DatasetDefinition.sources`.
+
+    Parameters
+    ----------
+    definition: DatasetDefinition
+        The dataset definition providing the referenced sources.
+    resource: ResourceDefinition
+        The resource whose source should be resolved.
+
+    Returns
+    -------
+    WebSource | None
+        The resolved source, or ``None`` if the resource has no source.
+
+    Raises
+    ------
+    ValueError
+        If the resource references a source name that is not present in
+        :py:attr:`~pymovements.DatasetDefinition.sources`.
+    """
+    source = resource.source
+    if isinstance(source, str):
+        try:
+            return definition.sources[source]
+        except KeyError:
+            raise ValueError(
+                f"Dangling source reference: '{source}' not found in "
+                'DatasetDefinition.sources.',
+            ) from None
+    return source
 
 
 def download_dataset(
@@ -73,23 +114,42 @@ def download_dataset(
     Raises
     ------
     AttributeError
-        If number of mirrors or number of resources specified for dataset is zero.
+        If no downloadable sources are found in the dataset definition.
+    ValueError
+        If a resource references a source name that is not present in
+        :py:attr:`~pymovements.DatasetDefinition.sources`, or if two sources share the same
+        ``url`` and ``filename`` but disagree on ``md5`` or ``mirrors``.
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
-    if not definition.resources:
-        raise AttributeError('resources must be specified to download a dataset.')
+    # Collect the unique sources referenced by the resources. A single source may be shared by
+    # multiple resources, so we deduplicate to download each file only once.
+    sources: list[WebSource] = []
+    seen: dict[tuple[str | None, str | None], WebSource] = {}
+    for resource in definition.resources:
+        source = _resolve_source(definition, resource)
+        if source is None:
+            continue
+        key = (source.url, source.filename)
+        existing = seen.get(key)
+        if existing is not None:
+            if existing.md5 != source.md5 or existing.mirrors != source.mirrors:
+                raise ValueError(
+                    f"Conflicting sources for url '{source.url}' and filename "
+                    f"'{source.filename}': md5/mirrors differ between resources.",
+                )
+            continue
+        seen[key] = source
+        sources.append(source)
 
-    downloadable_resources = [resource for resource in definition.resources if resource.source]
-
-    if not downloadable_resources:
+    if not sources:
         raise AttributeError(
             'No downloadable resources found in DatasetDefinition. '
             'ResourceDefinition.source must be specified to download a dataset.',
         )
 
-    for resource in downloadable_resources:
-        resource.source.download(
+    for source in sources:
+        source.download(
             target_dirpath=paths.downloads,
             verbose=verbose,
             verify_checksum=verify_checksum,
@@ -149,7 +209,11 @@ def extract_dataset(
             destination_dirpath = getattr(paths, content_directory)
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
-                source_path = paths.downloads / resource.source.filename
+                source = _resolve_source(definition, resource)
+                if source is None or source.filename is None:
+                    continue
+
+                source_path = paths.downloads / source.filename
 
                 try:
                     extract_archive(
@@ -162,4 +226,4 @@ def extract_dataset(
                         verbose=verbose,
                     )
                 except UnknownFileType:  # just copy file to target if not an archive.
-                    shutil.copy(source_path, destination_dirpath / resource.source.filename)
+                    shutil.copy(source_path, destination_dirpath / source.filename)
