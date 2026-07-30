@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import warnings
 from typing import Any
+from typing import overload
 
 import numpy
 import polars
@@ -128,29 +129,107 @@ def _emit_log_prob(
     if mu is None or sigma is None:
         raise ValueError('mu and sigma must not be None to compute an emission log-probability')
 
-    mu_s = mu[s]
-    sigma_s = max(sigma[s], 1e-6)
+    return float(_gaussian_log_pdf(v, mu[s], sigma[s]))
 
-    return -0.5 * numpy.log(2 * numpy.pi * sigma_s**2) - ((v - mu_s)**2) / (2 * sigma_s**2)
+
+def _gaussian_log_pdf(
+    v: float | numpy.ndarray,
+    mu: float | numpy.ndarray,
+    sigma: float | numpy.ndarray,
+) -> numpy.ndarray:
+    """Compute the univariate Gaussian log-density, vectorized over its arguments.
+
+    Shared by :func:`_emit_log_prob` and :func:`_emit_log_prob_vec` so both the
+    scalar and vectorized emission paths use the same numerically stable formula.
+    A small numerical floor is applied to `sigma` to ensure stability.
+
+    Parameters
+    ----------
+    v : float | numpy.ndarray
+        Observed value(s).
+    mu : float | numpy.ndarray
+        Mean(s) of the Gaussian.
+    sigma : float | numpy.ndarray
+        Standard deviation(s) of the Gaussian.
+
+    Returns
+    -------
+    numpy.ndarray
+        Log-density of `v` under a Gaussian with parameters `mu` and `sigma`,
+        broadcast over the shapes of `v`, `mu` and `sigma`.
+    """
+    sigma_safe = numpy.maximum(sigma, 1e-6)
+    return -0.5 * numpy.log(2 * numpy.pi * sigma_safe**2) - (v - mu)**2 / (2 * sigma_safe**2)
+
+
+def _emit_log_prob_vec(
+    mu: numpy.ndarray | None,
+    sigma: numpy.ndarray | None,
+    v: float | numpy.ndarray,
+) -> numpy.ndarray:
+    """Compute emission log-probabilities for all states at once (vectorized `_emit_log_prob`).
+
+    Parameters
+    ----------
+    mu : numpy.ndarray | None
+        Means of the emission distributions (Gaussian) for each state. Shape: (M,).
+        Must not be None.
+    sigma : numpy.ndarray | None
+        Standard deviations of the emission distributions for each state. Shape: (M,).
+        Must not be None.
+    v : float | numpy.ndarray
+        Observed value(s). A scalar yields shape (M,); a 1D array of shape (T,)
+        yields shape (T, M).
+
+    Returns
+    -------
+    numpy.ndarray
+        Log-probabilities of `v` under each state's Gaussian emission model.
+
+    Raises
+    ------
+    ValueError
+        If `mu` or `sigma` is None.
+    """
+    if mu is None or sigma is None:
+        raise ValueError('mu and sigma must not be None to compute an emission log-probability')
+
+    v_arr = numpy.asarray(v, dtype=float)[..., None]
+    return _gaussian_log_pdf(v_arr, mu, sigma)
+
+
+@overload
+def _log_sum_exp(arr: numpy.ndarray, axis: None = None) -> float: ...
+
+
+@overload
+def _log_sum_exp(arr: numpy.ndarray, axis: int | tuple[int, ...]) -> numpy.ndarray: ...
 
 
 def _log_sum_exp(
     arr: numpy.ndarray,
-) -> float:
+    axis: int | tuple[int, ...] | None = None,
+) -> float | numpy.ndarray:
     """Compute log-sum-exp.
 
     Parameters
     ----------
     arr : numpy.ndarray
         Input array of log-values.
+    axis : int | tuple[int, ...] | None
+        Axis or axes to reduce over. If None, reduces over the full array
+        and returns a scalar float, matching the original behavior. (default: None)
 
     Returns
     -------
-    float
-        Logarithm of the summed exponentials.
+    float | numpy.ndarray
+        Logarithm of the summed exponentials, reduced over `axis`.
     """
-    m = numpy.max(arr)
-    return m + numpy.log(numpy.sum(numpy.exp(arr - m)))
+    m = numpy.max(arr, axis=axis, keepdims=True)
+    result = m + numpy.log(numpy.sum(numpy.exp(arr - m), axis=axis, keepdims=True))
+    if axis is None:
+        return float(numpy.squeeze(result))
+    return numpy.squeeze(result, axis=axis)
 
 
 def _baum_welch(
@@ -272,48 +351,18 @@ def _baum_welch(
 
         # e-step
 
-        xi = numpy.zeros((M, M, T - 1))
+        emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities))
+        emit_all[~numpy.asarray(velocities_mask)] = 0.0
 
-        for t in range(T - 1):
-            denom_terms = []
+        # num[i, j, t] = alpha[t, i] + trans[i, j] + emit_all[t + 1, j] + beta[t + 1, j]
+        num = (
+            alpha[:-1].T[:, None, :] +
+            trans[:, :, None] +
+            (emit_all[1:] + beta[1:]).T[None, :, :]
+        )
 
-            for i in range(M):
-                for j in range(M):
-                    if velocities_mask[t + 1]:
-                        denom_terms.append(
-                            alpha[t, i] +
-                            trans[i, j] +
-                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
-                            beta[t + 1, j],
-                        )
-                    else:
-                        denom_terms.append(
-                            alpha[t, i] +
-                            trans[i, j] +
-                            0.0 +
-                            beta[t + 1, j],
-                        )
-
-            denom = _log_sum_exp(numpy.array(denom_terms))
-
-            for i in range(M):
-                for j in range(M):
-                    if velocities_mask[t + 1]:
-                        num = (
-                            alpha[t, i] +
-                            trans[i, j] +
-                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
-                            beta[t + 1, j]
-                        )
-                    else:
-                        num = (
-                            alpha[t, i] +
-                            trans[i, j] +
-                            0.0 +
-                            beta[t + 1, j]
-                        )
-
-                    xi[i, j, t] = numpy.exp(num - denom)
+        denom = _log_sum_exp(num, axis=(0, 1))
+        xi = numpy.exp(num - denom[None, None, :])
 
         gamma = numpy.sum(xi, axis=1)
 
@@ -330,11 +379,9 @@ def _baum_welch(
 
         # laplace smoothing for division by 0 errors
         eps = 1e-12
-        for i in range(M):
-            denom = numpy.sum(gamma_full[i, :-1])
-            for j in range(M):
-                numerator = numpy.sum(xi[i, j, :])
-                trans[i, j] = numpy.log((numerator + eps) / (denom + eps * M))
+        trans_denom = numpy.sum(gamma_full[:, :-1], axis=1)
+        trans_numerator = numpy.sum(xi, axis=2)
+        trans[:, :] = numpy.log((trans_numerator + eps) / (trans_denom[:, None] + eps * M))
 
         for j in range(M):
 
@@ -444,27 +491,21 @@ def _baum_forward(
 
     alpha = numpy.full((T, M), -numpy.inf)
 
+    # precompute emission log-probabilities for the whole sequence at once, zeroing
+    # out masked (missing) observations so the per-timestep loop needs no branching.
+    emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities, dtype=float))
+    emit_all[~numpy.asarray(velocities_mask)] = 0.0
+
     # init step
 
-    for s in range(M):
-        if velocities_mask[0]:
-            alpha[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
-        else:
-            alpha[0, s] = init[s] + 0
+    alpha[0] = init + emit_all[0]
 
     # induction step
 
     for t in range(1, T):
-        for j in range(M):
-            terms = []
-            for i in range(M):
-                terms.append(alpha[t - 1, i] + trans[i, j])
-            if velocities_mask[t]:
-                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
-                    _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
-            else:
-                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
-                    0.0
+        # terms[i, j] = alpha[t - 1, i] + trans[i, j]
+        terms = alpha[t - 1][:, None] + trans
+        alpha[t] = _log_sum_exp(terms, axis=0) + emit_all[t]
 
     return alpha
 
@@ -530,6 +571,11 @@ def _baum_backward(
 
     beta = numpy.full((T, M), -numpy.inf)
 
+    # precompute emission log-probabilities for the whole sequence at once, zeroing
+    # out masked (missing) observations so the per-timestep loop needs no branching.
+    emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities, dtype=float))
+    emit_all[~numpy.asarray(velocities_mask)] = 0.0
+
     # init step
 
     beta[T - 1, :] = 0
@@ -537,23 +583,10 @@ def _baum_backward(
     # induction step
 
     for t in range(T - 2, -1, -1):
-        for i in range(M):
-            terms = []
-            for j in range(M):
-                if velocities_mask[t + 1]:
-                    terms.append(
-                        trans[i, j] +
-                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
-                        beta[t + 1, j],
-                    )
-                else:
-                    terms.append(
-                        trans[i, j] +
-                        0.0 +
-                        beta[t + 1, j],
-                    )
-
-            beta[t, i] = _log_sum_exp(numpy.array(terms))
+        next_term = emit_all[t + 1] + beta[t + 1]
+        # terms[i, j] = trans[i, j] + next_term[j]
+        terms = trans + next_term[None, :]
+        beta[t] = _log_sum_exp(terms, axis=1)
 
     return beta
 
@@ -625,30 +658,22 @@ def _viterbi(
     prob = numpy.full((T, states), -numpy.inf)
     prev = numpy.zeros((T, states), dtype=int)
 
-    for s in range(states):
-        if velocities_mask[0]:
-            prob[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
-        else:
-            prob[0, s] = init[s]
+    # precompute emission log-probabilities for the whole sequence at once, zeroing
+    # out masked (missing) observations so the main loop needs no branching.
+    emit_all = _emit_log_prob_vec(mu=mu, sigma=sigma, v=numpy.asarray(velocities, dtype=float))
+    emit_all[~numpy.asarray(velocities_mask)] = 0.0
+
+    prob[0] = init + emit_all[0]
 
     # main loop
 
     for t in range(1, T):
-        for state1 in range(states):
-            best_prob = -numpy.inf
-            best_state = 0
-            for state2 in range(states):
-                if velocities_mask[t]:
-                    new_prob = prob[t - 1, state2] + trans[state2, state1] + \
-                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
-                else:
-
-                    new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
-                if new_prob > best_prob:
-                    best_prob = new_prob
-                    best_state = state2
-            prob[t, state1] = best_prob
-            prev[t, state1] = best_state
+        # candidate[state2, state1] = prob[t - 1, state2] + trans[state2, state1]
+        candidate = prob[t - 1][:, None] + trans
+        best_state = numpy.argmax(candidate, axis=0)
+        best_prob = candidate[best_state, numpy.arange(states)] + emit_all[t]
+        prob[t] = best_prob
+        prev[t] = best_state
 
     # backtrack
 

@@ -19,10 +19,9 @@
 # SOFTWARE.
 """Benchmark the I-HMM event detection algorithm.
 
-The forward/backward/Viterbi/Baum-Welch passes use per-state and per-timestep
-Python loops, which makes Baum-Welch reestimation (the default
-reestimation_max_iters=1000) slow on realistic sample counts. These benchmarks
-track that cost so a future vectorization can be measured against it.
+Baum-Welch reestimation (the default reestimation_max_iters=1000) is the
+costliest path, since it repeats the forward/backward passes every iteration.
+These benchmarks track that cost to guard against future regressions.
 """
 import numpy as np
 
@@ -44,7 +43,7 @@ def test_ihmm_benchmark_viterbi_only(benchmark):
         ihmm,
         kwargs={'velocities': velocities, 'minimum_duration': 1},
         iterations=1,
-        rounds=10,
+        rounds=50,
     )
 
 
@@ -61,5 +60,5 @@ def test_ihmm_benchmark_with_reestimation(benchmark):
             'reestimation_max_iters': 20,
         },
         iterations=1,
-        rounds=5,
+        rounds=20,
     )
