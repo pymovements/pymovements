@@ -957,7 +957,7 @@ def test_download_dataset_conflicting_sources_raises():
     paths = mock.Mock()
     paths.downloads = '/tmp/downloads'
 
-    with pytest.raises(ValueError, match='Conflicting sources'):
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'def'\\)"):
         download_dataset(definition, paths, extract=False)
 
 
@@ -1073,7 +1073,7 @@ def test_download_dataset_conflicting_sources_asymmetric_md5_raises():
     paths = mock.Mock()
     paths.downloads = '/tmp/downloads'
 
-    with pytest.raises(ValueError, match='Conflicting sources'):
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'None'\\)"):
         download_dataset(definition, paths, extract=False)
 
 
@@ -1095,7 +1095,7 @@ def test_download_dataset_conflicting_sources_mirrors_raises():
     paths = mock.Mock()
     paths.downloads = '/tmp/downloads'
 
-    with pytest.raises(ValueError, match='Conflicting sources'):
+    with pytest.raises(ValueError, match='mirrors differ between resources'):
         download_dataset(definition, paths, extract=False)
 
 

@@ -133,10 +133,17 @@ def download_dataset(
         key = (source.url, source.filename)
         existing = seen.get(key)
         if existing is not None:
-            if existing.md5 != source.md5 or existing.mirrors != source.mirrors:
+            if existing.md5 != source.md5:
                 raise ValueError(
                     f"Conflicting sources for url '{source.url}' and filename "
-                    f"'{source.filename}': md5/mirrors differ between resources.",
+                    f"'{source.filename}': md5 differs between resources "
+                    f"('{existing.md5}' != '{source.md5}').",
+                )
+            if existing.mirrors != source.mirrors:
+                raise ValueError(
+                    f"Conflicting sources for url '{source.url}' and filename "
+                    f"'{source.filename}': mirrors differ between resources "
+                    f"({existing.mirrors} != {source.mirrors}).",
                 )
             continue
         seen[key] = source
