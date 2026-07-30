@@ -1260,12 +1260,6 @@ def ihmm(
     velocities_1d = norm(velocities, axis=1)
 
     vel_mask = ~numpy.isnan(velocities_1d)
-    cW = 0
-    for val in vel_mask:
-        if val:
-            pass
-        else:
-            cW += 1
 
     start = numpy.argmax(vel_mask)
     end = len(velocities_1d) - numpy.argmax(vel_mask[::-1])
