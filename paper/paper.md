@@ -163,31 +163,31 @@ and line-assignment correction, but it operates on already-detected
 fixations rather than raw signals; `cili` [@Acland2016] handles fixation
 and pupil data, `sideeye` [@Doucette2019] computes reading measures from
 fixation reports, `PyTrack` [@GhoseSrinivasan2021] and the Perception
-Engineer's Toolbox [@Kubler2020] extract gaze features, and `GazeParser`
-[@Sogo2019] covers recording and parsing. In R, `popEye` [@popEye] spans
-the path from raw EyeLink files to reading measures, though it is limited
-to a single eye-tracker vendor and to reading experiments.
+Engineer's Toolbox [@Kubler2020] extract gaze features, `GazeParser`
+[@Sogo2019] covers recording and parsing, and dedicated event-detection
+algorithms such as I2MC [@I2MC] and REMoDNaV [@REMoDNaV] classify fixations
+and saccades from raw samples. In R, `popEye` [@popEye] spans the path from
+raw EyeLink files to reading measures, though it is limited to a single
+eye-tracker vendor and to reading experiments, while `gazeR` [@gazeR] and
+`eyetrackingR` [@eyetrackingR] process gaze and pupil data and support the
+statistical analysis of gaze. Proprietary vendor software such as SR
+Research Data Viewer [@DataViewer] provides an end-to-end but closed-source
+pipeline tied to specific hardware.
 
 Each of these tools covers a single stage or paradigm: eyekit begins after
-event detection, popEye is confined to one vendor and to reading, and the
-others address recording, feature extraction, or measures in isolation.
-None combines, in a single tested Python package, the full path from raw
-vendor files through coordinate transforms and event detection to
-reading-level measures, and none offers a standardized,
-community-extensible layer for discovering, downloading, and harmonizing
-published datasets. `pymovements` was built to fill that gap rather than to
-duplicate any single tool: where established algorithms exist, it
-reimplements them behind one consistent interface [@SalvucciGoldberg2000;
-@EngbertKliegl2003; @Carr2022] rather than replacing them, and it adds the
-dataset-harmonization layer that has no counterpart among them.
-
-[DANIEL: I added eyekit and popEye with software citations (from their
-GitHub repos) and reframed the gap claim so it stays true given that popEye
-spans raw-to-measures and eyekit is Python. If you also want the R
-statistical tools (gazeR, eyetrackingR), the event-detection packages
-(REMoDNaV, I2MC), or SR Research Data Viewer as a proprietary baseline
-named explicitly, give me the go-ahead and I will verify and add their
-citations.]
+event detection, the event-detection packages stop at classifying events,
+popEye is confined to one vendor and to reading, and the others address
+recording, feature extraction, statistical analysis, or measures in
+isolation. None combines, in a single tested and openly licensed Python
+package, the full path from raw vendor files through coordinate transforms
+and event detection to reading-level measures, and none offers a
+standardized, community-extensible layer for discovering, downloading, and
+harmonizing published datasets. `pymovements` was built to fill that gap
+rather than to duplicate any single tool: where established algorithms
+exist, it reimplements them behind one consistent interface
+[@SalvucciGoldberg2000; @EngbertKliegl2003; @Carr2022] rather than
+replacing them, and it adds the dataset-harmonization layer that has no
+counterpart among them.
 
 # Software design
 
@@ -250,14 +250,21 @@ and implement core features of the package [@Krakowczyk2026]. The project
 has more than 50 contributors from multiple laboratories and is distributed
 via PyPI and conda-forge, with more than 90,000 downloads from PyPI
 [@pepyPymovements] and over 58,000 from conda-forge
-[@condaforgePymovements] as of July 2026. Its dataset catalog has begun to
-receive contributions from researchers outside the core team, supported by
-a dedicated dataset contribution guide that lowers the barrier to adding
-new datasets.
+[@condaforgePymovements] as of July 2026.
 
-[DANIEL: JOSS weighs third-party research output most heavily here. Please
-add citations to publications by authors who are *not* co-authors of this
-paper and who used pymovements in their analyses]
+Beyond the author team, `pymovements` has been taken up in research across
+several domains, including gaze data-quality research [@Elfares2025;
+@@Roehrl2026], reading and language-model research [@LopezCardona2025;
+@LuGe2026], clinical vision research using virtual-reality
+simulations [@Grootjen2025; @Grootjen2025b; @Grootjen2025c], human-computer
+interaction [@Chiossi2024; @Chiossi2024b], automotive and applied
+ergonomics [@Lopez2025], and virtual reality [@Li2024; @Li2025; @Wang2026].
+It is also cited as a reference point by newer eye-tracking analysis tools
+[@PyNeon2026; @OpenGazeLab2026; @Balaskas2026] and featured in a recent
+review of eye-tracking software [@Niehorster2025]. Its dataset catalog has
+also begun to receive contributions from researchers outside the core team
+[@MCFW-Gaze-Paper], supported by a dedicated dataset contribution guide
+that lowers the barrier to adding new datasets.
 
 # AI usage disclosure
 
