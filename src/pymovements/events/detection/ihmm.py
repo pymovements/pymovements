@@ -914,7 +914,7 @@ def _compute_hmm(
 
 @register_event_detection
 def ihmm(
-        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray,
+        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
         timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         mu: list[float] | numpy.ndarray | None = None,
@@ -940,10 +940,11 @@ def ihmm(
 
     Parameters
     ----------
-    velocities : list[list[float]] | list[tuple[float, float]] | numpy.ndarray
+    velocities : list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         Velocity data. Can be:
         - 2D array of shape (T, 2) containing x and y velocity components
         - List of (vx, vy) tuples or lists
+        - polars Series of 2-element lists
         Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
     timesteps : list[int] | numpy.ndarray | polars.Series | None, default=None
@@ -1049,13 +1050,19 @@ def ihmm(
         If timesteps is a polars Series with a non-numeric dtype.
         If minimum_duration is not an integer.
     ValueError
+        If velocities does not have shape (T, 2).
+        If velocities is a polars Series whose lists don't all have length 2.
+    ValueError
         If parameter shapes are incorrect (not (2,) or (2,2)).
     ValueError
         If minimum_duration is not greater than 0.
     ValueError
         If transition_probabilities rows don't sum to 1.
     ValueError
-        If hmm_parameters_dict has incorrect keys or shapes.
+        If init_state does not sum to 1.
+    ValueError
+        If hmm_parameters_dict has incorrect keys or shapes, or its init/trans
+        values don't sum to 1.
 
     Examples
     --------
@@ -1235,6 +1242,11 @@ def ihmm(
                 f'transition_probabilities values must sum up to one for each state '
                 f'but instead are {row_sums[0]} and {row_sums[1]}',
             )
+    if init_state is not None and not numpy.isclose(numpy.sum(init_state), 1.0):
+        raise ValueError(
+            f'init_state values must sum up to one '
+            f'but instead sum up to {numpy.sum(init_state)}',
+        )
 
     if hmm_parameters_dict is not None:
 
@@ -1286,6 +1298,13 @@ def ihmm(
                     f'transition_probabilities values must sum up to one for each state '
                     f'but instead are {dict_row_sums[0]} and {dict_row_sums[1]}',
                 )
+        if hmm_parameters_dict['init'] is not None and not numpy.isclose(
+                numpy.sum(hmm_parameters_dict['init']), 1.0,
+        ):
+            raise ValueError(
+                f'init_state values must sum up to one '
+                f'but instead sum up to {numpy.sum(hmm_parameters_dict["init"])}',
+            )
 
     if not reestimation and verbose:
         warnings.warn(

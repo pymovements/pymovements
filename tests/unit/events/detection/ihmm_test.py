@@ -941,12 +941,44 @@ def test_ihmm_rejects_hmm_parameters_dict_transition_not_summing_to_one():
         )
 
 
+def test_ihmm_rejects_init_state_not_summing_to_one():
+    """init_state must be a probability distribution that sums to one."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    with pytest.raises(ValueError, match='init_state values must sum up to one'):
+        ihmm(
+            velocities=velocities,
+            init_state=[0.3, 0.3],
+            minimum_duration=1,
+        )
+
+
+def test_ihmm_rejects_hmm_parameters_dict_init_not_summing_to_one():
+    """The init vector inside hmm_parameters_dict must be validated the same way."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    hmm_params = {
+        'mu': np.array([0.0, 10.0]),
+        'sigma': np.array([1.0, 1.0]),
+        'init': np.array([0.3, 0.3]),
+        'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+    }
+
+    with pytest.raises(ValueError, match='init_state values must sum up to one'):
+        ihmm(
+            velocities=velocities,
+            hmm_parameters_dict=hmm_params,
+            minimum_duration=1,
+        )
+
+
 def test_ihmm_handles_nan_velocities():
+    """An interior NaN sample must not crash detection and must not split the fixation."""
     velocities = np.array(
         [
             [0.0, 0.0],
             [np.nan, np.nan],
-            [10.0, 10.0],
+            [0.0, 0.0],
         ],
     )
 
@@ -955,7 +987,12 @@ def test_ihmm_handles_nan_velocities():
         minimum_duration=1,
     )
 
-    assert events is not None
+    # the low-velocity segment spans the interior NaN and yields a single fixation.
+    assert len(events.frame) == 1
+    onset = events.frame['onset'].to_list()[0]
+    offset = events.frame['offset'].to_list()[0]
+    assert onset == 0
+    assert offset == 2
 
 
 def test_ihmm_returns_no_events_for_all_nan_velocities():
@@ -1396,9 +1433,10 @@ def test_ihmm_detects_fixations_at_recording_start_and_end():
         assert last_offset >= (length_edges - 1) * (1000.0 / sampling_rate) - 1
 
 
-def test_ihmm_fixation_count_comparable_to_idt_on_toy_dataset():
+@pytest.mark.network
+def test_ihmm_fixation_count_comparable_to_idt_on_toy_dataset(tmp_path):
     """On real recordings, ihmm should detect a fixation count close to idt's."""
-    dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
+    dataset = pm.Dataset('ToyDataset', path=tmp_path)
     dataset.download()
     dataset.load()
 
