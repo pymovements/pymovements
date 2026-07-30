@@ -429,6 +429,30 @@ def test_viterbi_raises_on_none_mu_or_sigma():
         )
 
 
+def test_viterbi_skips_emission_for_masked_first_observation():
+    """A masked first sample must not feed its (nan) value into the emission term."""
+    mu = np.array([0.0, 10.0])
+    sigma = np.array([1.0, 1.0])
+    init = np.log(np.array([0.7, 0.3]))
+    trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
+
+    velocities = np.array([np.nan, 0.1, 10.0])
+    mask = np.array([False, True, True])  # first observation is masked
+
+    path = _viterbi(
+        states=2,
+        mu=mu,
+        sigma=sigma,
+        init=init,
+        trans=trans,
+        velocities=velocities,
+        velocities_mask=mask,
+    )
+
+    assert path.shape == (3,)
+    assert set(np.unique(path)).issubset({0, 1})
+
+
 # -----------------------------------------------------------------------------
 # _collapse_states
 # -----------------------------------------------------------------------------
@@ -934,6 +958,22 @@ def test_ihmm_handles_nan_velocities():
     assert events is not None
 
 
+def test_ihmm_returns_no_events_for_all_nan_velocities():
+    """A recording without a single valid sample must yield no events, not crash."""
+    velocities = np.full((300, 2), np.nan)
+
+    events = ihmm(velocities=velocities, minimum_duration=1)
+
+    assert len(events.frame) == 0
+
+
+def test_ihmm_returns_no_events_for_empty_velocities():
+    """Empty input must yield no events, not crash on the initialization."""
+    events = ihmm(velocities=np.empty((0, 2)), minimum_duration=1)
+
+    assert len(events.frame) == 0
+
+
 def test_ihmm_rejects_non_integer_minimum_duration():
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
 
@@ -1029,6 +1069,34 @@ def test_ihmm_accepts_hmm_parameters_dict():
         'sigma': np.array([1.0, 1.0]),
         'init': np.array([0.5, 0.5]),
         'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+    }
+
+    events = ihmm(
+        velocities=velocities,
+        hmm_parameters_dict=hmm_params,
+        minimum_duration=1,
+    )
+
+    assert events is not None
+
+
+def test_ihmm_accepts_hmm_parameters_dict_with_keys_in_any_order():
+    """The dict keys are unordered; a valid dict must not be rejected for key order."""
+    velocities = np.array(
+        [
+            [0.0, 0.0],
+            [0.1, 0.1],
+            [10.0, 10.0],
+            [10.1, 10.1],
+        ],
+    )
+
+    # correct keys, but a different insertion order than ['mu', 'sigma', 'init', 'trans'].
+    hmm_params = {
+        'sigma': np.array([1.0, 1.0]),
+        'mu': np.array([0.0, 10.0]),
+        'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+        'init': np.array([0.5, 0.5]),
     }
 
     events = ihmm(

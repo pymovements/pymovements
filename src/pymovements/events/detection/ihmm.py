@@ -205,7 +205,7 @@ def _baum_welch(
         Maximum number of EM iterations to perform.
 
     epsilon : float, default=1e-4
-        Convergence threshold. Algorithm stops when the relative change in
+        Convergence threshold. Algorithm stops when the absolute change in
         log-likelihood between iterations is less than this value.
 
     Returns
@@ -347,10 +347,13 @@ def _baum_welch(
 
             total = numpy.sum(weights)
 
-            mu[j] = numpy.sum(weights * vals) / total
+            # keep the previous emission parameters if a state carries no posterior
+            # mass, otherwise the update would divide by zero and yield nan.
+            if total > 0:
+                mu[j] = numpy.sum(weights * vals) / total
 
-            var = numpy.sum(weights * (vals - mu[j])**2) / total
-            sigma[j] = numpy.sqrt(var)
+                var = numpy.sum(weights * (vals - mu[j])**2) / total
+                sigma[j] = numpy.sqrt(var)
 
         # compute log-likelihood for convergence check
 
@@ -620,7 +623,10 @@ def _viterbi(
     prev = numpy.zeros((T, states), dtype=int)
 
     for s in range(states):
-        prob[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        if velocities_mask[0]:
+            prob[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        else:
+            prob[0, s] = init[s]
 
     # main loop
 
@@ -921,7 +927,11 @@ def ihmm(
         hmm_parameters_dict: dict | None = None,
         name: str = 'fixation',
 ) -> Events:
-    """Detect fixation events from velocity data using an Independent Hidden Markov Model (IHMM).
+    """Detect fixation events from velocity data using a Hidden Markov Model (I-HMM).
+
+    The "I" in I-HMM stands for "Identification", following the naming of the eye
+    movement identification algorithms of Salvucci and Goldberg
+    :cite:p:`SalvucciGoldberg2000`.
 
     This function implements a 2-state HMM specifically designed for eye-tracking
     data to distinguish between fixations (state 0) and saccades (state 1). It
@@ -1036,9 +1046,13 @@ def ihmm(
     Raises
     ------
     TypeError
+        If velocities is a polars Series whose dtype is not List.
         If timesteps is a polars Series with a non-numeric dtype.
+        If minimum_duration is not an integer.
     ValueError
         If parameter shapes are incorrect (not (2,) or (2,2)).
+    ValueError
+        If minimum_duration is not greater than 0.
     ValueError
         If transition_probabilities rows don't sum to 1.
     ValueError
@@ -1225,11 +1239,11 @@ def ihmm(
 
     if hmm_parameters_dict is not None:
 
-        if list(hmm_parameters_dict.keys()) != ['mu', 'sigma', 'init', 'trans']:
+        if set(hmm_parameters_dict.keys()) != {'mu', 'sigma', 'init', 'trans'}:
             raise ValueError(
                 f'hmm_parameters_dict'
                 f' should have fields {["mu", "sigma", "init", "trans"]} but instead has '
-                f'{hmm_parameters_dict.keys()}',
+                f'{list(hmm_parameters_dict.keys())}',
             )
 
         # copy into a new dict so the caller's input is not mutated
@@ -1278,6 +1292,8 @@ def ihmm(
         warnings.warn(
             message=f"verbose is:{verbose} but reestimation is {reestimation},"
             f" verbose won't have any effect.",
+            category=UserWarning,
+            stacklevel=2,
         )
 
     # convert into velocities (1D velocities vector)
@@ -1285,6 +1301,11 @@ def ihmm(
     velocities_1d = norm(velocities, axis=1)
 
     vel_mask = ~numpy.isnan(velocities_1d)
+
+    # Without any valid sample there is nothing to decode; return no events instead
+    # of failing on the data-driven initialization (matches ivt on all-nan input).
+    if not numpy.any(vel_mask):
+        return Events(name=name, onsets=numpy.array([]), offsets=numpy.array([]))
 
     start = numpy.argmax(vel_mask)
     end = len(velocities_1d) - numpy.argmax(vel_mask[::-1])
