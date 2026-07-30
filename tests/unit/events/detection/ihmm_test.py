@@ -1808,6 +1808,9 @@ def test_baum_forward_handles_mixed_masked_unmasked_observations():
 @pytest.fixture(scope='session', autouse=True)
 def _print_summary_at_session_end():
     yield
+    # no checks were recorded, e.g. on a subset run (pytest -k) that skips the case tests
+    if not test_results:
+        return
     summary = pd.DataFrame(test_results)
     print(summary)
 
