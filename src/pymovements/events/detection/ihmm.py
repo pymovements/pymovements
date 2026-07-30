@@ -69,7 +69,7 @@ def _format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[li
 
         The `init` and `trans` values are exponentiated before conversion.
     """
-    out = {}
+    out: dict[str, list[float] | list[list[float]]] = {}
     out['mu'] = [float(opt['mu'][0]), float(opt['mu'][1])]
     out['sigma'] = [float(opt['sigma'][0]), float(opt['sigma'][1])]
     out['init'] = [float(numpy.exp(opt['init'][0])), float(numpy.exp(opt['init'][1]))]
@@ -128,12 +128,10 @@ def _emit_log_prob(
     if mu is None or sigma is None:
         raise ValueError('mu and sigma must not be None to compute an emission log-probability')
 
-    mu = mu[s]
-    sigma = sigma[s]
+    mu_s = mu[s]
+    sigma_s = max(sigma[s], 1e-6)
 
-    sigma = max(sigma, 1e-6)
-
-    return -0.5 * numpy.log(2 * numpy.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
+    return -0.5 * numpy.log(2 * numpy.pi * sigma_s**2) - ((v - mu_s)**2) / (2 * sigma_s**2)
 
 
 def _log_sum_exp(
@@ -197,16 +195,16 @@ def _baum_welch(
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Same length as velocities. True indicates observed, False indicates missing.
 
     max_iters : int
         Maximum number of EM iterations to perform.
 
-    epsilon : float, default=1e-4
+    epsilon : float
         Convergence threshold. Algorithm stops when the absolute change in
-        log-likelihood between iterations is less than this value.
+        log-likelihood between iterations is less than this value. (default: 1e-4)
 
     Returns
     -------
@@ -407,17 +405,18 @@ def _baum_forward(
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
-        Shape: (M,). init[s] = log(P(state = s at time 0)).
+        Shape: (M,). init[s] = log(P(state = s at time 0)). Must not be None.
 
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
         Shape: (M, M). trans[i, j] = log(P(state = j at time t | state = i at time t-1)).
+        Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
 
@@ -436,10 +435,12 @@ def _baum_forward(
     Raises
     ------
     ValueError
-        If `mu` or `sigma` is None.
+        If `mu`, `sigma`, `init`, or `trans` is None.
     """
-    if mu is None or sigma is None:
-        raise ValueError('mu and sigma must not be None to compute forward probabilities')
+    if mu is None or sigma is None or init is None or trans is None:
+        raise ValueError(
+            'mu, sigma, init and trans must not be None to compute forward probabilities',
+        )
 
     alpha = numpy.full((T, M), -numpy.inf)
 
@@ -497,12 +498,13 @@ def _baum_backward(
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
         Shape: (M, M). trans[i, j] = log(P(state = j at time t+1 | state = i at time t)).
+        Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
 
@@ -521,10 +523,10 @@ def _baum_backward(
     Raises
     ------
     ValueError
-        If `mu` or `sigma` is None.
+        If `mu`, `sigma`, or `trans` is None.
     """
-    if mu is None or sigma is None:
-        raise ValueError('mu and sigma must not be None to compute backward probabilities')
+    if mu is None or sigma is None or trans is None:
+        raise ValueError('mu, sigma and trans must not be None to compute backward probabilities')
 
     beta = numpy.full((T, M), -numpy.inf)
 
@@ -587,17 +589,18 @@ def _viterbi(
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
-        Shape: (states,). init[s] = log(P(state = s at time 0)).
+        Shape: (states,). init[s] = log(P(state = s at time 0)). Must not be None.
 
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
         Shape: (states, states). trans[i, j] = log(P(state = j at time t | state = i at time t-1)).
+        Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : list[bool]
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
 
@@ -610,10 +613,10 @@ def _viterbi(
     Raises
     ------
     ValueError
-        If `mu` or `sigma` is None.
+        If `mu`, `sigma`, `init`, or `trans` is None.
     """
-    if mu is None or sigma is None:
-        raise ValueError('mu and sigma must not be None to run Viterbi decoding')
+    if mu is None or sigma is None or init is None or trans is None:
+        raise ValueError('mu, sigma, init and trans must not be None to run Viterbi decoding')
 
     # init step
 
@@ -682,9 +685,9 @@ def _collapse_states(
         Array of time values corresponding to each state label.
         Must have the same length as states. Shape: (T,).
 
-    fixation_state : int, default=0
+    fixation_state : int
         The state label that represents fixation periods.
-        All other states are ignored. Default is 0 (commonly used for fixation).
+        All other states are ignored. (default: 0, commonly used for fixation).
 
     min_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
@@ -800,11 +803,11 @@ def _compute_hmm(
         Shape: (2, 2), where trans[i, j] = P(state=j | state=i).
         If None, uses default or hmm_parameters_dict values.
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating valid/observed velocity values.
         Shape: (T,). True for observed, False for missing/NaN values.
 
-    hmm_parameters_dict : dict or None
+    hmm_parameters_dict : dict | None
         Dictionary containing custom HMM parameters with keys:
         - 'mu': list of 2 means
         - 'sigma': list of 2 standard deviations
@@ -1058,59 +1061,60 @@ def ihmm(
         - polars Series of 2-element lists
         Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
-    timesteps : list[int] | numpy.ndarray | polars.Series | None, default=None
+    timesteps : list[int] | numpy.ndarray | polars.Series | None
         Timestamp for each velocity sample. May be integer or float valued.
-        If None, uses sequential indices (0, 1, 2, ..., T-1).
+        If None, uses sequential indices (0, 1, 2, ..., T-1). (default: None)
 
     minimum_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
         Must be an integer, so with float-valued ``timesteps`` (e.g. seconds) only
-        whole-unit thresholds can be expressed.
+        whole-unit thresholds can be expressed. (default: 100)
 
-    mu : list[float] | numpy.ndarray | None, default=None
+    mu : list[float] | numpy.ndarray | None
         Mean velocity for each state (Gaussian emissions).
         Shape: (2,), typically [fixation_mean, saccade_mean].
         The state order is normalized internally by ascending mean, so the
         lowest-mean state is always treated as the fixation state (state 0)
         regardless of the order in which the two values are supplied.
-        If None, uses data-driven defaults or hmm_parameters_dict.
+        If None, uses data-driven defaults or hmm_parameters_dict. (default: None)
 
-    sigma : list[float] | numpy.ndarray | None, default=None
+    sigma : list[float] | numpy.ndarray | None
         Standard deviation of velocity for each state.
         Shape: (2,), typically [fixation_std, saccade_std].
-        If None, uses data-driven defaults or hmm_parameters_dict.
+        If None, uses data-driven defaults or hmm_parameters_dict. (default: None)
 
-    init_state : list[float] | numpy.ndarray | None, default=None
+    init_state : list[float] | numpy.ndarray | None
         Initial state probability distribution (linear scale).
         Shape: (2,), e.g., [0.5, 0.5]. Must sum to 1.
-        If None, uses defaults or hmm_parameters_dict.
+        If None, uses defaults or hmm_parameters_dict. (default: None)
 
-    transition_probabilities : list[list[float]] | numpy.ndarray | None, default=None
+    transition_probabilities : list[list[float]] | numpy.ndarray | None
         State transition probability matrix (linear scale).
         Shape: (2, 2). Each row must sum to 1.
-        If None, uses default matrix [[0.95, 0.05], [0.05, 0.95]].
+        If None, uses default matrix [[0.95, 0.05], [0.05, 0.95]]. (default: None)
 
-    reestimation_max_iters : int, default=1000
-        Maximum number of Baum-Welch EM iterations if reestimation=True.
+    reestimation_max_iters : int
+        Maximum number of Baum-Welch EM iterations if reestimation=True. (default: 1000)
 
-    reestimation : bool, default=False
+    reestimation : bool
         If True, performs Baum-Welch reestimation to optimize HMM parameters
-        before state decoding. Recommended for robust parameter estimation.
+        before state decoding. Recommended for robust parameter estimation. (default: False)
 
-    verbose : bool, default=False
+    verbose : bool
         If True, prints parameter values and reestimation progress.
-        Only effective when reestimation=True.
+        Only effective when reestimation=True. (default: False)
 
-    hmm_parameters_dict : dict | None, default=None
+    hmm_parameters_dict : dict | None
         Dictionary containing custom HMM parameters with keys:
         - 'mu': list of 2 means
         - 'sigma': list of 2 standard deviations
         - 'init': list of 2 initial probabilities
         - 'trans': 2x2 transition probability matrix
-        Overridden by explicit mu, sigma, init_state, transition_probabilities.
+        Overridden by explicit mu, sigma, init_state, transition_probabilities. (default: None)
 
-    name : str, default='fixation'
+    name : str
         Name for the detected events. Appears in the returned Events object.
+        (default: 'fixation')
 
     Returns
     -------
@@ -1168,15 +1172,10 @@ def ihmm(
     ValueError
         If velocities does not have shape (T, 2).
         If velocities is a polars Series whose lists don't all have length 2.
-    ValueError
         If parameter shapes are incorrect (not (2,) or (2,2)).
-    ValueError
         If minimum_duration is not greater than 0.
-    ValueError
         If transition_probabilities rows don't sum to 1, or contain values outside [0, 1].
-    ValueError
         If init_state does not sum to 1, or contains values outside [0, 1].
-    ValueError
         If hmm_parameters_dict has incorrect keys or shapes, or its init/trans
         values don't sum to 1 or lie outside [0, 1].
 
