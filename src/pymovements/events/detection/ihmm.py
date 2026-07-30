@@ -868,22 +868,28 @@ def _compute_hmm(
             max_iters=reestimation_max_iters,
         )
 
-        # reorder to enforce states order (0 = fixation)
-
-        order = numpy.argsort(optimal['mu'])
-
-        optimal['mu'] = numpy.array(optimal['mu'])[order]
-        optimal['sigma'] = numpy.array(optimal['sigma'])[order]
-        optimal['init'] = numpy.array(optimal['init'])[order]
-        optimal['trans'] = numpy.array(optimal['trans'][order])[:, order]
-
         _mu = optimal['mu']
         _sigma = optimal['sigma']
         _init = optimal['init']
         _trans = optimal['trans']
 
-        if verbose:
-            print(f"Optimal parameters found by reestimation are:\n{_format_optimal_dict(optimal)}")
+    # Enforce state order (state 0 = fixation = lowest mean velocity) so that the
+    # decoded states carry a consistent meaning whether or not parameters were
+    # re-estimated. Without this, user-supplied parameters given in saccade-first
+    # order would silently mislabel fixations and saccades.
+
+    _mu = numpy.asarray(_mu)
+    _sigma = numpy.asarray(_sigma)
+    order = numpy.argsort(_mu)
+
+    _mu = _mu[order]
+    _sigma = _sigma[order]
+    _init = _init[order]
+    _trans = _trans[order][:, order]
+
+    if reestimation and verbose:
+        optimal = {'mu': _mu, 'sigma': _sigma, 'init': _init, 'trans': _trans}
+        print(f"Optimal parameters found by reestimation are:\n{_format_optimal_dict(optimal)}")
 
     # inference the hmm
 

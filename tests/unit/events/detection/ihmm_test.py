@@ -952,6 +952,39 @@ def test_ihmm_accepts_numpy_integer_minimum_duration():
     assert len(events.frame) == 1
 
 
+def test_ihmm_state_order_independent_of_parameter_order_without_reestimation():
+    """The same HMM given fixation-first or saccade-first must yield identical events."""
+    positions = step_function(
+        length=200,
+        steps=[1],
+        values=[(50., 50.)],
+        start_value=(0., 0.),
+    )
+    velocities = pos2vel(positions, sampling_rate=sampling_rate)
+
+    fixation_first = ihmm(
+        velocities,
+        mu=[5.0, 100.0],
+        sigma=[5.0, 50.0],
+        init_state=[0.9, 0.1],
+        transition_probabilities=[[0.95, 0.05], [0.05, 0.95]],
+        minimum_duration=1,
+    )
+    # Same two states, relabeled: high-velocity state first.
+    saccade_first = ihmm(
+        velocities,
+        mu=[100.0, 5.0],
+        sigma=[50.0, 5.0],
+        init_state=[0.1, 0.9],
+        transition_probabilities=[[0.95, 0.05], [0.05, 0.95]],
+        minimum_duration=1,
+    )
+
+    assert len(fixation_first.frame) >= 1
+    assert fixation_first.frame['onset'].to_list() == saccade_first.frame['onset'].to_list()
+    assert fixation_first.frame['offset'].to_list() == saccade_first.frame['offset'].to_list()
+
+
 def test_ihmm_accepts_hmm_parameters_dict():
     """Should accept and use hmm_parameters_dict."""
     velocities = np.array(
