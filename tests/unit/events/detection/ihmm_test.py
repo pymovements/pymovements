@@ -796,6 +796,67 @@ def test_ihmm_rejects_invalid_transition_shape():
         )
 
 
+@pytest.mark.parametrize(
+    'bad_transition_probabilities',
+    [
+        pytest.param([[0.75, 0.75], [0.05, 0.95]], id='one_row_sums_above_one'),
+        pytest.param([[0.3, 0.3], [0.2, 0.2]], id='both_rows_sum_below_one'),
+        pytest.param([[0.95, 0.05], [1.1, 0.2]], id='one_row_sums_above_one_other_valid'),
+    ],
+)
+def test_ihmm_rejects_transition_probabilities_not_summing_to_one(
+        bad_transition_probabilities,
+):
+    """Every row of transition_probabilities must sum to one, regardless of the other row."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    with pytest.raises(ValueError, match='transition_probabilities values must sum up to one'):
+        ihmm(
+            velocities=velocities,
+            transition_probabilities=bad_transition_probabilities,
+            minimum_duration=1,
+        )
+
+
+def test_ihmm_accepts_transition_probabilities_summing_to_one():
+    """A valid row-stochastic transition matrix must not be rejected."""
+    velocities = np.array(
+        [
+            [0.0, 0.0],
+            [0.1, 0.1],
+            [10.0, 10.0],
+            [10.1, 10.1],
+        ],
+    )
+
+    events = ihmm(
+        velocities=velocities,
+        transition_probabilities=[[0.95, 0.05], [0.05, 0.95]],
+        minimum_duration=1,
+    )
+
+    assert events is not None
+
+
+def test_ihmm_rejects_hmm_parameters_dict_transition_not_summing_to_one():
+    """The trans matrix inside hmm_parameters_dict must be validated the same way."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    hmm_params = {
+        'mu': np.array([0.0, 10.0]),
+        'sigma': np.array([1.0, 1.0]),
+        'init': np.array([0.5, 0.5]),
+        'trans': np.array([[0.75, 0.75], [0.05, 0.95]]),
+    }
+
+    with pytest.raises(ValueError, match='transition_probabilities values must sum up to one'):
+        ihmm(
+            velocities=velocities,
+            hmm_parameters_dict=hmm_params,
+            minimum_duration=1,
+        )
+
+
 def test_ihmm_handles_nan_velocities():
     velocities = np.array(
         [

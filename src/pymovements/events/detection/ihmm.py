@@ -1193,15 +1193,13 @@ def ihmm(
             f' must have shape (2, 2), but shapes are '
             f'{transition_probabilities.shape}',
         )
-    if transition_probabilities is not None and numpy.sum(
-            transition_probabilities[0],
-    ) > 1 and numpy.sum(transition_probabilities[1]) > 1:
-        sum0 = numpy.sum(transition_probabilities[0])
-        sum1 = numpy.sum(transition_probabilities[1])
-        raise ValueError(
-            f'transition_probabilities values must sum up to one for each state '
-            f'but instead are {sum0} and {sum1}',
-        )
+    if transition_probabilities is not None:
+        row_sums = numpy.sum(transition_probabilities, axis=1)
+        if not numpy.allclose(row_sums, 1.0):
+            raise ValueError(
+                f'transition_probabilities values must sum up to one for each state '
+                f'but instead are {row_sums[0]} and {row_sums[1]}',
+            )
 
     if hmm_parameters_dict is not None:
 
@@ -1243,6 +1241,13 @@ def ihmm(
                 f' must have shape (2, 2), but shapes are '
                 f'{hmm_parameters_dict["trans"].shape}',
             )
+        if hmm_parameters_dict['trans'] is not None:
+            dict_row_sums = numpy.sum(hmm_parameters_dict['trans'], axis=1)
+            if not numpy.allclose(dict_row_sums, 1.0):
+                raise ValueError(
+                    f'transition_probabilities values must sum up to one for each state '
+                    f'but instead are {dict_row_sums[0]} and {dict_row_sums[1]}',
+                )
 
     if not reestimation and verbose:
         warnings.warn(
