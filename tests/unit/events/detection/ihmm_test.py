@@ -369,14 +369,7 @@ def test_viterbi_prefers_low_velocity_state():
 
     init = np.log(np.array([0.5, 0.5]))
 
-    trans = np.log(
-        np.array(
-            [
-                [0.95, 0.05],
-                [0.05, 0.95],
-            ],
-        ),
-    )
+    trans = np.log(np.array([[0.95, 0.05], [0.05, 0.95]]))
 
     velocities = np.array([0.1, -0.1, 0.0, 0.2])
     mask = np.array([True, True, True, True])
@@ -403,14 +396,7 @@ def test_viterbi_detects_state_transition():
 
     init = np.log(np.array([0.5, 0.5]))
 
-    trans = np.log(
-        np.array(
-            [
-                [0.95, 0.05],
-                [0.05, 0.95],
-            ],
-        ),
-    )
+    trans = np.log(np.array([[0.95, 0.05], [0.05, 0.95]]))
 
     velocities = np.array([0.0, 0.1, 9.8, 10.2])
     mask = np.array([True, True, True, True])
@@ -540,14 +526,7 @@ def test_baum_welch_returns_valid_shapes():
 
     init = np.log(np.array([0.5, 0.5]))
 
-    trans = np.log(
-        np.array(
-            [
-                [0.9, 0.1],
-                [0.1, 0.9],
-            ],
-        ),
-    )
+    trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
 
     velocities = np.array([0.1, 0.0, 0.2, 10.0, 9.9, 10.2])
     mask = np.array([True] * len(velocities))
@@ -575,14 +554,7 @@ def test_baum_welch_transition_rows_sum_to_one_in_probability_space():
 
     init = np.log(np.array([0.5, 0.5]))
 
-    trans = np.log(
-        np.array(
-            [
-                [0.8, 0.2],
-                [0.2, 0.8],
-            ],
-        ),
-    )
+    trans = np.log(np.array([[0.8, 0.2], [0.2, 0.8]]))
 
     velocities = np.array([0.0, 0.1, 10.0, 10.1])
     mask = np.array([True] * len(velocities))
@@ -607,19 +579,7 @@ def test_baum_welch_transition_rows_sum_to_one_in_probability_space():
 
 def test_baum_welch_updates_means_toward_observed_clusters():
     """Estimated means should separate low/high velocity clusters."""
-    velocities = np.array(
-        [
-            0.0,
-            0.1,
-            -0.1,
-            0.2,
-            10.0,
-            10.2,
-            9.8,
-            10.1,
-        ],
-    )
-
+    velocities = np.array([0.0, 0.1, -0.1, 0.2, 10.0, 10.2, 9.8, 10.1])
     mask = np.array([True] * len(velocities))
 
     result = _baum_welch(
@@ -637,6 +597,31 @@ def test_baum_welch_updates_means_toward_observed_clusters():
 
     assert estimated_mu[0] < 2.0
     assert estimated_mu[1] > 8.0
+
+
+def test_baum_welch_keeps_previous_params_for_unreachable_state():
+    """A state with zero posterior mass must keep its mu/sigma instead of dividing by zero."""
+    velocities = np.array([0.0, 0.1, -0.1, 0.2])
+    mask = np.array([True, True, True, True])
+
+    # state 1's emission is so far from every observation that its posterior
+    # probability underflows to exactly 0.0 at every timestep, so gamma[1, :]
+    # is always exactly zero and its M-step update must be skipped.
+    result = _baum_welch(
+        states=2,
+        mu=np.array([0.0, 1000.0]),
+        sigma=np.array([1.0, 0.001]),
+        init=np.log(np.array([0.5, 0.5])),
+        trans=np.log(np.array([[0.9, 0.1], [0.1, 0.9]])),
+        velocities=velocities,
+        velocities_mask=mask,
+        max_iters=1,
+    )
+
+    assert result['mu'][1] == 1000.0
+    assert result['sigma'][1] == 0.001
+    assert not np.isnan(result['mu']).any()
+    assert not np.isnan(result['sigma']).any()
 
 
 @pytest.mark.parametrize(
