@@ -922,6 +922,33 @@ def test_ihmm_accepts_transition_probabilities_summing_to_one():
     assert events is not None
 
 
+def test_ihmm_accepts_zero_probabilities_without_log_warning():
+    """Valid zero probabilities must not trigger a divide-by-zero warning from numpy.log.
+
+    ``init_state=[1, 0]`` and a transition matrix with zero entries are valid
+    probability distributions and must be accepted. Since the test suite promotes
+    warnings to errors, this also guards against the numpy.log divide-by-zero
+    warning that exact-zero probabilities would otherwise emit.
+    """
+    velocities = np.array(
+        [
+            [0.0, 0.0],
+            [0.1, 0.1],
+            [10.0, 10.0],
+            [10.1, 10.1],
+        ],
+    )
+
+    events = ihmm(
+        velocities=velocities,
+        init_state=[1.0, 0.0],
+        transition_probabilities=[[1.0, 0.0], [0.0, 1.0]],
+        minimum_duration=1,
+    )
+
+    assert events is not None
+
+
 def test_ihmm_rejects_hmm_parameters_dict_transition_not_summing_to_one():
     """The trans matrix inside hmm_parameters_dict must be validated the same way."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])

@@ -857,8 +857,11 @@ def _compute_hmm(
     else:
         _trans = defaults['trans']
 
-    _init = numpy.log(_init)
-    _trans = numpy.log(_trans)
+    # clip before taking the log so that valid zero probabilities (e.g. an
+    # init_state of [1, 0]) map to a large negative log value instead of
+    # emitting a divide-by-zero warning from numpy.log.
+    _init = numpy.log(numpy.clip(numpy.asarray(_init, dtype=float), 1e-12, 1.0))
+    _trans = numpy.log(numpy.clip(numpy.asarray(_trans, dtype=float), 1e-12, 1.0))
 
     # reestimate if needed
 
@@ -1061,10 +1064,15 @@ def ihmm(
 
     minimum_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
+        Must be an integer, so with float-valued ``timesteps`` (e.g. seconds) only
+        whole-unit thresholds can be expressed.
 
     mu : list[float] | numpy.ndarray | None, default=None
         Mean velocity for each state (Gaussian emissions).
         Shape: (2,), typically [fixation_mean, saccade_mean].
+        The state order is normalized internally by ascending mean, so the
+        lowest-mean state is always treated as the fixation state (state 0)
+        regardless of the order in which the two values are supplied.
         If None, uses data-driven defaults or hmm_parameters_dict.
 
     sigma : list[float] | numpy.ndarray | None, default=None
