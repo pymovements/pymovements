@@ -254,12 +254,12 @@ via PyPI and conda-forge, with more than 90,000 downloads from PyPI
 
 Beyond the author team, `pymovements` has been taken up in research across
 several domains, including gaze data-quality research [@Elfares2025;
-@@Roehrl2026], reading and language-model research [@LopezCardona2025;
-@LuGe2026], clinical vision research using virtual-reality
-simulations [@Grootjen2025; @Grootjen2025b; @Grootjen2025c], human-computer
-interaction [@Chiossi2024; @Chiossi2024b], automotive and applied
-ergonomics [@Lopez2025], and virtual reality [@Li2024; @Li2025; @Wang2026].
-It is also cited as a reference point by newer eye-tracking analysis tools
+@Roehrl2026], reading and language-model research [@LopezCardona2025;
+@LuGe2026], clinical vision research using virtual-reality simulations
+[@Grootjen2025; @Grootjen2025b; @Grootjen2025c], human-computer interaction
+[@Chiossi2024; @Chiossi2024b], automotive and applied ergonomics
+[@Lopez2025], and virtual reality [@Li2024; @Li2025; @Wang2026]. It is also
+cited as a reference point by newer eye-tracking analysis tools
 [@PyNeon2026; @OpenGazeLab2026; @Balaskas2026] and featured in a recent
 review of eye-tracking software [@Niehorster2025]. Its dataset catalog has
 also begun to receive contributions from researchers outside the core team
