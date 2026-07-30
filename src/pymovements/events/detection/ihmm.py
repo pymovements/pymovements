@@ -886,9 +886,8 @@ def ihmm(
     velocities : list[list[float]] | list[tuple[float, float]] | numpy.ndarray
         Velocity data. Can be:
         - 2D array of shape (T, 2) containing x and y velocity components
-        - 1D array of shape (T,) containing pre-computed velocity magnitudes
         - List of (vx, vy) tuples or lists
-        Will be converted to velocity magnitudes via Euclidean norm.
+        Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
     timesteps : list[int] | numpy.ndarray | None, default=None
         Timestamp indices for each velocity sample. Must be integers.
