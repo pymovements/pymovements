@@ -929,8 +929,7 @@ def ihmm(
 ) -> Events:
     """Detect fixation events from velocity data using a Hidden Markov Model (I-HMM).
 
-    The "I" in I-HMM stands for "Identification", following the naming of the eye
-    movement identification algorithms of Salvucci and Goldberg
+    The implementation follows the algorithm from Salvucci and Goldberg
     :cite:p:`SalvucciGoldberg2000`.
 
     This function implements a 2-state HMM specifically designed for eye-tracking
