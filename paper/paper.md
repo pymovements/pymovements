@@ -246,7 +246,7 @@ pipeline of the MultiplEYE COST Action (CA21131), a pan-European
 reading-research consortium, with continuous exchange between the two
 projects; four multi-day contributor meetings organized through the COST
 Action brought together contributors from across Europe to jointly design
-and implement core features of the package [@Krakowczyk2026]. The project
+and implement core features of the package [@Krakowczyk2026]. `pymovements`
 has more than 50 contributors from multiple laboratories and is distributed
 via PyPI and conda-forge, with more than 90,000 downloads from PyPI
 [@pepyPymovements] and over 58,000 from conda-forge
