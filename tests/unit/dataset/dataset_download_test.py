@@ -994,21 +994,6 @@ def test_download_dataset_skips_resource_without_source():
     assert mock_download.call_count == 1
 
 
-def test_download_dataset_dangling_reference_raises():
-    """Test that an unresolvable source reference raises ValueError at download time."""
-    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
-    resource = ResourceDefinition(content='gaze', source='main')
-    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
-    # Bypass construction-time validation to reach the runtime guard.
-    definition.resources[0].source = 'ghost'
-
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
-    with pytest.raises(ValueError, match="Dangling source reference: 'ghost'"):
-        download_dataset(definition, paths, extract=False)
-
-
 def test_download_dataset_triggers_extract():
     """Test that download_dataset extracts by default after downloading."""
     resource = ResourceDefinition(

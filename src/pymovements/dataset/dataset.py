@@ -1382,9 +1382,8 @@ class Dataset:
         AttributeError
             If no downloadable sources are found in the dataset definition.
         ValueError
-            If a resource references a source name that is not present in
-            :py:attr:`~pymovements.DatasetDefinition.sources`, or if two sources share the same
-            ``url`` and ``filename`` but disagree on ``md5`` or ``mirrors``.
+            If two sources share the same ``url`` and ``filename`` but disagree on ``md5`` or
+            ``mirrors``.
         RuntimeError
             If downloading a resource failed for all given mirrors.
         """

@@ -50,22 +50,11 @@ def _resolve_source(
     -------
     WebSource | None
         The resolved source, or ``None`` if the resource has no source.
-
-    Raises
-    ------
-    ValueError
-        If the resource references a source name that is not present in
-        :py:attr:`~pymovements.DatasetDefinition.sources`.
     """
     source = resource.source
     if isinstance(source, str):
-        try:
-            return sources[source]
-        except KeyError:
-            raise ValueError(
-                f"Dangling source reference: '{source}' not found in "
-                'DatasetDefinition.sources.',
-            ) from None
+        # Dangling references are already rejected by DatasetDefinition validation on init.
+        return sources[source]
     return source
 
 
@@ -116,9 +105,8 @@ def download_dataset(
     AttributeError
         If no downloadable sources are found in the dataset definition.
     ValueError
-        If a resource references a source name that is not present in
-        :py:attr:`~pymovements.DatasetDefinition.sources`, or if two sources share the same
-        ``url`` and ``filename`` but disagree on ``md5`` or ``mirrors``.
+        If two sources share the same ``url`` and ``filename`` but disagree on ``md5`` or
+        ``mirrors``.
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
