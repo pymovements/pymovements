@@ -44,7 +44,7 @@ def test_ihmm_benchmark_viterbi_only(benchmark):
         ihmm,
         kwargs={'velocities': velocities, 'minimum_duration': 1},
         iterations=1,
-        rounds=10,
+        rounds=50,
     )
 
 
@@ -61,5 +61,5 @@ def test_ihmm_benchmark_with_reestimation(benchmark):
             'reestimation_max_iters': 20,
         },
         iterations=1,
-        rounds=5,
+        rounds=20,
     )
