@@ -85,6 +85,20 @@ def test_emit_log_prob_sigma_floor_prevents_instability():
     assert np.isfinite(result)
 
 
+@pytest.mark.parametrize(
+    ('mu', 'sigma'),
+    [
+        pytest.param(None, np.array([1.0, 1.0]), id='mu_none'),
+        pytest.param(np.array([0.0, 0.0]), None, id='sigma_none'),
+        pytest.param(None, None, id='both_none'),
+    ],
+)
+def test_emit_log_prob_raises_on_none_parameters(mu, sigma):
+    """mu and sigma are required; None must raise instead of being silently ignored."""
+    with pytest.raises(ValueError, match='mu and sigma must not be None'):
+        emit_log_prob(mu=mu, sigma=sigma, v=0.0, s=0)
+
+
 # -----------------------------------------------------------------------------
 # log_sum_exp
 # -----------------------------------------------------------------------------
@@ -264,6 +278,64 @@ def test_forward_handles_masked_values():
     assert np.all(np.isfinite(alpha))
 
 
+def test_baum_forward_raises_on_none_mu_or_sigma():
+    """mu/sigma are required for the forward pass; None must raise, not be ignored."""
+    init = np.log(np.array([0.5, 0.5]))
+    trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
+    velocities = np.array([0.0, 1.0, 2.0])
+    mask = np.array([True, True, True])
+
+    with pytest.raises(ValueError, match='mu and sigma must not be None'):
+        baum_forward(
+            mu=None,
+            sigma=None,
+            init=init,
+            trans=trans,
+            velocities=velocities,
+            velocities_mask=mask,
+            T=3,
+            M=2,
+        )
+
+
+def test_baum_forward_raises_on_none_mu_or_sigma_even_if_fully_masked():
+    """The None check must not depend on velocities_mask reaching emit_log_prob."""
+    init = np.log(np.array([0.5, 0.5]))
+    trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
+    velocities = np.array([0.0, 1.0, 2.0])
+    mask = np.array([False, False, False])
+
+    with pytest.raises(ValueError, match='mu and sigma must not be None'):
+        baum_forward(
+            mu=None,
+            sigma=None,
+            init=init,
+            trans=trans,
+            velocities=velocities,
+            velocities_mask=mask,
+            T=3,
+            M=2,
+        )
+
+
+def test_baum_backward_raises_on_none_mu_or_sigma():
+    """mu/sigma are required for the backward pass; None must raise, not be ignored."""
+    trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
+    velocities = np.array([0.0, 1.0, 2.0])
+    mask = np.array([True, True, True])
+
+    with pytest.raises(ValueError, match='mu and sigma must not be None'):
+        baum_backward(
+            mu=None,
+            sigma=None,
+            trans=trans,
+            velocities=velocities,
+            velocities_mask=mask,
+            T=3,
+            M=2,
+        )
+
+
 # -----------------------------------------------------------------------------
 # Viterbi
 # -----------------------------------------------------------------------------
@@ -335,6 +407,25 @@ def test_viterbi_detects_state_transition():
     expected = np.array([0, 0, 1, 1])
 
     np.testing.assert_array_equal(states, expected)
+
+
+def test_viterbi_raises_on_none_mu_or_sigma():
+    """mu/sigma are required for decoding; None must raise, not be ignored."""
+    init = np.log(np.array([0.5, 0.5]))
+    trans = np.log(np.array([[0.95, 0.05], [0.05, 0.95]]))
+    velocities = np.array([0.0, 0.1, 9.8, 10.2])
+    mask = np.array([True, True, True, True])
+
+    with pytest.raises(ValueError, match='mu and sigma must not be None'):
+        viterbi(
+            states=2,
+            mu=None,
+            sigma=None,
+            init=init,
+            trans=trans,
+            velocities=velocities,
+            velocities_mask=mask,
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -501,6 +592,33 @@ def test_baum_welch_updates_means_toward_observed_clusters():
 
     assert estimated_mu[0] < 2.0
     assert estimated_mu[1] > 8.0
+
+
+@pytest.mark.parametrize(
+    'none_param',
+    ['mu', 'sigma', 'init', 'trans'],
+)
+def test_baum_welch_raises_on_none_parameters(none_param):
+    """mu, sigma, init, trans are required; None must raise, not silently (re-)initialize."""
+    params = {
+        'mu': np.array([0.0, 10.0]),
+        'sigma': np.array([1.0, 1.0]),
+        'init': np.log(np.array([0.5, 0.5])),
+        'trans': np.log(np.array([[0.9, 0.1], [0.1, 0.9]])),
+    }
+    params[none_param] = None
+
+    velocities = np.array([0.0, 0.1, 10.0, 10.1])
+    mask = np.array([True] * len(velocities))
+
+    with pytest.raises(ValueError, match='mu, sigma, init and trans must not be None'):
+        baum_welch(
+            states=2,
+            velocities=velocities,
+            velocities_mask=mask,
+            max_iters=5,
+            **params,
+        )
 
 
 # -----------------------------------------------------------------------------

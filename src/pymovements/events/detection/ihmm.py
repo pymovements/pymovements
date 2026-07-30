@@ -101,16 +101,22 @@ def emit_log_prob(
 
     Args:
         mu: Array of means for each hidden state. Shape: (num_states,).
-            May be None if not used in a given context, but must be valid when accessed.
+            Must not be None.
         sigma: Array of standard deviations for each hidden state. Shape: (num_states,).
-            May be None if not used in a given context, but must be valid when accessed.
+            Must not be None.
         v: Observed scalar value.
         s: Index of the hidden state used to select the corresponding (mu, sigma).
 
     Returns:
         The log-probability (float) of observing `v` given state `s`
         under a Gaussian emission model.
+
+    Raises:
+        ValueError: If `mu` or `sigma` is None.
     """
+
+    if mu is None or sigma is None:
+        raise ValueError('mu and sigma must not be None to compute an emission log-probability')
 
     mu = mu[s]
     sigma = sigma[s]
@@ -164,19 +170,19 @@ def baum_welch(
 
     mu : numpy.ndarray | None
         Initial means for the observation distributions (Gaussian emissions).
-        Shape: (states,). If None, will be initialized during algorithm execution.
+        Shape: (states,). Must not be None.
 
     sigma : numpy.ndarray | None
         Initial standard deviations for the observation distributions.
-        Shape: (states,). If None, will be initialized during algorithm execution.
+        Shape: (states,). Must not be None.
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
-        Shape: (states,). If None, will be initialized from the forward-backward algorithm.
+        Shape: (states,). Must not be None.
 
     trans : numpy.ndarray | None
         Initial state transition probability matrix (log-space).
-        Shape: (states, states). trans[i, j] = log P(state_j | state_i).
+        Shape: (states, states). trans[i, j] = log P(state_j | state_i). Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
@@ -206,7 +212,16 @@ def baum_welch(
             Estimated initial state probabilities (log-space). Shape: (states,)
         - 'trans' : numpy.ndarray
             Estimated state transition probabilities (log-space). Shape: (states, states)
+
+    Raises
+    ------
+    ValueError
+        If `mu`, `sigma`, `init`, or `trans` is None.
     """
+    if mu is None or sigma is None or init is None or trans is None:
+        raise ValueError(
+            'mu, sigma, init and trans must not be None to run Baum-Welch reestimation',
+        )
 
     T = len(velocities)
     M = states
@@ -367,11 +382,11 @@ def baum_forward(
     ----------
     mu : numpy.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
-        Shape: (M,). If None, emission probabilities are ignored (treated as log(1) = 0).
+        Shape: (M,). Must not be None.
 
     sigma : numpy.ndarray | None
         Standard deviations of the emission distributions for each state.
-        Shape: (M,). If None, emission probabilities are ignored.
+        Shape: (M,). Must not be None.
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
@@ -400,7 +415,15 @@ def baum_forward(
     numpy.ndarray
         Forward probabilities (log-space). Shape: (T, M).
         alpha[t, s] = log(P(observations[0:t+1], state = s at time t | model parameters)).
+
+    Raises
+    ------
+    ValueError
+        If `mu` or `sigma` is None.
     """
+    if mu is None or sigma is None:
+        raise ValueError('mu and sigma must not be None to compute forward probabilities')
+
     alpha = numpy.full((T, M), -numpy.inf)
 
     # init step
@@ -449,11 +472,11 @@ def baum_backward(
     ----------
     mu : numpy.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
-        Shape: (M,). If None, emission probabilities are ignored (treated as log(1) = 0).
+        Shape: (M,). Must not be None.
 
     sigma : numpy.ndarray | None
         Standard deviations of the emission distributions for each state.
-        Shape: (M,). If None, emission probabilities are ignored.
+        Shape: (M,). Must not be None.
 
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
@@ -479,7 +502,13 @@ def baum_backward(
         Backward probabilities (log-space). Shape: (T, M).
         beta[t, i] = log(P(observations[t+1:T] | state = i at time t, model parameters)).
 
+    Raises
+    ------
+    ValueError
+        If `mu` or `sigma` is None.
     """
+    if mu is None or sigma is None:
+        raise ValueError('mu and sigma must not be None to compute backward probabilities')
 
     beta = numpy.full((T, M), -numpy.inf)
 
@@ -535,11 +564,11 @@ def viterbi(
 
     mu : numpy.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
-        Shape: (states,). If None, emission probabilities are ignored (treated as log(1) = 0).
+        Shape: (states,). Must not be None.
 
     sigma : numpy.ndarray | None
         Standard deviations of the emission distributions for each state.
-        Shape: (states,). If None, emission probabilities are ignored.
+        Shape: (states,). Must not be None.
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
@@ -563,7 +592,13 @@ def viterbi(
         Most likely sequence of hidden states (Viterbi path).
         Shape: (T,), dtype=int. Each entry is a state index from 0 to states-1.
 
+    Raises
+    ------
+    ValueError
+        If `mu` or `sigma` is None.
     """
+    if mu is None or sigma is None:
+        raise ValueError('mu and sigma must not be None to run Viterbi decoding')
 
     # init step
 
