@@ -912,6 +912,114 @@ def _compute_hmm(
     return states
 
 
+def _validate_transition_probabilities(transition_probabilities: numpy.ndarray) -> None:
+    """Validate that a transition matrix is a valid row-stochastic probability matrix.
+
+    Parameters
+    ----------
+    transition_probabilities: numpy.ndarray
+        Transition probability matrix of shape ``(2, 2)``.
+
+    Raises
+    ------
+    ValueError
+        If any row does not sum to one, or if any entry lies outside ``[0, 1]``.
+    """
+    row_sums = numpy.sum(transition_probabilities, axis=1)
+    if not numpy.allclose(row_sums, 1.0):
+        raise ValueError(
+            f'transition_probabilities values must sum up to one for each state '
+            f'but instead are {row_sums[0]} and {row_sums[1]}',
+        )
+    if numpy.any(transition_probabilities < 0) or numpy.any(transition_probabilities > 1):
+        raise ValueError(
+            'transition_probabilities values must each lie between zero and one',
+        )
+
+
+def _validate_init_state(init_state: numpy.ndarray) -> None:
+    """Validate that an initial-state vector is a valid probability distribution.
+
+    Parameters
+    ----------
+    init_state: numpy.ndarray
+        Initial state probability vector of shape ``(2,)``.
+
+    Raises
+    ------
+    ValueError
+        If the values do not sum to one, or if any entry lies outside ``[0, 1]``.
+    """
+    if not numpy.isclose(numpy.sum(init_state), 1.0):
+        raise ValueError(
+            f'init_state values must sum up to one '
+            f'but instead sum up to {numpy.sum(init_state)}',
+        )
+    if numpy.any(init_state < 0) or numpy.any(init_state > 1):
+        raise ValueError(
+            'init_state values must each lie between zero and one',
+        )
+
+
+def _validate_hmm_parameters_dict(hmm_parameters_dict: dict) -> dict[str, numpy.ndarray]:
+    """Validate and copy a user-supplied ``hmm_parameters_dict``.
+
+    Checks that the dictionary has exactly the expected keys and that each value has
+    the correct shape and, for ``init`` and ``trans``, forms a valid probability
+    distribution. The values are copied into a new dictionary of numpy arrays so the
+    caller's input is left untouched.
+
+    Parameters
+    ----------
+    hmm_parameters_dict: dict
+        Dictionary with keys ``'mu'``, ``'sigma'``, ``'init'`` and ``'trans'``.
+
+    Returns
+    -------
+    dict[str, numpy.ndarray]
+        A new dictionary with the same keys whose values are numpy arrays.
+
+    Raises
+    ------
+    ValueError
+        If the keys are incorrect, a parameter has the wrong shape, or the init/trans
+        values are not valid probabilities.
+    """
+    if set(hmm_parameters_dict.keys()) != {'mu', 'sigma', 'init', 'trans'}:
+        raise ValueError(
+            f'hmm_parameters_dict'
+            f' should have fields {["mu", "sigma", "init", "trans"]} but instead has '
+            f'{list(hmm_parameters_dict.keys())}',
+        )
+
+    # copy into a new dict so the caller's input is not mutated
+    validated = {
+        'mu': numpy.array(hmm_parameters_dict['mu']),
+        'sigma': numpy.array(hmm_parameters_dict['sigma']),
+        'init': numpy.array(hmm_parameters_dict['init']),
+        'trans': numpy.array(hmm_parameters_dict['trans']),
+    }
+
+    if validated['mu'].shape != (2,):
+        raise ValueError(f'mu must have shape (2,), but shapes are {validated["mu"].shape}')
+    if validated['sigma'].shape != (2,):
+        raise ValueError(f'sigma must have shape (2,), but shapes are {validated["sigma"].shape}')
+    if validated['init'].shape != (2,):
+        raise ValueError(
+            f'init_state must have shape (2,), but shapes are {validated["init"].shape}',
+        )
+    if validated['trans'].shape != (2, 2):
+        raise ValueError(
+            f'transition_probabilities must have shape (2, 2), but shapes are '
+            f'{validated["trans"].shape}',
+        )
+
+    _validate_transition_probabilities(validated['trans'])
+    _validate_init_state(validated['init'])
+
+    return validated
+
+
 @register_event_detection
 def ihmm(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
@@ -1057,12 +1165,12 @@ def ihmm(
     ValueError
         If minimum_duration is not greater than 0.
     ValueError
-        If transition_probabilities rows don't sum to 1.
+        If transition_probabilities rows don't sum to 1, or contain values outside [0, 1].
     ValueError
-        If init_state does not sum to 1.
+        If init_state does not sum to 1, or contains values outside [0, 1].
     ValueError
         If hmm_parameters_dict has incorrect keys or shapes, or its init/trans
-        values don't sum to 1.
+        values don't sum to 1 or lie outside [0, 1].
 
     Examples
     --------
@@ -1236,75 +1344,12 @@ def ihmm(
             f'{transition_probabilities.shape}',
         )
     if transition_probabilities is not None:
-        row_sums = numpy.sum(transition_probabilities, axis=1)
-        if not numpy.allclose(row_sums, 1.0):
-            raise ValueError(
-                f'transition_probabilities values must sum up to one for each state '
-                f'but instead are {row_sums[0]} and {row_sums[1]}',
-            )
-    if init_state is not None and not numpy.isclose(numpy.sum(init_state), 1.0):
-        raise ValueError(
-            f'init_state values must sum up to one '
-            f'but instead sum up to {numpy.sum(init_state)}',
-        )
+        _validate_transition_probabilities(transition_probabilities)
+    if init_state is not None:
+        _validate_init_state(init_state)
 
     if hmm_parameters_dict is not None:
-
-        if set(hmm_parameters_dict.keys()) != {'mu', 'sigma', 'init', 'trans'}:
-            raise ValueError(
-                f'hmm_parameters_dict'
-                f' should have fields {["mu", "sigma", "init", "trans"]} but instead has '
-                f'{list(hmm_parameters_dict.keys())}',
-            )
-
-        # copy into a new dict so the caller's input is not mutated
-        hmm_parameters_dict = {
-            'mu': numpy.array(hmm_parameters_dict['mu']),
-            'sigma': numpy.array(hmm_parameters_dict['sigma']),
-            'init': numpy.array(hmm_parameters_dict['init']),
-            'trans': numpy.array(hmm_parameters_dict['trans']),
-        }
-
-        if hmm_parameters_dict['mu'] is not None and hmm_parameters_dict['mu'].shape != (2,):
-            raise ValueError(
-                f'mu'
-                f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict["mu"].shape}',
-            )
-        if hmm_parameters_dict['sigma'] is not None and hmm_parameters_dict['sigma'].shape != (2,):
-            raise ValueError(
-                f'sigma'
-                f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict["sigma"].shape}',
-            )
-        if hmm_parameters_dict['init'] is not None and hmm_parameters_dict['init'].shape != (2,):
-            raise ValueError(
-                f'init_state'
-                f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict["init"].shape}',
-            )
-        if hmm_parameters_dict['trans'] is not None and hmm_parameters_dict['trans'].shape != (
-                2, 2,
-        ):
-            raise ValueError(
-                f'transition_probabilities'
-                f' must have shape (2, 2), but shapes are '
-                f'{hmm_parameters_dict["trans"].shape}',
-            )
-        if hmm_parameters_dict['trans'] is not None:
-            dict_row_sums = numpy.sum(hmm_parameters_dict['trans'], axis=1)
-            if not numpy.allclose(dict_row_sums, 1.0):
-                raise ValueError(
-                    f'transition_probabilities values must sum up to one for each state '
-                    f'but instead are {dict_row_sums[0]} and {dict_row_sums[1]}',
-                )
-        if hmm_parameters_dict['init'] is not None and not numpy.isclose(
-                numpy.sum(hmm_parameters_dict['init']), 1.0,
-        ):
-            raise ValueError(
-                f'init_state values must sum up to one '
-                f'but instead sum up to {numpy.sum(hmm_parameters_dict["init"])}',
-            )
+        hmm_parameters_dict = _validate_hmm_parameters_dict(hmm_parameters_dict)
 
     if not reestimation and verbose:
         warnings.warn(

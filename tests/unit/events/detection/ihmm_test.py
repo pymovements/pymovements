@@ -972,6 +972,89 @@ def test_ihmm_rejects_hmm_parameters_dict_init_not_summing_to_one():
         )
 
 
+@pytest.mark.parametrize(
+    'bad_transition_probabilities',
+    [
+        pytest.param([[1.5, -0.5], [0.05, 0.95]], id='negative_entry_in_row'),
+        pytest.param([[0.95, 0.05], [-0.1, 1.1]], id='negative_entry_in_other_row'),
+    ],
+)
+def test_ihmm_rejects_transition_probabilities_outside_unit_interval(
+        bad_transition_probabilities,
+):
+    """Rows summing to one but containing values outside [0, 1] must be rejected."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    with pytest.raises(
+            ValueError,
+            match='transition_probabilities values must each lie between zero and one',
+    ):
+        ihmm(
+            velocities=velocities,
+            transition_probabilities=bad_transition_probabilities,
+            minimum_duration=1,
+        )
+
+
+def test_ihmm_rejects_init_state_outside_unit_interval():
+    """An init_state summing to one but containing values outside [0, 1] must be rejected."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    with pytest.raises(
+            ValueError,
+            match='init_state values must each lie between zero and one',
+    ):
+        ihmm(
+            velocities=velocities,
+            init_state=[1.5, -0.5],
+            minimum_duration=1,
+        )
+
+
+def test_ihmm_rejects_hmm_parameters_dict_transition_outside_unit_interval():
+    """The trans matrix inside hmm_parameters_dict must reject values outside [0, 1]."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    hmm_params = {
+        'mu': np.array([0.0, 10.0]),
+        'sigma': np.array([1.0, 1.0]),
+        'init': np.array([0.5, 0.5]),
+        'trans': np.array([[1.5, -0.5], [0.05, 0.95]]),
+    }
+
+    with pytest.raises(
+            ValueError,
+            match='transition_probabilities values must each lie between zero and one',
+    ):
+        ihmm(
+            velocities=velocities,
+            hmm_parameters_dict=hmm_params,
+            minimum_duration=1,
+        )
+
+
+def test_ihmm_rejects_hmm_parameters_dict_init_outside_unit_interval():
+    """The init vector inside hmm_parameters_dict must reject values outside [0, 1]."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    hmm_params = {
+        'mu': np.array([0.0, 10.0]),
+        'sigma': np.array([1.0, 1.0]),
+        'init': np.array([1.5, -0.5]),
+        'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+    }
+
+    with pytest.raises(
+            ValueError,
+            match='init_state values must each lie between zero and one',
+    ):
+        ihmm(
+            velocities=velocities,
+            hmm_parameters_dict=hmm_params,
+            minimum_duration=1,
+        )
+
+
 def test_ihmm_handles_nan_velocities():
     """An interior NaN sample must not crash detection and must not split the fixation."""
     velocities = np.array(
@@ -1193,13 +1276,13 @@ def test_ihmm_rejects_invalid_hmm_parameters_dict_keys():
 
 
 def test_ihmm_removes_leading_trailing_nans():
-    """Leading and trailing NaN velocities should be trimmed."""
+    """Leading and trailing NaN velocities should be trimmed off the detected events."""
     velocities = np.array(
         [
             [np.nan, np.nan],
             [0.0, 0.0],
-            [0.1, 0.1],
-            [10.0, 10.0],
+            [0.0, 0.0],
+            [0.0, 0.0],
             [np.nan, np.nan],
         ],
     )
@@ -1209,7 +1292,13 @@ def test_ihmm_removes_leading_trailing_nans():
         minimum_duration=1,
     )
 
-    assert events is not None
+    # the fixation must be confined to the non-nan region (indices 1..3), never
+    # extending onto the trimmed leading (index 0) or trailing (index 4) samples.
+    assert len(events.frame) == 1
+    onset = events.frame['onset'].to_list()[0]
+    offset = events.frame['offset'].to_list()[0]
+    assert onset == 1
+    assert offset == 3
 
 
 def test_ihmm_runs_with_reestimation_enabled():
@@ -1342,23 +1431,16 @@ def _spans(events):
 
 
 def test_ihmm_detects_no_fixations_for_saccade_only_signal():
-    """A signal that is all high-velocity saccades should yield no fixations."""
-    positions_no_fix = step_function(
-        length=6,
-        steps=[1, 2, 3, 4, 5],
-        values=[
-            (100., 100.),
-            (-100., -100.),
-            (100., -100.),
-            (-100., 100.),
-            (200., 0.),
-        ],
-        start_value=(0., 0.),
-    )
+    """A signal that is all high-velocity motion should yield no fixations."""
+    # Continuous constant-velocity motion: every sample is a high-velocity saccade,
+    # so there is no low-velocity cluster to label as a fixation. minimum_duration=1
+    # ensures the empty result comes from state classification, not duration filtering.
+    length_no_fix = 200
+    positions_no_fix = np.cumsum(np.full((length_no_fix, 2), 50.0), axis=0)
 
     velocities_no_fix = pos2vel(positions_no_fix, sampling_rate=sampling_rate)
 
-    ihmm_events = ihmm(velocities_no_fix, reestimation=True, name='ihmm_fix')
+    ihmm_events = ihmm(velocities_no_fix, reestimation=True, minimum_duration=1, name='ihmm_fix')
     idt_events = idt(positions_no_fix, name='idt_fix')
 
     assert len(ihmm_events.frame) == 0
