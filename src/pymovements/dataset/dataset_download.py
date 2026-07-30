@@ -31,7 +31,7 @@ from pymovements.exceptions import UnknownFileType
 
 
 def _resolve_source(
-        definition: DatasetDefinition,
+        sources: dict[str, WebSource],
         resource: ResourceDefinition,
 ) -> WebSource | None:
     """Resolve a resource's source reference to a ``WebSource``.
@@ -41,8 +41,8 @@ def _resolve_source(
 
     Parameters
     ----------
-    definition: DatasetDefinition
-        The dataset definition providing the referenced sources.
+    sources: dict[str, WebSource]
+        Mapping of source names to sources referenced by the resource.
     resource: ResourceDefinition
         The resource whose source should be resolved.
 
@@ -60,7 +60,7 @@ def _resolve_source(
     source = resource.source
     if isinstance(source, str):
         try:
-            return definition.sources[source]
+            return sources[source]
         except KeyError:
             raise ValueError(
                 f"Dangling source reference: '{source}' not found in "
@@ -127,7 +127,7 @@ def download_dataset(
     sources: list[WebSource] = []
     seen: dict[tuple[str | None, str | None], WebSource] = {}
     for resource in definition.resources:
-        source = _resolve_source(definition, resource)
+        source = _resolve_source(definition.sources, resource)
         if source is None:
             continue
         key = (source.url, source.filename)
@@ -209,7 +209,7 @@ def extract_dataset(
             destination_dirpath = getattr(paths, content_directory)
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
-                source = _resolve_source(definition, resource)
+                source = _resolve_source(definition.sources, resource)
                 if source is None or source.filename is None:
                     continue
 
