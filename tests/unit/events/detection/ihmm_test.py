@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests functionality of the IHMM algorithm."""
+import copy
+
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -621,6 +623,38 @@ def test_baum_welch_raises_on_none_parameters(none_param):
         )
 
 
+def test_baum_welch_does_not_mutate_input_parameters():
+    """Baum-Welch must not modify the caller's mu, sigma, init or trans arrays in place."""
+    mu = np.array([0.0, 10.0])
+    sigma = np.array([1.0, 1.0])
+    init = np.log(np.array([0.5, 0.5]))
+    trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
+
+    mu_before = mu.copy()
+    sigma_before = sigma.copy()
+    init_before = init.copy()
+    trans_before = trans.copy()
+
+    velocities = np.array([0.1, 0.0, 0.2, 10.0, 9.9, 10.2])
+    mask = np.array([True] * len(velocities))
+
+    baum_welch(
+        states=2,
+        mu=mu,
+        sigma=sigma,
+        init=init,
+        trans=trans,
+        velocities=velocities,
+        velocities_mask=mask,
+        max_iters=10,
+    )
+
+    np.testing.assert_array_equal(mu, mu_before)
+    np.testing.assert_array_equal(sigma, sigma_before)
+    np.testing.assert_array_equal(init, init_before)
+    np.testing.assert_array_equal(trans, trans_before)
+
+
 # -----------------------------------------------------------------------------
 # compute_hmm
 # -----------------------------------------------------------------------------
@@ -919,6 +953,35 @@ def test_ihmm_accepts_hmm_parameters_dict():
     )
 
     assert events is not None
+
+
+def test_ihmm_does_not_mutate_hmm_parameters_dict():
+    """ihmm must not convert or overwrite the caller's hmm_parameters_dict values."""
+    velocities = step_function(
+        length=200,
+        steps=[100],
+        values=[(9.0, 9.0)],
+        start_value=(0.0, 0.0),
+    )
+    velocities = pos2vel(velocities)
+
+    hmm_params = {
+        'mu': [2.0, 69.0],
+        'sigma': [1.3, 87.0],
+        'init': [0.9, 0.1],
+        'trans': [[0.97, 0.03], [0.07, 0.93]],
+    }
+    hmm_params_before = copy.deepcopy(hmm_params)
+
+    ihmm(
+        velocities=velocities,
+        hmm_parameters_dict=hmm_params,
+        reestimation=True,
+        reestimation_max_iters=5,
+        minimum_duration=1,
+    )
+
+    assert hmm_params == hmm_params_before
 
 
 def test_ihmm_rejects_invalid_hmm_parameters_dict_keys():

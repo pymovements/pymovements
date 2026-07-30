@@ -232,6 +232,12 @@ def baum_welch(
             'mu, sigma, init and trans must not be None to run Baum-Welch reestimation',
         )
 
+    # copy parameters so the caller's arrays are not modified in place
+    mu = numpy.array(mu, dtype=float)
+    sigma = numpy.array(sigma, dtype=float)
+    init = numpy.array(init, dtype=float)
+    trans = numpy.array(trans, dtype=float)
+
     T = len(velocities)
     M = states
 
@@ -1211,10 +1217,13 @@ def ihmm(
                 f'{hmm_parameters_dict.keys()}',
             )
 
-        hmm_parameters_dict['mu'] = numpy.array(hmm_parameters_dict['mu'])
-        hmm_parameters_dict['sigma'] = numpy.array(hmm_parameters_dict['sigma'])
-        hmm_parameters_dict['init'] = numpy.array(hmm_parameters_dict['init'])
-        hmm_parameters_dict['trans'] = numpy.array(hmm_parameters_dict['trans'])
+        # copy into a new dict so the caller's input is not mutated
+        hmm_parameters_dict = {
+            'mu': numpy.array(hmm_parameters_dict['mu']),
+            'sigma': numpy.array(hmm_parameters_dict['sigma']),
+            'init': numpy.array(hmm_parameters_dict['init']),
+            'trans': numpy.array(hmm_parameters_dict['trans']),
+        }
 
         if hmm_parameters_dict['mu'] is not None and hmm_parameters_dict['mu'].shape != (2,):
             raise ValueError(
