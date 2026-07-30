@@ -45,7 +45,7 @@ affiliations:
     index: 1
   - name: University of Potsdam, Germany
     index: 2
-  - name: Ludwig Maximilian University of Munich, Germany
+  - name: LMU Munich, Germany
     index: 3
   - name: Universidad Nebrija, Madrid, Spain
     index: 4
@@ -76,9 +76,9 @@ transformations, established algorithms for detecting fixations, saccades,
 and blinks, a collection of event- and reading-level measures, and
 data-quality measures for assessing the reliability of recordings. It adds
 plotting utilities for inspecting the resulting data, and a catalog of
-publicly available eye-tracking datasets that users can download and load
-into a standardized representation, without having to harmonize each
-dataset's idiosyncratic format themselves.
+publicly available eye-tracking datasets that users can load into a
+standardized representation, without having to harmonize each dataset's
+idiosyncratic format themselves.
 
 # Statement of need
 
@@ -107,10 +107,9 @@ eye-tracking dataset, a gap the package's data-quality reporting
 functionality was developed to address [@Jakobi2024]. Second, existing
 public datasets are scattered across repositories with non-standardized
 formats and incomplete metadata, motivating the package's dataset catalog,
-which lets researchers download and load more than 35 public eye-tracking
-datasets through a single interface and lets dataset authors contribute
-their own datasets to increase the visibility of their work
-[@Krakowczyk2025].
+which gives researchers access to more than 35 public eye-tracking datasets
+through a single interface and lets dataset authors contribute their own
+datasets to increase the visibility of their work [@Krakowczyk2025].
 
 # State of the field
 
@@ -154,7 +153,7 @@ the pipeline.
 
 Extensibility is a primary design goal. Preprocessing transforms,
 event-detection algorithms, and measures are each exposed through
-registries  so that a research group can add and dispatch its own methods
+registries so that a research group can add and dispatch its own methods
 without modifying the package. Public datasets are described declaratively
 as dataset definitions that point at the resources published by each
 dataset's original authors rather than redistributing any data; this keeps
@@ -179,15 +178,16 @@ Eye Tracking Research and Applications [@pymovementsPaper; @Jakobi2024;
 [@Krakowczyk2026]. It serves as the main backend of the data-preprocessing
 pipeline of the MultiplEYE COST Action (CA21131), a pan-European
 reading-research consortium, with continuous exchange between the two
-projects; four multi-day contributor meetings funded through the COST
+projects; four multi-day contributor meetings organized through the COST
 Action brought together contributors from across Europe to jointly design
 and implement core features of the package [@Krakowczyk2026]. The project
 has more than 50 contributors from multiple laboratories and is distributed
 via PyPI and conda-forge, with more than 90,000 downloads from PyPI
-[@pepyPymovements] and over 58,000 from conda-forge [@condaforgePymovements]
-as of July 2026. Its dataset catalog has begun to receive contributions
-from researchers outside the core team, supported by a dedicated dataset
-contribution guide that lowers the barrier to adding new datasets.
+[@pepyPymovements] and over 58,000 from conda-forge
+[@condaforgePymovements] as of July 2026. Its dataset catalog has begun to
+receive contributions from researchers outside the core team, supported by
+a dedicated dataset contribution guide that lowers the barrier to adding
+new datasets.
 
 [DANIEL: JOSS weighs third-party research output most heavily here. Please
 add citations to publications by authors who are *not* co-authors of this
