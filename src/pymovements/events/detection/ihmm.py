@@ -1074,11 +1074,11 @@ def ihmm(
 
     Run fixation detection with custom HMM parameters:
 
-    >>> dict = {'mu': [2.0140785987072225, 69.41529375180251],
+    >>> hmm_parameters = {'mu': [2.0140785987072225, 69.41529375180251],
     ...         'sigma': [1.3220152347857494, 87.32409626093246],
     ...         'init': [1.e+00, 1.e-12],
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
-    >>> ihmm(velocities, hmm_parameters_dict = dict)
+    >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters)
     shape: (2, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
