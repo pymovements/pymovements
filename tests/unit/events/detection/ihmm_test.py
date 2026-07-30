@@ -26,22 +26,22 @@ import pytest
 
 import pymovements as pm
 from pymovements.events.detection.idt import idt
-from pymovements.events.detection.ihmm import baum_backward
-from pymovements.events.detection.ihmm import baum_forward
-from pymovements.events.detection.ihmm import baum_welch
-from pymovements.events.detection.ihmm import collapse_states
-from pymovements.events.detection.ihmm import compute_hmm
-from pymovements.events.detection.ihmm import emit_log_prob
-from pymovements.events.detection.ihmm import format_optimal_dict
+from pymovements.events.detection.ihmm import _baum_backward
+from pymovements.events.detection.ihmm import _baum_forward
+from pymovements.events.detection.ihmm import _baum_welch
+from pymovements.events.detection.ihmm import _collapse_states
+from pymovements.events.detection.ihmm import _compute_hmm
+from pymovements.events.detection.ihmm import _emit_log_prob
+from pymovements.events.detection.ihmm import _format_optimal_dict
+from pymovements.events.detection.ihmm import _log_sum_exp
+from pymovements.events.detection.ihmm import _viterbi
 from pymovements.events.detection.ihmm import ihmm
-from pymovements.events.detection.ihmm import log_sum_exp
-from pymovements.events.detection.ihmm import viterbi
 from pymovements.synthetic import step_function
 from pymovements.transforms.numpy import pos2vel
 
 
 # -----------------------------------------------------------------------------
-# emit_log_prob
+# _emit_log_prob
 # -----------------------------------------------------------------------------
 
 
@@ -58,7 +58,7 @@ def test_emit_log_prob_matches_closed_form_gaussian():
         - ((v - mu[s]) ** 2) / (2 * sigma[s] ** 2)
     )
 
-    result = emit_log_prob(mu=mu, sigma=sigma, v=v, s=s)
+    result = _emit_log_prob(mu=mu, sigma=sigma, v=v, s=s)
 
     assert np.isclose(result, expected, atol=1e-12)
 
@@ -70,8 +70,8 @@ def test_emit_log_prob_uses_correct_state_parameters():
 
     v = 0.0
 
-    state0 = emit_log_prob(mu=mu, sigma=sigma, v=v, s=0)
-    state1 = emit_log_prob(mu=mu, sigma=sigma, v=v, s=1)
+    state0 = _emit_log_prob(mu=mu, sigma=sigma, v=v, s=0)
+    state1 = _emit_log_prob(mu=mu, sigma=sigma, v=v, s=1)
 
     assert state0 > state1
 
@@ -81,7 +81,7 @@ def test_emit_log_prob_sigma_floor_prevents_instability():
     mu = np.array([0.0, 0.0])
     sigma = np.array([0.0, 1.0])
 
-    result = emit_log_prob(mu=mu, sigma=sigma, v=0.0, s=0)
+    result = _emit_log_prob(mu=mu, sigma=sigma, v=0.0, s=0)
 
     assert np.isfinite(result)
 
@@ -97,11 +97,11 @@ def test_emit_log_prob_sigma_floor_prevents_instability():
 def test_emit_log_prob_raises_on_none_parameters(mu, sigma):
     """Mu and sigma are required; None must raise instead of being silently ignored."""
     with pytest.raises(ValueError, match='mu and sigma must not be None'):
-        emit_log_prob(mu=mu, sigma=sigma, v=0.0, s=0)
+        _emit_log_prob(mu=mu, sigma=sigma, v=0.0, s=0)
 
 
 # -----------------------------------------------------------------------------
-# log_sum_exp
+# _log_sum_exp
 # -----------------------------------------------------------------------------
 
 
@@ -110,7 +110,7 @@ def test_log_sum_exp_matches_manual_computation():
 
     expected = np.log(np.sum(np.exp(arr)))
 
-    result = log_sum_exp(arr)
+    result = _log_sum_exp(arr)
 
     assert np.isclose(result, expected, atol=1e-12)
 
@@ -119,7 +119,7 @@ def test_log_sum_exp_is_numerically_stable():
     """Large negative values should still produce finite output."""
     arr = np.array([-1000.0, -1001.0, -1002.0])
 
-    result = log_sum_exp(arr)
+    result = _log_sum_exp(arr)
 
     expected = -1000.0 + np.log(
         1 + np.exp(-1.0) + np.exp(-2.0),
@@ -130,7 +130,7 @@ def test_log_sum_exp_is_numerically_stable():
 
 
 # -----------------------------------------------------------------------------
-# format_optimal_dict
+# _format_optimal_dict
 # -----------------------------------------------------------------------------
 
 
@@ -143,7 +143,7 @@ def test_format_optimal_dict_converts_to_json_serializable():
         'trans': np.log(np.array([[0.9, 0.1], [0.2, 0.8]])),
     }
 
-    result = format_optimal_dict(opt)
+    result = _format_optimal_dict(opt)
 
     assert result['mu'] == [1.0, 2.0]
     assert result['sigma'] == [0.5, 0.5]
@@ -180,7 +180,7 @@ def hmm_parameters():
 def test_baum_forward_shape():
     params = hmm_parameters()
 
-    alpha = baum_forward(
+    alpha = _baum_forward(
         mu=params['mu'],
         sigma=params['sigma'],
         init=params['init'],
@@ -197,7 +197,7 @@ def test_baum_forward_shape():
 def test_baum_backward_shape():
     params = hmm_parameters()
 
-    beta = baum_backward(
+    beta = _baum_backward(
         mu=params['mu'],
         sigma=params['sigma'],
         trans=params['trans'],
@@ -214,7 +214,7 @@ def test_forward_backward_produce_same_log_likelihood():
     """Forward and backward algorithms must agree on sequence likelihood."""
     params = hmm_parameters()
 
-    alpha = baum_forward(
+    alpha = _baum_forward(
         mu=params['mu'],
         sigma=params['sigma'],
         init=params['init'],
@@ -225,7 +225,7 @@ def test_forward_backward_produce_same_log_likelihood():
         M=2,
     )
 
-    beta = baum_backward(
+    beta = _baum_backward(
         mu=params['mu'],
         sigma=params['sigma'],
         trans=params['trans'],
@@ -235,13 +235,13 @@ def test_forward_backward_produce_same_log_likelihood():
         M=2,
     )
 
-    forward_ll = log_sum_exp(alpha[-1])
+    forward_ll = _log_sum_exp(alpha[-1])
 
     backward_terms = []
     for s in range(2):
         backward_terms.append(
             params['init'][s]
-            + emit_log_prob(
+            + _emit_log_prob(
                 mu=params['mu'],
                 sigma=params['sigma'],
                 v=params['velocities'][0],
@@ -250,7 +250,7 @@ def test_forward_backward_produce_same_log_likelihood():
             + beta[0, s],
         )
 
-    backward_ll = log_sum_exp(np.array(backward_terms))
+    backward_ll = _log_sum_exp(np.array(backward_terms))
 
     assert np.isclose(forward_ll, backward_ll, atol=1e-10)
 
@@ -265,7 +265,7 @@ def test_forward_handles_masked_values():
     velocities = np.array([0.0, np.nan, 10.0])
     mask = np.array([True, False, True])
 
-    alpha = baum_forward(
+    alpha = _baum_forward(
         mu=mu,
         sigma=sigma,
         init=init,
@@ -287,7 +287,7 @@ def test_baum_forward_raises_on_none_mu_or_sigma():
     mask = np.array([True, True, True])
 
     with pytest.raises(ValueError, match='mu and sigma must not be None'):
-        baum_forward(
+        _baum_forward(
             mu=None,
             sigma=None,
             init=init,
@@ -300,14 +300,14 @@ def test_baum_forward_raises_on_none_mu_or_sigma():
 
 
 def test_baum_forward_raises_on_none_mu_or_sigma_even_if_fully_masked():
-    """The None check must not depend on velocities_mask reaching emit_log_prob."""
+    """The None check must not depend on velocities_mask reaching _emit_log_prob."""
     init = np.log(np.array([0.5, 0.5]))
     trans = np.log(np.array([[0.9, 0.1], [0.1, 0.9]]))
     velocities = np.array([0.0, 1.0, 2.0])
     mask = np.array([False, False, False])
 
     with pytest.raises(ValueError, match='mu and sigma must not be None'):
-        baum_forward(
+        _baum_forward(
             mu=None,
             sigma=None,
             init=init,
@@ -326,7 +326,7 @@ def test_baum_backward_raises_on_none_mu_or_sigma():
     mask = np.array([True, True, True])
 
     with pytest.raises(ValueError, match='mu and sigma must not be None'):
-        baum_backward(
+        _baum_backward(
             mu=None,
             sigma=None,
             trans=trans,
@@ -361,7 +361,7 @@ def test_viterbi_prefers_low_velocity_state():
     velocities = np.array([0.1, -0.1, 0.0, 0.2])
     mask = np.array([True, True, True, True])
 
-    states = viterbi(
+    states = _viterbi(
         states=2,
         mu=mu,
         sigma=sigma,
@@ -395,7 +395,7 @@ def test_viterbi_detects_state_transition():
     velocities = np.array([0.0, 0.1, 9.8, 10.2])
     mask = np.array([True, True, True, True])
 
-    states = viterbi(
+    states = _viterbi(
         states=2,
         mu=mu,
         sigma=sigma,
@@ -418,7 +418,7 @@ def test_viterbi_raises_on_none_mu_or_sigma():
     mask = np.array([True, True, True, True])
 
     with pytest.raises(ValueError, match='mu and sigma must not be None'):
-        viterbi(
+        _viterbi(
             states=2,
             mu=None,
             sigma=None,
@@ -430,7 +430,7 @@ def test_viterbi_raises_on_none_mu_or_sigma():
 
 
 # -----------------------------------------------------------------------------
-# collapse_states
+# _collapse_states
 # -----------------------------------------------------------------------------
 
 
@@ -438,7 +438,7 @@ def test_collapse_states_extracts_fixation_segments():
     states = np.array([1, 0, 0, 1, 0, 0, 0, 1])
     timesteps = np.array([0, 1, 2, 3, 4, 5, 6, 7])
 
-    onsets, offsets = collapse_states(states, timesteps)
+    onsets, offsets = _collapse_states(states, timesteps)
 
     np.testing.assert_array_equal(onsets, np.array([1, 4]))
     np.testing.assert_array_equal(offsets, np.array([2, 6]))
@@ -448,7 +448,7 @@ def test_collapse_states_handles_full_fixation_sequence():
     states = np.array([0, 0, 0, 0])
     timesteps = np.array([0, 1, 2, 3])
 
-    onsets, offsets = collapse_states(states, timesteps)
+    onsets, offsets = _collapse_states(states, timesteps)
 
     np.testing.assert_array_equal(onsets, np.array([0]))
     np.testing.assert_array_equal(offsets, np.array([3]))
@@ -458,7 +458,7 @@ def test_collapse_states_handles_no_fixations():
     states = np.array([1, 1, 1, 1])
     timesteps = np.array([0, 1, 2, 3])
 
-    onsets, offsets = collapse_states(states, timesteps)
+    onsets, offsets = _collapse_states(states, timesteps)
 
     assert len(onsets) == 0
     assert len(offsets) == 0
@@ -470,7 +470,7 @@ def test_collapse_states_respects_min_duration():
 
     timesteps = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80])
 
-    onsets, offsets = collapse_states(states, timesteps, min_duration=20)
+    onsets, offsets = _collapse_states(states, timesteps, min_duration=20)
 
     np.testing.assert_array_equal(onsets, np.array([40]))
     np.testing.assert_array_equal(offsets, np.array([60]))
@@ -478,7 +478,7 @@ def test_collapse_states_respects_min_duration():
 
 def test_collapse_states_handles_empty_input():
     """Empty arrays should return empty arrays."""
-    onsets, offsets = collapse_states(np.array([]), np.array([]))
+    onsets, offsets = _collapse_states(np.array([]), np.array([]))
 
     assert len(onsets) == 0
     assert len(offsets) == 0
@@ -507,7 +507,7 @@ def test_baum_welch_returns_valid_shapes():
     velocities = np.array([0.1, 0.0, 0.2, 10.0, 9.9, 10.2])
     mask = np.array([True] * len(velocities))
 
-    result = baum_welch(
+    result = _baum_welch(
         states=2,
         mu=mu.copy(),
         sigma=sigma.copy(),
@@ -542,7 +542,7 @@ def test_baum_welch_transition_rows_sum_to_one_in_probability_space():
     velocities = np.array([0.0, 0.1, 10.0, 10.1])
     mask = np.array([True] * len(velocities))
 
-    result = baum_welch(
+    result = _baum_welch(
         states=2,
         mu=mu.copy(),
         sigma=sigma.copy(),
@@ -577,7 +577,7 @@ def test_baum_welch_updates_means_toward_observed_clusters():
 
     mask = np.array([True] * len(velocities))
 
-    result = baum_welch(
+    result = _baum_welch(
         states=2,
         mu=np.array([2.0, 8.0]),
         sigma=np.array([3.0, 3.0]),
@@ -612,7 +612,7 @@ def test_baum_welch_raises_on_none_parameters(none_param):
     mask = np.array([True] * len(velocities))
 
     with pytest.raises(ValueError, match='mu, sigma, init and trans must not be None'):
-        baum_welch(
+        _baum_welch(
             states=2,
             velocities=velocities,
             velocities_mask=mask,
@@ -636,7 +636,7 @@ def test_baum_welch_does_not_mutate_input_parameters():
     velocities = np.array([0.1, 0.0, 0.2, 10.0, 9.9, 10.2])
     mask = np.array([True] * len(velocities))
 
-    baum_welch(
+    _baum_welch(
         states=2,
         mu=mu,
         sigma=sigma,
@@ -654,7 +654,7 @@ def test_baum_welch_does_not_mutate_input_parameters():
 
 
 # -----------------------------------------------------------------------------
-# compute_hmm
+# _compute_hmm
 # -----------------------------------------------------------------------------
 
 
@@ -662,7 +662,7 @@ def test_compute_hmm_returns_one_state_per_observation():
     velocities = np.array([0.0, 0.1, 10.0, 10.1])
     mask = np.array([True, True, True, True])
 
-    states = compute_hmm(
+    states = _compute_hmm(
         velocities=velocities,
         verbose=False,
         reestimation=False,
@@ -682,7 +682,7 @@ def test_compute_hmm_returns_binary_states_only():
     velocities = np.array([0.0, 0.1, 10.0, 10.1])
     mask = np.array([True, True, True, True])
 
-    states = compute_hmm(
+    states = _compute_hmm(
         velocities=velocities,
         verbose=False,
         reestimation=False,
@@ -708,7 +708,7 @@ def test_compute_hmm_accepts_custom_parameters():
     init_state = np.array([0.5, 0.5])
     transition_probabilities = np.array([[0.95, 0.05], [0.05, 0.95]])
 
-    states = compute_hmm(
+    states = _compute_hmm(
         velocities=velocities,
         verbose=False,
         reestimation=False,
@@ -1077,7 +1077,7 @@ def test_known_gaussian_log_probability_regression():
     mu = np.array([0.0, 1.0])
     sigma = np.array([1.0, 1.0])
 
-    result = emit_log_prob(
+    result = _emit_log_prob(
         mu=mu,
         sigma=sigma,
         v=0.0,
@@ -1092,7 +1092,7 @@ def test_known_gaussian_log_probability_regression():
 def test_log_sum_exp_regression_value():
     arr = np.log(np.array([1.0, 2.0, 3.0]))
 
-    result = log_sum_exp(arr)
+    result = _log_sum_exp(arr)
 
     expected = np.log(6.0)
 
@@ -1118,7 +1118,7 @@ def test_viterbi_regression_known_path():
     velocities = np.array([0.0, 0.1, 5.2, 5.0, 0.0])
     mask = np.array([True] * len(velocities))
 
-    result = viterbi(
+    result = _viterbi(
         states=2,
         mu=mu,
         sigma=sigma,
@@ -1134,12 +1134,12 @@ def test_viterbi_regression_known_path():
 
 
 # -----------------------------------------------------------------------------
-# format_optimal_dict regression
+# _format_optimal_dict regression
 # -----------------------------------------------------------------------------
 
 
 def test_format_optimal_dict_regression():
-    """Regression test for format_optimal_dict output structure."""
+    """Regression test for _format_optimal_dict output structure."""
     opt = {
         'mu': np.array([2.0, 8.0]),
         'sigma': np.array([1.5, 2.5]),
@@ -1147,7 +1147,7 @@ def test_format_optimal_dict_regression():
         'trans': np.log(np.array([[0.85, 0.15], [0.25, 0.75]])),
     }
 
-    result = format_optimal_dict(opt)
+    result = _format_optimal_dict(opt)
 
     expected_keys = {'mu', 'sigma', 'init', 'trans'}
     assert set(result.keys()) == expected_keys
@@ -1553,7 +1553,7 @@ def test_baum_welch_handles_masked_velocities_in_xi_computation():
     velocities = np.array([0.0, np.nan, 10.0])
     mask = np.array([True, False, True])
 
-    result = baum_welch(
+    result = _baum_welch(
         states=2,
         mu=mu.copy(),
         sigma=sigma.copy(),
@@ -1578,7 +1578,7 @@ def test_baum_forward_initialization_with_masked_first_observation():
     velocities = np.array([np.nan, 0.1, 10.0])
     mask = np.array([False, True, True])  # First observation is masked
 
-    alpha = baum_forward(
+    alpha = _baum_forward(
         mu=mu,
         sigma=sigma,
         init=init,
@@ -1607,7 +1607,7 @@ def test_baum_forward_initialization_with_unmasked_first_observation():
     velocities = np.array([0.0, 0.1, 10.0])
     mask = np.array([True, True, True])  # All observations are unmasked
 
-    alpha = baum_forward(
+    alpha = _baum_forward(
         mu=mu,
         sigma=sigma,
         init=init,
@@ -1619,8 +1619,8 @@ def test_baum_forward_initialization_with_unmasked_first_observation():
     )
 
     expected_alpha_0 = np.array([
-        init[0] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=0),
-        init[1] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=1),
+        init[0] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=0),
+        init[1] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=1),
     ])
 
     np.testing.assert_array_almost_equal(alpha[0], expected_alpha_0, decimal=12)
@@ -1639,7 +1639,7 @@ def test_baum_forward_initialization_masked_vs_unmasked_comparison():
 
     velocities = np.array([5.0, 0.1, 10.0])
     mask_unmasked = np.array([True, True, True])
-    alpha_unmasked = baum_forward(
+    alpha_unmasked = _baum_forward(
         mu=mu,
         sigma=sigma,
         init=init,
@@ -1651,7 +1651,7 @@ def test_baum_forward_initialization_masked_vs_unmasked_comparison():
     )
 
     mask_masked = np.array([False, True, True])
-    alpha_masked = baum_forward(
+    alpha_masked = _baum_forward(
         mu=mu,
         sigma=sigma,
         init=init,
@@ -1680,7 +1680,7 @@ def test_baum_forward_handles_mixed_masked_unmasked_observations():
     velocities = np.array([np.nan, 0.1, 10.0, 10.1])
     mask = np.array([False, True, True, True])  # Only first is masked
 
-    alpha = baum_forward(
+    alpha = _baum_forward(
         mu=mu,
         sigma=sigma,
         init=init,

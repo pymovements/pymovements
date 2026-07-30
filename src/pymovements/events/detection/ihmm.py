@@ -32,7 +32,7 @@ from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
 
 
-def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
+def _format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
     """Convert an optimization result dictionary into a JSON-serializable format.
 
     This function extracts model parameters from the input dictionary, converts
@@ -83,7 +83,7 @@ def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[lis
     return out
 
 
-def emit_log_prob(
+def _emit_log_prob(
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
     v: float,
@@ -136,7 +136,7 @@ def emit_log_prob(
     return -0.5 * numpy.log(2 * numpy.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
 
 
-def log_sum_exp(
+def _log_sum_exp(
     arr: numpy.ndarray,
 ) -> float:
     """Compute log-sum-exp.
@@ -155,7 +155,7 @@ def log_sum_exp(
     return m + numpy.log(numpy.sum(numpy.exp(arr - m)))
 
 
-def baum_welch(
+def _baum_welch(
     states: int,
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
@@ -249,7 +249,7 @@ def baum_welch(
 
         # forward pass
 
-        alpha = baum_forward(
+        alpha = _baum_forward(
             mu=mu,
             sigma=sigma,
             trans=trans,
@@ -262,7 +262,7 @@ def baum_welch(
 
         # backward pass
 
-        beta = baum_backward(
+        beta = _baum_backward(
             mu=mu,
             sigma=sigma,
             trans=trans,
@@ -285,7 +285,7 @@ def baum_welch(
                         denom_terms.append(
                             alpha[t, i] +
                             trans[i, j] +
-                            emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
                             beta[t + 1, j],
                         )
                     else:
@@ -296,7 +296,7 @@ def baum_welch(
                             beta[t + 1, j],
                         )
 
-            denom = log_sum_exp(numpy.array(denom_terms))
+            denom = _log_sum_exp(numpy.array(denom_terms))
 
             for i in range(M):
                 for j in range(M):
@@ -304,7 +304,7 @@ def baum_welch(
                         num = (
                             alpha[t, i] +
                             trans[i, j] +
-                            emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
                             beta[t + 1, j]
                         )
                     else:
@@ -323,7 +323,7 @@ def baum_welch(
         gamma_full[:, :-1] = gamma
 
         last = alpha[T - 1] + beta[T - 1]
-        last = numpy.exp(last - log_sum_exp(last))
+        last = numpy.exp(last - _log_sum_exp(last))
         gamma_full[:, -1] = last
 
         # m-step
@@ -354,7 +354,7 @@ def baum_welch(
 
         # compute log-likelihood for convergence check
 
-        alpha_updated = baum_forward(
+        alpha_updated = _baum_forward(
             mu=mu,
             sigma=sigma,
             trans=trans,
@@ -365,7 +365,7 @@ def baum_welch(
             M=M,
         )
 
-        log_likelihood = log_sum_exp(alpha_updated[-1])
+        log_likelihood = _log_sum_exp(alpha_updated[-1])
 
         if abs(log_likelihood - prev_log_likelihood) < epsilon:
             break
@@ -375,7 +375,7 @@ def baum_welch(
     return {'mu': mu, 'sigma': sigma, 'init': init, 'trans': trans}
 
 
-def baum_forward(
+def _baum_forward(
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
     init: numpy.ndarray | None,
@@ -444,7 +444,7 @@ def baum_forward(
 
     for s in range(M):
         if velocities_mask[0]:
-            alpha[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+            alpha[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
         else:
             alpha[0, s] = init[s] + 0
 
@@ -456,16 +456,16 @@ def baum_forward(
             for i in range(M):
                 terms.append(alpha[t - 1, i] + trans[i, j])
             if velocities_mask[t]:
-                alpha[t, j] = log_sum_exp(numpy.array(terms)) + \
-                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
+                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
+                    _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
             else:
-                alpha[t, j] = log_sum_exp(numpy.array(terms)) + \
+                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
                     0.0
 
     return alpha
 
 
-def baum_backward(
+def _baum_backward(
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
     trans: numpy.ndarray | None,
@@ -538,7 +538,7 @@ def baum_backward(
                 if velocities_mask[t + 1]:
                     terms.append(
                         trans[i, j] +
-                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
                         beta[t + 1, j],
                     )
                 else:
@@ -548,12 +548,12 @@ def baum_backward(
                         beta[t + 1, j],
                     )
 
-            beta[t, i] = log_sum_exp(numpy.array(terms))
+            beta[t, i] = _log_sum_exp(numpy.array(terms))
 
     return beta
 
 
-def viterbi(
+def _viterbi(
     states: int,
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
@@ -620,7 +620,7 @@ def viterbi(
     prev = numpy.zeros((T, states), dtype=int)
 
     for s in range(states):
-        prob[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        prob[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
 
     # main loop
 
@@ -631,7 +631,7 @@ def viterbi(
             for state2 in range(states):
                 if velocities_mask[t]:
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + \
-                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
+                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
                 else:
 
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
@@ -653,7 +653,7 @@ def viterbi(
     return path
 
 
-def collapse_states(
+def _collapse_states(
         states: numpy.ndarray,
         timesteps: numpy.ndarray,
         fixation_state: int = 0,
@@ -739,7 +739,7 @@ def collapse_states(
     return numpy.array(onsets), numpy.array(offsets)
 
 
-def compute_hmm(
+def _compute_hmm(
     velocities: numpy.ndarray,
     verbose: bool,
     reestimation: bool,
@@ -857,7 +857,7 @@ def compute_hmm(
     # reestimate if needed
 
     if reestimation:
-        optimal = baum_welch(
+        optimal = _baum_welch(
             states=2,
             mu=_mu,
             sigma=_sigma,
@@ -883,11 +883,11 @@ def compute_hmm(
         _trans = optimal['trans']
 
         if verbose:
-            print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
+            print(f"Optimal parameters found by reestimation are:\n{_format_optimal_dict(optimal)}")
 
     # inference the hmm
 
-    states = viterbi(
+    states = _viterbi(
         states=2,
         mu=_mu,
         sigma=_sigma,
@@ -1282,7 +1282,7 @@ def ihmm(
 
     # compute HMM
 
-    states = compute_hmm(
+    states = _compute_hmm(
         velocities=velocities_1d,
         verbose=verbose,
         reestimation=reestimation,
@@ -1297,7 +1297,7 @@ def ihmm(
 
     # collapse states
 
-    onsets_arr, offsets_arr = collapse_states(
+    onsets_arr, offsets_arr = _collapse_states(
         states, timesteps=timesteps_masked, min_duration=minimum_duration,
     )
 
