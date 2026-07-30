@@ -926,6 +926,32 @@ def test_ihmm_rejects_zero_or_negative_minimum_duration():
         )
 
 
+def test_ihmm_rejects_negative_fractional_minimum_duration_as_type_error():
+    """A negative non-integer must fail the type check first, not the value check."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+
+    with pytest.raises(TypeError, match='minimum_duration must be of type int'):
+        ihmm(
+            velocities=velocities,
+            minimum_duration=-1.5,
+        )
+
+
+def test_ihmm_accepts_numpy_integer_minimum_duration():
+    """A numpy integer should be accepted just like a Python int."""
+    positions = step_function(
+        length=200,
+        steps=[1],
+        values=[(50., 50.)],
+        start_value=(0., 0.),
+    )
+    velocities = pos2vel(positions, sampling_rate=sampling_rate)
+
+    events = ihmm(velocities, minimum_duration=np.int64(50), reestimation=True)
+
+    assert len(events.frame) == 1
+
+
 def test_ihmm_accepts_hmm_parameters_dict():
     """Should accept and use hmm_parameters_dict."""
     velocities = np.array(

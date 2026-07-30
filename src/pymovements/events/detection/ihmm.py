@@ -1160,13 +1160,13 @@ def ihmm(
         timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     timesteps = numpy.array(timesteps).flatten()
 
-    if minimum_duration <= 0:
-        raise ValueError('minimum_duration must be greater than 0')
-    if not isinstance(minimum_duration, int):
+    if not isinstance(minimum_duration, (int, numpy.integer)):
         raise TypeError(
             'minimum_duration must be of type int'
             f' but is of type {type(minimum_duration)}',
         )
+    if minimum_duration <= 0:
+        raise ValueError('minimum_duration must be greater than 0')
 
     # check that timesteps are integers or are floats without a fractional part.
     timesteps_int = timesteps.astype(int)
