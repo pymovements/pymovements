@@ -1025,6 +1025,14 @@ def ihmm(
     switches) are based on Salvucci's eye movement model, reflecting typical
     fixation and saccade durations.
 
+    Only leading and trailing samples with missing (NaN) velocity are trimmed
+    before decoding. Interior missing samples are kept, and their emission
+    probability is skipped, so Viterbi assigns them a state based on the
+    transition probabilities alone. As a result a fixation can span short gaps of
+    missing data, and events are not split on interior NaNs. This differs from the
+    ``include_nan`` option of :py:func:`~pymovements.events.detection.ivt`, which
+    can split events on missing values.
+
     Raises
     ------
     TypeError
