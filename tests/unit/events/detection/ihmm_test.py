@@ -21,7 +21,6 @@
 import copy
 
 import numpy as np
-import pandas as pd
 import polars as pl
 import pytest
 
@@ -467,7 +466,6 @@ def test_collapse_states_handles_no_fixations():
 
 def test_collapse_states_respects_min_duration():
     """Fixations shorter than min_duration should be filtered out."""
-
     states = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0])
 
     timesteps = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80])
@@ -956,7 +954,7 @@ def test_ihmm_accepts_hmm_parameters_dict():
 
 
 def test_ihmm_does_not_mutate_hmm_parameters_dict():
-    """ihmm must not convert or overwrite the caller's hmm_parameters_dict values."""
+    """Ihmm must not convert or overwrite the caller's hmm_parameters_dict values."""
     velocities = step_function(
         length=200,
         steps=[100],
@@ -1022,7 +1020,7 @@ def test_ihmm_removes_leading_trailing_nans():
     assert events is not None
 
 
-def test_ihmm_with_reestimation():
+def test_ihmm_runs_with_reestimation_enabled():
     """Should run successfully with reestimation enabled."""
     velocities = np.array(
         [
@@ -1145,90 +1143,14 @@ def test_format_optimal_dict_regression():
 sampling_rate = 1000.0
 
 
-test_results = []
+def _spans(events):
+    """Return a list of (onset, offset) tuples for every detected event."""
+    frame = events.frame
+    return list(zip(frame['onset'].to_list(), frame['offset'].to_list()))
 
 
-def record(name, passed, detail=''):
-    test_results.append({
-        'test': name, 'passed': bool(
-            passed,
-        ) if passed is not None else None, 'detail': detail,
-    })
-    status = 'PASS' if passed else 'FAIL'
-    if passed is None:
-        status = 'SKIP'
-    print(f"[{status}] {name}" + (f" — {detail}" if detail else ''))
-
-
-def to_frame(events):
-    """Return the underlying table (Polars/Pandas-like) for an events result."""
-    return events.frame if hasattr(events, 'frame') else events
-
-
-def _column(frame, col):
-    series = frame[col]
-    return series.to_list() if hasattr(series, 'to_list') else list(series)
-
-
-def n_events(events):
-    return len(to_frame(events))
-
-
-def spans(events):
-    """List of (onset, offset) tuples for every detected event."""
-    frame = to_frame(events)
-    if len(frame) == 0:
-        return []
-    onsets = _column(frame, 'onset')
-    offsets = _column(frame, 'offset')
-    return list(zip(onsets, offsets))
-
-
-def show(label, events):
-    print(f"--- {label} ({n_events(events)} event(s)) ---")
-    print(to_frame(events))
-
-
-def overlap_ratio(span_a, span_b):
-    """Intersection-over-union of two (onset, offset) intervals."""
-    a0, a1 = span_a
-    b0, b1 = span_b
-    inter = max(0.0, min(a1, b1) - max(a0, b0))
-    union = max(a1, b1) - min(a0, b0)
-    return inter / union if union > 0 else 0.0
-
-
-def best_overlaps(spans_a, spans_b):
-    """For each span in a, the best IoU achievable against any span in b."""
-    if not spans_a:
-        return []
-    return [max((overlap_ratio(sa, sb) for sb in spans_b), default=0.0) for sa in spans_a]
-
-
-def assert_event_count(name, events, expected):
-    actual = n_events(events)
-    passed = actual == expected
-    record(f"{name}: event count == {expected}", passed, f"got {actual}")
-    assert passed, f"{name}: expected {expected} event(s), got {actual}"
-
-
-def assert_algorithms_agree(name, ihmm_events, idt_events, min_overlap=0.5):
-    """Same number of fixations, and each ihmm fixation overlaps some idt fixation well."""
-    ihmm_spans, idt_spans = spans(ihmm_events), spans(idt_events)
-    count_match = len(ihmm_spans) == len(idt_spans)
-    record(
-        f"{name}: fixation counts match",
-        count_match,
-        f"ihmm={len(ihmm_spans)}, idt={len(idt_spans)}",
-    )
-    overlaps = best_overlaps(ihmm_spans, idt_spans)
-    worst = min(overlaps) if overlaps else 1.0
-    ok = worst >= min_overlap
-    record(f"{name}: min pairwise overlap >= {min_overlap}", ok, f"worst overlap={worst:.2f}")
-    return count_match and ok
-
-
-def test_case1_no_fixations():
+def test_ihmm_detects_no_fixations_for_saccade_only_signal():
+    """A signal that is all high-velocity saccades should yield no fixations."""
     positions_no_fix = step_function(
         length=6,
         steps=[1, 2, 3, 4, 5],
@@ -1244,17 +1166,15 @@ def test_case1_no_fixations():
 
     velocities_no_fix = pos2vel(positions_no_fix, sampling_rate=sampling_rate)
 
-    ihmmEvents = ihmm(velocities_no_fix, reestimation=True, name='ihmm_fix')
-    idtEvents = idt(positions_no_fix, name='idt_fix')
+    ihmm_events = ihmm(velocities_no_fix, reestimation=True, name='ihmm_fix')
+    idt_events = idt(positions_no_fix, name='idt_fix')
 
-    show('IHMM — no fixations', ihmmEvents)
-    show('IDT — no fixations', idtEvents)
-
-    assert_event_count('No fixations / ihmm', ihmmEvents, 0)
-    assert_event_count('No fixations / idt', idtEvents, 0)
+    assert len(ihmm_events.frame) == 0
+    assert len(idt_events.frame) == 0
 
 
-def test_case2_one_fixation():
+def test_ihmm_detects_single_fixation():
+    """A signal that settles on one location should yield a single fixation."""
     length_one_fix = 200
     positions_one_fix = step_function(
         length=length_one_fix,
@@ -1265,45 +1185,35 @@ def test_case2_one_fixation():
 
     velocities_one_fix = pos2vel(positions_one_fix, sampling_rate=sampling_rate)
 
-    ihmmEvents = ihmm(velocities_one_fix, reestimation=True, name='ihmm_fix')
-    idtEvents = idt(positions_one_fix, name='idt_fix')
+    ihmm_events = ihmm(velocities_one_fix, reestimation=True, name='ihmm_fix')
+    idt_events = idt(positions_one_fix, name='idt_fix')
 
-    show('IHMM — one fixation', ihmmEvents)
-    show('IDT — one fixation', idtEvents)
-
-    assert_event_count('One fixation / ihmm', ihmmEvents, 1)
-    assert_event_count('One fixation / idt', idtEvents, 1)
-    assert_algorithms_agree('One fixation', ihmmEvents, idtEvents, min_overlap=0.9)
+    assert len(ihmm_events.frame) == 1
+    assert len(idt_events.frame) == 1
 
 
-def test_case3_one_big_fixation():
+def test_ihmm_detects_fixation_spanning_whole_recording():
+    """A constant-position signal should yield one fixation covering the recording."""
     length_big_fix = 200
     positions_big_fix = np.tile(np.array([[75., 75.]]), (length_big_fix, 1))
 
     velocities_big_fix = pos2vel(positions_big_fix, sampling_rate=sampling_rate)
 
-    ihmmEvents = ihmm(velocities_big_fix, reestimation=True, name='ihmm_fix')
-    idtEvents = idt(positions_big_fix, name='idt_fix')
+    ihmm_events = ihmm(velocities_big_fix, reestimation=True, name='ihmm_fix')
+    idt_events = idt(positions_big_fix, name='idt_fix')
 
-    show('IHMM — one big fixation', ihmmEvents)
-    show('IDT — one big fixation', idtEvents)
-
-    assert_event_count('One big fixation / ihmm', ihmmEvents, 1)
-    assert_event_count('One big fixation / idt', idtEvents, 1)
+    assert len(ihmm_events.frame) == 1
+    assert len(idt_events.frame) == 1
 
     # The single fixation should cover (nearly) the whole recording.
     min_span = length_big_fix * 0.9
-    for label, events in (('ihmm', ihmmEvents), ('idt', idtEvents)):
-        onset, offset = spans(events)[0]
-        covered = offset - onset
-        ok = covered >= min_span
-        record(f"One big fixation / {label} covers >= 90% of trial", ok, f"span={covered}")
-        assert ok
-
-    assert_algorithms_agree('One big fixation', ihmmEvents, idtEvents, min_overlap=0.95)
+    for events in (ihmm_events, idt_events):
+        onset, offset = _spans(events)[0]
+        assert offset - onset >= min_span
 
 
-def test_case4_trailing_and_ending_fixations():
+def test_ihmm_detects_fixations_at_recording_start_and_end():
+    """A signal with a fixation before and after a single saccade should yield two events."""
     length_edges = 200
     split_at = 90
     positions_edges = step_function(
@@ -1315,75 +1225,50 @@ def test_case4_trailing_and_ending_fixations():
 
     velocities_edges = pos2vel(positions_edges, sampling_rate=sampling_rate)
 
-    ihmmEvents = ihmm(velocities_edges, reestimation=True, name='ihmm_fix', minimum_duration=2)
-    idtEvents = idt(positions_edges, name='idt_fix', minimum_duration=2)
+    ihmm_events = ihmm(velocities_edges, reestimation=True, name='ihmm_fix', minimum_duration=2)
+    idt_events = idt(positions_edges, name='idt_fix', minimum_duration=2)
 
-    show('IHMM — trailing/ending fixations', ihmmEvents)
-    show('IDT — trailing/ending fixations', idtEvents)
+    assert len(ihmm_events.frame) == 2
+    assert len(idt_events.frame) == 2
 
-    assert_event_count('Trailing/ending fixations / ihmm', ihmmEvents, 2)
-    assert_event_count('Trailing/ending fixations / idt', idtEvents, 2)
-
-    for label, events in (('ihmm', ihmmEvents), ('idt', idtEvents)):
-        event_spans = sorted(spans(events), key=lambda s: s[0])
+    for events in (ihmm_events, idt_events):
+        event_spans = sorted(_spans(events))
         first_onset = event_spans[0][0]
         last_offset = event_spans[-1][1]
-        starts_at_edge = first_onset <= 1  # allow 1 sample of slack (ms at 1000Hz)
-        ends_at_edge = last_offset >= (length_edges - 1) * (1000.0 / sampling_rate) - 1
-        record(
-            f"Trailing/ending / {label}: first fixation starts at trial start",
-            starts_at_edge,
-            f"onset={first_onset}",
-        )
-        record(
-            f"Trailing/ending / {label}: last fixation ends at trial end",
-            ends_at_edge,
-            f"offset={last_offset}",
-        )
-        assert starts_at_edge and ends_at_edge
-
-    assert_algorithms_agree('Trailing/ending fixations', ihmmEvents, idtEvents, min_overlap=0.85)
+        # first fixation starts at the trial start (1 sample of slack, ms at 1000 Hz).
+        assert first_onset <= 1
+        # last fixation ends at the trial end.
+        assert last_offset >= (length_edges - 1) * (1000.0 / sampling_rate) - 1
 
 
-def test_case5_toy_dataset():
-    toy_available = True
-
+def test_ihmm_fixation_count_comparable_to_idt_on_toy_dataset():
+    """On real recordings, ihmm should detect a fixation count close to idt's."""
     dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
     dataset.download()
     dataset.load()
 
-    if toy_available:
-        dataset.pix2deg()
-        dataset.pos2vel()
+    dataset.pix2deg()
+    dataset.pos2vel()
 
-        toy_gaze = dataset.gaze[0]
-        toy_positions = toy_gaze.samples.select('position').to_series().to_list()
-        toy_velocities = toy_gaze.samples.select('velocity').to_series().to_list()
+    toy_gaze = dataset.gaze[0]
+    toy_positions = toy_gaze.samples.select('position').to_series().to_list()
+    toy_velocities = toy_gaze.samples.select('velocity').to_series().to_list()
 
-        toy_velocities = [[np.nan, np.nan] if v == [None, None] else v for v in toy_velocities]
-        print(toy_velocities)
+    toy_velocities = [[np.nan, np.nan] if v == [None, None] else v for v in toy_velocities]
 
-        ihmmEvents = ihmm(toy_velocities, reestimation=True, name='ihmm_fix')
-        idtEvents = idt(np.array(toy_positions), name='idt_fix')
+    ihmm_events = ihmm(toy_velocities, reestimation=True, name='ihmm_fix')
+    idt_events = idt(np.array(toy_positions), name='idt_fix')
 
-        show('IHMM — toy dataset', ihmmEvents)
-        show('IDT — toy dataset', idtEvents)
-
-    if toy_available:
-        ihmm_count, idt_count = n_events(ihmmEvents), n_events(idtEvents)
-        larger, smaller = max(ihmm_count, idt_count), max(min(ihmm_count, idt_count), 1)
-        relative_diff = (larger - smaller) / smaller
-        ok = relative_diff <= 0.5  # allow up to 50% relative disagreement on real, noisy data
-        record(
-            'Toy dataset: fixation counts are comparable',
-            ok,
-            f"ihmm={ihmm_count}, idt={idt_count}, relative diff={relative_diff:.2f}",
-        )
-    else:
-        record('Toy dataset: fixation counts are comparable', None, 'skipped (no network access)')
+    ihmm_count, idt_count = len(ihmm_events.frame), len(idt_events.frame)
+    larger = max(ihmm_count, idt_count)
+    smaller = max(min(ihmm_count, idt_count), 1)
+    relative_diff = (larger - smaller) / smaller
+    # allow up to 50% relative disagreement on real, noisy data.
+    assert relative_diff <= 0.5
 
 
-def test_case6_regular_dataset():
+def test_ihmm_detects_expected_fixation_count_on_synthetic_scanpath():
+    """On a synthetic multi-fixation scanpath, ihmm should recover the fixation count."""
     rng = np.random.default_rng(seed=42)
 
     fixation_targets = [
@@ -1407,25 +1292,14 @@ def test_case6_regular_dataset():
 
     velocities_realistic = pos2vel(positions_realistic, sampling_rate=sampling_rate)
 
-    ihmmEvents = ihmm(velocities_realistic, reestimation=True, name='ihmm_fix')
-    idtEvents = idt(positions_realistic, name='idt_fix')
-
-    show('IHMM — regular dataset', ihmmEvents)
-    show('IDT — regular dataset', idtEvents)
+    ihmm_events = ihmm(velocities_realistic, reestimation=True, name='ihmm_fix')
+    idt_events = idt(positions_realistic, name='idt_fix')
 
     expected_fixations = len(fixation_targets)
 
-    for label, events in (('ihmm', ihmmEvents), ('idt', idtEvents)):
-        actual = n_events(events)
-        ok = abs(actual - expected_fixations) <= 1  # allow off-by-one at the boundaries
-        record(
-            f"Regular dataset / {label}: ~{expected_fixations} fixations detected",
-            ok,
-            f"got {actual}",
-        )
-        assert ok
-
-    assert_algorithms_agree('Regular dataset', ihmmEvents, idtEvents, min_overlap=0.6)
+    # allow off-by-one at the boundaries.
+    for events in (ihmm_events, idt_events):
+        assert abs(len(events.frame) - expected_fixations) <= 1
 
 
 # ---
@@ -1541,7 +1415,7 @@ def test_ihmm_rejects_transition_probabilities_row_sums_greater_than_one():
 
 
 def test_ihmm_rejects_sigma_with_invalid_shape():
-    """sigma parameter with invalid shape should raise ValueError."""
+    """Sigma parameter with invalid shape should raise ValueError."""
     velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
 
     sigma = np.array([1.0, 1.0, 2.0])  # shape (3,) instead of (2,)
@@ -1569,8 +1443,7 @@ def test_ihmm_rejects_init_state_with_invalid_shape():
 
 
 def test_ihmm_handles_polars_series_with_correct_structure():
-    """polars Series with 2D list structure should be processed correctly."""
-
+    """Polars Series with 2D list structure should be processed correctly."""
     # Create a polars Series with 2D velocity data
     velocity_data = [[0.0, 0.0], [0.1, 0.1], [10.0, 10.0], [10.1, 10.1]]
     series = pl.Series(velocity_data)
@@ -1581,12 +1454,11 @@ def test_ihmm_handles_polars_series_with_correct_structure():
     )
 
     assert events is not None
-    assert n_events(events) >= 1
+    assert len(events.frame) >= 1
 
 
 def test_ihmm_rejects_polars_series_with_non_list_dtype():
-    """polars Series with non-list dtype should raise TypeError."""
-
+    """Polars Series with non-list dtype should raise TypeError."""
     series = pl.Series([1, 2, 3, 4])  # int dtype, not List
 
     with pytest.raises(TypeError, match='velocities dtype must be List'):
@@ -1597,8 +1469,7 @@ def test_ihmm_rejects_polars_series_with_non_list_dtype():
 
 
 def test_ihmm_rejects_polars_series_with_inconsistent_list_lengths():
-    """polars Series with inconsistent list lengths should raise ValueError."""
-
+    """Polars Series with inconsistent list lengths should raise ValueError."""
     # Some lists have length 2, others have length 3
     velocity_data = [[0.0, 0.0], [0.1, 0.1, 0.2], [10.0, 10.0]]
     series = pl.Series(velocity_data)
@@ -1803,21 +1674,3 @@ def test_baum_forward_handles_mixed_masked_unmasked_observations():
     assert not np.allclose(alpha[0], alpha[1])
     assert not np.allclose(alpha[1], alpha[2])
     assert not np.allclose(alpha[2], alpha[3])
-
-
-@pytest.fixture(scope='session', autouse=True)
-def _print_summary_at_session_end():
-    yield
-    # no checks were recorded, e.g. on a subset run (pytest -k) that skips the case tests
-    if not test_results:
-        return
-    summary = pd.DataFrame(test_results)
-    print(summary)
-
-    n_run = summary['passed'].notna().sum()
-    n_passed = summary['passed'].sum()  # True counts as 1, False as 0
-    n_skipped = summary['passed'].isna().sum()
-    print(f"{n_passed}/{n_run} checks passed" + (f", {n_skipped} skipped" if n_skipped else ''))
-
-
-# ---
