@@ -778,17 +778,45 @@ def test_ihmm_accepts_integer_timesteps():
     assert events is not None
 
 
-def test_ihmm_rejects_fractional_timesteps():
-    velocities = np.array(
-        [
-            [0.0, 0.0],
-            [1.0, 1.0],
-        ],
+def test_ihmm_accepts_float_timesteps():
+    """Float timesteps should be accepted and flow through to onsets, matching ivt."""
+    positions = step_function(
+        length=200,
+        steps=[1],
+        values=[(50., 50.)],
+        start_value=(0., 0.),
     )
+    velocities = pos2vel(positions, sampling_rate=sampling_rate)
+    timesteps = np.arange(len(velocities), dtype=float) * 0.5
 
-    timesteps = np.array([0.0, 1.5])
+    events = ihmm(velocities, timesteps=timesteps, minimum_duration=1, reestimation=True)
 
-    with pytest.raises(TypeError, match='timesteps must be of type int'):
+    assert len(events.frame) >= 1
+    assert events.frame['onset'].dtype == pl.Float64
+
+
+def test_ihmm_accepts_polars_series_timesteps():
+    """A polars Series of timesteps should be accepted, matching ivt."""
+    positions = step_function(
+        length=200,
+        steps=[1],
+        values=[(50., 50.)],
+        start_value=(0., 0.),
+    )
+    velocities = pos2vel(positions, sampling_rate=sampling_rate)
+    timesteps = pl.Series('time', np.arange(len(velocities)))
+
+    events = ihmm(velocities, timesteps=timesteps, minimum_duration=1, reestimation=True)
+
+    assert len(events.frame) >= 1
+
+
+def test_ihmm_rejects_non_numeric_polars_timesteps():
+    """A polars Series with a non-numeric dtype must raise TypeError, matching ivt."""
+    velocities = np.array([[0.0, 0.0], [1.0, 1.0]])
+    timesteps = pl.Series(['a', 'b'])
+
+    with pytest.raises(TypeError, match='timesteps dtype must be float or int but is String'):
         ihmm(
             velocities=velocities,
             timesteps=timesteps,

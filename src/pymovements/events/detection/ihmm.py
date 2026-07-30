@@ -909,7 +909,7 @@ def _compute_hmm(
 @register_event_detection
 def ihmm(
         velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray,
-        timesteps: list[int] | numpy.ndarray | None = None,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         mu: list[float] | numpy.ndarray | None = None,
         sigma: list[float] | numpy.ndarray | None = None,
@@ -937,8 +937,8 @@ def ihmm(
         - List of (vx, vy) tuples or lists
         Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
-    timesteps : list[int] | numpy.ndarray | None, default=None
-        Timestamp indices for each velocity sample. Must be integers.
+    timesteps : list[int] | numpy.ndarray | polars.Series | None, default=None
+        Timestamp for each velocity sample. May be integer or float valued.
         If None, uses sequential indices (0, 1, 2, ..., T-1).
 
     minimum_duration: int
@@ -1028,7 +1028,7 @@ def ihmm(
     Raises
     ------
     TypeError
-        If timesteps contain non-integer values.
+        If timesteps is a polars Series with a non-numeric dtype.
     ValueError
         If parameter shapes are incorrect (not (2,) or (2,2)).
     ValueError
@@ -1162,7 +1162,14 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
 
-    if timesteps is None:
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+    if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+        timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
         timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     timesteps = numpy.array(timesteps).flatten()
 
@@ -1173,12 +1180,6 @@ def ihmm(
         )
     if minimum_duration <= 0:
         raise ValueError('minimum_duration must be greater than 0')
-
-    # check that timesteps are integers or are floats without a fractional part.
-    timesteps_int = timesteps.astype(int)
-    if numpy.any((timesteps - timesteps_int) != 0):
-        raise TypeError('timesteps must be of type int')
-    timesteps = timesteps_int
 
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
