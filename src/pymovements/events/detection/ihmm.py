@@ -33,8 +33,7 @@ from pymovements.transforms.numpy import norm
 
 
 def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
-    """
-    Convert an optimization result dictionary into a JSON-serializable format.
+    """Convert an optimization result dictionary into a JSON-serializable format.
 
     This function extracts model parameters from the input dictionary, converts
     NumPy scalar values into native Python floats, and exponentiates the
@@ -48,11 +47,15 @@ def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[lis
             "trans": array-like of shape (2, 2),      # log transition probabilities
         }
 
-    Args:
-        opt: Dictionary containing optimization outputs. Values are expected
-            to be NumPy arrays or array-like objects.
+    Parameters
+    ----------
+    opt: dict[str, Any]
+        Dictionary containing optimization outputs. Values are expected
+        to be NumPy arrays or array-like objects.
 
-    Returns:
+    Returns
+    -------
+    dict[str, list[float] | list[list[float]]]
         A dictionary with the following structure:
             {
                 "mu": [float, float],
@@ -86,8 +89,7 @@ def emit_log_prob(
     v: float,
     s: int,
 ) -> float:
-    """
-    Compute the log-probability of observing value `v` under a Gaussian emission model.
+    """Compute the log-probability of observing value `v` under a Gaussian emission model.
 
     This function evaluates the log-density of a univariate normal distribution
     parameterized by state-dependent mean (`mu`) and standard deviation (`sigma`),
@@ -99,22 +101,30 @@ def emit_log_prob(
 
         log p(v | s) = -0.5 * log(2πσ²) - (v - μ)² / (2σ²)
 
-    Args:
-        mu: Array of means for each hidden state. Shape: (num_states,).
-            Must not be None.
-        sigma: Array of standard deviations for each hidden state. Shape: (num_states,).
-            Must not be None.
-        v: Observed scalar value.
-        s: Index of the hidden state used to select the corresponding (mu, sigma).
+    Parameters
+    ----------
+    mu: numpy.ndarray | None
+        Array of means for each hidden state. Shape: (num_states,).
+        Must not be None.
+    sigma: numpy.ndarray | None
+        Array of standard deviations for each hidden state. Shape: (num_states,).
+        Must not be None.
+    v: float
+        Observed scalar value.
+    s: int
+        Index of the hidden state used to select the corresponding (mu, sigma).
 
-    Returns:
+    Returns
+    -------
+    float
         The log-probability (float) of observing `v` given state `s`
         under a Gaussian emission model.
 
-    Raises:
-        ValueError: If `mu` or `sigma` is None.
+    Raises
+    ------
+    ValueError
+        If `mu` or `sigma` is None.
     """
-
     if mu is None or sigma is None:
         raise ValueError('mu and sigma must not be None to compute an emission log-probability')
 
@@ -156,8 +166,7 @@ def baum_welch(
     max_iters: int,
     epsilon: float = 1e-4,
 ) -> dict[str, numpy.ndarray]:
-    """
-    Estimate Hidden Markov Model parameters using the Baum-Welch algorithm.
+    """Estimate Hidden Markov Model parameters using the Baum-Welch algorithm.
 
     The Baum-Welch algorithm is an expectation-maximization (EM) algorithm used to
     find the maximum likelihood estimates of HMM parameters. This implementation
@@ -370,8 +379,7 @@ def baum_forward(
     T: int,
     M: int,
 ) -> numpy.ndarray:
-    """
-    Compute forward probabilities (alpha) for a Hidden Markov Model.
+    """Compute forward probabilities (alpha) for a Hidden Markov Model.
 
     The forward algorithm computes the probability of being in each hidden state
     at each time step given the observed sequence up to that point. This implementation
@@ -460,8 +468,7 @@ def baum_backward(
     T: int,
     M: int,
 ) -> numpy.ndarray:
-    """
-    Compute backward probabilities (beta) for a Hidden Markov Model.
+    """Compute backward probabilities (beta) for a Hidden Markov Model.
 
     The backward algorithm computes the probability of the future observation sequence
     given that the system is in a particular state at a particular time. This implementation
@@ -549,8 +556,7 @@ def viterbi(
     velocities: list[float] | numpy.ndarray,
     velocities_mask: numpy.ndarray,
 ) -> numpy.ndarray:
-    """
-    Find the most likely sequence of hidden states using the Viterbi algorithm.
+    """Find the most likely sequence of hidden states using the Viterbi algorithm.
 
     The Viterbi algorithm is a dynamic programming algorithm that finds the
     most probable sequence of hidden states (the Viterbi path) given a sequence
@@ -648,8 +654,7 @@ def collapse_states(
         min_duration: int = 0,
 
 ) -> tuple[numpy.ndarray, numpy.ndarray]:
-    """
-    Extract contiguous fixation periods from a sequence of state labels.
+    """Extract contiguous fixation periods from a sequence of state labels.
 
     This function identifies consecutive runs of a specified fixation state and
     returns the onset and offset times for each fixation period. It collapses
@@ -684,8 +689,7 @@ def collapse_states(
         - offsets : numpy.ndarray
             End times of each fixation period. Shape: (N,).
             Same length as onsets.
-   """
-
+    """
     if len(states) == 0 or len(timesteps) == 0:
         return numpy.array([]), numpy.array([])
 
@@ -741,8 +745,7 @@ def compute_hmm(
     velocities_mask: numpy.ndarray,
     hmm_parameters_dict: dict | None = None,
 ) -> numpy.ndarray:
-    """
-    Compute HMM state sequence for velocity data using optional parameter reestimation.
+    """Compute HMM state sequence for velocity data using optional parameter reestimation.
 
     This function serves as a high-level wrapper for HMM-based state decoding of
     velocity time series data. It handles parameter initialization, optional
@@ -803,7 +806,6 @@ def compute_hmm(
         Decoded state sequence. Shape: (T,), dtype=int.
         State 0 typically represents fixation, State 1 represents saccade.
     """
-
     # ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
 
@@ -907,8 +909,7 @@ def ihmm(
         hmm_parameters_dict: dict | None = None,
         name: str = 'fixation',
 ) -> Events:
-    """
-    Detect fixation events from velocity data using an Independent Hidden Markov Model (IHMM).
+    """Detect fixation events from velocity data using an Independent Hidden Markov Model (IHMM).
 
     This function implements a 2-state HMM specifically designed for eye-tracking
     data to distinguish between fixations (state 0) and saccades (state 1). It
@@ -1023,7 +1024,7 @@ def ihmm(
     ValueError
         If hmm_parameters_dict has incorrect keys or shapes.
 
-     Examples
+    Examples
     --------
     Create a synthetic step signal representing gaze segments.
 
