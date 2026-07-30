@@ -46,27 +46,27 @@ authors:
     affiliation: '1'
   - name: Tatsuki Kuribayashi
     orcid: 0000-0001-7762-5576
-    affiliation: '8'
+    affiliation: '5'
   - name: Oleksandra Kuvshynova
     orcid: 0009-0008-7668-6703
-    affiliation: '7'
+    affiliation: '6'
   - name: Mircea-Mihai Marin
     orcid: 0009-0000-8068-3654
-    affiliation: '7'
+    affiliation: '6'
   - name: Sergiu Nisioi
     orcid: 0000-0003-2247-4488
-    affiliation: '7'
+    affiliation: '6'
   - name: Dongpeng Pan
     orcid: 0000-0001-6761-0979
-    affiliation: '6'
+    affiliation: '7'
   - name: Dionigi Rodriguez
     affiliation: '1'
   - name: Omer Shubi
     orcid: 0000-0002-2961-5012
-    affiliation: '9'
+    affiliation: '8'
   - name: Paweł Kasprowski
     orcid: 0000-0002-2090-335X
-    affiliation: '5'
+    affiliation: '9'
   - name: Lena A. Jäger
     orcid: 0000-0001-9018-9713
     affiliation: '1'
@@ -79,15 +79,15 @@ affiliations:
     index: 3
   - name: Universidad Nebrija, Madrid, Spain
     index: 4
-  - name: Silesian University of Technology, Gliwice, Poland
-    index: 5
-  - name: University of Geneva, Switzerland
-    index: 6
-  - name: University of Bucharest, Romania
-    index: 7
   - name: Mohamed bin Zayed University of Artificial Intelligence, Abu Dhabi, United Arab Emirates
-    index: 8
+    index: 5
+  - name: University of Bucharest, Romania
+    index: 6
+  - name: University of Geneva, Switzerland
+    index: 7
   - name: Technion – Israel Institute of Technology, Haifa, Israel
+    index: 8
+  - name: Silesian University of Technology, Gliwice, Poland
     index: 9
 date: XX XX 2026
 bibliography: paper.bib
@@ -122,13 +122,16 @@ idiosyncratic format themselves.
 
 Eye-tracking preprocessing pipelines are frequently implemented
 independently across laboratories, producing inconsistent filtering, event
-detection, and data-handling procedures. This variability makes it
-difficult to reproduce or compare analyses across studies, because a
-nominally identical processing step, such as detecting fixations, can
-differ between implementations without either author being aware of it.
-`pymovements` was introduced to give research groups a shared, tested, and
-openly licensed interface for these steps, so that processing is
-documented, versioned, and citable rather than re-implemented per project
+detection, and data-handling procedures. Even a nominally identical
+processing step, such as detecting fixations, can differ substantially
+between implementations: an evaluation of ten event-detection algorithms
+found systematic disagreement in the events they produce [@Andersson2017].
+This variability makes it difficult for eye-tracking researchers, working
+in reading and psycholinguistics, cognitive science, and human-computer
+interaction, to reproduce or compare analyses across studies. `pymovements`
+was introduced to give research groups a shared, tested, and openly
+licensed interface for these steps, so that processing is documented,
+versioned, and citable rather than re-implemented per project
 [@pymovementsPaper]. Widely used event-detection algorithms, including the
 velocity-threshold identification (I-VT) and dispersion-threshold
 identification (I-DT) methods [@SalvucciGoldberg2000] and the microsaccade
@@ -151,28 +154,40 @@ datasets to increase the visibility of their work [@Krakowczyk2025].
 
 # State of the field
 
-Several open-source tools address individual parts of the eye-tracking
-workflow. In Python, `cili` [@Acland2016] handles fixation and pupil data,
-`sideeye` [@Doucette2019] computes reading measures from fixation reports,
-`PyTrack` [@GhoseSrinivasan2021] and the Perception Engineer's Toolbox
-[@Kubler2020] extract gaze features, and `GazeParser` [@Sogo2019] covers
-recording and parsing. These tools each target a specific stage of the
-workflow and vary in their test coverage, documentation, and ongoing
-maintenance.
+The eye-tracking tool landscape is broad and fragmented, spanning
+recording, visualization, processing, and analysis across many separate
+packages [@Niehorster2025]. Several open-source tools address individual
+parts of this workflow. In Python, `eyekit` [@eyekit] analyzes reading
+behavior over text stimuli, offering areas of interest, reading measures,
+and line-assignment correction, but it operates on already-detected
+fixations rather than raw signals; `cili` [@Acland2016] handles fixation
+and pupil data, `sideeye` [@Doucette2019] computes reading measures from
+fixation reports, `PyTrack` [@GhoseSrinivasan2021] and the Perception
+Engineer's Toolbox [@Kubler2020] extract gaze features, and `GazeParser`
+[@Sogo2019] covers recording and parsing. In R, `popEye` [@popEye] spans
+the path from raw EyeLink files to reading measures, though it is limited
+to a single eye-tracker vendor and to reading experiments.
 
-None of them spans the full path from raw vendor files through coordinate
-transforms and event detection to reading-level measures within a single,
-tested Python package, and none offers a standardized, community-extensible
-layer for discovering, downloading, and harmonizing published datasets.
-`pymovements` was built to fill that gap rather than to duplicate any
-single existing tool: where established algorithms exist, it reimplements
-them behind one consistent interface [@SalvucciGoldberg2000;
+Each of these tools covers a single stage or paradigm: eyekit begins after
+event detection, popEye is confined to one vendor and to reading, and the
+others address recording, feature extraction, or measures in isolation.
+None combines, in a single tested Python package, the full path from raw
+vendor files through coordinate transforms and event detection to
+reading-level measures, and none offers a standardized,
+community-extensible layer for discovering, downloading, and harmonizing
+published datasets. `pymovements` was built to fill that gap rather than to
+duplicate any single tool: where established algorithms exist, it
+reimplements them behind one consistent interface [@SalvucciGoldberg2000;
 @EngbertKliegl2003; @Carr2022] rather than replacing them, and it adds the
-dataset-harmonization layer that has no counterpart among the tools above.
+dataset-harmonization layer that has no counterpart among them.
 
-[add more tools: (eyekit, popEye, gazeR, eyetrackingR), event-detection
-tools (REMoDNaV, I2MC), and the proprietary SR Research Data Viewer as a
-closed-source baseline]
+[DANIEL: I added eyekit and popEye with software citations (from their
+GitHub repos) and reframed the gap claim so it stays true given that popEye
+spans raw-to-measures and eyekit is Python. If you also want the R
+statistical tools (gazeR, eyetrackingR), the event-detection packages
+(REMoDNaV, I2MC), or SR Research Data Viewer as a proprietary baseline
+named explicitly, give me the go-ahead and I will verify and add their
+citations.]
 
 # Software design
 
@@ -183,11 +198,17 @@ downstream operations require. Keeping the signal and its acquisition
 context together lets steps such as pixel-to-degree conversion be expressed
 without the user re-supplying calibration parameters at each call. The
 object is backed by the `polars` dataframe library [@polars] rather than
-`pandas`: its columnar, Rust-based engine provides the throughput needed to
-process large raw gaze recordings, and its explicit, typed schema is used
-to validate a dataset's declared configuration at load time and to surface
-misconfigurations as structured reports instead of silent errors deeper in
-the pipeline.
+`pandas`. Its columnar, Rust-based engine provides the throughput needed to
+process large raw gaze recordings, and its explicit, typed schema lets the
+package validate a dataset's declared configuration at load time and
+surface misconfigurations as structured reports instead of silent errors
+deeper in the pipeline. This choice carries costs: polars is a
+comparatively young and fast-moving project, which has occasionally forced
+breaking changes during development (compounded by the pipeline treating
+warnings as errors), and it is less familiar to contributors than `pandas`
+or `numpy`, so some components are not yet implemented in it. The
+`from_pandas` and `from_numpy` constructors keep the package interoperable
+with those more established libraries.
 
 Extensibility is a primary design goal. Preprocessing transforms,
 event-detection algorithms, and measures are each exposed through
@@ -198,14 +219,21 @@ dataset's original authors rather than redistributing any data; this keeps
 the catalog legally and ethically able to grow, lets definitions be
 contributed as lightweight YAML files by researchers without deep Python
 experience, and is backed by automated checks that the referenced resources
-remain reachable. Interoperability with the broader research-data ecosystem
-is pursued by treating the Brain Imaging Data Structure (BIDS) standard
-[@Gorgolewski2016] as a metadata target for participant and phenotype data
-rather than defining a custom format. The package is developed under
-continuous integration with automated testing and mandatory line-by-line
-code review; the substantial engineering effort of the project lies in this
-implementation and its coherent integration of otherwise scattered methods
-rather than in any single new algorithm.
+remain reachable and that downloaded files match their published checksums.
+The package aligns with community data standards to keep its outputs
+findable, accessible, interoperable, and reusable [@Wilkinson2016]:
+participant and phenotype data follow the metadata conventions of the Brain
+Imaging Data Structure (BIDS) [@Gorgolewski2016], and data-quality reports
+are written as BIDS derivatives.
+
+The package follows established open-development practices: an automated
+test suite with complete code coverage runs under continuous integration;
+every change requires a line-by-line review by a maintainer before merging;
+a contributing guide documents the workflow for new contributors; and the
+documentation, with tutorials and a full API reference, is hosted on Read
+the Docs. The substantial engineering effort of the project lies in this
+implementation and its coherent integration of otherwise scattered methods,
+not in any single new algorithm.
 
 # Research impact
 
