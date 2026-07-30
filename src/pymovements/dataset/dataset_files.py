@@ -700,9 +700,9 @@ def load_stimulus_file(
     load_kwargs = deepcopy(file.definition.load_kwargs)
 
     if load_function_name == 'TextStimulus.from_csv':
-        return TextStimulus.from_csv(path=file.path, **load_kwargs)
+        return TextStimulus.from_csv(path=file.path, metadata=file.metadata, **load_kwargs)
     if load_function_name == 'ImageStimulus.from_file':
-        return ImageStimulus.from_file(path=file.path, **load_kwargs)
+        return ImageStimulus.from_file(path=file.path, metadata=file.metadata, **load_kwargs)
 
     # No valid load function found.
     valid_load_functions = ['TextStimulus.from_csv', 'ImageStimulus.from_file']

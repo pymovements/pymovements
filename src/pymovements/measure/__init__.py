@@ -25,6 +25,7 @@ from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.events.measures import register_event_measure
 from pymovements.measure.events.processing import EventProcessor
 from pymovements.measure.events.processing import EventSamplesProcessor
+from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.samples import data_loss
 from pymovements.measure.samples import null_ratio
@@ -40,6 +41,7 @@ __all__ = [
 
     'reading',
     'ReadingMeasures',
+    'annotate_fixations',
 
     'samples',
     'SampleMeasureLibrary',
