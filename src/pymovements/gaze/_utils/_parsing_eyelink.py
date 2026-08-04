@@ -598,51 +598,29 @@ def parse_eyelink(
     total_recording_duration = 0.0
     num_expected_samples = 0
     num_valid_samples = 0  # excluding blinks
-    # First pass: collect SAMPLES config for binocular detection only
     is_binocular = False
-    for line in lines:
-        if match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
-            samples_config.append(match.groupdict())
-            tracked = match.group('tracked_eye').upper().strip()
-            # consider 'LEFT' in tracked and 'RIGHT' in tracked or tracked == 'LR' or
-            # tracked == 'L R': set is_binocular to True if any config indicates binocular
-            is_binocular = is_binocular or (
-                ('LEFT' in tracked and 'RIGHT' in tracked) or
-                tracked == 'LR' or tracked == 'L R'
-            )
 
-    # Update the samples dictionary to include binocular data with correct column names if needed
-    if is_binocular:
-        samples.update({
-            'x_left_pix': [],
-            'y_left_pix': [],
-            'pupil_left': [],
-            'x_right_pix': [],
-            'y_right_pix': [],
-            'pupil_right': [],
-        })
-        # remove monocular-only keys to avoid mismatched column lengths
-        for _k in ('x_pix', 'y_pix', 'pupil'):
-            samples.pop(_k, None)
-    else:
-        # Ensure monocular fields are present in the samples dictionary
-        samples.update({
-            'x_pix': [],
-            'y_pix': [],
-            'pupil': [],
-        })
-        # remove binocular-only keys to avoid mismatched column lengths
-        for _k in (
-            'x_left_pix', 'y_left_pix', 'pupil_left',
-            'x_right_pix', 'y_right_pix', 'pupil_right',
-        ):
-            samples.pop(_k, None)
+    def _switch_to_binocular() -> None:
+        nonlocal is_binocular
+        if is_binocular:
+            return
+        is_binocular = True
+        # In standard EyeLink ASC files, configuration headers (including SAMPLES)
+        # precede all sample data lines, so n_prev is 0. Note: Mid-file mode switches
+        # (monocular <-> binocular or changing tracked eyes) within a single ASC file
+        # are not supported.
+        prev_x = samples.pop('x_pix', [])
+        prev_y = samples.pop('y_pix', [])
+        prev_pupil = samples.pop('pupil', [])
+        n_prev = len(prev_x)
+        samples['x_left_pix'] = prev_x
+        samples['y_left_pix'] = prev_y
+        samples['pupil_left'] = prev_pupil
+        samples['x_right_pix'] = [np.nan] * n_prev
+        samples['y_right_pix'] = [np.nan] * n_prev
+        samples['pupil_right'] = [np.nan] * n_prev
 
-    # Reset additional columns before second pass
-    for col in additional_columns:
-        current_additional[col] = None
-
-    # Second pass: collect events, patterns, samples, and metadata
+    # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
@@ -680,6 +658,12 @@ def parse_eyelink(
             # Drop optional groups that weren't present for legacy behaviour
             rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
             recording_config.append(rec_cfg)
+
+        elif match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
+            samples_config.append(match.groupdict())
+            tracked = match.group('tracked_eye').upper().strip()
+            if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked == 'LR' or tracked == 'L R':
+                _switch_to_binocular()
 
         elif match := _match_regex(GAZE_COORDS_REGEX, line):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())
@@ -959,16 +943,15 @@ def parse_eyelink(
             'pupil': pl.Float64,
         })
 
-    if schema is not None:
-        gaze_schema_overrides.update(schema)
-
     event_schema_overrides = {
         'name': pl.String,
         'eye': pl.String,
         'onset': pl.Float64,
         'offset': pl.Float64,
     }
+
     if schema is not None:
+        gaze_schema_overrides.update(schema)
         event_schema_overrides.update(schema)
 
     gaze_df = pl.from_dict(data=samples).cast(gaze_schema_overrides)
