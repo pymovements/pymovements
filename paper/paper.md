@@ -269,15 +269,15 @@ that lowers the barrier to adding new datasets.
 # AI usage disclosure
 
 Generative AI tools were used, under human direction, in developing both
-the software and this paper. Anthropic's Claude and JetBrains' Junie
-assisted some contributors with code generation and review, and Claude was
-used to draft and copy-edit this paper. Every change to the codebase
-requires an approving line-by-line review from at least one maintainer
-before merging, enforced by the repository's branch protection, so no
-AI-assisted contribution reaches the released package without human review.
-All design decisions were made by the human authors, who reviewed and
-validated the AI-assisted outputs in this paper and take responsibility for
-its content.
+the software and this paper. Anthropic's Claude, JetBrains' Junie and
+GitHub Copilot assisted some contributors with code generation and review,
+and Claude was used to draft and copy-edit this paper. Every change to the
+codebase requires an approving line-by-line review from at least one
+maintainer before merging, enforced by the repository's branch protection,
+so no AI-assisted contribution reaches the released package without human
+review. All design decisions were made by the human authors, who reviewed
+and validated the AI-assisted outputs in this paper and take
+responsibility for its content.
 
 # Acknowledgements
 
