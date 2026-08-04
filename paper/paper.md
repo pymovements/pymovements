@@ -46,14 +46,19 @@ authors:
 affiliations:
   - name: University of Zurich, Switzerland
     index: 1
+    ror: 02crff812
   - name: University of Potsdam, Germany
     index: 2
+    ror: 03bnmw459
   - name: LMU Munich, Germany
     index: 3
+    ror: 05591te55
   - name: Universidad Nebrija, Madrid, Spain
     index: 4
+    ror: 03tzyrt94
   - name: Silesian University of Technology, Gliwice, Poland
     index: 5
+    ror: 02dyjk442
 date: XX XX 2026
 bibliography: paper.bib
 ---
