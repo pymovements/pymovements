@@ -629,6 +629,8 @@ def check_gaze_range(
 
     Uses the ``'position'`` column (degrees of visual angle) if available, falling
     back to ``'pixel'``. Screen bounds are taken from ``gaze.experiment.screen``.
+    For binocular data (4 or 6 components) a sample counts as within bounds only
+    when every ``(x, y)`` component pair lies within the screen.
 
     Parameters
     ----------
@@ -720,12 +722,29 @@ def check_gaze_range(
             sources=sources,
         )
 
-    x_vals = non_null[coord_col].list.get(0)
-    y_vals = non_null[coord_col].list.get(1)
-    in_range = (
-        (x_vals >= x_min) & (x_vals <= x_max)
-        & (y_vals >= y_min) & (y_vals <= y_max)
-    )
+    # A coordinate column holds one (x, y) pair per eye: 2 components for
+    # monocular, 4 for binocular, 6 when a cyclopean pair is also present. Treat
+    # a sample as in range only when every present (x, y) pair is within bounds.
+    n_components = int(non_null[coord_col].list.len().max() or 0)
+    n_pairs = n_components // 2
+    in_range: pl.Series | None = None
+    for pair in range(n_pairs):
+        x_vals = non_null[coord_col].list.get(2 * pair)
+        y_vals = non_null[coord_col].list.get(2 * pair + 1)
+        pair_in_range = (
+            (x_vals >= x_min) & (x_vals <= x_max)
+            & (y_vals >= y_min) & (y_vals <= y_max)
+        )
+        in_range = pair_in_range if in_range is None else (in_range & pair_in_range)
+
+    if in_range is None:
+        return CheckResult(
+            code='gaze_range',
+            severity='pass',
+            message='Coordinate column has no (x, y) component pair; check skipped.',
+            sources=sources,
+        )
+
     ratio = int(in_range.sum()) / n_total
 
     if ratio < min_fraction:

@@ -21,6 +21,7 @@
 import polars as pl
 import pytest
 
+from pymovements import Events
 from pymovements import Gaze
 
 
@@ -79,7 +80,7 @@ def test_make_unvalidated_gaze_defaults(make_unvalidated_gaze):
     gaze = make_unvalidated_gaze(pl.DataFrame({'time': [0, 1]}))
     assert gaze.trial_columns is None
     assert gaze.experiment is None
-    assert gaze.events is None
+    assert gaze.events == Events()
 
 
 def test_make_unvalidated_gaze_stores_samples(make_unvalidated_gaze):

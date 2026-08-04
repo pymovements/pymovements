@@ -85,6 +85,18 @@ class ValidationError(Exception):
         super().__init__(message)
 
 
+class DataQualityWarning(UserWarning):
+    """Warning emitted when a quality measure is degraded, skipped, or falls back.
+
+    Raised (via :py:func:`warnings.warn`) when measure computation cannot proceed
+    as intended, for example when a Polars computation fails and a simpler
+    fallback is used, or when a requested aggregation level cannot be mapped to
+    subject/session identifiers. These warnings are captured into
+    :py:attr:`~pymovements.DataQualityReport.warning_log` in addition to being
+    emitted, so the degradation is never silent.
+    """
+
+
 @dataclass(frozen=True)
 class DataQualityReport:
     """Aggregated output of a data quality run.
@@ -305,6 +317,10 @@ def record_warnings() -> Iterator[list[str]]:
     installed :py:func:`warnings.showwarning`, so warnings still reach the user
     instead of being swallowed.
 
+    This temporarily replaces the process-global :py:func:`warnings.showwarning`
+    and warning filters, so it is not thread-safe: concurrent warnings from other
+    threads during the context are also captured and forwarded.
+
     Yields
     ------
     list[str]
@@ -408,10 +424,17 @@ def _compute_file_row(
                     data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
                 )
                 dl_val = result_df[0, 'data_loss_ratio']
-            except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
+            except (pl.exceptions.PolarsError, ValueError, ArithmeticError) as exc:
+                warnings.warn(
+                    f'data_loss computation failed for subject {subject_id!r} '
+                    f'({type(exc).__name__}: {exc}); falling back to the simple '
+                    'null-ratio, which ignores time gaps and per-element NaN/inf.',
+                    DataQualityWarning,
+                    stacklevel=2,
+                )
                 dl_val = _compute_data_loss_simple(gaze, coord_col)
         else:
-            dl_val = _compute_data_loss_simple(gaze, coord_col) if coord_col else None
+            dl_val = _compute_data_loss_simple(gaze, coord_col)
         row['data_loss'] = dl_val
 
     if coord_col is not None and requested & {'std_rms', 'rms_s2s', 'bcea'}:
@@ -424,7 +447,13 @@ def _compute_file_row(
                 row['rms_s2s'] = prec_df[0, 'rms_s2s']
             if 'bcea' in requested:
                 row['bcea'] = prec_df[0, 'bcea']
-        except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
+        except (pl.exceptions.PolarsError, ValueError, ArithmeticError) as exc:
+            warnings.warn(
+                f'precision measures failed for subject {subject_id!r} '
+                f'({type(exc).__name__}: {exc}); setting them to None.',
+                DataQualityWarning,
+                stacklevel=2,
+            )
             row.update({m: None for m in ('std_rms', 'rms_s2s', 'bcea') if m in requested})
 
     return row
@@ -490,7 +519,13 @@ def _compute_trial_rows(
                 trial_df = trial_df.rename({'data_loss_ratio': 'data_loss'})
             trial_df = trial_df.with_columns(pl.lit(subject_id).alias('subject_id'))
             trial_rows.append(trial_df)
-        except (pl.exceptions.PolarsError, ValueError, ArithmeticError):
+        except (pl.exceptions.PolarsError, ValueError, ArithmeticError) as exc:
+            warnings.warn(
+                f'trial-level measures failed for subject {subject_id!r} '
+                f'({type(exc).__name__}: {exc}); skipping this file at trial level.',
+                DataQualityWarning,
+                stacklevel=2,
+            )
             continue
 
     return trial_rows
@@ -509,7 +544,10 @@ def compute_measures(
     gaze_list : list[Any]
         All loaded gaze frames from the dataset.
     fileinfo : Any
-        Dataset fileinfo for subject/session mapping.
+        Dataset fileinfo for subject/session mapping. Subject and session
+        aggregation expect ``'subject_id'`` and ``'session_id'`` columns; a
+        :py:class:`DataQualityWarning` is emitted if a requested level's column
+        is absent.
     levels : list[str]
         Subset of ``['dataset', 'subject', 'session', 'trial']``.
     measures : list[str] | None
@@ -528,8 +566,36 @@ def compute_measures(
     if isinstance(fileinfo, dict) and 'gaze' in fileinfo:
         try:
             fileinfo_rows = fileinfo['gaze'].to_dicts()
-        except (AttributeError, pl.exceptions.PolarsError):
+        except (AttributeError, pl.exceptions.PolarsError) as exc:
+            warnings.warn(
+                f'could not read fileinfo for subject/session mapping '
+                f'({type(exc).__name__}: {exc}); using positional file indices.',
+                DataQualityWarning,
+                stacklevel=2,
+            )
             fileinfo_rows = []
+
+    # Warn when subject/session aggregation is requested but fileinfo provides
+    # columns without the expected identifier, rather than silently falling back
+    # to positional file indices (datasets may name the groups differently).
+    fileinfo_columns: set[str] = set()
+    if isinstance(fileinfo, dict) and 'gaze' in fileinfo and hasattr(fileinfo['gaze'], 'columns'):
+        fileinfo_columns = set(fileinfo['gaze'].columns)
+    if fileinfo_columns:
+        if 'subject' in levels and 'subject_id' not in fileinfo_columns:
+            warnings.warn(
+                "subject-level aggregation requested but 'subject_id' is not a fileinfo "
+                'column; using positional file indices as subject ids.',
+                DataQualityWarning,
+                stacklevel=2,
+            )
+        if 'session' in levels and 'session_id' not in fileinfo_columns:
+            warnings.warn(
+                "session-level aggregation requested but 'session_id' is not a fileinfo "
+                'column; the session level will be omitted.',
+                DataQualityWarning,
+                stacklevel=2,
+            )
 
     results: dict[str, pl.DataFrame] = {}
     rows_all: list[dict[str, Any]] = []
@@ -572,35 +638,40 @@ def compute_measures(
 
 
 def run_report(
-        gaze: Gaze,
+        gaze_source_pairs: list[tuple[Gaze, str]],
+        *,
         checks: list[str] | None,
         measures: list[str] | None,
-        levels: list[str] | None,
+        levels: list[str],
         raise_on_error: bool,
         output_path: Path | str | None,
-        source_path: str,
+        fileinfo: Any = None,
         max_gap_factor: float = 5.0,
         max_deviation: float = 0.05,
         min_fraction: float = 0.95,
 ) -> DataQualityReport:
-    """Core implementation of ``Gaze.report_data_quality()``.
+    """Run validation checks and measures for one or more gaze objects.
+
+    Shared implementation behind :py:meth:`~pymovements.Gaze.report_data_quality`
+    and :py:meth:`~pymovements.Dataset.report_data_quality`.
 
     Parameters
     ----------
-    gaze : Gaze
-        The :py:class:`~pymovements.gaze.gaze.Gaze` object to report on.
+    gaze_source_pairs : list[tuple[Gaze, str]]
+        ``(gaze, source_path)`` pairs to report on. ``source_path`` identifies the
+        gaze object in ``affected_files`` of any failing check.
     checks : list[str] | None
         Check identifiers to run; ``None`` runs all eight.
     measures : list[str] | None
         Measure identifiers to compute; ``None`` computes all four.
-    levels : list[str] | None
-        Aggregation levels; ``None`` defaults to ``['dataset', 'trial']``.
+    levels : list[str]
+        Aggregation levels to compute (already resolved by the caller).
     raise_on_error : bool
         Raise :py:class:`ValidationError` on the first ``'fail'`` or ``'error'`` result.
     output_path : Path | str | None
         If given, write BIDS derivative files here.
-    source_path : str
-        Identifier for the gaze object used in ``affected_files``.
+    fileinfo : Any
+        Dataset fileinfo for subject/session mapping, or ``None``. (default: None)
     max_gap_factor : float
         Passed to :py:func:`~pymovements.gaze.validation.check_max_gap`.
         (default: 5.0)
@@ -633,35 +704,35 @@ def run_report(
                 f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
             )
 
-    levels_to_run = levels if levels is not None else ['dataset', 'trial']
-
     check_results: list[CheckResult] = []
 
     with record_warnings() as captured:
-        validate_results = gaze.validate(
-            trial_columns_exist='trial_columns_exist' in checks_to_run,
-            trial_columns_dtype='trial_columns_dtype' in checks_to_run,
-            time_column_exists='time_column_exists' in checks_to_run,
-            gaze_components_defined='gaze_components_defined' in checks_to_run,
-            time_monotone='time_monotone' in checks_to_run,
-            max_gap='max_gap' in checks_to_run,
-            max_gap_factor=max_gap_factor,
-            sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
-            max_deviation=max_deviation,
-            gaze_range='gaze_range' in checks_to_run,
-            min_fraction=min_fraction,
-            source_path=source_path,
-        )
-        for result in validate_results:
-            check_results.append(result)
-            if raise_on_error and result.severity in {'fail', 'error'}:
-                raise ValidationError(
-                    check_id=result.code,
-                    message=str(result.message),
-                    affected_files=result.sources,
-                )
+        for gaze, source_path in gaze_source_pairs:
+            validate_results = gaze.validate(
+                trial_columns_exist='trial_columns_exist' in checks_to_run,
+                trial_columns_dtype='trial_columns_dtype' in checks_to_run,
+                time_column_exists='time_column_exists' in checks_to_run,
+                gaze_components_defined='gaze_components_defined' in checks_to_run,
+                time_monotone='time_monotone' in checks_to_run,
+                max_gap='max_gap' in checks_to_run,
+                max_gap_factor=max_gap_factor,
+                sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                max_deviation=max_deviation,
+                gaze_range='gaze_range' in checks_to_run,
+                min_fraction=min_fraction,
+                source_path=source_path,
+            )
+            for result in validate_results:
+                check_results.append(result)
+                if raise_on_error and result.severity in {'fail', 'error'}:
+                    raise ValidationError(
+                        check_id=result.code,
+                        message=str(result.message),
+                        affected_files=result.sources,
+                    )
 
-        measure_results = compute_measures([gaze], None, levels_to_run, measures)
+        gaze_list = [gaze for gaze, _ in gaze_source_pairs]
+        measure_results = compute_measures(gaze_list, fileinfo, levels, measures)
 
     report = DataQualityReport(
         check_results=check_results,

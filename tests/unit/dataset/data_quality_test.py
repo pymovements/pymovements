@@ -31,6 +31,7 @@ from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import DataQualityWarning
 from pymovements.gaze.quality import record_warnings
 from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
@@ -587,6 +588,23 @@ class TestCheckGazeRange:
         # Lowering threshold to 0 → always pass
         assert check_gaze_range(gaze, min_fraction=0.0).severity == 'pass'
 
+    def test_binocular_all_pairs_in_range_passes(self, make_unvalidated_gaze, make_experiment):
+        exp = make_experiment()
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({'time': list(range(3)), 'position': [[0.0, 0.0, 0.0, 0.0]] * 3}),
+            experiment=exp,
+        )
+        assert check_gaze_range(gaze).severity == 'pass'
+
+    def test_binocular_one_eye_out_of_range_warns(self, make_unvalidated_gaze, make_experiment):
+        exp = make_experiment()
+        # Left eye centred (in range), right eye far off screen: sample is out of range.
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({'time': list(range(10)), 'position': [[0.0, 0.0, 999.0, 999.0]] * 10}),
+            experiment=exp,
+        )
+        assert check_gaze_range(gaze).severity == 'warning'
+
 
 # ---------------------------------------------------------------------------
 # _ALL_CHECKS registry
@@ -762,7 +780,7 @@ class TestRecordWarnings:
     def test_empty_when_no_warnings(self):
         with record_warnings() as captured:
             pass
-        assert captured == []
+        assert not captured
 
     def test_restores_showwarning(self):
         original = warnings.showwarning
@@ -865,6 +883,48 @@ class TestComputeMeasures:
         result = compute_measures([gaze], fileinfo, ['subject'])
         assert 'subject' in result
 
+    def test_subject_level_missing_column_warns(self, make_unvalidated_gaze, make_experiment):
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
+            }),
+            experiment=make_experiment(),
+        )
+        # fileinfo present but the group is named 'participant', not 'subject_id'.
+        fileinfo = {'gaze': pl.DataFrame({'participant': ['p1'], 'filepath': ['/d/p1.csv']})}
+        with pytest.warns(DataQualityWarning, match="'subject_id' is not a fileinfo column"):
+            compute_measures([gaze], fileinfo, ['subject'])
+
+    def test_session_level_missing_column_warns(self, make_unvalidated_gaze, make_experiment):
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
+            }),
+            experiment=make_experiment(),
+        )
+        fileinfo = {'gaze': pl.DataFrame({'subject_id': ['s1'], 'filepath': ['/d/s1.csv']})}
+        with pytest.warns(DataQualityWarning, match="'session_id' is not a fileinfo column"):
+            compute_measures([gaze], fileinfo, ['session'])
+
+    def test_no_warning_when_id_columns_present(self, make_unvalidated_gaze, make_experiment):
+        gaze = make_unvalidated_gaze(
+            pl.DataFrame({
+                'time': list(range(4)),
+                'position': [[float(i), float(i)] for i in range(4)],
+            }),
+            experiment=make_experiment(),
+        )
+        fileinfo = {
+            'gaze': pl.DataFrame({
+                'subject_id': ['s1'], 'session_id': ['ses-1'], 'filepath': ['/d/s1.csv'],
+            }),
+        }
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            compute_measures([gaze], fileinfo, ['subject', 'session'])
+
     def test_trial_level_no_trial_columns_skips(self, make_unvalidated_gaze):
         gaze = make_unvalidated_gaze(
             pl.DataFrame({'time': [0, 1], 'position': [[0.0, 0.0], [1.0, 1.0]]}),
@@ -888,7 +948,8 @@ class TestComputeMeasures:
             experiment=make_experiment(),
         )
         bad_fileinfo = {'gaze': 'not_a_dataframe'}
-        result = compute_measures([gaze], bad_fileinfo, ['dataset'])
+        with pytest.warns(DataQualityWarning, match='could not read fileinfo'):
+            result = compute_measures([gaze], bad_fileinfo, ['dataset'])
         assert isinstance(result, dict)
 
     def test_trial_no_coord_column_skips(self, make_unvalidated_gaze):
@@ -998,7 +1059,7 @@ class TestComputeMeasures:
         with patch(
             'pymovements.gaze.quality.data_loss',
             side_effect=pl.exceptions.ComputeError('mock error'),
-        ):
+        ), pytest.warns(DataQualityWarning, match='data_loss computation failed'):
             result = compute_measures([gaze], None, ['dataset'], measures=['data_loss'])
         assert isinstance(result, dict)
 
@@ -1012,7 +1073,7 @@ class TestComputeMeasures:
             pl.DataFrame,
             'select',
             side_effect=pl.exceptions.ComputeError('mock precision error'),
-        ):
+        ), pytest.warns(DataQualityWarning, match='precision measures failed'):
             result = compute_measures([gaze], None, ['dataset'], measures=['std_rms'])
         assert isinstance(result, dict)
 
@@ -1031,7 +1092,7 @@ class TestComputeMeasures:
             pl.DataFrame,
             'group_by',
             side_effect=pl.exceptions.ComputeError('mock agg error'),
-        ):
+        ), pytest.warns(DataQualityWarning, match='trial-level measures failed'):
             result = compute_measures([gaze], None, ['trial'])
         assert isinstance(result, dict)
         assert 'trial' not in result

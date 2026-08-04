@@ -131,7 +131,7 @@ def fixture_make_unvalidated_gaze() -> Callable[..., Gaze]:
         gaze.trial_columns = trial_columns
         gaze.experiment = experiment
         gaze.n_components = None
-        gaze.events = None
+        gaze.events = Events()
         gaze.metadata = {}
         gaze.messages = None
         gaze.calibrations = None
