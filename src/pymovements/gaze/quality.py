@@ -17,14 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Data quality report classes and measure computation for Gaze objects.
-
-Placing these here (inside the ``gaze`` package) avoids a circular import:
-``gaze.gaze`` cannot import from ``dataset`` because ``dataset.__init__``
-imports ``dataset.dataset`` which imports ``pymovements.gaze.Gaze``. Keeping
-the classes in the ``gaze`` package breaks that cycle while still allowing
-:py:class:`~pymovements.Dataset` to use them.
-"""
+"""Data quality report classes and measure computation for Gaze objects."""
 from __future__ import annotations
 
 import json
@@ -93,8 +86,8 @@ class ValidationError(Exception):
 class DataQualityReport:
     """Aggregated output of a data quality run.
 
-    Produced by :py:meth:`~pymovements.gaze.gaze.Gaze.report_data_quality`
-    and :py:meth:`~pymovements.Dataset.report_data_quality`.
+    Produced by :py:meth:`~pymovements.Gaze.report_data_quality` and
+    :py:meth:`~pymovements.Dataset.report_data_quality`.
 
     The read-only :attr:`~pymovements.DataQualityReport.passed` property returns
     ``True`` when no check result has severity ``'fail'`` or ``'error'``.
