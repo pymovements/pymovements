@@ -20,6 +20,8 @@
 """Provide shared fixtures for gaze tests."""
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import polars as pl
 import pytest
 
@@ -103,3 +105,37 @@ def fixture_gaze_minimal():
         pixel_columns=['x', 'y'],
         trial_columns='trial',
     )
+
+
+@pytest.fixture(name='make_unvalidated_gaze', scope='function')
+def fixture_make_unvalidated_gaze() -> Callable[..., Gaze]:
+    """Return a factory that creates Gaze objects bypassing __init__ validation.
+
+    The factory constructs the Gaze via ``Gaze.__new__``, so invalid states which
+    the constructor would reject (e.g. declared trial columns missing from the
+    sample schema) can be created for testing validation checks.
+
+    Returns
+    -------
+    Callable[..., Gaze]
+        Function that takes samples, trial_columns and experiment and returns a Gaze.
+
+    """
+    def _make_unvalidated_gaze(
+            samples: pl.DataFrame,
+            trial_columns: list[str] | None = None,
+            experiment: Experiment | None = None,
+    ) -> Gaze:
+        gaze = Gaze.__new__(Gaze)
+        gaze.samples = samples
+        gaze.trial_columns = trial_columns
+        gaze.experiment = experiment
+        gaze.n_components = None
+        gaze.events = None
+        gaze.metadata = {}
+        gaze.messages = None
+        gaze.calibrations = None
+        gaze.validations = None
+        gaze._metadata = None
+        return gaze
+    return _make_unvalidated_gaze

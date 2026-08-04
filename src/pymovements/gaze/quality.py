@@ -20,12 +20,15 @@
 """Data quality report classes and measure computation for Gaze objects."""
 from __future__ import annotations
 
+import contextlib
 import json
 import warnings
+from collections.abc import Iterator
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Any
+from typing import TextIO
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -291,6 +294,40 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 def _write_empty_tsv(path: Path, columns: list[str]) -> None:
     """Write an empty TSV with header columns to *path*."""
     path.write_text('\t'.join(columns) + '\n', encoding='utf-8')
+
+
+@contextlib.contextmanager
+def record_warnings() -> Iterator[list[str]]:
+    """Collect warnings raised within the context while still emitting them.
+
+    Yields a list that is filled with the string form of every warning raised
+    inside the context. Each warning is also forwarded to the previously
+    installed :py:func:`warnings.showwarning`, so warnings still reach the user
+    instead of being swallowed.
+
+    Yields
+    ------
+    list[str]
+        List populated with one message string per warning raised in the context.
+    """
+    captured: list[str] = []
+    with warnings.catch_warnings():
+        warnings.simplefilter('always')
+        original_showwarning = warnings.showwarning
+
+        def _record(
+                message: Warning | str,
+                category: type[Warning],
+                filename: str,
+                lineno: int,
+                file: TextIO | None = None,
+                line: str | None = None,
+        ) -> None:
+            captured.append(str(message))
+            original_showwarning(message, category, filename, lineno, file, line)
+
+        warnings.showwarning = _record
+        yield captured
 
 
 # ---------------------------------------------------------------------------
@@ -600,9 +637,7 @@ def run_report(
 
     check_results: list[CheckResult] = []
 
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter('always')
-
+    with record_warnings() as captured:
         validate_results = gaze.validate(
             trial_columns_exist='trial_columns_exist' in checks_to_run,
             trial_columns_dtype='trial_columns_dtype' in checks_to_run,
@@ -627,7 +662,6 @@ def run_report(
                 )
 
         measure_results = compute_measures([gaze], None, levels_to_run, measures)
-        captured = [str(w.message) for w in caught]
 
     report = DataQualityReport(
         check_results=check_results,

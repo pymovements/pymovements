@@ -18,10 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests for :py:meth:`~pymovements.gaze.Gaze.validate` and the validation module."""
-from __future__ import annotations
-
-from pathlib import Path
-
 import polars as pl
 import pytest
 
@@ -35,68 +31,32 @@ pytestmark = pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:U
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _exp(sampling_rate: float = 1000.0) -> Experiment:
-    return Experiment(
-        screen_width_px=1280,
-        screen_height_px=1024,
-        screen_width_cm=38.0,
-        screen_height_cm=30.0,
-        distance_cm=68.0,
-        origin='upper left',
-        sampling_rate=sampling_rate,
-    )
-
-
-def _make_gaze(
-        samples: pl.DataFrame,
-        trial_columns: list[str] | None = None,
-        experiment: Experiment | None = None,
-) -> Gaze:
-    """Bypass Gaze.__init__ validation to create test fixtures with invalid state."""
-    g = Gaze.__new__(Gaze)
-    g.samples = samples
-    g.trial_columns = trial_columns
-    g.experiment = experiment
-    g.n_components = None
-    g.events = None  # type: ignore[assignment]
-    g.metadata = {}
-    g.messages = None
-    g.calibrations = None
-    g.validations = None
-    g._metadata = None
-    return g
-
-
-# ---------------------------------------------------------------------------
 # Gaze.validate — basic contract
 # ---------------------------------------------------------------------------
 
 class TestGazeValidateContract:
     """Verify that validate() returns the expected structure regardless of content."""
 
-    def test_returns_list(self) -> None:
+    def test_returns_list(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         result = gaze.validate()
         assert isinstance(result, list)
 
-    def test_all_items_are_check_results(self) -> None:
+    def test_all_items_are_check_results(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         for r in gaze.validate():
             assert isinstance(r, CheckResult)
 
-    def test_default_returns_eight_results(self) -> None:
+    def test_default_returns_eight_results(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         assert len(gaze.validate()) == 8
 
-    def test_all_severities_valid(self) -> None:
+    def test_all_severities_valid(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         for r in gaze.validate():
             assert r.severity in {'pass', 'warning', 'fail', 'error'}
 
-    def test_check_codes_unique_in_result(self) -> None:
+    def test_check_codes_unique_in_result(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         codes = [r.code for r in gaze.validate()]
         assert len(codes) == len(set(codes))
@@ -121,14 +81,14 @@ class TestGazeValidateDisableChecks:
             ('gaze_range', 'gaze_range'),
         ],
     )
-    def test_disable_single_check(self, kwarg: str, check_code: str) -> None:
+    def test_disable_single_check(self, kwarg, check_code):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         results = gaze.validate(**{kwarg: False})  # type: ignore[arg-type]
         codes = [r.code for r in results]
         assert check_code not in codes
         assert len(results) == 7
 
-    def test_disable_all_returns_empty(self) -> None:
+    def test_disable_all_returns_empty(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -142,7 +102,7 @@ class TestGazeValidateDisableChecks:
         )
         assert not results
 
-    def test_enable_only_one_returns_one(self) -> None:
+    def test_enable_only_one_returns_one(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -163,7 +123,7 @@ class TestGazeValidateDisableChecks:
 # ---------------------------------------------------------------------------
 
 class TestGazeValidateOrder:
-    def test_results_in_defined_order(self) -> None:
+    def test_results_in_defined_order(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         expected_order = [
             'trial_columns_exist',
@@ -178,7 +138,7 @@ class TestGazeValidateOrder:
         codes = [r.code for r in gaze.validate()]
         assert codes == expected_order
 
-    def test_partial_order_preserved(self) -> None:
+    def test_partial_order_preserved(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -200,8 +160,8 @@ class TestGazeValidateOrder:
 # ---------------------------------------------------------------------------
 
 class TestGazeValidateSourcePath:
-    def test_fail_includes_source_path(self) -> None:
-        gaze = _make_gaze(
+    def test_fail_includes_source_path(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             samples=pl.DataFrame({'time': [0]}),
             trial_columns=['missing_column'],
         )
@@ -211,15 +171,15 @@ class TestGazeValidateSourcePath:
         for r in fail_results:
             assert 'data/subject01.csv' in r.sources
 
-    def test_pass_results_have_source_path(self) -> None:
+    def test_pass_results_have_source_path(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1, 2]}))
         results = gaze.validate(source_path='data/file.csv')
         for r in results:
             if r.severity == 'pass':
                 assert r.sources == ['data/file.csv']
 
-    def test_empty_source_path_gives_empty_sources(self) -> None:
-        gaze = _make_gaze(
+    def test_empty_source_path_gives_empty_sources(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             samples=pl.DataFrame({'time': [0]}),
             trial_columns=['missing'],
         )
@@ -233,7 +193,7 @@ class TestGazeValidateSourcePath:
 # ---------------------------------------------------------------------------
 
 class TestGazeValidateCheckOutcomes:
-    def test_trial_columns_exist_pass(self) -> None:
+    def test_trial_columns_exist_pass(self):
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 1], 'trial': [1, 1]}),
             trial_columns=['trial'],
@@ -250,8 +210,8 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_trial_columns_exist_fail(self) -> None:
-        gaze = _make_gaze(
+    def test_trial_columns_exist_fail(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             samples=pl.DataFrame({'time': [0, 1]}),
             trial_columns=['nonexistent'],
         )
@@ -267,7 +227,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'fail'
 
-    def test_trial_columns_dtype_warning_on_float(self) -> None:
+    def test_trial_columns_dtype_warning_on_float(self):
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0], 'trial': pl.Series([1.0], dtype=pl.Float64)}),
             trial_columns=['trial'],
@@ -284,7 +244,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_time_column_exists_fail(self) -> None:
+    def test_time_column_exists_fail(self):
         gaze = Gaze(samples=pl.DataFrame({'x': [1.0, 2.0]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -298,7 +258,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'fail'
 
-    def test_gaze_components_defined_fail(self) -> None:
+    def test_gaze_components_defined_fail(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0, 1]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -312,7 +272,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'fail'
 
-    def test_gaze_components_defined_pass_with_position(self) -> None:
+    def test_gaze_components_defined_pass_with_position(self):
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0], 'position': [[1.0, 2.0]]}),
         )
@@ -328,7 +288,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_time_monotone_fail_on_non_monotone(self) -> None:
+    def test_time_monotone_fail_on_non_monotone(self):
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 20, 10, 30], 'trial': [1, 1, 1, 1]}),
             trial_columns=['trial'],
@@ -345,8 +305,8 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'fail'
 
-    def test_max_gap_warning_on_large_gap(self) -> None:
-        exp = _exp(sampling_rate=100.0)
+    def test_max_gap_warning_on_large_gap(self, make_experiment):
+        exp = make_experiment('1280x1024@100Hz')
         # ISI=10ms; 5×ISI=50ms; 100ms gap → warning
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 10, 20, 120], 'trial': [1, 1, 1, 1]}),
@@ -365,9 +325,9 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_max_gap_single_sample_trial_skipped(self) -> None:
+    def test_max_gap_single_sample_trial_skipped(self, make_experiment):
         # Trial 2 has only 1 sample — the inner `continue` branch is exercised.
-        exp = _exp(sampling_rate=100.0)
+        exp = make_experiment('1280x1024@100Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 10, 20, 30], 'trial': [1, 1, 1, 2]}),
             trial_columns=['trial'],
@@ -385,9 +345,9 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_custom_max_gap_factor_tighter_triggers_warning(self) -> None:
+    def test_custom_max_gap_factor_tighter_triggers_warning(self, make_experiment):
         # Default factor 5.0 would pass; factor 1.5 should warn on a 2× ISI gap.
-        exp = _exp(sampling_rate=100.0)
+        exp = make_experiment('1280x1024@100Hz')
         # ISI=10ms; gap=15ms → 1.5× ISI; factor=1.0 triggers warning
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 10, 25]}),
@@ -406,9 +366,9 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_custom_max_deviation_tighter_triggers_warning(self) -> None:
+    def test_custom_max_deviation_tighter_triggers_warning(self, make_experiment):
         # Declared 100 Hz; empirical ~95 Hz (5% deviation); tight tolerance 0.01 → warning
-        exp = _exp(sampling_rate=100.0)
+        exp = make_experiment('1280x1024@100Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 10, 21, 32, 43]}),
             experiment=exp,
@@ -426,8 +386,8 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_sampling_rate_consistency_pass(self) -> None:
-        exp = _exp(sampling_rate=100.0)
+    def test_sampling_rate_consistency_pass(self, make_experiment):
+        exp = make_experiment('1280x1024@100Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 10, 20, 30]}),
             experiment=exp,
@@ -444,8 +404,8 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_sampling_rate_consistency_warning(self) -> None:
-        exp = _exp(sampling_rate=100.0)
+    def test_sampling_rate_consistency_warning(self, make_experiment):
+        exp = make_experiment('1280x1024@100Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 5, 10, 15, 20]}),
             experiment=exp,
@@ -462,7 +422,7 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_gaze_range_pass_no_experiment(self) -> None:
+    def test_gaze_range_pass_no_experiment(self):
         gaze = Gaze(samples=pl.DataFrame({'time': [0], 'position': [[0.5, 0.5]]}))
         results = gaze.validate(
             trial_columns_exist=False,
@@ -476,8 +436,8 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'pass'
 
-    def test_gaze_range_warning_out_of_bounds(self) -> None:
-        exp = _exp()
+    def test_gaze_range_warning_out_of_bounds(self, make_experiment):
+        exp = make_experiment()
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': list(range(20)),
@@ -497,9 +457,9 @@ class TestGazeValidateCheckOutcomes:
         )
         assert results[0].severity == 'warning'
 
-    def test_gaze_range_pixel_col_no_px_dimensions(self) -> None:
+    def test_gaze_range_pixel_col_no_px_dimensions(self, make_unvalidated_gaze):
         exp = Experiment(sampling_rate=100.0)
-        gaze = _make_gaze(
+        gaze = make_unvalidated_gaze(
             samples=pl.DataFrame({'time': [0], 'pixel': [[100.0, 200.0]]}),
             experiment=exp,
         )
@@ -516,9 +476,9 @@ class TestGazeValidateCheckOutcomes:
         assert results[0].severity == 'pass'
         assert 'skipped' in results[0].message
 
-    def test_gaze_range_screen_bounds_raises_type_error(self) -> None:
+    def test_gaze_range_screen_bounds_raises_type_error(self, make_unvalidated_gaze):
         exp = Experiment(sampling_rate=100.0)
-        gaze = _make_gaze(
+        gaze = make_unvalidated_gaze(
             samples=pl.DataFrame({'time': [0], 'position': [[0.0, 0.0]]}),
             experiment=exp,
         )
@@ -543,7 +503,7 @@ class TestGazeValidateCheckOutcomes:
 class TestGazeValidateWithRealGaze:
     """Use the real Gaze.__init__ to exercise the path via gaze.validate()."""
 
-    def test_minimal_valid_gaze(self) -> None:
+    def test_minimal_valid_gaze(self):
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 1, 2]}),
         )
@@ -562,7 +522,7 @@ class TestGazeValidateWithRealGaze:
         assert severities['trial_columns_dtype'] == 'pass'
         assert severities['time_column_exists'] == 'pass'
 
-    def test_gaze_with_position_columns(self) -> None:
+    def test_gaze_with_position_columns(self):
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': [0, 1, 2],
@@ -583,8 +543,8 @@ class TestGazeValidateWithRealGaze:
         )
         assert results[0].severity == 'pass'
 
-    def test_gaze_with_experiment_and_consistent_rate(self) -> None:
-        exp = _exp(sampling_rate=1000.0)
+    def test_gaze_with_experiment_and_consistent_rate(self, make_experiment):
+        exp = make_experiment('1280x1024@1000Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 1, 2, 3, 4]}),
             experiment=exp,
@@ -601,8 +561,8 @@ class TestGazeValidateWithRealGaze:
         )
         assert results[0].severity == 'pass'
 
-    def test_gaze_with_pixel_columns_and_experiment(self) -> None:
-        exp = _exp()
+    def test_gaze_with_pixel_columns_and_experiment(self, make_experiment):
+        exp = make_experiment()
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': [0, 1, 2],
@@ -627,7 +587,7 @@ class TestGazeValidateWithRealGaze:
         assert comp_result.severity == 'pass'
         assert range_result.severity == 'pass'
 
-    def test_gaze_trial_columns_present(self) -> None:
+    def test_gaze_trial_columns_present(self):
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': [0, 10, 20, 30, 40],
@@ -650,8 +610,8 @@ class TestGazeValidateWithRealGaze:
         assert severities['trial_columns_dtype'] == 'pass'
         assert severities['time_monotone'] == 'pass'
 
-    def test_all_eight_checks_with_healthy_gaze(self) -> None:
-        exp = _exp(sampling_rate=1000.0)
+    def test_all_eight_checks_with_healthy_gaze(self, make_experiment):
+        exp = make_experiment('1280x1024@1000Hz')
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': [0, 1, 2, 3],
@@ -678,7 +638,7 @@ class TestGazeValidateWithRealGaze:
 class TestGazeReportDataQuality:
     """Tests for :py:meth:`~pymovements.gaze.gaze.Gaze.report_data_quality`."""
 
-    def _clean_gaze(self) -> Gaze:
+    def _clean_gaze(self):
         return Gaze(
             samples=pl.DataFrame({
                 'time': [0, 1, 2, 3, 4],
@@ -689,26 +649,34 @@ class TestGazeReportDataQuality:
             trial_columns='trial',
             time_column='time',
             position_columns=['x', 'y'],
-            experiment=_exp(sampling_rate=1000.0),
+            experiment=Experiment(
+                screen_width_px=1280,
+                screen_height_px=1024,
+                screen_width_cm=38.0,
+                screen_height_cm=30.0,
+                distance_cm=68.0,
+                origin='upper left',
+                sampling_rate=1000.0,
+            ),
         )
 
-    def test_returns_data_quality_report(self) -> None:
+    def test_returns_data_quality_report(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality()
         assert isinstance(report, DataQualityReport)
 
-    def test_passed_true_for_clean_gaze(self) -> None:
+    def test_passed_true_for_clean_gaze(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality()
         assert report.passed is True
 
-    def test_check_results_populated(self) -> None:
+    def test_check_results_populated(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(checks=['time_column_exists', 'gaze_components_defined'])
         assert len(report.check_results) == 2
         assert all(r.severity == 'pass' for r in report.check_results)
 
-    def test_default_levels_are_dataset_and_trial(self) -> None:
+    def test_default_levels_are_dataset_and_trial(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(measures=['data_loss'])
         assert 'dataset' in report.measures
@@ -716,30 +684,30 @@ class TestGazeReportDataQuality:
         assert 'subject' not in report.measures
         assert 'session' not in report.measures
 
-    def test_custom_levels(self) -> None:
+    def test_custom_levels(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(levels=['dataset'], measures=['data_loss'])
         assert 'dataset' in report.measures
         assert 'trial' not in report.measures
 
-    def test_custom_checks_subset(self) -> None:
+    def test_custom_checks_subset(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(checks=['time_column_exists'])
         codes = [r.code for r in report.check_results]
         assert codes == ['time_column_exists']
 
-    def test_all_checks_run_by_default(self) -> None:
+    def test_all_checks_run_by_default(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality()
         assert len(report.check_results) == 8
 
-    def test_invalid_check_raises_value_error(self) -> None:
+    def test_invalid_check_raises_value_error(self):
         gaze = self._clean_gaze()
         with pytest.raises(ValueError, match='Unknown check identifier'):
             gaze.report_data_quality(checks=['not_a_real_check'])
 
-    def test_raise_on_error_raises_exception(self) -> None:
-        gaze = _make_gaze(
+    def test_raise_on_error_raises_exception(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             pl.DataFrame({'time': [0], 'trial': [1]}),
             trial_columns=['missing_col'],
         )
@@ -749,8 +717,8 @@ class TestGazeReportDataQuality:
                 raise_on_error=True,
             )
 
-    def test_raise_on_error_false_does_not_raise(self) -> None:
-        gaze = _make_gaze(
+    def test_raise_on_error_false_does_not_raise(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             pl.DataFrame({'time': [0], 'trial': [1]}),
             trial_columns=['missing_col'],
         )
@@ -760,16 +728,16 @@ class TestGazeReportDataQuality:
         )
         assert report.passed is False
 
-    def test_passed_false_when_error_check(self) -> None:
-        gaze = _make_gaze(
+    def test_passed_false_when_error_check(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             pl.DataFrame({'time': [0], 'trial': [1]}),
             trial_columns=['missing_col'],
         )
         report = gaze.report_data_quality(checks=['trial_columns_exist'])
         assert report.passed is False
 
-    def test_source_path_in_sources(self) -> None:
-        gaze = _make_gaze(
+    def test_source_path_in_sources(self, make_unvalidated_gaze):
+        gaze = make_unvalidated_gaze(
             pl.DataFrame({'time': [0], 'trial': [1]}),
             trial_columns=['missing_col'],
         )
@@ -781,12 +749,12 @@ class TestGazeReportDataQuality:
         assert len(fails) == 1
         assert 'subject01/run01.csv' in fails[0].sources
 
-    def test_warning_log_captured(self) -> None:
+    def test_warning_log_captured(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality()
         assert isinstance(report.warning_log, list)
 
-    def test_output_path_writes_bids_files(self, tmp_path: Path) -> None:
+    def test_output_path_writes_bids_files(self, tmp_path):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(
             checks=['time_column_exists'],
@@ -798,19 +766,19 @@ class TestGazeReportDataQuality:
         assert (deriv / 'data_quality_checks.tsv').exists()
         assert (deriv / 'warnings.log').exists()
 
-    def test_measures_none_means_all_four(self) -> None:
+    def test_measures_none_means_all_four(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(levels=['dataset'], measures=None)
         if 'dataset' in report.measures:
             cols = report.measures['dataset'].columns
             assert any(c in cols for c in ('data_loss', 'std_rms', 'rms_s2s', 'bcea'))
 
-    def test_empty_measures_list(self) -> None:
+    def test_empty_measures_list(self):
         gaze = self._clean_gaze()
         report = gaze.report_data_quality(levels=['dataset'], measures=[])
         assert 'dataset' not in report.measures
 
-    def test_gaze_without_trial_columns_skips_trial_level(self) -> None:
+    def test_gaze_without_trial_columns_skips_trial_level(self, make_experiment):
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': [0, 1, 2],
@@ -819,15 +787,15 @@ class TestGazeReportDataQuality:
             }),
             time_column='time',
             position_columns=['x', 'y'],
-            experiment=_exp(sampling_rate=1000.0),
+            experiment=make_experiment('1280x1024@1000Hz'),
         )
         report = gaze.report_data_quality(levels=['dataset', 'trial'], measures=['data_loss'])
         assert 'dataset' in report.measures
         assert 'trial' not in report.measures
 
-    def test_custom_max_gap_factor_passed_through_report(self) -> None:
+    def test_custom_max_gap_factor_passed_through_report(self, make_experiment):
         # ISI=10ms; gap=15ms; default factor 5.0 → pass; tight factor 1.0 → warning
-        exp = _exp(sampling_rate=100.0)
+        exp = make_experiment('1280x1024@100Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 10, 25]}),
             experiment=exp,
@@ -837,9 +805,9 @@ class TestGazeReportDataQuality:
         assert report_default.check_results[0].severity == 'pass'
         assert report_tight.check_results[0].severity == 'warning'
 
-    def test_custom_max_deviation_passed_through_report(self) -> None:
+    def test_custom_max_deviation_passed_through_report(self, make_experiment):
         # Empirical ~90.9 Hz vs declared 100 Hz (~9% deviation); tight tolerance 0.01 → warning
-        exp = _exp(sampling_rate=100.0)
+        exp = make_experiment('1280x1024@100Hz')
         gaze = Gaze(
             samples=pl.DataFrame({'time': [0, 11, 22, 33, 44]}),
             experiment=exp,
@@ -849,9 +817,9 @@ class TestGazeReportDataQuality:
         )
         assert report_tight.check_results[0].severity == 'warning'
 
-    def test_custom_min_fraction_passed_through_report(self) -> None:
+    def test_custom_min_fraction_passed_through_report(self, make_experiment):
         # All samples out of pixel range; tight min_fraction=0.99 → warning; loose=0.0 → pass
-        exp = _exp(sampling_rate=1000.0)
+        exp = make_experiment('1280x1024@1000Hz')
         gaze = Gaze(
             samples=pl.DataFrame({
                 'time': [0, 1, 2],

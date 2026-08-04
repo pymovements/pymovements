@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
@@ -46,6 +45,7 @@ from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
 from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import record_warnings
 from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.measure.reading import compute_reading_measures
@@ -1442,9 +1442,7 @@ class Dataset:
 
         check_results: list = []
 
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter('always')
-
+        with record_warnings() as captured_warnings:
             for idx, gaze in enumerate(self.gaze):
                 src = source_paths[idx] if idx < len(source_paths) else ''
                 results = gaze.validate(
@@ -1476,8 +1474,6 @@ class Dataset:
                 levels=levels_to_run,
                 measures=measures,
             )
-
-            captured_warnings = [str(w.message) for w in caught]
 
         report = DataQualityReport(
             check_results=check_results,
