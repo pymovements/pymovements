@@ -197,18 +197,13 @@ metadata (screen geometry, sampling rate, and eye-tracker parameters) that
 downstream operations require. Keeping the signal and its acquisition
 context together lets steps such as pixel-to-degree conversion be expressed
 without the user re-supplying calibration parameters at each call. The
-object is backed by the `polars` dataframe library [@polars] rather than
-`pandas`. Its columnar, Rust-based engine provides the throughput needed to
-process large raw gaze recordings, and its explicit, typed schema lets the
-package validate a dataset's declared configuration at load time and
-surface misconfigurations as structured reports instead of silent errors
-deeper in the pipeline. This choice carries costs: polars is a
-comparatively young and fast-moving project, which has occasionally forced
-breaking changes during development (compounded by the pipeline treating
-warnings as errors), and it is less familiar to contributors than `pandas`
-or `numpy`, so some components are not yet implemented in it. The
-`from_pandas` and `from_numpy` constructors keep the package interoperable
-with those more established libraries.
+object is backed by the `polars` dataframe library [@polars], whose
+columnar, Rust-based engine provides the throughput needed to process large
+raw gaze recordings. At load time, the package validates a dataset's
+declared configuration against the data and surfaces misconfigurations as
+structured reports instead of silent errors deeper in the pipeline.
+Constructors from `pandas` dataframes [@pandas] and `numpy` arrays [@numpy]
+keep the package interoperable with these widely used libraries.
 
 Extensibility is a primary design goal. Preprocessing transforms,
 event-detection algorithms, and measures are each exposed through
