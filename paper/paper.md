@@ -16,57 +16,30 @@ authors:
   - name: Carlson Moses Büth
     orcid: 0000-0003-2298-8438
     affiliation: '1'
+  - name: Bernhard Angele
+    orcid: 0000-0001-8989-8555
+    affiliation: '4'
+  - name: Jakob Chwastek
+    orcid: 0000-0001-7092-6245
+    affiliation: '2'
+  - name: Deborah N. Jakobi
+    orcid: 0000-0002-9719-6673
+    affiliation: '1'
+  - name: Jana Hofmann
+    orcid: 0009-0007-8099-9262
+    affiliation: '1'
+  - name: Paweł Kasprowski
+    orcid: 0000-0002-2090-335X
+    affiliation: '5'
+  - name: Paul Prasse
+    orcid: 0000-0003-1842-3645
+    affiliation: '2'
   - name: Andreas Säuberli
     orcid: 0000-0001-9613-334X
     affiliation: '3'
   - name: Anastassia Shaitarova
     orcid: 0000-0003-3124-190X
     affiliation: '1'
-  - name: Jakob Chwastek
-    orcid: 0000-0001-7092-6245
-    affiliation: '2'
-  - name: Paul Prasse
-    orcid: 0000-0003-1842-3645
-    affiliation: '2'
-  - name: Deborah N. Jakobi
-    orcid: 0000-0002-9719-6673
-    affiliation: '1'
-  - name: Bernhard Angele
-    orcid: 0000-0001-8989-8555
-    affiliation: '4'
-  - name: Josephine Funken
-    orcid: 0009-0007-3928-2956
-    affiliation: '2'
-  - name: Gianmarco Gusti
-    affiliation: '1'
-  - name: Jana Hofmann
-    orcid: 0009-0007-8099-9262
-    affiliation: '1'
-  - name: Omkar Ingale
-    affiliation: '1'
-  - name: Tatsuki Kuribayashi
-    orcid: 0000-0001-7762-5576
-    affiliation: '5'
-  - name: Oleksandra Kuvshynova
-    orcid: 0009-0008-7668-6703
-    affiliation: '6'
-  - name: Mircea-Mihai Marin
-    orcid: 0009-0000-8068-3654
-    affiliation: '6'
-  - name: Sergiu Nisioi
-    orcid: 0000-0003-2247-4488
-    affiliation: '6'
-  - name: Dongpeng Pan
-    orcid: 0000-0001-6761-0979
-    affiliation: '7'
-  - name: Dionigi Rodriguez
-    affiliation: '1'
-  - name: Omer Shubi
-    orcid: 0000-0002-2961-5012
-    affiliation: '8'
-  - name: Paweł Kasprowski
-    orcid: 0000-0002-2090-335X
-    affiliation: '9'
   - name: Lena A. Jäger
     orcid: 0000-0001-9018-9713
     affiliation: '1'
@@ -79,16 +52,8 @@ affiliations:
     index: 3
   - name: Universidad Nebrija, Madrid, Spain
     index: 4
-  - name: Mohamed bin Zayed University of Artificial Intelligence, Abu Dhabi, United Arab Emirates
-    index: 5
-  - name: University of Bucharest, Romania
-    index: 6
-  - name: University of Geneva, Switzerland
-    index: 7
-  - name: Technion – Israel Institute of Technology, Haifa, Israel
-    index: 8
   - name: Silesian University of Technology, Gliwice, Poland
-    index: 9
+    index: 5
 date: XX XX 2026
 bibliography: paper.bib
 ---
@@ -279,11 +244,8 @@ responsibility for its content.
 The pymovements project was partially funded by the Swiss National Science
 Foundation (SNSF) under grants IZCOZ0_220330 (EyeNLG) and 212276 (MeRID),
 the German Federal Ministry of Education and Research (BMBF) under grant
-01IS20043, the DAAD programme Konrad Zuse Schools of Excellence in
-Artificial Intelligence (ELIZA), and the Romanian National Research Council
-(CNCS) through the Executive Agency for Higher Education, Research,
-Development and Innovation Funding (UEFISCDI) under grant
-PN-IV-P2-2.1-TE-2023-2007 (InstRead). It was further supported by work from
+01IS20043, and the DAAD programme Konrad Zuse Schools of Excellence in
+Artificial Intelligence (ELIZA). It was further supported by work from
 European Cooperation in Science and Technology (COST) and the COST Action
 MultiplEYE (CA21131). The funding bodies had no role in the design of the
 software or in the writing of this paper.
