@@ -1412,10 +1412,10 @@ class Dataset:
         Examples
         --------
         >>> import pymovements as pm
-        >>> # dataset = pm.Dataset('ExampleDataset', path='data/')
-        >>> # dataset.load()
-        >>> # report = dataset.report_data_quality()
-        >>> # print(report.summary())
+        >>> dataset = pm.Dataset('ToyDataset', path='data/ToyDataset')
+        >>> dataset.load()# doctest:+SKIP
+        >>> report = dataset.report_data_quality()# doctest:+SKIP
+        >>> print(report.summary())# doctest:+SKIP
         """
         checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
         levels_to_run = (
