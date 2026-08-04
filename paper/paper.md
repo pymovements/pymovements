@@ -13,7 +13,7 @@ authors:
   - name: David R. Reich
     orcid: 0000-0002-3524-3788
     affiliation: '1, 2'
-  - name: Carlson Moses Büth
+  - name: Carlson M. Büth
     orcid: 0000-0003-2298-8438
     affiliation: '1'
   - name: Bernhard Angele
