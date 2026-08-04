@@ -40,6 +40,7 @@ from tqdm import tqdm
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import merge_sources
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -77,7 +78,8 @@ class Gaze:
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        gaze data was loaded from and is propagated to the events. (default: None)
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment.
         The required columns are 'time' and 'content'. (default: None)
@@ -138,7 +140,8 @@ class Gaze:
     experiment : Experiment | None
         The experiment definition.
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata.
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        gaze data was loaded from.
     messages: polars.DataFrame | None
         DataFrame containing messages from the experiment session.
     trial_columns: list[str] | None
@@ -340,6 +343,9 @@ class Gaze:
             self.metadata = {}
         else:
             self.metadata = metadata
+
+        # Events derived from this gaze object share its source files.
+        merge_sources(self.events.metadata, self.metadata)
 
         _check_messages(messages)
         self.messages = messages
@@ -1183,6 +1189,10 @@ class Gaze:
                     trial_columns=self.trial_columns,
                 )
 
+        # Events detected from this gaze object share its source files. This also covers
+        # events containers replaced after construction, e.g. by Dataset.clear_events().
+        merge_sources(self.events.metadata, self.metadata)
+
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
 
@@ -1602,6 +1612,8 @@ class Gaze:
 
         This maps each gaze point to an AOI label based on the configured stimulus rectangles.
         The mapping uses half-open intervals [start, end) for spatial bounds.
+        The source files of the stimulus are merged into the ``sources`` entry of
+        :py:attr:`~.Gaze.metadata`.
 
         Parameters
         ----------
@@ -1919,6 +1931,11 @@ class Gaze:
 
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
+
+        # The AOI-mapped samples are derived from the stimulus file as well.
+        if self.metadata is None:
+            self.metadata = {}
+        merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def nest(
             self,

@@ -27,6 +27,7 @@ from typing import Any
 
 import polars as pl
 
+from pymovements._utils._sources import add_source
 from pymovements.events.frame import Events
 from pymovements.gaze._utils._parsing_begaze import parse_begaze
 from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
@@ -111,7 +112,8 @@ def from_csv(
         These can include custom separators, a subset of columns, or specific data types
         for columns. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``sources``
+        entry holding the resolved path of ``file`` is added. (default: None)
     **kwargs: Any
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
@@ -297,7 +299,7 @@ def from_csv(
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,
         auto_column_detect=auto_column_detect,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
     )
     return gaze
 
@@ -440,7 +442,8 @@ def from_asc(
         implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``sources``
+        entry holding the resolved path of ``file`` is added. (default: None)
     extend_resolution: bool | None
         Extend the parsed screen resolution by 1 pixel if ``True``.
         If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
@@ -595,7 +598,7 @@ def from_asc(
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
         calibrations=calibrations,
         validations=validations,
     )
@@ -642,7 +645,8 @@ def from_ipc(
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``sources``
+        entry holding the resolved path of ``file`` is added. (default: None)
     **kwargs: Any
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`.
 
@@ -722,7 +726,7 @@ def from_ipc(
         samples=samples,
         experiment=experiment,
         trial_columns=trial_columns,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
     )
     return gaze
 
@@ -942,7 +946,8 @@ def from_begaze(
     prefer_eye: str
         Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata. Unless already present, a ``sources``
+        entry holding the resolved path of ``file`` is added. (default: None)
 
     Returns
     -------
@@ -997,6 +1002,6 @@ def from_begaze(
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
-        metadata=metadata,
+        metadata=add_source(metadata, file),
     )
     return gaze

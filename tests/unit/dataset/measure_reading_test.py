@@ -46,7 +46,11 @@ def fixture_dummy_dataset(tmp_path):
         'subject_id': [5, 5, 5, 5],
         'text_id': ['b0', 'b0', 'b0', 'b0'],
     })
-    events = Events(fixation_data, trial_columns=['subject_id', 'text_id'])
+    events = Events(
+        fixation_data,
+        trial_columns=['subject_id', 'text_id'],
+        metadata={'sources': ['raw/sub_5.csv']},
+    )
     dataset.gaze = [Gaze(events=events)]
 
     return dataset
@@ -74,6 +78,10 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
     assert len(result_frame) > 0
     assert (result_frame['subject_id'] == 5).all()
     assert (result_frame['text_id'] == 'b0').all()
+
+    # The sources union the event sources with the AOI stimulus file. The AOI file lies
+    # below the dataset root and is therefore recorded relative to it.
+    assert reading_measures.metadata['sources'] == ['raw/sub_5.csv', aoi_path.name]
 
 
 def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_file):
@@ -125,3 +133,4 @@ def test_compute_reading_measures_empty_dataset(tmp_path):
 
     assert reading_measures.frame.is_empty()
     assert isinstance(reading_measures.frame, pl.DataFrame)
+    assert reading_measures.metadata == {}

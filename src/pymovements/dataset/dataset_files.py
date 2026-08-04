@@ -33,6 +33,8 @@ import pyreadr
 from tqdm.auto import tqdm
 
 from pymovements._utils._paths import match_filepaths
+from pymovements._utils._sources import add_source
+from pymovements._utils._sources import relativize_sources
 from pymovements._utils._strings import curly_to_regex
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
@@ -244,7 +246,9 @@ def load_event_files(
                 f'Supported formats are: {valid_extensions}',
             )
 
-        list_of_events.append(Events(events))
+        metadata = add_source(file.metadata, filepath)
+        relativize_sources(metadata, paths.dataset)
+        list_of_events.append(Events(events, metadata=metadata))
 
     return list_of_events
 
@@ -310,6 +314,8 @@ def load_gaze_files(
             dataset_definition=deepcopy(definition),
             preprocessed=preprocessed,
         )
+        relativize_sources(gaze.metadata, paths.dataset)
+        relativize_sources(gaze.events.metadata, paths.dataset)
         gazes.append(gaze)
 
     return gazes
@@ -456,6 +462,7 @@ def load_gaze_file(
 def load_precomputed_reading_measures(
         definition: DatasetDefinition,
         files: list[DatasetFile],
+        paths: DatasetPaths,
 ) -> list[ReadingMeasures]:
     """Load reading measures files.
 
@@ -465,6 +472,8 @@ def load_precomputed_reading_measures(
         Dataset definition to load precomputed reading measures.
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
+    paths: DatasetPaths
+        The dataset paths for relativizing source filepaths.
 
     Returns
     -------
@@ -473,9 +482,11 @@ def load_precomputed_reading_measures(
     """
     precomputed_reading_measures = []
     for file in files:
-        precomputed_reading_measures.append(
-            load_precomputed_reading_measure_file(file=file, dataset_definition=definition),
+        reading_measures = load_precomputed_reading_measure_file(
+            file=file, dataset_definition=definition,
         )
+        relativize_sources(reading_measures.metadata, paths.dataset)
+        precomputed_reading_measures.append(reading_measures)
     return precomputed_reading_measures
 
 
@@ -540,12 +551,16 @@ def load_precomputed_reading_measure_file(
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
-    return ReadingMeasures(precomputed_reading_measure_df)
+    return ReadingMeasures(
+        precomputed_reading_measure_df,
+        metadata=add_source(file.metadata, file.path),
+    )
 
 
 def load_precomputed_event_files(
         definition: DatasetDefinition,
         files: list[DatasetFile],
+        paths: DatasetPaths,
 ) -> list[PrecomputedEventDataFrame]:
     """Load precomputed event dataframes from files.
 
@@ -559,6 +574,8 @@ def load_precomputed_event_files(
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
         Valid extensions: .csv, .tsv, .txt, .jsonl, and .ndjson.
+    paths: DatasetPaths
+        The dataset paths for relativizing source filepaths.
 
     Returns
     -------
@@ -567,9 +584,11 @@ def load_precomputed_event_files(
     """
     precomputed_events = []
     for file in files:
-        precomputed_events.append(
-            load_precomputed_event_file(file=file, dataset_definition=definition),
+        precomputed_event_frame = load_precomputed_event_file(
+            file=file, dataset_definition=definition,
         )
+        relativize_sources(precomputed_event_frame.metadata, paths.dataset)
+        precomputed_events.append(precomputed_event_frame)
     return precomputed_events
 
 
@@ -634,11 +653,15 @@ def load_precomputed_event_file(
             f'Supported formats are: {", ".join(sorted(valid_extensions))}',
         )
 
-    return PrecomputedEventDataFrame(data=precomputed_event_df)
+    return PrecomputedEventDataFrame(
+        data=precomputed_event_df,
+        metadata=add_source(file.metadata, file.path),
+    )
 
 
 def load_stimuli_files(
         files: list[DatasetFile],
+        paths: DatasetPaths,
 ) -> list[ImageStimulus | TextStimulus]:
     """Load all available text stimuli files.
 
@@ -646,6 +669,8 @@ def load_stimuli_files(
     ----------
     files: list[DatasetFile]
         Load these files using the associated :py:class:`pymovements.ResourceDefinition`.
+    paths: DatasetPaths
+        The dataset paths for relativizing source filepaths.
 
     Returns
     -------
@@ -656,6 +681,7 @@ def load_stimuli_files(
     stimuli: list[ImageStimulus | TextStimulus] = []
     for file in files:
         stimulus = load_stimulus_file(file=file)
+        relativize_sources(stimulus.metadata, paths.dataset)
         stimuli.append(stimulus)
     return stimuli
 
