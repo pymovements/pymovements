@@ -73,6 +73,18 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans
             {'values_split': []},
             id='test_no_candidates_in_array_nan',
         ),
+        pytest.param(
+            {
+                'candidates': [[0, 1, 2, 3, 4, 5, 6]],   # 7-sample window, all NaN
+                'values': np.array([
+                    (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
+                    (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
+                    (np.nan, np.nan),
+                ]),
+            },
+            {'values_filter': []},   # all-NaN candidate must be dropped, not crash
+            id='test_all_nan_candidate_skipped',
+        ),
     ],
 )
 def test_filters(params, expected):

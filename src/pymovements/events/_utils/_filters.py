@@ -53,10 +53,13 @@ def filter_candidates_remove_nans(
             continue
         cand_values = values[np.array(candidate)]
         start_id = 0
-        while np.sum(np.isnan(cand_values[start_id, :])) > 0:
+        while start_id < len(cand_values) and np.sum(np.isnan(cand_values[start_id, :])) > 0:
             start_id += 1
+        # skip candidate if every sample is NaN
+        if start_id >= len(cand_values):
+            continue
         end_id = len(cand_values) - 1
-        while np.sum(np.isnan(cand_values[end_id, :])) > 0:
+        while end_id > start_id and np.sum(np.isnan(cand_values[end_id, :])) > 0:
             end_id -= 1
         cur_candidate = list(candidate[start_id:end_id + 1])
         return_candidates.append(np.array(cur_candidate))
