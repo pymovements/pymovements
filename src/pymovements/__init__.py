@@ -45,7 +45,6 @@ from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
 from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
-from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
 from pymovements.gaze.quality import CheckResult
 from pymovements.gaze.quality import DataQualityReport
@@ -88,7 +87,6 @@ __all__ = [
     'EyeTracker',
     'Screen',
     'Gaze',
-    'GazeDataFrame',
 
     'measure',
     'EVENT_MEASURES',
