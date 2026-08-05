@@ -166,8 +166,9 @@ def from_numpy(
         the experiment definition. (default: None)
     data: np.ndarray | None
         Two-dimensional samples data represented as a numpy ndarray. (default: None)
+
         .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0.
+           Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Returns
     -------
@@ -459,9 +460,10 @@ def from_pandas(
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
     data: pd.DataFrame | None
-        Gaze samples represented as a pandas DataFrame.
+        Gaze samples represented as a pandas DataFrame. (default: None)
+
         .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0. (default: None)
+           Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Returns
     -------
