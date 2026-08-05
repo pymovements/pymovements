@@ -223,7 +223,6 @@ class DatasetDefinition:
 
     Notes
     -----
-
     .. deprecated:: v0.25.0
        The ``custom_read_kwargs`` attribute is deprecated.
        Please specify :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
