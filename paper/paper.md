@@ -18,7 +18,7 @@ authors:
     affiliation: '1'
   - name: Bernhard Angele
     orcid: 0000-0001-8989-8555
-    affiliation: '4'
+    affiliation: '3'
   - name: Jakob Chwastek
     orcid: 0000-0001-7092-6245
     affiliation: '2'
@@ -36,7 +36,7 @@ authors:
     affiliation: '2'
   - name: Andreas Säuberli
     orcid: 0000-0001-9613-334X
-    affiliation: '3'
+    affiliation: '4'
   - name: Anastassia Shaitarova
     orcid: 0000-0003-3124-190X
     affiliation: '1'
@@ -50,12 +50,12 @@ affiliations:
   - name: University of Potsdam, Germany
     index: 2
     ror: 03bnmw459
-  - name: LMU Munich, Germany
-    index: 3
-    ror: 05591te55
   - name: Universidad Nebrija, Madrid, Spain
-    index: 4
+    index: 3
     ror: 03tzyrt94
+  - name: LMU Munich, Germany
+    index: 4
+    ror: 05591te55
   - name: Silesian University of Technology, Gliwice, Poland
     index: 5
     ror: 02dyjk442
