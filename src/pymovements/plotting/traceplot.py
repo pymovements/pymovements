@@ -20,6 +20,8 @@
 """Provides the traceplot plotting function."""
 from __future__ import annotations
 
+from warnings import warn
+
 import matplotlib.pyplot as plt
 import matplotlib.scale
 import numpy as np
@@ -102,6 +104,33 @@ def traceplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+    if add_stimulus:
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to traceplot(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'traceplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "traceplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to traceplot(ax=...) '
+                'instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
     # pylint: disable=duplicate-code
     x_signal = gaze.samples[position_column].list.get(0)
     y_signal = gaze.samples[position_column].list.get(1)

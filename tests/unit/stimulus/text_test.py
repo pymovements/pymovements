@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
+from copy import deepcopy
 from dataclasses import replace
 
 import polars as pl
@@ -232,10 +233,10 @@ EXPECTED_DF = pl.DataFrame(
         ),
     ],
 )
-def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file):
-    aoi_file = make_example_file(filename)
+def test_text_stimulus_has_correct_aois(filename, custom_read_kwargs, expected, make_example_file):
+    aoi_path = make_example_file(filename)
     aois = text.from_file(
-        aoi_file,
+        aoi_path,
         aoi_column='char',
         start_x_column='top_left_x',
         start_y_column='top_left_y',
@@ -251,6 +252,46 @@ def test_text_stimulus(filename, custom_read_kwargs, expected, make_example_file
         expected,
     )
     assert len(aois.aois.columns) == len(expected.columns)
+
+
+def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file):
+    aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
+    stimulus = text.from_file(
+        aoi_path,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+    )
+    assert stimulus.metadata == {}
+
+
+@pytest.mark.parametrize(
+    'metadata',
+    [
+        pytest.param({}, id='empty'),
+        pytest.param({'key': 'value'}, id='dict'),
+    ],
+)
+def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
+    metadata_pre = deepcopy(metadata)
+    aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
+
+    stimulus = text.from_file(
+        aoi_path,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        metadata=metadata,
+    )
+
+    assert stimulus.metadata == metadata_pre
+    assert stimulus.metadata is metadata
 
 
 def test_text_stimulus_unsupported_format(make_example_file):
