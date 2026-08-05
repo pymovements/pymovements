@@ -39,8 +39,6 @@ from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.gaze.experiment import Experiment
 
 
-ResourcesLike = Sequence[dict[str, Any]] | dict[str, Sequence[dict[str, Any]]]
-
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 
@@ -163,7 +161,7 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
-    resources: ResourceDefinitions | ResourcesLike | None
+    resources: ResourceDefinitions | Sequence[dict[str, Any]] | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
         - `source`: The url suffix of the resource.
@@ -284,7 +282,7 @@ class DatasetDefinition:
             *,
             long_name: str | None = None,
             description: str | None = None,
-            resources: ResourceDefinitions | ResourcesLike | None = None,
+            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None = None,
             experiment: Experiment | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
             column_map: dict[str, str] | None = None,
@@ -505,7 +503,7 @@ class DatasetDefinition:
 
     def _initialize_resources(
             self,
-            resources: ResourceDefinitions | ResourcesLike | None,
+            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None,
     ) -> ResourceDefinitions:
         """Initialize ``ResourceDefinitions`` instance if necessary."""
         if isinstance(resources, ResourceDefinitions):
@@ -517,11 +515,7 @@ class DatasetDefinition:
         if isinstance(resources, Sequence):
             return ResourceDefinitions(resources)
 
-        if isinstance(resources, dict):
-            # this calls a deprecated method and will be removed in the future.
-            return ResourceDefinitions.from_dict(resources)
-
         raise TypeError(
             f'resources is of type {type(resources).__name__} but must be of type'
-            ' ResourceDefinitions, list, or dict.',
+            ' ResourceDefinitions or a list of dicts.',
         )
