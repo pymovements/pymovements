@@ -31,10 +31,24 @@ class DatasetPaths:
 
     Attributes
     ----------
+    root: Path
+        The root path of the dataset.
+    dataset: Path
+        The path to the dataset directory.
+    events: Path
+        The path to the event data directory.
+    preprocessed: Path
+        The path to the preprocessed gaze data directory.
     raw: Path
         The path to the raw data directory.
+    precomputed_events: Path
+        The path to the precomputed event data directory.
+    precomputed_reading_measures: Path
+        The path to the precomputed reading measures directory.
     downloads: Path
         The path to the downloads directory.
+    stimuli: Path
+        The path to the stimuli directory.
 
     Parameters
     ----------
@@ -70,9 +84,6 @@ class DatasetPaths:
         Name of directory under dataset path that will be used to store stimuli data.
         Can be `.` if stimuli data is located in dataset path.
     """
-
-    raw: Path
-    downloads: Path
 
     def __init__(
             self,
@@ -342,9 +353,9 @@ class DatasetPaths:
         """
         return self.dataset / self._preprocessed
 
-    @property  # type: ignore[no-redef]
+    @property
     def raw(self) -> Path:
-        """Return the path to the directory of the raw data.
+        """The path to the directory of the raw data.
 
         The path points to the raw data directory under the dataset path.
 
@@ -470,9 +481,9 @@ class DatasetPaths:
         """
         return self.dataset / self._precomputed_reading_measures
 
-    @property  # type: ignore[no-redef]
+    @property
     def downloads(self) -> Path:
-        """Return the path to the directory of the raw data.
+        """The path to the download directory.
 
         The download path points to the download directory under the root path.
 
@@ -507,7 +518,7 @@ class DatasetPaths:
 
     @property
     def stimuli(self) -> Path:
-        """Return the path to the stimuli directory.
+        """The path to the stimuli directory.
 
         Example:
         -------

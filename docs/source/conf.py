@@ -176,14 +176,6 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-
-
-    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:obj', r'^pymovements\..*'),
-
-
-
-
     # Matplotlib color types referenced in plotting API
     (
         r'py:class',
@@ -206,8 +198,6 @@ nitpick_ignore_regex = [
 
 
 # -- Options for autosummary -------------------------------------------------
-numpydoc_show_class_members = True
-numpydoc_class_members_toctree = False
 autosummary_generate = True
 autosummary_generate_overwrite = True
 autosummary_imported_members = False

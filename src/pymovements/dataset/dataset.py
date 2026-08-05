@@ -70,8 +70,8 @@ class Dataset:
     ----------
     participants: Participants
         Participant data.
-    fileinfo: pl.DataFrame
-        Parsed file information.
+    fileinfo: dict[str, pl.DataFrame]
+        Parsed file information, keyed by content type (e.g. ``'gaze'``).
     gaze: list[Gaze]
         Gaze objects containing loaded samples.
     events: tuple[Events, ...]
@@ -89,17 +89,15 @@ class Dataset:
     """
 
     participants: Participants
-    fileinfo: pl.DataFrame
+    fileinfo: dict[str, pl.DataFrame]
     gaze: list[Gaze]
-    events: tuple[Events, ...]
-    path: Path
 
     def __init__(
             self,
             definition: str | Path | DatasetDefinition | type[DatasetDefinition],
             path: str | Path | DatasetPaths,
     ):
-        self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self.fileinfo = {}
         self._files: list[DatasetFile] = []
         self.participants = Participants()
         self.gaze: list[Gaze] = []
@@ -230,7 +228,7 @@ class Dataset:
 
         return self
 
-    @property  # type: ignore[no-redef]
+    @property
     def events(self) -> tuple[Events, ...]:
         """Return ``Events`` for all ``Gaze`` objects in the ``Dataset``.
 
@@ -566,7 +564,7 @@ class Dataset:
             events_dirname=events_dirname,
             extension=extension,
         )
-        self.events = events  # type: ignore[assignment]
+        self.events = events
         return self
 
     def load_stimuli(self) -> None:
@@ -1124,7 +1122,7 @@ class Dataset:
     ) -> ReadingMeasures:
         """Map fixations to AOIs and compute reading measures for an entire dataset.
 
-        This method expects fixations annotated with AOI data. See
+        This method implicitly annotates fixations with AOI data. See
         :py:meth:`~pymovements.Events.map_to_aois` for further details.
 
         Parameters
@@ -1592,9 +1590,9 @@ class Dataset:
         )
         return self
 
-    @property  # type: ignore[no-redef]
+    @property
     def path(self) -> Path:
-        """Return the path to the dataset directory.
+        """The path to the dataset directory.
 
         The dataset path points to the dataset directory under the root path. Per default, the
         dataset path points to the exact same directory as the root path. Add ``dataset_dirname``

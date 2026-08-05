@@ -153,6 +153,7 @@ disallow_untyped_defs = false
 
 [tool.pydoclint]
 skip-checking-raises = true
+treat-property-methods-as-class-attributes = true
 
 [tool.pytest.ini_options]
 addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"

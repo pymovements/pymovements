@@ -60,12 +60,28 @@ class ResourceDefinition:
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
     url: str | None
         The URL to the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
     filename: str | None
         The target filename of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
     md5: str | None
         The MD5 checksum of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
     mirrors: list[str] | None
         A list of additional mirror URLs to download the resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
 
     Parameters
     ----------
@@ -95,7 +111,7 @@ class ResourceDefinition:
     load_kwargs: dict[str, Any] | None
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
         (default: None)
-    """  # noqa: DOC602,DOC603
+    """
 
     content: str
 
@@ -148,14 +164,14 @@ class ResourceDefinition:
             load_kwargs = {}
         self.load_kwargs = load_kwargs
 
-    @property  # type: ignore[no-redef]
+    @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def url(self) -> str | None:  # noqa: F811
-        """Return the URL to the downloadable resource.
+    def url(self) -> str | None:
+        """The URL to the downloadable resource.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -180,14 +196,14 @@ class ResourceDefinition:
         else:
             self.source = replace(self.source, url=data)
 
-    @property  # type: ignore[no-redef]
+    @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def filename(self) -> str | None:  # noqa: F811
-        """Return the target filename of the downloadable resource. This may be an archive.
+    def filename(self) -> str | None:
+        """The target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -212,14 +228,14 @@ class ResourceDefinition:
         else:
             self.source = replace(self.source, filename=data)
 
-    @property  # type: ignore[no-redef]
+    @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def md5(self) -> str | None:  # noqa: F811
-        """Return the MD5 checksum of the downloadable resource.
+    def md5(self) -> str | None:
+        """The MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.
@@ -244,14 +260,14 @@ class ResourceDefinition:
         else:
             self.source = replace(self.source, md5=data)
 
-    @property  # type: ignore[no-redef]
+    @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
                'This property will be removed in v0.31.0.',
         version='v0.26.2',
     )
-    def mirrors(self) -> list[str] | None:  # noqa: F811
-        """Return the list of additional mirror URLs.
+    def mirrors(self) -> list[str] | None:
+        """A list of additional mirror URLs to download the resource.
 
         .. deprecated:: v0.26.2
         Please use ResourceDefinition.source instead.

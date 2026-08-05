@@ -160,6 +160,10 @@ class Gaze:
     frame: polars.DataFrame
         Gaze samples dataframe.
 
+        .. deprecated:: v0.23.0
+            Please use ``samples`` instead.
+            This property will be removed in v0.28.0.
+
     Notes
     -----
     About using the arguments ``pixel_columns``, ``position_columns``, ``velocity_columns``,
@@ -271,10 +275,6 @@ class Gaze:
 
     # Private leftover metadata from parsing (without calibrations/validations)
     _metadata: dict[str, Any] | None
-
-    schema: polars.type_aliases.SchemaDict
-    columns: list[str]
-    frame: polars.DataFrame
 
     def __init__(
             self,
@@ -1559,17 +1559,17 @@ class Gaze:
             offset_column=offset_column,
         )
 
-    @property  # type: ignore[no-redef]
+    @property
     def schema(self) -> polars.type_aliases.SchemaDict:
-        """Return schema of samples dataframe."""
+        """Schema of samples dataframe."""
         return self.samples.schema
 
-    @property  # type: ignore[no-redef]
+    @property
     def columns(self) -> list[str]:
-        """Return list of column names in samples dataframe."""
+        """List of column names in samples dataframe."""
         return self.samples.columns
 
-    @property  # type: ignore[no-redef]
+    @property
     @deprecated(
         reason='Please use Gaze.samples instead. '
                'This property will be removed in v0.28.0.',

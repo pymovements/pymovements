@@ -45,6 +45,8 @@ class Experiment:
         Screen configuration for the experiment.
     eyetracker: EyeTracker
         Eye tracker configuration for the experiment.
+    sampling_rate: float | None
+        Sampling rate of the eye tracker.
 
     Parameters
     ----------
