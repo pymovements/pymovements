@@ -334,16 +334,6 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
     return None
 
 
-def _config_inconsistent(config_list: list[dict[str, Any]], key: str = 'sampling_rate') -> bool:
-    """Check if ``config_list`` has inconsistent values for a key."""
-    vals = []
-    for d in config_list:
-        val = d.get(key)
-        if val is not None:
-            vals.append(val)
-    return len(set(vals)) > 1
-
-
 def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[str, Any]:
     """Check line against compiled patterns and return matched context."""
     context = {}
@@ -706,13 +696,12 @@ def parse_eyelink(
             stop_recording_timestamp = match.groupdict()['timestamp']
 
             try:
-                # Safely obtain the sampling rate from the last recording_config entry.
                 block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
-                recording_config[-1].get('sampling_rate')
             except UnboundLocalError:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{filepath}' may be corrupted. Data-loss metrics may be incorrect.",
+                    f"File '{filepath}' may be corrupted. "
+                    'Total recording duration may be incorrect.',
                 )
             else:  # this will only be executed if no exception was raised in the try block.
                 total_recording_duration += block_duration

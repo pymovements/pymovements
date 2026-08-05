@@ -1463,28 +1463,6 @@ def test_parse_eyelink_event_end_helper(line, expected):
 
 
 @pytest.mark.parametrize(
-    ('config_list', 'expected'),
-    [
-        pytest.param(
-            [{'sampling_rate': '1000'}, {'sampling_rate': '500'}],
-            True, id='inconsistent',
-        ),
-        pytest.param(
-            [{'sampling_rate': '1000'}, {'sampling_rate': '1000'}],
-            False, id='consistent',
-        ),
-        pytest.param(
-            [{'sampling_rate': '1000'}, {}],
-            False, id='one_missing',
-        ),
-    ],
-)
-def test_config_inconsistent_helper(config_list, expected):
-    """Test EyeLink config inconsistency check."""
-    assert _parsing_eyelink._config_inconsistent(config_list) == expected
-
-
-@pytest.mark.parametrize(
     ('configs', 'key', 'astype', 'expected_value', 'expected_warning'),
     [
         pytest.param([], 'key', None, None, 'No samples configuration found.', id='empty'),
