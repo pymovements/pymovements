@@ -106,10 +106,19 @@ def resample(
 
     resample_step_us = int(resample_step_us)
 
-    # Create microsecond precision datetime column from millisecond time column
-    samples = samples.with_columns(
-        pl.col('time').cast(pl.Float64).mul(1000).cast(pl.Datetime('us')).alias('datetime'),
-    )
+    # Create microsecond precision datetime column from time column
+    time_dtype = samples.schema['time']
+    time_is_duration = isinstance(time_dtype, pl.Duration)
+    if time_is_duration:
+        samples = samples.with_columns(
+            pl.col('time').dt.total_milliseconds().mul(
+                1000,
+            ).cast(pl.Datetime('us')).alias('datetime'),
+        )
+    else:
+        samples = samples.with_columns(
+            pl.col('time').cast(pl.Float64).mul(1000).cast(pl.Datetime('us')).alias('datetime'),
+        )
 
     # Sort columns by datetime
     samples = samples.sort('datetime')
@@ -141,23 +150,30 @@ def resample(
             return_dtype=pl.Float64,
         )
 
-    # Resample data by datetime column, create milliseconds time column and drop datetime column
+    # Resample data by datetime column and recreate time column
     samples = samples.upsample(
         time_column='datetime',
         every=f'{resample_step_us}us',
-    ).with_columns(
-        pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
-    ).drop('datetime')
-
-    # Convert time column to integer if all values are integers
-    all_decimals = samples.select(
-        pl.col('time').round().eq(pl.col('time')).all(),
-    ).item()
-
-    if all_decimals:
+    )
+    if time_is_duration:
         samples = samples.with_columns(
-            pl.col('time').cast(pl.Int64),
+            pl.col('datetime').cast(pl.Float64).truediv(1000).cast(pl.Duration('ms')).alias('time'),
         )
+    else:
+        samples = samples.with_columns(
+            pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
+        )
+    samples = samples.drop('datetime')
+
+    if not time_is_duration:
+        all_decimals = samples.select(
+            pl.col('time').round().eq(pl.col('time')).all(),
+        ).item()
+
+        if all_decimals:
+            samples = samples.with_columns(
+                pl.col('time').cast(pl.Int64),
+            )
 
     # Fill null values with specified strategy
     if columns is not None and fill_null_strategy is not None:
@@ -188,7 +204,7 @@ def resample(
         # Replace the pre-existing NaN values with Null
         samples = _apply_on_columns(
             samples,
-            columns=[column for column in columns if samples[column].dtype != pl.String],
+            columns=[column for column in columns if samples[column].dtype.is_numeric()],
             transformation=lambda series: series.fill_nan(None),
             n_components=n_components,
         )

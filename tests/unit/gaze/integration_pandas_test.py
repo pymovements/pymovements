@@ -22,6 +22,7 @@ import pandas as pd
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import Events
 from pymovements import Experiment
@@ -80,7 +81,7 @@ def test_from_pandas_explicit_columns():
         'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
     })
 
-    assert_frame_equal(gaze.samples, expected)
+    assert_frame_equal(gaze.samples, to_duration(expected))
 
 
 def test_from_pandas_with_trial_columnms():
@@ -109,7 +110,7 @@ def test_from_pandas_with_trial_columnms():
         'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
     })
 
-    assert_frame_equal(gaze.samples, expected)
+    assert_frame_equal(gaze.samples, to_duration(expected))
     assert gaze.trial_columns == ['trial_id']
 
 
@@ -150,7 +151,7 @@ def test_from_pandas_events(samples, events):
 
     gaze = from_pandas(samples=samples, events=events)
 
-    assert_frame_equal(gaze.events.frame, expected_events)
+    assert_frame_equal(gaze.events.frame, to_duration(expected_events))
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
 

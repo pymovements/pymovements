@@ -23,13 +23,19 @@ from __future__ import annotations
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import Events
 
 
 @pytest.fixture(name='expected_schema_after_init')
 def fixture_dataset():
-    schema = {'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64}
+    schema = {
+        'name': pl.Utf8,
+        'onset': pl.Duration('ms'),
+        'offset': pl.Duration('ms'),
+        'duration': pl.Duration('ms'),
+    }
     yield schema
 
 
@@ -221,7 +227,10 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             [pl.DataFrame()], {},
             pl.DataFrame(
                 {}, schema={
-                    'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64,
+                    'name': pl.Utf8,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='dataframe_arg_no_kwargs',
@@ -327,7 +336,7 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
 def test_init_expected_df(args, kwargs, expected_df):
     events = Events(*args, **kwargs)
 
-    assert_frame_equal(events.frame, expected_df)
+    assert_frame_equal(events.frame, to_duration(expected_df))
 
 
 @pytest.mark.parametrize(
@@ -1300,4 +1309,4 @@ def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
 )
 def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
-    assert_frame_equal(events.frame, result_frame)
+    assert_frame_equal(events.frame, to_duration(result_frame))

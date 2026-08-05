@@ -22,9 +22,17 @@ from __future__ import annotations
 
 import numbers
 import warnings
+from datetime import timedelta
 
 import numpy as np
 import polars as pl
+
+
+def _to_num(series: pl.Series) -> np.ndarray:
+    """Convert a time series to millisecond values as numpy array."""
+    if isinstance(series.dtype, pl.Duration):
+        return series.dt.total_milliseconds().to_numpy()
+    return series.to_numpy()
 
 
 def events2segmentation(
@@ -221,8 +229,8 @@ def events2segmentation(
     if relevant_events.is_empty():
         return pl.repeat(False, pl.len()).alias(name)
 
-    onsets = relevant_events[onset_column].to_numpy()
-    offsets = relevant_events[offset_column].to_numpy()
+    onsets = _to_num(relevant_events[onset_column])
+    offsets = _to_num(relevant_events[offset_column])
 
     if np.any(onsets > offsets):
         raise ValueError(
@@ -238,8 +246,8 @@ def events2segmentation(
         # Check for overlaps within each trial
         if trial_columns:
             for trial_group in relevant_events.group_by(trial_columns):
-                trial_onsets = trial_group[1][onset_column].to_numpy() - pad_before
-                trial_offsets = trial_group[1][offset_column].to_numpy() + pad_after
+                trial_onsets = _to_num(trial_group[1][onset_column]) - pad_before
+                trial_offsets = _to_num(trial_group[1][offset_column]) + pad_after
                 if _has_overlap(trial_onsets, trial_offsets):
                     warnings.warn(
                         f'Overlapping events detected for trial {trial_group[0]}',
@@ -261,11 +269,22 @@ def events2segmentation(
             else:
                 warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
 
+    # Create polars-compatible padding values for Duration columns.
+    onset_dtype = relevant_events[onset_column].dtype
+    pad_before_dur: float | timedelta
+    pad_after_dur: float | timedelta
+    if isinstance(onset_dtype, pl.Duration):
+        pad_before_dur = timedelta(milliseconds=pad_before)
+        pad_after_dur = timedelta(milliseconds=pad_after)
+    else:
+        pad_before_dur = pad_before
+        pad_after_dur = pad_after
+
     is_event = pl.repeat(False, pl.len())
     for event in relevant_events.to_dicts():
         is_in_time_range = (
-            pl.col(time_column).ge(event[onset_column] - pad_before)
-            & pl.col(time_column).le(event[offset_column] + pad_after)
+            pl.col(time_column).ge(event[onset_column] - pad_before_dur)
+            & pl.col(time_column).le(event[offset_column] + pad_after_dur)
         )
 
         # Select events matching time and trial criteria
@@ -395,18 +414,30 @@ def events2timeratio(
         # At this point, samples is non-empty and has more than one row (single-sample above),
         # so `diff().drop_nulls()` will yield at least one element and `mode()` will be non-empty.
         time_diffs = samples[time_column].diff().drop_nulls()
-        dt_ms = float(time_diffs.mode().item())
+        dt_ms = time_diffs.mode().item()
+        if isinstance(dt_ms, timedelta):
+            dt_ms = dt_ms.total_seconds() * 1000
+        else:
+            dt_ms = float(dt_ms)
+
+    # Use Duration-compatible expression if columns are Duration type.
+    time_dtype = samples[time_column].dtype
+    dt_expr: float | pl.Expr
+    if isinstance(time_dtype, pl.Duration):
+        dt_expr = pl.duration(milliseconds=dt_ms)
+    else:
+        dt_expr = dt_ms
 
     # Event ratio considering trial columns
     if trial_columns:
         event_durations = (
             relevant_events.group_by(trial_columns, maintain_order=True)
-            .agg((pl.col(offset_column) - pl.col(onset_column) + dt_ms).alias('duration'))
+            .agg((pl.col(offset_column) - pl.col(onset_column) + dt_expr).alias('duration'))
             .with_columns(pl.col('duration').list.sum())
         )
 
         sample_time_ranges = samples.group_by(trial_columns, maintain_order=True).agg(
-            (pl.col(time_column).max() - pl.col(time_column).min() + dt_ms).alias('time_range'),
+            (pl.col(time_column).max() - pl.col(time_column).min() + dt_expr).alias('time_range'),
         )
 
         trial_ratios = event_durations.join(
@@ -446,11 +477,13 @@ def events2timeratio(
         )
 
     total_duration = (
-        relevant_events.select(pl.col(offset_column) - pl.col(onset_column) + dt_ms).sum()
+        relevant_events.select(
+            pl.col(offset_column) - pl.col(onset_column) + dt_expr,
+        ).sum()
     ).item()
 
     time_range = samples.select(
-        pl.col(time_column).max() - pl.col(time_column).min() + dt_ms,
+        pl.col(time_column).max() - pl.col(time_column).min() + dt_expr,
     ).item()
 
     return pl.lit(total_duration / time_range).alias(f'event_ratio_{name}')

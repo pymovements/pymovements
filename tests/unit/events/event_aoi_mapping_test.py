@@ -21,6 +21,7 @@
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.fixtures.duration_fixtures import to_duration
 
 import pymovements as pm
 
@@ -704,7 +705,7 @@ def test_event_to_aoi_mapping_char_width_height(aoi_column, dataset, make_exampl
     )
 
     dataset.events[0].map_to_aois(aoi_df)
-    assert_frame_equal(dataset.events[0].frame, EXPECTED_DF[aoi_column])
+    assert_frame_equal(dataset.events[0].frame, to_duration(EXPECTED_DF[aoi_column]))
 
 
 @pytest.mark.network
@@ -729,7 +730,7 @@ def test_event_to_aoi_mapping_char_end(aoi_column, dataset, make_example_file):
     )
 
     dataset.events[0].map_to_aois(aoi_df)
-    assert_frame_equal(dataset.events[0].frame, EXPECTED_DF[aoi_column])
+    assert_frame_equal(dataset.events[0].frame, to_duration(EXPECTED_DF[aoi_column]))
 
 
 def test_map_to_aois_raises_value_error(make_example_file):

@@ -66,6 +66,10 @@ def test_from_asc_has_expected_samples(
     filepath = make_text_file('test_eyelink.asc', header=header, body=body)
     gaze = from_asc(filepath, **kwargs)
 
+    if 'time' in expected_samples.columns:
+        expected_samples = expected_samples.with_columns(
+            pl.col('time').cast(pl.Duration('ms')),
+        )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
 
@@ -93,7 +97,7 @@ def test_from_asc_has_expected_samples(
                     ],
                 },
                 schema={
-                    'time': pl.Int64,
+                    'time': pl.Float64,
                     'pupil': pl.Float64,
                     'pixel': pl.List(pl.Float64),
                 },
@@ -129,7 +133,7 @@ def test_from_asc_has_expected_samples(
                     'task': [None] + 2 * ['reading'] + 12 * ['judo'] + [None],
                 },
                 schema={
-                    'time': pl.Int64,
+                    'time': pl.Float64,
                     'pupil': pl.Float64,
                     'task': pl.Utf8,
                     'screen_id': pl.Int64,
@@ -177,6 +181,10 @@ def test_from_asc_example_file_has_expected_samples(
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
+    if 'time' in expected_samples.columns:
+        expected_samples = expected_samples.with_columns(
+            pl.col('time').cast(pl.Duration('ms')),
+        )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
 
@@ -188,7 +196,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -200,7 +208,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
             (16, 4),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.String,
@@ -216,7 +224,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 4),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.Float64,
@@ -232,7 +240,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 7),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pupil': pl.Float64,
                 'task': pl.Utf8,
                 'screen_id': pl.Int64,
@@ -263,7 +271,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -278,7 +286,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -289,7 +297,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (368, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'pupil': pl.List(pl.Float64),
             },
@@ -305,7 +313,11 @@ def test_from_asc_example_file_has_shape_and_schema(
     gaze = from_asc(filepath, **kwargs)
 
     assert gaze.samples.shape == shape
-    assert dict(gaze.samples.schema) == schema
+    actual_schema = dict(gaze.samples.schema)
+    if 'time' in actual_schema and isinstance(actual_schema['time'], pl.Duration):
+        schema = dict(schema)
+        schema['time'] = pl.Duration('ms')
+    assert actual_schema == schema
 
 
 @pytest.mark.parametrize(
@@ -740,9 +752,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 },
                 schema={
                     'name': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_without_events',
@@ -765,9 +777,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_with_events',
@@ -790,9 +802,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_2khz_with_events',
@@ -824,9 +836,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_bino_with_events',
@@ -983,9 +995,9 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
         schema={
             'name': pl.Utf8,
             'eye': pl.Utf8,
-            'onset': pl.Int64,
-            'offset': pl.Int64,
-            'duration': pl.Int64,
+            'onset': pl.Duration('ms'),
+            'offset': pl.Duration('ms'),
+            'duration': pl.Duration('ms'),
             'trial_id': pl.Null,
         },
     )

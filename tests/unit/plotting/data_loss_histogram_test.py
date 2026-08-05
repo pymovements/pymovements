@@ -35,7 +35,7 @@ class TestDataLossHistogram:
     def sample_gaze_no_loss(self):
         """Create sample gaze data with no data loss."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 3.0, 4.0],
+            'time': [0, 1, 2, 3, 4],
             'x': [1.0, 1.0, 1.0, 1.0, 1.0],
             'y': [1.0, 1.0, 1.0, 1.0, 1.0],
         })
@@ -45,7 +45,7 @@ class TestDataLossHistogram:
     def sample_gaze_with_loss(self):
         """Create sample gaze data with consecutive data loss."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            'time': [0, 1, 2, 3, 4, 5, 6],
             'x': [1.0, None, None, 1.0, 1.0, None, 1.0],
             'y': [1.0, None, None, 1.0, 1.0, None, 1.0],
         })
@@ -55,7 +55,7 @@ class TestDataLossHistogram:
     def sample_gaze_with_time_gaps(self):
         """Create sample gaze data with time gaps."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 5.0, 6.0],
+            'time': [0, 1, 2, 5, 6],
             'x': [1.0, 1.0, 1.0, 1.0, 1.0],
             'y': [1.0, 1.0, 1.0, 1.0, 1.0],
         })
@@ -65,7 +65,7 @@ class TestDataLossHistogram:
     def sample_gaze_ends_with_loss(self):
         """Create sample gaze data ending with data loss."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0],
+            'time': [0, 1, 2],
             'x': [1.0, 1.0, None],
             'y': [1.0, 1.0, None],
         })

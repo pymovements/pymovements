@@ -22,6 +22,7 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.fixtures.duration_fixtures import to_duration
 
 import pymovements as pm
 
@@ -878,7 +879,13 @@ def test_gaze_transform_expected_frame(
     # the deg2pix test cases result in a column order different to the default ordering
     check_column_order = not transform_method == 'deg2pix'
 
-    assert_frame_equal(gaze.samples, expected.samples, check_column_order=check_column_order)
+    assert_frame_equal(
+        gaze.samples,
+        to_duration(
+            expected.samples,
+        ),
+        check_column_order=check_column_order,
+    )
 
 
 @pytest.mark.parametrize(
@@ -940,7 +947,7 @@ def test_gaze_transform_expected_samples_warning(
         gaze = pm.Gaze(**gaze_init_kwargs)
         gaze.transform(transform_method, **transform_kwargs)
 
-        assert_frame_equal(gaze.samples, expected_result.samples)
+        assert_frame_equal(gaze.samples, to_duration(expected_result.samples))
 
 
 @pytest.mark.parametrize(
@@ -1665,7 +1672,7 @@ def test_gaze_resample_expected(
     gaze = pm.Gaze(**gaze_init_kwargs)
     gaze.resample(**kwargs)
 
-    assert_frame_equal(gaze.samples, expected_samples)
+    assert_frame_equal(gaze.samples, to_duration(expected_samples))
 
 
 def test_gaze_resample_changes_experiemnt_sampling_rate(experiment):

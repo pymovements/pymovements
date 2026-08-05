@@ -773,7 +773,16 @@ def save_events(
         if extension == 'feather':
             events_instance.frame.write_ipc(events_filepath)
         elif extension == 'csv':
-            events_instance.frame.write_csv(events_filepath)
+            frame = events_instance.frame
+            duration_cols = [
+                c for c in frame.columns
+                if isinstance(frame.schema[c], pl.Duration)
+            ]
+            if duration_cols:
+                frame = frame.with_columns(
+                    [pl.col(c).dt.total_milliseconds() for c in duration_cols],
+                )
+            frame.write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -848,7 +857,16 @@ def save_preprocessed(
         if extension == 'feather':
             gaze.samples.write_ipc(preprocessed_filepath)
         elif extension == 'csv':
-            gaze.samples.write_csv(preprocessed_filepath)
+            samples = gaze.samples
+            duration_cols = [
+                c for c in samples.columns
+                if isinstance(samples.schema[c], pl.Duration)
+            ]
+            if duration_cols:
+                samples = samples.with_columns(
+                    [pl.col(c).dt.total_milliseconds() for c in duration_cols],
+                )
+            samples.write_csv(preprocessed_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(

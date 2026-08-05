@@ -82,16 +82,16 @@ class EventDataFrame(metaclass=DeprecatedMetaClass):
     ... )
     >>> event
     shape: (4, 4)
-    ┌──────────┬─────────┬─────────┬──────────┐
-    │ name     ┆ onset   ┆ offset  ┆ duration │
-    │ ---      ┆ ---     ┆ ---     ┆ ---      │
-    │ str      ┆ i64     ┆ i64     ┆ i64      │
-    ╞══════════╪═════════╪═════════╪══════════╡
-    │ fixation ┆ 1988147 ┆ 1988322 ┆ 175      │
-    │ fixation ┆ 1988351 ┆ 1988546 ┆ 195      │
-    │ fixation ┆ 1988592 ┆ 1988736 ┆ 144      │
-    │ fixation ┆ 1988788 ┆ 1989013 ┆ 225      │
-    └──────────┴─────────┴─────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 33m 8s 147ms ┆ 33m 8s 322ms ┆ 175ms        │
+    │ fixation ┆ 33m 8s 351ms ┆ 33m 8s 546ms ┆ 195ms        │
+    │ fixation ┆ 33m 8s 592ms ┆ 33m 8s 736ms ┆ 144ms        │
+    │ fixation ┆ 33m 8s 788ms ┆ 33m 9s 13ms  ┆ 225ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
     """
 
     frame: pl.DataFrame

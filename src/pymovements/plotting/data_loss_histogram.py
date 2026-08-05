@@ -25,6 +25,7 @@ from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 
 from pymovements.gaze.gaze import Gaze
 from pymovements.measure.samples.measures import _is_invalid
@@ -134,6 +135,8 @@ def data_loss_histogram(
         time_gap_mask = np.zeros(len(samples), dtype=bool)
     else:
         times = samples[time_column].to_numpy()
+        if isinstance(samples.schema[time_column], pl.Duration):
+            times = (times / np.timedelta64(1, 'ms')).astype(np.float64)
         time_diffs = np.diff(times)
 
         # Expected inter-sample interval
