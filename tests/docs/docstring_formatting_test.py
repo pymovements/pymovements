@@ -17,12 +17,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-from pathlib import Path
+"""Test docstring formatting."""
+import pytest
 
 
-def test_deprecated_directives_are_separated_and_indented() -> None:
+def test_deprecated_directives_are_separated_and_indented(request: pytest.FixtureRequest) -> None:
     """Require valid reStructuredText formatting for deprecation directives."""
-    source_directory = Path(__file__).parents[2] / 'src' / 'pymovements'
+    source_directory = request.config.rootpath / 'src' / 'pymovements'
     violations = []
 
     for source_file in sorted(source_directory.rglob('*.py')):
