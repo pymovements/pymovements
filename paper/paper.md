@@ -157,7 +157,7 @@ harmonizing published datasets. `pymovements` was built to fill that gap
 rather than to duplicate any single tool: where established algorithms
 exist, it reimplements them behind one consistent interface
 [@SalvucciGoldberg2000; @EngbertKliegl2003; @Carr2022] rather than
-replacing them, and it adds the dataset-harmonization layer that has no
+inventing new ones, and it adds the dataset-harmonization layer that has no
 counterpart among them.
 
 # Software design
@@ -195,7 +195,8 @@ keep its outputs findable, accessible, interoperable, and reusable
 conventions of the Brain Imaging Data Structure (BIDS) [@Gorgolewski2016],
 and data-quality reports are written as BIDS derivatives.
 
-The package follows established open-development practices: an automated
+The package follows established open-development practices: it is released
+under the permissive MIT license; an automated
 test suite with 100% code coverage runs under continuous integration;
 every change requires a line-by-line review by a maintainer before merging;
 a contributing guide documents the workflow for new contributors; and the
@@ -217,8 +218,8 @@ projects; four multi-day contributor meetings organized through the COST
 Action brought together contributors from across Europe to jointly design
 and implement core features of the package [@Krakowczyk2026]. `pymovements`
 has more than 50 contributors from multiple laboratories and is distributed
-via PyPI and conda-forge, with more than 90,000 downloads from PyPI
-[@pepyPymovements] and more than 58,000 from conda-forge
+via PyPI and conda-forge, with more than 92,000 downloads from PyPI
+[@pepyPymovements] and more than 59,000 from conda-forge
 [@condaforgePymovements] as of August 2026.
 
 Beyond the author team, `pymovements` has been taken up in research across
