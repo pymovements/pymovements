@@ -38,11 +38,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan, _calculate_data_loss_ratio
+    check_nan
 
 
 # Define separate regex patterns for monocular and binocular cases
@@ -335,16 +334,6 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
     return None
 
 
-def _config_inconsistent(config_list: list[dict[str, Any]], key: str = 'sampling_rate') -> bool:
-    """Check if ``config_list`` has inconsistent values for a key."""
-    vals = []
-    for d in config_list:
-        val = d.get(key)
-        if val is not None:
-            vals.append(val)
-    return len(set(vals)) > 1
-
-
 def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[str, Any]:
     """Check line against compiled patterns and return matched context."""
     context = {}
@@ -553,9 +542,6 @@ def parse_eyelink(
         **{additional_column: [] for additional_column in additional_columns},
     }
 
-    blink_intervals: list[tuple[float, float]] = []
-    blinking = False
-
     with open(filepath, encoding=encoding) as asc_file:
         lines = asc_file.readlines()
 
@@ -596,8 +582,6 @@ def parse_eyelink(
     samples_config: list[dict[str, Any]] = []
 
     total_recording_duration = 0.0
-    num_expected_samples = 0
-    num_valid_samples = 0  # excluding blinks
     # First pass: collect SAMPLES config for binocular detection only
     is_binocular = False
     for line in lines:
@@ -712,20 +696,15 @@ def parse_eyelink(
             stop_recording_timestamp = match.groupdict()['timestamp']
 
             try:
-                # Safely obtain the sampling rate from the last recording_config entry.
                 block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
-                current_sampling_rate = recording_config[-1].get('sampling_rate')
             except UnboundLocalError:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{filepath}' may be corrupted. Data-loss metrics may be incorrect.",
+                    f"File '{filepath}' may be corrupted. "
+                    'Total recording duration may be incorrect.',
                 )
             else:  # this will only be executed if no exception was raised in the try block.
                 total_recording_duration += block_duration
-                if current_sampling_rate:
-                    num_expected_samples += round(
-                        block_duration * float(current_sampling_rate) / 1000,
-                    )
 
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
@@ -765,13 +744,6 @@ def parse_eyelink(
                 samples['y_right_pix'].append(y_right_pix)
                 samples['pupil_right'].append(pupil_right)
 
-                if not blinking and all(
-                    not np.isnan(val) for val in (
-                        x_left_pix, y_left_pix, pupil_left,
-                        x_right_pix, y_right_pix, pupil_right,
-                    )
-                ):
-                    num_valid_samples += 1
             else:
                 x_pix_s = eye_tracking_sample_match.group('x_pix')
                 y_pix_s = eye_tracking_sample_match.group('y_pix')
@@ -784,9 +756,6 @@ def parse_eyelink(
                 samples['x_pix'].append(x_pix)
                 samples['y_pix'].append(y_pix)
                 samples['pupil'].append(pupil)
-
-                if not blinking and all(not np.isnan(val) for val in (x_pix, y_pix, pupil)):
-                    num_valid_samples += 1
 
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
@@ -829,9 +798,6 @@ def parse_eyelink(
     for event in matched_events:
         for key, value in event.items():
             events[key].append(value)
-
-        if event['name'] == 'blink_eyelink':
-            blink_intervals.append((event['onset'], event['offset']))
 
     # the actual tracked eye is in the samples config, not in the recording config
     # the recording config contains the eyes that were recorded
@@ -877,67 +843,6 @@ def parse_eyelink(
     pre_processed_metadata['validations'] = validations
     pre_processed_metadata['recording_config'] = recording_config
     pre_processed_metadata['total_recording_duration_ms'] = total_recording_duration
-
-    # compute num_blink_samples from collected blink intervals to avoid double-counting overlaps
-    num_blink_samples = 0
-    if blink_intervals and recording_config:
-        try:
-            sampling_rate = float(recording_config[-1]['sampling_rate'])
-        except (KeyError, TypeError, ValueError):
-            sampling_rate = None
-
-        if sampling_rate:
-            # merge overlapping intervals
-            intervals = sorted(blink_intervals, key=lambda x: x[0])
-            merged: list[tuple[float, float]] = []
-            current_start, current_end = intervals[0]
-            for s, e in intervals[1:]:
-                if s <= current_end:
-                    current_end = max(current_end, e)
-                else:
-                    merged.append((current_start, current_end))
-                    current_start, current_end = s, e
-            merged.append((current_start, current_end))
-
-            sample_length = 1 / sampling_rate * 1000
-            for s, e in merged:
-                num_blink_samples += round((e - s) / sample_length) + 1
-
-    # If no sampling rate could be determined from either SAMPLES or RECCFG,
-    # only warn the user when there is evidence of samples or recording
-    # configuration present (or blink intervals) — otherwise keep silent to
-    # avoid noisy warnings for minimal metadata-only files.
-    # If we were able to compute an expected number of samples from STOP_RECORDING
-    # blocks (num_expected_samples > 0), trust that calculation and compute the
-    # data-loss metrics even if the SAMPLES/RECCFG metadata keys are missing or
-    # inconsistent. Otherwise, fall back to the previous behavior: warn (when
-    # appropriate) and set metrics to None.
-    if num_expected_samples > 0:
-        (
-            pre_processed_metadata['data_loss_ratio'],
-            pre_processed_metadata['data_loss_ratio_blinks'],
-        ) = _calculate_data_loss_ratio(num_expected_samples, num_valid_samples, num_blink_samples)
-    else:
-        # Determine if the sampling rate keys were present but inconsistent
-        inconsistent_reccfg = _config_inconsistent(recording_config)
-        inconsistent_samples = _config_inconsistent(samples_config)
-
-        # Only warn if we truly don't have a sampling-rate value from either
-        # the SAMPLES or RECCFG messages. If a sampling rate was present
-        # (even when num_expected_samples == 0), there's no need to emit
-        # the generic warning — the presence of inconsistent config
-        # warnings is already handled above.
-        if not (sampling_rate_samples_config or sampling_rate_reccfg):
-            if (samples_config or recording_config or blink_intervals) and not (
-                inconsistent_reccfg or inconsistent_samples
-            ):
-                warnings.warn(
-                    'Could not determine sampling rate from SAMPLES or RECCFG; '
-                    'data-loss metrics will be unavailable.',
-                )
-
-        pre_processed_metadata['data_loss_ratio'] = None
-        pre_processed_metadata['data_loss_ratio_blinks'] = None
 
     gaze_schema_overrides = {
         'time': pl.Float64,
