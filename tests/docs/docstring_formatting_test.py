@@ -33,10 +33,11 @@ def test_deprecated_directives_are_separated_and_indented(request: pytest.Fixtur
                 continue
 
             directive_indent = len(line) - len(line.lstrip())
-            has_blank_line = line_number > 0 and not lines[line_number - 1].strip()
+            previous_line = lines[line_number - 1].strip() if line_number > 0 else ''
+            is_separated = not previous_line or set(previous_line) == {'-'}
             next_line = lines[line_number + 1] if line_number + 1 < len(lines) else ''
             content_indent = len(next_line) - len(next_line.lstrip())
-            if not has_blank_line or content_indent <= directive_indent:
+            if not is_separated or content_indent <= directive_indent:
                 violations.append(
                     f'{source_file.relative_to(source_directory)}:{line_number + 1}',
                 )
