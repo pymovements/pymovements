@@ -146,6 +146,33 @@ def scanpathplot(
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
+    if add_stimulus:
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
     if events is not None:
         warn(
             DeprecationWarning(

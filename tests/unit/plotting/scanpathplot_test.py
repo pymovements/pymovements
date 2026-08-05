@@ -31,6 +31,7 @@ from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.gaze import from_numpy
 from pymovements.plotting import scanpathplot
+from pymovements.stimulus.image import from_file
 
 
 @pytest.fixture(name='make_events', scope='function')
@@ -225,8 +226,10 @@ def gaze_fixture(request, make_gaze):
             {
                 'add_stimulus': True,
                 'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+                'stimulus_origin': 'lower',  # This will trigger the warning
             },
-            id='set_stimulus',
+            id='set_stimulus_with_origin',
+            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
         ),
         pytest.param(
             {
@@ -384,3 +387,61 @@ def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
 
     # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
     assert ax.get_aspect() != 'equal'
+
+
+def test_scanpathplot_with_image_stimulus(gaze, tmp_path):
+    """Test that scanpathplot correctly plots with an ImageStimulus."""
+    image_path = './tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+
+    image_stimulus.origin = 'upper'
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+
+    image_stimulus.plot(0, ax=ax)
+
+    with pytest.warns(
+        UserWarning, match='figsize is ignored '
+        'because an external Axes was provided.',
+    ):
+        returned_fig, returned_ax = scanpathplot(
+            gaze=gaze,
+            ax=ax,
+            savepath=str(tmp_path / 'scanpathplot_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+
+    assert len(ax.images) >= 1  # At least the stimulus image
+
+    assert (tmp_path / 'scanpathplot_with_stimulus.svg').is_file()
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize('gaze', ['1_fixation'], indirect=True)
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_scanpathplot_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        scanpathplot(gaze=gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"scanpathplot argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )
