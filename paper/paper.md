@@ -103,7 +103,7 @@ reproduce or compare analyses across studies. `pymovements`
 was introduced to give research groups a shared, tested, and openly
 licensed interface for these steps, so that processing is documented,
 versioned, and citable rather than re-implemented per project
-[@pymovementsPaper]. Widely used event-detection algorithms, including the
+[@Krakowczyk2023]. Widely used event-detection algorithms, including the
 velocity-threshold identification (I-VT) and dispersion-threshold
 identification (I-DT) methods [@SalvucciGoldberg2000] and the microsaccade
 detection algorithm of @EngbertKliegl2003 as implemented in the
@@ -207,8 +207,8 @@ not in any single new algorithm.
 # Research impact statement
 
 `pymovements` has been in active development since 2022 and has been the
-subject of four publications: three peer-reviewed papers at the ACM
-Symposium on Eye Tracking Research and Applications [@pymovementsPaper;
+subject of four peer-reviewed publications: three papers at the ACM
+Symposium on Eye Tracking Research and Applications [@Krakowczyk2023;
 @Jakobi2024; @Krakowczyk2025] and one at the MultiplEYE Final Conference
 [@Krakowczyk2026]. It serves as the main backend of the data-preprocessing
 pipeline of the MultiplEYE COST Action (CA21131), a pan-European
@@ -222,17 +222,13 @@ via PyPI and conda-forge, with more than 90,000 downloads from PyPI
 [@condaforgePymovements] as of August 2026.
 
 Beyond the author team, `pymovements` has been taken up in research across
-several domains, including gaze data-quality research [@Elfares2025;
-@Roehrl2026], reading and language-model research [@LopezCardona2025;
-@LuGe2026], clinical vision research using virtual-reality simulations
-[@Grootjen2025; @Grootjen2025b; @Grootjen2025c], human-computer interaction
-[@Chiossi2024; @Chiossi2024b], automotive and applied ergonomics
-[@Lopez2025], and virtual-reality interaction [@Li2024; @Li2025;
-@Wang2026]. It is also cited as a reference point by newer eye-tracking
-analysis tools [@PyNeon2026; @OpenGazeLab2026; @Balaskas2026] and featured
-in a recent review of eye-tracking software [@Niehorster2025]. Its dataset
-catalog has begun to receive contributions from researchers outside
-the core team [@MCFW-Gaze-Paper], supported by a dedicated dataset
+several domains, including clinical vision research [@Grootjen2025],
+human-computer interaction [@Chiossi2024], and virtual-reality interaction
+[@Li2024; @Wang2026]. It is also cited as a reference point by newer
+eye-tracking analysis tools [@PyNeon2026; @OpenGazeLab2026; @Balaskas2026]
+and featured in a recent review of eye-tracking software [@Niehorster2025].
+Its dataset catalog has begun to receive contributions from researchers
+outside the core team [@MCFW-Gaze-Paper], supported by a dedicated dataset
 contribution guide that lowers the barrier to adding new datasets.
 
 # AI usage disclosure
