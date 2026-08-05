@@ -2195,13 +2195,12 @@ class Gaze:
         True
         """
         return run_report(
-            gaze=self,
+            [(self, source_path)],
             checks=checks,
             measures=measures,
-            levels=levels,
+            levels=levels if levels is not None else ['dataset', 'trial'],
             raise_on_error=raise_on_error,
             output_path=output_path,
-            source_path=source_path,
             max_gap_factor=max_gap_factor,
             max_deviation=max_deviation,
             min_fraction=min_fraction,

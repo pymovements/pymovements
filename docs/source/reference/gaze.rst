@@ -16,6 +16,8 @@ setup.
 
     Gaze
     GazeDataFrame
+    DataQualityReport
+    ValidationError
 
 .. currentmodule:: pymovements.gaze
 
