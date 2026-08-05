@@ -17,13 +17,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Fixtures for datasets."""
+"""Provide fixtures to clean up test artifacts."""
+from __future__ import annotations
 
-pytest_plugins = [
-    'tests.fixtures.cleanup_fixtures',
-    'tests.fixtures.deprecation_fixtures',
-    'tests.fixtures.file_fixtures',
-    'tests.fixtures.gaze_fixtures',
-    'tests.fixtures.plotting_fixtures',
-    'tests.fixtures.text_stimulus_fixtures',
-]
+import shutil
+from collections.abc import Generator
+from pathlib import Path
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def fixture_cleanup_test_artifacts() -> Generator[None]:
+    """Remove test artifacts that are created in the repository root.
+
+    Tests must not depend on state left behind by previous tests or previous test
+    runs. This fixture removes artifacts created in the current working directory
+    (e.g. the ``toy_dataset`` directory downloaded by doctests) before and after
+    every test.
+    """
+    artifact_paths = [Path('toy_dataset')]
+
+    for artifact_path in artifact_paths:
+        if artifact_path.exists():
+            shutil.rmtree(artifact_path)
+
+    yield
+
+    for artifact_path in artifact_paths:
+        if artifact_path.exists():
+            shutil.rmtree(artifact_path)
