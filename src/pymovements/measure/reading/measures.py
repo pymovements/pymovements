@@ -20,6 +20,8 @@
 """Reading measure computation functions."""
 from __future__ import annotations
 
+from datetime import timedelta
+
 import polars as pl
 
 from pymovements._utils._time import durations_to_ms
@@ -356,6 +358,12 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
     def per_group(df: pl.DataFrame) -> pl.DataFrame:
         rows = []
 
+        # Zero value must match the duration column dtype, otherwise mixed rows
+        # coerce timedeltas to their integer microsecond count or fail to concat.
+        zero: int | timedelta = (
+            timedelta(0) if isinstance(df.schema['duration'], pl.Duration) else 0
+        )
+
         for w in df['word_idx'].unique().to_list():
             first = (
                 df.filter((pl.col('word_idx') == w) & (pl.col('is_first_pass')))
@@ -364,7 +372,7 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
             )
 
             if first.height == 0:
-                rows.append((w, 0, 0, 0))
+                rows.append((w, zero, zero, zero))
                 continue
 
             start_onset = first['onset'][0]

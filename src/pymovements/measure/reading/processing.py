@@ -58,7 +58,7 @@ def compute_reading_measures(
         DataFrame with computed reading measures.
     """
     # Convert Duration columns to numeric milliseconds for dict iteration.
-    fixations_df = durations_to_ms(fixations_df)
+    fixations = durations_to_ms(fixations)
 
     # Append an extra dummy fixation to have the next fixation for the actual last fixation.
     dummy_fixation_dict: dict[str, list[int] | list[str]] = {}

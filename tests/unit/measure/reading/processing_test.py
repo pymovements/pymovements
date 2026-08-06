@@ -250,3 +250,29 @@ def test_compute_reading_measures(fixations, aois, expected_results):
         assert not row.is_empty()
         for col, val in expected.items():
             assert row[col][0] == val
+
+
+def test_compute_reading_measures_with_duration_columns():
+    # Duration-typed duration columns are converted to numeric milliseconds internally.
+    fixations = pl.DataFrame(
+        {
+            'word_idx': [1, 2, 2, 3],
+            'duration': pl.Series(
+                [100_000, 110_000, 120_000, 130_000], dtype=pl.Duration('us'),
+            ),
+        },
+    )
+    aois = pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']})
+
+    result = compute_reading_measures(fixations, aois)
+
+    expected_results = {
+        0: {'FFD': 100, 'TFT': 100, 'FPRT': 100, 'TFC': 1},
+        1: {'FFD': 110, 'TFT': 230, 'FPRT': 230, 'TFC': 2},
+        2: {'FFD': 130, 'TFT': 130, 'FPRT': 130, 'TFC': 1},
+    }
+    for word_idx, expected in expected_results.items():
+        row = result.filter(pl.col('word_index') == word_idx)
+        assert not row.is_empty()
+        for col, val in expected.items():
+            assert row[col][0] == val

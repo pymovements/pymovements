@@ -243,3 +243,22 @@ def test_regression_path_duration_no_first_pass():
     })
     result = regression_path_duration(df)
     assert result['RPD_inc'][0] == 0
+
+
+def test_regression_path_duration_no_first_pass_word_with_durations():
+    # A word without a first-pass fixation gets zero-valued measures. With Duration
+    # columns the zeros must be timedeltas, otherwise the row-wise frame silently
+    # coerces the other words' timedeltas to their raw microsecond count.
+    df = pl.DataFrame({
+        'trial': ['1', '1'],
+        'page': ['1', '1'],
+        'word_idx': [0, 1],
+        'onset': pl.Series([0, 100_000], dtype=pl.Duration('us')),
+        'duration': pl.Series([100_000, 100_000], dtype=pl.Duration('us')),
+        'is_first_pass': [True, False],
+    })
+    result = regression_path_duration(df).sort('word_idx')
+    assert result.schema['RPD_inc'] == pl.Duration('us')
+    assert result['RPD_inc'][0] == datetime.timedelta(milliseconds=100)
+    assert result['RPD_inc'][1] == datetime.timedelta(0)
+    assert result['RBRT'][1] == datetime.timedelta(0)
