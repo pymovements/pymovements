@@ -52,8 +52,8 @@ from pymovements.events import microsaccades
 from pymovements.exceptions import UnknownMeasure
 from pymovements.stimulus.text import TextStimulus
 from pymovements.warnings import ExperimentalWarning
-# pylint: disable=too-many-lines
 
+# pylint: disable=too-many-lines
 
 EXPECTED_AOI_MULTIPLEYE_STIMULI_TOY_X_1_TEXT_1_1 = pl.DataFrame(
     {

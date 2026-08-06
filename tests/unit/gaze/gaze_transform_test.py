@@ -1675,6 +1675,26 @@ def test_gaze_resample_expected(
     assert_frame_equal(gaze.samples, to_duration(expected_samples))
 
 
+def test_gaze_resample_replaces_nan_in_list_columns_with_null():
+    # Regression: NaN inside multi-component (list) columns such as pixel must be replaced with
+    # null during resampling. Filtering the replacement by is_numeric() excluded list columns.
+    gaze = pm.Gaze(
+        samples=pl.DataFrame(
+            {
+                'time': [0, 1, 2],
+                'x': [1.0, float('nan'), 3.0],
+                'y': [1.0, float('nan'), 3.0],
+            },
+        ),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    gaze.resample(resampling_rate=1000, fill_null_strategy='interpolate_linear', columns=['pixel'])
+
+    assert gaze.samples['pixel'].to_list() == [[1.0, 1.0], [None, None], [3.0, 3.0]]
+
+
 def test_gaze_resample_changes_experiemnt_sampling_rate(experiment):
     gaze = pm.Gaze(
         samples=pl.from_dict(

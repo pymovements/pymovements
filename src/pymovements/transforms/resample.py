@@ -199,10 +199,11 @@ def resample(
                 'forward, backward, interpolate_linear, interpolate_nearest',
             )
 
-        # Replace the pre-existing NaN values with Null
+        # Replace the pre-existing NaN values with Null. Use numeric_columns so nested numeric
+        # columns (e.g. pixel/position lists) are included while String and Duration are excluded.
         samples = _apply_on_columns(
             samples,
-            columns=[column for column in columns if samples[column].dtype.is_numeric()],
+            columns=numeric_columns,
             transformation=lambda series: series.fill_nan(None),
             n_components=n_components,
         )
