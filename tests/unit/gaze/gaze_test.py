@@ -1764,3 +1764,29 @@ def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed)
         warning_message=info.value.args[0],
         scheduled_version='0.28.0',
     )
+
+
+def test_gaze_clear_events():
+    gaze = Gaze(
+        samples=pl.DataFrame({'x': [0, 1], 'y': [2, 3], 'trial': ['a', 'b'], 'page': [1, 2]}),
+        events=Events(
+            pl.DataFrame({
+                'trial': ['a'], 'page': [1], 'name': [
+                    'saccade',
+                ], 'onset': [0], 'offset': [1],
+            }),
+        ),
+        pixel_columns=['x', 'y'],
+        trial_columns=['trial', 'page'],
+    )
+    gaze.clear_events()
+    expected_schema = {
+        'trial': pl.Utf8,
+        'page': pl.Int64,
+        'name': pl.Utf8,
+        'onset': pl.Int64,
+        'offset': pl.Int64,
+        'duration': pl.Int64,
+    }
+    assert gaze.events.frame.schema == expected_schema
+    assert gaze.events.frame.is_empty()

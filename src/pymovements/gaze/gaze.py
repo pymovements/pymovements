@@ -323,17 +323,7 @@ class Gaze:
         )
 
         if events is None:
-            if self.trial_columns is None:
-                self.events = Events()
-            else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = Events(
-                    data=polars.DataFrame(
-                        schema={
-                            column: self.samples.schema[column] for column in self.trial_columns
-                        },
-                    ),
-                    trial_columns=self.trial_columns,
-                )
+            self.clear_events()
         else:
             self.events = events.clone()
 
@@ -1147,6 +1137,20 @@ class Gaze:
 
         self.samples = self.samples.drop(name)
 
+    def clear_events(self) -> None:
+        """Clear event DataFrame."""
+        if self.trial_columns is None:
+            self.events = Events()
+        else:  # Ensure that trial columns with correct dtype are present in event dataframe.
+            self.events = Events(
+                data=polars.DataFrame(
+                    schema={
+                        column: self.samples.schema[column] for column in self.trial_columns
+                    },
+                ),
+                trial_columns=self.trial_columns,
+            )
+
     def detect(
             self,
             method: Callable[..., Events] | str,
@@ -1172,17 +1176,7 @@ class Gaze:
             Additional keyword arguments to be passed to the event detection method.
         """
         if self.events is None or clear:
-            if self.trial_columns is None:
-                self.events = Events()
-            else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = Events(
-                    data=polars.DataFrame(
-                        schema={
-                            column: self.samples.schema[column] for column in self.trial_columns
-                        },
-                    ),
-                    trial_columns=self.trial_columns,
-                )
+            self.clear_events()
 
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
