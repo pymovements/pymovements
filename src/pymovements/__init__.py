@@ -34,6 +34,7 @@ from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
 from pymovements.dataset import Participants
+from pymovements.dataset import Phenotype
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
@@ -73,6 +74,7 @@ __all__ = [
     'datasets',
     'ValidationError',
     'Participants',
+    'Phenotype',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',

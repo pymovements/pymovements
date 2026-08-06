@@ -33,6 +33,11 @@ from typing import Literal
 import polars
 
 from pymovements._utils._html import repr_html
+from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
+from pymovements.dataset._bids_dataset import _polars_datatype_to_bids_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_structure
+from pymovements.dataset._bids_dataset import _verify_bids_handler
 
 
 @dataclass
@@ -79,6 +84,8 @@ class Participants:
     ):
         if data is None:
             data = polars.DataFrame(schema={'participant_id': polars.String})
+        if verify_bids is not False:
+            _validate_participant_id_structure(data)
 
         if metadata:
             # metadata may be changed and updated, work on copy
@@ -92,18 +99,7 @@ class Participants:
         self.data = data
         self.metadata = metadata
 
-        if verify_bids is not False:
-            level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
-            if isinstance(verify_bids, str):
-                level = verify_bids
-            warnings_list = self.verify_bids(level)
-            if warnings_list:
-                if verify_bids is True:
-                    raise ValueError(
-                        f"BIDS non-conformities found: {'; '.join(warnings_list)}",
-                    )
-                for warning_msg in warnings_list:
-                    warnings.warn(warning_msg, UserWarning, stacklevel=2)
+        _verify_bids_handler(verify_bids, self.verify_bids, stacklevel=2)
 
     def update(
             self,
@@ -290,18 +286,7 @@ class Participants:
             Use this encoding for loading the metadata json file.
             (default: ``utf-8``)
         """
-        if verify_bids is not False:
-            level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
-            if isinstance(verify_bids, str):
-                level = verify_bids
-            warnings_list = self.verify_bids(level)
-            if warnings_list:
-                if verify_bids is True:
-                    raise ValueError(
-                        f"BIDS non-conformities found: {'; '.join(warnings_list)}",
-                    )
-                for warning_msg in warnings_list:
-                    warnings.warn(warning_msg, UserWarning, stacklevel=2)
+        _verify_bids_handler(verify_bids, self.verify_bids)
 
         path = Path(path)
         if path.is_dir():
@@ -431,7 +416,7 @@ class Participants:
         warnings_list: list[str] = []
 
         if level in {'REQUIRED', 'RECOMMENDED'}:
-            warnings_list.extend(_validate_participant_id(self.data))
+            warnings_list.extend(_validate_participant_id_format(self.data))
             warnings_list.extend(_check_na_conformity(self.data))
         else:
             raise ValueError(
@@ -522,52 +507,6 @@ def _validate_column_names(data: polars.DataFrame) -> list[str]:
             validation_warnings.append(
                 f"Column name '{col}' should be written in snake_case.",
             )
-    return validation_warnings
-
-
-def _validate_participant_id(data: polars.DataFrame) -> list[str]:
-    """Validate participant_id column format per BIDS specification.
-
-    Parameters
-    ----------
-    data : polars.DataFrame
-        The participants DataFrame to validate.
-
-    Returns
-    -------
-    list[str]
-        List of warning messages for any non-conformities found.
-    """
-    validation_warnings: list[str] = []
-
-    if 'participant_id' not in data.columns:
-        return ['participant_id column is missing']
-
-    if data.columns[0] != 'participant_id':
-        validation_warnings.append('participant_id column must be the first column')
-
-    # Check dtype. BIDS wants strings.
-    if data['participant_id'].dtype != polars.String:
-        validation_warnings.append('participant_id column must have string (Utf8) data type')
-
-    # Check for null values
-    if data['participant_id'].null_count() > 0:
-        validation_warnings.append('participant_id column contains null values')
-
-    participant_ids = data['participant_id'].drop_nulls().to_list()
-
-    pattern = re.compile(r'^sub-[a-zA-Z0-9+]+$')
-    invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
-    if invalid_ids:
-        validation_warnings.append(
-            f"participant_id values must match 'sub-<label>' pattern. "
-            f"Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}",
-        )
-
-    unique_ids = set(participant_ids)
-    if len(unique_ids) != len(participant_ids):
-        validation_warnings.append('participant_id values must be unique')
-
     return validation_warnings
 
 
@@ -797,57 +736,3 @@ def _infer_metadata_column_format(
                 metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)
 
     return metadata
-
-
-def _cast_columns_to_metadata_format(
-        data: polars.DataFrame,
-        metadata: dict[str, Any],
-) -> polars.DataFrame:
-    """Cast columns in data according to column bids format specified in metadata."""
-    schema_overrides = {}
-    for column in data.columns:
-        bids_format = metadata.get(column, {}).get('Format', None)
-        if bids_format:
-            schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
-    data = data.cast(schema_overrides)
-    return data
-
-
-def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:
-    """Infer polars datatype from bids format descriptor."""
-    mapping = {
-        'string': polars.String,
-        'number': polars.Float64,
-        'integer': polars.Int64,
-        'bool': polars.Boolean,
-        'index': polars.UInt64,
-        'label': polars.String,
-    }
-
-    if bids_format in mapping:
-        return mapping[bids_format]
-
-    raise TypeError(
-        f'unknown bids format descriptor "{bids_format}". Known formats: {list(mapping.keys())}',
-    )
-
-
-def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
-    """Infer bids format descriptor from polars datatype."""
-    if dtype.is_unsigned_integer():
-        return 'index'
-    if dtype.is_integer():
-        return 'integer'
-    if dtype.is_numeric():
-        return 'number'
-    if dtype == polars.Boolean:
-        return 'bool'
-    if dtype == polars.String:
-        return 'string'
-    if dtype == polars.Null:
-        return 'string'
-
-    raise TypeError(
-        f'polars datatype {dtype} has no mapping to bids format descriptor. '
-        f'Supported polars datatypes are: Integer, Float, String',
-    )
