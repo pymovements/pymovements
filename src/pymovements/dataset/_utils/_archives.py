@@ -133,6 +133,14 @@ def extract_archive(
         archive_filepaths = get_filepaths(path=destination_path, extension=archive_extensions)
         archive_filepaths = [filepath for filepath in archive_filepaths if filepath != source_path]
 
+        # macOS stores resource forks in a __MACOSX directory as ._ prefixed metadata files.
+        # They mirror the names of the files they belong to, so a ._archive.zip is not an
+        # archive and must not be passed to an extractor.
+        archive_filepaths = [
+            filepath for filepath in archive_filepaths
+            if '__MACOSX' not in filepath.parts and not filepath.name.startswith('._')
+        ]
+
         # Extract all found archives.
         for archive_filepath in archive_filepaths:
             extract_destination = archive_filepath.parent / archive_filepath.stem

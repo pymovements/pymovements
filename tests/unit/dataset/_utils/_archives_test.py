@@ -20,6 +20,7 @@
 """Test pymovements utils archives."""
 import bz2
 import gzip
+import io
 import lzma
 import os
 import pathlib
@@ -586,3 +587,20 @@ def test_extract_archive_destination_path_not_None_no_remove_top_level_no_remove
     result_files = {str(file.relative_to(destination_path)) for file in destination_path.rglob('*')}
 
     assert result_files == set(expected_files)
+
+
+def test_extract_archive_skips_macosx_metadata_files(tmp_path):
+    inner_buffer = io.BytesIO()
+    with zipfile.ZipFile(inner_buffer, 'w') as inner_archive:
+        inner_archive.writestr('test.file', 'test')
+
+    archive_path = tmp_path / 'test.zip'
+    with zipfile.ZipFile(archive_path, 'w') as zip_open:
+        zip_open.writestr('inner.zip', inner_buffer.getvalue())
+        # macOS stores resource forks as ._ prefixed files inside a __MACOSX directory.
+        zip_open.writestr(os.path.join('__MACOSX', '._inner.zip'), b'\x00\x05\x16\x07')
+
+    destination_path = tmp_path / 'extracted'
+    extract_archive(source_path=archive_path, destination_path=destination_path, recursive=True)
+
+    assert (destination_path / 'inner' / 'test.file').is_file()
