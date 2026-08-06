@@ -25,6 +25,7 @@ import numpy as np
 import polars as pl
 import pytest
 
+from pymovements import Events
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
 from pymovements.plotting import tsplot
@@ -55,6 +56,17 @@ def gaze_fixture(request):
 
     arr = np.column_stack((x, y)).transpose()
 
+    events = Events(
+        pl.DataFrame
+        (
+            {
+                'name': ['fixation', 'saccade'],
+                'onset': [100, 200],
+                'offset': [150, 250],
+            },
+        ),
+    )
+
     experiment = Experiment(
         screen_width_px=1280,
         screen_height_px=1024,
@@ -70,6 +82,7 @@ def gaze_fixture(request):
         schema=['x_pix', 'y_pix'],
         experiment=experiment,
         pixel_columns=['x_pix', 'y_pix'],
+        events=events,
     )
 
     gaze.pix2deg()
@@ -183,3 +196,15 @@ def test_tsplot_external_ax_ignored_when_multi_channel(gaze):
         )
     assert ret_ax is not ax
     assert ret_fig is not fig
+
+
+def test_tsplot_events(gaze):
+    gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
+    fig, ax = tsplot(gaze=gaze, plot_events=True)
+
+    rectangles = [patch for patch in ax.patches if isinstance(patch, plt.Rectangle)]
+    assert len(rectangles) == len(gaze.events.frame)
+    assert rectangles[0].get_facecolor() != rectangles[1].get_facecolor()
+
+    legend = fig.legend()
+    assert len(legend.get_texts()) == len(gaze.events.frame)
