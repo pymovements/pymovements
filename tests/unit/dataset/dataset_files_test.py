@@ -32,6 +32,7 @@ from polars.testing import assert_frame_equal
 from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import DatasetDefinition
+from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
@@ -43,6 +44,9 @@ from pymovements.dataset.dataset_files import load_precomputed_reading_measure_f
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.dataset.dataset_files import save_events
+from pymovements.dataset.dataset_files import save_preprocessed
+from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
 
@@ -1474,3 +1478,43 @@ def test_load_stimulus_file_raises_unknown_stimulus_content_type():
     )
     with pytest.raises(ValueError, match=message):
         load_stimulus_file(file)
+
+
+@pytest.mark.parametrize(
+    'extension',
+    [
+        pytest.param('csv', id='csv'),
+        pytest.param('feather', id='feather'),
+    ],
+)
+def test_save_events_and_preprocessed_round_trip_preserves_duration_values(tmp_path, extension):
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    fileinfo = pl.DataFrame({'filepath': ['subject_1.csv']})
+
+    events = Events(name=['fixation'], onsets=[0.5], offsets=[2.25])
+    gaze = Gaze(
+        pl.DataFrame({'time': [0.0, 0.5, 1.0], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x', 'y'],
+    )
+
+    save_events([events], fileinfo, paths, verbose=0, extension=extension)
+    save_preprocessed([gaze], fileinfo, paths, verbose=0, extension=extension)
+
+    events_file = paths.events / f'subject_1.{extension}'
+    samples_file = paths.preprocessed / f'subject_1.{extension}'
+    if extension == 'csv':
+        loaded_events = Events(pl.read_csv(events_file))
+        loaded_samples = pl.read_csv(samples_file, schema_overrides={'pixel': pl.Utf8})
+        loaded_time = (
+            (loaded_samples['time'].cast(pl.Float64) * 1000).round().cast(pl.Duration('us'))
+        )
+    else:
+        loaded_events = Events(pl.read_ipc(events_file))
+        loaded_samples = pl.read_ipc(samples_file)
+        loaded_time = loaded_samples['time']
+
+    # Sub-millisecond precision must survive the save/load round trip.
+    assert_frame_equal(loaded_events.frame, events.frame)
+    assert loaded_time.to_list() == gaze.samples['time'].to_list()

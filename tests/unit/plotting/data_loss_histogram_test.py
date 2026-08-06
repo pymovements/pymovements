@@ -151,6 +151,23 @@ class TestDataLossHistogram:
 
         plt.close(fig)
 
+    def test_numeric_time_column(self, sample_gaze_with_time_gaps):
+        """Test histogram with a numeric time column set via direct samples mutation."""
+        sample_gaze_with_time_gaps.samples = sample_gaze_with_time_gaps.samples.with_columns(
+            pl.col('time').dt.total_milliseconds(),
+        )
+        fig, ax = data_loss_histogram(
+            sample_gaze_with_time_gaps,
+            column='pixel',
+            unit='count',
+            sampling_rate=1000.0,
+        )
+
+        # Same time gap as in test_with_time_gaps must be detected on numeric times.
+        assert len(ax.patches) == 1
+
+        plt.close(fig)
+
     def test_unit_time_requires_sampling_rate(self, sample_gaze_no_loss):
         """Test that unit='time' requires sampling_rate."""
         with pytest.raises(ValueError, match='sampling_rate must be provided'):

@@ -298,3 +298,23 @@ def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     )
 
     assert gaze.samples.schema['pupil'] == pl.Decimal(38, 10)
+
+
+@pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_deprecated_schema_overrides_merged_with_column_schema_overrides(tmp_path):
+    p = tmp_path / 'mini.csv'
+    p.write_text('time,pupil,extra\n0,1.23,1\n1,4.56,2\n')
+
+    gaze = from_csv(
+        file=str(p),
+        time_column='time',
+        time_unit='ms',
+        column_schema_overrides={'pupil': pl.Float32},
+        schema_overrides={'pupil': pl.Float64, 'extra': pl.Float64},
+    )
+
+    # The explicit argument wins over the deprecated kwarg on conflicts,
+    # while non-conflicting deprecated overrides are still applied.
+    assert gaze.samples.schema['pupil'] == pl.Float32
+    assert gaze.samples.schema['extra'] == pl.Float64

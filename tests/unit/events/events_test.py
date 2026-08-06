@@ -20,6 +20,8 @@
 """Tests pymovements.events.Events."""
 from __future__ import annotations
 
+from datetime import timedelta
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -341,6 +343,68 @@ def test_init_expected_df(args, kwargs, expected_df):
     events = Events(*args, **kwargs)
 
     assert_frame_equal(events.frame, to_duration(expected_df))
+
+
+@pytest.mark.parametrize(
+    ('data', 'expected_data'),
+    [
+        pytest.param(
+            pl.DataFrame({
+                'name': ['fixation'],
+                'onset': pl.Series([5], dtype=pl.Duration('ms')),
+                'offset': pl.Series([12], dtype=pl.Duration('ms')),
+            }),
+            {
+                'name': ['fixation'],
+                'onset': [timedelta(milliseconds=5)],
+                'offset': [timedelta(milliseconds=12)],
+                'duration': [timedelta(milliseconds=7)],
+            },
+            id='duration_ms_input_normalized_to_us',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'name': ['fixation'],
+                'onset': pl.Series([5_000_000], dtype=pl.Duration('ns')),
+                'offset': pl.Series([12_500_000], dtype=pl.Duration('ns')),
+            }),
+            {
+                'name': ['fixation'],
+                'onset': [timedelta(milliseconds=5)],
+                'offset': [timedelta(microseconds=12500)],
+                'duration': [timedelta(microseconds=7500)],
+            },
+            id='duration_ns_input_normalized_to_us',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'name': ['fixation'],
+                'onset': ['1.5'],
+                'offset': ['3'],
+            }),
+            {
+                'name': ['fixation'],
+                'onset': [timedelta(microseconds=1500)],
+                'offset': [timedelta(milliseconds=3)],
+                'duration': [timedelta(microseconds=1500)],
+            },
+            id='string_columns_interpreted_as_milliseconds',
+        ),
+    ],
+)
+def test_init_normalizes_time_columns_to_duration_us(data, expected_data):
+    events = Events(data)
+
+    expected_df = pl.DataFrame(
+        expected_data,
+        schema={
+            'name': pl.Utf8,
+            'onset': pl.Duration('us'),
+            'offset': pl.Duration('us'),
+            'duration': pl.Duration('us'),
+        },
+    )
+    assert_frame_equal(events.frame, expected_df)
 
 
 @pytest.mark.parametrize(

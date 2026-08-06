@@ -174,3 +174,19 @@ def test_fill_fills_events(kwargs, expected):
     events = fill(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
+
+
+def test_fill_with_numeric_event_frame():
+    # An events frame mutated to numeric onset/offset columns (milliseconds) must be
+    # matched against the timesteps without any Duration conversion.
+    events = Events(name='fixation', onsets=[0], offsets=[49])
+    events.frame = events.frame.with_columns(
+        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
+    )
+
+    filled = fill(events, timesteps=np.arange(0, 100))
+
+    # The event covers timesteps 0..48 (fill treats the offset as exclusive here),
+    # so the remaining timesteps 49..99 become one unclassified event.
+    expected = Events(name='unclassified', onsets=[49], offsets=[99])
+    assert_frame_equal(filled.frame, expected.frame)

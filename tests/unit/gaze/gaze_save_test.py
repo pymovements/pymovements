@@ -25,7 +25,10 @@ import os
 import polars as pl
 import pytest
 
+from pymovements import Events
 from pymovements import Gaze
+from pymovements.gaze.io import from_csv
+from pymovements.gaze.io import from_ipc
 
 
 @pytest.mark.parametrize(
@@ -336,3 +339,40 @@ def test_gaze_save_method_wrong_extension(tmp_path, save_method, data):
 
     with pytest.raises(ValueError, match='unsupported file format'):
         getattr(gaze, save_method)(tmp_path / 'test.txt')
+
+
+@pytest.mark.parametrize(
+    'extension',
+    [
+        pytest.param('csv', id='csv'),
+        pytest.param('feather', id='feather'),
+    ],
+)
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_gaze_save_load_round_trip_preserves_sub_millisecond_values(tmp_path, extension):
+    # Duration columns are written as numeric milliseconds to csv and as Duration to
+    # feather. Loading must restore the exact microsecond values in both cases.
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': [0.0, 0.5, 1.0, 1.5],
+            'x': [0.0, 1.0, 2.0, 3.0],
+            'y': [0.0, 1.0, 2.0, 3.0],
+        }),
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x', 'y'],
+        events=Events(name=['fixation'], onsets=[0.5], offsets=[1.5]),
+    )
+    gaze.save(dirpath=tmp_path, extension=extension, save_experiment=False)
+
+    if extension == 'csv':
+        loaded = from_csv(tmp_path / f'samples.{extension}', time_column='time', time_unit='ms')
+        loaded_events = Events(pl.read_csv(tmp_path / f'events.{extension}'))
+    else:
+        loaded = from_ipc(tmp_path / f'samples.{extension}')
+        loaded_events = Events(pl.read_ipc(tmp_path / f'events.{extension}'))
+
+    assert loaded.samples['time'].to_list() == gaze.samples['time'].to_list()
+    assert loaded.samples.schema['time'] == pl.Duration('us')
+    assert loaded_events.frame['onset'].to_list() == gaze.events.frame['onset'].to_list()
+    assert loaded_events.frame['offset'].to_list() == gaze.events.frame['offset'].to_list()

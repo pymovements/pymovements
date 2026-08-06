@@ -35,6 +35,7 @@ from pymovements.dataset import DatasetDefinition
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.quality import _compute_data_loss_simple
+from pymovements.gaze.quality import _samples_with_numeric_time
 from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import ValidationError
@@ -336,6 +337,15 @@ class TestCheckTimeMonotone:
         assert result.severity == 'pass'
         assert 'skipped' in result.message
 
+    def test_error_time_not_duration(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}),
+            convert_time=False,
+        )
+        result = check_time_monotone(gaze)
+        assert result.severity == 'error'
+        assert 'not a Duration' in result.message
+
     def test_pass_monotone_no_trial_columns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1, 2, 3]}))
         result = check_time_monotone(gaze)
@@ -411,6 +421,17 @@ class TestCheckMaxGap:
         assert result.severity == 'error'
         assert 'time' in result.message
 
+    def test_error_time_not_duration(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 10, 20], dtype=pl.Int64)}),
+            experiment=exp,
+            convert_time=False,
+        )
+        result = check_max_gap(gaze)
+        assert result.severity == 'error'
+        assert 'not a Duration' in result.message
+
     def test_error_no_sampling_rate(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 10, 20]}))
         result = check_max_gap(gaze)
@@ -482,6 +503,17 @@ class TestCheckSamplingRateConsistency:
         result = check_sampling_rate_consistency(gaze)
         assert result.severity == 'pass'
         assert 'skipped' in result.message
+
+    def test_error_time_not_duration(self) -> None:
+        exp = _simple_experiment(sampling_rate=100.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 10, 20], dtype=pl.Int64)}),
+            experiment=exp,
+            convert_time=False,
+        )
+        result = check_sampling_rate_consistency(gaze)
+        assert result.severity == 'error'
+        assert 'not a Duration' in result.message
 
     def test_pass_subms_isi_2khz(self) -> None:
         # 2 kHz recording: 0.5 ms ISI. Sub-millisecond diffs must be handled with fractional
@@ -1345,3 +1377,28 @@ class TestDatasetReportDataQualityDirect:
         ds = _make_real_dataset([gaze])
         report_loose = ds.report_data_quality(checks=['gaze_range'], min_fraction=0.0)
         assert report_loose.check_results[0].severity == 'pass'
+
+
+# ---------------------------------------------------------------------------
+# _samples_with_numeric_time
+# ---------------------------------------------------------------------------
+
+class TestSamplesWithNumericTime:
+    def test_duration_time_converted_to_fractional_ms(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([500, 1000], dtype=pl.Duration('us'))}),
+            convert_time=False,
+        )
+        samples = _samples_with_numeric_time(gaze)
+        assert samples['time'].to_list() == [0.5, 1.0]
+
+    def test_numeric_time_returned_unchanged(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}),
+            convert_time=False,
+        )
+        assert _samples_with_numeric_time(gaze) is gaze.samples
+
+    def test_missing_time_column_returned_unchanged(self) -> None:
+        gaze = _make_gaze(pl.DataFrame({'x': [0.0, 1.0]}))
+        assert _samples_with_numeric_time(gaze) is gaze.samples
