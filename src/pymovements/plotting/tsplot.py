@@ -28,6 +28,7 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
+from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.plotting._matplotlib import prepare_figure
 
 
@@ -99,9 +100,18 @@ def tsplot(
         If array has more than two dimensions.
     """
     if channels is None:
-        channels = [c for c in gaze.samples.columns if gaze.samples[c].dtype != pl.List]
+        # Select all numeric (and nested numeric) channels
+        channels = [
+            c
+            for c in gaze.samples.columns
+            if gaze.samples[c].dtype.is_numeric() or (
+                gaze.samples[c].dtype == pl.List and gaze.samples[c].dtype.inner.is_numeric()
+            )
+        ]
 
-    arr = gaze.samples[channels].to_numpy().transpose()
+    df = unnest_list_columns(gaze.samples[channels])
+    channels = df.columns
+    arr = df.to_numpy().transpose()
 
     if arr.ndim == 1:
         arr = np.expand_dims(arr, axis=0)
@@ -175,8 +185,8 @@ def tsplot(
             ylim_abs = np.nanmax(np.abs(arr[channel_id]))
             ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
         elif not share_y and not zero_centered_yaxis:
-            ylim_max = np.nanmax(arr)
-            ylim_min = np.nanmin(arr)
+            ylim_max = np.nanmax(arr[channel_id])
+            ylim_min = np.nanmin(arr[channel_id])
             ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
         if xlims[0] != xlims[1]:
