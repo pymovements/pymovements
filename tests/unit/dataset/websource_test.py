@@ -32,7 +32,11 @@ from pymovements.dataset.websource import WebSource
 
 
 def test_websource_init():
-    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='123')
+    source = WebSource(
+        url='http://example.com/file.zip',
+        filename='file.zip',
+        md5='123',
+    )
     assert source.url == 'http://example.com/file.zip'
     assert source.filename == 'file.zip'
     assert source.md5 == '123'
@@ -40,7 +44,11 @@ def test_websource_init():
 
 
 def test_websource_from_dict():
-    data = {'url': 'http://example.com/file2.zip', 'filename': 'file2.zip', 'md5': '456'}
+    data = {
+        'url': 'http://example.com/file2.zip',
+        'filename': 'file2.zip',
+        'md5': '456',
+    }
     source = WebSource.from_dict(data)
     assert source.url == 'http://example.com/file2.zip'
     assert source.filename == 'file2.zip'
@@ -53,7 +61,12 @@ def test_websource_from_dict():
         pytest.param(
             WebSource(url='http://example.com/file.zip'),
             False,
-            {'url': 'http://example.com/file.zip', 'filename': None, 'md5': None, 'mirrors': None},
+            {
+                'url': 'http://example.com/file.zip',
+                'filename': None,
+                'md5': None,
+                'mirrors': None,
+            },
             id='url_only',
         ),
         pytest.param(

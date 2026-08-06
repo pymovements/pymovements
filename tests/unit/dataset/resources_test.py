@@ -1172,10 +1172,54 @@ def test_resource_definition_from_dict_new():
     assert resource.source.url == 'http://example.com/file.zip'
 
 
+def test_resource_definition_from_dict_reference():
+    data = {
+        'content': 'gaze',
+        'source': 'src1',
+    }
+    resource = ResourceDefinition.from_dict(data)
+    assert resource.source == 'src1'
+
+
 def test_resource_definition_to_dict_new():
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
     resource = ResourceDefinition(content='gaze', source=source)
-    data = resource.to_dict()
+    data = resource.to_dict(exclude_none=True)
     assert data['source'] == {'url': 'http://example.com/file.zip', 'filename': 'file.zip'}
     # asdict includes it but we might want to verify it's not in the serialized output we care about
     assert 'url' not in data
+
+
+def test_resource_definition_to_dict_source_reference():
+    resource = ResourceDefinition(content='gaze', source='src1')
+    data = resource.to_dict(exclude_none=True)
+    assert data['source'] == 'src1'
+
+
+@pytest.mark.parametrize('attribute', ['url', 'filename', 'md5', 'mirrors'])
+@pytest.mark.filterwarnings('ignore:.*ResourceDefinition.source.*:DeprecationWarning')
+def test_resource_definition_deprecated_property_raises_on_reference(attribute):
+    resource = ResourceDefinition(content='gaze', source='src1')
+    with pytest.raises(AttributeError, match="resolved to the named reference 'src1'"):
+        getattr(resource, attribute)
+
+
+def test_resource_definition_from_dict_invalid_source_type():
+    with pytest.raises(TypeError, match='source must be str, WebSource or dict'):
+        ResourceDefinition.from_dict({'content': 'gaze', 'source': 123})
+
+
+@pytest.mark.parametrize(
+    ('attribute', 'value'),
+    [
+        ('url', 'http://example.com/file.zip'),
+        ('filename', 'file.zip'),
+        ('md5', 'abc'),
+        ('mirrors', ['http://example.com/file.zip']),
+    ],
+)
+@pytest.mark.filterwarnings('ignore:.*ResourceDefinition.source.*:DeprecationWarning')
+def test_resource_definition_deprecated_property_setter_raises_on_reference(attribute, value):
+    resource = ResourceDefinition(content='gaze', source='src1')
+    with pytest.raises(AttributeError, match="resolved to the named reference 'src1'"):
+        setattr(resource, attribute, value)

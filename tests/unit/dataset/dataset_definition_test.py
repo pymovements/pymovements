@@ -191,6 +191,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -242,6 +243,7 @@ def test_dataset_definition_resources_init_expected(init_kwargs, expected_resour
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -290,6 +292,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -331,6 +334,7 @@ def test_dataset_definition_to_dict_expected(definition, expected_dict):
                 'pixel_columns': None,
                 'position_columns': None,
                 'resources': [],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -400,6 +404,28 @@ def test_write_yaml_already_existing_dataset_definition_w_tuple_screen(tmp_path)
     assert DatasetDefinition.from_yaml(tmp_file) == definition
 
 
+def test_from_yaml_with_named_sources(tmp_path):
+    tmp_file = tmp_path / 'tmp.yaml'
+    yaml_content = (
+        'name: Example\n'
+        'sources:\n'
+        '  main:\n'
+        '    url: http://example.com/file.zip\n'
+        '    filename: file.zip\n'
+        'resources:\n'
+        '- content: gaze\n'
+        '  source: main\n'
+    )
+    tmp_file.write_text(yaml_content, encoding='utf-8')
+
+    definition = DatasetDefinition.from_yaml(tmp_file)
+
+    assert definition.resources[0].source == 'main'
+    assert definition.sources == {
+        'main': WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    }
+
+
 def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path):
     dictionary_tmp_file = tmp_path / 'dictionary.yaml'
     yaml_encoding = {
@@ -447,6 +473,7 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
                 'long_name': None,
                 'description': None,
                 'resources': [],
+                'sources': {},
                 'experiment': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
@@ -470,6 +497,7 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
                 'long_name': None,
                 'description': None,
                 'resources': [],
+                'sources': {},
                 'experiment': None,
                 'column_map': None,
                 'custom_read_kwargs': None,
@@ -493,6 +521,7 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
                 'long_name': None,
                 'description': None,
                 'resources': [],
+                'sources': {},
                 'experiment': {
                     'eyetracker': {
                         'sampling_rate': None,
@@ -595,6 +624,7 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
                         'source': None,
                     },
                 ],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -680,6 +710,7 @@ def test_check_equality_of_load_from_yaml_and_load_from_dictionary_dump(tmp_path
                         },
                     },
                 ],
+                'sources': {},
                 'time_column': None,
                 'time_unit': None,
                 'trial_columns': None,
@@ -779,3 +810,124 @@ def test_dataset_definition_init_raises_exception(init_kwargs, exception, except
 
     msg, = excinfo.value.args
     assert msg == exception_msg
+
+
+def test_dataset_definition_inline_source_is_preserved():
+    """Test that an inline WebSource is kept as-is (not rewritten to a reference)."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source=source)
+    definition = DatasetDefinition(name='test', resources=[resource])
+
+    assert not definition.sources
+    assert definition.resources[0].source is source
+
+
+def test_dataset_definition_named_source_reference():
+    """Test that a resource can reference a named source by string."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    assert definition.resources[0].source == 'main'
+    assert definition.sources['main'] is source
+
+
+def test_dataset_definition_named_source_reference_from_dict():
+    """Test that a raw dict value in sources is converted to a WebSource."""
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(
+        name='test',
+        resources=[resource],
+        sources={'main': {'url': 'http://example.com/file.zip', 'filename': 'file.zip'}},
+    )
+
+    assert definition.sources['main'] == WebSource(
+        url='http://example.com/file.zip', filename='file.zip',
+    )
+
+
+def test_dataset_definition_validation_duplicate_filenames():
+    """Test that duplicate target filenames raise ValueError."""
+    source1 = WebSource(url='http://example.com/1.zip', filename='file.zip')
+    source2 = WebSource(url='http://example.com/2.zip', filename='file.zip')
+    with pytest.raises(ValueError, match="Duplicate source filename: 'file.zip'"):
+        DatasetDefinition(name='test', sources={'a': source1, 'b': source2})
+
+
+def test_dataset_definition_validation_dangling_reference():
+    """Test that dangling source references raise ValueError."""
+    resource = ResourceDefinition(content='gaze', source='nonexistent')
+    with pytest.raises(ValueError, match="Dangling source reference: 'nonexistent'"):
+        DatasetDefinition(name='test', resources=[resource])
+
+
+def test_dataset_definition_validation_unused_named_source():
+    """Test that a named source not referenced by any resource raises ValueError."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    with pytest.raises(ValueError, match="Unused source: 'main' is not referenced"):
+        DatasetDefinition(name='test', sources={'main': source})
+
+
+def test_dataset_definition_filename_none_excluded_from_uniqueness():
+    """Test that sources with filename=None are excluded from uniqueness check."""
+    source1 = WebSource(url='http://example.com/1.zip', filename=None)
+    source2 = WebSource(url='http://example.com/2.zip', filename=None)
+    resources = [
+        ResourceDefinition(content='gaze', source='a'),
+        ResourceDefinition(content='precomputed_events', source='b'),
+    ]
+    definition = DatasetDefinition(
+        name='test', resources=resources, sources={'a': source1, 'b': source2},
+    )
+    assert len(definition.sources) == 2
+
+
+def test_dataset_definition_does_not_mutate_input_resources():
+    """Test that the caller's input objects are not mutated."""
+    source = WebSource(url='http://example.com', filename='data.zip')
+    resource = ResourceDefinition(content='gaze', source=source)
+    resources_input = [resource]
+
+    definition = DatasetDefinition(name='test', resources=resources_input)
+
+    assert definition.resources[0].source is source
+    assert resources_input[0].source is source
+    assert isinstance(resources_input[0].source, WebSource)
+
+
+def test_dataset_definition_to_dict_with_named_sources():
+    """Test that named sources are serialized as nested dictionaries by to_dict."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    data = definition.to_dict(exclude_none=False)
+
+    assert data['sources'] == {
+        'main': {
+            'url': 'http://example.com/file.zip',
+            'filename': 'file.zip',
+            'md5': 'abc',
+            'mirrors': None,
+        },
+    }
+    # A referenced resource keeps the string reference instead of an inline source.
+    assert data['resources'][0]['source'] == 'main'
+
+
+def test_dataset_definition_to_yaml_roundtrip_with_named_sources(tmp_path):
+    """Test that a definition with named sources survives a to_yaml / from_yaml round-trip."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc')
+    resources = [
+        ResourceDefinition(content='gaze', source='main'),
+        ResourceDefinition(content='precomputed_events', source='main'),
+    ]
+    definition = DatasetDefinition(name='test', resources=resources, sources={'main': source})
+
+    tmp_file = tmp_path / 'tmp.yaml'
+    definition.to_yaml(tmp_file)
+    reloaded = DatasetDefinition.from_yaml(tmp_file)
+
+    assert reloaded.sources == definition.sources
+    assert reloaded.resources == definition.resources
+    assert [resource.source for resource in reloaded.resources] == ['main', 'main']

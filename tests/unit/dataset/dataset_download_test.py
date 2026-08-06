@@ -29,6 +29,9 @@ import pytest
 from pymovements import Dataset
 from pymovements import DatasetDefinition
 from pymovements import DatasetPaths
+from pymovements import ResourceDefinition
+from pymovements.dataset.dataset_download import download_dataset
+from pymovements.dataset.websource import WebSource
 
 
 @pytest.fixture(
@@ -724,7 +727,8 @@ def test_dataset_extract_remove_finished_false_stimuli(
         pytest.param(
             DatasetDefinition(name='CustomPublicDataset'),
             AttributeError,
-            'resources must be specified to download a dataset.',
+            'No downloadable resources found in DatasetDefinition. '
+            'ResourceDefinition.source must be specified to download a dataset.',
             id='no_resources',
         ),
         pytest.param(
@@ -913,3 +917,192 @@ def test_extract_dataset_precomputed_rm_move_single_file(tmp_path, testfiles_dir
     )
 
     Dataset(definition, path=tmp_path).extract()
+
+
+def test_download_dataset_deduplication():
+    """Test that download_dataset calls download on each unique source only once."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
+        download_dataset(definition, paths, extract=False)
+
+    # Even though there are 2 resources, there should be only 1 download call
+    # because they share the same source (deduplicated by url and filename).
+    assert mock_download.call_count == 1
+
+
+def test_download_dataset_conflicting_sources_raises():
+    """Test that sources sharing (url, filename) but differing md5 raise ValueError."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='def'),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'def'\\)"):
+        download_dataset(definition, paths, extract=False)
+
+
+def test_download_dataset_resolves_named_source_reference():
+    """Test that a string source reference is resolved to the named source and downloaded."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
+        download_dataset(definition, paths, extract=False)
+
+    assert mock_download.call_count == 1
+
+
+def test_download_dataset_skips_resource_without_source():
+    """Test that resources without a source are skipped when collecting downloads."""
+    resource_with = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+    resource_without = ResourceDefinition(content='precomputed_events')
+    definition = DatasetDefinition(name='test', resources=[resource_with, resource_without])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
+        download_dataset(definition, paths, extract=False)
+
+    assert mock_download.call_count == 1
+
+
+def test_download_dataset_triggers_extract():
+    """Test that download_dataset extracts by default after downloading."""
+    resource = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with mock.patch('pymovements.dataset.websource.WebSource.download'), \
+            mock.patch('pymovements.dataset.dataset_download.extract_dataset') as mock_extract:
+        download_dataset(definition, paths)
+
+    assert mock_extract.call_count == 1
+
+
+def test_extract_dataset_skips_resource_without_source(tmp_path):
+    """Test that a resource without a source is skipped during extraction."""
+    definition = DatasetDefinition(
+        name='test',
+        resources=[ResourceDefinition(content='precomputed_events')],
+    )
+    (tmp_path / 'downloads').mkdir(parents=True)
+
+    # Should not raise even though there is nothing to extract.
+    Dataset(definition, path=tmp_path).extract()
+
+
+def test_download_dataset_named_source_shared_by_multiple_resources_deduplicated():
+    """Test that a named source shared by several resources is downloaded only once."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resources = [
+        ResourceDefinition(content='gaze', source='main'),
+        ResourceDefinition(content='precomputed_events', source='main'),
+        ResourceDefinition(content='imagestimulus', source='main'),
+    ]
+    definition = DatasetDefinition(name='test', resources=resources, sources={'main': source})
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
+        download_dataset(definition, paths, extract=False)
+
+    assert mock_download.call_count == 1
+
+
+def test_download_dataset_conflicting_sources_asymmetric_md5_raises():
+    """Test that a shared (url, filename) with md5 set on only one resource raises ValueError."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'None'\\)"):
+        download_dataset(definition, paths, extract=False)
+
+
+def test_download_dataset_conflicting_sources_mirrors_raises():
+    """Test that a shared (url, filename) with differing mirrors raises ValueError."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(
+            url='http://example.com/file.zip', filename='file.zip',
+            mirrors=['http://mirror.com/file.zip'],
+        ),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with pytest.raises(ValueError, match='mirrors differ between resources'):
+        download_dataset(definition, paths, extract=False)
+
+
+@mock.patch('pymovements.dataset.dataset_download.extract_archive')
+def test_extract_dataset_resolves_named_source(mock_extract_archive, tmp_path):
+    """Test that extraction resolves a named source reference to its archive file."""
+    mock_extract_archive.return_value = 'path'
+    definition = DatasetDefinition(
+        name='test',
+        resources=[ResourceDefinition(content='gaze', source='main')],
+        sources={'main': WebSource(url='http://example.com/file.gz.tar', filename='file.gz.tar')},
+    )
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    Dataset(definition, path=paths).extract()
+
+    mock_extract_archive.assert_called_once_with(
+        source_path=tmp_path / 'downloads' / 'file.gz.tar',
+        destination_path=tmp_path / 'raw',
+        recursive=True,
+        remove_finished=False,
+        remove_top_level=True,
+        resume=True,
+        verbose=1,
+    )

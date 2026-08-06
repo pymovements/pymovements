@@ -17,11 +17,14 @@ description: |
 
   Check the respective paper for details :cite:p:`ETDD70`.
 
+sources:
+  dataset:
+    url: https://zenodo.org/api/records/13332134/files-archive
+    filename: etdd70.zip
+
 resources:
   - content: gaze
-    source:
-      url: https://zenodo.org/api/records/13332134/files-archive
-      filename: edd_raw.zip
+    source: dataset
     filename_pattern: 'Subject_{subject_id:d}_{task:s}_raw.csv'
     load_kwargs:
       time_column: 'time'
@@ -29,9 +32,7 @@ resources:
       pixel_columns: ['gaze_x_left', 'gaze_y_left', 'gaze_x_right', 'gaze_y_right']
 
   - content: precomputed_events
-    source:
-      url: https://zenodo.org/api/records/13332134/files-archive
-      filename: edd_fix.zip
+    source: dataset
     filename_pattern: 'Subject_{subject_id:d}_{task:s}_fixations.csv'
 
 experiment:
