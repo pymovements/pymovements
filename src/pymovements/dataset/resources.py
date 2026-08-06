@@ -58,6 +58,30 @@ class ResourceDefinition:
         by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
     load_kwargs: dict[str, Any]
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
+    url: str | None
+        The URL to the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    filename: str | None
+        The target filename of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    md5: str | None
+        The MD5 checksum of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    mirrors: list[str] | None
+        A list of additional mirror URLs to download the resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
 
     Parameters
     ----------

@@ -70,6 +70,14 @@ class Dataset:
     ----------
     participants: Participants
         Participant data.
+    fileinfo: dict[str, pl.DataFrame]
+        Parsed file information, keyed by content type (e.g. ``'gaze'``).
+    gaze: list[Gaze]
+        Gaze objects containing loaded samples.
+    events: tuple[Events, ...]
+        Event dataframes for all gaze objects.
+    path: Path
+        Path to the dataset directory.
 
     Parameters
     ----------
@@ -81,13 +89,15 @@ class Dataset:
     """
 
     participants: Participants
+    fileinfo: dict[str, pl.DataFrame]
+    gaze: list[Gaze]
 
     def __init__(
             self,
             definition: str | Path | DatasetDefinition | type[DatasetDefinition],
             path: str | Path | DatasetPaths,
     ):
-        self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self.fileinfo = {}
         self._files: list[DatasetFile] = []
         self.participants = Participants()
         self.gaze: list[Gaze] = []
@@ -156,14 +166,10 @@ class Dataset:
             float, int , str or a list of these. (default: None)
         events_dirname: str | None
             One-time usage of an alternative directory name to load data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to load data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -394,9 +400,7 @@ class Dataset:
             (default: False)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -536,9 +540,7 @@ class Dataset:
         ----------
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`.
             (default: 'feather')
@@ -677,7 +679,7 @@ class Dataset:
     ) -> Dataset:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is clipped.
 
@@ -707,7 +709,7 @@ class Dataset:
         AttributeError
             If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes
             present in the :py:attr:`~pymovements.Dataset.gaze` attribute, or if the
-            :py:attr:`~pymovements.Dataset.experiment` is ``None``.
+            ``experiment`` is ``None``.
         """
         return self.apply(
             'clip',
@@ -761,7 +763,7 @@ class Dataset:
     def pix2deg(self, verbose: bool = True) -> Dataset:
         """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -779,7 +781,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pix2deg', verbose=verbose)
 
@@ -792,7 +794,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -817,7 +819,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'deg2pix',
@@ -837,7 +839,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting acceleration columns.
 
@@ -861,7 +863,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'pos2acc',
@@ -880,7 +882,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze velocities in dva/s from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting velocity columns.
 
@@ -904,7 +906,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
@@ -926,7 +928,7 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
@@ -973,7 +975,7 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
@@ -1234,13 +1236,11 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1265,9 +1265,8 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1309,9 +1308,8 @@ class Dataset:
         Parameters
         ----------
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1502,7 +1500,7 @@ class Dataset:
         """Download dataset resources.
 
         This downloads all resources of the dataset. Per default this also extracts all archives
-        into :py:meth:`Dataset.paths.raw`,
+        into :py:attr:`~pymovements.DatasetPaths.raw`,
         To save space on your device, you can remove the archive files after
         successful extraction with ``remove_finished=True``.
 

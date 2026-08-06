@@ -29,6 +29,27 @@ from pymovements._utils._html import repr_html
 class DatasetPaths:
     """Defines the paths of a dataset.
 
+    Attributes
+    ----------
+    root: Path
+        The root path of the dataset.
+    dataset: Path
+        The path to the dataset directory.
+    events: Path
+        The path to the event data directory.
+    preprocessed: Path
+        The path to the preprocessed gaze data directory.
+    raw: Path
+        The path to the raw data directory.
+    precomputed_events: Path
+        The path to the precomputed event data directory.
+    precomputed_reading_measures: Path
+        The path to the precomputed reading measures directory.
+    downloads: Path
+        The path to the downloads directory.
+    stimuli: Path
+        The path to the stimuli directory.
+
     Parameters
     ----------
     root: str | Path
@@ -104,9 +125,7 @@ class DatasetPaths:
             The Path to the raw file.
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             extension specifies the fileformat to store the data. (default: 'feather')
 
@@ -147,10 +166,7 @@ class DatasetPaths:
             The Path to the raw file.
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`.
-            (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             extension specifies the fileformat to store the data. (default: 'feather')
 
@@ -467,7 +483,7 @@ class DatasetPaths:
 
     @property
     def downloads(self) -> Path:
-        """The path to the directory of the raw data.
+        """The path to the download directory.
 
         The download path points to the download directory under the root path.
 
@@ -502,7 +518,7 @@ class DatasetPaths:
 
     @property
     def stimuli(self) -> Path:
-        """Return the path to the stimuli directory.
+        """The path to the stimuli directory.
 
         Example:
         -------
