@@ -396,6 +396,81 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
 
     return fixations.group_by('trial', 'page', maintain_order=True).map_groups(per_group)
 
+# ---------------------------
+# Summary measures
+# ---------------------------
+
+
+def non_aoi_fixation_ratio_by_count(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute the ratio of fixations outside any AOI, by count.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation table containing at least ``trial``, ``page``,
+        and ``word_idx`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame with columns ``trial``, ``page``, and ``NAFC``
+        (Non-AOI Fixation Ratio by Count: proportion of fixations
+        without a mapped word, 0.0 to 1.0).
+    """
+    return (
+        fixations.group_by(['trial', 'page'], maintain_order=True)
+        .agg(
+            [
+                (pl.col('word_idx').is_null()).sum().alias('fix_outside_aoi'),
+                pl.len().alias('total_fixations'),
+            ],
+        )
+        .with_columns(
+            pl.when(pl.col('total_fixations') > 0)
+            .then(pl.col('fix_outside_aoi') / pl.col('total_fixations'))
+            .otherwise(None)
+            .alias('NAFC'),
+        )
+        .select(['trial', 'page', 'NAFC'])
+    )
+
+
+def non_aoi_fixation_ratio_by_duration(fixations: pl.DataFrame) -> pl.DataFrame:
+    """Compute the ratio of fixation duration outside any AOI.
+
+    Parameters
+    ----------
+    fixations : pl.DataFrame
+        Fixation table containing at least ``trial``, ``page``,
+        ``word_idx``, and ``duration`` columns.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame with columns ``trial``, ``page``, and ``NAFD``
+        (Non-AOI Fixation Ratio by Duration: proportion of fixation
+        duration without a mapped word, 0.0 to 1.0).
+    """
+    return (
+        fixations.group_by(['trial', 'page'], maintain_order=True)
+        .agg(
+            [
+                pl.when(pl.col('word_idx').is_null())
+                .then(pl.col('duration'))
+                .otherwise(0)
+                .sum()
+                .alias('duration_outside_aoi'),
+                pl.col('duration').sum().alias('total_duration'),
+            ],
+        )
+        .with_columns(
+            pl.when(pl.col('total_duration') > 0)
+            .then(pl.col('duration_outside_aoi') / pl.col('total_duration'))
+            .otherwise(None)
+            .alias('NAFD'),
+        )
+        .select(['trial', 'page', 'NAFD'])
+    )
 
 # ---------------------------
 # Word-level table

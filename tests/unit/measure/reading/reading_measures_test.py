@@ -20,6 +20,7 @@
 """Reading measure tests."""
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
@@ -31,6 +32,8 @@ from pymovements.measure.reading.measures import first_pass_fixation_count
 from pymovements.measure.reading.measures import first_pass_reading_time
 from pymovements.measure.reading.measures import first_reading_time
 from pymovements.measure.reading.measures import landing_position
+from pymovements.measure.reading.measures import non_aoi_fixation_ratio_by_count
+from pymovements.measure.reading.measures import non_aoi_fixation_ratio_by_duration
 from pymovements.measure.reading.measures import regression_count_in
 from pymovements.measure.reading.measures import regression_count_out
 from pymovements.measure.reading.measures import regression_path_duration
@@ -237,3 +240,177 @@ def test_regression_path_duration_no_first_pass():
     })
     result = regression_path_duration(df)
     assert result['RPD_inc'][0] == 0
+
+
+# ---------------------------
+# non_aoi_fixation_ratio_by_count
+# ---------------------------
+
+
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        # All fixations inside AOI -> NAFC == 0.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'page': ['1', '1', '1'],
+                'word_idx': [0, 1, 2],
+            }),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFC': [0.0],
+            }),
+        ),
+        # All fixations outside AOI -> NAFC == 1.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [None, None],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFC': [1.0],
+            }),
+        ),
+        # Mix of inside / outside fixations -> NAFC == 0.5
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, 1, None],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFC': [0.5],
+            }),
+        ),
+        # Multiple trials get separate NAFC values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '2', '2', '2'],
+                'page': ['1', '1', '1', '1', '1'],
+                'word_idx': [0, None, None, None, 0],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'page': ['1', '1'],
+                'NAFC': [0.5, 2 / 3],
+            }),
+        ),
+        # Empty fixations table yields empty output DataFrame
+        (
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'word_idx': pl.Int64}),
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'NAFC': pl.Float64}),
+        ),
+    ],
+)
+def test_non_aoi_fixation_ratio_by_count(fixations, expected):
+    result = non_aoi_fixation_ratio_by_count(fixations)
+    assert_frame_equal(result, expected)
+
+
+# ---------------------------
+# non_aoi_fixation_ratio_by_duration
+# ---------------------------
+
+
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        # All fixations inside AOI -> NAFD == 0.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [0, 1],
+                'duration': [100, 200],
+            }),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFD': [0.0],
+            }),
+        ),
+        # All fixations outside AOI -> NAFD == 1.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [None, None],
+                'duration': [50, 150],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFD': [1.0],
+            }),
+        ),
+        # Mixed fixations -> NAFD == 150 / 400
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, 1, None],
+                'duration': [100, 50, 150, 100],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFD': [150 / 400],
+            }),
+        ),
+        # Zero total duration yields None for NAFD
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [0, 1],
+                'duration': [0, 0],
+            }),
+            pl.DataFrame(
+                {
+                    'trial': ['1'],
+                    'page': ['1'],
+                    'NAFD': [None],
+                },
+                schema={'trial': pl.String, 'page': pl.String, 'NAFD': pl.Float64},
+            ),
+        ),
+        # Multiple trials get separate NAFD values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '2', '2'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, None, 0],
+                'duration': [100, 100, 300, 100],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'page': ['1', '1'],
+                'NAFD': [0.5, 0.75],
+            }),
+        ),
+        # Multiple pages get separate NAFD values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['p1', 'p1', 'p2', 'p2'],
+                'word_idx': [0, None, None, None],
+                'duration': [100, 100, 200, 200],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['p1', 'p2'],
+                'NAFD': [0.5, 1.0],
+            }),
+        ),
+    ],
+)
+def test_non_aoi_fixation_ratio_by_duration(fixations, expected):
+    result = non_aoi_fixation_ratio_by_duration(fixations)
+    assert_frame_equal(result, expected, abs_tol=1e-5)
