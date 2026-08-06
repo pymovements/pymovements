@@ -173,7 +173,6 @@ def scanpathplot(
         raise TypeError("scanpathplot argument 'gaze' must not be None")
     if gaze.events is None:
         raise TypeError("scanpathplot 'gaze.events' must not be None")
-    assert gaze.events is not None
     events = gaze.events
     assert isinstance(events, Events)  # otherwise mypy complains
 
@@ -211,7 +210,7 @@ def scanpathplot(
         ax.add_patch(fixation)
 
     if add_traceplot:
-        if gaze is None or gaze.samples is None:
+        if gaze.samples is None:
             raise TypeError("scanpathplot 'gaze.samples' must not be None")
         gaze_x_signal = gaze.samples[gaze_position_column].list.get(0)
         gaze_y_signal = gaze.samples[gaze_position_column].list.get(1)
