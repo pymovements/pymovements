@@ -98,9 +98,11 @@ class Gaze:
         ``time``. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
-        milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
+        units are 's' for seconds, 'ms' for milliseconds, 'us' for microseconds and 'step' for
+        steps. If the unit is 'step' the experiment definition must be specified. All timestamps
+        will be converted to a ``polars.Duration`` column with microsecond precision. If the
+        column already holds ``polars.Duration`` values, it is used as is and ``time_unit`` is
+        ignored. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns:list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
@@ -921,7 +923,8 @@ class Gaze:
         Examples
         --------
         Let's create an example Gaze of 1000Hz with a time column and a position column.
-        Please note that time is always stored in milliseconds in the Gaze.
+        Please note that time is always stored as a ``polars.Duration`` column in the Gaze,
+        with numeric input interpreted according to ``time_unit``.
 
         >>> df = polars.DataFrame({
         ...     'time': [0, 1, 2, 3, 4],
@@ -2566,7 +2569,7 @@ class Gaze:
         if time_column is not None and time_column != 'time':
             self.samples = self.samples.rename({time_column: 'time'})
 
-        # Convert time column to milliseconds.
+        # Convert time column to Duration('us').
         if 'time' in self.samples.columns:
             self._convert_time_units(time_unit)
 

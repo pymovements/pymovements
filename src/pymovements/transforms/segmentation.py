@@ -73,6 +73,8 @@ def events2segmentation(
         Default is 'offset'.
     padding : float | tuple[float, float] | None
         Padding to extend each event interval, in the same units as ``time_column``.
+        If the onset and offset columns hold ``polars.Duration`` values, the padding
+        values are interpreted as milliseconds.
         If a single float, the same padding is applied symmetrically before and after
         each event. If a tuple ``(before, after)``, ``before`` is subtracted from the
         onset and ``after`` is added to the offset. Both values must be non-negative.
@@ -105,7 +107,8 @@ def events2segmentation(
 
     When ``padding`` is specified, each event interval is extended by subtracting
     ``pad_before`` from the onset and adding ``pad_after`` to the offset. The padding
-    values are in the same units as the ``time_column``.
+    values are in the same units as the ``time_column``, or in milliseconds if the
+    onset and offset columns hold ``polars.Duration`` values.
 
     .. warning::
         The offset is considered inclusive.

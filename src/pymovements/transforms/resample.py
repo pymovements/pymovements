@@ -43,6 +43,10 @@ def resample(
     The DataFrame is resampled by upsampling or downsampling the data to the new sampling rate.
     Can also be used to achieve a constant sampling rate for inconsistent data.
 
+    The ``time`` column may hold numeric millisecond values or ``polars.Duration`` values.
+    A Duration time column is returned with microsecond precision regardless of its input
+    unit. Duration columns other than ``time`` are excluded from interpolation strategies.
+
     Parameters
     ----------
     samples: pl.DataFrame

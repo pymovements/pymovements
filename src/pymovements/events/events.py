@@ -44,14 +44,17 @@ class Events:
     Parameters
     ----------
     data: pl.DataFrame | None
-        A dataframe to be transformed to a polars dataframe. This argument is mutually
-        exclusive with all the other arguments. (default: None)
+        A dataframe to be transformed to a polars dataframe. Numeric ``onset``, ``offset``
+        and ``duration`` columns are interpreted as milliseconds and converted to
+        ``polars.Duration`` columns with microsecond precision; ``polars.Duration`` columns
+        are taken over unchanged. This argument is mutually exclusive with all the other
+        arguments. (default: None)
     name: str | list[str] | None
         Name of events. (default: None)
     onsets: list[int | float] | np.ndarray | None
-        List of onsets. (default: None)
+        List of onsets in milliseconds. (default: None)
     offsets: list[int | float] | np.ndarray | None
-        List of offsets. (default: None)
+        List of offsets in milliseconds. (default: None)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
@@ -841,7 +844,7 @@ class Events:
             The name of the events to be merged. (default: 'fixation')
 
         max_gap: int | float
-            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 75)
+            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 50)
 
         verbose: bool
             If ``True``, print the number of events merged and the resulting number of events.

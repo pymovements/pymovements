@@ -74,7 +74,7 @@ def _time_ms(samples: pl.DataFrame) -> pl.Series:
     """Return the ``time`` column as fractional milliseconds.
 
     The ``time`` column is stored as ``polars.Duration('us')``. Callers must ensure the
-    column is a Duration before calling; :py:func:`check_time_column_exists` guards this.
+    column is a Duration before calling; each check guards this with its own dtype check.
 
     Parameters
     ----------
