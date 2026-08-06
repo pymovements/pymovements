@@ -34,6 +34,7 @@ from tqdm.auto import tqdm
 
 from pymovements._utils._paths import match_filepaths
 from pymovements._utils._strings import curly_to_regex
+from pymovements._utils._time import durations_to_ms
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.dataset.resources import ResourceDefinition
@@ -773,16 +774,7 @@ def save_events(
         if extension == 'feather':
             events_instance.frame.write_ipc(events_filepath)
         elif extension == 'csv':
-            frame = events_instance.frame
-            duration_cols = [
-                c for c in frame.columns
-                if isinstance(frame.schema[c], pl.Duration)
-            ]
-            if duration_cols:
-                frame = frame.with_columns(
-                    [pl.col(c).dt.total_milliseconds() for c in duration_cols],
-                )
-            frame.write_csv(events_filepath)
+            durations_to_ms(events_instance.frame).write_csv(events_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -857,16 +849,7 @@ def save_preprocessed(
         if extension == 'feather':
             gaze.samples.write_ipc(preprocessed_filepath)
         elif extension == 'csv':
-            samples = gaze.samples
-            duration_cols = [
-                c for c in samples.columns
-                if isinstance(samples.schema[c], pl.Duration)
-            ]
-            if duration_cols:
-                samples = samples.with_columns(
-                    [pl.col(c).dt.total_milliseconds() for c in duration_cols],
-                )
-            samples.write_csv(preprocessed_filepath)
+            durations_to_ms(gaze.samples).write_csv(preprocessed_filepath)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(

@@ -117,7 +117,7 @@ def microsaccades(
     ┌─────────┬──────────────┬──────────────┬──────────────┐
     │ name    ┆ onset        ┆ offset       ┆ duration     │
     │ ---     ┆ ---          ┆ ---          ┆ ---          │
-    │ str     ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞═════════╪══════════════╪══════════════╪══════════════╡
     │ saccade ┆ 2ms          ┆ 199ms        ┆ 197ms        │
     └─────────┴──────────────┴──────────────┴──────────────┘
@@ -129,7 +129,7 @@ def microsaccades(
     ┌─────────┬──────────────┬──────────────┬──────────────┐
     │ name    ┆ onset        ┆ offset       ┆ duration     │
     │ ---     ┆ ---          ┆ ---          ┆ ---          │
-    │ str     ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞═════════╪══════════════╪══════════════╪══════════════╡
     │ saccade ┆ 111ms        ┆ 149ms        ┆ 38ms         │
     └─────────┴──────────────┴──────────────┴──────────────┘
@@ -163,7 +163,7 @@ def microsaccades(
     ┌─────────┬──────────────┬──────────────┬──────────────┐
     │ name    ┆ onset        ┆ offset       ┆ duration     │
     │ ---     ┆ ---          ┆ ---          ┆ ---          │
-    │ str     ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞═════════╪══════════════╪══════════════╪══════════════╡
     │ saccade ┆ 2ms          ┆ 199ms        ┆ 197ms        │
     └─────────┴──────────────┴──────────────┴──────────────┘
@@ -203,7 +203,7 @@ def microsaccades(
     ┌─────────┬──────────────┬──────────────┬──────────────┐
     │ name    ┆ onset        ┆ offset       ┆ duration     │
     │ ---     ┆ ---          ┆ ---          ┆ ---          │
-    │ str     ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞═════════╪══════════════╪══════════════╪══════════════╡
     │ saccade ┆ 2ms          ┆ 199ms        ┆ 197ms        │
     └─────────┴──────────────┴──────────────┴──────────────┘
@@ -216,7 +216,7 @@ def microsaccades(
     ┌──────────────┬──────────────┬──────────────┬──────────────┐
     │ name         ┆ onset        ┆ offset       ┆ duration     │
     │ ---          ┆ ---          ┆ ---          ┆ ---          │
-    │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════════╪══════════════╡
     │ microsaccade ┆ 111ms        ┆ 149ms        ┆ 38ms         │
     └──────────────┴──────────────┴──────────────┴──────────────┘

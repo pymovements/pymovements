@@ -128,7 +128,7 @@ def idt(
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
     │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════╪══════════════╪══════════════╪══════════════╡
     │ fixation ┆ 9ms          ┆ 111ms        ┆ 102ms        │
     └──────────┴──────────────┴──────────────┴──────────────┘
@@ -140,7 +140,7 @@ def idt(
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
     │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════╪══════════════╪══════════════╪══════════════╡
     │ fixation ┆ 9ms          ┆ 111ms        ┆ 102ms        │
     │ fixation ┆ 150ms        ┆ 199ms        ┆ 49ms         │
@@ -175,7 +175,7 @@ def idt(
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
     │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════╪══════════════╪══════════════╪══════════════╡
     │ fixation ┆ 9ms          ┆ 111ms        ┆ 102ms        │
     └──────────┴──────────────┴──────────────┴──────────────┘
@@ -192,9 +192,9 @@ def idt(
     ┌──────────────┬────────────┐
     │ time         ┆ position   │
     │ ---          ┆ ---        │
-    │ duration[ms] ┆ list[f64]  │
+    │ duration[μs] ┆ list[f64]  │
     ╞══════════════╪════════════╡
-    │ 0ms          ┆ [0.0, 0.0] │
+    │ 0µs          ┆ [0.0, 0.0] │
     │ 1ms          ┆ [0.0, 0.0] │
     │ 2ms          ┆ [1.0, 2.0] │
     │ 3ms          ┆ [1.0, 2.0] │
@@ -215,7 +215,7 @@ def idt(
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
     │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════╪══════════════╪══════════════╪══════════════╡
     │ fixation ┆ 9ms          ┆ 111ms        ┆ 102ms        │
     └──────────┴──────────────┴──────────────┴──────────────┘
@@ -228,7 +228,7 @@ def idt(
     ┌──────────────┬──────────────┬──────────────┬──────────────┐
     │ name         ┆ onset        ┆ offset       ┆ duration     │
     │ ---          ┆ ---          ┆ ---          ┆ ---          │
-    │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════════╪══════════════╪══════════════╪══════════════╡
     │ fixation_idt ┆ 9ms          ┆ 111ms        ┆ 102ms        │
     │ fixation_idt ┆ 150ms        ┆ 199ms        ┆ 49ms         │

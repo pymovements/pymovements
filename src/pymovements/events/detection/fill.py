@@ -20,8 +20,6 @@
 """Provides the implementation of the event fill function."""
 from __future__ import annotations
 
-from datetime import timedelta
-
 import numpy
 import polars
 
@@ -67,12 +65,16 @@ def fill(
     # Create binary mask where each existing event is marked.
     events_mask = numpy.zeros(len(timesteps), dtype=bool)
 
-    for row in events.frame.iter_rows(named=True):
+    # Convert Duration columns to millisecond values matching the timesteps unit.
+    events_frame = events.frame
+    if isinstance(events_frame.schema['onset'], polars.Duration):
+        events_frame = events_frame.with_columns(
+            polars.col('onset', 'offset').dt.total_microseconds().truediv(1000),
+        )
+
+    for row in events_frame.iter_rows(named=True):
         onset = row['onset']
         offset = row['offset']
-        if isinstance(onset, timedelta):
-            onset = onset.total_seconds() * 1000
-            offset = offset.total_seconds() * 1000
 
         if onset > numpy.max(timesteps):
             continue

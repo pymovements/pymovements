@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import polars as pl
 
+from pymovements._utils._time import durations_to_ms
+
 
 # ---------------------------
 # Basic fixation-based counts
@@ -461,13 +463,7 @@ def build_word_level_table(
     )
 
     # Convert Duration columns to numeric milliseconds.
-    dur_cols = [
-        c for c in result.columns if isinstance(result.schema[c], pl.Duration)
-    ]
-    if dur_cols:
-        result = result.with_columns(
-            [pl.col(c).dt.total_milliseconds() for c in dur_cols],
-        )
+    result = durations_to_ms(result)
 
     result = result.with_columns(
         [

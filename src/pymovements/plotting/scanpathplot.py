@@ -202,7 +202,7 @@ def scanpathplot(
     for row in fixations.iter_rows(named=True):
         duration = row['duration']
         if isinstance(duration, datetime.timedelta):
-            duration = duration.total_seconds() * 1000
+            duration = duration / datetime.timedelta(milliseconds=1)
         fixation = Circle(
             row[position_column],
             math.sqrt(duration),

@@ -68,7 +68,7 @@ def test_from_asc_has_expected_samples(
 
     if 'time' in expected_samples.columns:
         expected_samples = expected_samples.with_columns(
-            pl.col('time').cast(pl.Duration('ms')),
+            (pl.col('time') * 1000).round().cast(pl.Duration('us')),
         )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
@@ -183,7 +183,7 @@ def test_from_asc_example_file_has_expected_samples(
     gaze = from_asc(filepath, **kwargs)
     if 'time' in expected_samples.columns:
         expected_samples = expected_samples.with_columns(
-            pl.col('time').cast(pl.Duration('ms')),
+            (pl.col('time') * 1000).round().cast(pl.Duration('us')),
         )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
@@ -196,7 +196,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -208,7 +208,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
             (16, 4),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.String,
@@ -224,7 +224,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 4),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.Float64,
@@ -240,7 +240,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 7),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'task': pl.Utf8,
                 'screen_id': pl.Int64,
@@ -256,7 +256,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -271,7 +271,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -286,7 +286,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -297,7 +297,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (368, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pixel': pl.List(pl.Float64),
                 'pupil': pl.List(pl.Float64),
             },
@@ -313,11 +313,7 @@ def test_from_asc_example_file_has_shape_and_schema(
     gaze = from_asc(filepath, **kwargs)
 
     assert gaze.samples.shape == shape
-    actual_schema = dict(gaze.samples.schema)
-    if 'time' in actual_schema and isinstance(actual_schema['time'], pl.Duration):
-        schema = dict(schema)
-        schema['time'] = pl.Duration('ms')
-    assert actual_schema == schema
+    assert dict(gaze.samples.schema) == schema
 
 
 @pytest.mark.parametrize(
@@ -851,6 +847,9 @@ def test_from_asc_example_file_has_expected_events(
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
+    expected_event_frame = expected_event_frame.with_columns(
+        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+    )
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 
 
@@ -1000,6 +999,9 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
             'duration': pl.Duration('ms'),
             'trial_id': pl.Null,
         },
+    )
+    expected_events = expected_events.with_columns(
+        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)

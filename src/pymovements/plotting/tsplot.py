@@ -106,7 +106,7 @@ def tsplot(
     for col in channel_list:
         if col in samples.columns and isinstance(samples.schema[col], pl.Duration):
             samples = samples.with_columns(
-                (pl.col(col).cast(pl.Float64) / 1000).alias(col),
+                (pl.col(col) / pl.duration(milliseconds=1)).alias(col),
             )
 
     arr = samples[channels].to_numpy().transpose()

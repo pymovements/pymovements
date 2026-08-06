@@ -32,9 +32,9 @@ from pymovements import Events
 def fixture_dataset():
     schema = {
         'name': pl.Utf8,
-        'onset': pl.Duration('ms'),
-        'offset': pl.Duration('ms'),
-        'duration': pl.Duration('ms'),
+        'onset': pl.Duration('us'),
+        'offset': pl.Duration('us'),
+        'duration': pl.Duration('us'),
     }
     yield schema
 
@@ -211,8 +211,12 @@ def test_init_has_correct_names(args, kwargs, expected_names):
 def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_init):
     events = Events(*args, **kwargs)
 
-    expected_df = pl.DataFrame(data=expected_df_data, schema=expected_schema_after_init)
+    numeric_schema = {
+        'name': pl.Utf8, 'onset': pl.Int64, 'offset': pl.Int64, 'duration': pl.Int64,
+    }
+    expected_df = to_duration(pl.DataFrame(data=expected_df_data, schema=numeric_schema))
     assert_frame_equal(events.frame, expected_df)
+    assert dict(events.frame.schema) == expected_schema_after_init
 
 
 @pytest.mark.parametrize(
@@ -228,9 +232,9 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             pl.DataFrame(
                 {}, schema={
                     'name': pl.Utf8,
-                    'onset': pl.Duration('ms'),
-                    'offset': pl.Duration('ms'),
-                    'duration': pl.Duration('ms'),
+                    'onset': pl.Duration('us'),
+                    'offset': pl.Duration('us'),
+                    'duration': pl.Duration('us'),
                 },
             ),
             id='dataframe_arg_no_kwargs',

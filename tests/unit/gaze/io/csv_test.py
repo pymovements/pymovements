@@ -36,7 +36,7 @@ from pymovements.gaze import from_csv
                 'pixel_columns': ['x_left_pix', 'y_left_pix'],
             },
             (10, 2),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape',
         ),
 
@@ -50,7 +50,7 @@ from pymovements.gaze import from_csv
                 'auto_column_detect': True,
             },
             (10, 2),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_auto_column_detect',
         ),
 
@@ -64,7 +64,7 @@ from pymovements.gaze import from_csv
                 'column_schema_overrides': {'test': pl.Float64},
             },
             (10, 3),
-            {'time': pl.Duration('ms'), 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_add_columns',
         ),
 
@@ -78,7 +78,7 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64),
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64),
                 'position': pl.List(pl.Float64),
             },
             id='csv_bino_shape',
@@ -101,7 +101,7 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Duration('ms'), 'pixel': pl.List(pl.Int64),
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64),
                 'position': pl.List(pl.Float64),
             },
             id='csv_bino_shape_auto_column_detect',
@@ -117,7 +117,7 @@ from pymovements.gaze import from_csv
             },
             (103, 3),
             {
-                'time': pl.Duration('ms'), 'pixel': pl.List(pl.Float64),
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Float64),
                 'position': pl.List(pl.Float64),
             },
             id='csv_missing_values',
@@ -130,7 +130,7 @@ from pymovements.gaze import from_csv
                 **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
             },
             (10, 2),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Float32)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32)},
             id='gaze_on_faces_example',
         ),
 
@@ -142,7 +142,7 @@ from pymovements.gaze import from_csv
             },
             (10, 7),
             {
-                'time': pl.Duration('ms'), 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
+                'time': pl.Duration('us'), 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
@@ -157,7 +157,7 @@ from pymovements.gaze import from_csv
             },
             (10, 11),
             {
-                'time': pl.Duration('ms'),
+                'time': pl.Duration('us'),
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32, 'z_target_pos': pl.Float32,
                 'clx': pl.Float32, 'cly': pl.Float32, 'clz': pl.Float32,
                 'crx': pl.Float32, 'cry': pl.Float32, 'crz': pl.Float32,
@@ -173,7 +173,7 @@ from pymovements.gaze import from_csv
                 **DatasetLibrary.get('HBN').resources[0].load_kwargs,
             },
             (10, 2),
-            {'time': pl.Duration('ms'), 'pixel': pl.List(pl.Float32)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32)},
             id='hbn_example',
         ),
 
@@ -186,7 +186,7 @@ from pymovements.gaze import from_csv
             (10, 4),
             {
                 'trial_id': pl.Int64, 'point_id': pl.Int64,
-                'time': pl.Duration('ms'), 'pixel': pl.List(pl.Float32),
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32),
             },
             id='judo1000_example',
         ),
@@ -199,7 +199,7 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Duration('ms'),
+                'time': pl.Duration('us'),
                 'pupil_diameter': pl.Float32,
                 'pixel': pl.List(pl.Float32),
             },
@@ -223,7 +223,7 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Duration('ms'),
+                'time': pl.Duration('us'),
                 'pupil_diameter': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -239,7 +239,7 @@ from pymovements.gaze import from_csv
             },
             (10, 5),
             {
-                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Duration('ms'),
+                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Duration('us'),
                 'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
             id='sbsat_example',

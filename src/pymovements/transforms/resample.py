@@ -111,9 +111,7 @@ def resample(
     time_is_duration = isinstance(time_dtype, pl.Duration)
     if time_is_duration:
         samples = samples.with_columns(
-            pl.col('time').dt.total_milliseconds().mul(
-                1000,
-            ).cast(pl.Datetime('us')).alias('datetime'),
+            pl.col('time').dt.total_microseconds().cast(pl.Datetime('us')).alias('datetime'),
         )
     else:
         samples = samples.with_columns(
@@ -157,7 +155,7 @@ def resample(
     )
     if time_is_duration:
         samples = samples.with_columns(
-            pl.col('datetime').cast(pl.Float64).truediv(1000).cast(pl.Duration('ms')).alias('time'),
+            pl.col('datetime').cast(pl.Int64).cast(pl.Duration('us')).alias('time'),
         )
     else:
         samples = samples.with_columns(

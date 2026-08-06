@@ -86,7 +86,7 @@ class Events:
     ┌──────────┬──────────────┬──────────────┬──────────────┐
     │ name     ┆ onset        ┆ offset       ┆ duration     │
     │ ---      ┆ ---          ┆ ---          ┆ ---          │
-    │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
     ╞══════════╪══════════════╪══════════════╪══════════════╡
     │ fixation ┆ 33m 8s 147ms ┆ 33m 8s 322ms ┆ 175ms        │
     │ fixation ┆ 33m 8s 351ms ┆ 33m 8s 546ms ┆ 195ms        │
@@ -175,7 +175,16 @@ class Events:
                 }
                 self.trial_columns = None
 
-        self.frame = pl.DataFrame(data=data_dict, schema_overrides=self._minimal_schema)
+        # Do not force Duration input through the numeric minimal schema, as casting
+        # Duration to Float64 yields the underlying integer count instead of milliseconds.
+        schema_overrides = {
+            column: dtype for column, dtype in self._minimal_schema.items()
+            if not (
+                column in data_dict
+                and isinstance(getattr(data_dict[column], 'dtype', None), pl.Duration)
+            )
+        }
+        self.frame = pl.DataFrame(data=data_dict, schema_overrides=schema_overrides)
 
         # Ensure column order: trial columns, then minimal schema, keeping all other columns.
         if self.trial_columns is not None:
@@ -188,15 +197,28 @@ class Events:
                 [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
             )
 
-        # Convert onset, offset, and duration to Duration('ms').
-        time_cols = [
-            c for c in ('onset', 'offset', 'duration')
-            if c in self.frame.columns
-            and not isinstance(self.frame.schema[c], pl.Duration)
+        # Convert onset, offset, and duration to Duration('us').
+        # Numeric input values are interpreted as milliseconds by convention.
+        time_cols = [c for c in ('onset', 'offset', 'duration') if c in self.frame.columns]
+        numeric_time_cols = [
+            c for c in time_cols
+            if not isinstance(self.frame.schema[c], pl.Duration)
         ]
-        if time_cols:
+        if numeric_time_cols:
             self.frame = self.frame.with_columns(
-                pl.col(time_cols).cast(pl.Float64).round().cast(pl.Duration('ms')),
+                (pl.col(numeric_time_cols).cast(pl.Float64) * 1000)
+                .round()
+                .cast(pl.Duration('us')),
+            )
+        # Normalize Duration input of any other unit to microseconds.
+        wrong_unit_cols = [
+            c for c in time_cols
+            if isinstance(self.frame.schema[c], pl.Duration)
+            and self.frame.schema[c] != pl.Duration('us')
+        ]
+        if wrong_unit_cols:
+            self.frame = self.frame.with_columns(
+                pl.col(wrong_unit_cols).cast(pl.Duration('us')),
             )
 
         if 'duration' not in self.frame.columns:
@@ -360,7 +382,7 @@ class Events:
         ┌──────────────────┬──────────────┬──────────────┬──────────────┐
         │ name             ┆ onset        ┆ offset       ┆ duration     │
         │ ---              ┆ ---          ┆ ---          ┆ ---          │
-        │ str              ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════════════╪══════════════╪══════════════╪══════════════╡
         │ saccade          ┆ 90ms         ┆ 100ms        ┆ 10ms         │
         │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
@@ -379,7 +401,7 @@ class Events:
         ┌──────────────────┬──────────────┬──────────────┬──────────────┐
         │ name             ┆ onset        ┆ offset       ┆ duration     │
         │ ---              ┆ ---          ┆ ---          ┆ ---          │
-        │ str              ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════════════╪══════════════╪══════════════╪══════════════╡
         │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
         │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
@@ -394,7 +416,7 @@ class Events:
         ┌──────────┬──────────────┬──────────────┬──────────────┐
         │ name     ┆ onset        ┆ offset       ┆ duration     │
         │ ---      ┆ ---          ┆ ---          ┆ ---          │
-        │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════╪══════════════╪══════════════╪══════════════╡
         │ fixation ┆ 99ms         ┆ 176ms        ┆ 77ms         │
         └──────────┴──────────────┴──────────────┴──────────────┘
@@ -406,7 +428,7 @@ class Events:
         ┌──────────────────┬──────────────┬──────────────┬──────────────┐
         │ name             ┆ onset        ┆ offset       ┆ duration     │
         │ ---              ┆ ---          ┆ ---          ┆ ---          │
-        │ str              ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════════════╪══════════════╪══════════════╪══════════════╡
         │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
         │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
@@ -420,9 +442,9 @@ class Events:
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
         │ name         ┆ onset        ┆ offset       ┆ duration     │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation_ivt ┆ 100ms         ┆ 178ms        ┆ 78ms         │
+        │ fixation_ivt ┆ 100ms        ┆ 178ms        ┆ 78ms         │
         └──────────────┴──────────────┴──────────────┴──────────────┘
 
         All saccade variants:
@@ -432,7 +454,7 @@ class Events:
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
         │ name         ┆ onset        ┆ offset       ┆ duration     │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
         │ saccade      ┆ 90ms         ┆ 100ms        ┆ 10ms         │
         │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
@@ -447,7 +469,7 @@ class Events:
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
         │ name         ┆ onset        ┆ offset       ┆ duration     │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
-        │ str          ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════════╪══════════════╪══════════════╪══════════════╡
         │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
         │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
@@ -460,7 +482,7 @@ class Events:
         ┌─────────┬──────────────┬──────────────┬──────────────┐
         │ name    ┆ onset        ┆ offset       ┆ duration     │
         │ ---     ┆ ---          ┆ ---          ┆ ---          │
-        │ str     ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞═════════╪══════════════╪══════════════╪══════════════╡
         │ saccade ┆ 90ms         ┆ 100ms        ┆ 10ms         │
         │ saccade ┆ 175ms        ┆ 199ms        ┆ 24ms         │
@@ -839,9 +861,9 @@ class Events:
         ┌──────────┬──────────────┬──────────────┬──────────────┐
         │ name     ┆ onset        ┆ offset       ┆ duration     │
         │ ---      ┆ ---          ┆ ---          ┆ ---          │
-        │ str      ┆ duration[ms] ┆ duration[ms] ┆ duration[ms] │
+        │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
         ╞══════════╪══════════════╪══════════════╪══════════════╡
-        │ fixation ┆ 0ms          ┆ 90ms         ┆ 90ms         │
+        │ fixation ┆ 0µs          ┆ 90ms         ┆ 90ms         │
         └──────────┴──────────────┴──────────────┴──────────────┘
 
         This combined all the smaller events into a single event with longer duration.
@@ -860,7 +882,7 @@ class Events:
         # Step 3: Create a 'group' identifier for merging
         events = events.with_columns(
             # calculate when gap is null or > max_gap
-            (pl.col('gap').is_null() | (pl.col('gap').dt.total_milliseconds() > max_gap))
+            (pl.col('gap').is_null() | (pl.col('gap').dt.total_microseconds() > max_gap * 1000))
             .cast(pl.Int64)
             # cumulative sum (of ones) in 'group' to assign a unique group number
             # to each sequence of events to be merged

@@ -31,7 +31,7 @@ import polars as pl
 def _to_num(series: pl.Series) -> np.ndarray:
     """Convert a time series to millisecond values as numpy array."""
     if isinstance(series.dtype, pl.Duration):
-        return series.dt.total_milliseconds().to_numpy()
+        return (series.dt.total_microseconds() / 1000).to_numpy()
     return series.to_numpy()
 
 
@@ -416,7 +416,7 @@ def events2timeratio(
         time_diffs = samples[time_column].diff().drop_nulls()
         dt_ms = time_diffs.mode().item()
         if isinstance(dt_ms, timedelta):
-            dt_ms = dt_ms.total_seconds() * 1000
+            dt_ms = dt_ms / timedelta(milliseconds=1)
         else:
             dt_ms = float(dt_ms)
 
@@ -424,7 +424,7 @@ def events2timeratio(
     time_dtype = samples[time_column].dtype
     dt_expr: float | pl.Expr
     if isinstance(time_dtype, pl.Duration):
-        dt_expr = pl.duration(milliseconds=dt_ms)
+        dt_expr = pl.duration(microseconds=round(dt_ms * 1000))
     else:
         dt_expr = dt_ms
 

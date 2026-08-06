@@ -17,32 +17,48 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Fixture helpers for Duration type handling."""
+"""Provides helpers for handling time columns backed by ``polars.Duration``."""
 from __future__ import annotations
 
 import polars as pl
 
 
-def to_duration(df: pl.DataFrame) -> pl.DataFrame:
-    """Cast numeric millisecond time columns to ``pl.Duration('us')`` for comparison.
+def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
+    """Convert all Duration columns of a dataframe to numeric milliseconds.
+
+    Duration columns are converted to Float64 millisecond values. Columns
+    holding only whole milliseconds are narrowed to Int64 afterwards.
 
     Parameters
     ----------
-    df : pl.DataFrame
-        DataFrame whose columns should be cast.
+    frame: pl.DataFrame
+        DataFrame whose Duration columns should be converted.
 
     Returns
     -------
     pl.DataFrame
-        DataFrame with applicable columns cast to ``pl.Duration('us')``.
-
+        DataFrame with Duration columns converted to numeric milliseconds.
     """
-    cols = [
-        c for c in ('time', 'onset', 'offset', 'duration')
-        if c in df.columns and not isinstance(df.schema[c], pl.Duration)
+    duration_columns = [
+        column for column in frame.columns
+        if isinstance(frame.schema[column], pl.Duration)
     ]
-    if cols:
-        return df.with_columns(
-            (pl.col(cols).cast(pl.Float64) * 1000).round().cast(pl.Duration('us')),
-        )
-    return df
+    if not duration_columns:
+        return frame
+
+    frame = frame.with_columns(
+        [
+            (pl.col(column) / pl.duration(milliseconds=1)).alias(column)
+            for column in duration_columns
+        ],
+    )
+
+    # Convert to int if possible.
+    for column in duration_columns:
+        all_whole = frame.select(
+            pl.col(column).round().eq(pl.col(column)).all(),
+        ).item()
+        if all_whole:
+            frame = frame.with_columns(pl.col(column).cast(pl.Int64))
+
+    return frame

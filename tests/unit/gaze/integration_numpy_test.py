@@ -22,6 +22,7 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
+from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import Events
 from pymovements import Experiment
@@ -113,7 +114,7 @@ def test_from_numpy_with_schema():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Duration('ms'),
+            'time': pl.Int64,
             'distance': pl.Float64,
             'pixel': pl.List(pl.Float64),
             'position': pl.List(pl.Float64),
@@ -122,7 +123,7 @@ def test_from_numpy_with_schema():
         },
     )
 
-    assert_frame_equal(gaze.samples, expected)
+    assert_frame_equal(gaze.samples, to_duration(expected))
     assert gaze.n_components == 2
 
 
@@ -166,12 +167,12 @@ def test_from_numpy_with_trial_id():
         },
         schema={
             'trial_id': pl.Float64,
-            'time': pl.Duration('ms'),
+            'time': pl.Int64,
             'pixel': pl.List(pl.Float64),
         },
     )
 
-    assert_frame_equal(gaze.samples, expected)
+    assert_frame_equal(gaze.samples, to_duration(expected))
     assert gaze.n_components == 2
     assert gaze.trial_columns == ['trial_id']
 
@@ -215,7 +216,7 @@ def test_from_numpy_explicit_columns():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Duration('ms'),
+            'time': pl.Int64,
             'distance': pl.Float64,
             'pixel': pl.List(pl.Int64),
             'position': pl.List(pl.Float64),
@@ -224,7 +225,7 @@ def test_from_numpy_explicit_columns():
         },
     )
 
-    assert_frame_equal(gaze.samples, expected)
+    assert_frame_equal(gaze.samples, to_duration(expected))
     assert gaze.n_components == 2
 
 
@@ -247,12 +248,12 @@ def test_from_numpy_explicit_columns_with_trial():
         },
         schema={
             'trial': pl.Int64,
-            'time': pl.Duration('ms'),
+            'time': pl.Int64,
             'pixel': pl.List(pl.Int64),
         },
     )
 
-    assert_frame_equal(gaze.samples, expected)
+    assert_frame_equal(gaze.samples, to_duration(expected))
     assert gaze.n_components == 2
     assert gaze.trial_columns == ['trial']
 

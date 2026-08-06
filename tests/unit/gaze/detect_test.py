@@ -357,7 +357,7 @@ from pymovements.synthetic import step_function
             pm.events.Events(
                 name='fixation',
                 onsets=[1000],
-                offsets=[1099],
+                offsets=[1099.9],
             ),
             id='ivt_constant_position_single_fixation_with_timesteps_float',
         ),
