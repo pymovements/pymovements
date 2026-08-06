@@ -27,7 +27,6 @@ from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from dataclasses import replace
 from typing import Any
-from warnings import warn
 
 from deprecated.sphinx import deprecated
 
@@ -282,19 +281,6 @@ class ResourceDefinition:
         ResourceDefinition
             An initialized ``Resource`` instance.
         """
-        if 'resource' in dictionary:
-            warn(
-                DeprecationWarning(
-                    'from_dict() key "resource" is deprecated since version v0.23.0. '
-                    'Please use key "source" instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
-
-            url = dictionary['resource']
-            dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
-            dictionary['url'] = url
-
         if 'source' in dictionary and isinstance(dictionary['source'], dict):
             dictionary['source'] = WebSource.from_dict(dictionary['source'])
 
