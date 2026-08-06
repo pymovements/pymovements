@@ -265,7 +265,7 @@ def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file)
         height_column='height',
         page_column='page',
     )
-    assert stimulus.metadata == {}
+    assert stimulus.metadata == {'sources': [aoi_path.resolve().as_posix()]}
 
 
 @pytest.mark.parametrize(
@@ -290,8 +290,10 @@ def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
         metadata=metadata,
     )
 
-    assert stimulus.metadata == metadata_pre
-    assert stimulus.metadata is metadata
+    expected_sources = [aoi_path.resolve().as_posix()]
+    assert stimulus.metadata == {**metadata_pre, 'sources': expected_sources}
+    # The passed metadata dictionary is copied, not mutated.
+    assert metadata == metadata_pre
 
 
 def test_text_stimulus_unsupported_format(make_example_file):
@@ -553,6 +555,29 @@ def test_writing_system_preserved_by_split_sample_df(sample_aoi_dataframe, writi
     # Check that all split parts preserve the writing_system
     assert len(splits) == 2
     assert all(stimulus.writing_system == writing_system for stimulus in splits)
+
+
+def test_text_stimulus_split_propagates_metadata(sample_aoi_dataframe):
+    stimulus = TextStimulus(
+        aois=sample_aoi_dataframe,
+        aoi_column='aoi',
+        start_x_column='x_min',
+        start_y_column='y_min',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        metadata={'sources': ['stimuli/text_1_aoi.csv']},
+    )
+
+    splits = stimulus.split(by='page')
+
+    assert len(splits) == 2
+    for split_stimulus in splits:
+        assert split_stimulus.metadata == {'sources': ['stimuli/text_1_aoi.csv']}
+
+    # The metadata is deep-copied, mutating a split does not affect the original.
+    splits[0].metadata['sources'].append('other.csv')
+    assert stimulus.metadata['sources'] == ['stimuli/text_1_aoi.csv']
 
 
 @pytest.mark.parametrize(

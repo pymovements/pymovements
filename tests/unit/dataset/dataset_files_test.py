@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 
 import polars as pl
@@ -35,13 +36,16 @@ from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
 from pymovements.dataset.dataset_files import DatasetFile
+from pymovements.dataset.dataset_files import load_event_files
 from pymovements.dataset.dataset_files import load_gaze_file
+from pymovements.dataset.dataset_files import load_gaze_files
 from pymovements.dataset.dataset_files import load_precomputed_event_file
 from pymovements.dataset.dataset_files import load_precomputed_event_files
 from pymovements.dataset.dataset_files import load_precomputed_reading_measure_file
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
 
@@ -502,7 +506,10 @@ def test_load_gaze_file_has_correct_metadata(
         dataset_definition=DatasetDefinition(),
     )
 
-    assert gaze.metadata == metadata
+    expected_sources = [filepath.resolve().as_posix()]
+    assert gaze.metadata == {**metadata, 'sources': expected_sources}
+    # The DatasetFile metadata dictionary is copied, not mutated.
+    assert 'sources' not in file.metadata
 
 
 @pytest.mark.parametrize(
@@ -542,7 +549,10 @@ def test_load_stimulus_file_has_correct_metadata(
         file,
     )
 
-    assert stimulus.metadata is metadata
+    expected_sources = [filepath.resolve().as_posix()]
+    assert stimulus.metadata == {**metadata, 'sources': expected_sources}
+    # The DatasetFile metadata dictionary is copied, not mutated.
+    assert 'sources' not in file.metadata
 
 
 @pytest.mark.parametrize(
@@ -909,7 +919,7 @@ def test_load_precomputed_rm_file_no_kwargs(make_example_file):
     assert_frame_equal(reading_measure.frame, expected_df, check_column_order=False)
 
 
-def test_load_precomputed_rm_files_rda(make_example_file):
+def test_load_precomputed_rm_files_rda(make_example_file, tmp_path):
     filepath1 = make_example_file('rda_test_file.rda', '1.rda')
     filepath2 = make_example_file('rda_test_file.rda', '2.rda')
 
@@ -928,7 +938,8 @@ def test_load_precomputed_rm_files_rda(make_example_file):
         DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
     ]
 
-    precomputed_rm_list = load_precomputed_reading_measures(definition, files)
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    precomputed_rm_list = load_precomputed_reading_measures(definition, files, paths)
 
     for file, measures in zip(files, precomputed_rm_list):
         expected_df = pyreadr.read_r(file.path)
@@ -938,6 +949,10 @@ def test_load_precomputed_rm_files_rda(make_example_file):
             pl.DataFrame(expected_df['joint.fix']),
             check_column_order=False,
         )
+
+        # Source filepaths are relativized to the dataset root.
+        expected_metadata = {**file.metadata, 'sources': [file.path.name]}
+        assert measures.metadata == expected_metadata
 
 
 @pytest.mark.parametrize('target_filename', ['rda_test_file.rda', 'rda_test_file.RDA'])
@@ -1053,7 +1068,7 @@ def test_load_precomputed_file_unsupported_file_format(make_example_file):
         'Supported formats are: .csv, .jsonl, .ndjson, .rda, .tsv, .txt'
 
 
-def test_load_precomputed_files_rda(make_example_file):
+def test_load_precomputed_files_rda(make_example_file, tmp_path):
     filepath1 = make_example_file('rda_test_file.rda', '1.rda')
     filepath2 = make_example_file('rda_test_file.rda', '2.rda')
 
@@ -1072,7 +1087,8 @@ def test_load_precomputed_files_rda(make_example_file):
         DatasetFile(path=filepath2, definition=resource_definition, metadata={'subject_id': '2'}),
     ]
 
-    precomputed_events_list = load_precomputed_event_files(definition, files)
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    precomputed_events_list = load_precomputed_event_files(definition, files, paths)
 
     for file, events in zip(files, precomputed_events_list):
         expected_df = pyreadr.read_r(file.path)
@@ -1082,6 +1098,10 @@ def test_load_precomputed_files_rda(make_example_file):
             pl.DataFrame(expected_df['joint.fix']),
             check_column_order=False,
         )
+
+        # Source filepaths are relativized to the dataset root.
+        expected_metadata = {**file.metadata, 'sources': [file.path.name]}
+        assert events.metadata == expected_metadata
 
 
 @pytest.mark.parametrize('target_filename', ['rda_test_file.rda', 'rda_test_file.RDA'])
@@ -1349,13 +1369,13 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     assert gaze.trial_columns == ['trial_id']
 
 
-def test_load_stimuli_files_empty():
-    result = load_stimuli_files([])
+def test_load_stimuli_files_empty(tmp_path):
+    result = load_stimuli_files([], paths=DatasetPaths(root=tmp_path, dataset='.'))
     assert isinstance(result, list)
     assert not result
 
 
-def test_load_stimuli_files_returns_text_stimulus_list(make_example_file):
+def test_load_stimuli_files_returns_text_stimulus_list(make_example_file, tmp_path):
     example_filenames = [
         'toy_text_aoi.csv', 'toy_text_1_1_aoi.csv', 'toy_text_2_5_aoi.csv', 'toy_text_3_8_aoi.csv',
     ]
@@ -1379,10 +1399,14 @@ def test_load_stimuli_files_returns_text_stimulus_list(make_example_file):
         )
         files.append(file)
 
-    stimuli = load_stimuli_files(files)
+    stimuli = load_stimuli_files(files, paths=DatasetPaths(root=tmp_path, dataset='.'))
 
     assert all(isinstance(stimulus, TextStimulus) for stimulus in stimuli)
     assert len(stimuli) == len(example_filenames)
+
+    # Source filepaths are relativized to the dataset root.
+    for example_filename, stimulus in zip(example_filenames, stimuli):
+        assert stimulus.metadata['sources'] == ['stimuli/' + example_filename]
 
 
 @pytest.mark.parametrize(
@@ -1473,3 +1497,80 @@ def test_load_stimulus_file_raises_unknown_stimulus_content_type():
     )
     with pytest.raises(ValueError, match=message):
         load_stimulus_file(file)
+
+
+def test_load_gaze_files_relativizes_sources(tmp_path, testfiles_dirpath):
+    raw_dirpath = tmp_path / 'raw'
+    raw_dirpath.mkdir()
+    filepath = raw_dirpath / 'monocular_example.csv'
+    shutil.copy(testfiles_dirpath / 'monocular_example.csv', filepath)
+
+    resource_definition = ResourceDefinition(
+        content='gaze',
+        load_kwargs={
+            'time_column': 'time',
+            'time_unit': 'ms',
+            'pixel_columns': ['x_left_pix', 'y_left_pix'],
+        },
+    )
+    files = [
+        DatasetFile(path=filepath, definition=resource_definition, metadata={'subject_id': 1}),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    gazes = load_gaze_files(DatasetDefinition(), files, paths)
+
+    assert gazes[0].metadata == {
+        'subject_id': 1,
+        'sources': ['raw/monocular_example.csv'],
+    }
+    assert gazes[0].events.metadata['sources'] == ['raw/monocular_example.csv']
+
+
+def test_load_gaze_files_preprocessed_sources_point_to_preprocessed_file(
+        tmp_path, testfiles_dirpath,
+):
+    raw_filepath = tmp_path / 'raw' / 'monocular_example.csv'
+    preprocessed_dirpath = tmp_path / 'preprocessed'
+    preprocessed_dirpath.mkdir()
+    shutil.copy(
+        testfiles_dirpath / 'monocular_example.feather',
+        preprocessed_dirpath / 'monocular_example.feather',
+    )
+
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(path=raw_filepath, definition=resource_definition, metadata={'subject_id': 1}),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    gazes = load_gaze_files(DatasetDefinition(), files, paths, preprocessed=True)
+
+    # The sources list the file that was actually loaded, not the original raw file.
+    assert gazes[0].metadata['sources'] == ['preprocessed/monocular_example.feather']
+
+
+def test_load_event_files_adds_relative_sources(tmp_path):
+    events_dirpath = tmp_path / 'events'
+    events_dirpath.mkdir()
+    events_df = pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [1]})
+    events_df.write_ipc(events_dirpath / 'sub_1.feather')
+
+    resource_definition = ResourceDefinition(content='gaze')
+    files = [
+        DatasetFile(
+            path=tmp_path / 'raw' / 'sub_1.csv',
+            definition=resource_definition,
+            metadata={'subject_id': 1},
+        ),
+    ]
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    events_list = load_event_files(files, paths, verbose=False)
+
+    assert events_list[0].metadata == {
+        'subject_id': 1,
+        'sources': ['events/sub_1.feather'],
+    }
+    # The DatasetFile metadata dictionary is copied, not mutated.
+    assert files[0].metadata == {'subject_id': 1}

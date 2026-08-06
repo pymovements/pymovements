@@ -48,7 +48,7 @@ def test_image_stimulus_from_file_has_correct_metadata_default(make_example_file
     example_file = 'stimuli/pexels-zoorg-1000498.jpg'
     image_path = make_example_file(example_file)
     image_stimulus = from_file(image_path)
-    assert image_stimulus.metadata == {}
+    assert image_stimulus.metadata == {'sources': [Path(image_path).resolve().as_posix()]}
 
 
 @pytest.mark.parametrize(
@@ -62,14 +62,19 @@ def test_image_stimulus_from_file_has_correct_metadata(metadata, make_example_fi
     metadata_pre = deepcopy(metadata)
     image_path = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
     image_stimulus = from_file(image_path, metadata=metadata)
-    assert image_stimulus.metadata == metadata_pre
-    assert image_stimulus.metadata is metadata
+    expected_sources = [Path(image_path).resolve().as_posix()]
+    assert image_stimulus.metadata == {**metadata_pre, 'sources': expected_sources}
+    # The passed metadata dictionary is copied, not mutated.
+    assert metadata == metadata_pre
 
 
 def test_image_stimulus_from_files(testfiles_dirpath):
     dirpath = testfiles_dirpath / 'stimuli'
     image_stimulus = from_files(dirpath, r'{book_name}-{page_num}-{line_num}.jpg')
     assert image_stimulus.images[0] == dirpath / 'pexels-zoorg-1000498.jpg'
+    assert image_stimulus.metadata['sources'] == [
+        Path(image).resolve().as_posix() for image in image_stimulus.images
+    ]
 
 
 def test_image_stimulus_from_files_str(testfiles_dirpath):

@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import Any
 from typing import Literal
 from typing import overload
@@ -32,6 +33,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import merge_sources
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -57,6 +59,9 @@ class Events:
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe.
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        event data was generated from. (default: None)
 
     Attributes
     ----------
@@ -65,6 +70,9 @@ class Events:
     trial_columns: list[str] | None
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
+    metadata: dict[str, Any]
+        Dictionary containing additional metadata. A ``sources`` entry lists the files the
+        event data was generated from.
 
     Raises
     ------
@@ -100,6 +108,8 @@ class Events:
 
     trial_columns: list[str] | None
 
+    metadata: dict[str, Any]
+
     _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
 
     def __init__(
@@ -110,8 +120,10 @@ class Events:
             offsets: list[int | float] | np.ndarray | None = None,
             trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
+            metadata: dict[str, Any] | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
+        self.metadata = metadata if metadata is not None else {}
 
         if data is not None:
             _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
@@ -539,6 +551,7 @@ class Events:
         return Events(
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
+            metadata=deepcopy(self.metadata),
         )
 
     @deprecated(
@@ -608,12 +621,14 @@ class Events:
         if as_dict:
             # keys are tuples of the unique values of the columns specified in `by`.
             return {
-                key: Events(frame, trial_columns=self.trial_columns)
+                key: Events(
+                    frame, trial_columns=self.trial_columns, metadata=deepcopy(self.metadata),
+                )
                 for key, frame in event_dfs.items()
             }
 
         return [
-            Events(frame, trial_columns=self.trial_columns)
+            Events(frame, trial_columns=self.trial_columns, metadata=deepcopy(self.metadata))
             for frame in event_dfs
         ]
 
@@ -807,6 +822,9 @@ class Events:
             'location_x' in self.frame.columns or 'location_y' in self.frame.columns
         ):
             self.frame = self.frame.drop('location')
+
+        # The AOI-mapped events are derived from the stimulus file as well.
+        merge_sources(self.metadata, aoi_dataframe.metadata)
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
