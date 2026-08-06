@@ -445,7 +445,7 @@ def test_from_numpy_with_column_indices(
         **kwargs,
     )
 
-    assert_frame_equal(gaze.samples, expected.select(gaze.samples.columns))
+    assert_frame_equal(gaze.samples, to_duration(expected).select(gaze.samples.columns))
     assert gaze.n_components == 2
     assert gaze.trial_columns == expected_trial_columns
 
@@ -494,7 +494,7 @@ def test_from_numpy_negative_index():
     # -1 should be col2
     gaze = from_numpy(samples=array, schema=schema, time_column=-1, orient='col')
     assert 'time' in gaze.samples.columns
-    assert gaze.samples['time'][0] == 30
+    assert gaze.samples['time'].dt.total_milliseconds()[0] == 30
 
 
 @pytest.mark.parametrize(
