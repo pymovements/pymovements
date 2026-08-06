@@ -507,6 +507,46 @@ def test_load_gaze_file_has_correct_metadata(
 
 
 @pytest.mark.parametrize(
+    ('example_filename', 'content', 'load_kwargs', 'metadata'),
+    [
+        pytest.param(
+            'stimuli/toy_text_1_1_aoi.csv',
+            'textstimulus',
+            {
+                'aoi_column': 'char',
+                'start_x_column': 'top_left_x',
+                'start_y_column': 'top_left_y',
+                'width_column': 'width',
+                'height_column': 'height',
+            },
+            {'key': 'value'},
+            id='text',
+        ),
+
+        pytest.param(
+            'stimuli/pexels-zoorg-1000498.jpg',
+            'imagestimulus',
+            {},
+            {'foo': 'bar'},
+            id='image',
+        ),
+    ],
+)
+def test_load_stimulus_file_has_correct_metadata(
+        example_filename, content, load_kwargs, metadata, make_example_file,
+):
+    filepath = make_example_file(example_filename)
+    resource_definition = ResourceDefinition(content=content, load_kwargs=load_kwargs)
+    file = DatasetFile(path=filepath, definition=resource_definition, metadata=metadata)
+
+    stimulus = load_stimulus_file(
+        file,
+    )
+
+    assert stimulus.metadata is metadata
+
+
+@pytest.mark.parametrize(
     (
         'make_csv_file_kwargs', 'load_function', 'load_kwargs', 'definition_dict', 'expected_gaze',
     ),

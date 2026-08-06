@@ -859,3 +859,49 @@ def test_events2timeratio_with_trials(
         else:
             key = tuple(row[col] for col in trial_columns)
         assert row['event_ratio_blink'] == pytest.approx(expected_dict[key])
+
+
+@pytest.mark.parametrize(
+    'expected_ratio',
+    [
+        pytest.param(
+            # durations are summed: ((96 - 0 + 1) + (85 - 6 + 1)) / (104 - 0 + 1) = 177 / 105
+            177 / 105,
+            id='current_behavior_overlap_double_counted',
+        ),
+        pytest.param(
+            # merging the overlapping intervals yields (96 - 0 + 1) / 105 = 97 / 105
+            97 / 105,
+            marks=pytest.mark.xfail(
+                reason='overlapping events are not merged before summing durations (#1584)',
+                strict=True,
+            ),
+            id='expected_behavior_overlap_merged',
+        ),
+    ],
+)
+def test_events2timeratio_overlapping_events(expected_ratio):
+    """Overlapping same-name events are summed without merging their intervals.
+
+    Binocular EyeLink recordings emit separate left-eye and right-eye blink events
+    which typically overlap in time. ``events2timeratio`` sums the durations of all
+    matching events without merging overlapping intervals, so the overlap is counted
+    twice and the resulting ratio can exceed 1.0.
+
+    This documents the behavioral difference to the removed
+    ``data_loss_ratio_blinks`` metadata field of the EyeLink parser, which merged
+    overlapping blink intervals before counting (see issue #1584). The xfailing
+    parametrization asserts the correct merged result and is to be addressed in a
+    follow-up PR.
+    """
+    # left-eye blink [0, 96] fully contains right-eye blink [6, 85]
+    events = pl.DataFrame({
+        'name': ['blink', 'blink'],
+        'onset': [0.0, 6.0],
+        'offset': [96.0, 85.0],
+    })
+    samples = pl.DataFrame({'time': [float(t) for t in range(105)]})
+
+    result = samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000.0))
+
+    assert result.to_series()[0] == pytest.approx(expected_ratio)

@@ -30,7 +30,6 @@ import numpy as np
 import polars as pl
 from matplotlib.patches import Circle
 
-from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_arrow_data
@@ -67,7 +66,6 @@ def scanpathplot(
         arrow_scale: float = 40.,
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
-        events: Events | EventDataFrame | None = None,
         event_name: str = 'fixation',
         ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -127,8 +125,6 @@ def scanpathplot(
         Path of the stimulus to be shown. (default: None)
     stimulus_origin: str
         Origin of stimuls to plot on the stimulus. (default: 'upper')
-    events: Events | EventDataFrame | None
-        The events to plot. (default: None)
     event_name: str
         Filters events for a particular value in the `` name `` column. (default: 'fixation')
     ax: plt.Axes | None
@@ -142,27 +138,43 @@ def scanpathplot(
     Raises
     ------
     TypeError
-        If both gaze and events are 'None'.
+        If gaze is 'None' or gaze.events is 'None'.
     ValueError
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
-    if events is not None:
+    if add_stimulus:
         warn(
             DeprecationWarning(
-                "scanpathplot argument 'events' is deprecated since version v0.23.1. "
-                "Please use argument 'gaze' instead. "
-                'This argument will be removed in v0.28.0.',
+                "scanpathplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
             ),
         )
-    else:
-        if gaze is None:
-            raise TypeError("scanpathplot argument 'gaze' or 'events' must not be both None")
-        if gaze.events is None:
-            raise TypeError("scanpathplot 'gaze.events' must not be None")
-        assert gaze is not None
-        assert gaze.events is not None
-        events = gaze.events
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if gaze is None:
+        raise TypeError("scanpathplot argument 'gaze' must not be None")
+    if gaze.events is None:
+        raise TypeError("scanpathplot 'gaze.events' must not be None")
+    events = gaze.events
     assert isinstance(events, Events)  # otherwise mypy complains
 
     fixations = events.frame.filter(pl.col('name') == event_name)
@@ -202,7 +214,7 @@ def scanpathplot(
         ax.add_patch(fixation)
 
     if add_traceplot:
-        if gaze is None or gaze.samples is None:
+        if gaze.samples is None:
             raise TypeError("scanpathplot 'gaze.samples' must not be None")
         gaze_x_signal = gaze.samples[gaze_position_column].list.get(0)
         gaze_y_signal = gaze.samples[gaze_position_column].list.get(1)

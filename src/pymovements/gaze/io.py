@@ -27,7 +27,7 @@ from typing import Any
 
 import polars as pl
 
-from pymovements.events.frame import Events
+from pymovements.events.events import Events
 from pymovements.gaze._utils._parsing_begaze import parse_begaze
 from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment

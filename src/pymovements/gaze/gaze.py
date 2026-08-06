@@ -34,7 +34,6 @@ from warnings import warn
 
 import polars
 import yaml
-from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements import transforms
@@ -43,6 +42,17 @@ from pymovements._utils._html import repr_html
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import run_report
+from pymovements.gaze.validation import check_gaze_components_defined
+from pymovements.gaze.validation import check_gaze_range
+from pymovements.gaze.validation import check_max_gap
+from pymovements.gaze.validation import check_sampling_rate_consistency
+from pymovements.gaze.validation import check_time_column_exists
+from pymovements.gaze.validation import check_time_monotone
+from pymovements.gaze.validation import check_trial_columns_dtype
+from pymovements.gaze.validation import check_trial_columns_exist
+from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
@@ -113,10 +123,6 @@ class Gaze:
         from the experiment definition. This column will be renamed to ``distance``. (default: None)
     auto_column_detect: bool
         Flag indicating if the column names should be inferred automatically. (default: False)
-    data: polars.DataFrame | None
-        A dataframe that contains gaze samples. (default: None)
-        .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Attributes
     ----------
@@ -200,7 +206,7 @@ class Gaze:
     └──────────────┴────────────┘
 
     In case your data has no time column available, you can pass an
-    :py:class:`~pymovements.gaze.Experiment` to create a time column with the correct sampling rate
+    :py:class:`~pymovements.Experiment` to create a time column with the correct sampling rate
     during initialization. The time column will be represented in millisecond units.
 
     >>> df_no_time = df.select(polars.exclude('t'))
@@ -272,19 +278,7 @@ class Gaze:
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
             auto_column_detect: bool = False,
-            data: polars.DataFrame | None = None,
     ):
-        if data is not None:
-            warn(
-                DeprecationWarning(
-                    "Gaze.__init__() argument 'data' is deprecated since version v0.23.0. "
-                    "Please use argument 'samples' instead. "
-                    'This argument will be removed in v0.28.0.',
-                ),
-            )
-            check_is_mutual_exclusive(samples=samples, data=data)
-            samples = data
-
         if samples is None:
             samples = polars.DataFrame()
         else:
@@ -775,7 +769,8 @@ class Gaze:
         output_column : str
             Name of the output column.
         **kwargs: Any
-            Additional keyword arguments to be passed to the :func:`~transforms.clip()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.clip()` method.
 
         Raises
         ------
@@ -882,10 +877,12 @@ class Gaze:
         Parameters
         ----------
         method: str
-            Computation method. See :func:`~transforms.pos2vel()` for details, default: fivepoint.
+            Computation method. See :func:`~pymovements.transforms.pos2vel()` for details.
             (default: 'fivepoint')
+
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.pos2vel()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.pos2vel()` method.
 
         Raises
         ------
@@ -1008,7 +1005,8 @@ class Gaze:
         ----------
         method: str
             The method to use for smoothing. Choose from ``savitzky_golay``, ``moving_average``,
-            ``exponential_moving_average``. See :func:`~transforms.smooth()` for details.
+            ``exponential_moving_average``.
+            See :func:`~pymovements.transforms.smooth()` for details.
             (default: 'savitzky_golay')
         window_length: int
             For ``moving_average`` this is the window size to calculate the mean of the subsequent
@@ -1027,10 +1025,11 @@ class Gaze:
             which the filter is applied.
             When passing ``None``, no extension padding is used.
             When passing a scalar value, sample series will be padded using the passed value.
-            See :func:`~transforms.smooth()` for details on the padding methods.
+            See :func:`~pymovements.transforms.smooth()` for details on the padding methods.
             (default: 'nearest')
         **kwargs: int | float | str
-            Additional keyword arguments to be passed to the :func:`~transforms.smooth()` method.
+            Additional keyword arguments to be passed to the
+            :func:`~pymovements.transforms.smooth()` method.
         """
         self.transform(
             'smooth',
@@ -1286,7 +1285,7 @@ class Gaze:
         """Calculate event properties for given events.
 
         The calculated event properties are added as columns to
-        :py:attr:`~pymovements.gaze.Gaze.events`.
+        :py:attr:`~pymovements.Gaze.events`.
 
         Parameters
         ----------
@@ -1549,36 +1548,6 @@ class Gaze:
     def columns(self) -> list[str]:
         """List of column names in samples dataframe."""
         return self.samples.columns
-
-    @property
-    @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def frame(self) -> polars.DataFrame:
-        """Gaze samples dataframe.
-
-        .. deprecated:: v0.23.0
-        Please use Gaze.samples instead.
-        This property will be removed in v0.28.0.
-
-        Returns
-        -------
-        polars.DataFrame
-            Gaze samples dataframe.
-
-        """
-        return self.samples
-
-    @frame.setter
-    @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def frame(self, data: polars.DataFrame) -> None:
-        self.samples = data
 
     def map_to_aois(
             self,
@@ -2000,6 +1969,203 @@ class Gaze:
         )
         gaze.n_components = self.n_components
         return gaze
+
+    def validate(
+            self,
+            *,
+            trial_columns_exist: bool = True,
+            trial_columns_dtype: bool = True,
+            time_column_exists: bool = True,
+            gaze_components_defined: bool = True,
+            time_monotone: bool = True,
+            max_gap: bool = True,
+            max_gap_factor: float = 5.0,
+            sampling_rate_consistency: bool = True,
+            max_deviation: float = 0.05,
+            gaze_range: bool = True,
+            min_fraction: float = 0.95,
+            source_path: str = '',
+    ) -> list[CheckResult]:
+        """Run data quality validation checks on this gaze object.
+
+        Each check can be individually enabled or disabled via its boolean argument.
+        By default all eight checks are run.
+
+        Parameters
+        ----------
+        trial_columns_exist : bool
+            Check that every column listed in ``trial_columns`` is present in the
+            sample schema. (default: True)
+        trial_columns_dtype : bool
+            Check that trial-identifier columns have integer or string dtype, not
+            float. (default: True)
+        time_column_exists : bool
+            Check that a numeric ``'time'`` column is present. (default: True)
+        gaze_components_defined : bool
+            Check that at least one coordinate column (pixel, position, velocity or
+            acceleration) is present. (default: True)
+        time_monotone : bool
+            Check that timestamps are strictly monotone increasing within each trial.
+            (default: True)
+        max_gap : bool
+            Check that no inter-sample gap exceeds ``max_gap_factor`` times the
+            expected inter-sample interval. (default: True)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Only used when *max_gap* is ``True``. (default: 5.0)
+        sampling_rate_consistency : bool
+            Check that the empirical median ISI matches the declared sampling rate
+            within ``max_deviation``. (default: True)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Only used when *sampling_rate_consistency* is ``True``.
+            (default: 0.05, i.e. 5%)
+        gaze_range : bool
+            Check that at least ``min_fraction`` of gaze samples fall within screen
+            bounds. (default: True)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen bounds.
+            Only used when *gaze_range* is ``True``. (default: 0.95, i.e. 95%)
+        source_path : str
+            Identifier for this gaze object (e.g. a file path). Included in the
+            ``sources`` field of any failing :py:class:`CheckResult`.
+            (default: ``''``)
+
+        Returns
+        -------
+        list[CheckResult]
+            One :py:class:`~pymovements.CheckResult` per enabled
+            check, in the order listed above.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> samples = pl.DataFrame(
+        ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ... )
+        >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
+        >>> results = gaze.validate()
+        >>> all(r.severity in {'pass', 'warning', 'fail', 'error'} for r in results)
+        True
+        """
+        results: list[CheckResult] = []
+        if trial_columns_exist:
+            results.append(check_trial_columns_exist(self, source_path))
+        if trial_columns_dtype:
+            results.append(check_trial_columns_dtype(self, source_path))
+        if time_column_exists:
+            results.append(check_time_column_exists(self, source_path))
+        if gaze_components_defined:
+            results.append(check_gaze_components_defined(self, source_path))
+        if time_monotone:
+            results.append(check_time_monotone(self, source_path))
+        if max_gap:
+            results.append(check_max_gap(self, source_path, max_gap_factor=max_gap_factor))
+        if sampling_rate_consistency:
+            results.append(
+                check_sampling_rate_consistency(self, source_path, max_deviation=max_deviation),
+            )
+        if gaze_range:
+            results.append(check_gaze_range(self, source_path, min_fraction=min_fraction))
+        return results
+
+    def report_data_quality(
+            self,
+            *,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+            output_path: Path | str | None = None,
+            source_path: str = '',
+            max_gap_factor: float = 5.0,
+            max_deviation: float = 0.05,
+            min_fraction: float = 0.95,
+    ) -> DataQualityReport:
+        """Generate a data quality report for this gaze object.
+
+        Runs validation checks via :py:meth:`validate` and computes quality
+        measures (data loss, fixation precision) for this single gaze file.
+        The result is a :py:class:`~pymovements.DataQualityReport`
+        that can optionally be saved as BIDS-conformant derivative files.
+
+        Parameters
+        ----------
+        checks : list[str] | None
+            Check identifiers to run. ``None`` runs all eight checks.
+            Valid values: ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
+            ``'time_column_exists'``, ``'gaze_components_defined'``,
+            ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
+            ``'gaze_range'``.
+        measures : list[str] | None
+            Measures to compute. ``None`` computes all four.
+            Valid values: ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``,
+            ``'bcea'``.
+        levels : list[str] | None
+            Aggregation levels. ``None`` defaults to ``['dataset', 'trial']``
+            (meaningful for a single file; pass ``'subject'`` or ``'session'``
+            explicitly if needed).
+        raise_on_error : bool
+            If ``True``, raise :py:exc:`~pymovements.ValidationError` on the
+            first ``'fail'`` or ``'error'``-severity check result. (default: ``False``)
+        output_path : Path | str | None
+            If given, write BIDS-conformant derivative files here via
+            :py:meth:`~DataQualityReport.save_bids_report`.
+            (default: ``None``)
+        source_path : str
+            Identifier for this gaze object (e.g. a file path). Used as
+            ``affected_files`` in failing :py:class:`CheckResult` objects.
+            (default: ``''``)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Passed to the ``'max_gap'`` check. (default: 5.0)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Passed to the ``'sampling_rate_consistency'`` check.
+            (default: 0.05, i.e. 5%)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen
+            bounds. Passed to the ``'gaze_range'`` check. (default: 0.95)
+
+        Returns
+        -------
+        DataQualityReport
+            Aggregated check results, quality measures, pass/fail status, and
+            any Python warnings captured during the run.
+
+        Raises
+        ------
+        pymovements.ValidationError
+            If *raise_on_error* is ``True`` and any check produces an error
+            result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> samples = pl.DataFrame(
+        ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ... )
+        >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
+        >>> report = gaze.report_data_quality(checks=['time_column_exists'])
+        >>> report.passed
+        True
+        """
+        return run_report(
+            gaze=self,
+            checks=checks,
+            measures=measures,
+            levels=levels,
+            raise_on_error=raise_on_error,
+            output_path=output_path,
+            source_path=source_path,
+            max_gap_factor=max_gap_factor,
+            max_deviation=max_deviation,
+            min_fraction=min_fraction,
+        )
 
     def _check_experiment(self) -> None:
         """Check if the experiment attribute has been set.
@@ -2441,7 +2607,7 @@ class Gaze:
             )
 
     def __eq__(self, other: Gaze) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Gaze` object."""
+        """Check equality between this and another :py:class:`~pymovements.Gaze` object."""
         samples_equal = self.samples.equals(other.samples, null_equal=True)
         events_equal = self.events == other.events
         experiment_equal = self.experiment == other.experiment
@@ -2512,7 +2678,7 @@ class Gaze:
         dirpath: str | Path
             Absolute directory name to save data.
             This argument is used only for this single call and does not alter
-            :py:meth:`pymovements.Dataset.events_rootpath`.
+            :py:attr:`~pymovements.Dataset.events_rootpath`.
         save_events: bool | None
             Save events in events.{extension} file
         save_samples: bool | None
