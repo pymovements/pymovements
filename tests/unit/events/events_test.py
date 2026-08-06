@@ -1150,6 +1150,32 @@ def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
         f' but got {len(events.frame)} for max_gap={max_gap}'
 
 
+@pytest.mark.parametrize(
+    ('max_gap', 'expected_n_events'),
+    [
+        # Two fixations are separated by a sub-millisecond gap of 10.6 ms. Merging happens only
+        # when max_gap is at least the gap, so max_gap must be compared without truncating the gap
+        # to whole milliseconds (which would collapse 10.6 to 10 and merge at max_gap=10).
+        pytest.param(10, 2, id='integer_max_gap_below_subms_gap'),
+        pytest.param(10.5, 2, id='float_max_gap_below_subms_gap'),
+        pytest.param(11, 1, id='integer_max_gap_above_subms_gap'),
+        pytest.param(10.6, 1, id='float_max_gap_equal_subms_gap'),
+    ],
+)
+def test_merge_subsequent_close_events_subms_gap_and_float_max_gap(max_gap, expected_n_events):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0.0, 20.6],
+                'offset': [10.0, 30.0],
+            },
+        ),
+    )
+    events.merge_subsequent_close_events('fixation', max_gap=max_gap)
+    assert len(events.frame) == expected_n_events
+
+
 @pytest.mark.parametrize('verbose', [True, False])
 @pytest.mark.parametrize(
     ('events', 'max_gap', 'result_frame'),

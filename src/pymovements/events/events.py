@@ -99,7 +99,9 @@ class Events:
 
     trial_columns: list[str] | None
 
-    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
+    _minimal_schema: dict[str, Any] = {
+        'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us'),
+    }
 
     def __init__(
             self,
@@ -175,15 +177,18 @@ class Events:
                 }
                 self.trial_columns = None
 
-        # Do not force Duration input through the numeric minimal schema, as casting
-        # Duration to Float64 yields the underlying integer count instead of milliseconds.
-        schema_overrides = {
-            column: dtype for column, dtype in self._minimal_schema.items()
-            if not (
-                column in data_dict
-                and isinstance(getattr(data_dict[column], 'dtype', None), pl.Duration)
-            )
-        }
+        # Build the frame with a numeric millisecond scaffold for the time columns. Their
+        # canonical dtype is Duration('us'), but list/int/float input arrives in milliseconds
+        # and is converted below. Casting such input straight to Duration('us') here would
+        # reinterpret the millisecond values as microseconds. Duration input is left untouched.
+        schema_overrides: dict[str, Any] = {}
+        for column, dtype in self._minimal_schema.items():
+            if not isinstance(dtype, pl.Duration):
+                schema_overrides[column] = dtype
+            elif column in data_dict and not isinstance(
+                    getattr(data_dict[column], 'dtype', None), pl.Duration,
+            ):
+                schema_overrides[column] = pl.Float64
         self.frame = pl.DataFrame(data=data_dict, schema_overrides=schema_overrides)
 
         # Ensure column order: trial columns, then minimal schema, keeping all other columns.
@@ -881,8 +886,12 @@ class Events:
 
         # Step 3: Create a 'group' identifier for merging
         events = events.with_columns(
-            # calculate when gap is null or > max_gap
-            (pl.col('gap').is_null() | (pl.col('gap').dt.total_microseconds() > max_gap * 1000))
+            # calculate when gap is null or > max_gap (gap is a Duration; compare in
+            # fractional milliseconds so sub-millisecond gaps are not truncated away)
+            (
+                pl.col('gap').is_null()
+                | (pl.col('gap').dt.total_milliseconds(fractional=True) > max_gap)
+            )
             .cast(pl.Int64)
             # cumulative sum (of ones) in 'group' to assign a unique group number
             # to each sequence of events to be merged
