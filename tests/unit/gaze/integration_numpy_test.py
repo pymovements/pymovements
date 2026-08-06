@@ -228,6 +228,45 @@ def test_from_numpy_explicit_columns():
     assert gaze.n_components == 2
 
 
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((4,), id='one_dimension'),
+        pytest.param((1, 4), id='leading_singleton'),
+        pytest.param((4, 1), id='trailing_singleton'),
+        pytest.param((1, 4, 1), id='surrounding_singletons'),
+        pytest.param((4, 1, 1), id='multiple_trailing_singletons'),
+    ],
+)
+def test_from_numpy_flattens_time_array_singleton_dimensions(shape):
+    time = np.array([101, 102, 103, 104], dtype=np.int64).reshape(shape)
+    pixel = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int64)
+
+    gaze = from_numpy(time=time, time_unit='ms', pixel=pixel)
+
+    assert gaze.samples['time'].to_list() == [101, 102, 103, 104]
+
+
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((), id='zero_dimensions'),
+        pytest.param((2, 4), id='two_dimensions'),
+        pytest.param((2, 1, 4), id='two_dimensions_with_singleton'),
+    ],
+)
+def test_from_numpy_time_array_unsupported_shape_raises(shape):
+    time = np.zeros(shape)
+
+    with pytest.raises(ValueError) as error:
+        from_numpy(time=time)
+
+    assert str(error.value) == (
+        'time array must be at least one-dimensional and have at most one non-singleton '
+        f'dimension, but got shape {shape}'
+    )
+
+
 def test_from_numpy_explicit_columns_with_trial():
     trial = np.array([1, 1, 2, 2], dtype=np.int64)
     time = np.array([101, 102, 103, 104], dtype=np.int64)

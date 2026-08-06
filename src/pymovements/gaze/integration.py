@@ -120,7 +120,8 @@ def from_numpy(
     trial: np.ndarray | None
         Array of trial identifiers for each timestep. (default: None)
     time: np.ndarray | None
-        Array of timestamps. (default: None)
+        Array of timestamps. Singleton dimensions are removed automatically. The array must be at
+        least one-dimensional and cannot have more than one non-singleton dimension. (default: None)
     pixel: np.ndarray | None
         Array of gaze pixel positions. (default: None)
     position: np.ndarray | None
@@ -346,6 +347,13 @@ def from_numpy(
 
     time_column = None
     if time is not None:
+        if time.ndim == 0 or sum(dimension != 1 for dimension in time.shape) > 1:
+            raise ValueError(
+                'time array must be at least one-dimensional and have at most one '
+                'non-singleton dimension, '
+                f'but got shape {time.shape}',
+            )
+        time = time.reshape(-1)
         sample_component = pl.from_numpy(data=time, schema=['time'], orient=orient)
         sample_components.append(sample_component)
         time_column = 'time'
