@@ -60,8 +60,17 @@ def _make_gaze(
         samples: pl.DataFrame,
         trial_columns: list[str] | None = None,
         experiment: Experiment | None = None,
+        convert_time: bool = True,
 ) -> Gaze:
-    """Create a Gaze object from a ready-made samples DataFrame (no column renaming)."""
+    """Create a Gaze object from a ready-made samples DataFrame (no column renaming).
+
+    A numeric ``time`` column is interpreted as milliseconds and converted to
+    ``Duration('us')`` to mirror real Gaze construction, unless ``convert_time`` is False.
+    """
+    if convert_time and 'time' in samples.columns and samples['time'].dtype.is_numeric():
+        samples = samples.with_columns(
+            (pl.col('time').cast(pl.Float64) * 1000).round().cast(pl.Duration('us')).alias('time'),
+        )
     g = Gaze.__new__(Gaze)
     g.samples = samples
     g.trial_columns = trial_columns
@@ -236,15 +245,20 @@ class TestCheckTrialColumnsDtype:
 # ---------------------------------------------------------------------------
 
 class TestCheckTimeColumnExists:
-    def test_pass_time_present_integer(self) -> None:
+    def test_pass_time_present_duration(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}))
+        assert isinstance(gaze.samples['time'].dtype, pl.Duration)
         result = check_time_column_exists(gaze)
         assert result.severity == 'pass'
 
-    def test_pass_time_present_float(self) -> None:
-        gaze = _make_gaze(pl.DataFrame({'time': pl.Series([0.0, 1.0], dtype=pl.Float64)}))
+    def test_fail_time_numeric_dtype(self) -> None:
+        gaze = _make_gaze(
+            pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}),
+            convert_time=False,
+        )
         result = check_time_column_exists(gaze)
-        assert result.severity == 'pass'
+        assert result.severity == 'fail'
+        assert 'time' in result.message
 
     def test_fail_time_absent(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'x': [1.0, 2.0]}))
@@ -468,6 +482,18 @@ class TestCheckSamplingRateConsistency:
         result = check_sampling_rate_consistency(gaze)
         assert result.severity == 'pass'
         assert 'skipped' in result.message
+
+    def test_pass_subms_isi_2khz(self) -> None:
+        # 2 kHz recording: 0.5 ms ISI. Sub-millisecond diffs must be handled with fractional
+        # milliseconds; truncating to whole ms would break both checks.
+        exp = _simple_experiment(sampling_rate=2000.0)
+        gaze = _make_gaze(
+            pl.DataFrame({'time': [0.0, 0.5, 1.0, 1.5, 2.0]}),
+            experiment=exp,
+        )
+        assert check_sampling_rate_consistency(gaze).severity == 'pass'
+        assert check_time_monotone(gaze).severity == 'pass'
+        assert check_max_gap(gaze).severity == 'pass'
 
     def test_pass_consistent_rate(self) -> None:
         exp = _simple_experiment(sampling_rate=100.0)
