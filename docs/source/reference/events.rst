@@ -16,7 +16,6 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
     :template: class.rst
 
     Events
-    EventDataFrame
 
 .. currentmodule:: pymovements.events.detection
 
