@@ -1715,3 +1715,25 @@ def test_gaze_compute_event_properties_null_trial():
     )
     gaze.compute_event_properties('location')
     assert gaze.events.frame['location'].to_list() == [[0.5, 0.5], [2.5, 2.5]]
+
+
+def test_gaze_compute_event_properties_time_based_sample_measure():
+    # Sample measures using the time column (data_loss) expect numeric milliseconds
+    # and must work on the Duration time column of the samples frame.
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1, 2, 3],
+                'x': [0.0, None, 2.0, 3.0],
+                'y': [0.0, None, 2.0, 3.0],
+            },
+        ),
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x', 'y'],
+        events=Events(name=['fixation'], onsets=[0], offsets=[3]),
+    )
+
+    gaze.compute_event_properties(('data_loss', {'column': 'pixel', 'sampling_rate': 1000.0}))
+
+    assert gaze.events.frame['data_loss_ratio'].to_list() == [0.25]

@@ -178,6 +178,16 @@ class EventSamplesProcessor:
 
         results = []
 
+        # Sample measures expect the time column in numeric milliseconds. The event
+        # time filter below still runs on the original Duration column; only the
+        # samples handed to the measures are converted.
+        time_is_duration = (
+            'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
+        )
+        samples_schema = dict(samples.schema)
+        if time_is_duration:
+            samples_schema['time'] = pl.Float64
+
         if len(events) == 0:
             measure_columns = [measure.meta.output_name() for measure in self.measures]
             warn(
@@ -185,7 +195,7 @@ class EventSamplesProcessor:
             )
 
             # run measures on empty samples data frame.
-            result = pl.LazyFrame(schema=samples.schema).select(
+            result = pl.LazyFrame(schema=samples_schema).select(
                 *[pl.repeat(None, 0).alias(column_name) for column_name in event_identifiers],
                 *self.measures,
             )
@@ -203,6 +213,11 @@ class EventSamplesProcessor:
                     for column in _identifiers
                 ],
             )
+
+            if time_is_duration:
+                event_samples = event_samples.with_columns(
+                    (pl.col('time') / pl.duration(milliseconds=1)).alias('time'),
+                )
 
             # Compute event measure values and include identifier columns.
             # Cast literals to the schema type from the events dataframe to ensure
