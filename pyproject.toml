@@ -155,7 +155,7 @@ disallow_untyped_defs = false
 skip-checking-raises = true
 
 [tool.pytest.ini_options]
-addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
+addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib -p tests.fixtures.cleanup_fixtures"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 filterwarnings = [
   "error",
@@ -167,7 +167,7 @@ filterwarnings = [
   "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning"
 ]
 markers = ["network: mark a test as requiring network access"]
-pythonpath = ['docs/source']
+pythonpath = ['docs/source', '.']
 testpaths = ['tests', 'src']
 xfail_strict = true
 
