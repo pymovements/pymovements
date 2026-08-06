@@ -126,8 +126,9 @@ class Gaze:
         Flag indicating if the column names should be inferred automatically. (default: False)
     data: polars.DataFrame | None
         A dataframe that contains gaze samples. (default: None)
+
         .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0.
+           Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Attributes
     ----------
@@ -1569,8 +1570,8 @@ class Gaze:
         """Gaze samples dataframe.
 
         .. deprecated:: v0.23.0
-        Please use Gaze.samples instead.
-        This property will be removed in v0.28.0.
+           Please use Gaze.samples instead.
+           This property will be removed in v0.28.0.
 
         Returns
         -------
