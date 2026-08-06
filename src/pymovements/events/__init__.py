@@ -27,7 +27,6 @@ from pymovements.events.detection import out_of_screen
 from pymovements.events.detection.library import EventDetectionLibrary
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
-from pymovements.events.frame import EventDataFrame
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 
 
@@ -43,5 +42,4 @@ __all__ = [
 
     'PrecomputedEventDataFrame',
     'Events',
-    'EventDataFrame',
 ]

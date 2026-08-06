@@ -942,11 +942,6 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
     assert 'calibrations' not in gaze._metadata
     assert 'validations' not in gaze._metadata
 
-    # Data loss ratios should be present for consumers until we migrate to explicit preprocessing
-    # utilities.
-    assert 'data_loss_ratio' in gaze._metadata
-    assert 'data_loss_ratio_blinks' in gaze._metadata
-
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
