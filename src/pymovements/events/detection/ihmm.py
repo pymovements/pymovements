@@ -32,9 +32,8 @@ from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
 
 
-def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
-    """
-    Convert an optimization result dictionary into a JSON-serializable format.
+def _format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[list[float]]]:
+    """Convert an optimization result dictionary into a JSON-serializable format.
 
     This function extracts model parameters from the input dictionary, converts
     NumPy scalar values into native Python floats, and exponentiates the
@@ -48,11 +47,15 @@ def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[lis
             "trans": array-like of shape (2, 2),      # log transition probabilities
         }
 
-    Args:
-        opt: Dictionary containing optimization outputs. Values are expected
-            to be NumPy arrays or array-like objects.
+    Parameters
+    ----------
+    opt: dict[str, Any]
+        Dictionary containing optimization outputs. Values are expected
+        to be NumPy arrays or array-like objects.
 
-    Returns:
+    Returns
+    -------
+    dict[str, list[float] | list[list[float]]]
         A dictionary with the following structure:
             {
                 "mu": [float, float],
@@ -66,7 +69,7 @@ def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[lis
 
         The `init` and `trans` values are exponentiated before conversion.
     """
-    out = {}
+    out: dict[str, list[float] | list[list[float]]] = {}
     out['mu'] = [float(opt['mu'][0]), float(opt['mu'][1])]
     out['sigma'] = [float(opt['sigma'][0]), float(opt['sigma'][1])]
     out['init'] = [float(numpy.exp(opt['init'][0])), float(numpy.exp(opt['init'][1]))]
@@ -80,14 +83,13 @@ def format_optimal_dict(opt: dict[str, Any]) -> dict[str, list[float] | list[lis
     return out
 
 
-def emit_log_prob(
+def _emit_log_prob(
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
     v: float,
     s: int,
 ) -> float:
-    """
-    Compute the log-probability of observing value `v` under a Gaussian emission model.
+    """Compute the log-probability of observing value `v` under a Gaussian emission model.
 
     This function evaluates the log-density of a univariate normal distribution
     parameterized by state-dependent mean (`mu`) and standard deviation (`sigma`),
@@ -99,28 +101,40 @@ def emit_log_prob(
 
         log p(v | s) = -0.5 * log(2πσ²) - (v - μ)² / (2σ²)
 
-    Args:
-        mu: Array of means for each hidden state. Shape: (num_states,).
-            May be None if not used in a given context, but must be valid when accessed.
-        sigma: Array of standard deviations for each hidden state. Shape: (num_states,).
-            May be None if not used in a given context, but must be valid when accessed.
-        v: Observed scalar value.
-        s: Index of the hidden state used to select the corresponding (mu, sigma).
+    Parameters
+    ----------
+    mu: numpy.ndarray | None
+        Array of means for each hidden state. Shape: (num_states,).
+        Must not be None.
+    sigma: numpy.ndarray | None
+        Array of standard deviations for each hidden state. Shape: (num_states,).
+        Must not be None.
+    v: float
+        Observed scalar value.
+    s: int
+        Index of the hidden state used to select the corresponding (mu, sigma).
 
-    Returns:
+    Returns
+    -------
+    float
         The log-probability (float) of observing `v` given state `s`
         under a Gaussian emission model.
+
+    Raises
+    ------
+    ValueError
+        If `mu` or `sigma` is None.
     """
+    if mu is None or sigma is None:
+        raise ValueError('mu and sigma must not be None to compute an emission log-probability')
 
-    mu = mu[s]
-    sigma = sigma[s]
+    mu_s = mu[s]
+    sigma_s = max(sigma[s], 1e-6)
 
-    sigma = max(sigma, 1e-6)
-
-    return -0.5 * numpy.log(2 * numpy.pi * sigma**2) - ((v - mu)**2) / (2 * sigma**2)
+    return -0.5 * numpy.log(2 * numpy.pi * sigma_s**2) - ((v - mu_s)**2) / (2 * sigma_s**2)
 
 
-def log_sum_exp(
+def _log_sum_exp(
     arr: numpy.ndarray,
 ) -> float:
     """Compute log-sum-exp.
@@ -139,7 +153,7 @@ def log_sum_exp(
     return m + numpy.log(numpy.sum(numpy.exp(arr - m)))
 
 
-def baum_welch(
+def _baum_welch(
     states: int,
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
@@ -150,8 +164,7 @@ def baum_welch(
     max_iters: int,
     epsilon: float = 1e-4,
 ) -> dict[str, numpy.ndarray]:
-    """
-    Estimate Hidden Markov Model parameters using the Baum-Welch algorithm.
+    """Estimate Hidden Markov Model parameters using the Baum-Welch algorithm.
 
     The Baum-Welch algorithm is an expectation-maximization (EM) algorithm used to
     find the maximum likelihood estimates of HMM parameters. This implementation
@@ -164,34 +177,34 @@ def baum_welch(
 
     mu : numpy.ndarray | None
         Initial means for the observation distributions (Gaussian emissions).
-        Shape: (states,). If None, will be initialized during algorithm execution.
+        Shape: (states,). Must not be None.
 
     sigma : numpy.ndarray | None
         Initial standard deviations for the observation distributions.
-        Shape: (states,). If None, will be initialized during algorithm execution.
+        Shape: (states,). Must not be None.
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
-        Shape: (states,). If None, will be initialized from the forward-backward algorithm.
+        Shape: (states,). Must not be None.
 
     trans : numpy.ndarray | None
         Initial state transition probability matrix (log-space).
-        Shape: (states, states). trans[i, j] = log P(state_j | state_i).
+        Shape: (states, states). trans[i, j] = log P(state_j | state_i). Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Same length as velocities. True indicates observed, False indicates missing.
 
     max_iters : int
         Maximum number of EM iterations to perform.
 
-    epsilon : float, default=1e-4
-        Convergence threshold. Algorithm stops when the relative change in
-        log-likelihood between iterations is less than this value.
+    epsilon : float
+        Convergence threshold. Algorithm stops when the absolute change in
+        log-likelihood between iterations is less than this value. (default: 1e-4)
 
     Returns
     -------
@@ -206,7 +219,22 @@ def baum_welch(
             Estimated initial state probabilities (log-space). Shape: (states,)
         - 'trans' : numpy.ndarray
             Estimated state transition probabilities (log-space). Shape: (states, states)
+
+    Raises
+    ------
+    ValueError
+        If `mu`, `sigma`, `init`, or `trans` is None.
     """
+    if mu is None or sigma is None or init is None or trans is None:
+        raise ValueError(
+            'mu, sigma, init and trans must not be None to run Baum-Welch reestimation',
+        )
+
+    # copy parameters so the caller's arrays are not modified in place
+    mu = numpy.array(mu, dtype=float)
+    sigma = numpy.array(sigma, dtype=float)
+    init = numpy.array(init, dtype=float)
+    trans = numpy.array(trans, dtype=float)
 
     T = len(velocities)
     M = states
@@ -219,7 +247,7 @@ def baum_welch(
 
         # forward pass
 
-        alpha = baum_forward(
+        alpha = _baum_forward(
             mu=mu,
             sigma=sigma,
             trans=trans,
@@ -232,7 +260,7 @@ def baum_welch(
 
         # backward pass
 
-        beta = baum_backward(
+        beta = _baum_backward(
             mu=mu,
             sigma=sigma,
             trans=trans,
@@ -255,7 +283,7 @@ def baum_welch(
                         denom_terms.append(
                             alpha[t, i] +
                             trans[i, j] +
-                            emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
                             beta[t + 1, j],
                         )
                     else:
@@ -266,7 +294,7 @@ def baum_welch(
                             beta[t + 1, j],
                         )
 
-            denom = log_sum_exp(numpy.array(denom_terms))
+            denom = _log_sum_exp(numpy.array(denom_terms))
 
             for i in range(M):
                 for j in range(M):
@@ -274,7 +302,7 @@ def baum_welch(
                         num = (
                             alpha[t, i] +
                             trans[i, j] +
-                            emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                            _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
                             beta[t + 1, j]
                         )
                     else:
@@ -293,7 +321,7 @@ def baum_welch(
         gamma_full[:, :-1] = gamma
 
         last = alpha[T - 1] + beta[T - 1]
-        last = numpy.exp(last - log_sum_exp(last))
+        last = numpy.exp(last - _log_sum_exp(last))
         gamma_full[:, -1] = last
 
         # m-step
@@ -317,14 +345,17 @@ def baum_welch(
 
             total = numpy.sum(weights)
 
-            mu[j] = numpy.sum(weights * vals) / total
+            # keep the previous emission parameters if a state carries no posterior
+            # mass, otherwise the update would divide by zero and yield nan.
+            if total > 0:
+                mu[j] = numpy.sum(weights * vals) / total
 
-            var = numpy.sum(weights * (vals - mu[j])**2) / total
-            sigma[j] = numpy.sqrt(var)
+                var = numpy.sum(weights * (vals - mu[j])**2) / total
+                sigma[j] = numpy.sqrt(var)
 
         # compute log-likelihood for convergence check
 
-        alpha_updated = baum_forward(
+        alpha_updated = _baum_forward(
             mu=mu,
             sigma=sigma,
             trans=trans,
@@ -335,7 +366,7 @@ def baum_welch(
             M=M,
         )
 
-        log_likelihood = log_sum_exp(alpha_updated[-1])
+        log_likelihood = _log_sum_exp(alpha_updated[-1])
 
         if abs(log_likelihood - prev_log_likelihood) < epsilon:
             break
@@ -345,7 +376,7 @@ def baum_welch(
     return {'mu': mu, 'sigma': sigma, 'init': init, 'trans': trans}
 
 
-def baum_forward(
+def _baum_forward(
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
     init: numpy.ndarray | None,
@@ -355,8 +386,7 @@ def baum_forward(
     T: int,
     M: int,
 ) -> numpy.ndarray:
-    """
-    Compute forward probabilities (alpha) for a Hidden Markov Model.
+    """Compute forward probabilities (alpha) for a Hidden Markov Model.
 
     The forward algorithm computes the probability of being in each hidden state
     at each time step given the observed sequence up to that point. This implementation
@@ -367,25 +397,26 @@ def baum_forward(
     ----------
     mu : numpy.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
-        Shape: (M,). If None, emission probabilities are ignored (treated as log(1) = 0).
+        Shape: (M,). Must not be None.
 
     sigma : numpy.ndarray | None
         Standard deviations of the emission distributions for each state.
-        Shape: (M,). If None, emission probabilities are ignored.
+        Shape: (M,). Must not be None.
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
-        Shape: (M,). init[s] = log(P(state = s at time 0)).
+        Shape: (M,). init[s] = log(P(state = s at time 0)). Must not be None.
 
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
         Shape: (M, M). trans[i, j] = log(P(state = j at time t | state = i at time t-1)).
+        Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
 
@@ -400,14 +431,24 @@ def baum_forward(
     numpy.ndarray
         Forward probabilities (log-space). Shape: (T, M).
         alpha[t, s] = log(P(observations[0:t+1], state = s at time t | model parameters)).
+
+    Raises
+    ------
+    ValueError
+        If `mu`, `sigma`, `init`, or `trans` is None.
     """
+    if mu is None or sigma is None or init is None or trans is None:
+        raise ValueError(
+            'mu, sigma, init and trans must not be None to compute forward probabilities',
+        )
+
     alpha = numpy.full((T, M), -numpy.inf)
 
     # init step
 
     for s in range(M):
         if velocities_mask[0]:
-            alpha[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+            alpha[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
         else:
             alpha[0, s] = init[s] + 0
 
@@ -419,16 +460,16 @@ def baum_forward(
             for i in range(M):
                 terms.append(alpha[t - 1, i] + trans[i, j])
             if velocities_mask[t]:
-                alpha[t, j] = log_sum_exp(numpy.array(terms)) + \
-                    emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
+                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
+                    _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=j)
             else:
-                alpha[t, j] = log_sum_exp(numpy.array(terms)) + \
+                alpha[t, j] = _log_sum_exp(numpy.array(terms)) + \
                     0.0
 
     return alpha
 
 
-def baum_backward(
+def _baum_backward(
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
     trans: numpy.ndarray | None,
@@ -437,8 +478,7 @@ def baum_backward(
     T: int,
     M: int,
 ) -> numpy.ndarray:
-    """
-    Compute backward probabilities (beta) for a Hidden Markov Model.
+    """Compute backward probabilities (beta) for a Hidden Markov Model.
 
     The backward algorithm computes the probability of the future observation sequence
     given that the system is in a particular state at a particular time. This implementation
@@ -449,21 +489,22 @@ def baum_backward(
     ----------
     mu : numpy.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
-        Shape: (M,). If None, emission probabilities are ignored (treated as log(1) = 0).
+        Shape: (M,). Must not be None.
 
     sigma : numpy.ndarray | None
         Standard deviations of the emission distributions for each state.
-        Shape: (M,). If None, emission probabilities are ignored.
+        Shape: (M,). Must not be None.
 
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
         Shape: (M, M). trans[i, j] = log(P(state = j at time t+1 | state = i at time t)).
+        Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
 
@@ -479,7 +520,13 @@ def baum_backward(
         Backward probabilities (log-space). Shape: (T, M).
         beta[t, i] = log(P(observations[t+1:T] | state = i at time t, model parameters)).
 
+    Raises
+    ------
+    ValueError
+        If `mu`, `sigma`, or `trans` is None.
     """
+    if mu is None or sigma is None or trans is None:
+        raise ValueError('mu, sigma and trans must not be None to compute backward probabilities')
 
     beta = numpy.full((T, M), -numpy.inf)
 
@@ -496,7 +543,7 @@ def baum_backward(
                 if velocities_mask[t + 1]:
                     terms.append(
                         trans[i, j] +
-                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
+                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t + 1], s=j) +
                         beta[t + 1, j],
                     )
                 else:
@@ -506,12 +553,12 @@ def baum_backward(
                         beta[t + 1, j],
                     )
 
-            beta[t, i] = log_sum_exp(numpy.array(terms))
+            beta[t, i] = _log_sum_exp(numpy.array(terms))
 
     return beta
 
 
-def viterbi(
+def _viterbi(
     states: int,
     mu: numpy.ndarray | None,
     sigma: numpy.ndarray | None,
@@ -520,8 +567,7 @@ def viterbi(
     velocities: list[float] | numpy.ndarray,
     velocities_mask: numpy.ndarray,
 ) -> numpy.ndarray:
-    """
-    Find the most likely sequence of hidden states using the Viterbi algorithm.
+    """Find the most likely sequence of hidden states using the Viterbi algorithm.
 
     The Viterbi algorithm is a dynamic programming algorithm that finds the
     most probable sequence of hidden states (the Viterbi path) given a sequence
@@ -535,25 +581,26 @@ def viterbi(
 
     mu : numpy.ndarray | None
         Means of the emission distributions (Gaussian) for each state.
-        Shape: (states,). If None, emission probabilities are ignored (treated as log(1) = 0).
+        Shape: (states,). Must not be None.
 
     sigma : numpy.ndarray | None
         Standard deviations of the emission distributions for each state.
-        Shape: (states,). If None, emission probabilities are ignored.
+        Shape: (states,). Must not be None.
 
     init : numpy.ndarray | None
         Initial state probability distribution (log-space).
-        Shape: (states,). init[s] = log(P(state = s at time 0)).
+        Shape: (states,). init[s] = log(P(state = s at time 0)). Must not be None.
 
     trans : numpy.ndarray | None
         State transition probability matrix (log-space).
         Shape: (states, states). trans[i, j] = log(P(state = j at time t | state = i at time t-1)).
+        Must not be None.
 
     velocities : list[float] | numpy.ndarray
         Observation sequence of velocity measurements.
         Length: T (number of time steps).
 
-    velocities_mask : list[bool]
+    velocities_mask : numpy.ndarray
         Boolean mask indicating which velocity observations are valid/observed.
         Length: T. True indicates observed, False indicates missing.
 
@@ -563,7 +610,13 @@ def viterbi(
         Most likely sequence of hidden states (Viterbi path).
         Shape: (T,), dtype=int. Each entry is a state index from 0 to states-1.
 
+    Raises
+    ------
+    ValueError
+        If `mu`, `sigma`, `init`, or `trans` is None.
     """
+    if mu is None or sigma is None or init is None or trans is None:
+        raise ValueError('mu, sigma, init and trans must not be None to run Viterbi decoding')
 
     # init step
 
@@ -573,7 +626,10 @@ def viterbi(
     prev = numpy.zeros((T, states), dtype=int)
 
     for s in range(states):
-        prob[0, s] = init[s] + emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        if velocities_mask[0]:
+            prob[0, s] = init[s] + _emit_log_prob(mu=mu, sigma=sigma, v=velocities[0], s=s)
+        else:
+            prob[0, s] = init[s]
 
     # main loop
 
@@ -584,7 +640,7 @@ def viterbi(
             for state2 in range(states):
                 if velocities_mask[t]:
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + \
-                        emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
+                        _emit_log_prob(mu=mu, sigma=sigma, v=velocities[t], s=state1)
                 else:
 
                     new_prob = prob[t - 1, state2] + trans[state2, state1] + 0
@@ -606,15 +662,14 @@ def viterbi(
     return path
 
 
-def collapse_states(
+def _collapse_states(
         states: numpy.ndarray,
         timesteps: numpy.ndarray,
         fixation_state: int = 0,
         min_duration: int = 0,
 
 ) -> tuple[numpy.ndarray, numpy.ndarray]:
-    """
-    Extract contiguous fixation periods from a sequence of state labels.
+    """Extract contiguous fixation periods from a sequence of state labels.
 
     This function identifies consecutive runs of a specified fixation state and
     returns the onset and offset times for each fixation period. It collapses
@@ -630,9 +685,9 @@ def collapse_states(
         Array of time values corresponding to each state label.
         Must have the same length as states. Shape: (T,).
 
-    fixation_state : int, default=0
+    fixation_state : int
         The state label that represents fixation periods.
-        All other states are ignored. Default is 0 (commonly used for fixation).
+        All other states are ignored. (default: 0, commonly used for fixation).
 
     min_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
@@ -649,8 +704,7 @@ def collapse_states(
         - offsets : numpy.ndarray
             End times of each fixation period. Shape: (N,).
             Same length as onsets.
-   """
-
+    """
     if len(states) == 0 or len(timesteps) == 0:
         return numpy.array([]), numpy.array([])
 
@@ -694,7 +748,7 @@ def collapse_states(
     return numpy.array(onsets), numpy.array(offsets)
 
 
-def compute_hmm(
+def _compute_hmm(
     velocities: numpy.ndarray,
     verbose: bool,
     reestimation: bool,
@@ -706,8 +760,7 @@ def compute_hmm(
     velocities_mask: numpy.ndarray,
     hmm_parameters_dict: dict | None = None,
 ) -> numpy.ndarray:
-    """
-    Compute HMM state sequence for velocity data using optional parameter reestimation.
+    """Compute HMM state sequence for velocity data using optional parameter reestimation.
 
     This function serves as a high-level wrapper for HMM-based state decoding of
     velocity time series data. It handles parameter initialization, optional
@@ -750,11 +803,11 @@ def compute_hmm(
         Shape: (2, 2), where trans[i, j] = P(state=j | state=i).
         If None, uses default or hmm_parameters_dict values.
 
-    velocities_mask : array-like
+    velocities_mask : numpy.ndarray
         Boolean mask indicating valid/observed velocity values.
         Shape: (T,). True for observed, False for missing/NaN values.
 
-    hmm_parameters_dict : dict or None
+    hmm_parameters_dict : dict | None
         Dictionary containing custom HMM parameters with keys:
         - 'mu': list of 2 means
         - 'sigma': list of 2 standard deviations
@@ -768,7 +821,6 @@ def compute_hmm(
         Decoded state sequence. Shape: (T,), dtype=int.
         State 0 typically represents fixation, State 1 represents saccade.
     """
-
     # ignore nan values for default data driven initialization
     velocities_for_init = velocities[velocities_mask]
 
@@ -808,13 +860,16 @@ def compute_hmm(
     else:
         _trans = defaults['trans']
 
-    _init = numpy.log(_init)
-    _trans = numpy.log(_trans)
+    # clip before taking the log so that valid zero probabilities (e.g. an
+    # init_state of [1, 0]) map to a large negative log value instead of
+    # emitting a divide-by-zero warning from numpy.log.
+    _init = numpy.log(numpy.clip(numpy.asarray(_init, dtype=float), 1e-12, 1.0))
+    _trans = numpy.log(numpy.clip(numpy.asarray(_trans, dtype=float), 1e-12, 1.0))
 
     # reestimate if needed
 
     if reestimation:
-        optimal = baum_welch(
+        optimal = _baum_welch(
             states=2,
             mu=_mu,
             sigma=_sigma,
@@ -825,26 +880,32 @@ def compute_hmm(
             max_iters=reestimation_max_iters,
         )
 
-        # reorder to enforce states order (0 = fixation)
-
-        order = numpy.argsort(optimal['mu'])
-
-        optimal['mu'] = numpy.array(optimal['mu'])[order]
-        optimal['sigma'] = numpy.array(optimal['sigma'])[order]
-        optimal['init'] = numpy.array(optimal['init'])[order]
-        optimal['trans'] = numpy.array(optimal['trans'][order])[:, order]
-
         _mu = optimal['mu']
         _sigma = optimal['sigma']
         _init = optimal['init']
         _trans = optimal['trans']
 
-        if verbose:
-            print(f"Optimal parameters found by reestimation are:\n{format_optimal_dict(optimal)}")
+    # Enforce state order (state 0 = fixation = lowest mean velocity) so that the
+    # decoded states carry a consistent meaning whether or not parameters were
+    # re-estimated. Without this, user-supplied parameters given in saccade-first
+    # order would silently mislabel fixations and saccades.
+
+    _mu = numpy.asarray(_mu)
+    _sigma = numpy.asarray(_sigma)
+    order = numpy.argsort(_mu)
+
+    _mu = _mu[order]
+    _sigma = _sigma[order]
+    _init = _init[order]
+    _trans = _trans[order][:, order]
+
+    if reestimation and verbose:
+        optimal = {'mu': _mu, 'sigma': _sigma, 'init': _init, 'trans': _trans}
+        print(f"Optimal parameters found by reestimation are:\n{_format_optimal_dict(optimal)}")
 
     # inference the hmm
 
-    states = viterbi(
+    states = _viterbi(
         states=2,
         mu=_mu,
         sigma=_sigma,
@@ -857,10 +918,118 @@ def compute_hmm(
     return states
 
 
+def _validate_transition_probabilities(transition_probabilities: numpy.ndarray) -> None:
+    """Validate that a transition matrix is a valid row-stochastic probability matrix.
+
+    Parameters
+    ----------
+    transition_probabilities: numpy.ndarray
+        Transition probability matrix of shape ``(2, 2)``.
+
+    Raises
+    ------
+    ValueError
+        If any row does not sum to one, or if any entry lies outside ``[0, 1]``.
+    """
+    row_sums = numpy.sum(transition_probabilities, axis=1)
+    if not numpy.allclose(row_sums, 1.0):
+        raise ValueError(
+            f'transition_probabilities values must sum up to one for each state '
+            f'but instead are {row_sums[0]} and {row_sums[1]}',
+        )
+    if numpy.any(transition_probabilities < 0) or numpy.any(transition_probabilities > 1):
+        raise ValueError(
+            'transition_probabilities values must each lie between zero and one',
+        )
+
+
+def _validate_init_state(init_state: numpy.ndarray) -> None:
+    """Validate that an initial-state vector is a valid probability distribution.
+
+    Parameters
+    ----------
+    init_state: numpy.ndarray
+        Initial state probability vector of shape ``(2,)``.
+
+    Raises
+    ------
+    ValueError
+        If the values do not sum to one, or if any entry lies outside ``[0, 1]``.
+    """
+    if not numpy.isclose(numpy.sum(init_state), 1.0):
+        raise ValueError(
+            f'init_state values must sum up to one '
+            f'but instead sum up to {numpy.sum(init_state)}',
+        )
+    if numpy.any(init_state < 0) or numpy.any(init_state > 1):
+        raise ValueError(
+            'init_state values must each lie between zero and one',
+        )
+
+
+def _validate_hmm_parameters_dict(hmm_parameters_dict: dict) -> dict[str, numpy.ndarray]:
+    """Validate and copy a user-supplied ``hmm_parameters_dict``.
+
+    Checks that the dictionary has exactly the expected keys and that each value has
+    the correct shape and, for ``init`` and ``trans``, forms a valid probability
+    distribution. The values are copied into a new dictionary of numpy arrays so the
+    caller's input is left untouched.
+
+    Parameters
+    ----------
+    hmm_parameters_dict: dict
+        Dictionary with keys ``'mu'``, ``'sigma'``, ``'init'`` and ``'trans'``.
+
+    Returns
+    -------
+    dict[str, numpy.ndarray]
+        A new dictionary with the same keys whose values are numpy arrays.
+
+    Raises
+    ------
+    ValueError
+        If the keys are incorrect, a parameter has the wrong shape, or the init/trans
+        values are not valid probabilities.
+    """
+    if set(hmm_parameters_dict.keys()) != {'mu', 'sigma', 'init', 'trans'}:
+        raise ValueError(
+            f'hmm_parameters_dict'
+            f' should have fields {["mu", "sigma", "init", "trans"]} but instead has '
+            f'{list(hmm_parameters_dict.keys())}',
+        )
+
+    # copy into a new dict so the caller's input is not mutated
+    validated = {
+        'mu': numpy.array(hmm_parameters_dict['mu']),
+        'sigma': numpy.array(hmm_parameters_dict['sigma']),
+        'init': numpy.array(hmm_parameters_dict['init']),
+        'trans': numpy.array(hmm_parameters_dict['trans']),
+    }
+
+    if validated['mu'].shape != (2,):
+        raise ValueError(f'mu must have shape (2,), but shapes are {validated["mu"].shape}')
+    if validated['sigma'].shape != (2,):
+        raise ValueError(f'sigma must have shape (2,), but shapes are {validated["sigma"].shape}')
+    if validated['init'].shape != (2,):
+        raise ValueError(
+            f'init_state must have shape (2,), but shapes are {validated["init"].shape}',
+        )
+    if validated['trans'].shape != (2, 2):
+        raise ValueError(
+            f'transition_probabilities must have shape (2, 2), but shapes are '
+            f'{validated["trans"].shape}',
+        )
+
+    _validate_transition_probabilities(validated['trans'])
+    _validate_init_state(validated['init'])
+
+    return validated
+
+
 @register_event_detection
 def ihmm(
-        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray,
-        timesteps: list[int] | numpy.ndarray | None = None,
+        velocities: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
+        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         mu: list[float] | numpy.ndarray | None = None,
         sigma: list[float] | numpy.ndarray | None = None,
@@ -872,8 +1041,10 @@ def ihmm(
         hmm_parameters_dict: dict | None = None,
         name: str = 'fixation',
 ) -> Events:
-    """
-    Detect fixation events from velocity data using an Independent Hidden Markov Model (IHMM).
+    """Detect fixation events from velocity data using a Hidden Markov Model (I-HMM).
+
+    The implementation follows the algorithm from Salvucci and Goldberg
+    :cite:p:`SalvucciGoldberg2000`.
 
     This function implements a 2-state HMM specifically designed for eye-tracking
     data to distinguish between fixations (state 0) and saccades (state 1). It
@@ -883,61 +1054,67 @@ def ihmm(
 
     Parameters
     ----------
-    velocities : list[list[float]] | list[tuple[float, float]] | numpy.ndarray
+    velocities : list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         Velocity data. Can be:
         - 2D array of shape (T, 2) containing x and y velocity components
-        - 1D array of shape (T,) containing pre-computed velocity magnitudes
         - List of (vx, vy) tuples or lists
-        Will be converted to velocity magnitudes via Euclidean norm.
+        - polars Series of 2-element lists
+        Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
-    timesteps : list[int] | numpy.ndarray | None, default=None
-        Timestamp indices for each velocity sample. Must be integers.
-        If None, uses sequential indices (0, 1, 2, ..., T-1).
+    timesteps : list[int] | numpy.ndarray | polars.Series | None
+        Timestamp for each velocity sample. May be integer or float valued.
+        If None, uses sequential indices (0, 1, 2, ..., T-1). (default: None)
 
     minimum_duration: int
         Minimum fixation duration. The duration should be the same unit as the timesteps array.
+        Must be an integer, so with float-valued ``timesteps`` (e.g. seconds) only
+        whole-unit thresholds can be expressed. (default: 100)
 
-    mu : list[float] | numpy.ndarray | None, default=None
+    mu : list[float] | numpy.ndarray | None
         Mean velocity for each state (Gaussian emissions).
         Shape: (2,), typically [fixation_mean, saccade_mean].
-        If None, uses data-driven defaults or hmm_parameters_dict.
+        The state order is normalized internally by ascending mean, so the
+        lowest-mean state is always treated as the fixation state (state 0)
+        regardless of the order in which the two values are supplied.
+        If None, uses data-driven defaults or hmm_parameters_dict. (default: None)
 
-    sigma : list[float] | numpy.ndarray | None, default=None
+    sigma : list[float] | numpy.ndarray | None
         Standard deviation of velocity for each state.
         Shape: (2,), typically [fixation_std, saccade_std].
-        If None, uses data-driven defaults or hmm_parameters_dict.
+        If None, uses data-driven defaults or hmm_parameters_dict. (default: None)
 
-    init_state : list[float] | numpy.ndarray | None, default=None
+    init_state : list[float] | numpy.ndarray | None
         Initial state probability distribution (linear scale).
         Shape: (2,), e.g., [0.5, 0.5]. Must sum to 1.
-        If None, uses defaults or hmm_parameters_dict.
+        If None, uses defaults or hmm_parameters_dict. (default: None)
 
-    transition_probabilities : list[list[float]] | numpy.ndarray | None, default=None
+    transition_probabilities : list[list[float]] | numpy.ndarray | None
         State transition probability matrix (linear scale).
         Shape: (2, 2). Each row must sum to 1.
-        If None, uses default matrix [[0.95, 0.05], [0.05, 0.95]].
+        If None, uses default matrix [[0.95, 0.05], [0.05, 0.95]]. (default: None)
 
-    reestimation_max_iters : int, default=1000
-        Maximum number of Baum-Welch EM iterations if reestimation=True.
+    reestimation_max_iters : int
+        Maximum number of Baum-Welch EM iterations if reestimation=True. (default: 1000)
 
-    reestimation : bool, default=False
+    reestimation : bool
         If True, performs Baum-Welch reestimation to optimize HMM parameters
-        before state decoding. Recommended for robust parameter estimation.
+        before state decoding. Recommended for robust parameter estimation. (default: False)
 
-    verbose : bool, default=False
+    verbose : bool
         If True, prints parameter values and reestimation progress.
-        Only effective when reestimation=True.
+        Only effective when reestimation=True. (default: False)
 
-    hmm_parameters_dict : dict | None, default=None
+    hmm_parameters_dict : dict | None
         Dictionary containing custom HMM parameters with keys:
         - 'mu': list of 2 means
         - 'sigma': list of 2 standard deviations
         - 'init': list of 2 initial probabilities
         - 'trans': 2x2 transition probability matrix
-        Overridden by explicit mu, sigma, init_state, transition_probabilities.
+        Overridden by explicit mu, sigma, init_state, transition_probabilities. (default: None)
 
-    name : str, default='fixation'
+    name : str
         Name for the detected events. Appears in the returned Events object.
+        (default: 'fixation')
 
     Returns
     -------
@@ -978,18 +1155,31 @@ def ihmm(
     switches) are based on Salvucci's eye movement model, reflecting typical
     fixation and saccade durations.
 
+    Only leading and trailing samples with missing (NaN) velocity are trimmed
+    before decoding. Interior missing samples are kept, and their emission
+    probability is skipped, so Viterbi assigns them a state based on the
+    transition probabilities alone. As a result a fixation can span short gaps of
+    missing data, and events are not split on interior NaNs. This differs from the
+    ``include_nan`` option of :py:func:`~pymovements.events.detection.ivt`, which
+    can split events on missing values.
+
     Raises
     ------
     TypeError
-        If timesteps contain non-integer values.
+        If velocities is a polars Series whose dtype is not List.
+        If timesteps is a polars Series with a non-numeric dtype.
+        If minimum_duration is not an integer.
     ValueError
+        If velocities does not have shape (T, 2).
+        If velocities is a polars Series whose lists don't all have length 2.
         If parameter shapes are incorrect (not (2,) or (2,2)).
-    ValueError
-        If transition_probabilities rows don't sum to 1.
-    ValueError
-        If hmm_parameters_dict has incorrect keys or shapes.
+        If minimum_duration is not greater than 0.
+        If transition_probabilities rows don't sum to 1, or contain values outside [0, 1].
+        If init_state does not sum to 1, or contains values outside [0, 1].
+        If hmm_parameters_dict has incorrect keys or shapes, or its init/trans
+        values don't sum to 1 or lie outside [0, 1].
 
-     Examples
+    Examples
     --------
     Create a synthetic step signal representing gaze segments.
 
@@ -1027,11 +1217,11 @@ def ihmm(
 
     Run fixation detection with custom HMM parameters:
 
-    >>> dict = {'mu': [2.0140785987072225, 69.41529375180251],
+    >>> hmm_parameters = {'mu': [2.0140785987072225, 69.41529375180251],
     ...         'sigma': [1.3220152347857494, 87.32409626093246],
     ...         'init': [1.e+00, 1.e-12],
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
-    >>> ihmm(velocities, hmm_parameters_dict = dict)
+    >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters)
     shape: (2, 4)
     ┌──────────┬───────┬────────┬──────────┐
     │ name     ┆ onset ┆ offset ┆ duration │
@@ -1115,23 +1305,24 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
 
-    if timesteps is None:
+    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
+    if isinstance(timesteps, polars.Series):
+        if not isinstance(timesteps.dtype, numeric_dtypes):
+            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+        timesteps = timesteps.to_numpy()
+    elif timesteps is not None:
+        timesteps = numpy.array(timesteps)
+    else:
         timesteps = numpy.arange(len(velocities), dtype=numpy.int64)
     timesteps = numpy.array(timesteps).flatten()
 
-    if minimum_duration <= 0:
-        raise ValueError('minimum_duration must be greater than 0')
-    if not isinstance(minimum_duration, int):
+    if not isinstance(minimum_duration, (int, numpy.integer)):
         raise TypeError(
             'minimum_duration must be of type int'
             f' but is of type {type(minimum_duration)}',
         )
-
-    # check that timesteps are integers or are floats without a fractional part.
-    timesteps_int = timesteps.astype(int)
-    if numpy.any((timesteps - timesteps_int) != 0):
-        raise TypeError('timesteps must be of type int')
-    timesteps = timesteps_int
+    if minimum_duration <= 0:
+        raise ValueError('minimum_duration must be greater than 0')
 
     _checks.check_is_length_matching(velocities=velocities, timesteps=timesteps)
 
@@ -1159,61 +1350,20 @@ def ihmm(
             f' must have shape (2, 2), but shapes are '
             f'{transition_probabilities.shape}',
         )
-    if transition_probabilities is not None and numpy.sum(
-            transition_probabilities[0],
-    ) > 1 and numpy.sum(transition_probabilities[1]) > 1:
-        sum0 = numpy.sum(transition_probabilities[0])
-        sum1 = numpy.sum(transition_probabilities[1])
-        raise ValueError(
-            f'transition_probabilities values must sum up to one for each state '
-            f'but instead are {sum0} and {sum1}',
-        )
+    if transition_probabilities is not None:
+        _validate_transition_probabilities(transition_probabilities)
+    if init_state is not None:
+        _validate_init_state(init_state)
 
     if hmm_parameters_dict is not None:
-
-        if list(hmm_parameters_dict.keys()) != ['mu', 'sigma', 'init', 'trans']:
-            raise ValueError(
-                f'hmm_parameters_dict'
-                f' should have fields {["mu", "sigma", "init", "trans"]} but instead has '
-                f'{hmm_parameters_dict.keys()}',
-            )
-
-        hmm_parameters_dict['mu'] = numpy.array(hmm_parameters_dict['mu'])
-        hmm_parameters_dict['sigma'] = numpy.array(hmm_parameters_dict['sigma'])
-        hmm_parameters_dict['init'] = numpy.array(hmm_parameters_dict['init'])
-        hmm_parameters_dict['trans'] = numpy.array(hmm_parameters_dict['trans'])
-
-        if hmm_parameters_dict['mu'] is not None and hmm_parameters_dict['mu'].shape != (2,):
-            raise ValueError(
-                f'mu'
-                f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict["mu"].shape}',
-            )
-        if hmm_parameters_dict['sigma'] is not None and hmm_parameters_dict['sigma'].shape != (2,):
-            raise ValueError(
-                f'sigma'
-                f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict["sigma"].shape}',
-            )
-        if hmm_parameters_dict['init'] is not None and hmm_parameters_dict['init'].shape != (2,):
-            raise ValueError(
-                f'init_state'
-                f' must have shape (2,), but shapes are '
-                f'{hmm_parameters_dict["init"].shape}',
-            )
-        if hmm_parameters_dict['trans'] is not None and hmm_parameters_dict['trans'].shape != (
-                2, 2,
-        ):
-            raise ValueError(
-                f'transition_probabilities'
-                f' must have shape (2, 2), but shapes are '
-                f'{hmm_parameters_dict["trans"].shape}',
-            )
+        hmm_parameters_dict = _validate_hmm_parameters_dict(hmm_parameters_dict)
 
     if not reestimation and verbose:
         warnings.warn(
             message=f"verbose is:{verbose} but reestimation is {reestimation},"
             f" verbose won't have any effect.",
+            category=UserWarning,
+            stacklevel=2,
         )
 
     # convert into velocities (1D velocities vector)
@@ -1221,12 +1371,11 @@ def ihmm(
     velocities_1d = norm(velocities, axis=1)
 
     vel_mask = ~numpy.isnan(velocities_1d)
-    cW = 0
-    for val in vel_mask:
-        if val:
-            pass
-        else:
-            cW += 1
+
+    # Without any valid sample there is nothing to decode; return no events instead
+    # of failing on the data-driven initialization (matches ivt on all-nan input).
+    if not numpy.any(vel_mask):
+        return Events(name=name, onsets=numpy.array([]), offsets=numpy.array([]))
 
     start = numpy.argmax(vel_mask)
     end = len(velocities_1d) - numpy.argmax(vel_mask[::-1])
@@ -1239,7 +1388,7 @@ def ihmm(
 
     # compute HMM
 
-    states = compute_hmm(
+    states = _compute_hmm(
         velocities=velocities_1d,
         verbose=verbose,
         reestimation=reestimation,
@@ -1254,7 +1403,7 @@ def ihmm(
 
     # collapse states
 
-    onsets_arr, offsets_arr = collapse_states(
+    onsets_arr, offsets_arr = _collapse_states(
         states, timesteps=timesteps_masked, min_duration=minimum_duration,
     )
 

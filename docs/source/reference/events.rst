@@ -29,6 +29,8 @@ All events have a starting time (onset) and an ending time (offset, inclusive).
 
     idt
     ivt
+    ihmm
     microsaccades
+    microsaccades.compute_threshold
     blink
     fill
