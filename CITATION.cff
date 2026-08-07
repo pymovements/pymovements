@@ -88,6 +88,9 @@ authors:
   - family-names: "Jäger"
     given-names: "Lena A."
     orcid: "https://orcid.org/0000-0001-9018-9713"
+  - family-names: "Rodriguez"
+    given-names: "Dionigi"
+    orcid: "https://orcid.org/0009-0006-0957-0845"
 
 type: software
 license: MIT
