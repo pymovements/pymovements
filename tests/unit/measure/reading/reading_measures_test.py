@@ -25,7 +25,6 @@ from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import build_word_level_table
-from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
 from pymovements.measure.reading.measures import first_pass_fixation_count
@@ -39,6 +38,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
