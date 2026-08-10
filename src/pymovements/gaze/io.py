@@ -239,8 +239,8 @@ def from_csv(
         read_csv_kwargs = {}
 
     if kwargs:
-        # Route the deprecated schema_overrides kwarg through column_schema_overrides so it
-        # is applied as a post-read cast, consistent with the non-deprecated argument.
+        # Extract schema_overrides from deprecated kwargs before they reach pl.read_csv,
+        # as polars cannot apply Duration overrides at CSV-read time.
         deprecated_schema_overrides = kwargs.pop('schema_overrides', {})
         if deprecated_schema_overrides:
             if column_schema_overrides is None:
