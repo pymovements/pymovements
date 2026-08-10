@@ -380,6 +380,22 @@ def test_out_of_screen_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'pixels': pl.Series([
+                    [-1, 540], [960, 540], [960, 1081],
+                ]),
+                'timesteps': pl.Series(np.arange(1000, 1003)).cast(pl.Duration('ms')),
+                'x_min': 0, 'x_max': 1920,
+                'y_min': 0, 'y_max': 1080,
+            },
+            Events(
+                name='out_of_screen',
+                onsets=[1000, 1002],
+                offsets=[1000, 1002],
+            ),
+            id='with_duration_timesteps',
+        ),
+        pytest.param(
+            {
                 'pixels': np.array([
                     [-1, 540], [960, 540], [960, 1081],
                 ]),
@@ -455,16 +471,3 @@ def test_out_of_screen_detects_events(kwargs, expected):
     events = out_of_screen(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
-
-
-def test_out_of_screen_accepts_duration_timesteps():
-    # A Duration timesteps series is converted to milliseconds internally and yields the same
-    # events as the equivalent integer-millisecond timesteps.
-    pixels = pl.Series([[-1, -1], [960, 540], [2000, 2000], [960, 540], [-5, 2000]])
-    kwargs = {'x_min': 0, 'x_max': 1920, 'y_min': 0, 'y_max': 1080}
-    numeric = out_of_screen(pixels=pixels, timesteps=np.arange(1000, 1005, dtype=int), **kwargs)
-
-    duration_timesteps = pl.Series(np.arange(1000, 1005)).cast(pl.Duration('ms'))
-    from_duration = out_of_screen(pixels=pixels, timesteps=duration_timesteps, **kwargs)
-
-    assert_frame_equal(from_duration.frame, numeric.frame)

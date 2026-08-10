@@ -276,6 +276,20 @@ def test_blink_raise_error(kwargs, expected_error, expected_message):
             id='with_explicit_timesteps',
         ),
         pytest.param(
+            # A Duration timesteps series is converted to milliseconds internally and yields
+            # the same events as the equivalent integer-millisecond timesteps.
+            {
+                'pupil': pl.concat([
+                    pl.repeat(500.0, 10, eager=True),
+                    pl.repeat(None, 80, dtype=pl.Float64, eager=True),
+                    pl.repeat(500.0, 110, eager=True),
+                ]),
+                'timesteps': pl.Series(np.arange(1000, 1200)).cast(pl.Duration('ms')),
+            },
+            Events(name='blink', onsets=[1010], offsets=[1089]),
+            id='with_explicit_timesteps_with_duration_timesteps',
+        ),
+        pytest.param(
             # NaN blink with explicit timesteps starting at 1000.
             {
                 'pupil': np.concatenate([
@@ -753,22 +767,6 @@ def test_blink_detects_events(kwargs, expected):
     events = blink(**kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
-
-
-def test_blink_accepts_duration_timesteps():
-    # A Duration timesteps series is converted to milliseconds internally and yields the same
-    # events as the equivalent integer-millisecond timesteps.
-    pupil = pl.concat([
-        pl.repeat(500.0, 5, eager=True),
-        pl.repeat(None, 5, dtype=pl.Float64, eager=True),
-        pl.repeat(500.0, 5, eager=True),
-    ])
-    numeric = blink(pupil=pupil, timesteps=np.arange(1000, 1015, dtype=int))
-
-    duration_timesteps = pl.Series(np.arange(1000, 1015)).cast(pl.Duration('ms'))
-    from_duration = blink(pupil=pupil, timesteps=duration_timesteps)
-
-    assert_frame_equal(from_duration.frame, numeric.frame)
 
 
 def test_blink_registered_in_library():

@@ -404,6 +404,20 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='constant_position_single_fixation_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -569,23 +583,3 @@ def test_idt_detects_fixations(kwargs, expected):
 def test_idt_timesteps_exceptions(kwargs, exception, exception_message):
     with pytest.raises(exception, match=exception_message):
         idt(**kwargs)
-
-
-def test_idt_accepts_duration_timesteps():
-    # A Duration timesteps series must be converted to milliseconds internally and yield
-    # the same events as the equivalent integer-millisecond timesteps.
-    positions = step_function(length=100, steps=[0], values=[(0, 0)])
-    numeric = idt(
-        positions=positions,
-        timesteps=np.arange(1000, 1100, dtype=int),
-        dispersion_threshold=1,
-        minimum_duration=2,
-    )
-    duration_timesteps = pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms'))
-    from_duration = idt(
-        positions=positions,
-        timesteps=duration_timesteps,
-        dispersion_threshold=1,
-        minimum_duration=2,
-    )
-    assert_frame_equal(from_duration.frame, numeric.frame)

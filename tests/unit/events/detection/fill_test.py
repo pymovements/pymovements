@@ -118,6 +118,18 @@ def test_fill_raise_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'events': Events(name='fixation', onsets=[0], offsets=[90]),
+                'timesteps': pl.Series(np.arange(0, 100)).cast(pl.Duration('ms')),
+            },
+            Events(
+                name='unclassified',
+                onsets=[90],
+                offsets=[99],
+            ),
+            id='fixation_from_start_to_10_ms_before_end_single_fill_with_duration_timesteps',
+        ),
+        pytest.param(
+            {
                 'events': Events(name='fixation', onsets=[0, 50], offsets=[40, 100]),
                 'timesteps': pl.arange(0, 100, eager=True),
             },
@@ -221,15 +233,3 @@ def test_fill_respects_sub_millisecond_sample_spacing():
     # Unclassified segments: 0..4.5 ms and 10..19.5 ms, both in microseconds.
     assert onsets == [0, 10_000]
     assert offsets == [4_500, 19_500]
-
-
-def test_fill_accepts_duration_timesteps():
-    # A Duration timesteps series is converted to milliseconds internally, matching the
-    # millisecond on- and offsets of the Duration event frame.
-    events = Events(name='fixation', onsets=[0], offsets=[49])
-    duration_timesteps = pl.Series(np.arange(0, 100)).cast(pl.Duration('ms'))
-
-    filled = fill(events, timesteps=duration_timesteps)
-
-    expected = Events(name='unclassified', onsets=[49], offsets=[99])
-    assert_frame_equal(filled.frame, expected.frame)
