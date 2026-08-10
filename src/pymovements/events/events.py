@@ -35,6 +35,20 @@ from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
 
+def _build_time_series(values: list[int | float] | np.ndarray) -> pl.Series:
+    """Build an onset/offset series, preserving temporal input for later normalization.
+
+    Numeric values are interpreted as milliseconds by the constructor. ``timedelta`` and
+    ``timedelta64`` input keeps its inferred ``polars.Duration`` dtype so it is converted
+    by physical unit instead of being reinterpreted as milliseconds. Empty input is
+    inferred as ``Null`` by polars and cast to ``Float64`` so the millisecond scaffold applies.
+    """
+    series = values if isinstance(values, pl.Series) else pl.Series(values)
+    if series.dtype == pl.Null:
+        series = series.cast(pl.Float64)
+    return series
+
+
 @repr_html(['frame', 'trial_columns'])
 class Events:
     """A data structure for event data.
@@ -52,9 +66,11 @@ class Events:
     name: str | list[str] | None
         Name of events. (default: None)
     onsets: list[int | float] | np.ndarray | None
-        List of onsets in milliseconds. (default: None)
+        List of onsets. Numeric values are interpreted as milliseconds; ``timedelta`` and
+        ``timedelta64`` input is converted by its physical unit. (default: None)
     offsets: list[int | float] | np.ndarray | None
-        List of offsets in milliseconds. (default: None)
+        List of offsets. Numeric values are interpreted as milliseconds; ``timedelta`` and
+        ``timedelta64`` input is converted by its physical unit. (default: None)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
@@ -162,8 +178,8 @@ class Events:
 
                 data_dict = {
                     'name': pl.Series(name, dtype=pl.Utf8),
-                    'onset': pl.Series(onsets, dtype=pl.Float64),
-                    'offset': pl.Series(offsets, dtype=pl.Float64),
+                    'onset': _build_time_series(onsets),
+                    'offset': _build_time_series(offsets),
                 }
 
                 if trials is not None:

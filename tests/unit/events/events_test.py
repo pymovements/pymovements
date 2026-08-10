@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -405,6 +406,38 @@ def test_init_normalizes_time_columns_to_duration_us(data, expected_data):
         },
     )
     assert_frame_equal(events.frame, expected_df)
+
+
+@pytest.mark.parametrize(
+    ('onsets', 'offsets', 'expected_onset_us', 'expected_offset_us'),
+    [
+        pytest.param([5], [10], 5000, 10000, id='numeric_list_interpreted_as_ms'),
+        pytest.param([5.0], [10.5], 5000, 10500, id='numeric_float_interpreted_as_ms'),
+        pytest.param(
+            np.array([5], dtype='timedelta64[us]'),
+            np.array([10], dtype='timedelta64[us]'),
+            5, 10, id='timedelta64_us_by_physical_unit',
+        ),
+        pytest.param(
+            np.array([5000], dtype='timedelta64[ns]'),
+            np.array([10500], dtype='timedelta64[ns]'),
+            5, 10, id='timedelta64_ns_by_physical_unit',
+        ),
+        pytest.param(
+            [timedelta(milliseconds=5)],
+            [timedelta(milliseconds=10)],
+            5000, 10000, id='python_timedelta_by_physical_unit',
+        ),
+    ],
+)
+def test_init_onsets_offsets_convert_by_physical_unit(
+        onsets, offsets, expected_onset_us, expected_offset_us,
+):
+    events = Events(name='fixation', onsets=onsets, offsets=offsets)
+
+    assert events.frame.schema['onset'] == pl.Duration('us')
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [expected_onset_us]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [expected_offset_us]
 
 
 @pytest.mark.parametrize(
