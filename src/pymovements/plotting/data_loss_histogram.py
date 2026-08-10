@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
 from pymovements.gaze.gaze import Gaze
 from pymovements.measure.samples.measures import _is_invalid
 from pymovements.plotting._matplotlib import prepare_figure
@@ -134,9 +135,10 @@ def data_loss_histogram(
         # No time gaps if time column doesn't exist
         time_gap_mask = np.zeros(len(samples), dtype=bool)
     else:
-        times = samples[time_column].to_numpy()
-        if isinstance(samples.schema[time_column], pl.Duration):
-            times = (times / np.timedelta64(1, 'ms')).astype(np.float64)
+        time_series = samples[time_column]
+        if isinstance(time_series.dtype, pl.Duration):
+            time_series = duration_to_ms(time_series)
+        times = time_series.to_numpy()
         time_diffs = np.diff(times)
 
         # Expected inter-sample interval

@@ -1107,6 +1107,22 @@ def test_init_gaze_has_expected_attrs(init_kwargs, expected_samples, expected_n_
     assert gaze.n_components == expected_n_components
 
 
+def test_init_rounds_sub_microsecond_duration_time():
+    # A sub-microsecond Duration time column is rounded to the nearest microsecond, not truncated.
+    gaze = Gaze(
+        pl.DataFrame({
+            'time': pl.Series([1500, 2600, 4500], dtype=pl.Duration('ns')),
+            'x': [1.0, 2.0, 3.0],
+            'y': [1.0, 2.0, 3.0],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.samples.schema['time'] == pl.Duration('us')
+    assert gaze.samples['time'].dt.total_microseconds().to_list() == [2, 3, 4]
+
+
 @pytest.mark.parametrize(
     ('init_kwargs', 'expected_experiment'),
     [

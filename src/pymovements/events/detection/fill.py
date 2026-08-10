@@ -23,6 +23,7 @@ from __future__ import annotations
 import numpy
 import polars
 
+from pymovements._utils._time import duration_to_ms
 from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -70,7 +71,7 @@ def fill(
     events_frame = events.frame
     if isinstance(events_frame.schema['onset'], polars.Duration):
         events_frame = events_frame.with_columns(
-            polars.col('onset', 'offset').dt.total_microseconds().truediv(1000),
+            duration_to_ms(polars.col('onset', 'offset')),
         )
 
     for row in events_frame.iter_rows(named=True):

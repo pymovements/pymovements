@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
+
 if TYPE_CHECKING:
     from pymovements.gaze.gaze import Gaze
 
@@ -86,7 +88,7 @@ def _time_ms(samples: pl.DataFrame) -> pl.Series:
     pl.Series
         The ``time`` column expressed as fractional milliseconds.
     """
-    return samples['time'].dt.total_milliseconds(fractional=True)
+    return duration_to_ms(samples['time'])
 
 
 def check_trial_columns_exist(gaze: Gaze, source_path: str = '') -> CheckResult:

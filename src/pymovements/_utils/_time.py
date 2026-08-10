@@ -24,6 +24,48 @@ import numpy as np
 import polars as pl
 
 
+def duration_to_ms(column: str | pl.Series | pl.Expr) -> pl.Series | pl.Expr:
+    """Convert a ``polars.Duration`` column to fractional milliseconds.
+
+    This is the single source of truth for the Duration to millisecond conversion. Passing a
+    :py:class:`polars.Series` returns a ``Float64`` series; passing a column name or an
+    expression returns a :py:class:`polars.Expr`.
+
+    Parameters
+    ----------
+    column: str | pl.Series | pl.Expr
+        A Duration column, given as a series, an expression, or a column name.
+
+    Returns
+    -------
+    pl.Series | pl.Expr
+        The column expressed as fractional milliseconds. A series in, a series out;
+        an expression or column name in, an expression out.
+    """
+    expr = pl.col(column) if isinstance(column, str) else column
+    return expr.dt.total_microseconds() / 1000
+
+
+def normalize_duration_to_us(column: str | pl.Expr) -> pl.Expr:
+    """Return an expression normalizing a ``polars.Duration`` column to microseconds.
+
+    Sub-microsecond input (e.g. ``polars.Duration('ns')``) is rounded to the nearest
+    microsecond rather than truncated.
+
+    Parameters
+    ----------
+    column: str | pl.Expr
+        A Duration column, given as an expression or a column name.
+
+    Returns
+    -------
+    pl.Expr
+        The column cast to ``polars.Duration('us')`` with sub-microsecond values rounded.
+    """
+    expr = pl.col(column) if isinstance(column, str) else column
+    return (expr.dt.total_nanoseconds() / 1000).round().cast(pl.Int64).cast(pl.Duration('us'))
+
+
 def timesteps_to_numpy(timesteps: pl.Series) -> np.ndarray:
     """Convert a timesteps series to a numpy array of numeric time values.
 
@@ -47,7 +89,7 @@ def timesteps_to_numpy(timesteps: pl.Series) -> np.ndarray:
         If the series is neither a Duration nor a numeric dtype.
     """
     if isinstance(timesteps.dtype, pl.Duration):
-        return (timesteps.dt.total_microseconds() / 1000).to_numpy()
+        return duration_to_ms(timesteps).to_numpy()
 
     numeric_dtypes = (pl.datatypes.FloatType, pl.datatypes.IntegerType)
     if not isinstance(timesteps.dtype, numeric_dtypes):
@@ -80,7 +122,7 @@ def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:
 
     frame = frame.with_columns(
         [
-            (pl.col(column) / pl.duration(milliseconds=1)).alias(column)
+            duration_to_ms(column).alias(column)
             for column in duration_columns
         ],
     )

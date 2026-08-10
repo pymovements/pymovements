@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
 from pymovements._version import __version__
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import CheckResult
@@ -325,7 +326,7 @@ def _samples_with_numeric_time(gaze: Any) -> pl.DataFrame:
     samples = gaze.samples
     if 'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration):
         return samples.with_columns(
-            (pl.col('time') / pl.duration(milliseconds=1)).alias('time'),
+            duration_to_ms('time').alias('time'),
         )
     return samples
 

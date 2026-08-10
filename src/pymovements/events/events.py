@@ -31,6 +31,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._time import normalize_duration_to_us
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -229,12 +230,23 @@ class Events:
             if not isinstance(self.frame.schema[c], pl.Duration)
         ]
         if numeric_time_cols:
+            # Reject NaN early: casting NaN to Duration otherwise raises a cryptic polars error.
+            nan_flags = self.frame.select(
+                pl.col(numeric_time_cols).cast(pl.Float64).is_nan().any(),
+            )
+            nan_cols = [c for c in numeric_time_cols if nan_flags.item(0, c)]
+            if nan_cols:
+                raise ValueError(
+                    f'time columns {nan_cols} contain NaN values; '
+                    'onset, offset and duration values must be finite numbers.',
+                )
             self.frame = self.frame.with_columns(
                 (pl.col(numeric_time_cols).cast(pl.Float64) * 1000)
                 .round()
                 .cast(pl.Duration('us')),
             )
-        # Normalize Duration input of any other unit to microseconds.
+        # Normalize Duration input of any other unit to microseconds. Sub-microsecond input
+        # (e.g. nanoseconds) is rounded to the nearest microsecond rather than truncated.
         wrong_unit_cols = [
             c for c in time_cols
             if isinstance(self.frame.schema[c], pl.Duration)
@@ -242,7 +254,7 @@ class Events:
         ]
         if wrong_unit_cols:
             self.frame = self.frame.with_columns(
-                pl.col(wrong_unit_cols).cast(pl.Duration('us')),
+                normalize_duration_to_us(pl.col(wrong_unit_cols)),
             )
 
         if 'duration' not in self.frame.columns:

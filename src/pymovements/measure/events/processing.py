@@ -20,11 +20,13 @@
 """Module for event processing."""
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 from warnings import warn
 
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
 from pymovements.exceptions import UnknownMeasure
 from pymovements.measure.events.measures import EVENT_MEASURES
 from pymovements.measure.samples.library import SampleMeasureLibrary
@@ -178,15 +180,21 @@ class EventSamplesProcessor:
 
         results = []
 
-        # Sample measures expect the time column in numeric milliseconds. The event
-        # time filter below still runs on the original Duration column; only the
-        # samples handed to the measures are converted.
+        # Sample measures expect the time column in numeric milliseconds. The samples handed
+        # to the measures are converted below. The event time filter also compares in
+        # milliseconds so it stays correct even if the events and samples time dtypes disagree
+        # (e.g. Duration events against a numeric sample time column, or vice versa).
         time_is_duration = (
             'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
         )
         samples_schema = dict(samples.schema)
         if time_is_duration:
             samples_schema['time'] = pl.Float64
+
+        # Time expression in milliseconds used for the event membership filter.
+        time_filter_expr = (
+            duration_to_ms('time') if time_is_duration else pl.col('time')
+        )
 
         if len(events) == 0:
             measure_columns = [measure.meta.output_name() for measure in self.measures]
@@ -204,9 +212,18 @@ class EventSamplesProcessor:
         for event in events.iter_rows(named=True):
             event_keys = {column: event[column] for column in event_identifiers}
 
+            # Convert the event bounds to milliseconds so they match the millisecond time
+            # filter expression regardless of the events' own time dtype.
+            onset_ms = event['onset']
+            offset_ms = event['offset']
+            if isinstance(onset_ms, timedelta):
+                onset_ms = onset_ms / timedelta(milliseconds=1)
+            if isinstance(offset_ms, timedelta):
+                offset_ms = offset_ms / timedelta(milliseconds=1)
+
             # Find samples that belong to the current event (lazy evaluation).
             event_samples = samples.lazy().filter(
-                pl.col('time').is_between(event['onset'], event['offset']),
+                time_filter_expr.is_between(onset_ms, offset_ms),
                 *[
                     pl.col(column).is_null() if event_keys[column] is None
                     else pl.col(column) == event_keys[column]
@@ -216,7 +233,7 @@ class EventSamplesProcessor:
 
             if time_is_duration:
                 event_samples = event_samples.with_columns(
-                    (pl.col('time') / pl.duration(milliseconds=1)).alias('time'),
+                    duration_to_ms('time').alias('time'),
                 )
 
             # Compute event measure values and include identifier columns.

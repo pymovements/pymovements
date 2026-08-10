@@ -39,7 +39,9 @@ from tqdm import tqdm
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._time import duration_to_ms
 from pymovements._utils._time import durations_to_ms
+from pymovements._utils._time import normalize_duration_to_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -1394,7 +1396,7 @@ class Gaze:
         samples = self.samples
         if time_col in samples.columns and isinstance(samples.schema[time_col], polars.Duration):
             samples = samples.with_columns(
-                (polars.col(time_col) / polars.duration(milliseconds=1)).alias(time_col),
+                duration_to_ms(polars.col(time_col)).alias(time_col),
             )
 
         if self.trial_columns is None:
@@ -2453,7 +2455,7 @@ class Gaze:
         if 'timesteps' in method_args and 'time' in samples.columns:
             timesteps_series = samples.get_column('time')
             if isinstance(timesteps_series.dtype, polars.Duration):
-                kwargs['timesteps'] = timesteps_series.dt.total_microseconds() / 1000
+                kwargs['timesteps'] = duration_to_ms(timesteps_series)
             else:
                 kwargs['timesteps'] = timesteps_series
 
@@ -2585,10 +2587,11 @@ class Gaze:
 
         if isinstance(self.samples.schema['time'], polars.Duration):
             # A Duration time column already carries its unit, so time_unit is ignored.
-            # Normalize any Duration input to the canonical microsecond unit.
+            # Normalize any Duration input to the canonical microsecond unit. Sub-microsecond
+            # input (e.g. nanoseconds) is rounded to the nearest microsecond, not truncated.
             if self.samples.schema['time'] != polars.Duration('us'):
                 self.samples = self.samples.with_columns(
-                    polars.col('time').cast(polars.Duration('us')),
+                    normalize_duration_to_us('time'),
                 )
 
         elif time_unit == 's':

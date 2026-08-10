@@ -440,6 +440,34 @@ def test_init_onsets_offsets_convert_by_physical_unit(
     assert events.frame['offset'].dt.total_microseconds().to_list() == [expected_offset_us]
 
 
+def test_init_rounds_sub_microsecond_duration_input():
+    # Sub-microsecond Duration input is rounded to the nearest microsecond, not truncated.
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': pl.Series([1500], dtype=pl.Duration('ns')),   # 1.5 us -> 2 us
+            'offset': pl.Series([2600], dtype=pl.Duration('ns')),  # 2.6 us -> 3 us
+        }),
+    )
+
+    assert events.frame.schema['onset'] == pl.Duration('us')
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [2]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [3]
+    assert events.frame['duration'].dt.total_microseconds().to_list() == [1]
+
+
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        pytest.param({'name': 'fixation', 'onsets': [float('nan')], 'offsets': [10.0]}, id='onset'),
+        pytest.param({'name': 'fixation', 'onsets': [5.0], 'offsets': [float('nan')]}, id='offset'),
+    ],
+)
+def test_init_nan_time_values_raise_value_error(kwargs):
+    with pytest.raises(ValueError, match='contain NaN values'):
+        Events(**kwargs)
+
+
 @pytest.mark.parametrize(
     ('kwargs', 'expected_trial_column_list'),
     [

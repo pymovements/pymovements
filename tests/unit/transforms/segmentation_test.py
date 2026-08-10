@@ -101,6 +101,33 @@ def test_events2segmentation_duration_columns(padding, expected):
 
 
 @pytest.mark.parametrize(
+    ('event_dtype', 'time_dtype'),
+    [
+        pytest.param(pl.Int64, pl.Int64, id='numeric_events_numeric_time'),
+        pytest.param(pl.Duration('us'), pl.Duration('us'), id='duration_events_duration_time'),
+        pytest.param(pl.Duration('us'), pl.Int64, id='duration_events_numeric_time'),
+        pytest.param(pl.Int64, pl.Duration('us'), id='numeric_events_duration_time'),
+    ],
+)
+def test_events2segmentation_coerces_mixed_dtypes(event_dtype, time_dtype):
+    # Whether the event bounds and the sample time column are numeric ms or Duration, and even
+    # if they disagree, the mask is computed in milliseconds and yields the same result.
+    onset = 3000 if event_dtype == pl.Duration('us') else 3
+    offset = 5000 if event_dtype == pl.Duration('us') else 5
+    events_df = pl.DataFrame({
+        'name': ['blink'],
+        'onset': pl.Series([onset], dtype=event_dtype),
+        'offset': pl.Series([offset], dtype=event_dtype),
+    })
+    time_values = [i * 1000 for i in range(7)] if time_dtype == pl.Duration('us') else list(range(7))
+    gaze_df = pl.DataFrame({'time': pl.Series(time_values, dtype=time_dtype)})
+
+    result_df = gaze_df.select(events2segmentation(events_df, name='blink'))
+
+    assert result_df['blink'].to_list() == [False, False, False, True, True, True, False]
+
+
+@pytest.mark.parametrize(
     'events_df, gaze_df, kwargs, expected',
     [
         pytest.param(
@@ -778,6 +805,33 @@ def test_events2timeratio_duration_columns(kwargs):
     })
 
     result = samples.select(events2timeratio(events, samples, **kwargs))
+
+    assert result.to_series()[0] == pytest.approx(0.75)
+
+
+@pytest.mark.parametrize(
+    ('event_dtype', 'time_dtype'),
+    [
+        pytest.param(pl.Float64, pl.Float64, id='numeric_events_numeric_time'),
+        pytest.param(pl.Duration('us'), pl.Duration('us'), id='duration_events_duration_time'),
+        pytest.param(pl.Duration('us'), pl.Float64, id='duration_events_numeric_time'),
+        pytest.param(pl.Float64, pl.Duration('us'), id='numeric_events_duration_time'),
+    ],
+)
+def test_events2timeratio_coerces_mixed_dtypes(event_dtype, time_dtype):
+    # The ratio is computed in milliseconds, so mismatched event/sample time dtypes still agree.
+    scale = 1000 if event_dtype == pl.Duration('us') else 1
+    events = pl.DataFrame({
+        'name': ['blink', 'blink'],
+        'onset': pl.Series([1 * scale, 5 * scale], dtype=event_dtype),
+        'offset': pl.Series([3 * scale, 7 * scale], dtype=event_dtype),
+    })
+    time_scale = 1000 if time_dtype == pl.Duration('us') else 1
+    samples = pl.DataFrame({
+        'time': pl.Series([i * time_scale for i in range(8)], dtype=time_dtype),
+    })
+
+    result = samples.select(events2timeratio(events, samples, 'blink'))
 
     assert result.to_series()[0] == pytest.approx(0.75)
 
