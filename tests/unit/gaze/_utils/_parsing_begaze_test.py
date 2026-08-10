@@ -29,8 +29,9 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.fixtures.duration_fixtures import to_duration
 
+from pymovements import Events
+from pymovements import Gaze
 from pymovements.gaze import io
 from pymovements.gaze._utils import _parsing_begaze
 from pymovements.gaze.experiment import Experiment
@@ -331,23 +332,18 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
 
     gaze = io.from_begaze(filepath, **kwargs)
 
-    # Samples in Gaze use a combined 'pixel' column instead of separate x/y columns.
-    expected_samples = BEGAZE_EXPECTED_GAZE_DF.with_columns(
-        pl.concat_list([pl.col('x_pix'), pl.col('y_pix')]).alias('pixel'),
-    ).drop(['x_pix', 'y_pix'])
-    # Align None/NaN semantics for pupil for comparison: Gaze may store nulls instead of NaN.
-    expected_samples = expected_samples.with_columns(
-        pl.when(pl.col('pupil').is_nan()).then(None).otherwise(pl.col('pupil')).alias('pupil'),
-    )
-    # Align None/NaN semantics inside the nested list column as well.
-    expected_samples = expected_samples.with_columns(
-        pl.col('pixel').list.eval(
-            pl.when(pl.element().is_nan()).then(None).otherwise(pl.element()),
-        ).alias('pixel'),
-    )
+    # The loader wraps the parsed samples in a Gaze: it nests x/y into a 'pixel' column,
+    # turns NaN into null, and converts the millisecond timestamps to a microsecond Duration.
+    # Building the expected the same way keeps it derived from the single parse fixture.
+    expected_samples = Gaze(
+        BEGAZE_EXPECTED_GAZE_DF,
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x_pix', 'y_pix'],
+    ).samples
     assert_frame_equal(
         gaze.samples.select(expected_samples.columns),
-        to_duration(expected_samples),
+        expected_samples,
         check_column_order=False,
         rel_tol=0,
     )
@@ -356,10 +352,11 @@ def test_from_begaze_loader_uses_parse_begaze(make_text_file, with_trial_columns
     assert gaze.events is not None
     # Events returned by the loader may include computed 'duration' - compare on common columns.
     ev_actual = gaze.events.frame
-    common_cols = [c for c in BEGAZE_EXPECTED_EVENT_DF.columns if c in ev_actual.columns]
+    expected_event_df = Events(BEGAZE_EXPECTED_EVENT_DF).frame
+    common_cols = [c for c in expected_event_df.columns if c in ev_actual.columns]
     assert_frame_equal(
         ev_actual.select(common_cols),
-        to_duration(BEGAZE_EXPECTED_EVENT_DF.select(common_cols)),
+        expected_event_df.select(common_cols),
         check_column_order=False,
         rel_tol=0,
     )

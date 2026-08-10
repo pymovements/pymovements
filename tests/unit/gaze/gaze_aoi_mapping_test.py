@@ -23,13 +23,13 @@ from typing import Any
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.fixtures.duration_fixtures import to_duration
 
 import pymovements as pm
 from pymovements import Gaze
 from pymovements.stimulus import TextStimulus
 
-EXPECTED_DF = {
+
+EXPECTED_GAZE_SAMPLES = {
     'char_left_pixel': pl.DataFrame(
         [
             (
@@ -1098,6 +1098,9 @@ EXPECTED_DF = {
         'position',
     ],
 )
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
+)
 def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_example_file):
     aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
     gaze_filepath = make_example_file('judo1000_example.csv')
@@ -1127,10 +1130,12 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(
-        gaze.samples,
-        to_duration(EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}']),
+    expected = Gaze(
+        EXPECTED_GAZE_SAMPLES[f'{aoi_column}_{eye}_{gaze_type}'],
+        time_column='time',
+        time_unit='ms',
     )
+    assert_frame_equal(gaze.samples, expected.samples)
 
 
 @pytest.mark.parametrize(
@@ -1155,6 +1160,9 @@ def test_gaze_to_aoi_mapping_char_width_height(eye, aoi_column, gaze_type, make_
         'pixel',
         'position',
     ],
+)
+@pytest.mark.filterwarnings(
+    'ignore:Gaze contains samples but no components could be inferred.*:UserWarning',
 )
 def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_file):
     aoi_filepath = make_example_file('stimuli/toy_text_aoi.csv')
@@ -1185,10 +1193,12 @@ def test_gaze_to_aoi_mapping_char_end(eye, aoi_column, gaze_type, make_example_f
         assert False, 'unknown gaze_type'
 
     gaze.map_to_aois(aoi_df, eye=eye, gaze_type=gaze_type)
-    assert_frame_equal(
-        gaze.samples,
-        to_duration(EXPECTED_DF[f'{aoi_column}_{eye}_{gaze_type}']),
+    expected = Gaze(
+        EXPECTED_GAZE_SAMPLES[f'{aoi_column}_{eye}_{gaze_type}'],
+        time_column='time',
+        time_unit='ms',
     )
+    assert_frame_equal(gaze.samples, expected.samples)
 
 
 def test_map_to_aois_raises_value_error(make_example_file):

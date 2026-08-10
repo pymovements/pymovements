@@ -29,7 +29,6 @@ import polars as pl
 import pyreadr
 import pytest
 from polars.testing import assert_frame_equal
-from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import DatasetDefinition
 from pymovements import Events
@@ -176,18 +175,25 @@ MSG	2154570 0 READING_SCREEN_1.STOP
 
 EXPECTED_EYELINK_SAMPLES_NO_PATTERNS = pl.from_dict(
     {
-        'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
+        'time': [
+            2154557000, 2154558000, 2154560000, 2154561000,
+            2154565000, 2154567000, 2154568000,
+        ],
         'pixel': [
             (139.6, 132.1), (139.5, 131.9), (None, None), (850.7, 717.5),
             (139.5, 131.9), (None, None), (850.7, 717.5),
         ],
         'pupil': [784.0, 784.0, 0.0, 714.0, 784.0, 0.0, 714.0],
     },
+    schema_overrides={'time': pl.Duration('us')},
 )
 
 EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
     {
-        'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
+        'time': [
+            2154557000, 2154558000, 2154560000, 2154561000,
+            2154565000, 2154567000, 2154568000,
+        ],
         'pixel': [
             (139.6, 132.1), (139.5, 131.9), (None, None), (850.7, 717.5),
             (139.5, 131.9), (None, None), (850.7, 717.5),
@@ -196,6 +202,7 @@ EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
         'task': ['reading', 'reading', 'reading', 'reading', 'reading', 'reading', 'reading'],
         'trial_id': [0, 0, 0, 0, 1, 1, 1],
     },
+    schema_overrides={'time': pl.Duration('us')},
 )
 
 EYELINK_PATTERNS = [
@@ -272,7 +279,7 @@ def test_load_eyelink_file_has_expected_samples(
         dataset_definition=DatasetDefinition(**definition_kwargs),
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected_samples), check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
     assert gaze.experiment is not None
 
 
@@ -449,12 +456,13 @@ def test_load_example_gaze_file(
     )
     expected_df = pl.from_dict(
         {
-            'time': list(range(10)),
+            'time': list(range(0, 10_000, 1_000)),
             'pixel': [[0, 0]] * 10,
         },
+        schema_overrides={'time': pl.Duration('us')},
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected_df), check_column_order=False)
+    assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
 
 
 @pytest.mark.parametrize(
@@ -1302,9 +1310,9 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
 
     # Expected numeric values for comparison (subset)
     EXPECTED_TIMES = [
-        10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123,
-        10000011.123, 10000014.345, 10000017.345, 10000019.123, 10000020.123,
-        10000021.123,
+        10000000123, 10000002123, 10000004123, 10000006123, 10000008123,
+        10000011123, 10000014345, 10000017345, 10000019123, 10000020123,
+        10000021123,
     ]
     EXPECTED_X = [850.7] * 9 + [None, None]
     EXPECTED_Y = [717.5] * 9 + [None, None]
@@ -1333,17 +1341,20 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
     # Build expected samples accordingly (time + pixel)
     # Build expected samples from inline numeric expectations
-    expected_df = pl.DataFrame({
-        'time': EXPECTED_TIMES,
-        'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
-    })
+    expected_df = pl.DataFrame(
+        {
+            'time': EXPECTED_TIMES,
+            'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
+        },
+        schema_overrides={'time': pl.Duration('us')},
+    )
     # Compare only rows where pixel values are present (blink rows are None in expected)
     mask = [all(v is not None for v in pair) for pair in expected_df['pixel'].to_list()]
     expected_df_non_nan = expected_df.filter(pl.Series(mask))
     gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
     assert_frame_equal(
         gaze_non_nan.select(['time', 'pixel']),
-        to_duration(expected_df_non_nan.select(['time', 'pixel'])),
+        expected_df_non_nan.select(['time', 'pixel']),
         check_column_order=False,
     )
 

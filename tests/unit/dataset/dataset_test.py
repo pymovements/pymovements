@@ -33,7 +33,6 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import __version__
 from pymovements import Dataset
@@ -436,15 +435,15 @@ def mock_toy(
         events = pl.from_dict(
             {
                 'name': ['saccade', 'fixation'] * 5,
-                'onset': np.arange(0, 100, 10),
-                'offset': np.arange(5, 105, 10),
-                'duration': np.array([5] * 10),
+                'onset': np.arange(0, 100_000, 10_000),
+                'offset': np.arange(5_000, 105_000, 10_000),
+                'duration': np.array([5_000] * 10),
             },
             schema={
                 'name': pl.String,
-                'onset': pl.Int64,
-                'offset': pl.Int64,
-                'duration': pl.Int64,
+                'onset': pl.Duration('us'),
+                'offset': pl.Duration('us'),
+                'duration': pl.Duration('us'),
             },
         )
         events_list.append(events)
@@ -826,7 +825,7 @@ def test_load_correct_raw_gazes(gaze_dataset_configuration):
     for result_gaze, expected_gaze in zip(dataset.gaze, expected_gazes):
         assert_frame_equal(
             result_gaze.samples,
-            to_duration(expected_gaze.samples),
+            expected_gaze.samples,
             check_column_order=False,
         )
 
@@ -937,7 +936,7 @@ def test_load_correct_preprocessed_gazes(gaze_dataset_configuration):
     for result_gaze, expected_gaze in zip(dataset.gaze, expected_gazes):
         assert_frame_equal(
             result_gaze.samples,
-            to_duration(expected_gaze.samples),
+            expected_gaze.samples,
             check_column_order=False,
         )
 
@@ -957,7 +956,7 @@ def test_load_correct_events_list(gaze_dataset_configuration):
 
     expected_events_list = gaze_dataset_configuration['events_list']
     for result_events, expected_events in zip(dataset.events, expected_events_list):
-        assert_frame_equal(result_events.frame, to_duration(expected_events))
+        assert_frame_equal(result_events.frame, expected_events)
 
 
 @pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
@@ -1570,7 +1569,7 @@ def test_clear_events(events_init, events_expected, tmp_path):
     dataset.clear_events()
 
     for events_df_result, events_df_expected in zip(dataset.events, events_expected):
-        assert_frame_equal(events_df_result.frame, to_duration(events_df_expected.frame))
+        assert_frame_equal(events_df_result.frame, events_df_expected.frame)
 
 
 @pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')

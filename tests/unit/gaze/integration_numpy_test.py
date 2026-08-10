@@ -22,7 +22,6 @@ import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
-from tests.fixtures.duration_fixtures import to_duration
 
 from pymovements import Events
 from pymovements import Experiment
@@ -106,7 +105,7 @@ def test_from_numpy_with_schema():
 
     expected = pl.DataFrame(
         {
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
             'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
@@ -114,7 +113,7 @@ def test_from_numpy_with_schema():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'distance': pl.Float64,
             'pixel': pl.List(pl.Float64),
             'position': pl.List(pl.Float64),
@@ -123,7 +122,7 @@ def test_from_numpy_with_schema():
         },
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected))
+    assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
 
 
@@ -162,17 +161,17 @@ def test_from_numpy_with_trial_id():
     expected = pl.DataFrame(
         {
             'trial_id': [1, 1, 2, 2],
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
         },
         schema={
             'trial_id': pl.Float64,
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'pixel': pl.List(pl.Float64),
         },
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected))
+    assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
     assert gaze.trial_columns == ['trial_id']
 
@@ -208,7 +207,7 @@ def test_from_numpy_explicit_columns():
 
     expected = pl.DataFrame(
         {
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'distance': [100, 100, 100, 100],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
             'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
@@ -216,7 +215,7 @@ def test_from_numpy_explicit_columns():
             'acceleration': [[2, 6], [3, 7], [4, 8], [5, 9]],
         },
         schema={
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'distance': pl.Float64,
             'pixel': pl.List(pl.Int64),
             'position': pl.List(pl.Float64),
@@ -225,7 +224,7 @@ def test_from_numpy_explicit_columns():
         },
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected))
+    assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
 
 
@@ -243,17 +242,17 @@ def test_from_numpy_explicit_columns_with_trial():
     expected = pl.DataFrame(
         {
             'trial': [1, 1, 2, 2],
-            'time': [101, 102, 103, 104],
+            'time': [101000, 102000, 103000, 104000],
             'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
         },
         schema={
             'trial': pl.Int64,
-            'time': pl.Int64,
+            'time': pl.Duration('us'),
             'pixel': pl.List(pl.Int64),
         },
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected))
+    assert_frame_equal(gaze.samples, expected)
     assert gaze.n_components == 2
     assert gaze.trial_columns == ['trial']
 
@@ -279,12 +278,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'column_0': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'column_0': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'column_0': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'column_0': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -311,12 +310,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -343,12 +342,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -375,13 +374,13 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id_1': [0, 1], 'trial_id_2': [1, 2], 'time': [101, 102],
+                    'trial_id_1': [0, 1], 'trial_id_2': [1, 2], 'time': [101000, 102000],
                     'distance': [100, 100], 'pixel': [[0, 4], [1, 5]],
                     'position': [[9, 5], [8, 4]], 'velocity': [[1, 5], [2, 6]],
                     'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id_1': pl.Float64, 'trial_id_2': pl.Float64, 'time': pl.Int64,
+                    'trial_id_1': pl.Float64, 'trial_id_2': pl.Float64, 'time': pl.Duration('us'),
                     'distance': pl.Float64, 'pixel': pl.List(pl.Float64),
                     'position': pl.List(pl.Float64), 'velocity': pl.List(pl.Float64),
                     'acceleration': pl.List(pl.Float64),
@@ -409,12 +408,12 @@ def test_from_numpy_explicit_columns_with_trial():
             },
             pl.DataFrame(
                 {
-                    'trial_id': [1, 2], 'time': [101, 102], 'distance': [100, 100],
+                    'trial_id': [1, 2], 'time': [101000, 102000], 'distance': [100, 100],
                     'pixel': [[0, 4], [1, 5]], 'position': [[9, 5], [8, 4]],
                     'velocity': [[1, 5], [2, 6]], 'acceleration': [[2, 6], [3, 7]],
                 },
                 schema={
-                    'trial_id': pl.Float64, 'time': pl.Int64, 'distance': pl.Float64,
+                    'trial_id': pl.Float64, 'time': pl.Duration('us'), 'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64),
                     'velocity': pl.List(pl.Float64), 'acceleration': pl.List(pl.Float64),
                 },
@@ -445,7 +444,7 @@ def test_from_numpy_with_column_indices(
         **kwargs,
     )
 
-    assert_frame_equal(gaze.samples, to_duration(expected).select(gaze.samples.columns))
+    assert_frame_equal(gaze.samples, expected.select(gaze.samples.columns))
     assert gaze.n_components == 2
     assert gaze.trial_columns == expected_trial_columns
 
