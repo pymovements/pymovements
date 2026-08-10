@@ -2575,7 +2575,16 @@ class Gaze:
 
     def _convert_time_units(self, time_unit: str | None) -> None:
         """Convert the time column to ``polars.Duration('us')``."""
+        # Validate the unit even for Duration input, which otherwise ignores time_unit.
+        if time_unit not in ('s', 'ms', 'us', 'step'):
+            raise ValueError(
+                f"unsupported time unit '{time_unit}'. "
+                "Supported units are 's' for seconds, 'ms' for milliseconds, "
+                "'us' for microseconds and 'step' for steps.",
+            )
+
         if isinstance(self.samples.schema['time'], polars.Duration):
+            # A Duration time column already carries its unit, so time_unit is ignored.
             # Normalize any Duration input to the canonical microsecond unit.
             if self.samples.schema['time'] != polars.Duration('us'):
                 self.samples = self.samples.with_columns(
@@ -2604,16 +2613,9 @@ class Gaze:
                     "experiment with sampling rate must be specified if time_unit is 'step'",
                 )
 
-        elif time_unit == 'ms':
+        else:  # time_unit == 'ms'
             self.samples = self.samples.with_columns(
                 (polars.col('time') * 1000).round().cast(polars.Duration('us')),
-            )
-
-        else:
-            raise ValueError(
-                f"unsupported time unit '{time_unit}'. "
-                "Supported units are 's' for seconds, 'ms' for milliseconds, "
-                "'us' for microseconds and 'step' for steps.",
             )
 
     def __eq__(self, other: Gaze) -> bool:

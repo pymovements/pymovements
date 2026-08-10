@@ -106,7 +106,10 @@ def from_csv(
         Dictionary containing columns to add to loaded data frame.
         (default: None)
     column_schema_overrides:  dict[str, type] | None
-        Dictionary containing types for columns.
+        Dictionary containing types for columns. Overrides are applied by casting the parsed
+        column, so a polars.Duration override on the time column reinterprets the raw
+        values in that Duration unit; its unit must match the file's stored values. To convert
+        numeric timestamps of a known unit, prefer time_unit instead.
         (default: None)
     read_csv_kwargs: dict[str, Any] | None
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
@@ -236,8 +239,8 @@ def from_csv(
         read_csv_kwargs = {}
 
     if kwargs:
-        # Extract schema_overrides from deprecated kwargs before they reach pl.read_csv,
-        # as polars cannot apply Duration overrides at CSV-read time.
+        # Route the deprecated schema_overrides kwarg through column_schema_overrides so it
+        # is applied as a post-read cast, consistent with the non-deprecated argument.
         deprecated_schema_overrides = kwargs.pop('schema_overrides', {})
         if deprecated_schema_overrides:
             if column_schema_overrides is None:
@@ -434,7 +437,10 @@ def from_asc(
         Dictionary containing columns to add to loaded data frame.
         (default: None)
     column_schema_overrides: dict[str, Any] | None
-        Dictionary containing types for columns.
+        Dictionary containing types for columns. Overrides are applied by casting the parsed
+        column, so a polars.Duration override on the time column reinterprets the raw
+        values in that Duration unit; its unit must match the file's stored values. To convert
+        numeric timestamps of a known unit, prefer time_unit instead.
         (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
@@ -648,7 +654,10 @@ def from_ipc(
         Dictionary containing columns to add to loaded data frame.
         (default: None)
     column_schema_overrides:  dict[str, type] | None
-        Dictionary containing types for columns.
+        Dictionary containing types for columns. Overrides are applied by casting the parsed
+        column, so a polars.Duration override on the time column reinterprets the raw
+        values in that Duration unit; its unit must match the file's stored values. To convert
+        numeric timestamps of a known unit, prefer time_unit instead.
         (default: None)
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)

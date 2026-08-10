@@ -1715,6 +1715,25 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
 
         pytest.param(
             {
+                'samples': pl.DataFrame(
+                    schema={
+                        'x': pl.Float64, 'y': pl.Float64,
+                        'time': pl.Duration('us'),
+                    },
+                ),
+                'pixel_columns': ['x', 'y'],
+                'time_column': 'time',
+                'time_unit': 'invalid',
+            },
+            ValueError,
+            "unsupported time unit 'invalid'. "
+            "Supported units are 's' for seconds, 'ms' for milliseconds, "
+            "'us' for microseconds and 'step' for steps.",
+            id='time_unit_unsupported_with_duration_time',
+        ),
+
+        pytest.param(
+            {
                 'samples': pl.from_dict(
                     {
                         'pixel': [[1.23, 4.56], None, [7.89, 10.11, 12.13]],
