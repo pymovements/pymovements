@@ -44,8 +44,10 @@ def resample(
     Can also be used to achieve a constant sampling rate for inconsistent data.
 
     The ``time`` column may hold numeric millisecond values or ``polars.Duration`` values.
-    A Duration time column is returned with microsecond precision regardless of its input
-    unit. Duration columns other than ``time`` are excluded from interpolation strategies.
+    Resampling replaces the time axis with a new uniform grid whose step is a whole number of
+    microseconds, so a ``Duration`` time column is returned as ``polars.Duration('us')``.
+    Duration columns other than ``time`` are currently not interpolated by the interpolation
+    strategies.
 
     Parameters
     ----------
