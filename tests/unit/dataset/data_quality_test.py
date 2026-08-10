@@ -35,7 +35,6 @@ from pymovements.dataset import DatasetDefinition
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 from pymovements.gaze.quality import _compute_data_loss_simple
-from pymovements.gaze.quality import _samples_with_numeric_time
 from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import ValidationError
@@ -899,6 +898,43 @@ class TestComputeMeasures:
             assert 'data_loss' in result['dataset'].columns
             assert 'std_rms' not in result['dataset'].columns
 
+    def test_data_loss_value_with_duration_time_and_gap(self) -> None:
+        # data_loss operates on a millisecond time base, so the canonical Duration('us') time
+        # column must be converted first. A gap (missing 3 and 4 ms) over a 1000 Hz base means
+        # 2 lost of 6 expected samples = 1/3. A missing or wrong conversion (operating on the
+        # raw microsecond integers) would instead report almost total loss, so the exact value
+        # validates the conversion for both the file-level and trial-level paths.
+        exp = _simple_experiment(sampling_rate=1000.0)
+        samples = pl.DataFrame({'time': [0, 1, 2, 5], 'position': [[0.0, 0.0]] * 4})
+
+        gaze = _make_gaze(samples, experiment=exp)
+        assert gaze.samples.schema['time'] == pl.Duration('us')
+        result = compute_measures([gaze], None, ['dataset'], measures=['data_loss'])
+        assert result['dataset']['data_loss'].to_list() == [pytest.approx(1 / 3)]
+
+        trial_gaze = _make_gaze(
+            samples.with_columns(pl.lit(1).alias('trial')),
+            experiment=exp,
+            trial_columns=['trial'],
+        )
+        trial_result = compute_measures([trial_gaze], None, ['trial'], measures=['data_loss'])
+        assert trial_result['trial']['data_loss'].to_list() == [pytest.approx(1 / 3)]
+
+    def test_trial_precision_measure_without_time_column(self) -> None:
+        # A trial gaze may carry only precision measures and no time column at all, so the
+        # per-trial data_loss time conversion must be skipped rather than assumed.
+        gaze = _make_gaze(
+            pl.DataFrame({
+                'position': [[0.0, 0.0], [1.0, 1.0], [0.0, 0.0], [1.0, 1.0]],
+                'trial': [1, 1, 2, 2],
+            }),
+            trial_columns=['trial'],
+        )
+        assert 'time' not in gaze.samples.columns
+        result = compute_measures([gaze], None, ['trial'], measures=['std_rms'])
+        assert 'std_rms' in result['trial'].columns
+        assert len(result['trial']) == 2
+
     def test_no_coord_column_still_returns(self) -> None:
         gaze = _make_gaze(pl.DataFrame({'time': [0, 1, 2], 'trial': [1, 1, 1]}))
         result = compute_measures([gaze], None, ['dataset'])
@@ -1377,28 +1413,3 @@ class TestDatasetReportDataQualityDirect:
         ds = _make_real_dataset([gaze])
         report_loose = ds.report_data_quality(checks=['gaze_range'], min_fraction=0.0)
         assert report_loose.check_results[0].severity == 'pass'
-
-
-# ---------------------------------------------------------------------------
-# _samples_with_numeric_time
-# ---------------------------------------------------------------------------
-
-class TestSamplesWithNumericTime:
-    def test_duration_time_converted_to_fractional_ms(self) -> None:
-        gaze = _make_gaze(
-            pl.DataFrame({'time': pl.Series([500, 1000], dtype=pl.Duration('us'))}),
-            convert_time=False,
-        )
-        samples = _samples_with_numeric_time(gaze)
-        assert samples['time'].to_list() == [0.5, 1.0]
-
-    def test_numeric_time_returned_unchanged(self) -> None:
-        gaze = _make_gaze(
-            pl.DataFrame({'time': pl.Series([0, 1, 2], dtype=pl.Int64)}),
-            convert_time=False,
-        )
-        assert _samples_with_numeric_time(gaze) is gaze.samples
-
-    def test_missing_time_column_returned_unchanged(self) -> None:
-        gaze = _make_gaze(pl.DataFrame({'x': [0.0, 1.0]}))
-        assert _samples_with_numeric_time(gaze) is gaze.samples
