@@ -32,6 +32,7 @@ from tqdm import tqdm
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
 from pymovements._utils._time import normalize_duration_to_us
+from pymovements._utils._time import numeric_to_duration_us
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -60,22 +61,27 @@ class Events:
     ----------
     data: pl.DataFrame | None
         A dataframe to be transformed to a polars dataframe. Numeric ``onset``, ``offset``
-        and ``duration`` columns are interpreted as milliseconds and converted to
+        and ``duration`` columns are interpreted according to ``time_unit`` and converted to
         ``polars.Duration`` columns with microsecond precision; ``polars.Duration`` columns
         are taken over unchanged. This argument is mutually exclusive with all the other
         arguments. (default: None)
     name: str | list[str] | None
         Name of events. (default: None)
     onsets: list[int | float] | np.ndarray | None
-        List of onsets. Numeric values are interpreted as milliseconds; ``timedelta`` and
-        ``timedelta64`` input is converted by its physical unit. (default: None)
+        List of onsets. Numeric values are interpreted according to ``time_unit``; ``timedelta``
+        and ``timedelta64`` input is converted by its physical unit. (default: None)
     offsets: list[int | float] | np.ndarray | None
-        List of offsets. Numeric values are interpreted as milliseconds; ``timedelta`` and
-        ``timedelta64`` input is converted by its physical unit. (default: None)
+        List of offsets. Numeric values are interpreted according to ``time_unit``; ``timedelta``
+        and ``timedelta64`` input is converted by its physical unit. (default: None)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe.
+    time_unit: str | None
+        The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
+        seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
+        ``polars.Duration`` input, which already carries its unit. If None, milliseconds are
+        assumed. (default: None)
 
     Attributes
     ----------
@@ -89,7 +95,8 @@ class Events:
     ------
     ValueError
         If list of onsets is passed but not a list of offsets, or vice versa, or if length of
-        onsets does not match length of offsets.
+        onsets does not match length of offsets, or if ``time_unit`` is not one of ``'s'``,
+        ``'ms'`` or ``'us'``.
 
     Examples
     --------
@@ -126,13 +133,20 @@ class Events:
     def __init__(
             self,
             data: pl.DataFrame | None = None,
+            *,
             name: str | list[str] | None = None,
             onsets: list[int | float] | np.ndarray | None = None,
             offsets: list[int | float] | np.ndarray | None = None,
             trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
+            time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
+
+        # Numeric onset/offset/duration input is interpreted in this unit; None means
+        # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
+        if time_unit is None:
+            time_unit = 'ms'
 
         if data is not None:
             _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
@@ -223,7 +237,7 @@ class Events:
             )
 
         # Convert onset, offset, and duration to Duration('us').
-        # Numeric input values are interpreted as milliseconds by convention.
+        # Numeric input values are interpreted according to time_unit (milliseconds by default).
         time_cols = [c for c in ('onset', 'offset', 'duration') if c in self.frame.columns]
         numeric_time_cols = [
             c for c in time_cols
@@ -241,9 +255,7 @@ class Events:
                     'onset, offset and duration values must be finite numbers.',
                 )
             self.frame = self.frame.with_columns(
-                (pl.col(numeric_time_cols).cast(pl.Float64) * 1000)
-                .round()
-                .cast(pl.Duration('us')),
+                numeric_to_duration_us(pl.col(numeric_time_cols), time_unit),
             )
         # Normalize Duration input of any other unit to microseconds. Sub-microsecond input
         # (e.g. nanoseconds) is rounded to the nearest microsecond rather than truncated.

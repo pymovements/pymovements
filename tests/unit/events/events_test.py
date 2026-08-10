@@ -463,6 +463,64 @@ def test_init_onsets_offsets_convert_by_physical_unit(
     assert events.frame['offset'].dt.total_microseconds().to_list() == [expected_offset_us]
 
 
+@pytest.mark.parametrize(
+    ('time_unit', 'expected_onset_us', 'expected_offset_us'),
+    [
+        pytest.param('s', 5_000_000, 10_000_000, id='seconds'),
+        pytest.param('ms', 5_000, 10_000, id='milliseconds'),
+        pytest.param('us', 5, 10, id='microseconds'),
+        pytest.param(None, 5_000, 10_000, id='none_defaults_to_milliseconds'),
+    ],
+)
+def test_init_onsets_offsets_respect_time_unit(time_unit, expected_onset_us, expected_offset_us):
+    events = Events(name='fixation', onsets=[5], offsets=[10], time_unit=time_unit)
+
+    assert events.frame.schema['onset'] == pl.Duration('us')
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [expected_onset_us]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [expected_offset_us]
+    assert events.frame['duration'].dt.total_microseconds().to_list() == [
+        expected_offset_us - expected_onset_us,
+    ]
+
+
+def test_init_data_frame_respects_time_unit():
+    events = Events(
+        pl.DataFrame({'name': ['fixation'], 'onset': [5], 'offset': [10], 'duration': [5]}),
+        time_unit='s',
+    )
+
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [5_000_000]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [10_000_000]
+    assert events.frame['duration'].dt.total_microseconds().to_list() == [5_000_000]
+
+
+def test_init_time_unit_ignored_for_duration_input():
+    # Duration input carries its own unit, so time_unit='s' must not rescale it.
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': pl.Series([5], dtype=pl.Duration('us')),
+            'offset': pl.Series([10], dtype=pl.Duration('us')),
+        }),
+        time_unit='s',
+    )
+
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [5]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [10]
+
+
+@pytest.mark.parametrize('time_unit', ['step', 'sec', 'minutes', ''])
+def test_init_invalid_time_unit_raises_value_error(time_unit):
+    with pytest.raises(ValueError, match='unsupported time unit'):
+        Events(name='fixation', onsets=[5], offsets=[10], time_unit=time_unit)
+
+
+def test_init_only_data_is_positional():
+    # All parameters except data are keyword-only; passing name positionally must fail.
+    with pytest.raises(TypeError):
+        Events(pl.DataFrame(), 'fixation')
+
+
 def test_init_rounds_sub_microsecond_duration_input():
     # Sub-microsecond Duration input is rounded to the nearest microsecond, not truncated.
     events = Events(

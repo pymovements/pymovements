@@ -46,6 +46,42 @@ def duration_to_ms(column: str | pl.Series | pl.Expr) -> pl.Series | pl.Expr:
     return expr.dt.total_microseconds() / 1000
 
 
+def numeric_to_duration_us(column: str | pl.Expr, time_unit: str) -> pl.Expr:
+    """Return an expression converting a numeric time column to ``polars.Duration('us')``.
+
+    Numeric values are interpreted according to ``time_unit`` and cast to microsecond
+    ``polars.Duration``. Sub-microsecond fractions are rounded to the nearest microsecond
+    rather than truncated.
+
+    Parameters
+    ----------
+    column: str | pl.Expr
+        A numeric time column, given as an expression or a column name.
+    time_unit: str
+        The unit the numeric values are given in: ``'s'`` for seconds, ``'ms'`` for
+        milliseconds or ``'us'`` for microseconds.
+
+    Returns
+    -------
+    pl.Expr
+        The column converted to ``polars.Duration('us')``.
+
+    Raises
+    ------
+    ValueError
+        If ``time_unit`` is not one of ``'s'``, ``'ms'`` or ``'us'``.
+    """
+    us_per_unit = {'s': 1_000_000, 'ms': 1_000, 'us': 1}
+    if time_unit not in us_per_unit:
+        raise ValueError(
+            f"unsupported time unit '{time_unit}'. "
+            "Supported units are 's' for seconds, 'ms' for milliseconds "
+            "and 'us' for microseconds.",
+        )
+    expr = pl.col(column) if isinstance(column, str) else column
+    return (expr.cast(pl.Float64) * us_per_unit[time_unit]).round().cast(pl.Duration('us'))
+
+
 def normalize_duration_to_us(column: str | pl.Expr) -> pl.Expr:
     """Return an expression normalizing a ``polars.Duration`` column to microseconds.
 

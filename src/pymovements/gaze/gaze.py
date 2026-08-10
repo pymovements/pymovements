@@ -42,6 +42,7 @@ from pymovements._utils._html import repr_html
 from pymovements._utils._time import duration_to_ms
 from pymovements._utils._time import durations_to_ms
 from pymovements._utils._time import normalize_duration_to_us
+from pymovements._utils._time import numeric_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -2597,19 +2598,9 @@ class Gaze:
                     normalize_duration_to_us('time'),
                 )
 
-        elif time_unit == 's':
+        elif time_unit in ('s', 'ms', 'us'):
             self.samples = self.samples.with_columns(
-                (polars.col('time') * 1_000_000).round().cast(polars.Duration('us')),
-            )
-
-        elif time_unit == 'ms':
-            self.samples = self.samples.with_columns(
-                (polars.col('time') * 1000).round().cast(polars.Duration('us')),
-            )
-
-        elif time_unit == 'us':
-            self.samples = self.samples.with_columns(
-                polars.col('time').round().cast(polars.Duration('us')),
+                numeric_to_duration_us('time', time_unit),
             )
 
         else:  # time_unit == 'step'

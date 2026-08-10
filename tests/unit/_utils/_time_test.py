@@ -24,6 +24,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements._utils._time import durations_to_ms
+from pymovements._utils._time import numeric_to_duration_us
 from pymovements._utils._time import timesteps_to_numpy
 
 
@@ -116,3 +117,34 @@ def test_timesteps_to_numpy_returns_numeric_milliseconds(series, expected):
 def test_timesteps_to_numpy_raises_on_non_numeric_dtype():
     with pytest.raises(TypeError, match='timesteps dtype must be float or int'):
         timesteps_to_numpy(pl.Series(['a', 'b']))
+
+
+@pytest.mark.parametrize(
+    ('values', 'time_unit', 'expected_us'),
+    [
+        pytest.param([5, 10], 's', [5_000_000, 10_000_000], id='seconds'),
+        pytest.param([5, 10], 'ms', [5_000, 10_000], id='milliseconds'),
+        pytest.param([5, 10], 'us', [5, 10], id='microseconds'),
+        pytest.param([0.5, 1.25], 'ms', [500, 1250], id='fractional_milliseconds'),
+        pytest.param([1.5, 2.6], 'us', [2, 3], id='sub_microsecond_rounded'),
+    ],
+)
+def test_numeric_to_duration_us_converts_by_unit(values, time_unit, expected_us):
+    result = pl.DataFrame({'time': values}).with_columns(
+        numeric_to_duration_us('time', time_unit),
+    )
+    assert result.schema['time'] == pl.Duration('us')
+    assert result['time'].dt.total_microseconds().to_list() == expected_us
+
+
+def test_numeric_to_duration_us_accepts_expression():
+    result = pl.DataFrame({'time': [5]}).with_columns(
+        numeric_to_duration_us(pl.col('time'), 'ms'),
+    )
+    assert result['time'].dt.total_microseconds().to_list() == [5_000]
+
+
+@pytest.mark.parametrize('time_unit', ['step', 'sec', 'minutes', ''])
+def test_numeric_to_duration_us_raises_on_unsupported_unit(time_unit):
+    with pytest.raises(ValueError, match='unsupported time unit'):
+        numeric_to_duration_us('time', time_unit)
