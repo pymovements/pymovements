@@ -273,10 +273,12 @@ def events2segmentation(
             else:
                 warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
 
-    # Compare in numeric milliseconds so the mask is correct regardless of whether the event
-    # bounds and the sample time column are numeric or ``polars.Duration`` (and even if the two
-    # disagree). The event bounds are already numeric milliseconds via ``_to_num``; the time
-    # column is coerced to milliseconds at evaluation time, dispatching on its runtime dtype.
+    # Compare in numeric milliseconds so the mask is correct whether the event bounds and the
+    # sample time column are numeric or ``polars.Duration``, and whether or not their dtypes
+    # match. Duration values are converted by their physical unit; numeric values follow the
+    # codebase convention that a numeric time column is already in milliseconds. The event
+    # bounds are already numeric milliseconds via ``_to_num``; the time column is coerced to
+    # milliseconds at evaluation time, dispatching on its runtime dtype.
     time_ms = pl.col(time_column).map_batches(
         lambda series: duration_to_ms(series)
         if isinstance(series.dtype, pl.Duration) else series.cast(pl.Float64),
@@ -395,8 +397,10 @@ def events2timeratio(
         return pl.lit(None).cast(pl.Float64).alias(f'event_ratio_{name}')
 
     # Work in numeric milliseconds so event durations and sample time ranges combine correctly
-    # regardless of whether either side is numeric or polars.Duration (and even if the two
-    # disagree). Each column is coerced to fractional milliseconds based on its own dtype.
+    # whether either side is numeric or polars.Duration, and whether or not their dtypes match.
+    # Duration values are converted by their physical unit; numeric values follow the codebase
+    # convention that a numeric time column is already in milliseconds. Each column is coerced to
+    # fractional milliseconds based on its own dtype.
     def _ms(frame: pl.DataFrame, column: str) -> pl.Expr:
         if isinstance(frame.schema[column], pl.Duration):
             return duration_to_ms(column)

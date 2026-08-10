@@ -148,6 +148,15 @@ class Events:
         if time_unit is None:
             time_unit = 'ms'
 
+        # Validate the unit up front so a typo is rejected regardless of whether the input is
+        # numeric or already Duration (where the unit is otherwise ignored), matching Gaze.
+        if time_unit not in ('s', 'ms', 'us'):
+            raise ValueError(
+                f"unsupported time unit '{time_unit}'. "
+                "Supported units are 's' for seconds, 'ms' for milliseconds "
+                "and 'us' for microseconds.",
+            )
+
         if data is not None:
             _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
             _checks.check_is_mutual_exclusive(data=data, offsets=offsets)
@@ -244,15 +253,18 @@ class Events:
             if not isinstance(self.frame.schema[c], pl.Duration)
         ]
         if numeric_time_cols:
-            # Reject NaN early: casting NaN to Duration otherwise raises a cryptic polars error.
-            nan_flags = self.frame.select(
-                pl.col(numeric_time_cols).cast(pl.Float64).is_nan().any(),
+            # Reject infinite values early with a clear error (casting them to Duration would
+            # otherwise raise a cryptic polars error). NaN is allowed: a missing onset/duration
+            # value arrives as NaN and is mapped to null by the conversion below. Nulls stay
+            # allowed (is_infinite is null for null, which any() ignores).
+            infinite_flags = self.frame.select(
+                pl.col(numeric_time_cols).cast(pl.Float64).is_infinite().any(),
             )
-            nan_cols = [c for c in numeric_time_cols if nan_flags.item(0, c)]
-            if nan_cols:
+            infinite_cols = [c for c in numeric_time_cols if infinite_flags.item(0, c)]
+            if infinite_cols:
                 raise ValueError(
-                    f'time columns {nan_cols} contain NaN values; '
-                    'onset, offset and duration values must be finite numbers.',
+                    f'time columns {infinite_cols} contain infinite values; '
+                    'onset, offset and duration values must be finite or null.',
                 )
             self.frame = self.frame.with_columns(
                 numeric_to_duration_us(pl.col(numeric_time_cols), time_unit),

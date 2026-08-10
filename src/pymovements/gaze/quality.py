@@ -454,9 +454,11 @@ def _compute_trial_rows(
                 continue
 
             # Convert the canonical Duration time column to numeric milliseconds for data_loss.
-            # A trial gaze may carry only precision measures and no time column at all.
+            # A trial gaze may carry only precision measures and no time column at all, and a
+            # non-Duration time column is left untouched so precision measures still compute
+            # instead of the whole trial being dropped.
             samples = gaze.samples
-            if 'time' in samples.columns:
+            if 'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration):
                 samples = samples.with_columns(duration_to_ms('time').alias('time'))
             trial_df = samples.group_by(
                 gaze.trial_columns,

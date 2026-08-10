@@ -182,8 +182,10 @@ class EventSamplesProcessor:
 
         # Sample measures expect the time column in numeric milliseconds. The samples handed
         # to the measures are converted below. The event time filter also compares in
-        # milliseconds so it stays correct even if the events and samples time dtypes disagree
-        # (e.g. Duration events against a numeric sample time column, or vice versa).
+        # milliseconds so it stays correct whether or not the events and samples time dtypes
+        # match (e.g. Duration events against a numeric sample time column, or vice versa).
+        # Duration values are converted by their physical unit; a numeric time column follows
+        # the codebase convention of already being in milliseconds.
         time_is_duration = (
             'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration)
         )

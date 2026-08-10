@@ -451,6 +451,10 @@ def test_init_normalizes_time_columns_to_duration_us(data, expected_data):
             [timedelta(milliseconds=10)],
             5000, 10000, id='python_timedelta_by_physical_unit',
         ),
+        # A missing onset/duration value arrives as NaN. Duration has no NaN, so a missing time
+        # point is stored as null rather than raising.
+        pytest.param([float('nan')], [10.0], None, 10000, id='nan_onset_maps_to_null'),
+        pytest.param([5.0], [float('nan')], 5000, None, id='nan_offset_maps_to_null'),
     ],
 )
 def test_init_onsets_offsets_convert_by_physical_unit(
@@ -537,16 +541,52 @@ def test_init_rounds_sub_microsecond_duration_input():
     assert events.frame['duration'].dt.total_microseconds().to_list() == [1]
 
 
+def test_init_normalizes_large_duration_input_without_overflow():
+    # A Duration('ms') beyond ~292 years would overflow an intermediate nanosecond count; the
+    # normalization must stay exact for whole-microsecond values rather than silently wrapping.
+    onset_ms = 400 * 365 * 24 * 3600 * 1000  # 400 years in milliseconds
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': pl.Series([onset_ms], dtype=pl.Duration('ms')),
+            'offset': pl.Series([onset_ms + 5], dtype=pl.Duration('ms')),
+        }),
+    )
+
+    assert events.frame.schema['onset'] == pl.Duration('us')
+    assert events.frame['onset'].dt.total_microseconds().to_list() == [onset_ms * 1000]
+    assert events.frame['offset'].dt.total_microseconds().to_list() == [(onset_ms + 5) * 1000]
+
+
 @pytest.mark.parametrize(
     'kwargs',
     [
-        pytest.param({'name': 'fixation', 'onsets': [float('nan')], 'offsets': [10.0]}, id='onset'),
-        pytest.param({'name': 'fixation', 'onsets': [5.0], 'offsets': [float('nan')]}, id='offset'),
+        pytest.param({'name': 'fixation', 'onsets': [float('inf')], 'offsets': [10.0]}, id='inf'),
+        pytest.param(
+            {'name': 'fixation', 'onsets': [5.0], 'offsets': [float('inf')]}, id='inf_offset',
+        ),
+        pytest.param(
+            {'name': 'fixation', 'onsets': [float('-inf')], 'offsets': [10.0]}, id='neg_inf',
+        ),
     ],
 )
-def test_init_nan_time_values_raise_value_error(kwargs):
-    with pytest.raises(ValueError, match='contain NaN values'):
+def test_init_infinite_time_values_raise_value_error(kwargs):
+    with pytest.raises(ValueError, match='contain infinite values'):
         Events(**kwargs)
+
+
+def test_init_invalid_time_unit_raises_value_error_for_duration_input():
+    # The unit is validated up front, so a typo is rejected even though it is otherwise ignored
+    # for Duration input.
+    with pytest.raises(ValueError, match='unsupported time unit'):
+        Events(
+            pl.DataFrame({
+                'name': ['fixation'],
+                'onset': pl.Series([5], dtype=pl.Duration('us')),
+                'offset': pl.Series([10], dtype=pl.Duration('us')),
+            }),
+            time_unit='banana',
+        )
 
 
 @pytest.mark.parametrize(
