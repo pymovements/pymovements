@@ -23,6 +23,7 @@ from __future__ import annotations
 import numpy
 import polars
 
+from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import consecutive
@@ -43,7 +44,10 @@ def fill(
         The already detected events.
     timesteps: list[int] | numpy.ndarray | polars.Series
         shape (N, )
-        Continuous 1D timestep time series.
+        Continuous 1D timestep time series. Each event covers the half-open interval
+        ``[onset, offset)``; the event ``onset`` and ``offset`` values must be in the same
+        unit as ``timesteps``. When ``events`` stores ``polars.Duration`` on- and offsets,
+        ``timesteps`` are expected to be in milliseconds.
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
         (default: 1)
@@ -56,10 +60,7 @@ def fill(
         A dataframe with detected fixations as rows.
     """
     if isinstance(timesteps, polars.Series):
-        numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
-        if not isinstance(timesteps.dtype, numeric_dtypes):
-            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
-        timesteps = timesteps.to_numpy()
+        timesteps = timesteps_to_numpy(timesteps)
     timesteps = numpy.array(timesteps)
 
     # Create binary mask where each existing event is marked.
@@ -76,23 +77,10 @@ def fill(
         onset = row['onset']
         offset = row['offset']
 
-        if onset > numpy.max(timesteps):
-            continue
-
-        if offset - 1 < numpy.min(timesteps):
-            continue
-
-        if onset < numpy.min(timesteps):
-            idx_onset = 0
-        else:
-            idx_onset = numpy.where(timesteps == onset)[0][0]
-
-        if offset > numpy.max(timesteps):
-            idx_offset = len(timesteps) - 1
-        else:
-            idx_offset = numpy.where(timesteps == offset - 1)[0][0]
-
-        events_mask[idx_onset:idx_offset + 1] = True
+        # Mark every timestep inside the half-open event interval ``[onset, offset)``.
+        # Matching by interval membership instead of exact timestep equality keeps this
+        # robust to floating-point timesteps and to sample spacings other than one.
+        events_mask |= (timesteps >= onset) & (timesteps < offset)
 
     # Mask all indices where there is no event.
     candidate_mask = ~events_mask
