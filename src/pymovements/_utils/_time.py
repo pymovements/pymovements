@@ -108,6 +108,33 @@ def normalize_duration_to_us(column: str | pl.Expr) -> pl.Expr:
     return (whole_us + remainder_ns / 1000).round().cast(pl.Int64).cast(pl.Duration('us'))
 
 
+def time_column_to_duration_us(frame: pl.DataFrame, time_unit: str = 'ms') -> pl.DataFrame:
+    """Return ``frame`` with its ``time`` column converted to ``polars.Duration('us')``.
+
+    A numeric ``time`` column is interpreted according to ``time_unit``; a ``time`` column that
+    already holds ``polars.Duration`` values is normalized to microseconds and ``time_unit`` is
+    ignored. The frame must contain a ``time`` column.
+
+    Parameters
+    ----------
+    frame: pl.DataFrame
+        DataFrame carrying a ``time`` column to convert.
+    time_unit: str
+        The unit numeric ``time`` values are given in: ``'s'``, ``'ms'`` or ``'us'``.
+        (default: ``'ms'``)
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame whose ``time`` column is ``polars.Duration('us')``.
+    """
+    if isinstance(frame.schema['time'], pl.Duration):
+        if frame.schema['time'] != pl.Duration('us'):
+            return frame.with_columns(normalize_duration_to_us('time'))
+        return frame
+    return frame.with_columns(numeric_to_duration_us('time', time_unit))
+
+
 def timesteps_to_numpy(timesteps: pl.Series) -> np.ndarray:
     """Convert a timesteps series to a numpy array of numeric time values.
 

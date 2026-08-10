@@ -41,8 +41,7 @@ from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements._utils._time import duration_to_ms
 from pymovements._utils._time import durations_to_ms
-from pymovements._utils._time import normalize_duration_to_us
-from pymovements._utils._time import numeric_to_duration_us
+from pymovements._utils._time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -330,15 +329,26 @@ class Gaze:
         else:
             self.metadata = metadata
 
+        # The auxiliary frames' time column is migrated to Duration('us') before being stored,
+        # consistent with the samples time column. Numeric values are interpreted as
+        # milliseconds (the unit these frames are parsed in); an existing Duration is normalized
+        # to microseconds. Frames without a time column are stored unchanged.
         _check_messages(messages)
-        self.messages = messages
+        if messages is not None:
+            self.messages = time_column_to_duration_us(messages)
+        else:
+            self.messages = None
 
-        if calibrations is not None:
+        if calibrations is not None and 'time' in calibrations.columns:
+            self.calibrations = time_column_to_duration_us(calibrations)
+        elif calibrations is not None:
             self.calibrations = calibrations
         else:
             self.calibrations = None
 
-        if validations is not None:
+        if validations is not None and 'time' in validations.columns:
+            self.validations = time_column_to_duration_us(validations)
+        elif validations is not None:
             self.validations = validations
         else:
             self.validations = None
@@ -2589,16 +2599,9 @@ class Gaze:
                 "'us' for microseconds and 'step' for steps.",
             )
 
-        if isinstance(self.samples.schema['time'], polars.Duration):
-            # A Duration time column already carries its unit, so time_unit is ignored.
-            # Normalize any Duration input to the canonical microsecond unit. Sub-microsecond
-            # input (e.g. nanoseconds) is rounded to the nearest microsecond, not truncated.
-            if self.samples.schema['time'] != polars.Duration('us'):
-                self.samples = self.samples.with_columns(
-                    normalize_duration_to_us('time'),
-                )
-
-        elif time_unit == 'step':
+        if time_unit == 'step' and not isinstance(self.samples.schema['time'], polars.Duration):
+            # Steps are converted using the experiment sampling rate; a Duration time column
+            # already carries its unit and is handled by the shared conversion below instead.
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
                     (polars.col('time') * 1_000_000 / self.experiment.sampling_rate)
@@ -2610,10 +2613,10 @@ class Gaze:
                     "experiment with sampling rate must be specified if time_unit is 'step'",
                 )
 
-        else:  # numeric time unit: 's', 'ms' or 'us'
-            self.samples = self.samples.with_columns(
-                numeric_to_duration_us('time', time_unit),
-            )
+        else:
+            # A Duration time column is normalized to microseconds (time_unit ignored); a numeric
+            # column is interpreted according to time_unit ('s', 'ms' or 'us').
+            self.samples = time_column_to_duration_us(self.samples, time_unit)
 
     def __eq__(self, other: Gaze) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Gaze` object."""
@@ -2917,7 +2920,7 @@ class Gaze:
         if extension == 'feather':
             self.messages.write_ipc(path)
         elif extension == 'csv':
-            self.messages.write_csv(path)
+            durations_to_ms(self.messages).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2959,7 +2962,7 @@ class Gaze:
         if extension == 'feather':
             self.calibrations.write_ipc(path)
         elif extension == 'csv':
-            self.calibrations.write_csv(path)
+            durations_to_ms(self.calibrations).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -3001,7 +3004,7 @@ class Gaze:
         if extension == 'feather':
             self.validations.write_ipc(path)
         elif extension == 'csv':
-            self.validations.write_csv(path)
+            durations_to_ms(self.validations).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(

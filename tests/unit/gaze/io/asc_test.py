@@ -700,7 +700,7 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
     # Calibrations DataFrame present with the expected schema
     assert isinstance(gaze.calibrations, pl.DataFrame)
     assert gaze.calibrations.schema == {
-        'time': pl.Float64,
+        'time': pl.Duration('us'),
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'tracking_mode': pl.Utf8,
@@ -722,7 +722,7 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
     # Validations DataFrame present with the expected schema
     assert isinstance(gaze.validations, pl.DataFrame)
     assert gaze.validations.schema == {
-        'time': pl.Float64,
+        'time': pl.Duration('us'),
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'accuracy_avg': pl.Float64,
@@ -900,13 +900,13 @@ def test_from_asc_warns(
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             True,
-            [(123, 152), ('message here', 'TEST 1')],
+            [(123_000, 152_000), ('message here', 'TEST 1')],
             id='multiple_messages',
         ),
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             [r'^.*TEST.*$'],
-            [(152,), ('TEST 1',)],
+            [(152_000,), ('TEST 1',)],
             id='filter_messages',
         ),
         pytest.param(
@@ -934,7 +934,7 @@ def test_from_asc_messages(make_text_file, body, messages, expected_data):
         assert_frame_equal(
             gaze.messages,
             pl.DataFrame(
-                schema={'time': pl.Float64, 'content': pl.String},
+                schema={'time': pl.Duration('us'), 'content': pl.String},
                 data=expected_data,
             ),
         )
