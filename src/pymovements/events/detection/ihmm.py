@@ -1063,13 +1063,16 @@ def ihmm(
         Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
     timesteps : list[int] | numpy.ndarray | polars.Series | None
-        Timestamp for each velocity sample. May be integer or float valued.
-        If None, uses sequential indices (0, 1, 2, ..., T-1). (default: None)
+        Timestamp for each velocity sample. May be integer or float valued, or a
+        ``polars.Duration`` series, which is converted to milliseconds. If None, uses
+        sequential indices (0, 1, 2, ..., T-1). (default: None)
 
     minimum_duration: int
-        Minimum fixation duration. The duration should be the same unit as the timesteps array.
-        Must be an integer, so with float-valued ``timesteps`` (e.g. seconds) only
-        whole-unit thresholds can be expressed. (default: 100)
+        Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
+        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+        None, then ``minimum_duration`` is specified in numbers of samples. Must be an integer,
+        so with float-valued ``timesteps`` only whole-unit thresholds can be expressed.
+        (default: 100)
 
     mu : list[float] | numpy.ndarray | None
         Mean velocity for each state (Gaussian emissions).
@@ -1168,7 +1171,7 @@ def ihmm(
     ------
     TypeError
         If velocities is a polars Series whose dtype is not List.
-        If timesteps is a polars Series with a non-numeric dtype.
+        If timesteps is a polars Series whose dtype is neither numeric nor Duration.
         If minimum_duration is not an integer.
     ValueError
         If velocities does not have shape (T, 2).
