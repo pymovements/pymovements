@@ -439,8 +439,7 @@ def from_asc(
     column_schema_overrides: dict[str, Any] | None
         Dictionary containing types for columns. Overrides are applied by casting the parsed
         column, so a polars.Duration override on the time column reinterprets the raw
-        values in that Duration unit; its unit must match the file's stored values. To convert
-        numeric timestamps of a known unit, prefer time_unit instead.
+        values in that Duration unit; its unit must match the file's stored values.
         (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
@@ -656,8 +655,7 @@ def from_ipc(
     column_schema_overrides:  dict[str, type] | None
         Dictionary containing types for columns. Overrides are applied by casting the parsed
         column, so a polars.Duration override on the time column reinterprets the raw
-        values in that Duration unit; its unit must match the file's stored values. To convert
-        numeric timestamps of a known unit, prefer time_unit instead.
+        values in that Duration unit; its unit must match the file's stored values.
         (default: None)
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
