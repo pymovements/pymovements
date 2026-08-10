@@ -61,25 +61,16 @@ def numeric_to_duration_us(column: str | pl.Expr, time_unit: str) -> pl.Expr:
         A numeric time column, given as an expression or a column name.
     time_unit: str
         The unit the numeric values are given in: ``'s'`` for seconds, ``'ms'`` for
-        milliseconds or ``'us'`` for microseconds.
+        milliseconds or ``'us'`` for microseconds. Callers are expected to validate the unit
+        up front (both :py:class:`~pymovements.Events` and :py:class:`~pymovements.Gaze` do),
+        so it is not re-checked here.
 
     Returns
     -------
     pl.Expr
         The column converted to ``polars.Duration('us')``, with ``NaN`` mapped to null.
-
-    Raises
-    ------
-    ValueError
-        If ``time_unit`` is not one of ``'s'``, ``'ms'`` or ``'us'``.
     """
     us_per_unit = {'s': 1_000_000, 'ms': 1_000, 'us': 1}
-    if time_unit not in us_per_unit:
-        raise ValueError(
-            f"unsupported time unit '{time_unit}'. "
-            "Supported units are 's' for seconds, 'ms' for milliseconds "
-            "and 'us' for microseconds.",
-        )
     expr = pl.col(column) if isinstance(column, str) else column
     # Map NaN to null before casting: Duration cannot hold NaN, and a NaN cast would raise.
     # Infinite values are left untouched so they still surface as an error rather than a null.

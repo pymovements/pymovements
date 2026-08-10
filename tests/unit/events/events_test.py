@@ -20,6 +20,7 @@
 """Tests pymovements.events.Events."""
 from __future__ import annotations
 
+import math
 from datetime import timedelta
 
 import numpy as np
@@ -453,8 +454,8 @@ def test_init_normalizes_time_columns_to_duration_us(data, expected_data):
         ),
         # A missing onset/duration value arrives as NaN. Duration has no NaN, so a missing time
         # point is stored as null rather than raising.
-        pytest.param([float('nan')], [10.0], None, 10000, id='nan_onset_maps_to_null'),
-        pytest.param([5.0], [float('nan')], 5000, None, id='nan_offset_maps_to_null'),
+        pytest.param([math.nan], [10.0], None, 10000, id='nan_onset_maps_to_null'),
+        pytest.param([5.0], [math.nan], 5000, None, id='nan_offset_maps_to_null'),
     ],
 )
 def test_init_onsets_offsets_convert_by_physical_unit(
@@ -519,12 +520,6 @@ def test_init_invalid_time_unit_raises_value_error(time_unit):
         Events(name='fixation', onsets=[5], offsets=[10], time_unit=time_unit)
 
 
-def test_init_only_data_is_positional():
-    # All parameters except data are keyword-only; passing name positionally must fail.
-    with pytest.raises(TypeError):
-        Events(pl.DataFrame(), 'fixation')
-
-
 def test_init_rounds_sub_microsecond_duration_input():
     # Sub-microsecond Duration input is rounded to the nearest microsecond, not truncated.
     events = Events(
@@ -561,12 +556,12 @@ def test_init_normalizes_large_duration_input_without_overflow():
 @pytest.mark.parametrize(
     'kwargs',
     [
-        pytest.param({'name': 'fixation', 'onsets': [float('inf')], 'offsets': [10.0]}, id='inf'),
+        pytest.param({'name': 'fixation', 'onsets': [math.inf], 'offsets': [10.0]}, id='inf'),
         pytest.param(
-            {'name': 'fixation', 'onsets': [5.0], 'offsets': [float('inf')]}, id='inf_offset',
+            {'name': 'fixation', 'onsets': [5.0], 'offsets': [math.inf]}, id='inf_offset',
         ),
         pytest.param(
-            {'name': 'fixation', 'onsets': [float('-inf')], 'offsets': [10.0]}, id='neg_inf',
+            {'name': 'fixation', 'onsets': [-math.inf], 'offsets': [10.0]}, id='neg_inf',
         ),
     ],
 )

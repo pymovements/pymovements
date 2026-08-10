@@ -2582,7 +2582,7 @@ class Gaze:
         # final `else` assumes 'step', so without this a typo like 'sec' would be silently handled
         # as a step conversion. For a Duration time column the unit is ignored, but an invalid
         # string still raises here so the same bad call fails regardless of the time column dtype.
-        if time_unit not in ('s', 'ms', 'us', 'step'):
+        if time_unit not in {'s', 'ms', 'us', 'step'}:
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
                 "Supported units are 's' for seconds, 'ms' for milliseconds, "
@@ -2598,12 +2598,7 @@ class Gaze:
                     normalize_duration_to_us('time'),
                 )
 
-        elif time_unit in ('s', 'ms', 'us'):
-            self.samples = self.samples.with_columns(
-                numeric_to_duration_us('time', time_unit),
-            )
-
-        else:  # time_unit == 'step'
+        elif time_unit == 'step':
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
                     (polars.col('time') * 1_000_000 / self.experiment.sampling_rate)
@@ -2614,6 +2609,11 @@ class Gaze:
                 raise ValueError(
                     "experiment with sampling rate must be specified if time_unit is 'step'",
                 )
+
+        else:  # numeric time unit: 's', 'ms' or 'us'
+            self.samples = self.samples.with_columns(
+                numeric_to_duration_us('time', time_unit),
+            )
 
     def __eq__(self, other: Gaze) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Gaze` object."""

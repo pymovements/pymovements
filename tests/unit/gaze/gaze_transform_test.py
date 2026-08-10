@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze transform method."""
+import math
+
 import numpy as np
 import polars as pl
 import pytest
@@ -1682,8 +1684,8 @@ def test_gaze_resample_replaces_nan_in_list_columns_with_null():
         samples=pl.DataFrame(
             {
                 'time': [0, 1, 2],
-                'x': [1.0, float('nan'), 3.0],
-                'y': [1.0, float('nan'), 3.0],
+                'x': [1.0, math.nan, 3.0],
+                'y': [1.0, math.nan, 3.0],
             },
         ),
         time_column='time',
