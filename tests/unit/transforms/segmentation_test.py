@@ -67,6 +67,40 @@ def test_events2segmentation_basic(events_df, name, time_column, expected):
 
 
 @pytest.mark.parametrize(
+    ('padding', 'expected'),
+    [
+        pytest.param(
+            None,
+            [False, False, False, True, True, True, False, False, False, False],
+            id='no_padding',
+        ),
+        # padding is interpreted as milliseconds for Duration columns: 1 ms extends the
+        # [3, 5] ms event to [2, 6] ms, marking the samples at 2 ms and 6 ms as well.
+        pytest.param(
+            1,
+            [False, False, True, True, True, True, True, False, False, False],
+            id='padding_milliseconds',
+        ),
+    ],
+)
+def test_events2segmentation_duration_columns(padding, expected):
+    """Duration onset/offset and time columns are matched in milliseconds."""
+    events_df = pl.DataFrame({
+        'name': ['blink'],
+        'onset': pl.Series([3000], dtype=pl.Duration('us')),
+        'offset': pl.Series([5000], dtype=pl.Duration('us')),
+    })
+    gaze_df = pl.DataFrame({
+        'time': pl.Series([i * 1000 for i in range(10)], dtype=pl.Duration('us')),
+    })
+
+    kwargs = {} if padding is None else {'padding': padding}
+    result_df = gaze_df.select(events2segmentation(events_df, name='blink', **kwargs))
+
+    assert result_df['blink'].to_list() == expected
+
+
+@pytest.mark.parametrize(
     'events_df, gaze_df, kwargs, expected',
     [
         pytest.param(
@@ -723,6 +757,29 @@ def test_events2timeratio_basic(events_data, samples_data, kwargs, expected):
         assert result.to_series()[0] is None
     else:
         assert result.to_series()[0] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        pytest.param({'name': 'blink'}, id='mode_dt'),
+        pytest.param({'name': 'blink', 'sampling_rate': 1000.0}, id='explicit_sampling_rate'),
+    ],
+)
+def test_events2timeratio_duration_columns(kwargs):
+    """Duration onset/offset and time columns yield the same ratio as numeric milliseconds."""
+    events = pl.DataFrame({
+        'name': ['blink', 'blink'],
+        'onset': pl.Series([1000, 5000], dtype=pl.Duration('us')),
+        'offset': pl.Series([3000, 7000], dtype=pl.Duration('us')),
+    })
+    samples = pl.DataFrame({
+        'time': pl.Series([i * 1000 for i in range(8)], dtype=pl.Duration('us')),
+    })
+
+    result = samples.select(events2timeratio(events, samples, **kwargs))
+
+    assert result.to_series()[0] == pytest.approx(0.75)
 
 
 @pytest.mark.parametrize(

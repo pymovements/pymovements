@@ -794,6 +794,48 @@ def test_event_samples_processor_process_correct_result(
     assert_frame_equal(measure_result, expected_dataframe, check_dtypes=False)
 
 
+def test_event_samples_processor_process_duration_time_column():
+    """A Duration sample time column is converted to milliseconds before measures run."""
+    events = pl.from_dict(
+        {'name': ['fixation', 'saccade'], 'onset': [0, 5000], 'offset': [4000, 7000]},
+        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
+    )
+    samples = pl.from_dict(
+        {
+            'time': [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000],
+            'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+        },
+        schema={'time': pl.Duration('us'), 'velocity': pl.List(pl.Float64)},
+    )
+
+    processor = EventSamplesProcessor(measures='peak_velocity')
+    result = processor.process(events, samples, identifiers=None)
+
+    assert result['name'].to_list() == ['fixation', 'saccade']
+    assert result['peak_velocity'].to_list() == pytest.approx([0.0, sqrt(2)])
+
+
+@pytest.mark.filterwarnings('ignore:No events available for processing.*:UserWarning')
+def test_event_samples_processor_process_duration_time_no_events():
+    """The empty-events schema still resolves when the sample time column is a Duration."""
+    events = pl.DataFrame(
+        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
+    )
+    samples = pl.from_dict(
+        {
+            'time': [0, 1000, 2000, 3000, 4000],
+            'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+        },
+        schema={'time': pl.Duration('us'), 'velocity': pl.List(pl.Float64)},
+    )
+
+    processor = EventSamplesProcessor(measures='peak_velocity')
+    result = processor.process(events, samples, identifiers=None)
+
+    assert result.columns == ['name', 'onset', 'offset', 'peak_velocity']
+    assert len(result) == 0
+
+
 @pytest.mark.parametrize(
     ('events', 'samples', 'init_kwargs', 'process_kwargs', 'warning', 'message'),
     [
