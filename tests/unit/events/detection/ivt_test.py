@@ -417,3 +417,25 @@ def test_ivt_detects_fixations_polars(kwargs, expected):
     events = ivt(velocities=velocities, **kwargs)
 
     assert_frame_equal(events.frame, expected.frame)
+
+
+def test_ivt_accepts_duration_timesteps():
+    # A Duration timesteps series must be converted to milliseconds internally and yield
+    # the same events as the equivalent integer-millisecond timesteps.
+    positions = step_function(length=100, steps=[0], values=[(0, 0)])
+    velocities = pos2vel_numpy(positions, sampling_rate=10, method='preceding')
+
+    numeric = ivt(
+        velocities=velocities,
+        timesteps=np.arange(1000, 1100, dtype=int),
+        velocity_threshold=1,
+        minimum_duration=1,
+    )
+    duration_timesteps = pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms'))
+    from_duration = ivt(
+        velocities=velocities,
+        timesteps=duration_timesteps,
+        velocity_threshold=1,
+        minimum_duration=1,
+    )
+    assert_frame_equal(from_duration.frame, numeric.frame)

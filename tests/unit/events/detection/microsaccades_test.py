@@ -443,3 +443,23 @@ def test_compute_threshold(params, expected):
     else:
         result = compute_threshold(arr=v, **params)
         assert np.allclose(result, expected['value'])
+
+
+def test_microsaccades_accepts_duration_timesteps():
+    # A Duration timesteps series must be converted to milliseconds internally and yield
+    # the same events as the equivalent integer-millisecond timesteps.
+    velocities = step_function(
+        length=100, steps=[40, 50], values=[(9, 9), (0, 0)], start_value=(0, 0),
+    )
+    numeric = microsaccades(
+        velocities=velocities,
+        timesteps=np.arange(1000, 1100, dtype=int),
+        threshold=1e-5,
+    )
+    duration_timesteps = pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms'))
+    from_duration = microsaccades(
+        velocities=velocities,
+        timesteps=duration_timesteps,
+        threshold=1e-5,
+    )
+    assert_frame_equal(from_duration.frame, numeric.frame)

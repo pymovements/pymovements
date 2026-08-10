@@ -18,11 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test pymovements _utils._time."""
+import numpy as np
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements._utils._time import durations_to_ms
+from pymovements._utils._time import timesteps_to_numpy
 
 
 @pytest.mark.parametrize(
@@ -78,3 +80,39 @@ def test_durations_to_ms_converts_duration_columns(frame, expected):
 def test_durations_to_ms_returns_frame_without_duration_columns_unchanged():
     frame = pl.DataFrame({'time': [1, 2, 3], 'x': [0.1, 0.2, 0.3]})
     assert durations_to_ms(frame) is frame
+
+
+@pytest.mark.parametrize(
+    ('series', 'expected'),
+    [
+        pytest.param(
+            pl.Series([0, 1, 2], dtype=pl.Int64), [0.0, 1.0, 2.0],
+            id='int_series_unchanged',
+        ),
+        pytest.param(
+            pl.Series([0.0, 0.5, 1.0], dtype=pl.Float64), [0.0, 0.5, 1.0],
+            id='float_series_unchanged',
+        ),
+        pytest.param(
+            pl.Series([0, 1000, 2000], dtype=pl.Duration('us')), [0.0, 1.0, 2.0],
+            id='duration_us_to_fractional_ms',
+        ),
+        pytest.param(
+            pl.Series([0, 500, 1500], dtype=pl.Duration('us')), [0.0, 0.5, 1.5],
+            id='duration_us_sub_millisecond',
+        ),
+        pytest.param(
+            pl.Series([0, 1, 2], dtype=pl.Duration('ms')), [0.0, 1.0, 2.0],
+            id='duration_ms_to_ms',
+        ),
+    ],
+)
+def test_timesteps_to_numpy_returns_numeric_milliseconds(series, expected):
+    result = timesteps_to_numpy(series)
+    assert isinstance(result, np.ndarray)
+    assert result.tolist() == expected
+
+
+def test_timesteps_to_numpy_raises_on_non_numeric_dtype():
+    with pytest.raises(TypeError, match='timesteps dtype must be float or int'):
+        timesteps_to_numpy(pl.Series(['a', 'b']))

@@ -20,7 +20,39 @@
 """Provides helpers for handling time columns backed by ``polars.Duration``."""
 from __future__ import annotations
 
+import numpy as np
 import polars as pl
+
+
+def timesteps_to_numpy(timesteps: pl.Series) -> np.ndarray:
+    """Convert a timesteps series to a numpy array of numeric time values.
+
+    ``polars.Duration`` series are converted to fractional milliseconds, so detection
+    functions receive the same millisecond-based timesteps as when called through
+    :py:meth:`pymovements.Gaze.detect`. Numeric series are returned unchanged.
+
+    Parameters
+    ----------
+    timesteps: pl.Series
+        The timesteps series to convert.
+
+    Returns
+    -------
+    np.ndarray
+        The timesteps as a numpy array of numeric time values.
+
+    Raises
+    ------
+    TypeError
+        If the series is neither a Duration nor a numeric dtype.
+    """
+    if isinstance(timesteps.dtype, pl.Duration):
+        return (timesteps.dt.total_microseconds() / 1000).to_numpy()
+
+    numeric_dtypes = (pl.datatypes.FloatType, pl.datatypes.IntegerType)
+    if not isinstance(timesteps.dtype, numeric_dtypes):
+        raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
+    return timesteps.to_numpy()
 
 
 def durations_to_ms(frame: pl.DataFrame) -> pl.DataFrame:

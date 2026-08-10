@@ -24,6 +24,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events._utils._filters import filter_candidates_remove_nans
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
@@ -57,7 +58,8 @@ def ivt(
     timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        assumed. A polars.Duration series is accepted and interpreted as milliseconds.
+        (default: None)
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
         If ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
@@ -212,7 +214,6 @@ def ivt(
     │ fixation_ivt ┆ 9ms          ┆ 199ms        ┆ 190ms        │
     └──────────────┴──────────────┴──────────────┴──────────────┘
     """
-    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(velocities, polars.Series):
         if not isinstance(velocities.dtype, polars.List):
             raise TypeError(f'velocities dtype must be List but is {velocities.dtype}')
@@ -229,9 +230,7 @@ def ivt(
         raise ValueError('velocity threshold must be greater than 0')
 
     if isinstance(timesteps, polars.Series):
-        if not isinstance(timesteps.dtype, numeric_dtypes):
-            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
-        timesteps = timesteps.to_numpy()
+        timesteps = timesteps_to_numpy(timesteps)
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
     else:
