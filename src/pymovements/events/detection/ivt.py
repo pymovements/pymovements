@@ -58,11 +58,11 @@ def ivt(
     timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. A polars.Duration series is accepted and interpreted as milliseconds.
-        (default: None)
+        assumed. (default: None)
     minimum_duration: int
-        Minimum fixation duration. The duration is specified in the units used in ``timesteps``.
-        If ``timesteps`` is None, then ``minimum_duration`` is specified in numbers of samples.
+        Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
+        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+        None, then ``minimum_duration`` is specified in numbers of samples.
         (default: 100)
     velocity_threshold: float
         Threshold for a point to be classified as a fixation. If the

@@ -64,8 +64,7 @@ def out_of_screen(
     timesteps: list[int] | numpy.ndarray | polars.Series | None
         shape (N, )
         Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. A polars.Duration series is accepted and interpreted as milliseconds.
-        (default: None)
+        assumed. (default: None)
     name: str
         Name for detected events in Events. (default: 'out_of_screen')
 
