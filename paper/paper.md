@@ -132,33 +132,33 @@ packages [@Niehorster2025]. Several open-source tools address individual
 parts of this workflow. In Python, `eyekit` [@eyekit] analyzes reading
 behavior over text stimuli, offering areas of interest, reading measures,
 and line-assignment correction [@Carr2022], but it operates on
-already-detected fixations rather than raw signals. `cili` [@Acland2016]
-handles fixation and pupil data, `sideeye` [@Doucette2019] computes reading
-measures from fixation reports, `PyTrack` [@GhoseSrinivasan2021] and the
-Perception Engineer's Toolbox [@Kubler2020] extract gaze features,
-`GazeParser` [@Sogo2019] covers recording and parsing, and dedicated
-event-detection algorithms such as I2MC [@I2MC] and REMoDNaV [@REMoDNaV]
-classify fixations and saccades from raw samples. In R, `popEye` [@popEye]
-spans the path from raw EyeLink files to reading measures, while
-`gazeR` [@gazeR] and `eyetrackingR` [@eyetrackingR] process gaze and pupil
-data and support the statistical analysis of these signals. Proprietary
-vendor software such as SR Research Data Viewer [@DataViewer] provides an
-end-to-end but closed-source pipeline tied to specific hardware.
+already-detected fixations rather than raw signals. Similarly, `cili`
+[@Acland2016] expects EyeLink data files and handles its sample and event
+data, while `sideeye` [@Doucette2019] computes reading measures from fixation
+reports, `PyTrack` [@GhoseSrinivasan2021] and the Perception Engineer's
+Toolbox [@Kubler2020] extract gaze features, `GazeParser` [@Sogo2019] covers
+recording and parsing, and dedicated event-detection packages such as I2MC
+[@I2MC] and REMoDNaV [@REMoDNaV] classify fixations and saccades from raw
+samples. In R, `popEye` [@popEye] spans the path from raw EyeLink files to
+reading measures, while `gazeR` [@gazeR] and `eyetrackingR` [@eyetrackingR]
+process gaze and pupil data and support the statistical analysis of these
+signals. Proprietary vendor software such as SR Research Data Viewer
+[@DataViewer] provides an end-to-end but closed-source pipeline tied to
+specific hardware.
 
-Each of these tools covers a single stage or paradigm: `eyekit` begins
-after event detection, the event-detection packages stop at classifying
-events, `popEye` is confined to one vendor and to reading, and the others address
-recording, feature extraction, statistical analysis, or measures in
+Each of these tools covers a single stage, scope, or paradigm: some begin
+after event detection, event-detection packages stop at classifying
+events, most are confined to the data format of one vendor, and others address
+recording, feature extraction, statistical analysis, or reading measures in
 isolation. None combines, in a single tested and openly licensed Python
 package, the full path from raw vendor files through coordinate transforms
 and event detection to reading-level measures, and none offers a
 standardized, community-extensible layer for discovering, downloading, and
 harmonizing published datasets. `pymovements` was built to fill that gap
 rather than to duplicate any single tool: where established algorithms
-exist, it reimplements them behind one consistent interface
-[@SalvucciGoldberg2000; @EngbertKliegl2003; @Carr2022] rather than
-inventing new ones, and it adds the dataset-harmonization layer that has no
-counterpart among them.
+exist [@SalvucciGoldberg2000; @EngbertKliegl2003; @Carr2022], it reimplements
+them behind one consistent interface rather than inventing new ones, and it
+adds the dataset-harmonization layer that has no counterpart among them.
 
 # Software design
 
