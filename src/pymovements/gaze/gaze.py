@@ -2577,7 +2577,10 @@ class Gaze:
 
     def _convert_time_units(self, time_unit: str | None) -> None:
         """Convert the time column to ``polars.Duration('us')``."""
-        # Validate the unit even for Duration input, which otherwise ignores time_unit.
+        # Reject an invalid unit up front: the numeric branches below fall through to an
+        # `else` that assumes 'ms', so without this a typo like 'sec' would be silently treated
+        # as milliseconds. For a Duration time column the unit is ignored, but an invalid string
+        # still raises here so the same bad call fails regardless of the time column dtype.
         if time_unit not in ('s', 'ms', 'us', 'step'):
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
