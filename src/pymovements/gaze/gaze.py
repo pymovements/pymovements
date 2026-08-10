@@ -2577,10 +2577,10 @@ class Gaze:
 
     def _convert_time_units(self, time_unit: str | None) -> None:
         """Convert the time column to ``polars.Duration('us')``."""
-        # Reject an invalid unit up front: the numeric branches below fall through to an
-        # `else` that assumes 'ms', so without this a typo like 'sec' would be silently treated
-        # as milliseconds. For a Duration time column the unit is ignored, but an invalid string
-        # still raises here so the same bad call fails regardless of the time column dtype.
+        # Reject an invalid unit up front: the branches below dispatch on the exact unit and the
+        # final `else` assumes 'step', so without this a typo like 'sec' would be silently handled
+        # as a step conversion. For a Duration time column the unit is ignored, but an invalid
+        # string still raises here so the same bad call fails regardless of the time column dtype.
         if time_unit not in ('s', 'ms', 'us', 'step'):
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
@@ -2602,12 +2602,17 @@ class Gaze:
                 (polars.col('time') * 1_000_000).round().cast(polars.Duration('us')),
             )
 
+        elif time_unit == 'ms':
+            self.samples = self.samples.with_columns(
+                (polars.col('time') * 1000).round().cast(polars.Duration('us')),
+            )
+
         elif time_unit == 'us':
             self.samples = self.samples.with_columns(
                 polars.col('time').round().cast(polars.Duration('us')),
             )
 
-        elif time_unit == 'step':
+        else:  # time_unit == 'step'
             if self.experiment is not None:
                 self.samples = self.samples.with_columns(
                     (polars.col('time') * 1_000_000 / self.experiment.sampling_rate)
@@ -2618,11 +2623,6 @@ class Gaze:
                 raise ValueError(
                     "experiment with sampling rate must be specified if time_unit is 'step'",
                 )
-
-        else:  # time_unit == 'ms'
-            self.samples = self.samples.with_columns(
-                (polars.col('time') * 1000).round().cast(polars.Duration('us')),
-            )
 
     def __eq__(self, other: Gaze) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Gaze` object."""
