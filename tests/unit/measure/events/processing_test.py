@@ -829,8 +829,10 @@ def test_event_samples_processor_process_coerces_mixed_dtypes(event_dtype, time_
     # even if the events and samples time columns use different dtypes (Duration vs numeric).
     event_scale = 1000 if event_dtype == pl.Duration('us') else 1
     events = pl.from_dict(
-        {'name': ['fixation', 'saccade'], 'onset': [0, 5 * event_scale],
-         'offset': [4 * event_scale, 7 * event_scale]},
+        {
+            'name': ['fixation', 'saccade'], 'onset': [0, 5 * event_scale],
+            'offset': [4 * event_scale, 7 * event_scale],
+        },
         schema={'name': pl.Utf8, 'onset': event_dtype, 'offset': event_dtype},
     )
     time_scale = 1000 if time_dtype == pl.Duration('us') else 1

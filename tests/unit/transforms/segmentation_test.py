@@ -119,7 +119,10 @@ def test_events2segmentation_coerces_mixed_dtypes(event_dtype, time_dtype):
         'onset': pl.Series([onset], dtype=event_dtype),
         'offset': pl.Series([offset], dtype=event_dtype),
     })
-    time_values = [i * 1000 for i in range(7)] if time_dtype == pl.Duration('us') else list(range(7))
+    time_values = [
+        i *
+        1000 for i in range(7)] if time_dtype == pl.Duration('us') else list(
+        range(7))
     gaze_df = pl.DataFrame({'time': pl.Series(time_values, dtype=time_dtype)})
 
     result_df = gaze_df.select(events2segmentation(events_df, name='blink'))
