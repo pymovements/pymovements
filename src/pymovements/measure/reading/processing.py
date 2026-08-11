@@ -42,16 +42,6 @@ from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 
-# Default grouping columns used to keep independent reading sequences apart.
-_DEFAULT_GROUP_COLUMNS = ['trial', 'page']
-
-# Measures that are joined onto the word table and filled with 0 for unfixated words. LP is
-# deliberately not in this list: 0 is a valid landing position, so unfixated words keep null.
-_JOINED_MEASURES = [
-    'TFC', 'FD', 'FFD', 'FPRT', 'FRT', 'RRT', 'FPFC', 'TRC_in', 'TRC_out',
-    'SL_in', 'SL_out', 'RPD_inc', 'RPD_exc', 'RBRT',
-]
-
 # Measure output columns, in order. Group columns and word identity are prepended on output.
 _MEASURE_COLUMNS = [
     'FFD', 'SFD', 'FD', 'FPRT', 'FRT', 'TFT', 'RRT',
@@ -144,7 +134,7 @@ def compute_reading_measures(
         do not match, or if the ``aois`` dict is inconsistent with the fixation groups.
     """
     if group_columns is None:
-        group_columns = list(_DEFAULT_GROUP_COLUMNS)
+        group_columns = ['trial', 'page']
     # Word identity columns cannot double as group columns: the user-facing names are renamed
     # onto the internal schema and 'word_index' is produced on output.
     reserved_columns = {word_index_column, word_column, 'word_idx', 'word', 'word_index'}
@@ -539,7 +529,15 @@ def _assemble_word_level_measures(
         table = table.with_columns(pl.lit(None, dtype=pl.Int64).alias('LP'))
     table = table.drop('word_start_char')
 
-    table = table.with_columns([pl.col(column).fill_null(0) for column in _JOINED_MEASURES])
+    # Unfixated words get 0 for every joined measure column. LP is the exception: 0 is a valid
+    # landing position, so unfixated words keep null.
+    joined_measure_columns = [
+        column
+        for frame in (word_level, regression_paths)
+        for column in frame.columns
+        if column not in on and column != 'LP'
+    ]
+    table = table.with_columns([pl.col(column).fill_null(0) for column in joined_measure_columns])
 
     return table.with_columns([
         # total fixation time
