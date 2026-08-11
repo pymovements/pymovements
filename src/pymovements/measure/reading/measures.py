@@ -19,6 +19,11 @@
 # SOFTWARE.
 """Reading measure computation functions.
 
+To compute all reading measures from fixations and an AOI table at once, use
+:func:`~pymovements.measure.reading.compute_reading_measures`, which drives the full pipeline.
+The functions in this module are its building blocks, useful for computing individual measures
+or custom aggregations.
+
 Every function returns a polars aggregation expression to be used inside a
 ``group_by(...).agg(...)`` over word groups, e.g.::
 

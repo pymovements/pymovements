@@ -19,6 +19,11 @@
 # SOFTWARE.
 """Fixation annotation expressions for reading measure computation.
 
+To compute all reading measures from fixations and an AOI table at once, use
+:func:`~pymovements.measure.reading.compute_reading_measures`, which annotates the fixations
+implicitly. The functions in this module are its building blocks, useful for custom analyses on
+the fixation level.
+
 Every function except :func:`annotate_fixations` returns a polars expression producing one
 annotation column. The expressions do not alter any DataFrame themselves: the consumer applies
 them via ``with_columns`` and supplies the partitioning into independent reading sequences with
