@@ -19,7 +19,7 @@
 # SOFTWARE.
 """Validate reading measures against the published PoTeC reading measure files.
 
-PoTeC (Jakobi et al., 2024) publishes word-level reading measures computed by the reference
+PoTeC :cite:p:`PoTeC` publishes word-level reading measures computed by the reference
 implementation that pymovements' original ``compute_reading_measures`` descends from. This test
 recomputes the measures from the published fixation sequences and compares them cell by cell.
 
