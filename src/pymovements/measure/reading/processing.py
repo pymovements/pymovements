@@ -513,8 +513,9 @@ def _assemble_word_level_measures(
         [*group_columns, pl.col(word_index_column).alias('word_idx')],
     ).agg(aggregations)
 
-    # The regression-path measures aggregate over regression_path_word groups: a word's regression-path
-    # window spans fixations on other words, each attributed to the running rightmost word.
+    # The regression-path measures aggregate over regression_path_word groups: a word's
+    # regression-path window spans fixations on other words, each attributed to the running
+    # rightmost word.
     regression_paths = (
         fixations.group_by(group_columns + ['regression_path_word'])
         .agg([

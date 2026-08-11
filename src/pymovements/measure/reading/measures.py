@@ -34,8 +34,8 @@ the fixation table to be annotated (see
 group, which the annotation step guarantees.
 
 The regression-path measures are the exception to the word grouping: their windows span
-fixations on other words, so they aggregate over ``regression_path_word`` groups instead of ``word_idx``
-groups (see :func:`~pymovements.measure.reading.regression_path_word`).
+fixations on other words, so they aggregate over ``regression_path_word`` groups instead of
+``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`).
 """
 from __future__ import annotations
 
@@ -339,8 +339,9 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
     """Sum all fixation durations within the regression-path window of a word (RPD_inc).
 
     The window spans from first entering the word until the first fixation to its right,
-    *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups instead of
-    ``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`).
+    *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups
+    instead of ``word_idx`` groups (see
+    :func:`~pymovements.measure.reading.regression_path_word`).
 
     Parameters
     ----------
