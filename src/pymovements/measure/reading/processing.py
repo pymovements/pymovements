@@ -513,16 +513,16 @@ def _assemble_word_level_measures(
         [*group_columns, pl.col(word_index_column).alias('word_idx')],
     ).agg(aggregations)
 
-    # The regression-path measures aggregate over rpd_target groups: a word's regression-path
+    # The regression-path measures aggregate over regression_path_word groups: a word's regression-path
     # window spans fixations on other words, each attributed to the running rightmost word.
     regression_paths = (
-        fixations.group_by(group_columns + ['rpd_target'])
+        fixations.group_by(group_columns + ['regression_path_word'])
         .agg([
             regression_path_duration_inclusive(),
             regression_path_duration_exclusive(word_idx=word_index_column),
             right_bounded_reading_time(word_idx=word_index_column),
         ])
-        .rename({'rpd_target': 'word_idx'})
+        .rename({'regression_path_word': 'word_idx'})
     )
 
     table = (

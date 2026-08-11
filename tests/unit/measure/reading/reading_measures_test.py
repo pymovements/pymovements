@@ -40,7 +40,6 @@ from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
-from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
 
@@ -101,11 +100,6 @@ def fixture_annotated_events(mapped_events):
     return annotate_fixations(mapped_events, group_columns=['trial', 'page'])
 
 
-@pytest.fixture(name='all_tokens', scope='function')
-def fixture_all_tokens(stimulus: TextStimulus) -> pl.DataFrame:
-    return all_tokens_from_aois(stimulus.aois, trial='trial_1')
-
-
 def test_fixture_mapped_events_has_word_and_char_columns(mapped_events):
     assert 'word_idx' in mapped_events.columns
     assert 'word' in mapped_events.columns
@@ -116,12 +110,6 @@ def test_annotate_fixations(annotated_events):
     assert 'is_first_pass' in annotated_events.columns
     assert 'run_id' in annotated_events.columns
     assert annotated_events.height == 2
-
-
-def test_all_tokens_from_aois(all_tokens):
-    assert 'word_idx' in all_tokens.columns
-    assert 'word' in all_tokens.columns
-    assert all_tokens.height == 2
 
 
 def test_reading_measures_init_none():
@@ -251,14 +239,14 @@ def test_saccade_length_out(annotated_events):
 
 
 def test_regression_path_duration(annotated_events):
-    result = annotated_events.group_by(['trial', 'page', 'rpd_target']).agg([
+    result = annotated_events.group_by(['trial', 'page', 'regression_path_word']).agg([
         regression_path_duration_inclusive(),
         regression_path_duration_exclusive(),
         right_bounded_reading_time(),
     ])
-    assert result.filter(pl.col('rpd_target') == 0)['RPD_inc'][0] == 200
-    assert result.filter(pl.col('rpd_target') == 0)['RPD_exc'][0] == 0
-    assert result.filter(pl.col('rpd_target') == 0)['RBRT'][0] == 200
+    assert result.filter(pl.col('regression_path_word') == 0)['RPD_inc'][0] == 200
+    assert result.filter(pl.col('regression_path_word') == 0)['RPD_exc'][0] == 0
+    assert result.filter(pl.col('regression_path_word') == 0)['RBRT'][0] == 200
 
 
 def test_regression_path_duration_with_regression():
@@ -272,13 +260,13 @@ def test_regression_path_duration_with_regression():
     })
     annotated = annotate_fixations(events)
 
-    result = annotated.group_by('rpd_target').agg([
+    result = annotated.group_by('regression_path_word').agg([
         regression_path_duration_inclusive(),
         regression_path_duration_exclusive(),
         right_bounded_reading_time(),
     ])
 
-    assert result['rpd_target'].to_list() == [2]
+    assert result['regression_path_word'].to_list() == [2]
     assert result['RPD_inc'][0] == 370
     assert result['RPD_exc'][0] == 150
     assert result['RBRT'][0] == 220

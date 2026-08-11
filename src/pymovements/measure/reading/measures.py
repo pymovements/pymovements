@@ -34,8 +34,8 @@ the fixation table to be annotated (see
 group, which the annotation step guarantees.
 
 The regression-path measures are the exception to the word grouping: their windows span
-fixations on other words, so they aggregate over ``rpd_target`` groups instead of ``word_idx``
-groups (see :func:`~pymovements.measure.reading.rpd_target`).
+fixations on other words, so they aggregate over ``regression_path_word`` groups instead of ``word_idx``
+groups (see :func:`~pymovements.measure.reading.regression_path_word`).
 """
 from __future__ import annotations
 
@@ -259,11 +259,13 @@ def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
 def saccade_length_in(
     word_idx: str | pl.Expr = 'word_idx',
     prev_word_idx: str | pl.Expr = 'prev_word_idx',
+    is_first_fix: str | pl.Expr = 'is_first_fix',
 ) -> pl.Expr:
     """Saccade length at word entry (SL_in).
 
     SL_in is the signed word distance between the current word and the previously fixated word
-    at the moment of the very first fixation on the current word. Requires onset-sorted input.
+    at the moment of the very first fixation on the current word, selected via the
+    ``is_first_fix`` annotation (see :func:`~pymovements.measure.reading.is_first_fixation`).
     Null when the word starts the sequence.
 
     Parameters
@@ -274,13 +276,21 @@ def saccade_length_in(
     prev_word_idx : str | pl.Expr
         Column name or expression of the previous fixation's word index.
         (default: ``'prev_word_idx'``)
+    is_first_fix : str | pl.Expr
+        Column name or expression of the first-fixation flag.
+        (default: ``'is_first_fix'``)
 
     Returns
     -------
     pl.Expr
         Aggregation expression producing the ``SL_in`` column.
     """
-    return (as_expr(word_idx) - as_expr(prev_word_idx)).first().alias('SL_in')
+    return (
+        (as_expr(word_idx) - as_expr(prev_word_idx))
+        .filter(as_expr(is_first_fix))
+        .first()
+        .alias('SL_in')
+    )
 
 
 def saccade_length_out(
@@ -329,8 +339,8 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
     """Sum all fixation durations within the regression-path window of a word (RPD_inc).
 
     The window spans from first entering the word until the first fixation to its right,
-    *including* fixations on the word itself. Aggregate over ``rpd_target`` groups instead of
-    ``word_idx`` groups (see :func:`~pymovements.measure.reading.rpd_target`).
+    *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups instead of
+    ``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`).
 
     Parameters
     ----------
@@ -349,12 +359,12 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
 def regression_path_duration_exclusive(
     duration: str | pl.Expr = 'duration',
     word_idx: str | pl.Expr = 'word_idx',
-    rpd_target: str | pl.Expr = 'rpd_target',
+    regression_path_word: str | pl.Expr = 'regression_path_word',
 ) -> pl.Expr:
     """Sum the regressed-time fixation durations within the regression-path window (RPD_exc).
 
     Same window as :func:`regression_path_duration_inclusive`, but *excluding* fixations on the
-    word itself (i.e., time spent on regressed words only). Aggregate over ``rpd_target``
+    word itself (i.e., time spent on regressed words only). Aggregate over ``regression_path_word``
     groups.
 
     Parameters
@@ -365,9 +375,9 @@ def regression_path_duration_exclusive(
     word_idx : str | pl.Expr
         Column name or expression of the fixated word index.
         (default: ``'word_idx'``)
-    rpd_target : str | pl.Expr
+    regression_path_word : str | pl.Expr
         Column name or expression of the regression-path target word index.
-        (default: ``'rpd_target'``)
+        (default: ``'regression_path_word'``)
 
     Returns
     -------
@@ -376,7 +386,7 @@ def regression_path_duration_exclusive(
     """
     return (
         as_expr(duration)
-        .filter(as_expr(word_idx) != as_expr(rpd_target))
+        .filter(as_expr(word_idx) != as_expr(regression_path_word))
         .sum()
         .alias('RPD_exc')
     )
@@ -385,12 +395,12 @@ def regression_path_duration_exclusive(
 def right_bounded_reading_time(
     duration: str | pl.Expr = 'duration',
     word_idx: str | pl.Expr = 'word_idx',
-    rpd_target: str | pl.Expr = 'rpd_target',
+    regression_path_word: str | pl.Expr = 'regression_path_word',
 ) -> pl.Expr:
     """Sum the fixation durations on a word before any word to its right is visited (RBRT).
 
-    Aggregate over ``rpd_target`` groups (see
-    :func:`~pymovements.measure.reading.rpd_target`).
+    Aggregate over ``regression_path_word`` groups (see
+    :func:`~pymovements.measure.reading.regression_path_word`).
 
     Parameters
     ----------
@@ -400,9 +410,9 @@ def right_bounded_reading_time(
     word_idx : str | pl.Expr
         Column name or expression of the fixated word index.
         (default: ``'word_idx'``)
-    rpd_target : str | pl.Expr
+    regression_path_word : str | pl.Expr
         Column name or expression of the regression-path target word index.
-        (default: ``'rpd_target'``)
+        (default: ``'regression_path_word'``)
 
     Returns
     -------
@@ -411,7 +421,7 @@ def right_bounded_reading_time(
     """
     return (
         as_expr(duration)
-        .filter(as_expr(word_idx) == as_expr(rpd_target))
+        .filter(as_expr(word_idx) == as_expr(regression_path_word))
         .sum()
         .alias('RBRT')
     )

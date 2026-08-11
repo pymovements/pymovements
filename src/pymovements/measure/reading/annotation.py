@@ -264,7 +264,7 @@ def is_first_pass(
     return (no_higher_word_seen & first_run_of_word).alias('is_first_pass')
 
 
-def rpd_target(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
+def regression_path_word(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     """Get the word whose regression path each fixation belongs to.
 
     The regression-path window of a word starts when the word is first entered in first pass
@@ -285,9 +285,9 @@ def rpd_target(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     Returns
     -------
     pl.Expr
-        Expression producing the ``rpd_target`` column.
+        Expression producing the ``regression_path_word`` column.
     """
-    return as_expr(word_idx).cum_max().alias('rpd_target')
+    return as_expr(word_idx).cum_max().alias('regression_path_word')
 
 
 def annotate_fixations(
@@ -308,8 +308,8 @@ def annotate_fixations(
     * **is_first_fix**: whether this is the first fixation ever on the word within the trial.
     * **is_first_pass**: whether the fixation belongs to the first-pass reading episode of the word
       (see :func:`~pymovements.measure.reading.is_first_pass`).
-    * **rpd_target**: the word whose regression-path window the fixation belongs to
-      (see :func:`~pymovements.measure.reading.rpd_target`).
+    * **regression_path_word**: the word whose regression-path window the fixation belongs to
+      (see :func:`~pymovements.measure.reading.regression_path_word`).
 
     Parameters
     ----------
@@ -335,14 +335,16 @@ def annotate_fixations(
         ``fixation_id``, ``run_id``, ``prev_word_idx``,
         ``next_word_idx``, ``delta_in``, ``delta_out``,
         ``is_reg_in``, ``is_reg_out``, ``is_first_fix``,
-        ``is_first_pass``, and ``rpd_target``.
+        ``is_first_pass``, and ``regression_path_word``.
     """
     group_columns = list(group_columns or [])
 
     fixations = (
         events.filter((pl.col('name') == event_name) & (as_expr(word_idx).is_not_null()))
         .with_row_index('fixation_id')
-        .sort(group_columns + ['onset'])
+        # fixation_id breaks onset ties deterministically (it preserves the input order), so the
+        # run/pass annotations are reproducible even when two fixations share an onset.
+        .sort(group_columns + ['onset', 'fixation_id'])
     )
 
     if fixations.is_empty() and not events.is_empty():
@@ -357,7 +359,7 @@ def annotate_fixations(
             _over(run_id(word_idx), group_columns),
             _over(prev_word_idx(word_idx), group_columns),
             _over(next_word_idx(word_idx), group_columns),
-            _over(rpd_target(word_idx), group_columns),
+            _over(regression_path_word(word_idx), group_columns),
             is_first_fixation(word_idx).over(group_columns + [word_idx]),
         )
         .with_columns(

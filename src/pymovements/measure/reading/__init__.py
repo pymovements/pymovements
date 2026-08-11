@@ -27,7 +27,7 @@ from pymovements.measure.reading.annotation import is_reg_in
 from pymovements.measure.reading.annotation import is_reg_out
 from pymovements.measure.reading.annotation import next_word_idx
 from pymovements.measure.reading.annotation import prev_word_idx
-from pymovements.measure.reading.annotation import rpd_target
+from pymovements.measure.reading.annotation import regression_path_word
 from pymovements.measure.reading.annotation import run_id
 from pymovements.measure.reading.frame import ReadingMeasures
 from pymovements.measure.reading.measures import first_duration
@@ -46,8 +46,6 @@ from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
-from pymovements.measure.reading.words import all_tokens_from_aois
-from pymovements.measure.reading.words import repair_word_labels
 
 
 __all__ = [
@@ -66,10 +64,7 @@ __all__ = [
     'is_reg_out',
     'is_first_fixation',
     'is_first_pass',
-    'rpd_target',
-    # word/token utilities
-    'all_tokens_from_aois',
-    'repair_word_labels',
+    'regression_path_word',
     # individual measures (for users who want just one or two)
     'first_duration',
     'first_fixation_duration',

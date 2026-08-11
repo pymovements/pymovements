@@ -64,8 +64,6 @@ Measures
     :template: function.rst
 
     compute_reading_measures
-    all_tokens_from_aois
-    repair_word_labels
     first_duration
     first_fixation_duration
     first_pass_fixation_count
@@ -98,4 +96,4 @@ Measures
     is_reg_out
     is_first_fixation
     is_first_pass
-    rpd_target
+    regression_path_word
