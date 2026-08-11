@@ -72,6 +72,7 @@ def fixture_make_archive(
     Callable[[str | pathlib.Path, dict[str, bytes | str]], pathlib.Path]
         Function that takes an archive filename and a ``{member_path: contents}`` mapping and
         returns the path to the created archive inside a temporary directory.
+
     """
     def _make_archive(filename, members):
         archive_path = tmp_path / filename
