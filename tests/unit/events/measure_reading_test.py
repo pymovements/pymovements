@@ -58,14 +58,16 @@ def fixture_stimulus():
 @pytest.fixture(name='fixation_events')
 def fixture_fixation_events():
     # fixations on word 0 (x=15) and word 1 (x=25); word 2 (x=35) is skipped.
-    return Events(pl.DataFrame({
-        'name': ['fixation', 'fixation'],
-        'onset': [0, 200],
-        'offset': [200, 400],
-        'duration': [200, 200],
-        'location': [[15.0, 15.0], [25.0, 15.0]],
-        'trial': ['trial_1', 'trial_1'],
-    }))
+    return Events(
+        pl.DataFrame({
+            'name': ['fixation', 'fixation'],
+            'onset': [0, 200],
+            'offset': [200, 400],
+            'duration': [200, 200],
+            'location': [[15.0, 15.0], [25.0, 15.0]],
+            'trial': ['trial_1', 'trial_1'],
+        }),
+    )
 
 
 def test_events_measure_reading_returns_reading_measures(fixation_events, stimulus):
@@ -99,14 +101,16 @@ def test_events_measure_reading_empty_returns_empty(stimulus):
 
 
 def test_events_measure_reading_multiple_stimuli(stimulus):
-    events = Events(pl.DataFrame({
-        'name': ['fixation'] * 3,
-        'onset': [0, 200, 400],
-        'offset': [200, 400, 600],
-        'duration': [200, 200, 200],
-        'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
-        'trial': ['trial_1', 'trial_1', 'trial_2'],
-    }))
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'] * 3,
+            'onset': [0, 200, 400],
+            'offset': [200, 400, 600],
+            'duration': [200, 200, 200],
+            'location': [[15.0, 15.0], [25.0, 15.0], [15.0, 15.0]],
+            'trial': ['trial_1', 'trial_1', 'trial_2'],
+        }),
+    )
     stimuli = {
         'trial_1': _make_stimulus(['The', 'quick', 'brown'], trial='trial_1'),
         'trial_2': _make_stimulus(['fox', 'jumps'], trial='trial_2'),
@@ -121,13 +125,15 @@ def test_events_measure_reading_multiple_stimuli(stimulus):
 
 
 def test_events_measure_reading_multiple_stimuli_requires_sequence_column(stimulus):
-    events = Events(pl.DataFrame({
-        'name': ['fixation'],
-        'onset': [0],
-        'offset': [200],
-        'duration': [200],
-        'location': [[15.0, 15.0]],
-    }))
+    events = Events(
+        pl.DataFrame({
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [200],
+            'duration': [200],
+            'location': [[15.0, 15.0]],
+        }),
+    )
 
     with pytest.raises(ValueError, match="no 'trial' column"):
         events.measure_reading({'trial_1': stimulus})
