@@ -133,14 +133,6 @@ def extract_archive(
         archive_filepaths = get_filepaths(path=destination_path, extension=archive_extensions)
         archive_filepaths = [filepath for filepath in archive_filepaths if filepath != source_path]
 
-        # macOS stores resource forks in a __MACOSX directory as ._ prefixed metadata files.
-        # They mirror the names of the files they belong to, so a ._archive.zip is not an
-        # archive and must not be passed to an extractor.
-        archive_filepaths = [
-            filepath for filepath in archive_filepaths
-            if '__MACOSX' not in filepath.parts and not filepath.name.startswith('._')
-        ]
-
         # Extract all found archives.
         for archive_filepath in archive_filepaths:
             extract_destination = archive_filepath.parent / archive_filepath.stem
@@ -156,6 +148,29 @@ def extract_archive(
             )
 
     return destination_path
+
+
+def _is_macos_metadata(member_name: str) -> bool:
+    """Check whether an archive member is macOS filesystem metadata.
+
+    macOS zip archives place resource forks in a ``__MACOSX`` directory as ``._`` prefixed twins
+    that mirror the names of the files they belong to, and the Finder scatters ``.DS_Store`` files.
+    Neither carries payload, and a ``._archive.zip`` twin is not a valid archive and would break
+    nested extraction. Metadata is matched by the ``__MACOSX`` directory rather than the ``._``
+    prefix, so a legitimately named ``._`` file outside ``__MACOSX`` is preserved.
+
+    Parameters
+    ----------
+    member_name: str
+        The archive member path as stored in the archive.
+
+    Returns
+    -------
+    bool
+        ``True`` if the member is macOS metadata and should be skipped during extraction.
+    """
+    parts = member_name.replace('\\', '/').split('/')
+    return '__MACOSX' in parts or '.DS_Store' in parts
 
 
 def _extract_tar(
@@ -194,6 +209,8 @@ def _extract_tar(
                 ncols=80,
                 disable=not verbose,
         ):
+            if _is_macos_metadata(member.name):
+                continue
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
                 if (
@@ -242,6 +259,8 @@ def _extract_zip(
                 unit='file',
                 disable=not verbose,
         ):
+            if _is_macos_metadata(member.filename):
+                continue
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
                 if (

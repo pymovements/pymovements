@@ -26,6 +26,7 @@ import os
 import pathlib
 import tarfile
 import zipfile
+from collections.abc import Callable
 
 import pytest
 
@@ -50,6 +51,43 @@ def test_detect_file_type_no_suffixes():
     msg, = excinfo.value.args
     assert msg == "File 'test' has no suffixes that could be used to "\
         'detect the archive type or compression.'
+
+
+@pytest.fixture(name='make_archive', scope='function')
+def fixture_make_archive(
+        tmp_path: pathlib.Path,
+) -> Callable[[str | pathlib.Path, dict[str, bytes | str]], pathlib.Path]:
+    """Make a zip or tar archive from in-memory members.
+
+    The archive format is chosen from the filename suffix: ``.tar`` creates a tar archive,
+    any other suffix creates a zip archive.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory the archive is written to. Built-in fixture.
+
+    Returns
+    -------
+    Callable[[str | pathlib.Path, dict[str, bytes | str]], pathlib.Path]
+        Function that takes an archive filename and a ``{member_path: contents}`` mapping and
+        returns the path to the created archive inside a temporary directory.
+    """
+    def _make_archive(filename, members):
+        archive_path = tmp_path / filename
+        if archive_path.suffix == '.tar':
+            with tarfile.open(archive_path, 'w') as tar_open:
+                for name, content in members.items():
+                    data = content.encode() if isinstance(content, str) else content
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    tar_open.addfile(info, io.BytesIO(data))
+        else:
+            with zipfile.ZipFile(archive_path, 'w') as zip_open:
+                for name, content in members.items():
+                    zip_open.writestr(name, content)
+        return archive_path
+    return _make_archive
 
 
 @pytest.fixture(
@@ -589,18 +627,48 @@ def test_extract_archive_destination_path_not_None_no_remove_top_level_no_remove
     assert result_files == set(expected_files)
 
 
-def test_extract_archive_skips_macosx_metadata_files(tmp_path):
+def test_extract_archive_skips_macosx_metadata_files(tmp_path, make_archive):
     inner_buffer = io.BytesIO()
     with zipfile.ZipFile(inner_buffer, 'w') as inner_archive:
         inner_archive.writestr('test.file', 'test')
 
-    archive_path = tmp_path / 'test.zip'
-    with zipfile.ZipFile(archive_path, 'w') as zip_open:
-        zip_open.writestr('inner.zip', inner_buffer.getvalue())
-        # macOS stores resource forks as ._ prefixed files inside a __MACOSX directory.
-        zip_open.writestr(os.path.join('__MACOSX', '._inner.zip'), b'\x00\x05\x16\x07')
+    archive_path = make_archive(
+        'test.zip', {
+            'inner.zip': inner_buffer.getvalue(),
+            # macOS stores resource forks as ._ prefixed files inside a __MACOSX directory.
+            os.path.join('__MACOSX', '._inner.zip'): b'\x00\x05\x16\x07',
+        },
+    )
 
     destination_path = tmp_path / 'extracted'
     extract_archive(source_path=archive_path, destination_path=destination_path, recursive=True)
 
     assert (destination_path / 'inner' / 'test.file').is_file()
+    # The metadata twin must be skipped entirely, not just kept out of nested extraction.
+    assert not (destination_path / '__MACOSX').exists()
+
+
+@pytest.mark.parametrize(
+    ('archive_name', 'member', 'skipped'),
+    [
+        # macOS metadata that must be skipped during extraction.
+        pytest.param('test.zip', '.DS_Store', True, id='zip_dsstore'),
+        pytest.param('test.zip', os.path.join('__MACOSX', '._data.txt'), True, id='zip_macosx'),
+        pytest.param('test.tar', '.DS_Store', True, id='tar_dsstore'),
+        # ._ prefixed files outside a __MACOSX directory may be legitimate and must be kept.
+        pytest.param('test.zip', '._data.txt', False, id='zip_underscore_outside_macosx'),
+        pytest.param('test.tar', '._data.txt', False, id='tar_underscore_outside_macosx'),
+    ],
+)
+def test_extract_archive_macos_metadata_filtering(
+        make_archive, tmp_path, archive_name, member, skipped,
+):
+    archive_path = make_archive(
+        archive_name, {'data.txt': b'test', member: b'\x00\x00\x00\x01Bud1'},
+    )
+
+    destination_path = tmp_path / 'extracted'
+    extract_archive(source_path=archive_path, destination_path=destination_path, recursive=True)
+
+    assert (destination_path / 'data.txt').is_file()
+    assert (destination_path / member).exists() == (not skipped)
