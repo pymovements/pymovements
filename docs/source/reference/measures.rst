@@ -64,7 +64,6 @@ Measures
     :template: function.rst
 
     compute_reading_measures
-    build_word_level_table
     all_tokens_from_aois
     mark_skipped_tokens
     repair_word_labels

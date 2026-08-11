@@ -28,222 +28,127 @@ from pymovements.measure.reading.processing import compute_reading_measures
     ('fixations', 'aois', 'expected_results'),
     [
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 2, 3],
-                    'duration': [100, 110, 120, 130],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 3],
-                    'word': ['a', 'b', 'c'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2, 2, 3], 'duration': [100, 110, 120, 130]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                0: {'FFD': 100, 'TFT': 100, 'FPRT': 100, 'TFC': 1},
-                1: {'FFD': 110, 'TFT': 230, 'FPRT': 230, 'TFC': 2},
-                2: {'FFD': 130, 'TFT': 130, 'FPRT': 130, 'TFC': 1},
+                1: {'FFD': 100, 'TFT': 100, 'FPRT': 100, 'TFC': 1, 'SL_in': 0, 'SL_out': 1},
+                2: {'FFD': 110, 'TFT': 230, 'FPRT': 230, 'TFC': 2, 'SFD': 0},
+                # last fixated word: no spurious regression out, no negative saccade out
+                3: {'FFD': 130, 'TFT': 130, 'TFC': 1, 'TRC_out': 0, 'SL_out': 0},
             },
             id='forward',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 1, 3],
-                    'duration': [100, 110, 120, 130],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 3],
-                    'word': ['a', 'b', 'c'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2, 1, 3], 'duration': [100, 110, 120, 130]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                0: {'FFD': 100, 'TFT': 220, 'FPRT': 100, 'RRT': 120, 'TFC': 2},
-                1: {'FFD': 110, 'TFT': 110, 'FPRT': 110, 'TFC': 1},
-                2: {'FFD': 130, 'TFT': 130, 'FPRT': 130, 'TFC': 1},
+                1: {'FFD': 100, 'TFT': 220, 'FPRT': 100, 'RRT': 120, 'TFC': 2, 'TRC_in': 1, 'SL_in': 0},
+                2: {'FFD': 110, 'TFT': 110, 'TRC_out': 1, 'SL_out': -1, 'RPD_exc': 120, 'FPReg': 1},
+                3: {'FFD': 130, 'TFT': 130, 'TRC_out': 0, 'SL_out': 0, 'SL_in': 2},
             },
             id='regression',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 3],
-                    'duration': [100, 130],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 3],
-                    'word': ['a', 'b', 'c'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 3], 'duration': [100, 130]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                0: {'FFD': 100, 'TFT': 100, 'TFC': 1},
-                1: {'FFD': 0, 'TFT': 0, 'TFC': 0},
-                2: {'FFD': 130, 'TFT': 130, 'TFC': 1},
+                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SL_out': 2},
+                2: {'FFD': 0, 'TFT': 0, 'TFC': 0, 'Fix': 0},
+                3: {'FFD': 130, 'TFT': 130, 'TFC': 1, 'SL_in': 2, 'SL_out': 0},
             },
             id='skipping',
         ),
         pytest.param(
+            # Out-of-bounds fixations carry a null word index (as produced by map_to_aois) and are
+            # ignored; the null between the two words must not create a spurious regression.
             pl.DataFrame(
-                {
-                    'word_idx': [1, 0, 2],
-                    'duration': [100, 100, 100],
-                },
+                {'word_idx': [1, None, 2], 'duration': [100, 100, 100]},
+                schema={'word_idx': pl.Int64, 'duration': pl.Int64},
             ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2],
-                    'word': ['a', 'b'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                0: {'FFD': 100, 'TFT': 100, 'TFC': 1},
-                1: {'FFD': 100, 'TFT': 100, 'TFC': 1},
+                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'TRC_out': 0, 'SL_out': 1},
+                2: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SL_in': 1},
             },
-            id='out_of_bounds_aois',
+            id='out_of_bounds_null',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1],
-                    'duration': [100],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1],
-                    'word': ['a'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1], 'duration': [100]}),
+            pl.DataFrame({'word_idx': [1], 'word': ['a']}),
             {
-                0: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SFD': 100},
+                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SFD': 100, 'SL_in': 0, 'SL_out': 0},
             },
             id='single_word_sfd',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 3],
-                    'duration': [100, 100, 100],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 4],
-                    'word': ['a', 'd'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'duration': [100, 100, 100]}),
+            pl.DataFrame({'word_idx': [1, 4], 'word': ['a', 'd']}),
             {
-                0: {'FFD': 100, 'TFT': 100},
-                3: {'FFD': 0, 'TFT': 0},
+                1: {'FFD': 100, 'TFT': 100},
+                4: {'FFD': 0, 'TFT': 0, 'TFC': 0},
             },
             id='missing_aois_in_middle',
         ),
         pytest.param(
+            # Non-integer word indices become null and are dropped, leaving the word unfixated.
             pl.DataFrame(
-                {
-                    'word_idx': pl.Series(['not_an_int'], dtype=pl.Utf8),
-                    'duration': [100],
-                },
+                {'word_idx': pl.Series(['not_an_int'], dtype=pl.Utf8), 'duration': [100]},
             ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1],
-                    'word': ['a'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1], 'word': ['a']}),
             {
-                0: {'FFD': 0, 'TFT': 0},
+                1: {'FFD': 0, 'TFT': 0, 'TFC': 0},
             },
             id='invalid_type_aoi',
         ),
         pytest.param(
             pl.DataFrame(
-                {
-                    'word_idx': [1],
-                    'duration': [None],
-                },
+                {'word_idx': [1], 'duration': [None]},
                 schema={'word_idx': pl.Int64, 'duration': pl.Int64},
             ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1],
-                    'word': ['a'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1], 'word': ['a']}),
             {
-                0: {'FFD': 0, 'TFT': 0},
+                1: {'FFD': 0, 'TFT': 0},
             },
             id='null_duration',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 1],
-                    'duration': [100, 100, 100],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2],
-                    'word': ['a', 'b'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2, 1], 'duration': [100, 100, 100]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                0: {'FFD': 100, 'TFT': 200, 'TFC': 2, 'TRC_out': 1},
-                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'TRC_out': 1},
+                # regression out belongs to word 2 (2 -> 1), not to the last fixated word 1
+                1: {'TFT': 200, 'TFC': 2, 'TRC_in': 1, 'TRC_out': 0, 'RR': 1},
+                2: {'TFT': 100, 'TFC': 1, 'TRC_out': 1, 'SL_out': -1},
             },
             id='trc_out',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 1, 2],
-                    'duration': [100, 100, 100, 100],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2],
-                    'word': ['a', 'b'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2, 1, 2], 'duration': [100, 100, 100, 100]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                0: {'FFD': 100, 'TFT': 200, 'TRC_out': 0, 'FPRT': 100},
-                1: {'FFD': 100, 'TFT': 200, 'TRC_out': 2, 'FPRT': 100},
+                1: {'TFT': 200, 'FPRT': 100, 'TRC_out': 0, 'TRC_in': 1},
+                2: {'TFT': 200, 'FPRT': 100, 'TRC_out': 1, 'SL_out': -1},
             },
             id='trc_out_multiple_passes',
         ),
         pytest.param(
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 2, 3],
-                    'duration': [100, 100, 0, 100],
-                },
-            ),
-            pl.DataFrame(
-                {
-                    'word_idx': [1, 2, 3],
-                    'word': ['a', 'b', 'c'],
-                },
-            ),
+            pl.DataFrame({'word_idx': [1, 2, 2, 3], 'duration': [100, 100, 0, 100]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                0: {'FFD': 100, 'TFT': 100},
                 1: {'FFD': 100, 'TFT': 100},
-                2: {'FFD': 100, 'TFT': 100},
+                # two first-pass fixations (one zero-duration) -> not a single fixation
+                2: {'FFD': 100, 'TFT': 100, 'SFD': 0, 'TFC': 2},
+                3: {'FFD': 100, 'TFT': 100, 'TRC_out': 0},
             },
             id='zero_duration_fixation',
         ),
     ],
 )
+
+
 def test_compute_reading_measures(fixations, aois, expected_results):
     result = compute_reading_measures(fixations, aois)
     assert isinstance(result, pl.DataFrame)
-    assert len(result) == len(aois)
+    assert len(result) == aois['word_idx'].n_unique()
 
     for word_idx, expected in expected_results.items():
         row = result.filter(pl.col('word_index') == word_idx)

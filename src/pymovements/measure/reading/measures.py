@@ -351,6 +351,18 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
     """
     fixations = fixations.collect() if isinstance(fixations, pl.LazyFrame) else fixations
 
+    if fixations.is_empty():
+        return pl.DataFrame(
+            schema={
+                'trial': fixations.schema['trial'],
+                'page': fixations.schema['page'],
+                'word_idx': fixations.schema['word_idx'],
+                'RPD_inc': pl.Int64,
+                'RPD_exc': pl.Int64,
+                'RBRT': pl.Int64,
+            },
+        )
+
     def per_group(df: pl.DataFrame) -> pl.DataFrame:
         rows = []
 
@@ -395,101 +407,3 @@ def regression_path_duration(fixations: pl.DataFrame) -> pl.DataFrame:
         )
 
     return fixations.group_by('trial', 'page', maintain_order=True).map_groups(per_group)
-
-
-# ---------------------------
-# Word-level table
-# ---------------------------
-
-
-def build_word_level_table(
-    words: pl.DataFrame,
-    fixations: pl.DataFrame,
-) -> pl.DataFrame:
-    """Join all reading measures onto a word-level table.
-
-    Computes every individual reading measure and left-joins them onto
-    ``words``, filling missing values with ``0``. Derived measures
-    (TFT, FPF, RR, SFD) are appended as final columns.
-
-    Parameters
-    ----------
-    words : pl.DataFrame
-        Base word table containing at least ``trial``, ``page``, and
-        ``word_idx`` columns (one row per word).
-    fixations : pl.DataFrame
-        Annotated fixation table as produced by
-        :func:`~pymovements.measure.reading.annotate_fixations`.
-
-    Returns
-    -------
-    pl.DataFrame
-        Word-level table with all reading measures as additional
-        columns: ``TFC``, ``FD``, ``FFD``, ``FPRT``, ``FRT``,
-        ``RRT``, ``FPFC``, ``TRC_in``, ``TRC_out``, ``LP``,
-        ``SL_in``, ``SL_out``, ``RPD_inc``, ``RPD_exc``, ``RBRT``,
-        ``TFT``, ``FPF``, ``RR``, and ``SFD``.
-    """
-    tfc = total_fixation_count(fixations)
-    fd = first_duration(fixations)
-    ffd = first_fixation_duration(fixations)
-    fprt = first_pass_reading_time(fixations)
-    frt = first_reading_time(fixations)
-    rrt = rereading_time(fixations)
-    fpfc = first_pass_fixation_count(fixations)
-    trc_in = regression_count_in(fixations)
-    trc_out = regression_count_out(fixations)
-    lp = landing_position(fixations)
-    sl_in = saccade_length_in(fixations)
-    sl_out = saccade_length_out(fixations)
-    rpd = regression_path_duration(fixations)
-
-    return (
-        words.join(tfc, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(fd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(ffd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(fprt, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(frt, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(rrt, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(fpfc, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(trc_in, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(trc_out, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(lp, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(sl_in, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(sl_out, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .join(rpd, on=['trial', 'page', 'word_idx'], how='left', nulls_equal=True)
-        .with_columns(
-            [
-                pl.col('TFC').fill_null(0),
-                pl.col('FD').fill_null(0),
-                pl.col('FFD').fill_null(0),
-                pl.col('FPRT').fill_null(0),
-                pl.col('FRT').fill_null(0),
-                pl.col('RRT').fill_null(0),
-                pl.col('FPFC').fill_null(0),
-                pl.col('TRC_in').fill_null(0),
-                pl.col('TRC_out').fill_null(0),
-                pl.col('LP').fill_null(0),
-                pl.col('SL_in').fill_null(0),
-                pl.col('SL_out').fill_null(0),
-                pl.col('RPD_inc').fill_null(0),
-                pl.col('RPD_exc').fill_null(0),
-                pl.col('RBRT').fill_null(0),
-            ],
-        )
-        # ---- derived measures ----
-        .with_columns(
-            [
-                # total fixation time
-                (pl.col('FPRT') + pl.col('RRT')).alias('TFT'),
-                # binary indicators
-                (pl.col('FPRT') > 0).cast(pl.Int8).alias('FPF'),
-                (pl.col('RRT') > 0).cast(pl.Int8).alias('RR'),
-                # single-fixation duration
-                pl.when(pl.col('FPFC') == 1)
-                .then(pl.col('FFD'))
-                .otherwise(0)
-                .alias('SFD'),
-            ],
-        )
-    )

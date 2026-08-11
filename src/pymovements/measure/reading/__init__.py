@@ -29,7 +29,6 @@ from pymovements.measure.reading.annotation import annotate_next_word_idx
 from pymovements.measure.reading.annotation import annotate_prev_word_idx
 from pymovements.measure.reading.annotation import annotate_run_id
 from pymovements.measure.reading.frame import ReadingMeasures
-from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
 from pymovements.measure.reading.measures import first_pass_fixation_count
@@ -64,7 +63,6 @@ __all__ = [
     'annotate_is_reg_out',
     'annotate_is_first_fixation',
     'annotate_is_first_pass',
-    'build_word_level_table',
     # word/token utilities
     'all_tokens_from_aois',
     'mark_skipped_tokens',

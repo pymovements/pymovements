@@ -22,6 +22,38 @@ from __future__ import annotations
 
 import polars as pl
 
+from pymovements.measure.reading.annotation import annotate_fixations
+from pymovements.measure.reading.measures import first_duration
+from pymovements.measure.reading.measures import first_fixation_duration
+from pymovements.measure.reading.measures import first_pass_fixation_count
+from pymovements.measure.reading.measures import first_pass_reading_time
+from pymovements.measure.reading.measures import first_reading_time
+from pymovements.measure.reading.measures import regression_count_in
+from pymovements.measure.reading.measures import regression_count_out
+from pymovements.measure.reading.measures import regression_path_duration
+from pymovements.measure.reading.measures import rereading_time
+from pymovements.measure.reading.measures import saccade_length_in
+from pymovements.measure.reading.measures import saccade_length_out
+from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.words import all_tokens_from_aois
+
+# Grouping columns used internally to keep independent reading sequences apart. When the input
+# does not carry these columns, a single constant group is synthesized (see _normalize_*).
+_GROUP_COLUMNS = ['trial', 'page']
+
+# Measures that are joined onto the word table and filled with 0 for unfixated words.
+_JOINED_MEASURES = [
+    'TFC', 'FD', 'FFD', 'FPRT', 'FRT', 'RRT', 'FPFC', 'TRC_in', 'TRC_out',
+    'SL_in', 'SL_out', 'RPD_inc', 'RPD_exc', 'RBRT',
+]
+
+# Final output columns, in order.
+_OUTPUT_COLUMNS = [
+    'word_index', 'word', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT', 'TFT', 'RRT',
+    'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
+    'TRC_in', 'SL_in', 'SL_out', 'TFC',
+]
+
 
 def compute_reading_measures(
         fixations: pl.DataFrame,
@@ -35,17 +67,28 @@ def compute_reading_measures(
     This function expects fixations annotated with AOI data. See
     :py:meth:`~pymovements.Events.map_to_aois` for further details.
 
+    The fixations are annotated with run- and pass-level information (see
+    :func:`~pymovements.measure.reading.annotate_fixations`) and each reading measure is then
+    aggregated per word and joined onto the word table derived from ``aois``. Fixation order is
+    taken from the ``onset`` column; if it is absent, the row order of ``fixations`` is used. If
+    the fixations carry ``trial`` and ``page`` columns, they are used to keep independent reading
+    sequences apart; otherwise the fixations are treated as a single sequence.
+
+    The returned ``word_index`` preserves the word indexing of ``aois`` (zero-based, one-based, or
+    any other start), so word indices are not shifted.
+
     Parameters
     ----------
     fixations : pl.DataFrame
-        DataFrame with fixation data, containing the column specified by ``word_index_column``.
+        DataFrame with fixation data, containing the column specified by ``word_index_column`` and
+        a ``duration`` column.
     aois : pl.DataFrame
         DataFrame with AOI data, containing the columns specified by ``word_index_column`` and
         ``word_column``.
     word_index_column : str
         Shared column name in ``fixations`` and ``aois`` that corresponds to the word index of the
         text.
-        (default: ``'aoi'``)
+        (default: ``'word_idx'``)
     word_column : str
         Column in ``aois`` with the content within each AOI.
         (default: ``'word'``)
@@ -55,121 +98,100 @@ def compute_reading_measures(
     pl.DataFrame
         DataFrame with computed reading measures.
     """
-    # Append an extra dummy fixation to have the next fixation for the actual last fixation.
-    dummy_fixation_dict: dict[str, list[int] | list[str]] = {}
-    for col, dtype in fixations.schema.items():
-        if dtype == pl.String:
-            dummy_fixation_dict[col] = ['']
-        else:
-            dummy_fixation_dict[col] = [0]
-    dummy_fixation = pl.DataFrame(
-        dummy_fixation_dict,
-        schema=fixations.schema,
-    )
-    fixations = pl.concat([fixations, dummy_fixation])
+    words = _normalize_words(aois, word_index_column=word_index_column, word_column=word_column)
+    fixations = _normalize_fixations(fixations, word_index_column=word_index_column)
 
-    # Adjust AOI indices (fix off by one error).
-    aois = aois.with_columns(
-        (pl.col(word_index_column) - 1).alias(word_index_column),
-    )
+    annotated = annotate_fixations(fixations, group_columns=_GROUP_COLUMNS)
 
-    # Get original words of the text and their indices.
-    word_indices = aois[word_index_column].to_list()
-    words = aois[word_column].to_list()
+    table = _assemble_word_level_measures(words, annotated)
 
-    # Initialize dictionary for reading measures per word.
-    rm_dict = {
-        word_index: {
-            'word': word,
-            'word_index': word_index,
-            'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
-            'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
-            'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
-        } for word_index, word in zip(word_indices, words)
-    }
+    return table.select(_OUTPUT_COLUMNS).sort('word_index')
 
-    # Add a catch-all entry for the dummy fixation and invalid AOIs
-    rm_dict[-1] = {
-        'word': None, 'word_index': -1,
-        'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
-        'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
-        'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
-    }
 
-    # Variables to track fixation progress.
-    right_most_word, cur_fix_word_idx, next_fix_word_idx, next_fix_dur = -1, -1, -1, -1
+def _normalize_fixations(fixations: pl.DataFrame, *, word_index_column: str) -> pl.DataFrame:
+    """Bring a fixation table into the internal schema expected by the annotation pipeline."""
+    if word_index_column != 'word_idx':
+        fixations = fixations.rename({word_index_column: 'word_idx'})
 
-    # Iterate over fixation data.
-    for fixation in fixations.to_dicts():
-        try:
-            aoi = int(fixation[word_index_column]) - 1
-            if aoi not in rm_dict:
-                continue
-        except (ValueError, TypeError):
-            continue
+    # Word indices are integer by nature; non-integer entries become null and are dropped by the
+    # annotation step. This also keeps the join dtype consistent with the word table.
+    fixations = fixations.with_columns(pl.col('word_idx').cast(pl.Int64, strict=False))
 
-        # Update variables.
-        last_fix_word_idx = cur_fix_word_idx
-        cur_fix_word_idx = next_fix_word_idx
-        cur_fix_dur = next_fix_dur
-        if cur_fix_dur is None:
-            continue
+    constant_columns = []
+    if 'name' not in fixations.columns:
+        constant_columns.append(pl.lit('fixation').alias('name'))
+    if 'trial' not in fixations.columns:
+        constant_columns.append(pl.lit('_trial').alias('trial'))
+    if 'page' not in fixations.columns:
+        constant_columns.append(pl.lit('_page').alias('page'))
+    if constant_columns:
+        fixations = fixations.with_columns(constant_columns)
 
-        next_fix_word_idx = aoi
-        next_fix_dur = fixation['duration']
+    # Reading order defaults to row order when no explicit onset is available.
+    if 'onset' not in fixations.columns:
+        fixations = fixations.with_row_index('onset')
 
-        if next_fix_dur == 0 and not next_fix_word_idx == -1:
-            next_fix_word_idx = cur_fix_word_idx
+    return fixations
 
-        right_most_word = max(right_most_word, cur_fix_word_idx)
 
-        if cur_fix_word_idx == -1:
-            continue
+def _normalize_words(
+        aois: pl.DataFrame,
+        *,
+        word_index_column: str,
+        word_column: str,
+) -> pl.DataFrame:
+    """Build the deduplicated word table from an AOI table in the internal schema."""
+    rename = {}
+    if word_index_column != 'word_idx':
+        rename[word_index_column] = 'word_idx'
+    if word_column != 'word':
+        rename[word_column] = 'word'
+    if rename:
+        aois = aois.rename(rename)
 
-        # Update reading measures for the current word.
-        rm_dict[cur_fix_word_idx]['TFT'] += int(cur_fix_dur)
-        rm_dict[cur_fix_word_idx]['TFC'] += 1
-        if rm_dict[cur_fix_word_idx]['FD'] == 0:
-            rm_dict[cur_fix_word_idx]['FD'] += int(cur_fix_dur)
+    aois = aois.with_columns(pl.col('word_idx').cast(pl.Int64, strict=False))
 
-        if right_most_word == cur_fix_word_idx:
-            if rm_dict[cur_fix_word_idx]['TRC_out'] == 0:
-                rm_dict[cur_fix_word_idx]['FPRT'] += int(cur_fix_dur)
-                if last_fix_word_idx < cur_fix_word_idx:
-                    rm_dict[cur_fix_word_idx]['FFD'] += int(cur_fix_dur)
-        else:
-            rm_dict[right_most_word]['RPD_exc'] += int(cur_fix_dur)
+    if 'page' not in aois.columns:
+        aois = aois.with_columns(pl.lit('_page').alias('page'))
 
-        if cur_fix_word_idx < last_fix_word_idx:
-            rm_dict[cur_fix_word_idx]['TRC_in'] += 1
-        if cur_fix_word_idx > next_fix_word_idx:
-            rm_dict[cur_fix_word_idx]['TRC_out'] += 1
-        if cur_fix_word_idx == right_most_word:
-            rm_dict[cur_fix_word_idx]['RBRT'] += int(cur_fix_dur)
-        if (
-            rm_dict[cur_fix_word_idx]['FRT'] == 0 and
-            (not next_fix_word_idx == cur_fix_word_idx or next_fix_dur == 0)
-        ):
-            rm_dict[cur_fix_word_idx]['FRT'] = rm_dict[cur_fix_word_idx]['TFT']
-        if rm_dict[cur_fix_word_idx]['SL_in'] == 0:
-            rm_dict[cur_fix_word_idx]['SL_in'] = cur_fix_word_idx - last_fix_word_idx
-        if rm_dict[cur_fix_word_idx]['SL_out'] == 0:
-            rm_dict[cur_fix_word_idx]['SL_out'] = next_fix_word_idx - cur_fix_word_idx
+    return all_tokens_from_aois(aois, trial='_trial')
 
-    # Finalize reading measures.
-    rm_list = []
-    for aoi_key, aoi_rm in sorted(rm_dict.items()):
-        if aoi_key == -1:
-            continue
-        if aoi_rm['FFD'] == aoi_rm['FPRT']:
-            aoi_rm['SFD'] = aoi_rm['FFD']
-        aoi_rm['RRT'] = aoi_rm['TFT'] - aoi_rm['FPRT']
-        aoi_rm['FPF'] = int(aoi_rm['FFD'] > 0)
-        aoi_rm['RR'] = int(aoi_rm['RRT'] > 0)
-        aoi_rm['FPReg'] = int(aoi_rm['RPD_exc'] > 0)
-        aoi_rm['Fix'] = int(aoi_rm['TFT'] > 0)
-        aoi_rm['RPD_inc'] = aoi_rm['RPD_exc'] + aoi_rm['RBRT']
 
-        rm_list.append(aoi_rm)
+def _assemble_word_level_measures(words: pl.DataFrame, fixations: pl.DataFrame) -> pl.DataFrame:
+    """Aggregate every reading measure and join it onto the word table."""
+    on = ['trial', 'page', 'word_idx']
 
-    return pl.DataFrame(rm_list)
+    measures = [
+        total_fixation_count(fixations),
+        first_duration(fixations),
+        first_fixation_duration(fixations),
+        first_pass_reading_time(fixations),
+        first_reading_time(fixations),
+        rereading_time(fixations),
+        first_pass_fixation_count(fixations),
+        regression_count_in(fixations),
+        regression_count_out(fixations),
+        saccade_length_in(fixations),
+        saccade_length_out(fixations),
+        regression_path_duration(fixations),
+    ]
+
+    table = words
+    for measure in measures:
+        table = table.join(measure, on=on, how='left', nulls_equal=True)
+
+    table = table.with_columns([pl.col(column).fill_null(0) for column in _JOINED_MEASURES])
+
+    return table.with_columns([
+        # total fixation time
+        (pl.col('FPRT') + pl.col('RRT')).alias('TFT'),
+        # single-fixation duration: only defined when the word had a single first-pass fixation
+        pl.when(pl.col('FPFC') == 1).then(pl.col('FFD')).otherwise(0).alias('SFD'),
+        # binary indicators
+        (pl.col('FPRT') > 0).cast(pl.Int64).alias('FPF'),
+        (pl.col('RRT') > 0).cast(pl.Int64).alias('RR'),
+        (pl.col('RPD_exc') > 0).cast(pl.Int64).alias('FPReg'),
+    ]).with_columns([
+        # fixated-at-all indicator (depends on the derived TFT column above)
+        (pl.col('TFT') > 0).cast(pl.Int64).alias('Fix'),
+    ]).rename({'word_idx': 'word_index'})

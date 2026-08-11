@@ -24,7 +24,6 @@ import pytest
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations
-from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
 from pymovements.measure.reading.measures import first_pass_fixation_count
@@ -38,6 +37,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
@@ -136,8 +136,24 @@ def test_reading_measures_init_df():
     assert reading_measures.frame['a'].to_list() == [1, 2, 3]
 
 
-def test_build_word_level_table(annotated_events, all_tokens):
-    result = build_word_level_table(words=all_tokens, fixations=annotated_events)
+def test_compute_reading_measures_preserves_zero_based_word_indices():
+    aois = pl.DataFrame({
+        'word_idx': [0, 0, 1, 1],
+        'word': ['zero', 'zero', 'one', 'one'],
+    })
+    fixations = pl.DataFrame({
+        'word_idx': [0, 1],
+        'duration': [100, 200],
+    })
+
+    result = compute_reading_measures(fixations, aois)
+
+    assert result['word_index'].to_list() == [0, 1]
+    assert result['word'].to_list() == ['zero', 'one']
+
+
+def test_compute_reading_measures_word_level(mapped_events):
+    result = compute_reading_measures(mapped_events, CHAR_AOI_DF.clone())
     assert result.height == 2  # one row per word
     assert 'FFD' in result.columns
     assert 'TFT' in result.columns
