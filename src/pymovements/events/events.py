@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from typing import Any
 from typing import Literal
 from typing import overload
+from typing import TYPE_CHECKING
 
 import numpy as np
 import polars as pl
@@ -33,6 +34,9 @@ from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
+
+if TYPE_CHECKING:
+    from pymovements.measure.reading import ReadingMeasures
 
 
 @repr_html(['frame', 'trial_columns'])
@@ -787,6 +791,120 @@ class Events:
             'location_x' in self.frame.columns or 'location_y' in self.frame.columns
         ):
             self.frame = self.frame.drop('location')
+
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+            group_columns: list[str] | None = None,
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the fixation events.
+
+        The fixations are mapped onto the AOIs of ``stimulus`` (see
+        :py:meth:`~pymovements.Events.map_to_aois`) and word-level reading measures are computed
+        from the resulting word indices (see
+        :func:`~pymovements.measure.reading.compute_reading_measures`). The events are not
+        modified; the mapping happens on an internal copy.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped.
+            (default: ``'fixation'``)
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. An empty list
+            disables grouping. If ``None``, defaults to ``['trial', 'page']``.
+            (default: None)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+        """
+        # Local imports avoid a module-level cycle: the reading package is imported lazily so
+        # that importing Events does not pull in the measure pipeline.
+        from pymovements.measure.reading import ReadingMeasures
+        from pymovements.measure.reading import compute_reading_measures
+
+        if self.frame.is_empty():
+            return ReadingMeasures()
+
+        if isinstance(stimulus, dict):
+            fixations, aois = self._map_to_reading_stimuli(stimulus, group_columns)
+        else:
+            mapped = self.clone()
+            mapped.map_to_aois(stimulus, verbose=False)
+            fixations, aois = mapped.frame, stimulus.aois
+
+        return ReadingMeasures(
+            compute_reading_measures(
+                fixations,
+                aois,
+                word_index_column=word_index_column,
+                word_column=word_column,
+                event_name=event_name,
+                group_columns=group_columns,
+            ),
+        )
+
+    def _map_to_reading_stimuli(
+            self,
+            stimuli: dict[Any, TextStimulus],
+            group_columns: list[str] | None,
+    ) -> tuple[pl.DataFrame, dict[Any, pl.DataFrame]]:
+        """Map each reading sequence to its own stimulus and collect the per-key AOI tables.
+
+        The events are split by the first group column; the subset for each key is mapped to the
+        matching stimulus. Only events whose key has a stimulus entry are mapped. Returns the
+        concatenated mapped fixations and a dict of the per-key AOI tables for
+        :func:`~pymovements.measure.reading.compute_reading_measures`.
+        """
+        # The dict is keyed by the first group column (the trial role), matching the default
+        # grouping of compute_reading_measures.
+        sequence_column = (group_columns if group_columns else ['trial', 'page'])[0]
+        if sequence_column not in self.frame.columns:
+            raise ValueError(
+                f'stimulus is a dict keyed by {sequence_column!r}, but the events have no '
+                f'{sequence_column!r} column.',
+            )
+
+        mapped_frames = []
+        aois = {}
+        for key, stim in stimuli.items():
+            # The dict key defines the sequence column, so it must not also live in the entry.
+            aois[key] = (
+                stim.aois.drop(sequence_column)
+                if sequence_column in stim.aois.columns
+                else stim.aois
+            )
+            subset = Events(
+                self.frame.filter(pl.col(sequence_column) == key),
+                trial_columns=self.trial_columns,
+            )
+            if subset.frame.is_empty():
+                continue
+            subset.map_to_aois(stim, verbose=False)
+            mapped_frames.append(subset.frame)
+
+        if not mapped_frames:
+            return self.frame.clear(), aois
+        # Different stimuli may contribute different AOI columns, so align on the column union.
+        return pl.concat(mapped_frames, how='diagonal_relaxed'), aois
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""

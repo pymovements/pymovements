@@ -18,18 +18,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Provides access to reading measure classes and functions."""
-from pymovements.measure.reading.annotation import annotate_delta_in
-from pymovements.measure.reading.annotation import annotate_delta_out
 from pymovements.measure.reading.annotation import annotate_fixations
-from pymovements.measure.reading.annotation import annotate_is_first_fixation
-from pymovements.measure.reading.annotation import annotate_is_first_pass
-from pymovements.measure.reading.annotation import annotate_is_reg_in
-from pymovements.measure.reading.annotation import annotate_is_reg_out
-from pymovements.measure.reading.annotation import annotate_next_word_idx
-from pymovements.measure.reading.annotation import annotate_prev_word_idx
-from pymovements.measure.reading.annotation import annotate_run_id
+from pymovements.measure.reading.annotation import delta_in
+from pymovements.measure.reading.annotation import delta_out
+from pymovements.measure.reading.annotation import is_first_fixation
+from pymovements.measure.reading.annotation import is_first_pass
+from pymovements.measure.reading.annotation import is_reg_in
+from pymovements.measure.reading.annotation import is_reg_out
+from pymovements.measure.reading.annotation import next_word_idx
+from pymovements.measure.reading.annotation import prev_word_idx
+from pymovements.measure.reading.annotation import regression_path_word
+from pymovements.measure.reading.annotation import run_id
 from pymovements.measure.reading.frame import ReadingMeasures
-from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
 from pymovements.measure.reading.measures import first_pass_fixation_count
@@ -38,15 +38,14 @@ from pymovements.measure.reading.measures import first_reading_time
 from pymovements.measure.reading.measures import landing_position
 from pymovements.measure.reading.measures import regression_count_in
 from pymovements.measure.reading.measures import regression_count_out
-from pymovements.measure.reading.measures import regression_path_duration
+from pymovements.measure.reading.measures import regression_path_duration_exclusive
+from pymovements.measure.reading.measures import regression_path_duration_inclusive
 from pymovements.measure.reading.measures import rereading_time
+from pymovements.measure.reading.measures import right_bounded_reading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
-from pymovements.measure.reading.words import all_tokens_from_aois
-from pymovements.measure.reading.words import mark_skipped_tokens
-from pymovements.measure.reading.words import repair_word_labels
 
 
 __all__ = [
@@ -55,20 +54,17 @@ __all__ = [
     'compute_reading_measures',
     # main entry points
     'annotate_fixations',
-    'annotate_run_id',
-    'annotate_prev_word_idx',
-    'annotate_next_word_idx',
-    'annotate_delta_in',
-    'annotate_delta_out',
-    'annotate_is_reg_in',
-    'annotate_is_reg_out',
-    'annotate_is_first_fixation',
-    'annotate_is_first_pass',
-    'build_word_level_table',
-    # word/token utilities
-    'all_tokens_from_aois',
-    'mark_skipped_tokens',
-    'repair_word_labels',
+    # annotation expressions
+    'run_id',
+    'prev_word_idx',
+    'next_word_idx',
+    'delta_in',
+    'delta_out',
+    'is_reg_in',
+    'is_reg_out',
+    'is_first_fixation',
+    'is_first_pass',
+    'regression_path_word',
     # individual measures (for users who want just one or two)
     'first_duration',
     'first_fixation_duration',
@@ -79,7 +75,9 @@ __all__ = [
     'rereading_time',
     'regression_count_in',
     'regression_count_out',
-    'regression_path_duration',
+    'regression_path_duration_exclusive',
+    'regression_path_duration_inclusive',
+    'right_bounded_reading_time',
     'saccade_length_in',
     'saccade_length_out',
     'total_fixation_count',

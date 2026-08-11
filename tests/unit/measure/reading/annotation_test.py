@@ -22,16 +22,16 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
-from pymovements.measure.reading.annotation import annotate_delta_in
-from pymovements.measure.reading.annotation import annotate_delta_out
 from pymovements.measure.reading.annotation import annotate_fixations
-from pymovements.measure.reading.annotation import annotate_is_first_fixation
-from pymovements.measure.reading.annotation import annotate_is_first_pass
-from pymovements.measure.reading.annotation import annotate_is_reg_in
-from pymovements.measure.reading.annotation import annotate_is_reg_out
-from pymovements.measure.reading.annotation import annotate_next_word_idx
-from pymovements.measure.reading.annotation import annotate_prev_word_idx
-from pymovements.measure.reading.annotation import annotate_run_id
+from pymovements.measure.reading.annotation import delta_in
+from pymovements.measure.reading.annotation import delta_out
+from pymovements.measure.reading.annotation import is_first_fixation
+from pymovements.measure.reading.annotation import is_first_pass
+from pymovements.measure.reading.annotation import is_reg_in
+from pymovements.measure.reading.annotation import is_reg_out
+from pymovements.measure.reading.annotation import next_word_idx
+from pymovements.measure.reading.annotation import prev_word_idx
+from pymovements.measure.reading.annotation import run_id
 
 
 @pytest.mark.parametrize(
@@ -110,8 +110,8 @@ from pymovements.measure.reading.annotation import annotate_run_id
         ),
     ],
 )
-def test_annotate_run_id(fixations, expected):
-    result = annotate_run_id(fixations, ['trial'])
+def test_run_id(fixations, expected):
+    result = fixations.with_columns(run_id().over(['trial']))
     assert_frame_equal(result, expected)
 
 
@@ -145,8 +145,8 @@ def test_annotate_run_id(fixations, expected):
         ),
     ],
 )
-def test_annotate_prev_word_idx(fixations, expected):
-    result = annotate_prev_word_idx(fixations, ['trial'])
+def test_prev_word_idx(fixations, expected):
+    result = fixations.with_columns(prev_word_idx().over(['trial']))
     assert_frame_equal(result, expected)
 
 
@@ -180,8 +180,8 @@ def test_annotate_prev_word_idx(fixations, expected):
         ),
     ],
 )
-def test_annotate_next_word_idx(fixations, expected):
-    result = annotate_next_word_idx(fixations, ['trial'])
+def test_next_word_idx(fixations, expected):
+    result = fixations.with_columns(next_word_idx().over(['trial']))
     assert_frame_equal(result, expected)
 
 
@@ -215,8 +215,8 @@ def test_annotate_next_word_idx(fixations, expected):
         ),
     ],
 )
-def test_annotate_delta_in(fixations, expected):
-    result = annotate_delta_in(fixations)
+def test_delta_in(fixations, expected):
+    result = fixations.with_columns(delta_in())
     assert_frame_equal(result, expected)
 
 
@@ -250,8 +250,8 @@ def test_annotate_delta_in(fixations, expected):
         ),
     ],
 )
-def test_annotate_delta_out(fixations, expected):
-    result = annotate_delta_out(fixations)
+def test_delta_out(fixations, expected):
+    result = fixations.with_columns(delta_out())
     assert_frame_equal(result, expected)
 
 
@@ -278,8 +278,8 @@ def test_annotate_delta_out(fixations, expected):
         ),
     ],
 )
-def test_annotate_is_reg_in(fixations, expected):
-    result = annotate_is_reg_in(fixations)
+def test_is_reg_in(fixations, expected):
+    result = fixations.with_columns(is_reg_in())
     assert_frame_equal(result, expected)
 
 
@@ -306,8 +306,8 @@ def test_annotate_is_reg_in(fixations, expected):
         ),
     ],
 )
-def test_annotate_is_reg_out(fixations, expected):
-    result = annotate_is_reg_out(fixations)
+def test_is_reg_out(fixations, expected):
+    result = fixations.with_columns(is_reg_out())
     assert_frame_equal(result, expected)
 
 
@@ -345,8 +345,8 @@ def test_annotate_is_reg_out(fixations, expected):
         ),
     ],
 )
-def test_annotate_is_first_fixation(fixations, expected):
-    result = annotate_is_first_fixation(fixations, ['trial'])
+def test_is_first_fixation(fixations, expected):
+    result = fixations.with_columns(is_first_fixation().over(['trial', 'word_idx']))
     assert_frame_equal(result, expected)
 
 
@@ -428,8 +428,8 @@ def test_annotate_is_first_fixation(fixations, expected):
         ),
     ],
 )
-def test_annotate_is_first_pass(fixations, expected):
-    result = annotate_is_first_pass(fixations, ['trial'])
+def test_is_first_pass(fixations, expected):
+    result = fixations.with_columns(is_first_pass(['trial']))
     assert_frame_equal(result, expected)
 
 
@@ -492,8 +492,8 @@ def test_annotate_is_first_pass(fixations, expected):
         ),
     ],
 )
-def test_annotate_is_first_pass_regression_skip(fixations, expected):
-    result = annotate_is_first_pass(fixations, ['trial'])
+def test_is_first_pass_regression_skip(fixations, expected):
+    result = fixations.with_columns(is_first_pass(['trial']))
     assert_frame_equal(result, expected)
 
 
@@ -575,3 +575,31 @@ def test_annotate_fixations_default_groups():
     })
     result = annotate_fixations(events)
     assert 'run_id' in result.columns
+
+
+def test_annotate_fixations_custom_event_name():
+    events = pl.DataFrame({
+        'trial': ['1', '1'],
+        'stimulus': ['s', 's'],
+        'page': ['p', 'p'],
+        'name': ['fixation.custom', 'fixation'],
+        'word_idx': [1, 2],
+        'onset': [0, 100],
+    })
+    result = annotate_fixations(events, event_name='fixation.custom')
+    assert result.height == 1
+    assert result['word_idx'].to_list() == [1]
+
+
+def test_annotate_fixations_warns_when_nothing_to_annotate():
+    events = pl.DataFrame({
+        'trial': ['1'],
+        'stimulus': ['s'],
+        'page': ['p'],
+        'name': ['saccade'],
+        'word_idx': [1],
+        'onset': [0],
+    })
+    with pytest.warns(UserWarning, match='no fixations left to annotate'):
+        result = annotate_fixations(events)
+    assert result.is_empty()

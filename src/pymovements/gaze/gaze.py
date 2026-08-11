@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import overload
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import polars
@@ -56,6 +57,9 @@ from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
+
+if TYPE_CHECKING:
+    from pymovements.measure.reading import ReadingMeasures
 
 
 @repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
@@ -1872,6 +1876,62 @@ class Gaze:
 
         aoi_df = polars.concat(aois)
         self.samples = polars.concat([self.samples, aoi_df], how='horizontal_extend')
+
+    def measure_reading(
+            self,
+            stimulus: TextStimulus | dict[Any, TextStimulus],
+            *,
+            word_index_column: str = 'word_idx',
+            word_column: str = 'word',
+            event_name: str = 'fixation',
+            group_columns: list[str] | None = None,
+    ) -> ReadingMeasures:
+        """Compute word-level reading measures from the detected fixation events.
+
+        This is a convenience wrapper that forwards to
+        :py:meth:`~pymovements.Events.measure_reading` on this gaze's events. Fixation events must
+        have been detected first (see :py:meth:`~pymovements.Gaze.detect`); reading measures are
+        computed from the events, not from the raw samples.
+
+        Parameters
+        ----------
+        stimulus : TextStimulus | dict[Any, TextStimulus]
+            Text stimulus defining the AOIs. Pass a dict mapping values of the first group column
+            to a separate stimulus per value when the events span several stimuli.
+        word_index_column : str
+            Shared column name in the mapped fixations and the stimulus AOIs that corresponds to
+            the word index of the text.
+            (default: ``'word_idx'``)
+        word_column : str
+            Column in the stimulus AOIs with the content within each AOI.
+            (default: ``'word'``)
+        event_name : str
+            Name of the fixation events to compute measures from. Rows with a different ``name``
+            are dropped.
+            (default: ``'fixation'``)
+        group_columns : list[str] | None
+            Column names used to partition the data into independent reading sequences. The first
+            column takes the trial role, the remaining columns take the page role. An empty list
+            disables grouping. If ``None``, defaults to ``['trial', 'page']``.
+            (default: None)
+
+        Returns
+        -------
+        ReadingMeasures
+            Reading measures container with one row per word.
+        """
+        from pymovements.measure.reading import ReadingMeasures
+
+        if self.events is None:
+            return ReadingMeasures()
+
+        return self.events.measure_reading(
+            stimulus,
+            word_index_column=word_index_column,
+            word_column=word_column,
+            event_name=event_name,
+            group_columns=group_columns,
+        )
 
     def nest(
             self,
