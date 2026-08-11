@@ -98,7 +98,9 @@ def all_tokens_from_aois(
     -------
     pl.DataFrame
         Deduplicated table with columns ``trial``, ``page``, ``word_idx``,
-        and ``word``, sorted by ``word_idx``.
+        and ``word``, one row per word (the first AOI row wins on
+        inconsistent word labels), sorted by ``trial``, ``page``, and
+        ``word_idx``. Rows without a ``word_idx`` are dropped.
     """
     aois = (
         aois.with_columns([pl.lit(trial).cast(pl.Utf8).alias('trial')])
@@ -106,51 +108,9 @@ def all_tokens_from_aois(
         else aois
     )
 
-    return aois.select(['trial', 'page', 'word_idx', 'word']).unique().sort('word_idx')
-
-
-def mark_skipped_tokens(
-    all_tokens: pl.DataFrame,
-    fixations: pl.DataFrame,
-) -> pl.DataFrame:
-    """Mark tokens that were never fixated as skipped.
-
-    Performs a left join of ``all_tokens`` against the set of fixated
-    ``(trial, page, word_idx)`` triples and adds a binary ``skipped`` column.
-
-    Parameters
-    ----------
-    all_tokens : pl.DataFrame
-        Full token table as returned by :func:`all_tokens_from_aois`,
-        containing at least ``trial``, ``page``, and ``word_idx``.
-    fixations : pl.DataFrame
-        Fixation events containing at least ``trial``, ``page``, and
-        ``word_idx``. Rows with null ``word_idx`` are ignored.
-
-    Returns
-    -------
-    pl.DataFrame
-        ``all_tokens`` with an additional ``skipped`` column (``Int8``):
-        ``1`` if the token was never fixated, ``0`` otherwise.
-    """
-    fixated_tokens = (
-        fixations.select(['trial', 'page', 'word_idx'])
-        .drop_nulls()
-        .unique()
-        .with_columns(pl.lit(1).alias('fixated'))
+    return (
+        aois.select(['trial', 'page', 'word_idx', 'word'])
+        .drop_nulls('word_idx')
+        .unique(subset=['trial', 'page', 'word_idx'], keep='first', maintain_order=True)
+        .sort(['trial', 'page', 'word_idx'])
     )
-
-    out = all_tokens.join(
-        fixated_tokens,
-        on=['trial', 'page', 'word_idx'],
-        how='left',
-        nulls_equal=True,
-    )
-
-    return out.with_columns(
-        pl.when(pl.col('fixated').is_null())
-        .then(1)   # not fixated → skipped
-        .otherwise(0)  # fixated → not skipped
-        .cast(pl.Int8)
-        .alias('skipped'),
-    ).drop('fixated')
