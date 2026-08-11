@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import prepare_figure
 
@@ -101,7 +102,15 @@ def tsplot(
     if channels is None:
         channels = [c for c in gaze.samples.columns if gaze.samples[c].dtype != pl.List]
 
-    arr = gaze.samples[channels].to_numpy().transpose()
+    samples = gaze.samples
+    channel_list = channels if isinstance(channels, list) else [channels]
+    for col in channel_list:
+        if col in samples.columns and isinstance(samples.schema[col], pl.Duration):
+            samples = samples.with_columns(
+                duration_to_ms(pl.col(col)).alias(col),
+            )
+
+    arr = samples[channels].to_numpy().transpose()
 
     if arr.ndim == 1:
         arr = np.expand_dims(arr, axis=0)

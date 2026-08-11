@@ -31,6 +31,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import DatasetDefinition
+from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
@@ -42,6 +43,9 @@ from pymovements.dataset.dataset_files import load_precomputed_reading_measure_f
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.dataset.dataset_files import save_events
+from pymovements.dataset.dataset_files import save_preprocessed
+from pymovements.dataset.dataset_paths import DatasetPaths
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
 
@@ -171,18 +175,25 @@ MSG	2154570 0 READING_SCREEN_1.STOP
 
 EXPECTED_EYELINK_SAMPLES_NO_PATTERNS = pl.from_dict(
     {
-        'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
+        'time': [
+            2154557000, 2154558000, 2154560000, 2154561000,
+            2154565000, 2154567000, 2154568000,
+        ],
         'pixel': [
             (139.6, 132.1), (139.5, 131.9), (None, None), (850.7, 717.5),
             (139.5, 131.9), (None, None), (850.7, 717.5),
         ],
         'pupil': [784.0, 784.0, 0.0, 714.0, 784.0, 0.0, 714.0],
     },
+    schema_overrides={'time': pl.Duration('us')},
 )
 
 EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
     {
-        'time': [2154557, 2154558, 2154560, 2154561, 2154565, 2154567, 2154568],
+        'time': [
+            2154557000, 2154558000, 2154560000, 2154561000,
+            2154565000, 2154567000, 2154568000,
+        ],
         'pixel': [
             (139.6, 132.1), (139.5, 131.9), (None, None), (850.7, 717.5),
             (139.5, 131.9), (None, None), (850.7, 717.5),
@@ -191,6 +202,7 @@ EXPECTED_EYELINK_SAMPLES_PATTERNS = pl.from_dict(
         'task': ['reading', 'reading', 'reading', 'reading', 'reading', 'reading', 'reading'],
         'trial_id': [0, 0, 0, 0, 1, 1, 1],
     },
+    schema_overrides={'time': pl.Duration('us')},
 )
 
 EYELINK_PATTERNS = [
@@ -444,9 +456,10 @@ def test_load_example_gaze_file(
     )
     expected_df = pl.from_dict(
         {
-            'time': list(range(10)),
+            'time': list(range(0, 10_000, 1_000)),
             'pixel': [[0, 0]] * 10,
         },
+        schema_overrides={'time': pl.Duration('us')},
     )
 
     assert_frame_equal(gaze.samples, expected_df, check_column_order=False)
@@ -1297,9 +1310,9 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
 
     # Expected numeric values for comparison (subset)
     EXPECTED_TIMES = [
-        10000000.123, 10000002.123, 10000004.123, 10000006.123, 10000008.123,
-        10000011.123, 10000014.345, 10000017.345, 10000019.123, 10000020.123,
-        10000021.123,
+        10000000123, 10000002123, 10000004123, 10000006123, 10000008123,
+        10000011123, 10000014345, 10000017345, 10000019123, 10000020123,
+        10000021123,
     ]
     EXPECTED_X = [850.7] * 9 + [None, None]
     EXPECTED_Y = [717.5] * 9 + [None, None]
@@ -1328,17 +1341,20 @@ def test_load_gaze_file_from_begaze(load_kwargs, definition_dict, make_text_file
     # from_begaze constructs a Gaze with nested pixel column from x_pix/y_pix
     # Build expected samples accordingly (time + pixel)
     # Build expected samples from inline numeric expectations
-    expected_df = pl.DataFrame({
-        'time': EXPECTED_TIMES,
-        'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
-    })
+    expected_df = pl.DataFrame(
+        {
+            'time': EXPECTED_TIMES,
+            'pixel': [[EXPECTED_X[i], EXPECTED_Y[i]] for i in range(len(EXPECTED_TIMES))],
+        },
+        schema_overrides={'time': pl.Duration('us')},
+    )
     # Compare only rows where pixel values are present (blink rows are None in expected)
     mask = [all(v is not None for v in pair) for pair in expected_df['pixel'].to_list()]
     expected_df_non_nan = expected_df.filter(pl.Series(mask))
     gaze_non_nan = gaze.samples.filter(pl.col('pixel').list.get(0).is_not_null())
     assert_frame_equal(
-        gaze_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
-        expected_df_non_nan.select(['time', 'pixel']).with_columns(pl.col('time').round(3)),
+        gaze_non_nan.select(['time', 'pixel']),
+        expected_df_non_nan.select(['time', 'pixel']),
         check_column_order=False,
     )
 
@@ -1473,3 +1489,43 @@ def test_load_stimulus_file_raises_unknown_stimulus_content_type():
     )
     with pytest.raises(ValueError, match=message):
         load_stimulus_file(file)
+
+
+@pytest.mark.parametrize(
+    'extension',
+    [
+        pytest.param('csv', id='csv'),
+        pytest.param('feather', id='feather'),
+    ],
+)
+def test_save_events_and_preprocessed_round_trip_preserves_duration_values(tmp_path, extension):
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+    fileinfo = pl.DataFrame({'filepath': ['subject_1.csv']})
+
+    events = Events(name=['fixation'], onsets=[0.5], offsets=[2.25])
+    gaze = Gaze(
+        pl.DataFrame({'time': [0.0, 0.5, 1.0], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}),
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=['x', 'y'],
+    )
+
+    save_events([events], fileinfo, paths, verbose=0, extension=extension)
+    save_preprocessed([gaze], fileinfo, paths, verbose=0, extension=extension)
+
+    events_file = paths.events / f'subject_1.{extension}'
+    samples_file = paths.preprocessed / f'subject_1.{extension}'
+    if extension == 'csv':
+        loaded_events = Events(pl.read_csv(events_file))
+        loaded_samples = pl.read_csv(samples_file, schema_overrides={'pixel': pl.Utf8})
+        loaded_time = (
+            (loaded_samples['time'].cast(pl.Float64) * 1000).round().cast(pl.Duration('us'))
+        )
+    else:
+        loaded_events = Events(pl.read_ipc(events_file))
+        loaded_samples = pl.read_ipc(samples_file)
+        loaded_time = loaded_samples['time']
+
+    # Sub-millisecond precision must survive the save/load round trip.
+    assert_frame_equal(loaded_events.frame, events.frame)
+    assert loaded_time.to_list() == gaze.samples['time'].to_list()

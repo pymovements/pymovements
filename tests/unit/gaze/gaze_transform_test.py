@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze transform method."""
+import math
+
 import numpy as np
 import polars as pl
 import pytest
@@ -878,7 +880,11 @@ def test_gaze_transform_expected_frame(
     # the deg2pix test cases result in a column order different to the default ordering
     check_column_order = not transform_method == 'deg2pix'
 
-    assert_frame_equal(gaze.samples, expected.samples, check_column_order=check_column_order)
+    assert_frame_equal(
+        gaze.samples,
+        expected.samples,
+        check_column_order=check_column_order,
+    )
 
 
 @pytest.mark.parametrize(
@@ -1491,12 +1497,12 @@ def test_gaze_smooth_expected_column(
             },
             pl.from_dict(
                 {
-                    'time': [1000.0, 1000.5, 1001.0],
+                    'time': [1000000, 1000500, 1001000],
                     'distance': [1, 0.5, 0],
                     'pixel': [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]],
                 },
                 schema={
-                    'time': pl.Float64,
+                    'time': pl.Duration('us'),
                     'distance': pl.Float64,
                     'pixel': pl.List(pl.Float64),
                 },
@@ -1524,9 +1530,9 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000000, 1000500, 1001000,
+                        2000000, 2000500, 2001000,
+                        3000000, 3000500, 3001000,
                     ],
                     'distance': [1, 0.5, 0, 1, 0.5, 0, 1, 0.5, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -1537,7 +1543,7 @@ def test_gaze_smooth_expected_column(
                     ],
                 },
                 schema={
-                    'time': pl.Float64,
+                    'time': pl.Duration('us'),
                     'distance': pl.Float64,
                     'trial_id': pl.Int64,
                     'pixel': pl.List(pl.Float64),
@@ -1567,9 +1573,9 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000000, 1000500, 1001000,
+                        2000000, 2000500, 2001000,
+                        3000000, 3000500, 3001000,
                     ],
                     'distance': [1, None, 0, 1, None, 0, 1, None, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -1580,6 +1586,7 @@ def test_gaze_smooth_expected_column(
                     ],
 
                 },
+                schema_overrides={'time': pl.Duration('us')},
             ),
             id='resample_no_columns_multiple_trials',
         ),
@@ -1605,9 +1612,9 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000000, 1000500, 1001000,
+                        2000000, 2000500, 2001000,
+                        3000000, 3000500, 3001000,
                     ],
                     'distance': [1, None, 0, 1, None, 0, 1, None, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -1617,6 +1624,7 @@ def test_gaze_smooth_expected_column(
                         [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
                     ],
                 },
+                schema_overrides={'time': pl.Duration('us')},
             ),
             id='resample_single_column_string_multiple_trials',
         ),
@@ -1642,9 +1650,9 @@ def test_gaze_smooth_expected_column(
             pl.from_dict(
                 {
                     'time': [
-                        1000.0, 1000.5, 1001.0,
-                        2000.0, 2000.5, 2001.0,
-                        3000.0, 3000.5, 3001.0,
+                        1000000, 1000500, 1001000,
+                        2000000, 2000500, 2001000,
+                        3000000, 3000500, 3001000,
                     ],
                     'distance': [1, None, 0, 1, None, 0, 1, None, 0],
                     'trial_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -1654,6 +1662,7 @@ def test_gaze_smooth_expected_column(
                         [0.0, 0.0], [0.5, 0.5], [1.0, 1.0],
                     ],
                 },
+                schema_overrides={'time': pl.Duration('us')},
             ),
             id='resample_single_column_list_multiple_trials',
         ),
@@ -1666,6 +1675,26 @@ def test_gaze_resample_expected(
     gaze.resample(**kwargs)
 
     assert_frame_equal(gaze.samples, expected_samples)
+
+
+def test_gaze_resample_replaces_nan_in_list_columns_with_null():
+    # Regression: NaN inside multi-component (list) columns such as pixel must be replaced with
+    # null during resampling. Filtering the replacement by is_numeric() excluded list columns.
+    gaze = pm.Gaze(
+        samples=pl.DataFrame(
+            {
+                'time': [0, 1, 2],
+                'x': [1.0, math.nan, 3.0],
+                'y': [1.0, math.nan, 3.0],
+            },
+        ),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+
+    gaze.resample(resampling_rate=1000, fill_null_strategy='interpolate_linear', columns=['pixel'])
+
+    assert gaze.samples['pixel'].to_list() == [[1.0, 1.0], [None, None], [3.0, 3.0]]
 
 
 def test_gaze_resample_changes_experiemnt_sampling_rate(experiment):

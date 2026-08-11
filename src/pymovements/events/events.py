@@ -31,8 +31,24 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._time import normalize_duration_to_us
+from pymovements._utils._time import numeric_to_duration_us
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
+
+
+def _build_time_series(values: list[int | float] | np.ndarray) -> pl.Series:
+    """Build an onset/offset series, preserving temporal input for later normalization.
+
+    Numeric values are interpreted as milliseconds by the constructor. ``timedelta`` and
+    ``timedelta64`` input keeps its inferred ``polars.Duration`` dtype so it is converted
+    by physical unit instead of being reinterpreted as milliseconds. Empty input is
+    inferred as ``Null`` by polars and cast to ``Float64`` so the millisecond scaffold applies.
+    """
+    series = values if isinstance(values, pl.Series) else pl.Series(values)
+    if series.dtype == pl.Null:
+        series = series.cast(pl.Float64)
+    return series
 
 
 @repr_html(['frame', 'trial_columns'])
@@ -44,18 +60,28 @@ class Events:
     Parameters
     ----------
     data: pl.DataFrame | None
-        A dataframe to be transformed to a polars dataframe. This argument is mutually
-        exclusive with all the other arguments. (default: None)
+        A dataframe to be transformed to a polars dataframe. Numeric ``onset``, ``offset``
+        and ``duration`` columns are interpreted according to ``time_unit`` and converted to
+        ``polars.Duration`` columns with microsecond precision; ``polars.Duration`` columns
+        are taken over unchanged. This argument is mutually exclusive with all the other
+        arguments. (default: None)
     name: str | list[str] | None
         Name of events. (default: None)
     onsets: list[int | float] | np.ndarray | None
-        List of onsets. (default: None)
+        List of onsets. Numeric values are interpreted according to ``time_unit``; ``timedelta``
+        and ``timedelta64`` input is converted by its physical unit. (default: None)
     offsets: list[int | float] | np.ndarray | None
-        List of offsets. (default: None)
+        List of offsets. Numeric values are interpreted according to ``time_unit``; ``timedelta``
+        and ``timedelta64`` input is converted by its physical unit. (default: None)
     trials: list[int | float | str | None] | np.ndarray | None
         List of trial identifiers. (default: None)
     trial_columns: list[str] | str | None
         List of trial columns in the passed dataframe.
+    time_unit: str | None
+        The unit of the numeric ``onset``, ``offset`` and ``duration`` input: ``'s'`` for
+        seconds, ``'ms'`` for milliseconds or ``'us'`` for microseconds. Ignored for
+        ``polars.Duration`` input, which already carries its unit. If None, milliseconds are
+        assumed. (default: None)
 
     Attributes
     ----------
@@ -69,7 +95,8 @@ class Events:
     ------
     ValueError
         If list of onsets is passed but not a list of offsets, or vice versa, or if length of
-        onsets does not match length of offsets.
+        onsets does not match length of offsets, or if ``time_unit`` is not one of ``'s'``,
+        ``'ms'`` or ``'us'``.
 
     Examples
     --------
@@ -83,34 +110,52 @@ class Events:
     ... )
     >>> event
     shape: (4, 4)
-    ┌──────────┬─────────┬─────────┬──────────┐
-    │ name     ┆ onset   ┆ offset  ┆ duration │
-    │ ---      ┆ ---     ┆ ---     ┆ ---      │
-    │ str      ┆ i64     ┆ i64     ┆ i64      │
-    ╞══════════╪═════════╪═════════╪══════════╡
-    │ fixation ┆ 1988147 ┆ 1988322 ┆ 175      │
-    │ fixation ┆ 1988351 ┆ 1988546 ┆ 195      │
-    │ fixation ┆ 1988592 ┆ 1988736 ┆ 144      │
-    │ fixation ┆ 1988788 ┆ 1989013 ┆ 225      │
-    └──────────┴─────────┴─────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 33m 8s 147ms ┆ 33m 8s 322ms ┆ 175ms        │
+    │ fixation ┆ 33m 8s 351ms ┆ 33m 8s 546ms ┆ 195ms        │
+    │ fixation ┆ 33m 8s 592ms ┆ 33m 8s 736ms ┆ 144ms        │
+    │ fixation ┆ 33m 8s 788ms ┆ 33m 9s 13ms  ┆ 225ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
     """
 
     frame: pl.DataFrame
 
     trial_columns: list[str] | None
 
-    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
+    _minimal_schema: dict[str, Any] = {
+        'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us'),
+    }
 
     def __init__(
             self,
             data: pl.DataFrame | None = None,
+            *,
             name: str | list[str] | None = None,
             onsets: list[int | float] | np.ndarray | None = None,
             offsets: list[int | float] | np.ndarray | None = None,
             trials: list[int | float | str | None] | np.ndarray | None = None,
             trial_columns: list[str] | str | None = None,
+            time_unit: str | None = None,
     ):
         self.trial_columns: list[str] | None  # otherwise mypy gets confused.
+
+        # Numeric onset/offset/duration input is interpreted in this unit; None means
+        # milliseconds. Duration input carries its own unit, so time_unit is ignored for it.
+        if time_unit is None:
+            time_unit = 'ms'
+
+        # Validate the unit up front so a typo is rejected regardless of whether the input is
+        # numeric or already Duration (where the unit is otherwise ignored), matching Gaze.
+        if time_unit not in ('s', 'ms', 'us'):
+            raise ValueError(
+                f"unsupported time unit '{time_unit}'. "
+                "Supported units are 's' for seconds, 'ms' for milliseconds "
+                "and 'us' for microseconds.",
+            )
 
         if data is not None:
             _checks.check_is_mutual_exclusive(data=data, onsets=onsets)
@@ -157,8 +202,8 @@ class Events:
 
                 data_dict = {
                     'name': pl.Series(name, dtype=pl.Utf8),
-                    'onset': pl.Series(onsets, dtype=pl.Float64),
-                    'offset': pl.Series(offsets, dtype=pl.Float64),
+                    'onset': _build_time_series(onsets),
+                    'offset': _build_time_series(offsets),
                 }
 
                 if trials is not None:
@@ -175,7 +220,19 @@ class Events:
                 }
                 self.trial_columns = None
 
-        self.frame = pl.DataFrame(data=data_dict, schema_overrides=self._minimal_schema)
+        # Build the frame with a numeric millisecond scaffold for the time columns. Their
+        # canonical dtype is Duration('us'), but list/int/float input arrives in milliseconds
+        # and is converted below. Casting such input straight to Duration('us') here would
+        # reinterpret the millisecond values as microseconds. Duration input is left untouched.
+        schema_overrides: dict[str, Any] = {}
+        for column, dtype in self._minimal_schema.items():
+            if not isinstance(dtype, pl.Duration):
+                schema_overrides[column] = dtype
+            elif column in data_dict and not isinstance(
+                    getattr(data_dict[column], 'dtype', None), pl.Duration,
+            ):
+                schema_overrides[column] = pl.Float64
+        self.frame = pl.DataFrame(data=data_dict, schema_overrides=schema_overrides)
 
         # Ensure column order: trial columns, then minimal schema, keeping all other columns.
         if self.trial_columns is not None:
@@ -188,17 +245,40 @@ class Events:
                 [*self.trial_columns, *self._minimal_schema.keys(), *other_cols],
             )
 
-        # Convert to int if possible.
-        all_decimals = self.frame.select(
-            pl.all_horizontal(
-                pl.col('onset', 'offset').round()
-                .eq(pl.col('onset', 'offset'))
-                .all(),
-            ),
-        ).item()
-        if all_decimals:
+        # Convert onset, offset, and duration to Duration('us').
+        # Numeric input values are interpreted according to time_unit (milliseconds by default).
+        time_cols = [c for c in ('onset', 'offset', 'duration') if c in self.frame.columns]
+        numeric_time_cols = [
+            c for c in time_cols
+            if not isinstance(self.frame.schema[c], pl.Duration)
+        ]
+        if numeric_time_cols:
+            # Reject infinite values early with a clear error (casting them to Duration would
+            # otherwise raise a cryptic polars error). NaN is allowed: a missing onset/duration
+            # value arrives as NaN and is mapped to null by the conversion below. Nulls stay
+            # allowed (is_infinite is null for null, which any() ignores).
+            infinite_flags = self.frame.select(
+                pl.col(numeric_time_cols).cast(pl.Float64).is_infinite().any(),
+            )
+            infinite_cols = [c for c in numeric_time_cols if infinite_flags.item(0, c)]
+            if infinite_cols:
+                raise ValueError(
+                    f'time columns {infinite_cols} contain infinite values; '
+                    'onset, offset and duration values must be finite or null.',
+                )
             self.frame = self.frame.with_columns(
-                pl.col('onset', 'offset').cast(pl.Int64),
+                numeric_to_duration_us(pl.col(numeric_time_cols), time_unit),
+            )
+        # Normalize Duration input of any other unit to microseconds. Sub-microsecond input
+        # (e.g. nanoseconds) is rounded to the nearest microsecond rather than truncated.
+        wrong_unit_cols = [
+            c for c in time_cols
+            if isinstance(self.frame.schema[c], pl.Duration)
+            and self.frame.schema[c] != pl.Duration('us')
+        ]
+        if wrong_unit_cols:
+            self.frame = self.frame.with_columns(
+                normalize_duration_to_us(pl.col(wrong_unit_cols)),
             )
 
         if 'duration' not in self.frame.columns:
@@ -359,114 +439,114 @@ class Events:
         ... )
         >>> events
         shape: (8, 4)
-        ┌──────────────────┬───────┬────────┬──────────┐
-        │ name             ┆ onset ┆ offset ┆ duration │
-        │ ---              ┆ ---   ┆ ---    ┆ ---      │
-        │ str              ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════════╪═══════╪════════╪══════════╡
-        │ saccade          ┆ 90    ┆ 100    ┆ 10       │
-        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
-        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
-        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
-        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
-        │ microsaccade     ┆ 115   ┆ 124    ┆ 9        │
-        │ microsaccade     ┆ 145   ┆ 157    ┆ 12       │
-        │ saccade          ┆ 175   ┆ 199    ┆ 24       │
-        └──────────────────┴───────┴────────┴──────────┘
+        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
+        │ name             ┆ onset        ┆ offset       ┆ duration     │
+        │ ---              ┆ ---          ┆ ---          ┆ ---          │
+        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
+        │ saccade          ┆ 90ms         ┆ 100ms        ┆ 10ms         │
+        │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
+        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
+        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
+        │ microsaccade     ┆ 115ms        ┆ 124ms        ┆ 9ms          │
+        │ microsaccade     ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        │ saccade          ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        └──────────────────┴──────────────┴──────────────┴──────────────┘
 
         All fixations:
 
         >>> events.filter_by_name('fixation')
         shape: (4, 4)
-        ┌──────────────────┬───────┬────────┬──────────┐
-        │ name             ┆ onset ┆ offset ┆ duration │
-        │ ---              ┆ ---   ┆ ---    ┆ ---      │
-        │ str              ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════════╪═══════╪════════╪══════════╡
-        │ fixation         ┆ 99    ┆ 176    ┆ 77       │
-        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
-        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
-        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
-        └──────────────────┴───────┴────────┴──────────┘
+        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
+        │ name             ┆ onset        ┆ offset       ┆ duration     │
+        │ ---              ┆ ---          ┆ ---          ┆ ---          │
+        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation         ┆ 99ms         ┆ 176ms        ┆ 77ms         │
+        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
+        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
+        └──────────────────┴──────────────┴──────────────┴──────────────┘
 
         Exact match for fixation:
 
         >>> events.filter_by_name('^fixation$')
         shape: (1, 4)
-        ┌──────────┬───────┬────────┬──────────┐
-        │ name     ┆ onset ┆ offset ┆ duration │
-        │ ---      ┆ ---   ┆ ---    ┆ ---      │
-        │ str      ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════╪═══════╪════════╪══════════╡
-        │ fixation ┆ 99    ┆ 176    ┆ 77       │
-        └──────────┴───────┴────────┴──────────┘
+        ┌──────────┬──────────────┬──────────────┬──────────────┐
+        │ name     ┆ onset        ┆ offset       ┆ duration     │
+        │ ---      ┆ ---          ┆ ---          ┆ ---          │
+        │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation ┆ 99ms         ┆ 176ms        ┆ 77ms         │
+        └──────────┴──────────────┴──────────────┴──────────────┘
 
         Prefix match:
 
         >>> events.filter_by_name('^fixation_')
         shape: (3, 4)
-        ┌──────────────────┬───────┬────────┬──────────┐
-        │ name             ┆ onset ┆ offset ┆ duration │
-        │ ---              ┆ ---   ┆ ---    ┆ ---      │
-        │ str              ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════════╪═══════╪════════╪══════════╡
-        │ fixation_idt     ┆ 99    ┆ 175    ┆ 76       │
-        │ fixation_ivt     ┆ 100   ┆ 178    ┆ 78       │
-        │ fixation_eyelink ┆ 101   ┆ 175    ┆ 74       │
-        └──────────────────┴───────┴────────┴──────────┘
+        ┌──────────────────┬──────────────┬──────────────┬──────────────┐
+        │ name             ┆ onset        ┆ offset       ┆ duration     │
+        │ ---              ┆ ---          ┆ ---          ┆ ---          │
+        │ str              ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation_idt     ┆ 99ms         ┆ 175ms        ┆ 76ms         │
+        │ fixation_ivt     ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        │ fixation_eyelink ┆ 101ms        ┆ 175ms        ┆ 74ms         │
+        └──────────────────┴──────────────┴──────────────┴──────────────┘
 
         Suffix match:
 
         >>> events.filter_by_name('ivt$')
         shape: (1, 4)
-        ┌──────────────┬───────┬────────┬──────────┐
-        │ name         ┆ onset ┆ offset ┆ duration │
-        │ ---          ┆ ---   ┆ ---    ┆ ---      │
-        │ str          ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════╪═══════╪════════╪══════════╡
-        │ fixation_ivt ┆ 100   ┆ 178    ┆ 78       │
-        └──────────────┴───────┴────────┴──────────┘
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation_ivt ┆ 100ms        ┆ 178ms        ┆ 78ms         │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
 
         All saccade variants:
 
         >>> events.filter_by_name('saccade')
         shape: (4, 4)
-        ┌──────────────┬───────┬────────┬──────────┐
-        │ name         ┆ onset ┆ offset ┆ duration │
-        │ ---          ┆ ---   ┆ ---    ┆ ---      │
-        │ str          ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════╪═══════╪════════╪══════════╡
-        │ saccade      ┆ 90    ┆ 100    ┆ 10       │
-        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
-        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
-        │ saccade      ┆ 175   ┆ 199    ┆ 24       │
-        └──────────────┴───────┴────────┴──────────┘
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ saccade      ┆ 90ms         ┆ 100ms        ┆ 10ms         │
+        │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
+        │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        │ saccade      ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
 
         Only microsaccades:
 
         >>> events.filter_by_name('microsaccade')
         shape: (2, 4)
-        ┌──────────────┬───────┬────────┬──────────┐
-        │ name         ┆ onset ┆ offset ┆ duration │
-        │ ---          ┆ ---   ┆ ---    ┆ ---      │
-        │ str          ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════════╪═══════╪════════╪══════════╡
-        │ microsaccade ┆ 115   ┆ 124    ┆ 9        │
-        │ microsaccade ┆ 145   ┆ 157    ┆ 12       │
-        └──────────────┴───────┴────────┴──────────┘
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ name         ┆ onset        ┆ offset       ┆ duration     │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ str          ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ microsaccade ┆ 115ms        ┆ 124ms        ┆ 9ms          │
+        │ microsaccade ┆ 145ms        ┆ 157ms        ┆ 12ms         │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
 
         Exact match for saccade:
 
         >>> events.filter_by_name('^saccade$')
         shape: (2, 4)
-        ┌─────────┬───────┬────────┬──────────┐
-        │ name    ┆ onset ┆ offset ┆ duration │
-        │ ---     ┆ ---   ┆ ---    ┆ ---      │
-        │ str     ┆ i64   ┆ i64    ┆ i64      │
-        ╞═════════╪═══════╪════════╪══════════╡
-        │ saccade ┆ 90    ┆ 100    ┆ 10       │
-        │ saccade ┆ 175   ┆ 199    ┆ 24       │
-        └─────────┴───────┴────────┴──────────┘
+        ┌─────────┬──────────────┬──────────────┬──────────────┐
+        │ name    ┆ onset        ┆ offset       ┆ duration     │
+        │ ---     ┆ ---          ┆ ---          ┆ ---          │
+        │ str     ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞═════════╪══════════════╪══════════════╪══════════════╡
+        │ saccade ┆ 90ms         ┆ 100ms        ┆ 10ms         │
+        │ saccade ┆ 175ms        ┆ 199ms        ┆ 24ms         │
+        └─────────┴──────────────┴──────────────┴──────────────┘
 
         Returns
         -------
@@ -816,7 +896,7 @@ class Events:
             The name of the events to be merged. (default: 'fixation')
 
         max_gap: int | float
-            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 75)
+            The maximum gap (in ms) between subsequent fixation events to be merged. (default: 50)
 
         verbose: bool
             If ``True``, print the number of events merged and the resulting number of events.
@@ -838,13 +918,13 @@ class Events:
         >>> events.merge_subsequent_close_events(name='fixation', max_gap=10)
         >>> events.frame
         shape: (1, 4)
-        ┌──────────┬───────┬────────┬──────────┐
-        │ name     ┆ onset ┆ offset ┆ duration │
-        │ ---      ┆ ---   ┆ ---    ┆ ---      │
-        │ str      ┆ i64   ┆ i64    ┆ i64      │
-        ╞══════════╪═══════╪════════╪══════════╡
-        │ fixation ┆ 0     ┆ 90     ┆ 90       │
-        └──────────┴───────┴────────┴──────────┘
+        ┌──────────┬──────────────┬──────────────┬──────────────┐
+        │ name     ┆ onset        ┆ offset       ┆ duration     │
+        │ ---      ┆ ---          ┆ ---          ┆ ---          │
+        │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+        ╞══════════╪══════════════╪══════════════╪══════════════╡
+        │ fixation ┆ 0µs          ┆ 90ms         ┆ 90ms         │
+        └──────────┴──────────────┴──────────────┴──────────────┘
 
         This combined all the smaller events into a single event with longer duration.
 
@@ -861,8 +941,12 @@ class Events:
 
         # Step 3: Create a 'group' identifier for merging
         events = events.with_columns(
-            # calculate when gap is null or > max_gap
-            (pl.col('gap').is_null() | (pl.col('gap') > max_gap))
+            # calculate when gap is null or > max_gap (gap is a Duration; compare in
+            # fractional milliseconds so sub-millisecond gaps are not truncated away)
+            (
+                pl.col('gap').is_null()
+                | (pl.col('gap').dt.total_milliseconds(fractional=True) > max_gap)
+            )
             .cast(pl.Int64)
             # cumulative sum (of ones) in 'group' to assign a unique group number
             # to each sequence of events to be merged

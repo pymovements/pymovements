@@ -394,6 +394,24 @@ def test_microsaccades_raises_error(kwargs, expected_error, expected_message):
             ),
             id='two_steps_one_saccade_timesteps_numpy',
         ),
+        pytest.param(
+            {
+                'velocities': step_function(
+                    length=100,
+                    steps=[40, 50],
+                    values=[(9, 9), (0, 0)],
+                    start_value=(0, 0),
+                ),
+                'timesteps': pl.Series(np.arange(1000, 1100)).cast(pl.Duration('ms')),
+                'threshold': 1e-5,
+            },
+            Events(
+                name='saccade',
+                onsets=[1040],
+                offsets=[1049],
+            ),
+            id='two_steps_one_saccade_with_duration_timesteps',
+        ),
     ],
 )
 def test_microsaccades_detects_saccades(kwargs, expected):

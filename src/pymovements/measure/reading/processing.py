@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import polars as pl
 
+from pymovements._utils._time import durations_to_ms
+
 
 def compute_reading_measures(
         fixations: pl.DataFrame,
@@ -55,6 +57,9 @@ def compute_reading_measures(
     pl.DataFrame
         DataFrame with computed reading measures.
     """
+    # Convert Duration columns to numeric milliseconds for dict iteration.
+    fixations = durations_to_ms(fixations)
+
     # Append an extra dummy fixation to have the next fixation for the actual last fixation.
     dummy_fixation_dict: dict[str, list[int] | list[str]] = {}
     for col, dtype in fixations.schema.items():

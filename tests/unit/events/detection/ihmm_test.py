@@ -822,7 +822,7 @@ def test_ihmm_accepts_float_timesteps():
     events = ihmm(velocities, timesteps=timesteps, minimum_duration=1, reestimation=True)
 
     assert len(events.frame) >= 1
-    assert events.frame['onset'].dtype == pl.Float64
+    assert events.frame['onset'].dtype == pl.Duration('us')
 
 
 def test_ihmm_accepts_polars_series_timesteps():
@@ -839,6 +839,19 @@ def test_ihmm_accepts_polars_series_timesteps():
     events = ihmm(velocities, timesteps=timesteps, minimum_duration=1, reestimation=True)
 
     assert len(events.frame) >= 1
+
+
+def test_ihmm_accepts_duration_timesteps():
+    """Duration timesteps are accepted and yield the same events as numeric millisecond ones."""
+    positions = step_function(length=200, steps=[1], values=[(50., 50.)], start_value=(0., 0.))
+    velocities = pos2vel(positions, sampling_rate=sampling_rate)
+    numeric = np.arange(len(velocities))
+    duration = pl.Series('time', numeric).cast(pl.Duration('ms'))
+    numeric_events = ihmm(velocities, timesteps=numeric, minimum_duration=1, reestimation=True)
+    duration_events = ihmm(velocities, timesteps=duration, minimum_duration=1, reestimation=True)
+
+    assert len(duration_events.frame) >= 1
+    assert duration_events.frame.equals(numeric_events.frame)
 
 
 def test_ihmm_rejects_non_numeric_polars_timesteps():
@@ -1105,8 +1118,8 @@ def test_ihmm_handles_nan_velocities():
 
     # the low-velocity segment spans the interior NaN and yields a single fixation.
     assert len(events.frame) == 1
-    onset = events.frame['onset'].to_list()[0]
-    offset = events.frame['offset'].to_list()[0]
+    onset = events.frame['onset'].dt.total_milliseconds().to_list()[0]
+    offset = events.frame['offset'].dt.total_milliseconds().to_list()[0]
     assert onset == 0
     assert offset == 2
 
@@ -1328,8 +1341,8 @@ def test_ihmm_removes_leading_trailing_nans():
     # the fixation must be confined to the non-nan region (indices 1..3), never
     # extending onto the trimmed leading (index 0) or trailing (index 4) samples.
     assert len(events.frame) == 1
-    onset = events.frame['onset'].to_list()[0]
-    offset = events.frame['offset'].to_list()[0]
+    onset = events.frame['onset'].dt.total_milliseconds().to_list()[0]
+    offset = events.frame['offset'].dt.total_milliseconds().to_list()[0]
     assert onset == 1
     assert offset == 3
 
@@ -1458,8 +1471,11 @@ sampling_rate = 1000.0
 
 
 def _spans(events):
-    """Return a list of (onset, offset) tuples for every detected event."""
-    frame = events.frame
+    """Return a list of (onset, offset) tuples in milliseconds for every detected event."""
+    frame = events.frame.with_columns(
+        pl.col('onset').dt.total_milliseconds(),
+        pl.col('offset').dt.total_milliseconds(),
+    )
     return list(zip(frame['onset'].to_list(), frame['offset'].to_list()))
 
 

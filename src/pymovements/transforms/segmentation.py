@@ -26,6 +26,15 @@ import warnings
 import numpy as np
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
+
+
+def _to_num(series: pl.Series) -> np.ndarray:
+    """Convert a time series to millisecond values as numpy array."""
+    if isinstance(series.dtype, pl.Duration):
+        return duration_to_ms(series).to_numpy()
+    return series.to_numpy()
+
 
 def events2segmentation(
     events: pl.DataFrame,
@@ -65,6 +74,8 @@ def events2segmentation(
         Default is 'offset'.
     padding : float | tuple[float, float] | None
         Padding to extend each event interval, in the same units as ``time_column``.
+        If the onset and offset columns hold ``polars.Duration`` values, the padding
+        values are interpreted as milliseconds.
         If a single float, the same padding is applied symmetrically before and after
         each event. If a tuple ``(before, after)``, ``before`` is subtracted from the
         onset and ``after`` is added to the offset. Both values must be non-negative.
@@ -97,7 +108,8 @@ def events2segmentation(
 
     When ``padding`` is specified, each event interval is extended by subtracting
     ``pad_before`` from the onset and adding ``pad_after`` to the offset. The padding
-    values are in the same units as the ``time_column``.
+    values are in the same units as the ``time_column``, or in milliseconds if the
+    onset and offset columns hold ``polars.Duration`` values.
 
     .. warning::
         The offset is considered inclusive.
@@ -221,8 +233,8 @@ def events2segmentation(
     if relevant_events.is_empty():
         return pl.repeat(False, pl.len()).alias(name)
 
-    onsets = relevant_events[onset_column].to_numpy()
-    offsets = relevant_events[offset_column].to_numpy()
+    onsets = _to_num(relevant_events[onset_column])
+    offsets = _to_num(relevant_events[offset_column])
 
     if np.any(onsets > offsets):
         raise ValueError(
@@ -238,8 +250,8 @@ def events2segmentation(
         # Check for overlaps within each trial
         if trial_columns:
             for trial_group in relevant_events.group_by(trial_columns):
-                trial_onsets = trial_group[1][onset_column].to_numpy() - pad_before
-                trial_offsets = trial_group[1][offset_column].to_numpy() + pad_after
+                trial_onsets = _to_num(trial_group[1][onset_column]) - pad_before
+                trial_offsets = _to_num(trial_group[1][offset_column]) + pad_after
                 if _has_overlap(trial_onsets, trial_offsets):
                     warnings.warn(
                         f'Overlapping events detected for trial {trial_group[0]}',
@@ -261,11 +273,23 @@ def events2segmentation(
             else:
                 warnings.warn('Overlapping events detected', UserWarning, stacklevel=2)
 
+    # Compare in numeric milliseconds so the mask is correct whether the event bounds and the
+    # sample time column are numeric or ``polars.Duration``, and whether or not their dtypes
+    # match. Duration values are converted by their physical unit; numeric values follow the
+    # codebase convention that a numeric time column is already in milliseconds. The event
+    # bounds are already numeric milliseconds via ``_to_num``; the time column is coerced to
+    # milliseconds at evaluation time, dispatching on its runtime dtype.
+    time_ms = pl.col(time_column).map_batches(
+        lambda series: duration_to_ms(series)
+        if isinstance(series.dtype, pl.Duration) else series.cast(pl.Float64),
+        return_dtype=pl.Float64,
+    )
+
     is_event = pl.repeat(False, pl.len())
-    for event in relevant_events.to_dicts():
+    for index, event in enumerate(relevant_events.to_dicts()):
         is_in_time_range = (
-            pl.col(time_column).ge(event[onset_column] - pad_before)
-            & pl.col(time_column).le(event[offset_column] + pad_after)
+            time_ms.ge(onsets[index] - pad_before)
+            & time_ms.le(offsets[index] + pad_after)
         )
 
         # Select events matching time and trial criteria
@@ -372,14 +396,24 @@ def events2timeratio(
     if samples.is_empty():
         return pl.lit(None).cast(pl.Float64).alias(f'event_ratio_{name}')
 
+    # Work in numeric milliseconds so event durations and sample time ranges combine correctly
+    # whether either side is numeric or polars.Duration, and whether or not their dtypes match.
+    # Duration values are converted by their physical unit; numeric values follow the codebase
+    # convention that a numeric time column is already in milliseconds. Each column is coerced to
+    # fractional milliseconds based on its own dtype.
+    def _ms(frame: pl.DataFrame, column: str) -> pl.Expr:
+        if isinstance(frame.schema[column], pl.Duration):
+            return duration_to_ms(column)
+        return pl.col(column).cast(pl.Float64)
+
+    onset_ms = _ms(relevant_events, onset_column)
+    offset_ms = _ms(relevant_events, offset_column)
+    time_ms = _ms(samples, time_column)
+
     # Single-sample series: return 1.0 if that sample falls within an event, else 0.0.
     if samples.height == 1:
-        sample_time = samples.get_column(time_column).item(0)
-        event_filter = (
-            pl.col(onset_column) <= sample_time
-        ) & (
-            pl.col(offset_column) >= sample_time
-        )
+        sample_time = _to_num(samples.get_column(time_column))[0]
+        event_filter = (onset_ms <= sample_time) & (offset_ms >= sample_time)
         if trial_columns:
             for col in trial_columns:
                 sample_val = samples.get_column(col).item(0)
@@ -394,19 +428,19 @@ def events2timeratio(
         # Calculate the mode of time differences as a robust estimate for the sampling interval.
         # At this point, samples is non-empty and has more than one row (single-sample above),
         # so `diff().drop_nulls()` will yield at least one element and `mode()` will be non-empty.
-        time_diffs = samples[time_column].diff().drop_nulls()
+        time_diffs = samples.select(time_ms.alias(time_column))[time_column].diff().drop_nulls()
         dt_ms = float(time_diffs.mode().item())
 
     # Event ratio considering trial columns
     if trial_columns:
         event_durations = (
             relevant_events.group_by(trial_columns, maintain_order=True)
-            .agg((pl.col(offset_column) - pl.col(onset_column) + dt_ms).alias('duration'))
+            .agg((offset_ms - onset_ms + dt_ms).alias('duration'))
             .with_columns(pl.col('duration').list.sum())
         )
 
         sample_time_ranges = samples.group_by(trial_columns, maintain_order=True).agg(
-            (pl.col(time_column).max() - pl.col(time_column).min() + dt_ms).alias('time_range'),
+            (time_ms.max() - time_ms.min() + dt_ms).alias('time_range'),
         )
 
         trial_ratios = event_durations.join(
@@ -446,11 +480,11 @@ def events2timeratio(
         )
 
     total_duration = (
-        relevant_events.select(pl.col(offset_column) - pl.col(onset_column) + dt_ms).sum()
+        relevant_events.select(offset_ms - onset_ms + dt_ms).sum()
     ).item()
 
     time_range = samples.select(
-        pl.col(time_column).max() - pl.col(time_column).min() + dt_ms,
+        time_ms.max() - time_ms.min() + dt_ms,
     ).item()
 
     return pl.lit(total_duration / time_range).alias(f'event_ratio_{name}')

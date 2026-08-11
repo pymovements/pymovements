@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
 from pymovements._version import __version__
 from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.gaze.validation import CheckResult
@@ -367,7 +368,11 @@ def _compute_file_row(
             and len(gaze.samples) > 0
         ):
             try:
-                result_df = gaze.samples.select(
+                # data_loss operates on a numeric millisecond time base, so convert the
+                # canonical Duration time column before computing it. A non-Duration time
+                # column would raise here and fall back to the simple estimate below.
+                samples = gaze.samples.with_columns(duration_to_ms('time').alias('time'))
+                result_df = samples.select(
                     data_loss(coord_col, sampling_rate=sampling_rate, unit='ratio'),
                 )
                 dl_val = result_df[0, 'data_loss_ratio']
@@ -448,7 +453,16 @@ def _compute_trial_rows(
             if not agg_exprs_t:
                 continue
 
-            trial_df = gaze.samples.group_by(gaze.trial_columns).agg(agg_exprs_t)
+            # Convert the canonical Duration time column to numeric milliseconds for data_loss.
+            # A trial gaze may carry only precision measures and no time column at all, and a
+            # non-Duration time column is left untouched so precision measures still compute
+            # instead of the whole trial being dropped.
+            samples = gaze.samples
+            if 'time' in samples.columns and isinstance(samples.schema['time'], pl.Duration):
+                samples = samples.with_columns(duration_to_ms('time').alias('time'))
+            trial_df = samples.group_by(
+                gaze.trial_columns,
+            ).agg(agg_exprs_t)
             if 'data_loss_ratio' in trial_df.columns and 'data_loss' not in trial_df.columns:
                 trial_df = trial_df.rename({'data_loss_ratio': 'data_loss'})
             trial_df = trial_df.with_columns(pl.lit(subject_id).alias('subject_id'))

@@ -71,9 +71,11 @@ def from_csv(
         The name of the timestamp column in the input data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step,' the experiment definition must be specified. All timestamps will be converted to
-        milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
+        units are 's' for seconds, 'ms' for milliseconds, 'us' for microseconds and 'step' for
+        steps. If the unit is 'step' the experiment definition must be specified. All timestamps
+        will be converted to a ``polars.Duration`` column with microsecond precision. If the
+        column already holds ``polars.Duration`` values, it is used as is and ``time_unit`` is
+        ignored. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
@@ -104,7 +106,10 @@ def from_csv(
         Dictionary containing columns to add to loaded data frame.
         (default: None)
     column_schema_overrides:  dict[str, type] | None
-        Dictionary containing types for columns.
+        Dictionary containing types for columns. Overrides are applied by casting the parsed
+        column, so a polars.Duration override on the time column reinterprets the raw
+        values in that Duration unit; its unit must match the file's stored values. To convert
+        numeric timestamps of a known unit, prefer time_unit instead.
         (default: None)
     read_csv_kwargs: dict[str, Any] | None
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
@@ -178,22 +183,22 @@ def from_csv(
     ... )
     >>> gaze.samples
     shape: (10, 2)
-    ┌──────┬───────────┐
-    │ time ┆ pixel     │
-    │ ---  ┆ ---       │
-    │ i64  ┆ list[i64] │
-    ╞══════╪═══════════╡
-    │ 0    ┆ [0, 0]    │
-    │ 1    ┆ [0, 0]    │
-    │ 2    ┆ [0, 0]    │
-    │ 3    ┆ [0, 0]    │
-    │ 4    ┆ [0, 0]    │
-    │ 5    ┆ [0, 0]    │
-    │ 6    ┆ [0, 0]    │
-    │ 7    ┆ [0, 0]    │
-    │ 8    ┆ [0, 0]    │
-    │ 9    ┆ [0, 0]    │
-    └──────┴───────────┘
+    ┌──────────────┬───────────┐
+    │ time         ┆ pixel     │
+    │ ---          ┆ ---       │
+    │ duration[μs] ┆ list[i64] │
+    ╞══════════════╪═══════════╡
+    │ 0µs          ┆ [0, 0]    │
+    │ 1ms          ┆ [0, 0]    │
+    │ 2ms          ┆ [0, 0]    │
+    │ 3ms          ┆ [0, 0]    │
+    │ 4ms          ┆ [0, 0]    │
+    │ 5ms          ┆ [0, 0]    │
+    │ 6ms          ┆ [0, 0]    │
+    │ 7ms          ┆ [0, 0]    │
+    │ 8ms          ┆ [0, 0]    │
+    │ 9ms          ┆ [0, 0]    │
+    └──────────────┴───────────┘
 
     Please be aware that data types are inferred from a fixed number of rows. To ensure
     correct data types, you can pass a dictionary of column names and data types to the
@@ -212,28 +217,37 @@ def from_csv(
     ... )
     >>> gaze.samples
     shape: (10, 2)
-    ┌──────┬────────────┐
-    │ time ┆ pixel      │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.0, 0.0] │
-    │ 1    ┆ [0.0, 0.0] │
-    │ 2    ┆ [0.0, 0.0] │
-    │ 3    ┆ [0.0, 0.0] │
-    │ 4    ┆ [0.0, 0.0] │
-    │ 5    ┆ [0.0, 0.0] │
-    │ 6    ┆ [0.0, 0.0] │
-    │ 7    ┆ [0.0, 0.0] │
-    │ 8    ┆ [0.0, 0.0] │
-    │ 9    ┆ [0.0, 0.0] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ pixel      │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 1ms          ┆ [0.0, 0.0] │
+    │ 2ms          ┆ [0.0, 0.0] │
+    │ 3ms          ┆ [0.0, 0.0] │
+    │ 4ms          ┆ [0.0, 0.0] │
+    │ 5ms          ┆ [0.0, 0.0] │
+    │ 6ms          ┆ [0.0, 0.0] │
+    │ 7ms          ┆ [0.0, 0.0] │
+    │ 8ms          ┆ [0.0, 0.0] │
+    │ 9ms          ┆ [0.0, 0.0] │
+    └──────────────┴────────────┘
 
     """
     if read_csv_kwargs is None:
         read_csv_kwargs = {}
 
     if kwargs:
+        # Extract schema_overrides from deprecated kwargs before they reach pl.read_csv,
+        # as polars cannot apply Duration overrides at CSV-read time.
+        deprecated_schema_overrides = kwargs.pop('schema_overrides', {})
+        if deprecated_schema_overrides:
+            if column_schema_overrides is None:
+                column_schema_overrides = deprecated_schema_overrides
+            else:
+                column_schema_overrides = {**deprecated_schema_overrides, **column_schema_overrides}
+
         warnings.warn(
             DeprecationWarning(
                 "from_csv() argument '**kwargs' is deprecated since version v0.24.0. "
@@ -423,7 +437,9 @@ def from_asc(
         Dictionary containing columns to add to loaded data frame.
         (default: None)
     column_schema_overrides: dict[str, Any] | None
-        Dictionary containing types for columns.
+        Dictionary containing types for columns. Overrides are applied by casting the parsed
+        column, so a polars.Duration override on the time column reinterprets the raw
+        values in that Duration unit; its unit must match the file's stored values.
         (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
@@ -506,23 +522,23 @@ def from_asc(
     >>> gaze = from_asc(file='tests/files/eyelink_monocular_example.asc')
     >>> gaze.samples
     shape: (16, 3)
-    ┌─────────┬───────┬────────────────┐
-    │ time    ┆ pupil ┆ pixel          │
-    │ ---     ┆ ---   ┆ ---            │
-    │ i64     ┆ f64   ┆ list[f64]      │
-    ╞═════════╪═══════╪════════════════╡
-    │ 2154556 ┆ 778.0 ┆ [138.1, 132.8] │
-    │ 2154557 ┆ 778.0 ┆ [138.2, 132.7] │
-    │ 2154560 ┆ 777.0 ┆ [137.9, 131.6] │
-    │ 2154564 ┆ 778.0 ┆ [138.1, 131.0] │
-    │ 2154596 ┆ 784.0 ┆ [139.6, 132.1] │
-    │ …       ┆ …     ┆ …              │
-    │ 2339246 ┆ 622.0 ┆ [629.9, 531.9] │
-    │ 2339271 ┆ 617.0 ┆ [639.4, 531.9] │
-    │ 2339272 ┆ 617.0 ┆ [639.0, 531.9] │
-    │ 2339290 ┆ 618.0 ┆ [637.6, 531.4] │
-    │ 2339291 ┆ 618.0 ┆ [637.3, 531.2] │
-    └─────────┴───────┴────────────────┘
+    ┌───────────────┬───────┬────────────────┐
+    │ time          ┆ pupil ┆ pixel          │
+    │ ---           ┆ ---   ┆ ---            │
+    │ duration[μs]  ┆ f64   ┆ list[f64]      │
+    ╞═══════════════╪═══════╪════════════════╡
+    │ 35m 54s 556ms ┆ 778.0 ┆ [138.1, 132.8] │
+    │ 35m 54s 557ms ┆ 778.0 ┆ [138.2, 132.7] │
+    │ 35m 54s 560ms ┆ 777.0 ┆ [137.9, 131.6] │
+    │ 35m 54s 564ms ┆ 778.0 ┆ [138.1, 131.0] │
+    │ 35m 54s 596ms ┆ 784.0 ┆ [139.6, 132.1] │
+    │ …             ┆ …     ┆ …              │
+    │ 38m 59s 246ms ┆ 622.0 ┆ [629.9, 531.9] │
+    │ 38m 59s 271ms ┆ 617.0 ┆ [639.4, 531.9] │
+    │ 38m 59s 272ms ┆ 617.0 ┆ [639.0, 531.9] │
+    │ 38m 59s 290ms ┆ 618.0 ┆ [637.6, 531.4] │
+    │ 38m 59s 291ms ┆ 618.0 ┆ [637.3, 531.2] │
+    └───────────────┴───────┴────────────────┘
     >>> gaze.experiment.eyetracker.sampling_rate
     1000.0
     """
@@ -637,7 +653,9 @@ def from_ipc(
         Dictionary containing columns to add to loaded data frame.
         (default: None)
     column_schema_overrides:  dict[str, type] | None
-        Dictionary containing types for columns.
+        Dictionary containing types for columns. Overrides are applied by casting the parsed
+        column, so a polars.Duration override on the time column reinterprets the raw
+        values in that Duration unit; its unit must match the file's stored values.
         (default: None)
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
@@ -660,22 +678,22 @@ def from_ipc(
     >>> gaze = from_ipc(file='tests/files/monocular_example.feather')
     >>> gaze.samples
     shape: (10, 2)
-    ┌──────┬───────────┐
-    │ time ┆ pixel     │
-    │ ---  ┆ ---       │
-    │ i64  ┆ list[i64] │
-    ╞══════╪═══════════╡
-    │ 0    ┆ [0, 0]    │
-    │ 1    ┆ [0, 0]    │
-    │ 2    ┆ [0, 0]    │
-    │ 3    ┆ [0, 0]    │
-    │ 4    ┆ [0, 0]    │
-    │ 5    ┆ [0, 0]    │
-    │ 6    ┆ [0, 0]    │
-    │ 7    ┆ [0, 0]    │
-    │ 8    ┆ [0, 0]    │
-    │ 9    ┆ [0, 0]    │
-    └──────┴───────────┘
+    ┌──────────────┬───────────┐
+    │ time         ┆ pixel     │
+    │ ---          ┆ ---       │
+    │ duration[μs] ┆ list[i64] │
+    ╞══════════════╪═══════════╡
+    │ 0µs          ┆ [0, 0]    │
+    │ 1ms          ┆ [0, 0]    │
+    │ 2ms          ┆ [0, 0]    │
+    │ 3ms          ┆ [0, 0]    │
+    │ 4ms          ┆ [0, 0]    │
+    │ 5ms          ┆ [0, 0]    │
+    │ 6ms          ┆ [0, 0]    │
+    │ 7ms          ┆ [0, 0]    │
+    │ 8ms          ┆ [0, 0]    │
+    │ 9ms          ┆ [0, 0]    │
+    └──────────────┴───────────┘
 
     """
     if read_ipc_kwargs is None:

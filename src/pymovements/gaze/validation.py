@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from pymovements._utils._time import duration_to_ms
+
 if TYPE_CHECKING:
     from pymovements.gaze.gaze import Gaze
 
@@ -68,6 +70,25 @@ class CheckResult:
     severity: str
     message: str
     sources: list[str] = field(default_factory=list)
+
+
+def _time_ms(samples: pl.DataFrame) -> pl.Series:
+    """Return the ``time`` column as fractional milliseconds.
+
+    The ``time`` column is stored as ``polars.Duration('us')``. Callers must ensure the
+    column is a Duration before calling; each check guards this with its own dtype check.
+
+    Parameters
+    ----------
+    samples : pl.DataFrame
+        Sample dataframe carrying a ``Duration`` ``time`` column.
+
+    Returns
+    -------
+    pl.Series
+        The ``time`` column expressed as fractional milliseconds.
+    """
+    return duration_to_ms(samples['time'])
 
 
 def check_trial_columns_exist(gaze: Gaze, source_path: str = '') -> CheckResult:
@@ -199,10 +220,11 @@ def check_trial_columns_dtype(gaze: Gaze, source_path: str = '') -> CheckResult:
 
 
 def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
-    """Check that a ``time`` column is present and carries a numeric dtype.
+    """Check that a ``time`` column is present and carries a ``Duration`` dtype.
 
     After initialisation, pymovements renames the user-specified time column to
-    ``'time'``. This check therefore looks for the column named ``'time'``.
+    ``'time'`` and stores it as ``polars.Duration('us')``. This check therefore looks
+    for the column named ``'time'`` and verifies its dtype.
 
     Parameters
     ----------
@@ -214,8 +236,8 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
     Returns
     -------
     CheckResult
-        Severity ``'fail'`` if the column is absent or has a non-numeric dtype;
-        ``'pass'`` otherwise.
+        Severity ``'fail'`` if the column is absent or does not have a ``Duration``
+        dtype; ``'pass'`` otherwise.
 
     Examples
     --------
@@ -243,13 +265,13 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
             sources=sources,
         )
 
-    if not gaze.samples['time'].dtype.is_numeric():
+    if not isinstance(gaze.samples['time'].dtype, pl.Duration):
         return CheckResult(
             code='time_column_exists',
             severity='fail',
             message=(
-                f"'time' column has dtype {gaze.samples['time'].dtype!r} which is not numeric. "
-                'Timestamps must be numeric (integer or float).'
+                f"'time' column has dtype {gaze.samples['time'].dtype!r} which is not a Duration. "
+                'Timestamps must be stored as a polars Duration.'
             ),
             sources=sources,
         )
@@ -257,7 +279,7 @@ def check_time_column_exists(gaze: Gaze, source_path: str = '') -> CheckResult:
     return CheckResult(
         code='time_column_exists',
         severity='pass',
-        message="'time' column is present and has a numeric dtype.",
+        message="'time' column is present and has a Duration dtype.",
         sources=sources,
     )
 
@@ -378,9 +400,20 @@ def check_time_monotone(gaze: Gaze, source_path: str = '') -> CheckResult:
     else:
         groups = [gaze]
 
+    if not isinstance(gaze.samples['time'].dtype, pl.Duration):
+        return CheckResult(
+            code='time_monotone',
+            severity='error',
+            message=(
+                f"'time' column has dtype {gaze.samples['time'].dtype!r} which is not a Duration; "
+                'check could not be performed.'
+            ),
+            sources=sources,
+        )
+
     non_monotone: list[str] = []
     for part in groups:
-        times = part.samples['time'].to_list()
+        times = _time_ms(part.samples).to_list()
         if len(times) < 2:
             continue
         if any(times[i + 1] - times[i] <= 0 for i in range(len(times) - 1)):
@@ -487,9 +520,20 @@ def check_max_gap(
     else:
         groups = [gaze]
 
+    if not isinstance(gaze.samples['time'].dtype, pl.Duration):
+        return CheckResult(
+            code='max_gap',
+            severity='error',
+            message=(
+                f"'time' column has dtype {gaze.samples['time'].dtype!r} which is not a Duration; "
+                'check could not be performed.'
+            ),
+            sources=sources,
+        )
+
     gap_trials: list[str] = []
     for part in groups:
-        times = part.samples['time'].to_list()
+        times = _time_ms(part.samples).to_list()
         if len(times) < 2:
             continue
         if any(times[i + 1] - times[i] > max_gap_ms for i in range(len(times) - 1)):
@@ -580,8 +624,19 @@ def check_sampling_rate_consistency(
             sources=sources,
         )
 
+    if not isinstance(gaze.samples['time'].dtype, pl.Duration):
+        return CheckResult(
+            code='sampling_rate_consistency',
+            severity='error',
+            message=(
+                f"'time' column has dtype {gaze.samples['time'].dtype!r} which is not a Duration; "
+                'check could not be performed.'
+            ),
+            sources=sources,
+        )
+
     declared_rate = gaze.experiment.sampling_rate
-    diffs = gaze.samples['time'].cast(pl.Float64).diff().drop_nulls()
+    diffs = _time_ms(gaze.samples).diff().drop_nulls()
     positive_diffs = diffs.filter(diffs > 0)
 
     if len(positive_diffs) == 0:

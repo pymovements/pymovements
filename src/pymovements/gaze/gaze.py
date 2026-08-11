@@ -39,6 +39,9 @@ from tqdm import tqdm
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._time import duration_to_ms
+from pymovements._utils._time import durations_to_ms
+from pymovements._utils._time import time_column_to_duration_us
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -97,9 +100,11 @@ class Gaze:
         ``time``. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
-        units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
-        milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
+        units are 's' for seconds, 'ms' for milliseconds, 'us' for microseconds and 'step' for
+        steps. If the unit is 'step' the experiment definition must be specified. All timestamps
+        will be converted to a ``polars.Duration`` column with microsecond precision. If the
+        column already holds ``polars.Duration`` values, it is used as is and ``time_unit`` is
+        ignored. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns:list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
         nested into the column ``pixel``. If the list is empty or None, the nested ``pixel``
@@ -195,15 +200,15 @@ class Gaze:
     >>> gaze = Gaze(samples=df, pixel_columns=['x', 'y'], time_column='t', time_unit='ms')
     >>> gaze
     shape: (3, 2)
-    ┌──────┬────────────┐
-    │ time ┆ pixel      │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 1000 ┆ [0.1, 0.1] │
-    │ 1001 ┆ [0.2, 0.2] │
-    │ 1002 ┆ [0.3, 0.3] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ pixel      │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 1s           ┆ [0.1, 0.1] │
+    │ 1s 1ms       ┆ [0.2, 0.2] │
+    │ 1s 2ms       ┆ [0.3, 0.3] │
+    └──────────────┴────────────┘
 
     In case your data has no time column available, you can pass an
     :py:class:`~pymovements.Experiment` to create a time column with the correct sampling rate
@@ -229,15 +234,15 @@ class Gaze:
       origin='center'), eyetracker=EyeTracker(sampling_rate=100, left=None, right=None, model=None,
       version=None, vendor=None, mount=None))
     shape: (3, 2)
-    ┌──────┬────────────┐
-    │ time ┆ pixel      │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.1, 0.1] │
-    │ 10   ┆ [0.2, 0.2] │
-    │ 20   ┆ [0.3, 0.3] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ pixel      │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.1, 0.1] │
+    │ 10ms         ┆ [0.2, 0.2] │
+    │ 20ms         ┆ [0.3, 0.3] │
+    └──────────────┴────────────┘
     """
 
     samples: polars.DataFrame
@@ -324,15 +329,26 @@ class Gaze:
         else:
             self.metadata = metadata
 
+        # The auxiliary frames' time column is migrated to Duration('us') before being stored,
+        # consistent with the samples time column. Numeric values are interpreted as
+        # milliseconds (the unit these frames are parsed in); an existing Duration is normalized
+        # to microseconds. Frames without a time column are stored unchanged.
         _check_messages(messages)
-        self.messages = messages
+        if messages is not None:
+            self.messages = time_column_to_duration_us(messages)
+        else:
+            self.messages = None
 
-        if calibrations is not None:
+        if calibrations is not None and 'time' in calibrations.columns:
+            self.calibrations = time_column_to_duration_us(calibrations)
+        elif calibrations is not None:
             self.calibrations = calibrations
         else:
             self.calibrations = None
 
-        if validations is not None:
+        if validations is not None and 'time' in validations.columns:
+            self.validations = time_column_to_duration_us(validations)
+        elif validations is not None:
             self.validations = validations
         else:
             self.validations = None
@@ -920,7 +936,8 @@ class Gaze:
         Examples
         --------
         Let's create an example Gaze of 1000Hz with a time column and a position column.
-        Please note that time is always stored in milliseconds in the Gaze.
+        Please note that time is always stored as a ``polars.Duration`` column in the Gaze,
+        with numeric input interpreted according to ``time_unit``.
 
         >>> df = polars.DataFrame({
         ...     'time': [0, 1, 2, 3, 4],
@@ -930,17 +947,17 @@ class Gaze:
         >>> gaze = Gaze(samples=df, time_column='time', pixel_columns=['x', 'y'])
         >>> gaze.samples
         shape: (5, 2)
-        ┌──────┬───────────┐
-        │ time ┆ pixel     │
-        │ ---  ┆ ---       │
-        │ i64  ┆ list[i64] │
-        ╞══════╪═══════════╡
-        │ 0    ┆ [1, 1]    │
-        │ 1    ┆ [2, 2]    │
-        │ 2    ┆ [3, 3]    │
-        │ 3    ┆ [4, 4]    │
-        │ 4    ┆ [5, 5]    │
-        └──────┴───────────┘
+        ┌──────────────┬───────────┐
+        │ time         ┆ pixel     │
+        │ ---          ┆ ---       │
+        │ duration[μs] ┆ list[i64] │
+        ╞══════════════╪═══════════╡
+        │ 0µs          ┆ [1, 1]    │
+        │ 1ms          ┆ [2, 2]    │
+        │ 2ms          ┆ [3, 3]    │
+        │ 3ms          ┆ [4, 4]    │
+        │ 4ms          ┆ [5, 5]    │
+        └──────────────┴───────────┘
 
         We can now upsample the Gaze to 2000Hz by interpolating the values in
         the pixel column.
@@ -952,36 +969,36 @@ class Gaze:
         ... )
         >>> gaze.samples
         shape: (9, 2)
-        ┌──────┬────────────┐
-        │ time ┆ pixel      │
-        │ ---  ┆ ---        │
-        │ f64  ┆ list[f64]  │
-        ╞══════╪════════════╡
-        │ 0.0  ┆ [1.0, 1.0] │
-        │ 0.5  ┆ [1.5, 1.5] │
-        │ 1.0  ┆ [2.0, 2.0] │
-        │ 1.5  ┆ [2.5, 2.5] │
-        │ 2.0  ┆ [3.0, 3.0] │
-        │ 2.5  ┆ [3.5, 3.5] │
-        │ 3.0  ┆ [4.0, 4.0] │
-        │ 3.5  ┆ [4.5, 4.5] │
-        │ 4.0  ┆ [5.0, 5.0] │
-        └──────┴────────────┘
+        ┌──────────────┬────────────┐
+        │ time         ┆ pixel      │
+        │ ---          ┆ ---        │
+        │ duration[μs] ┆ list[f64]  │
+        ╞══════════════╪════════════╡
+        │ 0µs          ┆ [1.0, 1.0] │
+        │ 500µs        ┆ [1.5, 1.5] │
+        │ 1ms          ┆ [2.0, 2.0] │
+        │ 1500µs       ┆ [2.5, 2.5] │
+        │ 2ms          ┆ [3.0, 3.0] │
+        │ 2500µs       ┆ [3.5, 3.5] │
+        │ 3ms          ┆ [4.0, 4.0] │
+        │ 3500µs       ┆ [4.5, 4.5] │
+        │ 4ms          ┆ [5.0, 5.0] │
+        └──────────────┴────────────┘
 
         Downsample the Gaze to 500Hz results in the following DataFrame.
 
         >>> gaze.resample(resampling_rate=500)
         >>> gaze.samples
         shape: (3, 2)
-        ┌──────┬────────────┐
-        │ time ┆ pixel      │
-        │ ---  ┆ ---        │
-        │ i64  ┆ list[f64]  │
-        ╞══════╪════════════╡
-        │ 0    ┆ [1.0, 1.0] │
-        │ 2    ┆ [3.0, 3.0] │
-        │ 4    ┆ [5.0, 5.0] │
-        └──────┴────────────┘
+        ┌──────────────┬────────────┐
+        │ time         ┆ pixel      │
+        │ ---          ┆ ---        │
+        │ duration[μs] ┆ list[f64]  │
+        ╞══════════════╪════════════╡
+        │ 0µs          ┆ [1.0, 1.0] │
+        │ 2ms          ┆ [3.0, 3.0] │
+        │ 4ms          ┆ [5.0, 5.0] │
+        └──────────────┴────────────┘
         """
         self.transform(
             'resample',
@@ -1386,20 +1403,27 @@ class Gaze:
             if self.experiment and self.experiment.sampling_rate is not None:
                 kwargs['sampling_rate'] = self.experiment.sampling_rate
 
+        time_col = kwargs.get('time_column', 'time')
+        samples = self.samples
+        if time_col in samples.columns and isinstance(samples.schema[time_col], polars.Duration):
+            samples = samples.with_columns(
+                duration_to_ms(polars.col(time_col)).alias(time_col),
+            )
+
         if self.trial_columns is None:
-            return self.samples.select(method(**kwargs))
+            return samples.select(method(**kwargs))
 
         # Group measure values by trial columns.
         return polars.concat(
             [
                 df.select(
                     [  # add trial columns first, then add column for measure.
-                        polars.lit(value).cast(self.samples.schema[name]).alias(name)
+                        polars.lit(value).cast(samples.schema[name]).alias(name)
                         for name, value in zip(self.trial_columns, trial_values)
                     ] + [method(**kwargs)],
                 )
                 for trial_values, df in
-                self.samples.group_by(self.trial_columns, maintain_order=True)
+                samples.group_by(self.trial_columns, maintain_order=True)
             ],
         )
 
@@ -2440,7 +2464,11 @@ class Gaze:
             kwargs['events'] = events
 
         if 'timesteps' in method_args and 'time' in samples.columns:
-            kwargs['timesteps'] = samples.get_column('time')
+            timesteps_series = samples.get_column('time')
+            if isinstance(timesteps_series.dtype, polars.Duration):
+                kwargs['timesteps'] = duration_to_ms(timesteps_series)
+            else:
+                kwargs['timesteps'] = timesteps_series
 
         return kwargs
 
@@ -2554,45 +2582,41 @@ class Gaze:
         if time_column is not None and time_column != 'time':
             self.samples = self.samples.rename({time_column: 'time'})
 
-        # Convert time column to milliseconds.
+        # Convert time column to Duration('us').
         if 'time' in self.samples.columns:
             self._convert_time_units(time_unit)
 
     def _convert_time_units(self, time_unit: str | None) -> None:
-        """Convert the time column to milliseconds based on the specified time unit."""
-        if time_unit == 's':
-            self.samples = self.samples.with_columns(polars.col('time').mul(1000))
-
-        elif time_unit == 'us':
-            self.samples = self.samples.with_columns(polars.col('time').truediv(1000))
-
-        elif time_unit == 'step':
-            if self.experiment is not None:
-                self.samples = self.samples.with_columns(
-                    polars.col('time').mul(1000).truediv(self.experiment.sampling_rate),
-                )
-            else:
-                raise ValueError(
-                    "experiment with sampling rate must be specified if time_unit is 'step'",
-                )
-
-        elif time_unit != 'ms':
+        """Convert the time column to ``polars.Duration('us')``."""
+        # Reject an invalid unit up front: the branches below dispatch on the exact unit and the
+        # final `else` assumes 'step', so without this a typo like 'sec' would be silently handled
+        # as a step conversion. For a Duration time column the unit is ignored, but an invalid
+        # string still raises here so the same bad call fails regardless of the time column dtype.
+        if time_unit not in {'s', 'ms', 'us', 'step'}:
             raise ValueError(
                 f"unsupported time unit '{time_unit}'. "
                 "Supported units are 's' for seconds, 'ms' for milliseconds, "
                 "'us' for microseconds and 'step' for steps.",
             )
 
-        # Convert to int if possible.
-        if self.samples.schema['time'] == polars.Float64:
-            all_decimals = self.samples.select(
-                polars.col('time').round().eq(polars.col('time')).all(),
-            ).item()
-
-            if all_decimals:
+        if time_unit == 'step' and not isinstance(self.samples.schema['time'], polars.Duration):
+            # Steps are converted using the experiment sampling rate; a Duration time column
+            # already carries its unit and is handled by the shared conversion below instead.
+            if self.experiment is not None:
                 self.samples = self.samples.with_columns(
-                    polars.col('time').cast(polars.Int64),
+                    (polars.col('time') * 1_000_000 / self.experiment.sampling_rate)
+                    .round()
+                    .cast(polars.Duration('us')),
                 )
+            else:
+                raise ValueError(
+                    "experiment with sampling rate must be specified if time_unit is 'step'",
+                )
+
+        else:
+            # A Duration time column is normalized to microseconds (time_unit ignored); a numeric
+            # column is interpreted according to time_unit ('s', 'ms' or 'us').
+            self.samples = time_column_to_duration_us(self.samples, time_unit)
 
     def __eq__(self, other: Gaze) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Gaze` object."""
@@ -2809,7 +2833,7 @@ class Gaze:
         if extension == 'feather':
             events_out.write_ipc(path)
         elif extension == 'csv':
-            events_out.write_csv(path)
+            durations_to_ms(events_out).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2854,7 +2878,7 @@ class Gaze:
         if extension == 'feather':
             samples.write_ipc(path)
         elif extension == 'csv':
-            samples.write_csv(path)
+            durations_to_ms(samples).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2896,7 +2920,7 @@ class Gaze:
         if extension == 'feather':
             self.messages.write_ipc(path)
         elif extension == 'csv':
-            self.messages.write_csv(path)
+            durations_to_ms(self.messages).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2938,7 +2962,7 @@ class Gaze:
         if extension == 'feather':
             self.calibrations.write_ipc(path)
         elif extension == 'csv':
-            self.calibrations.write_csv(path)
+            durations_to_ms(self.calibrations).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(
@@ -2980,7 +3004,7 @@ class Gaze:
         if extension == 'feather':
             self.validations.write_ipc(path)
         elif extension == 'csv':
-            self.validations.write_csv(path)
+            durations_to_ms(self.validations).write_csv(path)
         else:
             valid_extensions = ['csv', 'feather']
             raise ValueError(

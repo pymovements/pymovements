@@ -1432,3 +1432,21 @@ def test_detect_with_events_trial_columns_warns_on_any_empty_trial():
     # Now we expect a warning because the second trial has no events
     with pytest.warns(UserWarning, match='detect_only_once: No events were detected.'):
         gaze.detect(detect_only_once)
+
+
+def test_gaze_detect_with_numeric_time_column_passes_timesteps_unconverted():
+    # A numeric time column (possible via direct samples mutation) must be passed
+    # to the detection method as is, without any Duration conversion.
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(0, 100, 1),
+        position=step_function(length=100, steps=[0], values=[(0, 0)]),
+        orient='row',
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+    expected = gaze.clone()
+    expected.detect('idt', dispersion_threshold=1, minimum_duration=10)
+
+    gaze.samples = gaze.samples.with_columns(pl.col('time').dt.total_milliseconds())
+    gaze.detect('idt', dispersion_threshold=1, minimum_duration=10)
+
+    assert_frame_equal(gaze.events.frame, expected.events.frame)

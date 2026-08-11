@@ -794,6 +794,83 @@ def test_event_samples_processor_process_correct_result(
     assert_frame_equal(measure_result, expected_dataframe, check_dtypes=False)
 
 
+def test_event_samples_processor_process_duration_time_column():
+    """A Duration sample time column is converted to milliseconds before measures run."""
+    events = pl.from_dict(
+        {'name': ['fixation', 'saccade'], 'onset': [0, 5000], 'offset': [4000, 7000]},
+        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
+    )
+    samples = pl.from_dict(
+        {
+            'time': [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000],
+            'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+        },
+        schema={'time': pl.Duration('us'), 'velocity': pl.List(pl.Float64)},
+    )
+
+    processor = EventSamplesProcessor(measures='peak_velocity')
+    result = processor.process(events, samples, identifiers=None)
+
+    assert result['name'].to_list() == ['fixation', 'saccade']
+    assert result['peak_velocity'].to_list() == pytest.approx([0.0, sqrt(2)])
+
+
+@pytest.mark.parametrize(
+    ('event_dtype', 'time_dtype'),
+    [
+        pytest.param(pl.Int64, pl.Int64, id='numeric_events_numeric_time'),
+        pytest.param(pl.Duration('us'), pl.Duration('us'), id='duration_events_duration_time'),
+        pytest.param(pl.Duration('us'), pl.Int64, id='duration_events_numeric_time'),
+        pytest.param(pl.Int64, pl.Duration('us'), id='numeric_events_duration_time'),
+    ],
+)
+def test_event_samples_processor_process_coerces_mixed_dtypes(event_dtype, time_dtype):
+    # The event membership filter compares in milliseconds, so a measure yields the same result
+    # even if the events and samples time columns use different dtypes (Duration vs numeric).
+    event_scale = 1000 if event_dtype == pl.Duration('us') else 1
+    events = pl.from_dict(
+        {
+            'name': ['fixation', 'saccade'], 'onset': [0, 5 * event_scale],
+            'offset': [4 * event_scale, 7 * event_scale],
+        },
+        schema={'name': pl.Utf8, 'onset': event_dtype, 'offset': event_dtype},
+    )
+    time_scale = 1000 if time_dtype == pl.Duration('us') else 1
+    samples = pl.from_dict(
+        {
+            'time': [i * time_scale for i in range(8)],
+            'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [1, 1], [0, 0], [0, 0]],
+        },
+        schema={'time': time_dtype, 'velocity': pl.List(pl.Float64)},
+    )
+
+    processor = EventSamplesProcessor(measures='peak_velocity')
+    result = processor.process(events, samples, identifiers=None)
+
+    assert result['peak_velocity'].to_list() == pytest.approx([0.0, sqrt(2)])
+
+
+@pytest.mark.filterwarnings('ignore:No events available for processing.*:UserWarning')
+def test_event_samples_processor_process_duration_time_no_events():
+    """The empty-events schema still resolves when the sample time column is a Duration."""
+    events = pl.DataFrame(
+        schema={'name': pl.Utf8, 'onset': pl.Duration('us'), 'offset': pl.Duration('us')},
+    )
+    samples = pl.from_dict(
+        {
+            'time': [0, 1000, 2000, 3000, 4000],
+            'velocity': [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]],
+        },
+        schema={'time': pl.Duration('us'), 'velocity': pl.List(pl.Float64)},
+    )
+
+    processor = EventSamplesProcessor(measures='peak_velocity')
+    result = processor.process(events, samples, identifiers=None)
+
+    assert result.columns == ['name', 'onset', 'offset', 'peak_velocity']
+    assert len(result) == 0
+
+
 @pytest.mark.parametrize(
     ('events', 'samples', 'init_kwargs', 'process_kwargs', 'warning', 'message'),
     [

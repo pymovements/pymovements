@@ -43,6 +43,12 @@ def resample(
     The DataFrame is resampled by upsampling or downsampling the data to the new sampling rate.
     Can also be used to achieve a constant sampling rate for inconsistent data.
 
+    The ``time`` column may hold numeric millisecond values or ``polars.Duration`` values.
+    Resampling replaces the time axis with a new uniform grid whose step is a whole number of
+    microseconds, so a ``Duration`` time column is returned as ``polars.Duration('us')``.
+    Duration columns other than ``time`` are currently not interpolated by the interpolation
+    strategies.
+
     Parameters
     ----------
     samples: pl.DataFrame
@@ -106,10 +112,17 @@ def resample(
 
     resample_step_us = int(resample_step_us)
 
-    # Create microsecond precision datetime column from millisecond time column
-    samples = samples.with_columns(
-        pl.col('time').cast(pl.Float64).mul(1000).cast(pl.Datetime('us')).alias('datetime'),
-    )
+    # Create microsecond precision datetime column from time column
+    time_dtype = samples.schema['time']
+    time_is_duration = isinstance(time_dtype, pl.Duration)
+    if time_is_duration:
+        samples = samples.with_columns(
+            pl.col('time').dt.total_microseconds().cast(pl.Datetime('us')).alias('datetime'),
+        )
+    else:
+        samples = samples.with_columns(
+            pl.col('time').cast(pl.Float64).mul(1000).cast(pl.Datetime('us')).alias('datetime'),
+        )
 
     # Sort columns by datetime
     samples = samples.sort('datetime')
@@ -141,23 +154,30 @@ def resample(
             return_dtype=pl.Float64,
         )
 
-    # Resample data by datetime column, create milliseconds time column and drop datetime column
+    # Resample data by datetime column and recreate time column
     samples = samples.upsample(
         time_column='datetime',
         every=f'{resample_step_us}us',
-    ).with_columns(
-        pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
-    ).drop('datetime')
-
-    # Convert time column to integer if all values are integers
-    all_decimals = samples.select(
-        pl.col('time').round().eq(pl.col('time')).all(),
-    ).item()
-
-    if all_decimals:
+    )
+    if time_is_duration:
         samples = samples.with_columns(
-            pl.col('time').cast(pl.Int64),
+            pl.col('datetime').cast(pl.Int64).cast(pl.Duration('us')).alias('time'),
         )
+    else:
+        samples = samples.with_columns(
+            pl.col('datetime').cast(pl.Float64).truediv(1000).alias('time'),
+        )
+    samples = samples.drop('datetime')
+
+    if not time_is_duration:
+        all_decimals = samples.select(
+            pl.col('time').round().eq(pl.col('time')).all(),
+        ).item()
+
+        if all_decimals:
+            samples = samples.with_columns(
+                pl.col('time').cast(pl.Int64),
+            )
 
     # Fill null values with specified strategy
     if columns is not None and fill_null_strategy is not None:
@@ -185,10 +205,11 @@ def resample(
                 'forward, backward, interpolate_linear, interpolate_nearest',
             )
 
-        # Replace the pre-existing NaN values with Null
+        # Replace the pre-existing NaN values with Null. Use numeric_columns so nested numeric
+        # columns (e.g. pixel/position lists) are included while String and Duration are excluded.
         samples = _apply_on_columns(
             samples,
-            columns=[column for column in columns if samples[column].dtype != pl.String],
+            columns=numeric_columns,
             transformation=lambda series: series.fill_nan(None),
             n_components=n_components,
         )
