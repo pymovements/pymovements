@@ -23,16 +23,20 @@ PoTeC (Jakobi et al., 2024) publishes word-level reading measures computed by th
 implementation that pymovements' original ``compute_reading_measures`` descends from. This test
 recomputes the measures from the published fixation sequences and compares them cell by cell.
 
-The reference implementation has three known end-of-sequence artifacts that the pymovements
-implementation deliberately fixes, so the comparison replicates or masks them:
+The reference implementation handles the start and end of the fixation sequence differently
+from pymovements, so the comparison replicates or masks three known differences:
 
 * The reference never processes the final fixation of a trial, so it is dropped from the input.
-* ``SL_in`` of the first fixated word is an artifact of a ``-1`` start sentinel in the reference
-  (it equals the word position instead of 0) and is masked.
+* ``SL_in`` of the first fixated word equals the word position instead of 0 (the reference
+  starts from a ``-1`` sentinel) and is masked.
 * ``FRT``, ``SL_out``, and ``TRC_out`` of the last fixated words depend on how the sequence end
   is handled and are masked.
 
 Everything else must match exactly.
+
+TODO: Clarify with Deborah whether these are deliberate choices of the reference implementation
+rather than artifacts. Dropping the final fixation in particular might be reasonable, in which
+case pymovements should adopt the behavior instead of masking it here.
 """
 from __future__ import annotations
 
