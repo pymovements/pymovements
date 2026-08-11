@@ -153,11 +153,12 @@ def extract_archive(
 def _is_macos_metadata(member_name: str) -> bool:
     """Check whether an archive member is macOS filesystem metadata.
 
-    macOS zip archives place resource forks in a ``__MACOSX`` directory as ``._`` prefixed twins
-    that mirror the names of the files they belong to, and the Finder scatters ``.DS_Store`` files.
-    Neither carries payload, and a ``._archive.zip`` twin is not a valid archive and would break
-    nested extraction. Metadata is matched by the ``__MACOSX`` directory rather than the ``._``
-    prefix, so a legitimately named ``._`` file outside ``__MACOSX`` is preserved.
+    macOS zip archives place resource forks in a single top-level ``__MACOSX`` directory as ``._``
+    prefixed twins that mirror the tree they belong to, and the Finder scatters ``.DS_Store`` files
+    into every directory. Neither carries payload, and a ``._archive.zip`` twin is not a valid
+    archive and would break nested extraction. Matching is deliberately narrow: only a top-level
+    ``__MACOSX`` directory and the ``.DS_Store`` filename, so a legitimately named ``._`` file, or a
+    nested directory that happens to be called ``__MACOSX``, is preserved.
 
     Parameters
     ----------
@@ -170,7 +171,7 @@ def _is_macos_metadata(member_name: str) -> bool:
         ``True`` if the member is macOS metadata and should be skipped during extraction.
     """
     parts = member_name.replace('\\', '/').split('/')
-    return '__MACOSX' in parts or '.DS_Store' in parts
+    return parts[0] == '__MACOSX' or parts[-1] == '.DS_Store'
 
 
 def _extract_tar(

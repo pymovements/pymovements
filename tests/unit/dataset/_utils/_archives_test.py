@@ -658,6 +658,11 @@ def test_extract_archive_skips_macosx_metadata_files(tmp_path, make_archive):
         # ._ prefixed files outside a __MACOSX directory may be legitimate and must be kept.
         pytest.param('test.zip', '._data.txt', False, id='zip_underscore_outside_macosx'),
         pytest.param('test.tar', '._data.txt', False, id='tar_underscore_outside_macosx'),
+        # __MACOSX only ever appears at the top level; a nested one may be a real directory.
+        pytest.param(
+            'test.zip', os.path.join('data', '__MACOSX', 'file.txt'), False,
+            id='zip_macosx_not_top_level',
+        ),
     ],
 )
 def test_extract_archive_macos_metadata_filtering(
