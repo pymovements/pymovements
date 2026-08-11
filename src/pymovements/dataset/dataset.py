@@ -48,7 +48,6 @@ from pymovements.gaze.quality import compute_measures
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import ValidationError
 from pymovements.gaze.validation import _ALL_CHECKS
-from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus import text
 from pymovements.stimulus.image import ImageStimulus
@@ -1150,6 +1149,7 @@ class Dataset:
                 print('+ skip due to empty DF')
                 continue
             text_id = events.frame['text_id'][0]
+            subject_id = int(events.frame['subject_id'][0])
             aoi_text_stimulus = text.from_file(
                 aoi_dict[text_id],
                 aoi_column='character',
@@ -1161,21 +1161,11 @@ class Dataset:
                 custom_read_kwargs={'separator': '\t'},
             )
 
-            events.map_to_aois(aoi_text_stimulus)
-
-            fixations = events.filter_by_name('fixation')
-
-            text_id = fixations['text_id'][0]
-            subject_id = int(fixations['subject_id'][0])
-
-            aoi_df = pl.read_csv(aoi_dict[text_id], separator='\t')
-
-            rm_df = compute_reading_measures(
-                fixations=fixations,
-                aois=aoi_df,
+            rm_df = events.measure_reading(
+                aoi_text_stimulus,
                 word_index_column=word_index_column,
                 word_column=word_column,
-            )
+            ).frame
 
             rm_df = rm_df.with_columns([
                 pl.lit(subject_id).alias('subject_id'),
