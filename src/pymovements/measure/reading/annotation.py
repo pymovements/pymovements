@@ -44,6 +44,10 @@ import polars as pl
 
 from pymovements._utils._expressions import as_expr
 
+# Expression parameters are deliberately named after the annotation columns they default to,
+# which shadows the sibling factory functions producing those columns.
+# pylint: disable=redefined-outer-name
+
 
 def _over(expr: pl.Expr, group_columns: list[str] | None) -> pl.Expr:
     """Apply a window over the group columns, or leave the expression global without groups."""
