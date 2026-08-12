@@ -43,6 +43,7 @@ References & Citations:
 """
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import cast
 
@@ -51,6 +52,10 @@ import polars as pl
 from scipy.optimize import minimize
 from scipy.stats import norm
 from sklearn.cluster import KMeans
+
+_RANK_WARNING: type[Warning] = getattr(
+    getattr(np, 'exceptions', np), 'RankWarning', RuntimeWarning,
+)
 
 _MERGE_PHASES = [
     {'min_i': 3, 'min_j': 3, 'no_constraints': False},  # Phase 1
@@ -395,9 +400,14 @@ def merge(
                         if len(sequences[j]) < phase['min_j']:
                             continue
                         candidate_indices = sequences[i] + sequences[j]
-                        gradient, intercept = np.polyfit(
-                            x_values[candidate_indices], y_values[candidate_indices], 1,
-                        )
+                        # Fitting a line through two-fixation candidates is expected in
+                        # the unconstrained merging phase and may be poorly conditioned;
+                        # the resulting RankWarnings carry no information for the user.
+                        with warnings.catch_warnings():
+                            warnings.simplefilter('ignore', _RANK_WARNING)
+                            gradient, intercept = np.polyfit(
+                                x_values[candidate_indices], y_values[candidate_indices], 1,
+                            )
                         residuals = y_values[candidate_indices] - (
                             gradient * x_values[candidate_indices] + intercept
                         )

@@ -21,8 +21,6 @@
 # pylint: disable=redefined-outer-name
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import polars as pl
 import pytest
@@ -112,12 +110,11 @@ def test_compare_invalid_n_nearest_lines_raises():
 
 
 def test_merge_ltr_and_rtl(sample_fixations_and_lines):
+    # With filterwarnings=error this test also asserts that merge does not leak
+    # RankWarnings from poorly conditioned two-fixation line fits.
     fixations, line_ys = sample_fixations_and_lines
-    rank_warning = np.RankWarning if hasattr(np, 'RankWarning') else np.exceptions.RankWarning
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', rank_warning)
-        res_ltr = corrected_y(fixations, da.merge(line_ys, text_right_to_left=False))
-        res_rtl = corrected_y(fixations, da.merge(line_ys, text_right_to_left=True))
+    res_ltr = corrected_y(fixations, da.merge(line_ys, text_right_to_left=False))
+    res_rtl = corrected_y(fixations, da.merge(line_ys, text_right_to_left=True))
     assert len(res_ltr) == fixations.height
     assert len(res_rtl) == fixations.height
 
