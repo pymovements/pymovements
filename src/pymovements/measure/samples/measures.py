@@ -207,6 +207,10 @@ def duration(*, time_column: str = 'time') -> pl.Expr:
     the duration is calculated for the complete recording or separately for each
     trial, depending on whether trial columns are configured.
 
+    This measures only the observed sample span. It can be shorter than the
+    EyeLink ``START``-to-``END`` recording span when samples are absent because
+    of blinks, gaps, or filtering.
+
     Parameters
     ----------
     time_column: str

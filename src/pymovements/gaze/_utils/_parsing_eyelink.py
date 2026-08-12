@@ -608,8 +608,9 @@ def parse_eyelink(
     calibrations = []
     recording_config: list[dict[str, Any]] = []
     samples_config: list[dict[str, Any]] = []
-
+    start_recording_timestamp: str | None = None
     total_recording_duration = 0.0
+
     is_binocular = False
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
@@ -692,16 +693,17 @@ def parse_eyelink(
             start_recording_timestamp = match.groupdict()['timestamp']
 
         elif match := _match_regex(STOP_RECORDING_REGEX, line):
-            stop_recording_timestamp = match.groupdict()['timestamp']
-
-            try:
-                float(stop_recording_timestamp) - float(start_recording_timestamp)
-            except UnboundLocalError:
+            if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
                     f"File '{filepath}' may be corrupted. "
-                    'Total recording duration may be incorrect.',
+                    'Recording intervals may be incomplete.',
                 )
+            else:
+                total_recording_duration += (
+                    float(match.groupdict()['timestamp']) - float(start_recording_timestamp)
+                )
+            start_recording_timestamp = None
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
@@ -838,6 +840,7 @@ def parse_eyelink(
     pre_processed_metadata['calibrations'] = calibrations
     pre_processed_metadata['validations'] = validations
     pre_processed_metadata['recording_config'] = recording_config
+    pre_processed_metadata['total_recording_duration_ms'] = total_recording_duration
 
     gaze_schema_overrides = {
         'time': pl.Float64,
