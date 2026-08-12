@@ -228,6 +228,48 @@ def test_from_numpy_explicit_columns():
     assert gaze.n_components == 2
 
 
+@pytest.mark.parametrize('argument', ['time', 'trial', 'distance'])
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((4,), id='one_dimension'),
+        pytest.param((1, 4), id='leading_singleton'),
+        pytest.param((4, 1), id='trailing_singleton'),
+        pytest.param((1, 4, 1), id='surrounding_singletons'),
+        pytest.param((4, 1, 1), id='multiple_trailing_singletons'),
+    ],
+)
+def test_from_numpy_flattens_single_column_array_singleton_dimensions(argument, shape):
+    array = np.array([101, 102, 103, 104], dtype=np.int64).reshape(shape)
+    pixel = np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.int64)
+
+    gaze = from_numpy(pixel=pixel, **{argument: array})
+
+    assert gaze.samples[argument].to_list() == [101, 102, 103, 104]
+    assert gaze.samples.height == 4
+
+
+@pytest.mark.parametrize('argument', ['time', 'trial', 'distance'])
+@pytest.mark.parametrize(
+    'shape',
+    [
+        pytest.param((), id='zero_dimensions'),
+        pytest.param((2, 4), id='two_dimensions'),
+        pytest.param((2, 1, 4), id='two_dimensions_with_singleton'),
+    ],
+)
+def test_from_numpy_single_column_array_unsupported_shape_raises(argument, shape):
+    array = np.zeros(shape)
+
+    with pytest.raises(ValueError) as error:
+        from_numpy(**{argument: array})
+
+    assert str(error.value) == (
+        f'{argument} array must be at least one-dimensional and have at most one non-singleton '
+        f'dimension, but got shape {shape}'
+    )
+
+
 def test_from_numpy_explicit_columns_with_trial():
     trial = np.array([1, 1, 2, 2], dtype=np.int64)
     time = np.array([101, 102, 103, 104], dtype=np.int64)
