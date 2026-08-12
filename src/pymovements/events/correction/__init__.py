@@ -18,12 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Fixation drift correction module."""
-from pymovements.events.correction.fixation_correction import add_corrected_fixations
 from pymovements.events.correction.fixation_correction import (
-    create_corrected_fixations_locations,
+    correct_fixation_locations,
 )
+from pymovements.events.correction.fixation_correction import correct_fixations
 
 __all__ = [
-    'add_corrected_fixations',
-    'create_corrected_fixations_locations',
+    'correct_fixations',
+    'correct_fixation_locations',
 ]

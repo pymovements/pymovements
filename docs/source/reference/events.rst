@@ -44,14 +44,17 @@ The algorithms will adjust the y-coordinates of the fixations to correct for dri
 error in the eye-tracking data. This is particularly useful for paragraph reading data, where
 y-alignment issues can lead to a fixation being assigned to the wrong line of text. Available
 algorithms are listed under :ref:`Drift Correction Algorithms <drift-correction-algorithms>`.
+The most convenient way to correct fixations is via the
+:py:meth:`~pymovements.Events.correct_fixations` and
+:py:meth:`~pymovements.Dataset.correct_fixations` methods.
 
 .. autosummary::
     :toctree: api
     :nosignatures:
     :template: function.rst
 
-    add_corrected_fixations
-    create_corrected_fixations_locations
+    correct_fixations
+    correct_fixation_locations
 
 .. currentmodule:: pymovements.events.correction.drift_algorithms
 
@@ -61,8 +64,8 @@ algorithms are listed under :ref:`Drift Correction Algorithms <drift-correction-
 The following algorithms can be used to apply a line-alignment correction algorithm to a set of
 fixations. These algorithms, which are described in detail by Carr et al. :cite:p:`Carr2022`,
 can be applied to the fixations using the
-:func:`~pymovements.events.correction.add_corrected_fixations` function. By default, the
-:func:`~pymovements.events.correction.add_corrected_fixations` function will use the
+:func:`~pymovements.events.correction.correct_fixations` function. By default, the
+:func:`~pymovements.events.correction.correct_fixations` function will use the
 :func:`~pymovements.events.correction.drift_algorithms.wisdom_of_the_crowd` algorithm which is an
 ensemble method that combines the results of the other algorithms to produce a more robust
 correction.

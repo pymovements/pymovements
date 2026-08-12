@@ -150,7 +150,7 @@ def _has_word_x_coords(aois: pl.DataFrame) -> bool:
     return 'start_x' in aois.columns and 'end_x' in aois.columns
 
 
-def create_corrected_fixations_locations(
+def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
@@ -228,7 +228,7 @@ def create_corrected_fixations_locations(
         if len(algorithm) == 0:
             raise ValueError('At least one algorithm must be provided in the algorithm list.')
         if len(algorithm) == 1:
-            return create_corrected_fixations_locations(
+            return correct_fixation_locations(
                 events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
                 word_XY=word_XY, algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
             )
@@ -329,7 +329,7 @@ def create_corrected_fixations_locations(
             key: value for key, value in algorithm_kwargs.items()
             if key in candidate_params[candidate_algo]
         }
-        res = create_corrected_fixations_locations(
+        res = correct_fixation_locations(
             events, aois, algorithm=candidate_algo, text_right_to_left=text_right_to_left,
             word_XY=word_XY, algorithm_kwargs=algo_kwargs, fixation_name=fixation_name,
         )
@@ -343,7 +343,7 @@ def create_corrected_fixations_locations(
     return np.column_stack([fixationXY_arr[:, 0], line_Y[corrected_line_indices]])
 
 
-def add_corrected_fixations(
+def correct_fixations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
@@ -441,7 +441,7 @@ def add_corrected_fixations(
         if fixation_events.height == 0:
             continue
 
-        corrected_locs = create_corrected_fixations_locations(
+        corrected_locs = correct_fixation_locations(
             fixation_events, trial_aois, algorithm=algorithm,
             text_right_to_left=text_right_to_left, word_XY=word_XY,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,

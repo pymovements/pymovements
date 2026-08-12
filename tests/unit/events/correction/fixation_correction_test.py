@@ -25,11 +25,12 @@ import numpy as np
 import polars as pl
 import pytest
 
+import pymovements as pm
 from pymovements.events.correction.fixation_correction import _get_lines_of_text_from_aois
 from pymovements.events.correction.fixation_correction import _get_word_xy_from_aois
 from pymovements.events.correction.fixation_correction import _has_word_x_coords
-from pymovements.events.correction.fixation_correction import add_corrected_fixations
-from pymovements.events.correction.fixation_correction import create_corrected_fixations_locations
+from pymovements.events.correction.fixation_correction import correct_fixation_locations
+from pymovements.events.correction.fixation_correction import correct_fixations
 
 
 @pytest.fixture
@@ -73,67 +74,67 @@ def test_has_word_x_coords(sample_events_and_aois):
     assert _has_word_x_coords(aois_no_x) is False
 
 
-def test_create_corrected_fixations_locations_default_woc(sample_events_and_aois):
+def test_correct_fixation_locations_default_woc(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    locs = create_corrected_fixations_locations(events_df, aois_df)
+    locs = correct_fixation_locations(events_df, aois_df)
     assert locs.shape == (6, 2)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0, 300.0, 300.0])
 
 
-def test_create_corrected_fixations_locations_specific_algos(sample_events_and_aois):
+def test_correct_fixation_locations_specific_algos(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     algos = (
         'attach', 'chain', 'cluster', 'compare', 'merge',
         'regress', 'segment', 'slice', 'split', 'stretch', 'warp',
     )
     for algo in algos:
-        locs = create_corrected_fixations_locations(events_df, aois_df, algorithm=algo)
+        locs = correct_fixation_locations(events_df, aois_df, algorithm=algo)
         assert locs.shape == (6, 2)
 
 
-def test_create_corrected_fixations_locations_woc_custom_list(sample_events_and_aois):
+def test_correct_fixation_locations_woc_custom_list(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm=['attach', 'chain', 'cluster'],
     )
     assert locs.shape == (6, 2)
 
 
-def test_create_corrected_fixations_locations_single_element_list(sample_events_and_aois):
+def test_correct_fixation_locations_single_element_list(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm=['attach'],
     )
     assert locs.shape == (6, 2)
 
 
-def test_create_corrected_fixations_locations_empty_list_raises(sample_events_and_aois):
+def test_correct_fixation_locations_empty_list_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     with pytest.raises(ValueError, match='At least one algorithm must be provided'):
-        create_corrected_fixations_locations(events_df, aois_df, algorithm=[])
+        correct_fixation_locations(events_df, aois_df, algorithm=[])
 
 
-def test_create_corrected_fixations_locations_woc_string(sample_events_and_aois):
+def test_correct_fixation_locations_woc_string(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm='wisdom_of_the_crowd',
     )
     assert locs.shape == (6, 2)
 
 
-def test_create_corrected_fixations_locations_woc_routes_algorithm_specific_kwargs(
+def test_correct_fixation_locations_woc_routes_algorithm_specific_kwargs(
     sample_events_and_aois,
 ):
     """Algorithm-specific kwargs must not break ensemble algorithms that do not accept them."""
     events_df, aois_df = sample_events_and_aois
     # x_thresh is only accepted by chain, compare and slice.
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm_kwargs={'x_thresh': 250.0},
     )
     np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0, 300.0, 300.0])
 
 
-def test_create_corrected_fixations_locations_woc_right_to_left():
+def test_correct_fixation_locations_woc_right_to_left():
     """Right-to-Left reading support must work with the default ensemble."""
     events_df = pl.DataFrame({
         'name': ['fixation'] * 4,
@@ -148,48 +149,48 @@ def test_create_corrected_fixations_locations_woc_right_to_left():
         'end_y': [120.0, 120.0, 220.0, 220.0],
         'height': [40.0] * 4,
     })
-    locs = create_corrected_fixations_locations(events_df, aois_df, text_right_to_left=True)
+    locs = correct_fixation_locations(events_df, aois_df, text_right_to_left=True)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0])
 
 
-def test_create_corrected_fixations_locations_woc_unknown_kwarg_raises(sample_events_and_aois):
+def test_correct_fixation_locations_woc_unknown_kwarg_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     with pytest.raises(ValueError, match=r"\['bogus_thresh'\] are not accepted"):
-        create_corrected_fixations_locations(
+        correct_fixation_locations(
             events_df, aois_df, algorithm_kwargs={'bogus_thresh': 1.0},
         )
 
 
-def test_create_corrected_fixations_locations_reserved_algorithm_kwargs_raise(
+def test_correct_fixation_locations_reserved_algorithm_kwargs_raise(
     sample_events_and_aois,
 ):
     events_df, aois_df = sample_events_and_aois
     with pytest.raises(ValueError, match="'text_right_to_left' must be passed as an explicit"):
-        create_corrected_fixations_locations(
+        correct_fixation_locations(
             events_df, aois_df, algorithm_kwargs={'text_right_to_left': True},
         )
 
 
-def test_create_corrected_fixations_locations_unknown_algorithm_raises(sample_events_and_aois):
+def test_correct_fixation_locations_unknown_algorithm_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     with pytest.raises(ValueError, match="Unknown drift algorithm 'atach'"):
-        create_corrected_fixations_locations(events_df, aois_df, algorithm='atach')
+        correct_fixation_locations(events_df, aois_df, algorithm='atach')
 
     with pytest.raises(ValueError, match=r"Unknown drift algorithms \['atach'\]"):
-        create_corrected_fixations_locations(
+        correct_fixation_locations(
             events_df, aois_df, algorithm=['attach', 'atach'],
         )
 
 
-def test_create_corrected_fixations_locations_invalid_type_raises(sample_events_and_aois):
+def test_correct_fixation_locations_invalid_type_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     with pytest.raises(TypeError, match='algorithm must be a string or a list of strings'):
-        create_corrected_fixations_locations(
+        correct_fixation_locations(
             events_df, aois_df, algorithm=123,  # type: ignore[arg-type]
         )
 
 
-def test_create_corrected_fixations_locations_missing_word_x_coords_warns(
+def test_correct_fixation_locations_missing_word_x_coords_warns(
     sample_events_and_aois,
 ):
     events_df, aois_df = sample_events_and_aois
@@ -197,38 +198,38 @@ def test_create_corrected_fixations_locations_missing_word_x_coords_warns(
     with pytest.warns(
         UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are missing",
     ):
-        locs = create_corrected_fixations_locations(events_df, aois_no_x)
+        locs = correct_fixation_locations(events_df, aois_no_x)
         assert locs.shape == (6, 2)
 
     with pytest.warns(
         UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are missing",
     ):
-        locs2 = create_corrected_fixations_locations(
+        locs2 = correct_fixation_locations(
             events_df, aois_no_x, algorithm=['attach', 'compare'],
         )
         assert locs2.shape == (6, 2)
 
 
-def test_create_corrected_fixations_locations_single_compare_missing_x_coords_raises(
+def test_correct_fixation_locations_single_compare_missing_x_coords_raises(
     sample_events_and_aois,
 ):
     events_df, aois_df = sample_events_and_aois
     aois_no_x = aois_df.drop(['start_x', 'end_x'])
     with pytest.raises(ValueError, match="Algorithm 'compare' requires word X coordinates"):
-        create_corrected_fixations_locations(events_df, aois_no_x, algorithm='compare')
+        correct_fixation_locations(events_df, aois_no_x, algorithm='compare')
 
 
-def test_create_corrected_fixations_locations_explicit_word_xy(sample_events_and_aois):
+def test_correct_fixation_locations_explicit_word_xy(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     word_XY = np.array([[100.0, 100.0], [200.0, 200.0]])
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm='compare', word_XY=word_XY,
         algorithm_kwargs={'n_nearest_lines': 2},
     )
     assert locs.shape == (6, 2)
 
 
-def test_create_corrected_fixations_locations_default_woc_two_line_text():
+def test_correct_fixation_locations_default_woc_two_line_text():
     """Default ensemble must handle texts with fewer lines than compare's n_nearest_lines."""
     events_df = pl.DataFrame({
         'name': ['fixation'] * 4,
@@ -243,11 +244,11 @@ def test_create_corrected_fixations_locations_default_woc_two_line_text():
         'end_y': [120.0, 120.0, 220.0, 220.0],
         'height': [40.0] * 4,
     })
-    locs = create_corrected_fixations_locations(events_df, aois_df)
+    locs = correct_fixation_locations(events_df, aois_df)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0])
 
 
-def test_create_corrected_fixations_locations_woc_votes_on_line_indices(sample_events_and_aois):
+def test_correct_fixation_locations_woc_votes_on_line_indices(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     # Explicit word_XY with y-values offset from the AOI line centers: index-based voting
     # must still map all ensemble votes onto the AOI line centers.
@@ -256,11 +257,11 @@ def test_create_corrected_fixations_locations_woc_votes_on_line_indices(sample_e
         [125.0, 195.0], [325.0, 195.0],
         [125.0, 295.0], [325.0, 295.0],
     ])
-    locs = create_corrected_fixations_locations(events_df, aois_df, word_XY=word_XY)
+    locs = correct_fixation_locations(events_df, aois_df, word_XY=word_XY)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0, 300.0, 300.0])
 
 
-def test_create_corrected_fixations_locations_woc_word_xy_without_aoi_coordinates():
+def test_correct_fixation_locations_woc_word_xy_without_aoi_coordinates():
     events_df = pl.DataFrame({
         'name': ['fixation'] * 6,
         'location': [
@@ -274,42 +275,42 @@ def test_create_corrected_fixations_locations_woc_word_xy_without_aoi_coordinate
         [125.0, 200.0], [325.0, 200.0],
         [125.0, 300.0], [325.0, 300.0],
     ])
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm=['compare', 'warp'], word_XY=word_XY,
     )
     assert set(locs[:, 1]).issubset({100.0, 200.0, 300.0})
 
 
-def test_create_corrected_fixations_locations_invalid_location_raises():
+def test_correct_fixation_locations_invalid_location_raises():
     events_df = pl.DataFrame({'name': ['fixation'], 'trial': ['TRIAL1']})
     aois_df = pl.DataFrame({'start_y': [80.0], 'height': [40.0]})
     with pytest.raises(ValueError, match='No valid location coordinates found'):
-        create_corrected_fixations_locations(events_df, aois_df)
+        correct_fixation_locations(events_df, aois_df)
 
 
-def test_add_corrected_fixations_default_woc(sample_events_and_aois):
+def test_correct_fixations_default_woc(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    res_df = add_corrected_fixations(events_df, aois_df, trial_columns='trial')
+    res_df = correct_fixations(events_df, aois_df, trial_columns='trial')
     assert res_df.height == 12
     corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_wisdom_of_the_crowd')
     assert corrected_rows.height == 6
 
 
-def test_add_corrected_fixations_algorithm_list(sample_events_and_aois):
+def test_correct_fixations_algorithm_list(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    res_df = add_corrected_fixations(
+    res_df = correct_fixations(
         events_df, aois_df, algorithm=['attach', 'chain'],
     )
     assert res_df.height == 12
     assert res_df.filter(pl.col('name') == 'fixation_corrected_wisdom_of_the_crowd').height == 6
 
-    res_single = add_corrected_fixations(
+    res_single = correct_fixations(
         events_df, aois_df, algorithm=['attach'],
     )
     assert res_single.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
 
 
-def test_add_corrected_fixations_multiple_trials_corrected_independently(sample_events_and_aois):
+def test_correct_fixations_multiple_trials_corrected_independently(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events_two_trials = pl.concat([
         events_df,
@@ -320,12 +321,12 @@ def test_add_corrected_fixations_multiple_trials_corrected_independently(sample_
         aois_df.with_columns(pl.lit('TRIAL2').alias('trial')),
     ])
 
-    single_trial_result = add_corrected_fixations(events_df, aois_df, algorithm='segment')
+    single_trial_result = correct_fixations(events_df, aois_df, algorithm='segment')
     expected_locations = single_trial_result.filter(
         pl.col('name') == 'fixation_corrected_segment',
     )['location'].to_list()
 
-    res_df = add_corrected_fixations(
+    res_df = correct_fixations(
         events_two_trials, aois_two_trials, algorithm='segment', trial_columns='trial',
     )
     corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_segment')
@@ -337,10 +338,10 @@ def test_add_corrected_fixations_multiple_trials_corrected_independently(sample_
         assert trial_locations == expected_locations
 
 
-def test_add_corrected_fixations_rerun_does_not_correct_corrected_events(sample_events_and_aois):
+def test_correct_fixations_rerun_does_not_correct_corrected_events(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    once = add_corrected_fixations(events_df, aois_df, algorithm='attach')
-    twice = add_corrected_fixations(once, aois_df, algorithm='chain')
+    once = correct_fixations(events_df, aois_df, algorithm='attach')
+    twice = correct_fixations(once, aois_df, algorithm='chain')
 
     # The second run must only correct the original fixation events.
     assert twice.filter(pl.col('name') == 'fixation_corrected_chain').height == 6
@@ -348,29 +349,64 @@ def test_add_corrected_fixations_rerun_does_not_correct_corrected_events(sample_
     assert twice.height == 18
 
 
-def test_add_corrected_fixations_custom_fixation_name(sample_events_and_aois):
+def test_correct_fixations_custom_fixation_name(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events_named = events_df.with_columns(pl.lit('fixation_left').alias('name'))
-    res_df = add_corrected_fixations(
+    res_df = correct_fixations(
         events_named, aois_df, algorithm='attach', fixation_name='fixation_left',
     )
     assert res_df.filter(pl.col('name') == 'fixation_left_corrected_attach').height == 6
 
 
-def test_add_corrected_fixations_missing_trial_columns_raises():
+def test_events_correct_fixations(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events = pm.Events(events_df, trial_columns='trial')
+    result = events.correct_fixations(aois_df, algorithm='attach')
+    assert result is None
+    corrected_rows = events.frame.filter(pl.col('name') == 'fixation_corrected_attach')
+    assert corrected_rows.height == 6
+
+
+def test_events_correct_fixations_not_inplace(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events = pm.Events(events_df, trial_columns='trial')
+    result = events.correct_fixations(aois_df, algorithm='attach', inplace=False)
+    assert events.frame.height == 6  # original object unchanged
+    assert result is not None
+    assert result.trial_columns == ['trial']
+    assert result.frame.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
+
+
+def test_events_correct_fixations_with_text_stimulus(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    stimulus = pm.stimulus.TextStimulus(
+        aois=aois_df,
+        aoi_column='word',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        end_y_column='end_y',
+    )
+    events = pm.Events(events_df, trial_columns='trial')
+    events.correct_fixations(stimulus, algorithm='attach')
+    corrected_rows = events.frame.filter(pl.col('name') == 'fixation_corrected_attach')
+    assert corrected_rows.height == 6
+
+
+def test_correct_fixations_missing_trial_columns_raises():
     events_df = pl.DataFrame({
         'name': ['fixation'],
         'location': [[100.0, 105.0]],
     })
     aois_df = pl.DataFrame({'start_y': [80.0], 'height': [40.0]})
     with pytest.raises(ValueError, match=r"trial columns \['trial'\] are missing"):
-        add_corrected_fixations(events_df, aois_df, trial_columns='trial')
+        correct_fixations(events_df, aois_df, trial_columns='trial')
 
 
-def test_add_corrected_fixations_empty_fixations(sample_events_and_aois):
+def test_correct_fixations_empty_fixations(sample_events_and_aois):
     _, aois_df = sample_events_and_aois
     empty_events_df = pl.DataFrame({'name': ['saccade'], 'trial': ['TRIAL1']})
-    res_df = add_corrected_fixations(empty_events_df, aois_df)
+    res_df = correct_fixations(empty_events_df, aois_df)
     assert res_df.height == 1
 
 
@@ -419,7 +455,7 @@ def test_get_word_xy_from_aois_uses_line_center_y():
     assert sorted(set(word_XY[:, 1])) == line_Y
 
 
-def test_create_corrected_fixations_locations_warp_returns_line_centers():
+def test_correct_fixation_locations_warp_returns_line_centers():
     events_df = pl.DataFrame({
         'name': ['fixation', 'fixation'],
         'location': [[100.0, 105.0], [200.0, 198.0]],
@@ -433,11 +469,11 @@ def test_create_corrected_fixations_locations_warp_returns_line_centers():
         'height': [40.0, 40.0, 40.0, 40.0],
     })
     line_Y = _get_lines_of_text_from_aois(aois_df)
-    locs = create_corrected_fixations_locations(events_df, aois_df, algorithm='warp')
+    locs = correct_fixation_locations(events_df, aois_df, algorithm='warp')
     assert set(locs[:, 1]).issubset(set(line_Y))
 
 
-def test_create_corrected_fixations_locations_compare_varying_word_centers():
+def test_correct_fixation_locations_compare_varying_word_centers():
     events_df = pl.DataFrame({
         'name': ['fixation'] * 4,
         'location': [
@@ -455,13 +491,13 @@ def test_create_corrected_fixations_locations_compare_varying_word_centers():
     })
     line_Y = _get_lines_of_text_from_aois(aois_df)
     assert len(line_Y) == 2
-    locs = create_corrected_fixations_locations(
+    locs = correct_fixation_locations(
         events_df, aois_df, algorithm='compare', algorithm_kwargs={'n_nearest_lines': 2},
     )
     assert set(locs[:, 1]).issubset(set(line_Y))
 
 
-def test_create_corrected_fixations_locations_split_columns():
+def test_correct_fixation_locations_split_columns():
     events_df = pl.DataFrame({
         'name': ['fixation', 'fixation'],
         'location_x': [100.0, 200.0],
@@ -471,12 +507,12 @@ def test_create_corrected_fixations_locations_split_columns():
         'start_y': [80.0, 180.0],
         'height': [40.0, 40.0],
     })
-    locs = create_corrected_fixations_locations(events_df, aois_df, algorithm='attach')
+    locs = correct_fixation_locations(events_df, aois_df, algorithm='attach')
     assert locs.shape == (2, 2)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 200.0])
 
 
-def test_add_corrected_fixations_1d_and_split_columns(monkeypatch):
+def test_correct_fixations_1d_and_split_columns(monkeypatch):
     events_df = pl.DataFrame({
         'name': ['fixation', 'fixation'],
         'location_x': [100.0, 200.0],
@@ -488,11 +524,11 @@ def test_add_corrected_fixations_1d_and_split_columns(monkeypatch):
     })
 
     monkeypatch.setattr(
-        'pymovements.events.correction.fixation_correction.create_corrected_fixations_locations',
+        'pymovements.events.correction.fixation_correction.correct_fixation_locations',
         lambda *args, **kwargs: np.array([100.0, 200.0]),
     )
 
-    res_df = add_corrected_fixations(events_df, aois_df, algorithm='attach')
+    res_df = correct_fixations(events_df, aois_df, algorithm='attach')
     assert res_df.height == 4
     corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
     assert corrected_rows.height == 2
@@ -502,7 +538,7 @@ def test_add_corrected_fixations_1d_and_split_columns(monkeypatch):
     np.testing.assert_array_equal(corrected_rows['location_y'].to_list(), [100.0, 200.0])
 
 
-def test_add_corrected_fixations_1d_with_location_list(monkeypatch):
+def test_correct_fixations_1d_with_location_list(monkeypatch):
     events_df = pl.DataFrame({
         'name': ['fixation', 'fixation'],
         'location': [[100.0, 105.0], [200.0, 198.0]],
@@ -513,11 +549,11 @@ def test_add_corrected_fixations_1d_with_location_list(monkeypatch):
     })
 
     monkeypatch.setattr(
-        'pymovements.events.correction.fixation_correction.create_corrected_fixations_locations',
+        'pymovements.events.correction.fixation_correction.correct_fixation_locations',
         lambda *args, **kwargs: np.array([100.0, 200.0]),
     )
 
-    res_df = add_corrected_fixations(events_df, aois_df, algorithm='attach')
+    res_df = correct_fixations(events_df, aois_df, algorithm='attach')
     assert res_df.height == 4
     corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
     assert corrected_rows['location'].to_list() == [[100.0, 100.0], [200.0, 200.0]]

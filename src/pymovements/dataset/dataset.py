@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
+import numpy as np
 import polars as pl
 from tqdm.auto import tqdm
 
@@ -1192,6 +1193,66 @@ class Dataset:
             combined_df = pl.DataFrame()
 
         return ReadingMeasures(combined_df)
+
+    def correct_fixations(
+            self,
+            aois: TextStimulus | pl.DataFrame,
+            algorithm: str | list[str] = 'wisdom_of_the_crowd',
+            *,
+            text_right_to_left: bool = False,
+            word_XY: np.ndarray | None = None,
+            algorithm_kwargs: dict[str, Any] | None = None,
+            fixation_name: str = 'fixation',
+            verbose: bool = True,
+    ) -> Dataset:
+        """Correct vertical drift of fixations for all events in the dataset.
+
+        Fixations of each :py:class:`~pymovements.Events` object are corrected per trial
+        using the specified drift correction algorithm and appended as new event rows named
+        ``{fixation_name}_corrected_{algorithm}``. See
+        :py:meth:`~pymovements.Events.correct_fixations` for details.
+
+        Parameters
+        ----------
+        aois: TextStimulus | pl.DataFrame
+            Stimulus AOIs used for line position extraction. A
+            :py:class:`~pymovements.stimulus.TextStimulus` is reduced to its ``aois``
+            dataframe.
+        algorithm: str | list[str]
+            Name of drift algorithm or list of algorithm names.
+            (default: 'wisdom_of_the_crowd')
+        text_right_to_left: bool
+            Whether the text is read from right to left. (default: False)
+        word_XY: np.ndarray | None
+            Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare'
+            and 'warp'. If None, word coordinates are derived from the aois dataframe.
+            (default: None)
+        algorithm_kwargs: dict[str, Any] | None
+            Additional tuning parameters passed to underlying drift correction algorithms.
+            (default: None)
+        fixation_name: str
+            Name of the fixation events to correct. (default: 'fixation')
+        verbose: bool
+            If ``True``, show a progress bar. (default: True)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+        """
+        disable_progressbar = not verbose
+        for events in tqdm(self.events, disable=disable_progressbar):
+            if events.frame.is_empty():
+                continue
+            events.correct_fixations(
+                aois,
+                algorithm=algorithm,
+                text_right_to_left=text_right_to_left,
+                word_XY=word_XY,
+                algorithm_kwargs=algorithm_kwargs,
+                fixation_name=fixation_name,
+            )
+        return self
 
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.

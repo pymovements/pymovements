@@ -32,6 +32,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements.events.correction import fixation_correction
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -807,6 +808,71 @@ class Events:
             'location_x' in self.frame.columns or 'location_y' in self.frame.columns
         ):
             self.frame = self.frame.drop('location')
+
+    def correct_fixations(
+            self,
+            aois: TextStimulus | pl.DataFrame,
+            algorithm: str | list[str] = 'wisdom_of_the_crowd',
+            *,
+            text_right_to_left: bool = False,
+            word_XY: np.ndarray | None = None,
+            algorithm_kwargs: dict[str, Any] | None = None,
+            fixation_name: str = 'fixation',
+            inplace: bool = True,
+    ) -> Events | None:
+        """Correct vertical drift of fixations and append corrected events.
+
+        Fixations are corrected per trial according to :py:attr:`~pymovements.Events.
+        trial_columns` using the specified drift correction algorithm and appended as new
+        event rows named ``{fixation_name}_corrected_{algorithm}``. See
+        :py:func:`~pymovements.events.correction.correct_fixations` for details.
+
+        Parameters
+        ----------
+        aois: TextStimulus | pl.DataFrame
+            Stimulus AOIs used for line position extraction. A
+            :py:class:`~pymovements.stimulus.TextStimulus` is reduced to its ``aois``
+            dataframe.
+        algorithm: str | list[str]
+            Name of drift algorithm or list of algorithm names.
+            (default: 'wisdom_of_the_crowd')
+        text_right_to_left: bool
+            Whether the text is read from right to left. (default: False)
+        word_XY: np.ndarray | None
+            Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare'
+            and 'warp'. If None, word coordinates are derived from the aois dataframe.
+            (default: None)
+        algorithm_kwargs: dict[str, Any] | None
+            Additional tuning parameters passed to underlying drift correction algorithms.
+            (default: None)
+        fixation_name: str
+            Name of the fixation events to correct. (default: 'fixation')
+        inplace: bool
+            If ``True``, mutate this object and return None. If ``False``, return a new
+            :py:class:`~pymovements.Events` object with the corrected events appended,
+            leaving this object unchanged. (default: True)
+
+        Returns
+        -------
+        Events | None
+            None if ``inplace`` is True, otherwise a new
+            :py:class:`~pymovements.Events` object with the corrected events appended.
+        """
+        aois_frame = aois.aois if isinstance(aois, TextStimulus) else aois
+        corrected_frame = fixation_correction.correct_fixations(
+            self.frame,
+            aois_frame,
+            algorithm=algorithm,
+            trial_columns=self.trial_columns,
+            text_right_to_left=text_right_to_left,
+            word_XY=word_XY,
+            algorithm_kwargs=algorithm_kwargs,
+            fixation_name=fixation_name,
+        )
+        if inplace:
+            self.frame = corrected_frame
+            return None
+        return Events(corrected_frame, trial_columns=self.trial_columns)
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
