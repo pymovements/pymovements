@@ -27,7 +27,6 @@ from typing import overload
 
 import numpy as np
 import polars as pl
-from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements._utils import _checks
@@ -541,25 +540,6 @@ class Events:
             trial_columns=self.trial_columns,
         )
 
-    @deprecated(
-        reason='Please use Events.clone() instead. '
-               'This function will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def copy(self) -> Events:
-        """Return a copy of an Events object.
-
-        .. deprecated:: v0.23.0
-           Please use :py:meth:`~pymovements.events.Events.clone()` instead.
-           This function will be removed in v0.28.0.
-
-        Returns
-        -------
-        Events
-            A copy of the Events.
-        """
-        return self.clone()
-
     @overload
     def split(
             self, by: str | Sequence[str] | None = None, *, as_dict: Literal[False],
@@ -809,7 +789,7 @@ class Events:
             self.frame = self.frame.drop('location')
 
     def __eq__(self, other: Events) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Events` object."""
+        """Check equality between this and another :py:class:`~pymovements.Events` object."""
         frames_equal = self.frame.equals(other.frame, null_equal=True)
         trial_columns_equal = self.trial_columns == other.trial_columns
         return frames_equal and trial_columns_equal

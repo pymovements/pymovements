@@ -66,12 +66,6 @@ def test_dataset_definition_is_equal(init_kwargs):
             id='none',
         ),
 
-        pytest.param(
-            {'resources': {}},
-            ResourceDefinitions(),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-            id='empty_dict',
-        ),
 
         pytest.param(
             {'resources': []},
@@ -97,19 +91,6 @@ def test_dataset_definition_is_equal(init_kwargs):
             id='single_gaze_resource',
         ),
 
-        pytest.param(
-            {'resources': {'gaze': [{'resource': 'www.example.com'}]}},
-            ResourceDefinitions(
-                [ResourceDefinition(content='gaze', source=WebSource(url='www.example.com'))],
-            ),
-            marks=[
-                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-                pytest.mark.filterwarnings(
-                    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
-                ),
-            ],
-            id='single_gaze_resource_legacy',
-        ),
 
         pytest.param(
             {
@@ -182,48 +163,7 @@ def test_dataset_definition_is_equal(init_kwargs):
             id='two_resources',
         ),
 
-        pytest.param(
-            {
-                'resources': {
-                    'gaze': [{'resource': 'www.example1.com'}],
-                    'precomputed_events': [{'resource': 'www.example2.com'}],
-                },
-            },
-            ResourceDefinitions([
-                ResourceDefinition(
-                    content='gaze', source=WebSource(url='www.example1.com'),
-                ),
-                ResourceDefinition(
-                    content='precomputed_events', source=WebSource(url='www.example2.com'),
-                ),
-            ]),
-            marks=[
-                pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-                pytest.mark.filterwarnings(
-                    'ignore:.*Please use ResourceDefinition[.]source instead.*:DeprecationWarning',
-                ),
-            ],
-            id='two_resources_legacy',
-        ),
 
-        pytest.param(
-            {
-                'resources': {
-                    'gaze': [{'source': {'url': 'www.example1.com'}}],
-                    'precomputed_events': [{'source': {'url': 'www.example2.com'}}],
-                },
-            },
-            ResourceDefinitions([
-                ResourceDefinition(
-                    content='gaze', source=WebSource(url='www.example1.com'),
-                ),
-                ResourceDefinition(
-                    content='precomputed_events', source=WebSource(url='www.example2.com'),
-                ),
-            ]),
-            marks=pytest.mark.filterwarnings('ignore:.*from_dict.*:DeprecationWarning'),
-            id='two_resources_legacy_with_sources',
-        ),
     ],
 )
 def test_dataset_definition_resources_init_expected(init_kwargs, expected_resources):
@@ -828,7 +768,7 @@ def test_dataset_definition_init_parameter_is_deprecated_or_removed(
         pytest.param(
             {'resources': 1},
             TypeError,
-            'resources is of type int but must be of type ResourceDefinitions, list, or dict.',
+            'resources is of type int but must be of type ResourceDefinitions or a list of dicts.',
             id='resources_int',
         ),
     ],

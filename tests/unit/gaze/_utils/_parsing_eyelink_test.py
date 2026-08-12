@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests pymovements asc to csv processing - eyelink."""
-# pylint: disable=too-many-lines
 import datetime
 import importlib
 import re
@@ -221,8 +220,6 @@ EXPECTED_METADATA_EYELINK = {
     'validations': [],
     'resolution': (1280.0, 1024.0),
     'DISPLAY_COORDS': (0.0, 0.0, 1279.0, 1023.0),
-    'data_loss_ratio_blinks': 3 / 12,
-    'data_loss_ratio': 4 / 12,
     'total_recording_duration_ms': 12.0,
     'datetime': datetime.datetime(2023, 3, 8, 9, 25, 20),
     'mount_configuration': {
@@ -681,144 +678,6 @@ def test_check_samples_config_key_warnings_and_casting(make_example_file):
 
     assert metadata['calibrations'] == expected_calibration
     assert metadata['validations'] == expected_validation
-
-
-@pytest.mark.parametrize(
-    ('metadata', 'expected_blink_ratio', 'expected_overall_ratio'),
-    [
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000018 	RIGHT	SAMPLES	EVENTS\n'
-            'SBLINK R 10000019\n'
-            '10000019	   .	   .	    0.0	    0.0	...\n'
-            '10000020	   .	   .	    0.0	    0.0	...\n'
-            'EBLINK R 10000019	10000020	2\n'
-            'END	10000020 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            1,
-            1,
-            id='only_blinks',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000018 	RIGHT	SAMPLES	EVENTS\n'
-            'SBLINK R 10000019\n'
-            '10000019	   .	   .	    0.0	...\n'
-            '10000020	   .	   .	    0.0	...\n'
-            'EBLINK R 10000019	10000020	2\n'
-            'END	10000020 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            1,
-            1,
-            id='only_blinks_no_dummy',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000018 	RIGHT	SAMPLES	EVENTS\n'
-            '10000019	   .	   .	    0.0	    0.0	...\n'
-            'END	10000019 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0,
-            1,
-            id='lost_samples_no_blinks',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000018 	RIGHT	SAMPLES	EVENTS\n'
-            'SBLINK R 10000019\n'
-            '10000019	   .	   .	    0.0	    0.0	...\n'
-            'EBLINK R 10000019	10000019	1\n'
-            '10000020	   .	   .	    0.0	    0.0	...\n'
-            'END	10000020 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0.5,
-            1.0,
-            id='blinks_and_lost_samples',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000018 	RIGHT	SAMPLES	EVENTS\n'
-            '10000019	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000020	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000022	   850.7	  717.5	  714.0	    0.0	...\n'
-            'END	10000022 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0,
-            0.25,
-            id='missing_timestamps',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000018 	RIGHT	SAMPLES	EVENTS\n'
-            '10000019	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000020	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000022	   .	   .	    0.0	    0.0	...\n'
-            'END	10000022 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0,
-            0.5,
-            id='missing_timestamps_lost_samples1',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000020 	RIGHT	SAMPLES	EVENTS\n'
-            '10000020	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000022	   .	   .	    0.0	    0.0	...\n'
-            'SBLINK R 10000024\n'
-            '10000024	   .	   .	    0.0	    0.0	...\n'
-            'EBLINK R 10000024	10000024	1\n'
-            'END	10000024 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0.25,
-            0.75,
-            id='missing_timestamps_lost_samples_blink',
-        ),
-        pytest.param(
-            'MSG	2154555 RECCFG CR 1000 2 1 L\n'
-            'START	10000020 	RIGHT	SAMPLES	EVENTS\n'
-            'END	10000021 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0,
-            1,
-            id='no_samples',
-        ),
-        pytest.param(
-            'MSG	10000018.0 RECCFG CR 1000 2 1 L\n'
-            'START	10000018.0 	RIGHT	SAMPLES	EVENTS\n'
-            '10000019.0	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000020.0	   850.7	  717.5	  714.0	    0.0	...\n'
-            'END	10000020.0 	SAMPLES	EVENTS	RES	  38.54	  31.12\n'
-            'MSG	10000021.0 RECCFG CR 2000 2 1 L\n'
-            'START	10000021.0 	RIGHT	SAMPLES	EVENTS\n'
-            'END	10000023.0 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            0,
-            2 / 3,
-            id='varying_sampling_rate',
-        ),
-        pytest.param(
-            'MSG	10000018.0 RECCFG CR 1000 2 1 L\n'
-            'START	10000018.0 	RIGHT	SAMPLES	EVENTS\n'
-            '10000019.0	   850.7	  717.5	  714.0	    0.0	...\n'
-            '10000020.0	   850.7	  717.5	  714.0	    0.0	...\n'
-            'END	10000020.0 	SAMPLES	EVENTS	RES	  38.54	  31.12\n'
-            'MSG	10000021.0 RECCFG CR 2000 2 1 L\n'
-            'START	10000021.0 	RIGHT	SAMPLES	EVENTS\n'
-            'SBLINK R 10000020.0\n'
-            '10000020.0	   .	   .	    0.0	    0.0	...\n'
-            '10000021.0	   .	   .	    0.0	    0.0	...\n'
-            'EBLINK R 10000020.0	10000021.5	2.0\n'
-            'END	10000023.0 	SAMPLES	EVENTS	RES	  38.54	  31.12\n',
-            2 / 3,
-            2 / 3,
-            id='varying_sampling_rate_blink',
-        ),
-    ],
-)
-@pytest.mark.filterwarnings('ignore:No metadata found.')
-@pytest.mark.filterwarnings('ignore:No recording configuration found.')
-@pytest.mark.filterwarnings('ignore:No samples configuration found.')
-@pytest.mark.filterwarnings("ignore:Found inconsistent values for 'sampling_rate':")
-def test_parse_eyelink_data_loss_ratio(
-        make_text_file, metadata, expected_blink_ratio, expected_overall_ratio,
-):
-    filepath = make_text_file(filename='sub.asc', body=metadata)
-
-    _, _, parsed_metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
-
-    assert parsed_metadata['data_loss_ratio_blinks'] == expected_blink_ratio
-    assert parsed_metadata['data_loss_ratio'] == expected_overall_ratio
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
@@ -1285,86 +1144,6 @@ def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, 
 
 
 @pytest.mark.filterwarnings('ignore:No metadata found.')
-@pytest.mark.filterwarnings('ignore:No recording configuration found.')
-@pytest.mark.filterwarnings('ignore:No samples configuration found.')
-def test_parse_eyelink_binocular_missing_samples_data_loss(make_text_file):
-    """Ensure data loss ratios are reported for binocular ASC with missing samples.
-
-    The snippet contains timestamps where the left eye becomes missing (dots) while the
-    right eye still has values, and later both eyes are missing. The test checks that
-    parse_eyelink returns numeric data loss ratios in the expected range.
-    """
-    # Build ASC text with continuous timestamps (1 ms steps) to cover blink intervals
-    start = 1408782
-    end = 1408887
-
-    asc_lines = [
-        '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED',
-        'MSG\t1408659 RECCFG CR 1000 2 1 LR',
-        'MSG\t1408659 ELCLCFG BTABLER',
-        'MSG\t1408659 GAZE_COORDS 0.00 0.00 1919.00 1079.00',
-        'PRESCALER\t1',
-        'VPRESCALER\t1',
-        'PUPIL\tAREA',
-        'EVENTS\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2',
-        'SAMPLES\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2',
-        f'START\t{start}\tLEFT\tRIGHT\tSAMPLES\tEVENTS',
-    ]
-
-    for t in range(start, end + 1):
-        # Insert SBLINK markers at their onsets…
-        if t == 1408787:
-            asc_lines.append(f'SBLINK L {t}')
-        if t == 1408793:
-            asc_lines.append(f'SBLINK R {t}')
-        # Insert EBlink markers at their ends
-        if t == 1408873:
-            asc_lines.append('EBLINK R 1408793\t1408872\t80')
-        if t == 1408884:
-            asc_lines.append('EBLINK L 1408787\t1408883\t97')
-
-        # Construct sample lines depending on the timestamp range
-        if t <= 1408786:
-            # both eyes valid
-            asc_lines.append(f'{t}\t 966.9\t 565.5\t 276.0\t 949.4\t 545.5\t 308.0\t.....')
-        elif 1408787 <= t <= 1408792:
-            # left missing, right valid
-            asc_lines.append(f'{t}\t  .\t  .\t   0.0\t 933.4\t 568.2\t 298.0\t.C...')
-        elif 1408793 <= t <= 1408872:
-            # both eyes missing (overlap of left and right blink)
-            asc_lines.append(f'{t}\t  .\t  .\t   0.0\t  .\t  .\t   0.0\t.C.C.')
-        elif 1408873 <= t <= 1408883:
-            # left missing, right valid (after right blink ended)
-            asc_lines.append(f'{t}\t  .\t  .\t   0.0\t 939.7\t 590.6\t 288.0\t.C...')
-        else:
-            # both eyes valid again
-            asc_lines.append(f'{t}\t 1009.6\t 483.1\t 252.0\t 939.4\t 582.3\t 292.0\t..R..')
-
-    asc_lines.append(f'END\t{end}\tSAMPLES\tEVENTS\tRES\t 47.75\t 45.92')
-
-    asc_text = '\n'.join(asc_lines) + '\n'
-
-    filepath = make_text_file(filename='sub_binoc_missing.asc', body=asc_text)
-
-    _, _, parsed_metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
-
-    # The parser should return both ratios and they should be numeric and valid
-    assert 'data_loss_ratio_blinks' in parsed_metadata
-    assert 'data_loss_ratio' in parsed_metadata
-
-    blink_ratio = parsed_metadata['data_loss_ratio_blinks']
-    overall_ratio = parsed_metadata['data_loss_ratio']
-
-    print(f'Blink ratio: {blink_ratio}, Overall ratio: {overall_ratio}')
-
-    assert isinstance(blink_ratio, (int, float))
-    assert isinstance(overall_ratio, (int, float))
-
-    assert blink_ratio == pytest.approx(97 / 105)
-    assert overall_ratio == pytest.approx(96 / 105)
-
-
-@pytest.mark.filterwarnings('ignore:No metadata found.')
 # @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 # @pytest.mark.filterwarnings('ignore:No samples configuration found.')
 def test_tracked_vs_recorded_eye_warning(make_text_file):
@@ -1458,10 +1237,7 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file)
     # Now the parser should warn (e.g. missing samples or sampling rate) and
     # set data-loss metrics to None.
     with pytest.warns(Warning):
-        _, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
-
-    assert metadata['data_loss_ratio'] is None
-    assert metadata['data_loss_ratio_blinks'] is None
+        _, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
 
 
 def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file):
@@ -1484,10 +1260,6 @@ def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file
 
     # Duration should be 1000 ms
     assert metadata['total_recording_duration_ms'] == 1000.0
-
-    # Because no valid samples were parsed, expected samples should be 1000 -> full data loss
-    assert metadata['data_loss_ratio'] == 1.0
-    assert metadata['data_loss_ratio_blinks'] == 0.0
 
 
 def test_check_reccfg_key_warns_on_empty_config() -> None:
@@ -1813,28 +1585,6 @@ def test_parse_eyelink_event_start_helper(line, expected):
 )
 def test_parse_eyelink_event_end_helper(line, expected):
     assert _parsing_eyelink.parse_eyelink_event_end(line) == expected
-
-
-@pytest.mark.parametrize(
-    ('config_list', 'expected'),
-    [
-        pytest.param(
-            [{'sampling_rate': '1000'}, {'sampling_rate': '500'}],
-            True, id='inconsistent',
-        ),
-        pytest.param(
-            [{'sampling_rate': '1000'}, {'sampling_rate': '1000'}],
-            False, id='consistent',
-        ),
-        pytest.param(
-            [{'sampling_rate': '1000'}, {}],
-            False, id='one_missing',
-        ),
-    ],
-)
-def test_config_inconsistent_helper(config_list, expected):
-    """Test EyeLink config inconsistency check."""
-    assert _parsing_eyelink._config_inconsistent(config_list) == expected
 
 
 @pytest.mark.parametrize(

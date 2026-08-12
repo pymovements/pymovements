@@ -167,6 +167,7 @@ filterwarnings = [
   "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning"
 ]
 markers = ["network: mark a test as requiring network access"]
+pythonpath = ['docs/source']
 testpaths = ['tests', 'src']
 xfail_strict = true
 
