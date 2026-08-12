@@ -116,6 +116,9 @@ def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     )
 
 
+_CHARACTER_LEVEL_COLUMNS = ('char', 'character', 'char_idx_in_line')
+
+
 def _get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
     """Calculate word center locations from AOIs for DTW-based drift algorithms.
 
@@ -123,6 +126,11 @@ def _get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
     y-coordinate of each word is the center of the text line the word belongs to, not the
     center of the word's own bounding box. This keeps the y-coordinates identical to the
     line positions returned by _get_lines_of_text_from_aois.
+
+    Character-level AOI frames (recognized by a 'word' column next to a character column)
+    are aggregated to one location per word, spanning from the first to the last character
+    of the word. Directly adjacent repetitions of the same word within a line cannot be
+    distinguished and are aggregated into a single word location.
 
     Parameters
     ----------
@@ -134,7 +142,24 @@ def _get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
     pl.Series
         Series of [x, y] word center locations.
     """
-    aois_with_line_centers, _ = _with_line_centers(aois)
+    aois_with_line_centers, line_key = _with_line_centers(aois)
+
+    is_character_level = 'word' in aois.columns and any(
+        column in aois.columns for column in _CHARACTER_LEVEL_COLUMNS
+    )
+    if is_character_level:
+        word_run = pl.struct([pl.col(line_key), pl.col('word')]).rle_id()
+        return (
+            aois_with_line_centers
+            .group_by(word_run.alias('word_run'), maintain_order=True)
+            .agg(
+                ((pl.col('start_x').min() + pl.col('end_x').max()) / 2.0).alias('word_x'),
+                pl.col('line_center').first(),
+            )
+            .select(pl.concat_list(['word_x', 'line_center']).alias('word_location'))
+            .to_series()
+        )
+
     return aois_with_line_centers.select(
         pl.concat_list([
             (pl.col('start_x') + pl.col('end_x')) / 2.0,

@@ -554,6 +554,35 @@ def test_get_lines_of_text_from_aois_with_line_idx():
     assert line_Y == [102.5, 200.0]
 
 
+def test_get_word_locations_from_aois_aggregates_character_level_aois():
+    # Two lines with two words of three characters each, 20 px per character.
+    characters = ['T', 'h', 'e', 'c', 'a', 't'] * 2
+    words = ['The'] * 3 + ['cat'] * 3 + ['The'] * 3 + ['cat'] * 3
+    start_x = [100.0, 120.0, 140.0, 200.0, 220.0, 240.0] * 2
+    aois_char_level = pl.DataFrame({
+        'char': characters,
+        'word': words,
+        'start_x': start_x,
+        'end_x': [x + 20.0 for x in start_x],
+        'start_y': [80.0] * 6 + [180.0] * 6,
+        'height': [40.0] * 12,
+    })
+    word_locations = _get_word_locations_from_aois(aois_char_level)
+    assert word_locations.to_list() == [
+        [130.0, 100.0], [230.0, 100.0], [130.0, 200.0], [230.0, 200.0],
+    ]
+
+    # The aggregated locations equal those of an equivalent word-level frame.
+    aois_word_level = pl.DataFrame({
+        'word': ['The', 'cat'] * 2,
+        'start_x': [100.0, 200.0] * 2,
+        'end_x': [160.0, 260.0] * 2,
+        'start_y': [80.0] * 2 + [180.0] * 2,
+        'height': [40.0] * 4,
+    })
+    assert word_locations.to_list() == _get_word_locations_from_aois(aois_word_level).to_list()
+
+
 def test_get_word_locations_from_aois_uses_line_center_y():
     # Word bounding box centers differ from line centers due to varying AOI heights.
     aois_df = pl.DataFrame({
