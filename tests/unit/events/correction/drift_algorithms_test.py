@@ -126,6 +126,19 @@ def test_segment_ltr_and_rtl(sample_fixations_and_lines):
     assert res_rtl.shape == fixations_XY.shape
 
 
+def test_segment_single_line_ltr_and_rtl():
+    """Segment must assign all fixations to the single line, also for RTL reading."""
+    line_Y = np.array([100.0])
+
+    fixations_ltr = np.column_stack([np.linspace(100, 500, 5), np.full(5, 105.0)])
+    res_ltr = da.segment(fixations_ltr, line_Y)
+    np.testing.assert_array_equal(res_ltr[:, 1], 100.0)
+
+    fixations_rtl = np.column_stack([np.linspace(500, 100, 5), np.full(5, 105.0)])
+    res_rtl = da.segment(fixations_rtl, line_Y, text_right_to_left=True)
+    np.testing.assert_array_equal(res_rtl[:, 1], 100.0)
+
+
 def test_split_ltr_and_rtl(sample_fixations_and_lines):
     fixations_XY, line_Y = sample_fixations_and_lines
     res_ltr = da.split(fixations_XY, line_Y, text_right_to_left=False)

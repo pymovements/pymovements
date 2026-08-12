@@ -428,7 +428,11 @@ def segment(
     diff_X = np.diff(fixation_XY[:, 0])
     saccades_ordered_by_length = np.argsort(diff_X)
 
-    if text_right_to_left:
+    # With a single line there are no line changes; the explicit guard is needed because
+    # slicing with [-0:] would yield the full array instead of an empty one.
+    if m < 2:
+        line_change_indices = np.array([], dtype=int)
+    elif text_right_to_left:
         line_change_indices = saccades_ordered_by_length[-(m - 1):]
     else:
         line_change_indices = saccades_ordered_by_length[: m - 1]
