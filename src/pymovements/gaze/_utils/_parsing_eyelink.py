@@ -38,6 +38,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
@@ -582,8 +583,6 @@ def parse_eyelink(
     samples_config: list[dict[str, Any]] = []
 
     total_recording_duration = 0.0
-    num_expected_samples = 0
-    num_valid_samples = 0  # excluding blinks
     is_binocular = False
 
     def _switch_to_binocular() -> None:
