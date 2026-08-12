@@ -24,10 +24,10 @@ y-coordinates from a column of ``[x, y]`` fixation locations. The expressions op
 full fixation sequence of a trial, so they must be evaluated per trial.
 
 The implementations follow the reference implementation of Carr et al. :cite:p:`Carr2022`.
-Algorithms relying on k-means clustering, numerical optimization or dynamic time warping
+Algorithms that build on k-means clustering, numerical optimization or line fitting
 ('cluster', 'compare', 'merge', 'regress', 'slice', 'split', 'stretch', 'warp') materialize
-the fixation sequence inside the expression via ``map_batches``, as their numeric cores
-build on scikit-learn, scipy and dynamic programming.
+the fixation sequence inside the expression via ``map_batches``; their numeric cores use
+scikit-learn, scipy and numpy's polyfit.
 
 References & Citations:
 - :cite:p:`Abdulin2015`
@@ -43,8 +43,10 @@ References & Citations:
 """
 from __future__ import annotations
 
+import math
 import warnings
 from collections.abc import Sequence
+from statistics import fmean
 from typing import cast
 
 import numpy as np
@@ -108,12 +110,17 @@ def _line_index_to_y(index_expr: pl.Expr, line_values: list[float]) -> pl.Expr:
     )
 
 
-def _locations_to_arrays(locations: pl.Series) -> tuple[np.ndarray, np.ndarray]:
-    """Split a series of [x, y] locations into x and y arrays."""
-    frame = locations.cast(pl.List(pl.Float64)).rename('location').to_frame()
-    x_values = frame.select(pl.col('location').list.get(0))['location'].to_numpy()
-    y_values = frame.select(pl.col('location').list.get(1))['location'].to_numpy()
+def _locations_to_lists(locations: pl.Series) -> tuple[list[float], list[float]]:
+    """Split a series of [x, y] locations into lists of x and y values."""
+    points = locations.cast(pl.List(pl.Float64)).to_list()
+    x_values = [point[0] for point in points]
+    y_values = [point[1] for point in points]
     return x_values, y_values
+
+
+def _nearest_index(values: Sequence[float], target: float) -> int:
+    """Return the index of the value closest to target, ties favoring the first."""
+    return min(range(len(values)), key=lambda index: abs(values[index] - target))
 
 
 ######################################################################
@@ -218,10 +225,11 @@ def cluster(
     line_values = _line_values(line_ys)
 
     def _cluster_core(locations: pl.Series) -> pl.Series:
-        _, y_values = _locations_to_arrays(locations)
+        _, y_values = _locations_to_lists(locations)
         cluster_labels = KMeans(len(line_values), n_init=100, max_iter=300).fit_predict(
-            y_values.reshape(-1, 1),
+            [[y] for y in y_values],
         )
+        # Clusters ordered by their mean y-coordinate map to the text lines top to bottom.
         frame = pl.DataFrame({'y': y_values, 'cluster': cluster_labels}).with_row_index()
         cluster_ranks = (
             frame.group_by('cluster')
@@ -282,14 +290,21 @@ def compare(
     """
     if n_nearest_lines < 1:
         raise ValueError('n_nearest_lines must be at least 1.')
-    word_x, word_y = _locations_to_arrays(word_locations)
-    line_values = np.unique(word_y)
+    word_x_values, word_y_values = _locations_to_lists(word_locations)
+    line_values = sorted(set(word_y_values))
+    word_x_per_line = {
+        line_y: [
+            word_x for word_x, word_y in zip(word_x_values, word_y_values)
+            if word_y == line_y
+        ]
+        for line_y in line_values
+    }
     # Clamping only extends behavior to inputs on which the reference implementation of
     # Carr et al. raises an IndexError; outputs are unchanged otherwise.
     n_candidates = min(n_nearest_lines, len(line_values))
 
     def _compare_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = _locations_to_arrays(locations)
+        x_values, y_values = _locations_to_lists(locations)
         frame = pl.DataFrame({'x': x_values, 'y': y_values}).with_row_index()
         frame = frame.with_columns(
             (pl.col('x').diff() < -x_thresh)
@@ -298,20 +313,25 @@ def compare(
             .alias('gaze_line'),
         )
 
+        # Assign each gaze line to the candidate text line with the lowest DTW cost.
         gaze_line_ys = {}
         for (gaze_line_value,), gaze_line in frame.group_by('gaze_line'):
-            mean_y = gaze_line['y'].mean()
-            candidate_order = np.argsort(np.abs(line_values - mean_y))[:n_candidates]
-            candidate_costs = []
-            for candidate_line in candidate_order:
-                text_line_x = word_x[word_y == line_values[candidate_line]]
-                cost, _ = _dynamic_time_warping(
-                    gaze_line['x'].to_numpy().reshape(-1, 1),
-                    text_line_x.reshape(-1, 1),
-                )
-                candidate_costs.append(cost)
-            best_line = candidate_order[int(np.argmin(candidate_costs))]
-            gaze_line_ys[gaze_line_value] = float(line_values[best_line])
+            mean_y = cast(float, gaze_line['y'].mean())
+            distances = sorted(
+                (abs(line_y - mean_y), index) for index, line_y in enumerate(line_values)
+            )
+            candidate_lines = [line_values[index] for _, index in distances[:n_candidates]]
+
+            gaze_x = [[x] for x in gaze_line['x'].to_list()]
+            best_line = candidate_lines[0]
+            best_cost = math.inf
+            for line_y in candidate_lines:
+                text_x = [[x] for x in word_x_per_line[line_y]]
+                cost, _ = _dynamic_time_warping(gaze_x, text_x)
+                if cost < best_cost:
+                    best_cost = cost
+                    best_line = line_y
+            gaze_line_ys[gaze_line_value] = best_line
 
         return (
             frame.with_columns(
@@ -370,48 +390,56 @@ def merge(
     """
     line_values = _line_values(line_ys)
 
+    def _fit_line_error(x_values: list[float], y_values: list[float]) -> tuple[float, float]:
+        """Fit a line through the points and return its gradient and root mean square error."""
+        # Fitting a line through two-fixation candidates is expected in the unconstrained
+        # merging phase and may be poorly conditioned; the resulting RankWarnings carry no
+        # information for the user.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _RANK_WARNING)
+            gradient, intercept = np.polyfit(x_values, y_values, 1)
+        residuals = [
+            y - (gradient * x + intercept) for x, y in zip(x_values, y_values)
+        ]
+        error = math.sqrt(sum(residual**2 for residual in residuals) / len(residuals))
+        return float(gradient), error
+
     # pylint: disable=too-many-nested-blocks
     def _merge_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = _locations_to_arrays(locations)
+        x_values, y_values = _locations_to_lists(locations)
         n = len(x_values)
         m = len(line_values)
-        diff_x = np.diff(x_values)
-        dist_y = np.abs(np.diff(y_values))
 
-        if text_right_to_left:
-            boundaries = np.where((diff_x > 0) | (dist_y > y_thresh))[0] + 1
-        else:
-            boundaries = np.where((diff_x < 0) | (dist_y > y_thresh))[0] + 1
+        # A new sequence starts at every regressive saccade (progressive for RTL scripts)
+        # and at every large vertical jump.
+        def _is_boundary(index: int) -> bool:
+            x_diff = x_values[index + 1] - x_values[index]
+            regressive = x_diff > 0 if text_right_to_left else x_diff < 0
+            return regressive or abs(y_values[index + 1] - y_values[index]) > y_thresh
 
-        sequence_starts = [0] + boundaries.tolist()
-        sequence_ends = boundaries.tolist() + [n]
+        boundaries = [index + 1 for index in range(n - 1) if _is_boundary(index)]
         sequences = [
-            list(range(start, end)) for start, end in zip(sequence_starts, sequence_ends)
+            list(range(start, end))
+            for start, end in zip([0] + boundaries, boundaries + [n])
         ]
 
+        # Iteratively merge the pair of sequences with the best line fit, relaxing the
+        # sequence length and fit quality constraints phase by phase.
         for phase in _MERGE_PHASES:
             while len(sequences) > m:
                 best_merger = None
-                best_error = np.inf
+                best_error = math.inf
                 for i in range(len(sequences) - 1):
                     if len(sequences[i]) < phase['min_i']:
                         continue
                     for j in range(i + 1, len(sequences)):
                         if len(sequences[j]) < phase['min_j']:
                             continue
-                        candidate_indices = sequences[i] + sequences[j]
-                        # Fitting a line through two-fixation candidates is expected in
-                        # the unconstrained merging phase and may be poorly conditioned;
-                        # the resulting RankWarnings carry no information for the user.
-                        with warnings.catch_warnings():
-                            warnings.simplefilter('ignore', _RANK_WARNING)
-                            gradient, intercept = np.polyfit(
-                                x_values[candidate_indices], y_values[candidate_indices], 1,
-                            )
-                        residuals = y_values[candidate_indices] - (
-                            gradient * x_values[candidate_indices] + intercept
+                        candidate = sequences[i] + sequences[j]
+                        gradient, error = _fit_line_error(
+                            [x_values[index] for index in candidate],
+                            [y_values[index] for index in candidate],
                         )
-                        error = np.sqrt(sum(residuals**2) / len(candidate_indices))
                         if phase['no_constraints'] or (
                             abs(gradient) < g_thresh and error < e_thresh
                         ):
@@ -421,14 +449,18 @@ def merge(
                 if best_merger is None:
                     break
                 merge_i, merge_j = best_merger
-                merged_sequence = sequences[merge_i] + sequences[merge_j]
-                sequences.append(merged_sequence)
+                sequences.append(sequences[merge_i] + sequences[merge_j])
                 del sequences[merge_j], sequences[merge_i]
 
-        corrected_y = np.zeros(n)
-        sequence_mean_ys = [y_values[sequence].mean() for sequence in sequences]
-        for line_i, sequence_i in enumerate(np.argsort(sequence_mean_ys)):
-            corrected_y[sequences[sequence_i]] = line_values[line_i]
+        # Sequences ordered by their mean y-coordinate map to the text lines top to bottom.
+        corrected_y = [0.0] * n
+        sequence_order = sorted(
+            range(len(sequences)),
+            key=lambda index: fmean(y_values[i] for i in sequences[index]),
+        )
+        for line_index, sequence_index in enumerate(sequence_order):
+            for fixation_index in sequences[sequence_index]:
+                corrected_y[fixation_index] = line_values[line_index]
         return pl.Series(corrected_y)
 
     return (
@@ -473,28 +505,37 @@ def regress(
     pl.Expr
         Expression computing the corrected y-coordinates.
     """
-    line_values = np.array(_line_values(line_ys))
+    line_values = _line_values(line_ys)
 
     def _regress_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = _locations_to_arrays(locations)
-        n = len(x_values)
-        m = len(line_values)
+        x_values, y_values = _locations_to_lists(locations)
 
-        def fit_lines(params: np.ndarray) -> np.ndarray:
-            k = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * norm.cdf(params[0])
-            o = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * norm.cdf(params[1])
-            s = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * norm.cdf(params[2])
-            predicted_y_from_slope = x_values * k
-            line_ys_plus_offset = line_values + o
-            density = np.zeros((n, m))
-            for line_i in range(m):
-                fit_y = predicted_y_from_slope + line_ys_plus_offset[line_i]
-                density[:, line_i] = norm.logpdf(y_values, fit_y, s)
-            return density
+        def line_log_densities(params: Sequence[float]) -> list[np.ndarray]:
+            """Per-line log-densities of observing the fixation y-values."""
+            slope = k_bounds[0] + (k_bounds[1] - k_bounds[0]) * norm.cdf(params[0])
+            offset = o_bounds[0] + (o_bounds[1] - o_bounds[0]) * norm.cdf(params[1])
+            deviation = s_bounds[0] + (s_bounds[1] - s_bounds[0]) * norm.cdf(params[2])
+            predicted_y = [x * slope for x in x_values]
+            return [
+                norm.logpdf(
+                    y_values,
+                    [predicted + line_y + offset for predicted in predicted_y],
+                    deviation,
+                )
+                for line_y in line_values
+            ]
 
-        best_fit = minimize(lambda params: -sum(fit_lines(params).max(axis=1)), [0, 0, 0])
-        line_assignments = fit_lines(best_fit.x).argmax(axis=1)
-        return pl.Series(line_values[line_assignments])
+        def negative_log_likelihood(params: Sequence[float]) -> float:
+            densities = line_log_densities(params)
+            return -sum(max(fixation) for fixation in zip(*densities))
+
+        best_fit = minimize(negative_log_likelihood, [0, 0, 0])
+        densities = line_log_densities(best_fit.x)
+        corrected_y = [
+            line_values[max(range(len(line_values)), key=list(fixation).__getitem__)]
+            for fixation in zip(*densities)
+        ]
+        return pl.Series(corrected_y)
 
     return (
         _location_expr(location)
@@ -579,15 +620,21 @@ def split(
     line_values = _line_values(line_ys)
 
     def _split_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = _locations_to_arrays(locations)
-        x_diff = np.diff(x_values)
-        cluster_labels = KMeans(2, n_init=10, max_iter=300).fit_predict(
-            x_diff.reshape(-1, 1),
-        )
-        centers = [x_diff[cluster_labels == 0].mean(), x_diff[cluster_labels == 1].mean()]
-        sweep_marker = np.argmax(centers) if text_right_to_left else np.argmin(centers)
+        x_values, y_values = _locations_to_lists(locations)
+        x_diffs = [next_x - x for x, next_x in zip(x_values, x_values[1:])]
 
-        is_sweep = np.concatenate([[False], cluster_labels == sweep_marker])
+        # Split the saccades into two clusters; the cluster of largest leftward (rightward
+        # for RTL scripts) saccades marks the return sweeps.
+        cluster_labels = KMeans(2, n_init=10, max_iter=300).fit_predict(
+            [[x_diff] for x_diff in x_diffs],
+        )
+        centers = [
+            fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 0),
+            fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 1),
+        ]
+        sweep_marker = centers.index(max(centers) if text_right_to_left else min(centers))
+
+        is_sweep = [False] + [label == sweep_marker for label in cluster_labels]
         frame = pl.DataFrame({'y': y_values, 'is_sweep': is_sweep}).with_row_index()
         frame = frame.with_columns(pl.col('is_sweep').cum_sum().alias('segment'))
         corrected = frame.with_columns(
@@ -635,27 +682,27 @@ def stretch(
     pl.Expr
         Expression computing the corrected y-coordinates.
     """
-    line_values = np.array(_line_values(line_ys))
+    line_values = _line_values(line_ys)
 
     def _stretch_core(locations: pl.Series) -> pl.Series:
-        _, y_values = _locations_to_arrays(locations)
-        n = len(y_values)
+        _, y_values = _locations_to_lists(locations)
 
-        def fit_lines(
-            params: np.ndarray, return_correction: bool = False,
-        ) -> np.ndarray | float:
-            candidate_y = y_values * params[0] + params[1]
-            corrected_y = np.zeros(n)
-            for fixation_i in range(n):
-                line_i = np.argmin(np.abs(line_values - candidate_y[fixation_i]))
-                corrected_y[fixation_i] = line_values[line_i]
-            if return_correction:
-                return corrected_y
-            return float(sum(np.abs(candidate_y - corrected_y)))
+        def snap_to_lines(params: Sequence[float]) -> list[float]:
+            """Scale and offset the y-values, then snap them to the nearest lines."""
+            return [
+                line_values[_nearest_index(line_values, y * params[0] + params[1])]
+                for y in y_values
+            ]
 
-        best_fit = minimize(fit_lines, [1, 0], bounds=[scale_bounds, offset_bounds])
-        corrected_y = cast(np.ndarray, fit_lines(best_fit.x, return_correction=True))
-        return pl.Series(corrected_y)
+        def snapping_error(params: Sequence[float]) -> float:
+            corrected = snap_to_lines(params)
+            return sum(
+                abs(y * params[0] + params[1] - line_y)
+                for y, line_y in zip(y_values, corrected)
+            )
+
+        best_fit = minimize(snapping_error, [1, 0], bounds=[scale_bounds, offset_bounds])
+        return pl.Series(snap_to_lines(best_fit.x))
 
     return (
         _location_expr(location)
@@ -691,16 +738,15 @@ def warp(
     pl.Expr
         Expression computing the corrected y-coordinates.
     """
-    word_x, word_y = _locations_to_arrays(word_locations)
-    word_xy = np.column_stack([word_x, word_y])
+    word_points = word_locations.cast(pl.List(pl.Float64)).to_list()
+    word_y_values = [point[1] for point in word_points]
 
     def _warp_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = _locations_to_arrays(locations)
-        fixation_xy = np.column_stack([x_values, y_values])
-        _, dtw_path = _dynamic_time_warping(fixation_xy, word_xy)
+        fixation_points = locations.cast(pl.List(pl.Float64)).to_list()
+        _, dtw_path = _dynamic_time_warping(fixation_points, word_points)
         corrected_y = [
-            _mode(word_y[words_mapped_to_fixation])
-            for words_mapped_to_fixation in dtw_path
+            _mode([word_y_values[word_index] for word_index in mapped_words])
+            for mapped_words in dtw_path
         ]
         return pl.Series(corrected_y, dtype=pl.Float64)
 
@@ -711,7 +757,7 @@ def warp(
     )
 
 
-def _mode(values: Sequence[float] | np.ndarray) -> float:
+def _mode(values: Sequence[float]) -> float:
     """Calculate statistical mode of a sequence."""
     values_list = list(values)
     return float(max(set(values_list), key=values_list.count))
@@ -723,35 +769,35 @@ def _mode(values: Sequence[float] | np.ndarray) -> float:
 
 
 def _dynamic_time_warping(
-    sequence1: np.ndarray,
-    sequence2: np.ndarray,
+    sequence1: list[list[float]],
+    sequence2: list[list[float]],
 ) -> tuple[float, list[list[int]]]:
-    """Calculate Dynamic Time Warping (DTW) cost and alignment path between two arrays."""
+    """Calculate Dynamic Time Warping (DTW) cost and alignment path between two point lists."""
     n1 = len(sequence1)
     n2 = len(sequence2)
-    dtw_cost = np.zeros((n1 + 1, n2 + 1))
-    dtw_cost[0, :] = np.inf
-    dtw_cost[:, 0] = np.inf
-    dtw_cost[0, 0] = 0
+    cost = [[math.inf] * (n2 + 1) for _ in range(n1 + 1)]
+    cost[0][0] = 0.0
     for i in range(n1):
         for j in range(n2):
-            this_cost = np.sqrt(sum((sequence1[i] - sequence2[j]) ** 2))
-            dtw_cost[i + 1, j + 1] = this_cost + min(
-                dtw_cost[i, j + 1], dtw_cost[i + 1, j], dtw_cost[i, j],
+            step_cost = math.sqrt(
+                sum(
+                    (p - q) ** 2 for p, q in zip(sequence1[i], sequence2[j])
+                ),
             )
-    dtw_cost = dtw_cost[1:, 1:]
+            cost[i + 1][j + 1] = step_cost + min(
+                cost[i][j + 1], cost[i + 1][j], cost[i][j],
+            )
+
     dtw_path: list[list[int]] = [[] for _ in range(n1)]
     i, j = n1 - 1, n2 - 1
     while i > 0 or j > 0:
         dtw_path[i].append(j)
-        possible_moves = [np.inf, np.inf, np.inf]
-        if i > 0 and j > 0:
-            possible_moves[0] = dtw_cost[i - 1, j - 1]
-        if i > 0:
-            possible_moves[1] = dtw_cost[i - 1, j]
-        if j > 0:
-            possible_moves[2] = dtw_cost[i, j - 1]
-        best_move = np.argmin(possible_moves)
+        possible_moves = [
+            cost[i][j] if i > 0 and j > 0 else math.inf,
+            cost[i][j + 1] if i > 0 else math.inf,
+            cost[i + 1][j] if j > 0 else math.inf,
+        ]
+        best_move = possible_moves.index(min(possible_moves))
         if best_move == 0:
             i -= 1
             j -= 1
@@ -760,7 +806,7 @@ def _dynamic_time_warping(
         else:
             j -= 1
     dtw_path[0].append(0)
-    return float(dtw_cost[-1, -1]), dtw_path
+    return cost[n1][n2], dtw_path
 
 
 def dynamic_time_warping(
@@ -782,16 +828,15 @@ def dynamic_time_warping(
         DTW cost and alignment path list mapping sequence1 elements to sequence2 elements.
     """
     return _dynamic_time_warping(
-        _sequence_to_array(sequence1), _sequence_to_array(sequence2),
+        _sequence_to_points(sequence1), _sequence_to_points(sequence2),
     )
 
 
-def _sequence_to_array(sequence: pl.Series) -> np.ndarray:
-    """Convert a numeric or [x, y] location series to a two-dimensional array."""
+def _sequence_to_points(sequence: pl.Series) -> list[list[float]]:
+    """Convert a numeric or [x, y] location series to a list of points."""
     if isinstance(sequence.dtype, (pl.List, pl.Array)):
-        x_values, y_values = _locations_to_arrays(sequence)
-        return np.column_stack([x_values, y_values])
-    return sequence.to_numpy().reshape(-1, 1)
+        return sequence.cast(pl.List(pl.Float64)).to_list()
+    return [[value] for value in sequence.to_list()]
 
 
 ######################################################################
@@ -799,7 +844,7 @@ def _sequence_to_array(sequence: pl.Series) -> np.ndarray:
 ######################################################################
 
 
-# pylint: disable=redefined-builtin,consider-using-tuple,consider-using-dict-items
+# pylint: disable=redefined-builtin
 def slice(
     line_ys: pl.Series | Sequence[float],
     *,
@@ -833,116 +878,117 @@ def slice(
     pl.Expr
         Expression computing the corrected y-coordinates.
     """
-    line_values = np.array(_line_values(line_ys))
+    line_values = _line_values(line_ys)
+    if len(line_values) > 1:
+        line_height = fmean(
+            next_line - line for line, next_line in zip(line_values, line_values[1:])
+        )
+    else:
+        line_height = 32.0
 
     def _slice_core(locations: pl.Series) -> pl.Series:
-        x_values, y_values = _locations_to_arrays(locations)
-        fixation_xy = np.column_stack([x_values, y_values])
-        n = len(fixation_xy)
-        line_height = (
-            float(np.mean(np.diff(line_values))) if len(line_values) > 1 else 32.0
-        )
-        proto_lines: dict[int, list[int]] = {}
-        phantom_proto_lines: dict[int, np.ndarray] = {}
+        x_values, y_values = _locations_to_lists(locations)
+        n = len(x_values)
 
-        # 1. Segment runs
-        dist_x = np.abs(np.diff(fixation_xy[:, 0]))
-        dist_y = np.abs(np.diff(fixation_xy[:, 1]))
-        end_run_indices = list(
-            (np.where(np.logical_or(dist_x > x_thresh, dist_y > y_thresh))[0] + 1).tolist(),
-        )
-        run_starts = [0] + end_run_indices
-        run_ends = end_run_indices + [n]
-        runs = [list(range(start, end)) for start, end in zip(run_starts, run_ends)]
+        def run_offset(run: list[int], proto_line: list[tuple[float, float]]) -> float:
+            """Mean vertical offset of a run to the horizontally closest proto line points."""
+            proto_x = [point[0] for point in proto_line]
+            return fmean(
+                y_values[index] - proto_line[_nearest_index(proto_x, x_values[index])][1]
+                for index in run
+            )
 
-        # 2. Determine starting run
-        longest_run_i = int(
-            np.argmax(
-                [fixation_xy[run[-1], 0] - fixation_xy[run[0], 0] for run in runs],
-            ),
-        )
-        proto_lines[0] = runs.pop(longest_run_i)
+        # 1. Segment runs of horizontally and vertically close fixations.
+        boundaries = [
+            index + 1 for index in range(n - 1)
+            if abs(x_values[index + 1] - x_values[index]) > x_thresh
+            or abs(y_values[index + 1] - y_values[index]) > y_thresh
+        ]
+        runs = [
+            list(range(start, end))
+            for start, end in zip([0] + boundaries, boundaries + [n])
+        ]
 
-        # 3. Group runs into proto lines
+        # 2. The horizontally longest run starts the first proto line.
+        longest_run = max(
+            range(len(runs)),
+            key=lambda index: x_values[runs[index][-1]] - x_values[runs[index][0]],
+        )
+        proto_lines: dict[int, list[int]] = {0: runs.pop(longest_run)}
+        phantom_proto_lines: dict[int, list[tuple[float, float]]] = {}
+
+        def proto_line_points(proto_line_index: int) -> list[tuple[float, float]]:
+            if proto_lines[proto_line_index]:
+                return [
+                    (x_values[index], y_values[index])
+                    for index in proto_lines[proto_line_index]
+                ]
+            return phantom_proto_lines[proto_line_index]
+
+        # 3. Grow proto lines above and below by merging runs within the thresholds; where
+        # nothing merges, a phantom proto line one line height away keeps the search going.
         while runs:
-            merger_on_this_iteration = False
-            for proto_line_i, direction in [(min(proto_lines), -1), (max(proto_lines), 1)]:
-                proto_lines[proto_line_i + direction] = []
-                if proto_lines[proto_line_i]:
-                    proto_line_xy = fixation_xy[proto_lines[proto_line_i]]
-                else:
-                    proto_line_xy = phantom_proto_lines[proto_line_i]
+            merged_on_this_iteration = False
+            for proto_line_index, direction in (
+                (min(proto_lines), -1), (max(proto_lines), 1),
+            ):
+                proto_lines[proto_line_index + direction] = []
+                points = proto_line_points(proto_line_index)
 
-                run_differences = np.zeros(len(runs))
-                for run_i, run in enumerate(runs):
-                    y_diffs = [
-                        y - proto_line_xy[np.argmin(np.abs(proto_line_xy[:, 0] - x)), 1]
-                        for x, y in fixation_xy[run]
-                    ]
-                    run_differences[run_i] = np.mean(y_diffs)
-
-                merge_into_current = list(np.where(np.abs(run_differences) < w_thresh)[0])
-                merge_into_adjacent = list(
-                    np.where(
-                        np.logical_and(
-                            run_differences * direction >= w_thresh,
-                            run_differences * direction < n_thresh,
-                        ),
-                    )[0],
-                )
+                offsets = [run_offset(run, points) for run in runs]
+                merge_into_current = [
+                    index for index, offset in enumerate(offsets)
+                    if abs(offset) < w_thresh
+                ]
+                merge_into_adjacent = [
+                    index for index, offset in enumerate(offsets)
+                    if w_thresh <= offset * direction < n_thresh
+                ]
 
                 for index in merge_into_current:
-                    proto_lines[proto_line_i].extend(runs[index])
+                    proto_lines[proto_line_index].extend(runs[index])
                 for index in merge_into_adjacent:
-                    proto_lines[proto_line_i + direction].extend(runs[index])
+                    proto_lines[proto_line_index + direction].extend(runs[index])
 
                 if not merge_into_adjacent:
-                    average_x, average_y = np.mean(proto_line_xy, axis=0)
-                    adjacent_y = average_y + line_height * direction
-                    phantom_proto_lines[proto_line_i + direction] = np.array(
-                        [[average_x, adjacent_y]],
-                    )
+                    average_x = fmean(point[0] for point in points)
+                    average_y = fmean(point[1] for point in points)
+                    phantom_proto_lines[proto_line_index + direction] = [
+                        (average_x, average_y + line_height * direction),
+                    ]
 
                 for index in sorted(merge_into_current + merge_into_adjacent, reverse=True):
                     del runs[index]
-                    merger_on_this_iteration = True
+                    merged_on_this_iteration = True
 
-            if not merger_on_this_iteration:
+            if not merged_on_this_iteration:
                 break
 
-        # 4. Assign leftover runs
+        # 4. Assign leftover runs to the vertically closest proto line.
         for run in runs:
-            best_pl_distance = np.inf
-            best_pl_assignment = next(iter(proto_lines))
-            for proto_line_i in proto_lines:
-                if proto_lines[proto_line_i]:
-                    proto_line_xy = fixation_xy[proto_lines[proto_line_i]]
-                else:
-                    proto_line_xy = phantom_proto_lines[proto_line_i]
-                y_diffs = [
-                    y - proto_line_xy[np.argmin(np.abs(proto_line_xy[:, 0] - x)), 1]
-                    for x, y in fixation_xy[run]
-                ]
-                pl_distance = float(np.abs(np.mean(y_diffs)))
-                if pl_distance < best_pl_distance:
-                    best_pl_distance = pl_distance
-                    best_pl_assignment = proto_line_i
-            proto_lines[best_pl_assignment].extend(run)
+            best_distance = math.inf
+            best_proto_line = next(iter(proto_lines))
+            for proto_line_index in proto_lines:
+                distance = abs(run_offset(run, proto_line_points(proto_line_index)))
+                if distance < best_distance:
+                    best_distance = distance
+                    best_proto_line = proto_line_index
+            proto_lines[best_proto_line].extend(run)
 
-        # 5. Prune proto lines
+        # 5. Merge the smaller of the outermost proto lines inwards until the number of
+        # proto lines matches the number of text lines.
         while len(proto_lines) > len(line_values):
-            top, bot = min(proto_lines), max(proto_lines)
-            if len(proto_lines[top]) < len(proto_lines[bot]):
-                proto_lines[top + 1].extend(proto_lines[top])
-                del proto_lines[top]
+            top, bottom = min(proto_lines), max(proto_lines)
+            if len(proto_lines[top]) < len(proto_lines[bottom]):
+                proto_lines[top + 1].extend(proto_lines.pop(top))
             else:
-                proto_lines[bot - 1].extend(proto_lines[bot])
-                del proto_lines[bot]
+                proto_lines[bottom - 1].extend(proto_lines.pop(bottom))
 
-        # 6. Map proto lines to text lines
-        corrected_y = np.zeros(n)
-        for line_i, proto_line_i in enumerate(sorted(proto_lines)):
-            corrected_y[proto_lines[proto_line_i]] = line_values[line_i]
+        # 6. Proto lines map to the text lines top to bottom.
+        corrected_y = [0.0] * n
+        for line_index, proto_line_index in enumerate(sorted(proto_lines)):
+            for fixation_index in proto_lines[proto_line_index]:
+                corrected_y[fixation_index] = line_values[line_index]
         return pl.Series(corrected_y)
 
     return (
