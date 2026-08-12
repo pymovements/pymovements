@@ -337,6 +337,26 @@ def test_add_corrected_fixations_multiple_trials_corrected_independently(sample_
         assert trial_locations == expected_locations
 
 
+def test_add_corrected_fixations_rerun_does_not_correct_corrected_events(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    once = add_corrected_fixations(events_df, aois_df, algorithm='attach')
+    twice = add_corrected_fixations(once, aois_df, algorithm='chain')
+
+    # The second run must only correct the original fixation events.
+    assert twice.filter(pl.col('name') == 'fixation_corrected_chain').height == 6
+    assert twice.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
+    assert twice.height == 18
+
+
+def test_add_corrected_fixations_custom_fixation_name(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events_named = events_df.with_columns(pl.lit('fixation_left').alias('name'))
+    res_df = add_corrected_fixations(
+        events_named, aois_df, algorithm='attach', fixation_name='fixation_left',
+    )
+    assert res_df.filter(pl.col('name') == 'fixation_left_corrected_attach').height == 6
+
+
 def test_add_corrected_fixations_missing_trial_columns_raises():
     events_df = pl.DataFrame({
         'name': ['fixation'],

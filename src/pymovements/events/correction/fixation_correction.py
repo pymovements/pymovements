@@ -157,6 +157,7 @@ def create_corrected_fixations_locations(
     text_right_to_left: bool = False,
     word_XY: np.ndarray | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
+    fixation_name: str = 'fixation',
 ) -> np.ndarray:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
@@ -185,6 +186,9 @@ def create_corrected_fixations_locations(
         ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
         candidate algorithms that accept it; a ValueError is raised if an entry is accepted
         by none of the candidate algorithms. (default: None)
+    fixation_name: str
+        Name of the fixation events to correct. Only events matching this name exactly are
+        corrected. (default: 'fixation')
 
     Returns
     -------
@@ -208,7 +212,9 @@ def create_corrected_fixations_locations(
                 'not via algorithm_kwargs.',
             )
 
-    fixations = events.filter(pl.col('name').str.starts_with('fixation'))
+    # Match the event name exactly so that already corrected fixation events are not
+    # corrected again when running on a previously returned events dataframe.
+    fixations = events.filter(pl.col('name') == fixation_name)
     if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
         fixationXY = fixations['location'].to_list()
     elif 'location_x' in fixations.columns and 'location_y' in fixations.columns:
@@ -224,7 +230,7 @@ def create_corrected_fixations_locations(
         if len(algorithm) == 1:
             return create_corrected_fixations_locations(
                 events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
-                word_XY=word_XY, algorithm_kwargs=algorithm_kwargs,
+                word_XY=word_XY, algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
             )
         unknown_algos = [algo for algo in algorithm if algo not in ALL_DRIFT_ALGORITHMS]
         if unknown_algos:
@@ -325,7 +331,7 @@ def create_corrected_fixations_locations(
         }
         res = create_corrected_fixations_locations(
             events, aois, algorithm=candidate_algo, text_right_to_left=text_right_to_left,
-            word_XY=word_XY, algorithm_kwargs=algo_kwargs,
+            word_XY=word_XY, algorithm_kwargs=algo_kwargs, fixation_name=fixation_name,
         )
         y_vals = np.asarray(res[:, 1] if res.ndim == 2 else res)
         candidate_line_assignments.append(
@@ -345,6 +351,7 @@ def add_corrected_fixations(
     text_right_to_left: bool = False,
     word_XY: np.ndarray | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
+    fixation_name: str = 'fixation',
 ) -> pl.DataFrame:
     """Correct fixations per trial using specified drift algorithm and append corrected events.
 
@@ -373,6 +380,10 @@ def add_corrected_fixations(
         Additional tuning parameters passed to underlying drift correction algorithms, e.g.
         ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
         candidate algorithms that accept it. (default: None)
+    fixation_name: str
+        Name of the fixation events to correct. Only events matching this name exactly are
+        corrected, so previously corrected fixation events are not corrected again when
+        running on a returned events dataframe. (default: 'fixation')
 
     Returns
     -------
@@ -426,20 +437,20 @@ def add_corrected_fixations(
         else:
             trial_aois = aois
 
-        fixation_events = trial_events.filter(pl.col('name').str.starts_with('fixation'))
+        fixation_events = trial_events.filter(pl.col('name') == fixation_name)
         if fixation_events.height == 0:
             continue
 
         corrected_locs = create_corrected_fixations_locations(
             fixation_events, trial_aois, algorithm=algorithm,
             text_right_to_left=text_right_to_left, word_XY=word_XY,
-            algorithm_kwargs=algorithm_kwargs,
+            algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         )
 
         is_1d = corrected_locs.ndim == 1
         for i, row in enumerate(fixation_events.iter_rows(named=True)):
             row_copy = dict(row)
-            row_copy['name'] = f'fixation_corrected_{algo_name}'
+            row_copy['name'] = f'{fixation_name}_corrected_{algo_name}'
             if is_1d:
                 orig_x = row.get('location_x', row.get('location', [0.0, 0.0])[0])
                 loc_corr = [float(orig_x), float(corrected_locs[i])]
