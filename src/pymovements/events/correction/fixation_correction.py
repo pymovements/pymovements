@@ -150,6 +150,70 @@ def _has_word_x_coords(aois: pl.DataFrame) -> bool:
     return 'start_x' in aois.columns and 'end_x' in aois.columns
 
 
+def _select_ensemble_algorithms(
+    algorithms: list[str],
+    has_word_coords: bool,
+    text_right_to_left: bool,
+) -> list[str]:
+    """Select candidate algorithms for the ensemble, excluding unsupported ones.
+
+    Parameters
+    ----------
+    algorithms: list[str]
+        Requested algorithm names.
+    has_word_coords: bool
+        Whether word X coordinates are available for the DTW-based algorithms.
+    text_right_to_left: bool
+        Whether the text is read from right to left.
+
+    Returns
+    -------
+    list[str]
+        Candidate algorithm names for the ensemble.
+
+    Raises
+    ------
+    ValueError
+        If an algorithm name is unknown or no candidate algorithms remain.
+    """
+    unknown_algos = [algo for algo in algorithms if algo not in ALL_DRIFT_ALGORITHMS]
+    if unknown_algos:
+        raise ValueError(
+            f'Unknown drift algorithms {unknown_algos}. '
+            f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+        )
+
+    candidate_algos = []
+    excluded_algos = []
+    for algo in algorithms:
+        if algo in {'compare', 'warp'} and not has_word_coords:
+            excluded_algos.append(algo)
+        else:
+            candidate_algos.append(algo)
+    if excluded_algos:
+        warnings.warn(
+            "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
+            'As a consequence, algorithms requiring word X coordinates '
+            f"({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+    if text_right_to_left and 'compare' in candidate_algos:
+        warnings.warn(
+            "Algorithm 'compare' does not support right-to-left reading and is excluded "
+            'from Wisdom of the Crowd ensemble.',
+            UserWarning,
+            stacklevel=3,
+        )
+        candidate_algos = [algo for algo in candidate_algos if algo != 'compare']
+
+    if not candidate_algos:
+        raise ValueError('No candidate algorithms remain for the ensemble.')
+
+    return candidate_algos
+
+
 def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
@@ -175,8 +239,9 @@ def correct_fixation_locations(
     text_right_to_left: bool
         Whether the text is read from right to left. Passed to those algorithms with
         direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
-        algorithms ignore it. Note that 'compare' currently assumes left-to-right line
-        breaks. (default: False)
+        algorithms ignore it. The 'compare' algorithm does not support right-to-left
+        reading: it is excluded from ensembles with a UserWarning and raises a ValueError
+        when selected as a single algorithm. (default: False)
     word_XY: np.ndarray | None
         Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare' and
         'warp'. If None, word coordinates are derived from the aois dataframe. Following
@@ -224,6 +289,8 @@ def correct_fixation_locations(
 
     fixationXY_arr = np.array(fixationXY)
 
+    has_word_coords = word_XY is not None or _has_word_x_coords(aois)
+
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) == 0:
             raise ValueError('At least one algorithm must be provided in the algorithm list.')
@@ -232,47 +299,24 @@ def correct_fixation_locations(
                 events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
                 word_XY=word_XY, algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
             )
-        unknown_algos = [algo for algo in algorithm if algo not in ALL_DRIFT_ALGORITHMS]
-        if unknown_algos:
-            raise ValueError(
-                f'Unknown drift algorithms {unknown_algos}. '
-                f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
-            )
-        candidate_algos = []
-        has_word_coords = word_XY is not None or _has_word_x_coords(aois)
-        excluded_algos = []
-        for algo in algorithm:
-            if algo in {'compare', 'warp'} and not has_word_coords:
-                excluded_algos.append(algo)
-            else:
-                candidate_algos.append(algo)
-        if excluded_algos:
-            warnings.warn(
-                "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
-                'As a consequence, algorithms requiring word X coordinates '
-                f"({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.",
-                UserWarning,
-                stacklevel=2,
-            )
+        candidate_algos = _select_ensemble_algorithms(
+            list(algorithm), has_word_coords, text_right_to_left,
+        )
     elif isinstance(algorithm, str):
         if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
-            candidate_algos = list(ALL_DRIFT_ALGORITHMS)
-            if not (word_XY is not None or _has_word_x_coords(aois)):
-                warnings.warn(
-                    "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
-                    "As a consequence, 'compare' and 'warp' algorithms are excluded from "
-                    'Wisdom of the Crowd ensemble.',
-                    UserWarning,
-                    stacklevel=2,
-                )
-                candidate_algos = [
-                    algo for algo in candidate_algos if algo not in {'compare', 'warp'}
-                ]
+            candidate_algos = _select_ensemble_algorithms(
+                list(ALL_DRIFT_ALGORITHMS), has_word_coords, text_right_to_left,
+            )
         else:
             if algorithm not in ALL_DRIFT_ALGORITHMS:
                 raise ValueError(
                     f"Unknown drift algorithm '{algorithm}'. "
                     f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+                )
+            if algorithm == 'compare' and text_right_to_left:
+                raise ValueError(
+                    "Algorithm 'compare' does not support right-to-left reading as its "
+                    'line break detection assumes left-to-right reading.',
                 )
             if algorithm in {'compare', 'warp'}:
                 if word_XY is not None:
@@ -291,7 +335,6 @@ def correct_fixation_locations(
             call_kwargs = dict(algorithm_kwargs)
             if 'text_right_to_left' in inspect.signature(func).parameters:
                 call_kwargs['text_right_to_left'] = text_right_to_left
-            # pylint: disable=too-many-function-args
             return func(fixationXY_arr, target_arg, **call_kwargs)
     else:
         raise TypeError('algorithm must be a string or a list of strings.')
@@ -488,7 +531,9 @@ def correct_fixations(
 
     is_corrected = pl.col('__corrected_y').is_not_null()
 
-    def _preserving(column: str, corrected_value: pl.Expr, dtype: pl.DataType) -> pl.Expr:
+    def _preserving(
+        column: str, corrected_value: pl.Expr, dtype: pl.DataType | type[pl.DataType],
+    ) -> pl.Expr:
         """Set corrected_value on corrected rows, preserving any existing column values."""
         if column in events.columns:
             fallback: pl.Expr = pl.col(column)

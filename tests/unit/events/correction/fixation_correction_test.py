@@ -149,8 +149,23 @@ def test_correct_fixation_locations_woc_right_to_left():
         'end_y': [120.0, 120.0, 220.0, 220.0],
         'height': [40.0] * 4,
     })
-    locs = correct_fixation_locations(events_df, aois_df, text_right_to_left=True)
+    with pytest.warns(
+        UserWarning, match="'compare' does not support right-to-left reading",
+    ):
+        locs = correct_fixation_locations(events_df, aois_df, text_right_to_left=True)
     np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0])
+
+
+def test_correct_fixation_locations_single_compare_right_to_left_raises(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(
+        ValueError, match="'compare' does not support right-to-left reading",
+    ):
+        correct_fixation_locations(
+            events_df, aois_df, algorithm='compare', text_right_to_left=True,
+        )
 
 
 def test_correct_fixation_locations_woc_unknown_kwarg_raises(sample_events_and_aois):
