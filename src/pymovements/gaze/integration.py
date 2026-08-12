@@ -73,6 +73,22 @@ def _resolve_columns(
     return [_resolve_column(column, available_columns) for column in columns]
 
 
+def _flatten_single_column_array(array: np.ndarray, name: str) -> np.ndarray:
+    """Validate and flatten an array that maps to a single output column.
+
+    Singleton dimensions are removed so that shapes like ``(1, N)`` or ``(N, 1, 1)`` are accepted.
+    The array must be at least one-dimensional and must not have more than one non-singleton
+    dimension, otherwise flattening would silently reorder or merge samples.
+    """
+    if array.ndim == 0 or sum(size != 1 for size in array.shape) > 1:
+        raise ValueError(
+            f'{name} array must be at least one-dimensional and have at most one '
+            'non-singleton dimension, '
+            f'but got shape {array.shape}',
+        )
+    return array.reshape(-1)
+
+
 def from_numpy(
         samples: np.ndarray | None = None,
         experiment: Experiment | None = None,
@@ -118,7 +134,9 @@ def from_numpy(
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     trial: np.ndarray | None
-        Array of trial identifiers for each timestep. (default: None)
+        Array of trial identifiers for each timestep. Singleton dimensions are removed
+        automatically. The array must be at least one-dimensional and cannot have more than one
+        non-singleton dimension. (default: None)
     time: np.ndarray | None
         Array of timestamps. Singleton dimensions are removed automatically. The array must be at
         least one-dimensional and cannot have more than one non-singleton dimension. (default: None)
@@ -131,7 +149,9 @@ def from_numpy(
     acceleration: np.ndarray | None
         Array of gaze accelerations in degrees of visual angle per square second. (default: None)
     distance: np.ndarray | None
-        Array of eye-to-screen distances in millimeters. (default: None)
+        Array of eye-to-screen distances in millimeters. Singleton dimensions are removed
+        automatically. The array must be at least one-dimensional and cannot have more than one
+        non-singleton dimension. (default: None)
     schema: list[str] | None
         A list of column names. (default: None)
     orient: Literal['col', 'row']
@@ -340,19 +360,14 @@ def from_numpy(
 
     trial_columns = None
     if trial is not None:
+        trial = _flatten_single_column_array(trial, 'trial')
         sample_component = pl.from_numpy(data=trial, schema=['trial'], orient=orient)
         sample_components.append(sample_component)
         trial_columns = 'trial'
 
     time_column = None
     if time is not None:
-        if time.ndim == 0 or sum(dimension != 1 for dimension in time.shape) > 1:
-            raise ValueError(
-                'time array must be at least one-dimensional and have at most one '
-                'non-singleton dimension, '
-                f'but got shape {time.shape}',
-            )
-        time = time.reshape(-1)
+        time = _flatten_single_column_array(time, 'time')
         sample_component = pl.from_numpy(data=time, schema=['time'], orient=orient)
         sample_components.append(sample_component)
         time_column = 'time'
@@ -396,6 +411,7 @@ def from_numpy(
 
     distance_column = None
     if distance is not None:
+        distance = _flatten_single_column_array(distance, 'distance')
         sample_component = pl.from_numpy(data=distance, schema=['distance'], orient=orient)
         sample_components.append(sample_component)
         distance_column = 'distance'
