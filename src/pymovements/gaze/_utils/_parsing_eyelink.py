@@ -29,6 +29,7 @@ __all__ = [
 
 import calendar
 import datetime
+import math
 import re
 
 import warnings
@@ -38,7 +39,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
@@ -448,6 +448,66 @@ def _match_events_with_context(
     return matched_events
 
 
+def _parse_tracked_eye_layout(tracked: str) -> str | None:
+    r"""Map a SAMPLES config tracked-eye token to an eye layout.
+
+    Parameters
+    ----------
+    tracked: str
+        Upper-cased tracked-eye token from a SAMPLES config line
+        (e.g. ``LEFT``, ``RIGHT``, ``LEFT\\tRIGHT``, ``LR``).
+
+    Returns
+    -------
+    str | None
+        ``'left'``, ``'right'`` or ``'both'``, or None for unrecognized tokens.
+    """
+    if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}:
+        return 'both'
+    if tracked in {'LEFT', 'L'}:
+        return 'left'
+    if tracked in {'RIGHT', 'R'}:
+        return 'right'
+    return None
+
+
+def _migrate_samples_to_binocular(samples: dict[str, list[Any]], prev_eye: str | None) -> None:
+    """Switch the sample column schema from monocular to binocular.
+
+    Samples collected so far were parsed as monocular and belong to ``prev_eye``; they are
+    moved to that eye's channels and the other eye is filled with NaN. In standard EyeLink
+    ASC files the binocular SAMPLES config precedes all sample lines, so no samples have
+    been collected yet and no migration happens, but the code below stays correct if that
+    assumption does not hold.
+
+    Parameters
+    ----------
+    samples: dict[str, list[Any]]
+        Dictionary of sample columns to migrate in place.
+    prev_eye: str | None
+        Eye the already-collected monocular samples belong to (``'left'`` or ``'right'``).
+        None (no prior samples) defaults to the left eye.
+    """
+    prev_x = samples.pop('x_pix', [])
+    prev_y = samples.pop('y_pix', [])
+    prev_pupil = samples.pop('pupil', [])
+    n_prev = len(prev_x)
+    if prev_eye == 'right':
+        samples['x_left_pix'] = [math.nan] * n_prev
+        samples['y_left_pix'] = [math.nan] * n_prev
+        samples['pupil_left'] = [math.nan] * n_prev
+        samples['x_right_pix'] = prev_x
+        samples['y_right_pix'] = prev_y
+        samples['pupil_right'] = prev_pupil
+    else:
+        samples['x_left_pix'] = prev_x
+        samples['y_left_pix'] = prev_y
+        samples['pupil_left'] = prev_pupil
+        samples['x_right_pix'] = [math.nan] * n_prev
+        samples['y_right_pix'] = [math.nan] * n_prev
+        samples['pupil_right'] = [math.nan] * n_prev
+
+
 def parse_eyelink(
         filepath: Path | str,
         patterns: list[dict[str, Any] | str] | None = None,
@@ -592,62 +652,6 @@ def parse_eyelink(
     current_sample_eye: str | None = None
     mono_eye_seen: str | None = None
 
-    def _promote_to_binocular(prev_eye: str | None) -> None:
-        """Switch the sample layout to binocular, migrating already-collected samples.
-
-        Samples collected before the switch were parsed as monocular and belong to
-        ``prev_eye``; they are moved to that eye's channels and the other eye is filled
-        with NaN. In standard EyeLink ASC files the binocular SAMPLES config precedes all
-        sample lines, so nothing has been collected yet and no migration happens.
-        """
-        nonlocal is_binocular
-        if is_binocular:
-            return
-        is_binocular = True
-        prev_x = samples.pop('x_pix', [])
-        prev_y = samples.pop('y_pix', [])
-        prev_pupil = samples.pop('pupil', [])
-        n_prev = len(prev_x)
-        if prev_eye == 'right':
-            samples['x_left_pix'] = [np.nan] * n_prev
-            samples['y_left_pix'] = [np.nan] * n_prev
-            samples['pupil_left'] = [np.nan] * n_prev
-            samples['x_right_pix'] = prev_x
-            samples['y_right_pix'] = prev_y
-            samples['pupil_right'] = prev_pupil
-        else:  # 'left' or None (no prior samples): default to the left eye
-            samples['x_left_pix'] = prev_x
-            samples['y_left_pix'] = prev_y
-            samples['pupil_left'] = prev_pupil
-            samples['x_right_pix'] = [np.nan] * n_prev
-            samples['y_right_pix'] = [np.nan] * n_prev
-            samples['pupil_right'] = [np.nan] * n_prev
-
-    def _register_samples_config(tracked: str) -> None:
-        """Update the tracked-eye state from a SAMPLES config line.
-
-        Determines the current block's eye layout and promotes the whole recording to a
-        binocular layout if a binocular block is seen or the monocular tracked eye changes.
-        """
-        nonlocal current_sample_eye, mono_eye_seen
-        if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}:
-            layout = 'both'
-        elif tracked in {'LEFT', 'L'}:
-            layout = 'left'
-        elif tracked in {'RIGHT', 'R'}:
-            layout = 'right'
-        else:  # unrecognized tracked-eye token: leave the state unchanged
-            return
-
-        if layout == 'both':
-            _promote_to_binocular(mono_eye_seen)
-        elif not is_binocular:
-            if mono_eye_seen is None:
-                mono_eye_seen = layout
-            elif mono_eye_seen != layout:
-                _promote_to_binocular(mono_eye_seen)
-        current_sample_eye = layout
-
     # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
         # Collect event starts/ends for deterministic matching
@@ -673,7 +677,18 @@ def parse_eyelink(
         # before this config block's samples are parsed further down the loop.
         if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
             samples_config.append(samples_match.groupdict())
-            _register_samples_config(samples_match.group('tracked_eye').upper().strip())
+            tracked = samples_match.group('tracked_eye').upper().strip()
+            if (layout := _parse_tracked_eye_layout(tracked)) is not None:
+                if not is_binocular:
+                    if layout == 'both':
+                        _migrate_samples_to_binocular(samples, mono_eye_seen)
+                        is_binocular = True
+                    elif mono_eye_seen is None:
+                        mono_eye_seen = layout
+                    elif mono_eye_seen != layout:
+                        _migrate_samples_to_binocular(samples, mono_eye_seen)
+                        is_binocular = True
+                current_sample_eye = layout
 
         if cal_timestamp:
             # if a calibration timestamp has been found, the next line will be a
@@ -787,9 +802,9 @@ def parse_eyelink(
                 pupil = check_nan(eye_tracking_sample_match.group('pupil'))
 
                 if current_sample_eye == 'right':
-                    samples['x_left_pix'].append(np.nan)
-                    samples['y_left_pix'].append(np.nan)
-                    samples['pupil_left'].append(np.nan)
+                    samples['x_left_pix'].append(math.nan)
+                    samples['y_left_pix'].append(math.nan)
+                    samples['pupil_left'].append(math.nan)
                     samples['x_right_pix'].append(x_pix)
                     samples['y_right_pix'].append(y_pix)
                     samples['pupil_right'].append(pupil)
@@ -797,9 +812,9 @@ def parse_eyelink(
                     samples['x_left_pix'].append(x_pix)
                     samples['y_left_pix'].append(y_pix)
                     samples['pupil_left'].append(pupil)
-                    samples['x_right_pix'].append(np.nan)
-                    samples['y_right_pix'].append(np.nan)
-                    samples['pupil_right'].append(np.nan)
+                    samples['x_right_pix'].append(math.nan)
+                    samples['y_right_pix'].append(math.nan)
+                    samples['pupil_right'].append(math.nan)
 
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
