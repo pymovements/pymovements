@@ -47,6 +47,16 @@ from pymovements.measure.samples import duration
             id='single_sample',
         ),
         pytest.param(
+            {},
+            pl.DataFrame({
+                'time': pl.Series([1000, 1250, 1750], dtype=pl.Duration('us')),
+            }),
+            pl.DataFrame({
+                'duration': pl.Series([750], dtype=pl.Duration('us')),
+            }),
+            id='duration_timestamps',
+        ),
+        pytest.param(
             {'time_column': 'timestamp'},
             pl.DataFrame({'timestamp': [5, 9]}),
             pl.DataFrame({'duration': [4]}),
