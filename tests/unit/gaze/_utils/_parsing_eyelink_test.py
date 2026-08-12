@@ -1159,6 +1159,131 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
     )
 
 
+def test_parse_eyelink_binocular_samples_config_after_calibration(make_text_file):
+    """Binocular detection must not be missed when SAMPLES follows a calibration line.
+
+    The SAMPLES config line directly follows an ``!CAL`` calibration-timestamp line, which
+    sets the parser's internal cal_timestamp state for the next line. Binocular tracking
+    still has to be detected so the samples are parsed into left/right columns instead of
+    being misparsed as monocular.
+    """
+    asc_text = (
+        '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+        'MSG\t1408659 RECCFG CR 1000 2 1 LR\n'
+        'MSG\t1408659 ELCLCFG BTABLER\n'
+        'MSG\t1408659 GAZE_COORDS 0.00 0.00 1919.00 1079.00\n'
+        'EVENTS\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        'MSG\t1408659 !CAL\n'
+        'SAMPLES\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        'START\t1408660 \tLEFT\tRIGHT\tSAMPLES\tEVENTS\n'
+        '1408660\t 964.3\t 541.5\t 288.0\t 960.5\t 538.8\t 305.0\t.....\n'
+        '1408661\t 964.5\t 542.2\t 288.0\t 960.4\t 539.5\t 306.0\t.....\n'
+        'END\t1408661 \tSAMPLES\tEVENTS\tRES\t 38.54\t 31.12\n'
+    )
+
+    filepath = make_text_file(filename='sub_binoc_cal.asc', body=asc_text)
+
+    gaze_df, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    assert set(gaze_df.columns) == {
+        'time', 'x_left_pix', 'y_left_pix', 'pupil_left',
+        'x_right_pix', 'y_right_pix', 'pupil_right',
+    }
+    assert gaze_df['x_left_pix'].to_list() == [964.3, 964.5]
+    assert gaze_df['x_right_pix'].to_list() == [960.5, 960.4]
+
+
+# One recording block per tracked-eye configuration. Each entry maps to the SAMPLES/START/
+# RECCFG tokens, the sample line, and the expected (left, right) channel values for that block
+# after promotion to a binocular layout (the non-tracked eye is NaN). See issue #1401.
+_EYE_CHANGE_BLOCKS = {
+    'left': {
+        'reccfg_eye': 'L',
+        'samples_eye': 'LEFT',
+        'start_eye': 'LEFT',
+        'time': 2000,
+        'sample': '2000\t138.1\t131.0\t778.0\t0.0\t.....',
+        'left': (138.1, 131.0, 778.0),
+        'right': (np.nan, np.nan, np.nan),
+    },
+    'right': {
+        'reccfg_eye': 'R',
+        'samples_eye': 'RIGHT',
+        'start_eye': 'RIGHT',
+        'time': 3000,
+        'sample': '3000\t500.0\t400.0\t600.0\t0.0\t.....',
+        'left': (np.nan, np.nan, np.nan),
+        'right': (500.0, 400.0, 600.0),
+    },
+    'both': {
+        'reccfg_eye': 'LR',
+        'samples_eye': 'LEFT\tRIGHT',
+        'start_eye': 'LEFT\tRIGHT',
+        'time': 1000,
+        'sample': '1000\t964.3\t541.5\t288.0\t960.5\t538.8\t305.0\t.....',
+        'left': (964.3, 541.5, 288.0),
+        'right': (960.5, 538.8, 305.0),
+    },
+}
+
+
+def _build_eye_change_asc(block_keys):
+    """Build an ASC file with one recording block per tracked-eye configuration."""
+    lines = [
+        '** VERSION: EYELINK II 1',
+        '** DATE: Wed Mar 10 12:00:00 2021',
+        'MSG\t1 ELCLCFG BTABLER',
+    ]
+    for key in block_keys:
+        block = _EYE_CHANGE_BLOCKS[key]
+        time = block['time']
+        lines += [
+            f"MSG\t{time} RECCFG CR 1000 2 1 {block['reccfg_eye']}",
+            f"START\t{time} \t{block['start_eye']}\tSAMPLES\tEVENTS",
+            f"SAMPLES\tGAZE\t{block['samples_eye']}\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2",
+            block['sample'],
+            f'END\t{time} \tSAMPLES\tEVENTS\tRES\t38.54\t31.12',
+        ]
+    return '\n'.join(lines) + '\n'
+
+
+@pytest.mark.parametrize(
+    'block_keys',
+    [
+        pytest.param(['left', 'both'], id='left_to_binocular'),
+        pytest.param(['right', 'both'], id='right_to_binocular'),
+        pytest.param(['left', 'right'], id='left_to_right'),
+        pytest.param(['right', 'left'], id='right_to_left'),
+        pytest.param(['both', 'left'], id='binocular_to_left'),
+        pytest.param(['both', 'right'], id='binocular_to_right'),
+    ],
+)
+def test_parse_eyelink_tracked_eye_change_promotes_to_binocular(make_text_file, block_keys):
+    """A tracked-eye change within a file yields a four-channel binocular layout (#1401).
+
+    Every block is routed to its tracked eye, with the non-tracked eye filled with NaN, and
+    the metadata reports 'LR' without raising an inconsistency warning.
+    """
+    asc_text = _build_eye_change_asc(block_keys)
+    filepath = make_text_file(filename='sub_eye_change.asc', body=asc_text)
+
+    gaze_df, _, metadata, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    expected = {
+        'time': [float(_EYE_CHANGE_BLOCKS[key]['time']) for key in block_keys],
+        'x_left_pix': [_EYE_CHANGE_BLOCKS[key]['left'][0] for key in block_keys],
+        'y_left_pix': [_EYE_CHANGE_BLOCKS[key]['left'][1] for key in block_keys],
+        'pupil_left': [_EYE_CHANGE_BLOCKS[key]['left'][2] for key in block_keys],
+        'x_right_pix': [_EYE_CHANGE_BLOCKS[key]['right'][0] for key in block_keys],
+        'y_right_pix': [_EYE_CHANGE_BLOCKS[key]['right'][1] for key in block_keys],
+        'pupil_right': [_EYE_CHANGE_BLOCKS[key]['right'][2] for key in block_keys],
+    }
+
+    assert_frame_equal(gaze_df, pl.from_dict(expected), check_column_order=False, rel_tol=0)
+    assert metadata['tracked_eye'] == 'LR'
+    assert metadata['recorded_eye'] == 'LR'
+
+
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
