@@ -28,12 +28,13 @@ from pymovements import Dataset
 from pymovements import DatasetDefinition
 from pymovements import Events
 from pymovements import Gaze
+from pymovements.stimulus import TextStimulus
 
 
-@pytest.fixture(name='aois_df')
-def fixture_aois_df():
-    """Return an AOIs DataFrame with three lines of text."""
-    return pl.DataFrame({
+@pytest.fixture(name='text_stimulus')
+def fixture_text_stimulus():
+    """Return a TextStimulus with three lines of text."""
+    aois_df = pl.DataFrame({
         'trial': ['TRIAL1'] * 6,
         'word': ['Word1', 'Word2', 'Word3', 'Word4', 'Word5', 'Word6'],
         'start_x': [50.0, 250.0, 50.0, 250.0, 50.0, 250.0],
@@ -42,6 +43,16 @@ def fixture_aois_df():
         'end_y': [120.0, 120.0, 220.0, 220.0, 320.0, 320.0],
         'height': [40.0] * 6,
     })
+    return TextStimulus(
+        aois=aois_df,
+        aoi_column='word',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        end_y_column='end_y',
+        height_column='height',
+        trial_column='trial',
+    )
 
 
 @pytest.fixture(name='dummy_dataset')
@@ -66,8 +77,8 @@ def fixture_dummy_dataset(tmp_path):
     return dataset
 
 
-def test_dataset_correct_fixations(dummy_dataset, aois_df):
-    result = dummy_dataset.correct_fixations(aois_df, algorithm='attach', verbose=False)
+def test_dataset_correct_fixations(dummy_dataset, text_stimulus):
+    result = dummy_dataset.correct_fixations(text_stimulus, algorithm='attach', verbose=False)
 
     assert result is dummy_dataset
 
@@ -80,8 +91,8 @@ def test_dataset_correct_fixations(dummy_dataset, aois_df):
     assert dummy_dataset.events[1].frame.height == 0
 
 
-def test_dataset_correct_fixations_corrected_locations(dummy_dataset, aois_df):
-    dummy_dataset.correct_fixations(aois_df, algorithm='attach', verbose=False)
+def test_dataset_correct_fixations_corrected_locations(dummy_dataset, text_stimulus):
+    dummy_dataset.correct_fixations(text_stimulus, algorithm='attach', verbose=False)
 
     corrected_rows = dummy_dataset.events[0].frame.filter(
         pl.col('correction_algorithm') == 'attach',

@@ -1196,10 +1196,10 @@ class Dataset:
 
     def correct_fixations(
             self,
-            aois: TextStimulus | pl.DataFrame,
+            aois: TextStimulus,
             algorithm: str | list[str] = 'wisdom_of_the_crowd',
             *,
-            text_right_to_left: bool = False,
+            text_right_to_left: bool | None = None,
             word_XY: np.ndarray | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
@@ -1216,15 +1216,16 @@ class Dataset:
 
         Parameters
         ----------
-        aois: TextStimulus | pl.DataFrame
-            Stimulus AOIs used for line position extraction. A
-            :py:class:`~pymovements.stimulus.TextStimulus` is reduced to its ``aois``
-            dataframe.
+        aois: TextStimulus
+            Text stimulus used for line position extraction. Its configured column names
+            are mapped to the column names expected by the drift correction algorithms and
+            its writing system provides the default reading direction.
         algorithm: str | list[str]
             Name of drift algorithm or list of algorithm names.
             (default: 'wisdom_of_the_crowd')
-        text_right_to_left: bool
-            Whether the text is read from right to left. (default: False)
+        text_right_to_left: bool | None
+            Whether the text is read from right to left. If None, the reading direction is
+            inferred from the writing system of the text stimulus. (default: None)
         word_XY: np.ndarray | None
             Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare'
             and 'warp'. If None, word coordinates are derived from the aois dataframe.

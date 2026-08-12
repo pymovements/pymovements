@@ -37,6 +37,36 @@ from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
 
+def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> pl.DataFrame:
+    """Map the configured column names of a TextStimulus to drift correction column names.
+
+    Parameters
+    ----------
+    stimulus: TextStimulus
+        Text stimulus whose AOIs dataframe is extracted.
+
+    Returns
+    -------
+    pl.DataFrame
+        AOIs dataframe with columns renamed to the names expected by
+        :py:mod:`~pymovements.events.correction`.
+    """
+    column_mapping = {
+        stimulus.start_x_column: 'start_x',
+        stimulus.start_y_column: 'start_y',
+        stimulus.end_x_column: 'end_x',
+        stimulus.end_y_column: 'end_y',
+        stimulus.width_column: 'width',
+        stimulus.height_column: 'height',
+    }
+    rename_mapping = {
+        source: target
+        for source, target in column_mapping.items()
+        if source is not None and source != target and source in stimulus.aois.columns
+    }
+    return stimulus.aois.rename(rename_mapping)
+
+
 @repr_html(['frame', 'trial_columns'])
 class Events:
     """A data structure for event data.
@@ -811,10 +841,10 @@ class Events:
 
     def correct_fixations(
             self,
-            aois: TextStimulus | pl.DataFrame,
+            aois: TextStimulus,
             algorithm: str | list[str] = 'wisdom_of_the_crowd',
             *,
-            text_right_to_left: bool = False,
+            text_right_to_left: bool | None = None,
             word_XY: np.ndarray | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
@@ -831,15 +861,16 @@ class Events:
 
         Parameters
         ----------
-        aois: TextStimulus | pl.DataFrame
-            Stimulus AOIs used for line position extraction. A
-            :py:class:`~pymovements.stimulus.TextStimulus` is reduced to its ``aois``
-            dataframe.
+        aois: TextStimulus
+            Text stimulus used for line position extraction. Its configured column names
+            are mapped to the column names expected by the drift correction algorithms and
+            its writing system provides the default reading direction.
         algorithm: str | list[str]
             Name of drift algorithm or list of algorithm names.
             (default: 'wisdom_of_the_crowd')
-        text_right_to_left: bool
-            Whether the text is read from right to left. (default: False)
+        text_right_to_left: bool | None
+            Whether the text is read from right to left. If None, the reading direction is
+            inferred from the writing system of the text stimulus. (default: None)
         word_XY: np.ndarray | None
             Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare'
             and 'warp'. If None, word coordinates are derived from the aois dataframe.
@@ -859,8 +890,20 @@ class Events:
         Events | None
             None if ``inplace`` is True, otherwise a new
             :py:class:`~pymovements.Events` object with corrected fixation locations.
+
+        Raises
+        ------
+        TypeError
+            If ``aois`` is not a :py:class:`~pymovements.stimulus.TextStimulus`.
         """
-        aois_frame = aois.aois if isinstance(aois, TextStimulus) else aois
+        if not isinstance(aois, TextStimulus):
+            raise TypeError(
+                f'aois must be a TextStimulus, but is of type {type(aois).__name__}.',
+            )
+        aois_frame = _aois_frame_from_text_stimulus(aois)
+        if text_right_to_left is None:
+            text_right_to_left = aois.writing_system.directionality == 'right-to-left'
+
         corrected_frame = fixation_correction.correct_fixations(
             self.frame,
             aois_frame,

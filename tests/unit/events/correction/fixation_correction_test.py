@@ -60,6 +60,20 @@ def sample_events_and_aois():
     return events_df, aois_df
 
 
+def make_text_stimulus(aois_df, **kwargs):
+    """Wrap an AOIs DataFrame into a TextStimulus with canonical column names."""
+    stimulus_kwargs = {
+        'aoi_column': 'word',
+        'start_x_column': 'start_x',
+        'start_y_column': 'start_y',
+        'end_x_column': 'end_x',
+        'end_y_column': 'end_y',
+        'height_column': 'height',
+        **kwargs,
+    }
+    return pm.stimulus.TextStimulus(aois=aois_df, **stimulus_kwargs)
+
+
 def test_get_lines_of_text_from_aois(sample_events_and_aois):
     _, aois_df = sample_events_and_aois
     line_Y = _get_lines_of_text_from_aois(aois_df)
@@ -376,7 +390,7 @@ def test_correct_fixations_custom_fixation_name(sample_events_and_aois):
 def test_events_correct_fixations(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events = pm.Events(events_df, trial_columns='trial')
-    result = events.correct_fixations(aois_df, algorithm='attach')
+    result = events.correct_fixations(make_text_stimulus(aois_df), algorithm='attach')
     assert result is None
     corrected_rows = events.frame.filter(pl.col('correction_algorithm') == 'attach')
     assert corrected_rows.height == 6
@@ -385,15 +399,67 @@ def test_events_correct_fixations(sample_events_and_aois):
 def test_events_correct_fixations_not_inplace(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events = pm.Events(events_df, trial_columns='trial')
-    result = events.correct_fixations(aois_df, algorithm='attach', inplace=False)
+    result = events.correct_fixations(
+        make_text_stimulus(aois_df), algorithm='attach', inplace=False,
+    )
     assert 'correction_algorithm' not in events.frame.columns  # original object unchanged
     assert result is not None
     assert result.trial_columns == ['trial']
     assert result.frame.filter(pl.col('correction_algorithm') == 'attach').height == 6
 
 
-def test_events_correct_fixations_with_text_stimulus(sample_events_and_aois):
+def test_events_correct_fixations_dataframe_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
+    events = pm.Events(events_df, trial_columns='trial')
+    with pytest.raises(TypeError, match='aois must be a TextStimulus'):
+        events.correct_fixations(aois_df, algorithm='attach')
+
+
+def test_events_correct_fixations_with_text_stimulus_custom_column_names(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    # Custom column names and a width column instead of end coordinates.
+    aois_custom = aois_df.rename({
+        'start_x': 'top_left_x', 'start_y': 'top_left_y',
+    }).drop(['end_x', 'end_y'])
+    stimulus = pm.stimulus.TextStimulus(
+        aois=aois_custom,
+        aoi_column='word',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+    )
+    events = pm.Events(events_df, trial_columns='trial')
+    events.correct_fixations(stimulus, algorithm='warp')
+    corrected_rows = events.frame.filter(pl.col('correction_algorithm') == 'warp')
+    assert corrected_rows.height == 6
+
+    # The custom column names must yield the same result as the canonical ones.
+    events_canonical = pm.Events(events_df, trial_columns='trial')
+    events_canonical.correct_fixations(make_text_stimulus(aois_df), algorithm='warp')
+    assert (
+        corrected_rows['location'].to_list()
+        == events_canonical.frame['location'].to_list()
+    )
+
+
+def test_events_correct_fixations_infers_rtl_from_writing_system():
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'location': [
+            [800.0, 105.0], [100.0, 102.0], [800.0, 198.0], [100.0, 201.0],
+        ],
+    })
+    aois_df = pl.DataFrame({
+        'word': ['W1', 'W2', 'W3', 'W4'],
+        'start_x': [700.0, 50.0, 700.0, 50.0],
+        'end_x': [900.0, 150.0, 900.0, 150.0],
+        'start_y': [80.0, 80.0, 180.0, 180.0],
+        'end_y': [120.0, 120.0, 220.0, 220.0],
+        'height': [40.0] * 4,
+    })
     stimulus = pm.stimulus.TextStimulus(
         aois=aois_df,
         aoi_column='word',
@@ -401,11 +467,37 @@ def test_events_correct_fixations_with_text_stimulus(sample_events_and_aois):
         start_y_column='start_y',
         end_x_column='end_x',
         end_y_column='end_y',
+        writing_system='right-to-left',
     )
-    events = pm.Events(events_df, trial_columns='trial')
-    events.correct_fixations(stimulus, algorithm='attach')
-    corrected_rows = events.frame.filter(pl.col('correction_algorithm') == 'attach')
-    assert corrected_rows.height == 6
+
+    events = pm.Events(events_df)
+    events.correct_fixations(stimulus, algorithm='segment')
+    corrected_y = [
+        location[1]
+        for location in events.frame.filter(
+            pl.col('correction_algorithm') == 'segment',
+        )['location'].to_list()
+    ]
+    assert corrected_y == [100.0, 100.0, 200.0, 200.0]
+
+    # An explicit text_right_to_left value overrides the writing system.
+    events_ltr = pm.Events(events_df)
+    events_ltr.correct_fixations(stimulus, algorithm='segment', text_right_to_left=False)
+    corrected_y_ltr = [
+        location[1]
+        for location in events_ltr.frame.filter(
+            pl.col('correction_algorithm') == 'segment',
+        )['location'].to_list()
+    ]
+    assert corrected_y_ltr != corrected_y
+
+
+def test_correct_fixation_locations_derives_height_and_end_x(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    aois_derivable = aois_df.drop(['height', 'end_x'])
+    locs_derived = correct_fixation_locations(events_df, aois_derivable, algorithm='warp')
+    locs_full = correct_fixation_locations(events_df, aois_df, algorithm='warp')
+    np.testing.assert_array_equal(locs_derived, locs_full)
 
 
 def test_correct_fixations_missing_trial_columns_raises():

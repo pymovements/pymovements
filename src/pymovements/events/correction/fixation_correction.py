@@ -150,6 +150,32 @@ def _has_word_x_coords(aois: pl.DataFrame) -> bool:
     return 'start_x' in aois.columns and 'end_x' in aois.columns
 
 
+def _normalize_aois(aois: pl.DataFrame) -> pl.DataFrame:
+    """Derive missing AOI geometry columns from the available ones.
+
+    Derives 'height' from 'start_y' and 'end_y', and 'end_x' from 'start_x' and 'width',
+    whenever the derived column is missing but its sources are present.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to normalize.
+
+    Returns
+    -------
+    pl.DataFrame
+        AOIs dataframe with derived geometry columns.
+    """
+    derived_columns = []
+    if 'height' not in aois.columns and {'start_y', 'end_y'} <= set(aois.columns):
+        derived_columns.append((pl.col('end_y') - pl.col('start_y')).alias('height'))
+    if 'end_x' not in aois.columns and {'start_x', 'width'} <= set(aois.columns):
+        derived_columns.append((pl.col('start_x') + pl.col('width')).alias('end_x'))
+    if derived_columns:
+        aois = aois.with_columns(derived_columns)
+    return aois
+
+
 def _select_ensemble_algorithms(
     algorithms: list[str],
     has_word_coords: bool,
@@ -279,6 +305,8 @@ def correct_fixation_locations(
 
     # Match the event name exactly so that already corrected fixation events are not
     # corrected again when running on a previously returned events dataframe.
+    aois = _normalize_aois(aois)
+
     fixations = events.filter(pl.col('name') == fixation_name)
     if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
         fixationXY = fixations['location'].to_list()
