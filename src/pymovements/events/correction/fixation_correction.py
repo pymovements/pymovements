@@ -48,6 +48,7 @@ Supported Drift Correction Algorithms
 """
 from __future__ import annotations
 
+import inspect
 import warnings
 from typing import Any
 
@@ -144,10 +145,8 @@ ALL_DRIFT_ALGORITHMS: list[str] = [
 ]
 
 
-def _has_word_x_coords(aois: pl.DataFrame, kwargs: dict[str, Any]) -> bool:
-    """Check if word X coordinates are available in kwargs or aois DataFrame."""
-    if 'word_XY' in kwargs:
-        return True
+def _has_word_x_coords(aois: pl.DataFrame) -> bool:
+    """Check if word X coordinates are available in the aois DataFrame."""
     return 'start_x' in aois.columns and 'end_x' in aois.columns
 
 
@@ -155,7 +154,9 @@ def create_corrected_fixations_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
-    **kwargs: Any,
+    text_right_to_left: bool = False,
+    word_XY: np.ndarray | None = None,
+    algorithm_kwargs: dict[str, Any] | None = None,
 ) -> np.ndarray:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
@@ -170,14 +171,43 @@ def create_corrected_fixations_locations(
         the Crowd (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which
         includes all drift algorithms. If word X coordinates ('start_x', 'end_x') are missing in
         aois, 'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
-    **kwargs: Any
-        Additional keyword arguments passed to underlying drift correction algorithm.
+    text_right_to_left: bool
+        Whether the text is read from right to left. Passed to those algorithms with
+        direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
+        algorithms ignore it. Note that 'compare' currently assumes left-to-right line
+        breaks. (default: False)
+    word_XY: np.ndarray | None
+        Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare' and
+        'warp'. If None, word coordinates are derived from the aois dataframe. Following
+        Carr et al., y-coordinates should be the text line centers. (default: None)
+    algorithm_kwargs: dict[str, Any] | None
+        Additional tuning parameters passed to underlying drift correction algorithms, e.g.
+        ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
+        candidate algorithms that accept it; a ValueError is raised if an entry is accepted
+        by none of the candidate algorithms. (default: None)
 
     Returns
     -------
     np.ndarray
         Array of corrected fixation locations of shape (N, 2).
+
+    Raises
+    ------
+    ValueError
+        If the algorithm name is unknown, an algorithm_kwargs entry is accepted by no
+        candidate algorithm, or required coordinate data is missing.
+    TypeError
+        If algorithm is neither a string nor a list of strings.
     """
+    if algorithm_kwargs is None:
+        algorithm_kwargs = {}
+    for reserved_key in ('text_right_to_left', 'word_XY'):
+        if reserved_key in algorithm_kwargs:
+            raise ValueError(
+                f"'{reserved_key}' must be passed as an explicit parameter, "
+                'not via algorithm_kwargs.',
+            )
+
     fixations = events.filter(pl.col('name').str.starts_with('fixation'))
     if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
         fixationXY = fixations['location'].to_list()
@@ -188,18 +218,22 @@ def create_corrected_fixations_locations(
 
     fixationXY_arr = np.array(fixationXY)
 
-    kwargs_copy = dict(kwargs)
-    word_xy_arg = kwargs_copy.pop('word_XY', None)
-
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) == 0:
             raise ValueError('At least one algorithm must be provided in the algorithm list.')
         if len(algorithm) == 1:
             return create_corrected_fixations_locations(
-                events, aois, algorithm=algorithm[0], **kwargs,
+                events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
+                word_XY=word_XY, algorithm_kwargs=algorithm_kwargs,
+            )
+        unknown_algos = [algo for algo in algorithm if algo not in ALL_DRIFT_ALGORITHMS]
+        if unknown_algos:
+            raise ValueError(
+                f'Unknown drift algorithms {unknown_algos}. '
+                f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
             )
         candidate_algos = []
-        has_word_coords = word_xy_arg is not None or _has_word_x_coords(aois, kwargs)
+        has_word_coords = word_XY is not None or _has_word_x_coords(aois)
         excluded_algos = []
         for algo in algorithm:
             if algo in {'compare', 'warp'} and not has_word_coords:
@@ -217,7 +251,7 @@ def create_corrected_fixations_locations(
     elif isinstance(algorithm, str):
         if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
             candidate_algos = list(ALL_DRIFT_ALGORITHMS)
-            if not (word_xy_arg is not None or _has_word_x_coords(aois, kwargs)):
+            if not (word_XY is not None or _has_word_x_coords(aois)):
                 warnings.warn(
                     "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
                     "As a consequence, 'compare' and 'warp' algorithms are excluded from "
@@ -229,22 +263,30 @@ def create_corrected_fixations_locations(
                     algo for algo in candidate_algos if algo not in {'compare', 'warp'}
                 ]
         else:
+            if algorithm not in ALL_DRIFT_ALGORITHMS:
+                raise ValueError(
+                    f"Unknown drift algorithm '{algorithm}'. "
+                    f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+                )
             if algorithm in {'compare', 'warp'}:
-                if word_xy_arg is not None:
-                    target_arg = word_xy_arg
-                elif _has_word_x_coords(aois, kwargs):
+                if word_XY is not None:
+                    target_arg = word_XY
+                elif _has_word_x_coords(aois):
                     target_arg = _get_word_xy_from_aois(aois)
                 else:
                     raise ValueError(
                         f"Algorithm '{algorithm}' requires word X coordinates ('start_x', 'end_x') "
-                        "in aois DataFrame or 'word_XY' keyword argument.",
+                        "in aois DataFrame or the 'word_XY' parameter.",
                     )
             else:
                 target_arg = np.array(_get_lines_of_text_from_aois(aois))
 
             func = getattr(da, algorithm)
+            call_kwargs = dict(algorithm_kwargs)
+            if 'text_right_to_left' in inspect.signature(func).parameters:
+                call_kwargs['text_right_to_left'] = text_right_to_left
             # pylint: disable=too-many-function-args
-            return func(fixationXY_arr, target_arg, **kwargs_copy)
+            return func(fixationXY_arr, target_arg, **call_kwargs)
     else:
         raise TypeError('algorithm must be a string or a list of strings.')
 
@@ -257,12 +299,33 @@ def create_corrected_fixations_locations(
     if has_line_info:
         line_Y = np.array(_get_lines_of_text_from_aois(aois))
     else:
-        line_Y = np.unique(np.asarray(word_xy_arg)[:, 1])
+        line_Y = np.unique(np.asarray(word_XY)[:, 1])
+
+    # Route tuning parameters to those candidate algorithms that accept them, so that
+    # algorithm-specific parameters do not break the other algorithms in the ensemble.
+    candidate_params = {
+        candidate_algo: set(inspect.signature(getattr(da, candidate_algo)).parameters)
+        for candidate_algo in candidate_algos
+    }
+    unknown_kwargs = [
+        key for key in algorithm_kwargs
+        if not any(key in params for params in candidate_params.values())
+    ]
+    if unknown_kwargs:
+        raise ValueError(
+            f'algorithm_kwargs entries {unknown_kwargs} are not accepted by any of the '
+            f'ensemble algorithms {candidate_algos}.',
+        )
 
     candidate_line_assignments = []
     for candidate_algo in candidate_algos:
+        algo_kwargs = {
+            key: value for key, value in algorithm_kwargs.items()
+            if key in candidate_params[candidate_algo]
+        }
         res = create_corrected_fixations_locations(
-            events, aois, algorithm=candidate_algo, **kwargs,
+            events, aois, algorithm=candidate_algo, text_right_to_left=text_right_to_left,
+            word_XY=word_XY, algorithm_kwargs=algo_kwargs,
         )
         y_vals = np.asarray(res[:, 1] if res.ndim == 2 else res)
         candidate_line_assignments.append(
@@ -279,7 +342,9 @@ def add_corrected_fixations(
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
     trial_columns: list[str] | str | None = None,
-    **kwargs: Any,
+    text_right_to_left: bool = False,
+    word_XY: np.ndarray | None = None,
+    algorithm_kwargs: dict[str, Any] | None = None,
 ) -> pl.DataFrame:
     """Correct fixations per trial using specified drift algorithm and append corrected events.
 
@@ -297,8 +362,17 @@ def add_corrected_fixations(
         Column names identifying trials. Each trial is corrected independently. AOIs are
         filtered on those trial columns that are present in the aois dataframe. If None,
         all events are treated as a single trial. (default: None)
-    **kwargs: Any
-        Additional keyword arguments passed to underlying drift correction algorithm.
+    text_right_to_left: bool
+        Whether the text is read from right to left. Passed to those algorithms with
+        direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
+        algorithms ignore it. (default: False)
+    word_XY: np.ndarray | None
+        Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare' and
+        'warp'. If None, word coordinates are derived from the aois dataframe. (default: None)
+    algorithm_kwargs: dict[str, Any] | None
+        Additional tuning parameters passed to underlying drift correction algorithms, e.g.
+        ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
+        candidate algorithms that accept it. (default: None)
 
     Returns
     -------
@@ -357,7 +431,9 @@ def add_corrected_fixations(
             continue
 
         corrected_locs = create_corrected_fixations_locations(
-            fixation_events, trial_aois, algorithm=algorithm, **kwargs,
+            fixation_events, trial_aois, algorithm=algorithm,
+            text_right_to_left=text_right_to_left, word_XY=word_XY,
+            algorithm_kwargs=algorithm_kwargs,
         )
 
         is_1d = corrected_locs.ndim == 1

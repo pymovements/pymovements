@@ -69,9 +69,8 @@ def test_has_word_x_coords(sample_events_and_aois):
     _, aois_df = sample_events_and_aois
     aois_no_x = aois_df.drop(['start_x', 'end_x'])
 
-    assert _has_word_x_coords(aois_no_x, {'word_XY': np.array([[5, 5]])}) is True
-    assert _has_word_x_coords(aois_df, {}) is True
-    assert _has_word_x_coords(aois_no_x, {}) is False
+    assert _has_word_x_coords(aois_df) is True
+    assert _has_word_x_coords(aois_no_x) is False
 
 
 def test_create_corrected_fixations_locations_default_woc(sample_events_and_aois):
@@ -122,6 +121,66 @@ def test_create_corrected_fixations_locations_woc_string(sample_events_and_aois)
     assert locs.shape == (6, 2)
 
 
+def test_create_corrected_fixations_locations_woc_routes_algorithm_specific_kwargs(
+    sample_events_and_aois,
+):
+    """Algorithm-specific kwargs must not break ensemble algorithms that do not accept them."""
+    events_df, aois_df = sample_events_and_aois
+    # x_thresh is only accepted by chain, compare and slice.
+    locs = create_corrected_fixations_locations(
+        events_df, aois_df, algorithm_kwargs={'x_thresh': 250.0},
+    )
+    np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0, 300.0, 300.0])
+
+
+def test_create_corrected_fixations_locations_woc_right_to_left():
+    """Right-to-Left reading support must work with the default ensemble."""
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'location': [
+            [800.0, 105.0], [100.0, 102.0], [800.0, 198.0], [100.0, 201.0],
+        ],
+    })
+    aois_df = pl.DataFrame({
+        'start_x': [700.0, 50.0, 700.0, 50.0],
+        'end_x': [900.0, 150.0, 900.0, 150.0],
+        'start_y': [80.0, 80.0, 180.0, 180.0],
+        'end_y': [120.0, 120.0, 220.0, 220.0],
+        'height': [40.0] * 4,
+    })
+    locs = create_corrected_fixations_locations(events_df, aois_df, text_right_to_left=True)
+    np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0])
+
+
+def test_create_corrected_fixations_locations_woc_unknown_kwarg_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(ValueError, match=r"\['bogus_thresh'\] are not accepted"):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm_kwargs={'bogus_thresh': 1.0},
+        )
+
+
+def test_create_corrected_fixations_locations_reserved_algorithm_kwargs_raise(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(ValueError, match="'text_right_to_left' must be passed as an explicit"):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm_kwargs={'text_right_to_left': True},
+        )
+
+
+def test_create_corrected_fixations_locations_unknown_algorithm_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(ValueError, match="Unknown drift algorithm 'atach'"):
+        create_corrected_fixations_locations(events_df, aois_df, algorithm='atach')
+
+    with pytest.raises(ValueError, match=r"Unknown drift algorithms \['atach'\]"):
+        create_corrected_fixations_locations(
+            events_df, aois_df, algorithm=['attach', 'atach'],
+        )
+
+
 def test_create_corrected_fixations_locations_invalid_type_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     with pytest.raises(TypeError, match='algorithm must be a string or a list of strings'):
@@ -163,7 +222,8 @@ def test_create_corrected_fixations_locations_explicit_word_xy(sample_events_and
     events_df, aois_df = sample_events_and_aois
     word_XY = np.array([[100.0, 100.0], [200.0, 200.0]])
     locs = create_corrected_fixations_locations(
-        events_df, aois_df, algorithm='compare', word_XY=word_XY, n_nearest_lines=2,
+        events_df, aois_df, algorithm='compare', word_XY=word_XY,
+        algorithm_kwargs={'n_nearest_lines': 2},
     )
     assert locs.shape == (6, 2)
 
@@ -376,7 +436,7 @@ def test_create_corrected_fixations_locations_compare_varying_word_centers():
     line_Y = _get_lines_of_text_from_aois(aois_df)
     assert len(line_Y) == 2
     locs = create_corrected_fixations_locations(
-        events_df, aois_df, algorithm='compare', n_nearest_lines=2,
+        events_df, aois_df, algorithm='compare', algorithm_kwargs={'n_nearest_lines': 2},
     )
     assert set(locs[:, 1]).issubset(set(line_Y))
 
