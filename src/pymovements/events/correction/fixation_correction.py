@@ -55,7 +55,6 @@ import numpy as np
 import polars as pl
 
 import pymovements.events.correction.drift_algorithms as da
-from pymovements.events.events import Events
 
 
 def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
@@ -225,26 +224,28 @@ def create_corrected_fixations_locations(
 
 
 def add_corrected_fixations(
-    events: Events | pl.DataFrame,
+    events: pl.DataFrame,
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
-    trial_id: str | None = None,
+    trial_columns: list[str] | str | None = None,
     **kwargs: Any,
 ) -> pl.DataFrame:
-    """Correct fixations for a trial using specified drift algorithm and append corrected events.
+    """Correct fixations per trial using specified drift algorithm and append corrected events.
 
     Parameters
     ----------
-    events: Events | pl.DataFrame
-        Events object or Polars DataFrame containing gaze events.
+    events: pl.DataFrame
+        Polars DataFrame containing gaze events.
     aois: pl.DataFrame
         Stimulus AOIs DataFrame.
     algorithm: str | list[str]
         Name of drift algorithm or list of algorithm names. Default is 'wisdom_of_the_crowd'.
         If word X coordinates ('start_x', 'end_x') are not present in aois, 'compare' and 'warp'
         are automatically excluded from the Wisdom of the Crowd ensemble with a UserWarning.
-    trial_id: str | None
-        Optional trial identifier to filter events and AOIs. (default: None)
+    trial_columns: list[str] | str | None
+        Column names identifying trials. Each trial is corrected independently. AOIs are
+        filtered on those trial columns that are present in the aois dataframe. If None,
+        all events are treated as a single trial. (default: None)
     **kwargs: Any
         Additional keyword arguments passed to underlying drift correction algorithm.
 
@@ -252,23 +253,23 @@ def add_corrected_fixations(
     -------
     pl.DataFrame
         Updated events DataFrame with corrected fixations appended as new event rows.
+
+    Raises
+    ------
+    ValueError
+        If trial_columns are missing from the events dataframe.
     """
-    events_frame: pl.DataFrame = events.frame if isinstance(events, Events) else events
+    if isinstance(trial_columns, str):
+        trial_columns = [trial_columns]
 
-    if trial_id is not None and 'trial' in events_frame.columns:
-        trial_events = events_frame.filter(pl.col('trial') == trial_id)
-        trial_aois = aois.filter(pl.col('trial') == trial_id)
-    else:
-        trial_events = events_frame
-        trial_aois = aois
-
-    fixation_events = trial_events.filter(pl.col('name').str.starts_with('fixation'))
-    if fixation_events.height == 0:
-        return events_frame
-
-    corrected_locs = create_corrected_fixations_locations(
-        fixation_events, trial_aois, algorithm=algorithm, **kwargs,
-    )
+    if trial_columns is not None:
+        missing_columns = [
+            column for column in trial_columns if column not in events.columns
+        ]
+        if missing_columns:
+            raise ValueError(
+                f'trial columns {missing_columns} are missing from events dataframe.',
+            )
 
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) > 1:
@@ -280,22 +281,52 @@ def add_corrected_fixations(
     else:
         algo_name = 'wisdom_of_the_crowd'
 
+    if trial_columns is not None:
+        trial_event_frames = events.partition_by(trial_columns, maintain_order=True)
+        aoi_trial_columns = [column for column in trial_columns if column in aois.columns]
+    else:
+        trial_event_frames = [events]
+        aoi_trial_columns = []
+
     corrected_rows = []
-    is_1d = corrected_locs.ndim == 1
-    for i, row in enumerate(fixation_events.iter_rows(named=True)):
-        row_copy = dict(row)
-        row_copy['name'] = f'fixation_corrected_{algo_name}'
-        if is_1d:
-            orig_x = row.get('location_x', row.get('location', [0.0, 0.0])[0])
-            loc_corr = [float(orig_x), float(corrected_locs[i])]
+    for trial_events in trial_event_frames:
+        if aoi_trial_columns:
+            # Each partition holds a single combination of trial column values.
+            trial_aois = aois.filter(
+                pl.all_horizontal([
+                    pl.col(column).eq_missing(pl.lit(trial_events[column][0]))
+                    for column in aoi_trial_columns
+                ]),
+            )
         else:
-            loc_corr = [float(corrected_locs[i][0]), float(corrected_locs[i][1])]
-        row_copy['location'] = loc_corr
-        if 'location_x' in row_copy:
-            row_copy['location_x'] = loc_corr[0]
-        if 'location_y' in row_copy:
-            row_copy['location_y'] = loc_corr[1]
-        corrected_rows.append(row_copy)
+            trial_aois = aois
+
+        fixation_events = trial_events.filter(pl.col('name').str.starts_with('fixation'))
+        if fixation_events.height == 0:
+            continue
+
+        corrected_locs = create_corrected_fixations_locations(
+            fixation_events, trial_aois, algorithm=algorithm, **kwargs,
+        )
+
+        is_1d = corrected_locs.ndim == 1
+        for i, row in enumerate(fixation_events.iter_rows(named=True)):
+            row_copy = dict(row)
+            row_copy['name'] = f'fixation_corrected_{algo_name}'
+            if is_1d:
+                orig_x = row.get('location_x', row.get('location', [0.0, 0.0])[0])
+                loc_corr = [float(orig_x), float(corrected_locs[i])]
+            else:
+                loc_corr = [float(corrected_locs[i][0]), float(corrected_locs[i][1])]
+            row_copy['location'] = loc_corr
+            if 'location_x' in row_copy:
+                row_copy['location_x'] = loc_corr[0]
+            if 'location_y' in row_copy:
+                row_copy['location_y'] = loc_corr[1]
+            corrected_rows.append(row_copy)
+
+    if not corrected_rows:
+        return events
 
     corrected_df = pl.DataFrame(corrected_rows)
-    return pl.concat([events_frame, corrected_df], how='diagonal')
+    return pl.concat([events, corrected_df], how='diagonal')

@@ -25,7 +25,6 @@ import numpy as np
 import polars as pl
 import pytest
 
-import pymovements as pm
 from pymovements.events.correction.fixation_correction import _get_lines_of_text_from_aois
 from pymovements.events.correction.fixation_correction import _has_word_x_coords
 from pymovements.events.correction.fixation_correction import add_corrected_fixations
@@ -177,7 +176,7 @@ def test_create_corrected_fixations_locations_invalid_location_raises():
 
 def test_add_corrected_fixations_default_woc(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    res_df = add_corrected_fixations(events_df, aois_df, trial_id='TRIAL1')
+    res_df = add_corrected_fixations(events_df, aois_df, trial_columns='trial')
     assert res_df.height == 12
     corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_wisdom_of_the_crowd')
     assert corrected_rows.height == 6
@@ -197,12 +196,42 @@ def test_add_corrected_fixations_algorithm_list(sample_events_and_aois):
     assert res_single.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
 
 
-def test_add_corrected_fixations_events_object(sample_events_and_aois):
+def test_add_corrected_fixations_multiple_trials_corrected_independently(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
-    events_obj = pm.Events(events_df)
-    res_df = add_corrected_fixations(events_obj, aois_df, algorithm='chain')
-    assert res_df.height == 12
-    assert res_df.filter(pl.col('name') == 'fixation_corrected_chain').height == 6
+    events_two_trials = pl.concat([
+        events_df,
+        events_df.with_columns(pl.lit('TRIAL2').alias('trial')),
+    ])
+    aois_two_trials = pl.concat([
+        aois_df,
+        aois_df.with_columns(pl.lit('TRIAL2').alias('trial')),
+    ])
+
+    single_trial_result = add_corrected_fixations(events_df, aois_df, algorithm='segment')
+    expected_locations = single_trial_result.filter(
+        pl.col('name') == 'fixation_corrected_segment',
+    )['location'].to_list()
+
+    res_df = add_corrected_fixations(
+        events_two_trials, aois_two_trials, algorithm='segment', trial_columns='trial',
+    )
+    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_segment')
+    assert corrected_rows.height == 12
+
+    # Identical trials must receive identical corrections, each matching the single-trial result.
+    for trial in ('TRIAL1', 'TRIAL2'):
+        trial_locations = corrected_rows.filter(pl.col('trial') == trial)['location'].to_list()
+        assert trial_locations == expected_locations
+
+
+def test_add_corrected_fixations_missing_trial_columns_raises():
+    events_df = pl.DataFrame({
+        'name': ['fixation'],
+        'location': [[100.0, 105.0]],
+    })
+    aois_df = pl.DataFrame({'start_y': [80.0], 'height': [40.0]})
+    with pytest.raises(ValueError, match=r"trial columns \['trial'\] are missing"):
+        add_corrected_fixations(events_df, aois_df, trial_columns='trial')
 
 
 def test_add_corrected_fixations_empty_fixations(sample_events_and_aois):
