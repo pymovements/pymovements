@@ -186,16 +186,27 @@ def compare(
     x_thresh: float
         Threshold for detecting line breaks. (default: 512)
     n_nearest_lines: int
-        Number of candidate nearest lines to evaluate with DTW. (default: 3)
+        Number of candidate nearest lines to evaluate with DTW. Values larger than the
+        number of text lines are clamped. (default: 3)
 
     Returns
     -------
     np.ndarray
         Array of shape (N, 2) with corrected Y-coordinates.
+
+    Raises
+    ------
+    ValueError
+        If n_nearest_lines is smaller than 1.
     """
+    if n_nearest_lines < 1:
+        raise ValueError('n_nearest_lines must be at least 1.')
     fixation_XY = np.array(fixation_XY, copy=True)
     word_XY = np.array(word_XY)
     line_Y = np.unique(word_XY[:, 1])
+    # Clamping only extends behavior to inputs on which the reference implementation of
+    # Carr et al. raises an IndexError; outputs are unchanged otherwise.
+    n_nearest_lines = min(n_nearest_lines, len(line_Y))
     n = len(fixation_XY)
     diff_X = np.diff(fixation_XY[:, 0])
     end_line_indices: list[int] = list((np.where(diff_X < -x_thresh)[0] + 1).tolist())

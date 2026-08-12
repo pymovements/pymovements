@@ -73,6 +73,33 @@ def test_compare(sample_fixations_and_lines):
     assert res.shape == fixations_XY.shape
 
 
+def test_compare_clamps_n_nearest_lines_on_two_line_text():
+    """Compare with default n_nearest_lines must handle texts with fewer lines."""
+    fixations_XY = np.array([
+        [100.0, 105.0], [800.0, 102.0], [100.0, 198.0], [800.0, 201.0],
+    ])
+    word_XY = np.array([
+        [100.0, 100.0], [800.0, 100.0], [100.0, 200.0], [800.0, 200.0],
+    ])
+    res = da.compare(fixations_XY, word_XY)
+    np.testing.assert_array_equal(res[:2, 1], 100.0)
+    np.testing.assert_array_equal(res[2:, 1], 200.0)
+
+
+def test_compare_single_line_text():
+    fixations_XY = np.column_stack([np.linspace(100, 900, 5), np.full(5, 105.0)])
+    word_XY = np.column_stack([np.linspace(100, 900, 5), np.full(5, 100.0)])
+    res = da.compare(fixations_XY, word_XY)
+    np.testing.assert_array_equal(res[:, 1], 100.0)
+
+
+def test_compare_invalid_n_nearest_lines_raises():
+    fixations_XY = np.array([[100.0, 105.0]])
+    word_XY = np.array([[100.0, 100.0]])
+    with pytest.raises(ValueError, match='n_nearest_lines must be at least 1'):
+        da.compare(fixations_XY, word_XY, n_nearest_lines=0)
+
+
 def test_merge_ltr_and_rtl(sample_fixations_and_lines):
     fixations_XY, line_Y = sample_fixations_and_lines
     rank_warning = np.RankWarning if hasattr(np, 'RankWarning') else np.exceptions.RankWarning

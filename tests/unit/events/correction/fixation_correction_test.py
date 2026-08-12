@@ -168,6 +168,25 @@ def test_create_corrected_fixations_locations_explicit_word_xy(sample_events_and
     assert locs.shape == (6, 2)
 
 
+def test_create_corrected_fixations_locations_default_woc_two_line_text():
+    """Default ensemble must handle texts with fewer lines than compare's n_nearest_lines."""
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'location': [
+            [100.0, 105.0], [800.0, 102.0], [100.0, 198.0], [800.0, 201.0],
+        ],
+    })
+    aois_df = pl.DataFrame({
+        'start_x': [50.0, 700.0, 50.0, 700.0],
+        'end_x': [150.0, 900.0, 150.0, 900.0],
+        'start_y': [80.0, 80.0, 180.0, 180.0],
+        'end_y': [120.0, 120.0, 220.0, 220.0],
+        'height': [40.0] * 4,
+    })
+    locs = create_corrected_fixations_locations(events_df, aois_df)
+    np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0])
+
+
 def test_create_corrected_fixations_locations_woc_votes_on_line_indices(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     # Explicit word_XY with y-values offset from the AOI line centers: index-based voting
