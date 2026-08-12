@@ -57,6 +57,38 @@ import polars as pl
 import pymovements.events.correction.drift_algorithms as da
 
 
+def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
+    """Annotate each AOI row with the y-center of the text line it belongs to.
+
+    Lines are identified by 'line_idx' if present, otherwise by the top y-coordinate.
+    Assumes that the line of text is vertically centered within each AOI bounding box.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to annotate.
+
+    Returns
+    -------
+    tuple[pl.DataFrame, str]
+        AOIs dataframe with an added 'line_center' column in original row order, and the
+        name of the column identifying lines.
+    """
+    y_col = 'start_y' if 'start_y' in aois.columns else 'top_left_y'
+    line_key = 'line_idx' if 'line_idx' in aois.columns else y_col
+
+    aois_with_line_centers = (
+        aois.filter(pl.col(line_key).is_not_null())
+        .with_columns(
+            (pl.col(y_col) + pl.col('height') / 2.0)
+            .mean()
+            .over(line_key)
+            .alias('line_center'),
+        )
+    )
+    return aois_with_line_centers, line_key
+
+
 def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     """Calculate line positions of text based on AOIs.
 
@@ -72,32 +104,38 @@ def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     list[float]
         Line center y-coordinates of the text.
     """
-    y_col = 'start_y' if 'start_y' in aois.columns else 'top_left_y'
-
-    # Assumes text is vertically centered within each AOI bounding box
-    if 'line_idx' in aois.columns:
-        return (
-            aois.filter(pl.col('line_idx').is_not_null())
-            .group_by('line_idx')
-            .agg(
-                (pl.col(y_col) + pl.col('height') / 2.0)
-                .mean()
-                .alias('line_center'),
-            )
-            .sort('line_idx')['line_center']
-            .to_list()
-        )
-
+    aois_with_line_centers, line_key = _with_line_centers(aois)
     return (
-        aois.group_by(y_col)
-        .agg(
-            (pl.col(y_col) + pl.col('height') / 2.0)
-            .mean()
-            .alias('line_center'),
-        )
-        .sort(y_col)['line_center']
+        aois_with_line_centers
+        .unique(subset=line_key)
+        .sort(line_key)['line_center']
         .to_list()
     )
+
+
+def _get_word_xy_from_aois(aois: pl.DataFrame) -> np.ndarray:
+    """Calculate word center positions from AOIs for DTW-based drift algorithms.
+
+    Following the word_XY convention of Carr et al. :cite:p:`Carr2022`, the y-coordinate of
+    each word is the center of the text line the word belongs to, not the center of the
+    word's own bounding box. This keeps the y-coordinates identical to the line positions
+    returned by _get_lines_of_text_from_aois.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to calculate word positions from.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (M, 2) with word center x-coordinates and line center y-coordinates.
+    """
+    aois_with_line_centers, _ = _with_line_centers(aois)
+    word_x = (aois_with_line_centers['start_x'] + aois_with_line_centers['end_x']) / 2.0
+    return np.column_stack([
+        word_x.to_numpy(), aois_with_line_centers['line_center'].to_numpy(),
+    ])
 
 
 ALL_DRIFT_ALGORITHMS: list[str] = [
@@ -195,9 +233,7 @@ def create_corrected_fixations_locations(
                 if word_xy_arg is not None:
                     target_arg = word_xy_arg
                 elif _has_word_x_coords(aois, kwargs):
-                    word_x = (aois['start_x'] + aois['end_x']) / 2.0
-                    word_y = (aois['start_y'] + aois['end_y']) / 2.0
-                    target_arg = np.column_stack([word_x.to_numpy(), word_y.to_numpy()])
+                    target_arg = _get_word_xy_from_aois(aois)
                 else:
                     raise ValueError(
                         f"Algorithm '{algorithm}' requires word X coordinates ('start_x', 'end_x') "

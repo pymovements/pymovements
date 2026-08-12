@@ -26,6 +26,7 @@ import polars as pl
 import pytest
 
 from pymovements.events.correction.fixation_correction import _get_lines_of_text_from_aois
+from pymovements.events.correction.fixation_correction import _get_word_xy_from_aois
 from pymovements.events.correction.fixation_correction import _has_word_x_coords
 from pymovements.events.correction.fixation_correction import add_corrected_fixations
 from pymovements.events.correction.fixation_correction import create_corrected_fixations_locations
@@ -267,6 +268,65 @@ def test_get_lines_of_text_from_aois_with_line_idx():
     })
     line_Y = _get_lines_of_text_from_aois(aois_df)
     assert line_Y == [102.5, 200.0]
+
+
+def test_get_word_xy_from_aois_uses_line_center_y():
+    # Word bounding box centers differ from line centers due to varying AOI heights.
+    aois_df = pl.DataFrame({
+        'line_idx': [0, 0, 1],
+        'start_x': [50.0, 250.0, 50.0],
+        'end_x': [200.0, 400.0, 200.0],
+        'start_y': [80.0, 80.0, 180.0],
+        'end_y': [120.0, 130.0, 220.0],
+        'height': [40.0, 50.0, 40.0],
+    })
+    word_XY = _get_word_xy_from_aois(aois_df)
+    np.testing.assert_array_equal(word_XY[:, 0], [125.0, 325.0, 125.0])
+    # Word y-coordinates are the line centers, identical to _get_lines_of_text_from_aois.
+    line_Y = _get_lines_of_text_from_aois(aois_df)
+    assert sorted(set(word_XY[:, 1])) == line_Y
+
+
+def test_create_corrected_fixations_locations_warp_returns_line_centers():
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location': [[100.0, 105.0], [200.0, 198.0]],
+    })
+    # end_y offsets make word bounding box centers deviate from line centers.
+    aois_df = pl.DataFrame({
+        'start_x': [50.0, 250.0, 50.0, 250.0],
+        'end_x': [200.0, 400.0, 200.0, 400.0],
+        'start_y': [80.0, 80.0, 180.0, 180.0],
+        'end_y': [121.0, 121.0, 221.0, 221.0],
+        'height': [40.0, 40.0, 40.0, 40.0],
+    })
+    line_Y = _get_lines_of_text_from_aois(aois_df)
+    locs = create_corrected_fixations_locations(events_df, aois_df, algorithm='warp')
+    assert set(locs[:, 1]).issubset(set(line_Y))
+
+
+def test_create_corrected_fixations_locations_compare_varying_word_centers():
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'location': [
+            [100.0, 105.0], [300.0, 102.0], [100.0, 198.0], [300.0, 201.0],
+        ],
+    })
+    # Varying AOI heights within a line must not create spurious extra lines for compare.
+    aois_df = pl.DataFrame({
+        'line_idx': [0, 0, 1, 1],
+        'start_x': [50.0, 250.0, 50.0, 250.0],
+        'end_x': [200.0, 400.0, 200.0, 400.0],
+        'start_y': [80.0, 75.0, 180.0, 175.0],
+        'end_y': [120.0, 125.0, 220.0, 225.0],
+        'height': [40.0, 50.0, 40.0, 50.0],
+    })
+    line_Y = _get_lines_of_text_from_aois(aois_df)
+    assert len(line_Y) == 2
+    locs = create_corrected_fixations_locations(
+        events_df, aois_df, algorithm='compare', n_nearest_lines=2,
+    )
+    assert set(locs[:, 1]).issubset(set(line_Y))
 
 
 def test_create_corrected_fixations_locations_split_columns():
