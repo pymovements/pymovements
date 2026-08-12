@@ -17,17 +17,19 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Validate drift correction algorithms against the reference implementation of Carr et al.
+"""Validate drift correction algorithms against their reference implementations.
 
 These tests download the reference implementation accompanying Carr et al. 2022 (see
-``CARR_REFERENCE``), run it side by side with the pymovements port on the fixation fixtures
-stored in ``tests/files/drift_correction/``, and assert that both produce identical output.
+``CARR_REFERENCE``) and the GazeGenie implementation of Mercier et al. 2024 (see
+``GAZEGENIE_REFERENCE``, providing the Wisdom of the Crowd ensemble), run them side by side
+with the pymovements port on the fixation fixtures stored in
+``tests/files/drift_correction/``, and assert that both produce identical output.
 Running both implementations in the same environment makes the comparison immune to
 numerical differences between numpy, scipy and scikit-learn versions: only a genuine
 divergence of the port from the reference can fail these tests.
 
-The download is pinned to a git commit (the raw URL is content-addressed) and verified
-against an MD5 checksum, so the executed reference code is immutable. A download failure
+The downloads are pinned to git commits (the raw URLs are content-addressed) and verified
+against MD5 checksums, so the executed reference code is immutable. A download failure
 fails the tests instead of skipping them, so the reference validation cannot silently
 disappear from CI.
 
@@ -52,6 +54,8 @@ side-by-side comparison of two independent stochastic runs is deterministic on t
 from __future__ import annotations
 
 import importlib.util
+import sys
+import types
 
 import numpy as np
 import polars as pl
@@ -70,6 +74,24 @@ CARR_REFERENCE = WebSource(
     filename='drift_algorithms_reference.py',
     md5='c70c367328c27fcd3f02c314ee7927f4',
 )
+
+GAZEGENIE_REFERENCE = WebSource(
+    url=(
+        'https://raw.githubusercontent.com/Gittingthehubbing/GazeGenie/'
+        '57b60eff78755759e8f76820e48eaddf9a362a0a/classic_correction_algos.py'
+    ),
+    filename='gazegenie_classic_correction_algos.py',
+    md5='524f5e7f338b280c7b8cf41b37672e47',
+)
+
+
+def _import_module_from_file(module_name, filepath):
+    """Import a downloaded reference implementation as a module."""
+    spec = importlib.util.spec_from_file_location(module_name, filepath)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 ALGORITHMS = [
     'attach', 'chain', 'cluster', 'compare', 'merge', 'regress',
@@ -102,12 +124,26 @@ def fixture_reference(tmp_path_factory):
     """Download the pinned reference implementation and import it as a module."""
     target_dirpath = tmp_path_factory.mktemp('carr_reference')
     filepath = CARR_REFERENCE.download(target_dirpath, verbose=False)
+    return _import_module_from_file('carr_reference_drift_algorithms', filepath)
 
-    spec = importlib.util.spec_from_file_location('carr_reference_drift_algorithms', filepath)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+
+@pytest.fixture(name='gazegenie_reference', scope='session')
+def fixture_gazegenie_reference(tmp_path_factory):
+    """Download the pinned GazeGenie reference implementation and import it as a module."""
+    target_dirpath = tmp_path_factory.mktemp('gazegenie_reference')
+    filepath = GAZEGENIE_REFERENCE.download(target_dirpath, verbose=False)
+
+    # classic_correction_algos.py imports the debug library icecream, which is not a
+    # pymovements dependency. Provide a call-compatible stub so the reference module can
+    # be imported unmodified.
+    if 'icecream' not in sys.modules:
+        icecream_stub = types.ModuleType('icecream')
+        icecream_stub.ic = types.SimpleNamespace(  # type: ignore[attr-defined]
+            configureOutput=lambda **kwargs: None,
+        )
+        sys.modules['icecream'] = icecream_stub
+
+    return _import_module_from_file('gazegenie_classic_correction_algos', filepath)
 
 
 def load_fixture(testfiles_dirpath, fixture_name):
@@ -164,3 +200,47 @@ def test_dynamic_time_warping_matches_reference_implementation(reference, testfi
 
     assert cost == pytest.approx(expected_cost)
     assert path == expected_path
+
+
+@pytest.mark.parametrize('fixture_name', list(FIXTURE_LINE_YS))
+def test_wisdom_of_the_crowd_matches_reference_implementation(
+        fixture_name, gazegenie_reference, testfiles_dirpath,
+):
+    fixation_xy = load_fixture(testfiles_dirpath, fixture_name)
+    line_ys = FIXTURE_LINE_YS[fixture_name]
+
+    # Assignments of the line-based algorithms serve as deterministic ensemble votes.
+    line_based_algorithms = [
+        'attach', 'chain', 'cluster', 'merge', 'regress',
+        'segment', 'slice', 'split', 'stretch',
+    ]
+    assignments = [
+        getattr(da, name)(fixation_xy, line_ys)[:, 1] for name in line_based_algorithms
+    ]
+
+    expected = gazegenie_reference.wisdom_of_the_crowd(
+        [np.array(assignment, copy=True) for assignment in assignments],
+    )
+    result = da.wisdom_of_the_crowd(assignments)
+
+    assert list(result) == list(expected)
+
+
+def test_wisdom_of_the_crowd_tie_breaking_matches_reference_implementation(
+        gazegenie_reference,
+):
+    """Ties are broken in favor of the left-most algorithm, as in the reference."""
+    vote_scenarios = [
+        # Full tie between all algorithms.
+        [[100.0, 200.0], [200.0, 100.0], [300.0, 300.0]],
+        # Two-way tie between second and third candidate.
+        [[100.0, 100.0], [200.0, 200.0], [200.0, 300.0], [300.0, 300.0], [100.0, 200.0]],
+        # Unanimous vote.
+        [[100.0, 100.0], [100.0, 100.0], [100.0, 100.0]],
+    ]
+    for assignments in vote_scenarios:
+        expected = gazegenie_reference.wisdom_of_the_crowd(
+            [np.array(assignment, copy=True) for assignment in assignments],
+        )
+        result = da.wisdom_of_the_crowd(assignments)
+        assert list(result) == list(expected)
