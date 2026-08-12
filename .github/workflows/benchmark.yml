@@ -74,4 +74,4 @@ jobs:
           comment-on-alert: true
           fail-on-alert: true
           summary-always: true
-          alert-comment-cc-users: '@dkrako,@SiQube'
+          alert-comment-cc-users: '@dkrako,@cbueth,@SiQube'
