@@ -72,7 +72,7 @@ def test_dataset_correct_fixations(dummy_dataset, aois_df):
     assert result is dummy_dataset
 
     corrected_rows = dummy_dataset.events[0].frame.filter(
-        pl.col('name') == 'fixation_corrected_attach',
+        pl.col('correction_algorithm') == 'attach',
     )
     assert corrected_rows.height == 6
 
@@ -84,7 +84,7 @@ def test_dataset_correct_fixations_corrected_locations(dummy_dataset, aois_df):
     dummy_dataset.correct_fixations(aois_df, algorithm='attach', verbose=False)
 
     corrected_rows = dummy_dataset.events[0].frame.filter(
-        pl.col('name') == 'fixation_corrected_attach',
+        pl.col('correction_algorithm') == 'attach',
     )
     corrected_y = [location[1] for location in corrected_rows['location'].to_list()]
     assert corrected_y == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]

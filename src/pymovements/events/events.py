@@ -820,11 +820,13 @@ class Events:
             fixation_name: str = 'fixation',
             inplace: bool = True,
     ) -> Events | None:
-        """Correct vertical drift of fixations and append corrected events.
+        """Correct vertical drift of fixation locations.
 
         Fixations are corrected per trial according to :py:attr:`~pymovements.Events.
-        trial_columns` using the specified drift correction algorithm and appended as new
-        event rows named ``{fixation_name}_corrected_{algorithm}``. See
+        trial_columns` using the specified drift correction algorithm. Fixation locations
+        are replaced with their corrected values; original locations are preserved in a
+        ``location_original`` column and the applied algorithm is recorded in a
+        ``correction_algorithm`` column. See
         :py:func:`~pymovements.events.correction.correct_fixations` for details.
 
         Parameters
@@ -849,14 +851,14 @@ class Events:
             Name of the fixation events to correct. (default: 'fixation')
         inplace: bool
             If ``True``, mutate this object and return None. If ``False``, return a new
-            :py:class:`~pymovements.Events` object with the corrected events appended,
+            :py:class:`~pymovements.Events` object with corrected fixation locations,
             leaving this object unchanged. (default: True)
 
         Returns
         -------
         Events | None
             None if ``inplace`` is True, otherwise a new
-            :py:class:`~pymovements.Events` object with the corrected events appended.
+            :py:class:`~pymovements.Events` object with corrected fixation locations.
         """
         aois_frame = aois.aois if isinstance(aois, TextStimulus) else aois
         corrected_frame = fixation_correction.correct_fixations(

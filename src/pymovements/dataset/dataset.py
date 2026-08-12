@@ -1208,8 +1208,10 @@ class Dataset:
         """Correct vertical drift of fixations for all events in the dataset.
 
         Fixations of each :py:class:`~pymovements.Events` object are corrected per trial
-        using the specified drift correction algorithm and appended as new event rows named
-        ``{fixation_name}_corrected_{algorithm}``. See
+        using the specified drift correction algorithm. Fixation locations are replaced
+        with their corrected values; original locations are preserved in a
+        ``location_original`` column and the applied algorithm is recorded in a
+        ``correction_algorithm`` column. See
         :py:meth:`~pymovements.Events.correct_fixations` for details.
 
         Parameters

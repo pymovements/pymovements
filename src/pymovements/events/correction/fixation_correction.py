@@ -353,7 +353,12 @@ def correct_fixations(
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
 ) -> pl.DataFrame:
-    """Correct fixations per trial using specified drift algorithm and append corrected events.
+    """Correct fixation locations per trial using the specified drift algorithm.
+
+    The locations of fixation events are replaced with their corrected values. Original
+    locations are preserved in a 'location_original' column ('location_x_original' /
+    'location_y_original' for split component columns) and the applied algorithm is
+    recorded in a 'correction_algorithm' column, which is null for uncorrected rows.
 
     Parameters
     ----------
@@ -372,7 +377,8 @@ def correct_fixations(
     text_right_to_left: bool
         Whether the text is read from right to left. Passed to those algorithms with
         direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
-        algorithms ignore it. (default: False)
+        algorithms ignore it. The 'compare' algorithm does not support right-to-left
+        reading and is excluded from ensembles with a UserWarning. (default: False)
     word_XY: np.ndarray | None
         Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare' and
         'warp'. If None, word coordinates are derived from the aois dataframe. (default: None)
@@ -382,18 +388,18 @@ def correct_fixations(
         candidate algorithms that accept it. (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
-        corrected, so previously corrected fixation events are not corrected again when
-        running on a returned events dataframe. (default: 'fixation')
+        corrected. (default: 'fixation')
 
     Returns
     -------
     pl.DataFrame
-        Updated events DataFrame with corrected fixations appended as new event rows.
+        Updated events DataFrame with corrected fixation locations.
 
     Raises
     ------
     ValueError
-        If trial_columns are missing from the events dataframe.
+        If trial_columns are missing from the events dataframe, or if the fixation events
+        have already been corrected.
     """
     if isinstance(trial_columns, str):
         trial_columns = [trial_columns]
@@ -407,6 +413,17 @@ def correct_fixations(
                 f'trial columns {missing_columns} are missing from events dataframe.',
             )
 
+    if 'correction_algorithm' in events.columns:
+        already_corrected = events.filter(
+            (pl.col('name') == fixation_name)
+            & pl.col('correction_algorithm').is_not_null(),
+        )
+        if already_corrected.height > 0:
+            raise ValueError(
+                f"'{fixation_name}' events have already been corrected with "
+                f"'{already_corrected['correction_algorithm'][0]}'.",
+            )
+
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) > 1:
             algo_name = 'wisdom_of_the_crowd'
@@ -417,14 +434,18 @@ def correct_fixations(
     else:
         algo_name = 'wisdom_of_the_crowd'
 
+    indexed_events = events.with_row_index('__fixation_correction_index')
+
     if trial_columns is not None:
-        trial_event_frames = events.partition_by(trial_columns, maintain_order=True)
+        trial_event_frames = indexed_events.partition_by(trial_columns, maintain_order=True)
         aoi_trial_columns = [column for column in trial_columns if column in aois.columns]
     else:
-        trial_event_frames = [events]
+        trial_event_frames = [indexed_events]
         aoi_trial_columns = []
 
-    corrected_rows = []
+    corrected_indices: list[int] = []
+    corrected_xs: list[float] = []
+    corrected_ys: list[float] = []
     for trial_events in trial_event_frames:
         if aoi_trial_columns:
             # Each partition holds a single combination of trial column values.
@@ -447,24 +468,70 @@ def correct_fixations(
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         )
 
-        is_1d = corrected_locs.ndim == 1
-        for i, row in enumerate(fixation_events.iter_rows(named=True)):
-            row_copy = dict(row)
-            row_copy['name'] = f'{fixation_name}_corrected_{algo_name}'
-            if is_1d:
-                orig_x = row.get('location_x', row.get('location', [0.0, 0.0])[0])
-                loc_corr = [float(orig_x), float(corrected_locs[i])]
-            else:
-                loc_corr = [float(corrected_locs[i][0]), float(corrected_locs[i][1])]
-            row_copy['location'] = loc_corr
-            if 'location_x' in row_copy:
-                row_copy['location_x'] = loc_corr[0]
-            if 'location_y' in row_copy:
-                row_copy['location_y'] = loc_corr[1]
-            corrected_rows.append(row_copy)
+        corrected_indices.extend(fixation_events['__fixation_correction_index'].to_list())
+        corrected_xs.extend(float(x) for x in corrected_locs[:, 0])
+        corrected_ys.extend(float(y) for y in corrected_locs[:, 1])
 
-    if not corrected_rows:
+    if not corrected_indices:
         return events
 
-    corrected_df = pl.DataFrame(corrected_rows)
-    return pl.concat([events, corrected_df], how='diagonal')
+    updates = pl.DataFrame({
+        '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
+        '__corrected_x': pl.Series(corrected_xs, dtype=pl.Float64),
+        '__corrected_y': pl.Series(corrected_ys, dtype=pl.Float64),
+    })
+    frame = (
+        indexed_events
+        .join(updates, on='__fixation_correction_index', how='left')
+        .sort('__fixation_correction_index')
+    )
+
+    is_corrected = pl.col('__corrected_y').is_not_null()
+
+    def _preserving(column: str, corrected_value: pl.Expr, dtype: pl.DataType) -> pl.Expr:
+        """Set corrected_value on corrected rows, preserving any existing column values."""
+        if column in events.columns:
+            fallback: pl.Expr = pl.col(column)
+        else:
+            fallback = pl.lit(None, dtype=dtype)
+        return pl.when(is_corrected).then(corrected_value).otherwise(fallback).alias(column)
+
+    update_columns = []
+    if 'location' in events.columns and events['location'].dtype != pl.Null:
+        update_columns.append(
+            _preserving('location_original', pl.col('location'), pl.List(pl.Float64)),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.concat_list([pl.col('__corrected_x'), pl.col('__corrected_y')]))
+            .otherwise(pl.col('location'))
+            .alias('location'),
+        )
+    if 'location_x' in events.columns and 'location_y' in events.columns:
+        update_columns.append(
+            _preserving('location_x_original', pl.col('location_x'), pl.Float64),
+        )
+        update_columns.append(
+            _preserving('location_y_original', pl.col('location_y'), pl.Float64),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_x'))
+            .otherwise(pl.col('location_x'))
+            .alias('location_x'),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_y'))
+            .otherwise(pl.col('location_y'))
+            .alias('location_y'),
+        )
+    update_columns.append(
+        _preserving('correction_algorithm', pl.lit(algo_name), pl.Utf8),
+    )
+
+    return (
+        frame
+        .with_columns(update_columns)
+        .drop(['__fixation_correction_index', '__corrected_x', '__corrected_y'])
+    )

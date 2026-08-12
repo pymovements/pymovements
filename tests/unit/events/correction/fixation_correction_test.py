@@ -291,9 +291,14 @@ def test_correct_fixation_locations_invalid_location_raises():
 def test_correct_fixations_default_woc(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     res_df = correct_fixations(events_df, aois_df, trial_columns='trial')
-    assert res_df.height == 12
-    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_wisdom_of_the_crowd')
+    assert res_df.height == 6
+    corrected_rows = res_df.filter(pl.col('correction_algorithm') == 'wisdom_of_the_crowd')
     assert corrected_rows.height == 6
+    assert corrected_rows['name'].to_list() == ['fixation'] * 6
+    corrected_y = [location[1] for location in corrected_rows['location'].to_list()]
+    assert corrected_y == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
+    # Original locations are preserved.
+    assert corrected_rows['location_original'].to_list() == events_df['location'].to_list()
 
 
 def test_correct_fixations_algorithm_list(sample_events_and_aois):
@@ -301,13 +306,12 @@ def test_correct_fixations_algorithm_list(sample_events_and_aois):
     res_df = correct_fixations(
         events_df, aois_df, algorithm=['attach', 'chain'],
     )
-    assert res_df.height == 12
-    assert res_df.filter(pl.col('name') == 'fixation_corrected_wisdom_of_the_crowd').height == 6
+    assert res_df.filter(pl.col('correction_algorithm') == 'wisdom_of_the_crowd').height == 6
 
     res_single = correct_fixations(
         events_df, aois_df, algorithm=['attach'],
     )
-    assert res_single.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
+    assert res_single.filter(pl.col('correction_algorithm') == 'attach').height == 6
 
 
 def test_correct_fixations_multiple_trials_corrected_independently(sample_events_and_aois):
@@ -322,31 +326,25 @@ def test_correct_fixations_multiple_trials_corrected_independently(sample_events
     ])
 
     single_trial_result = correct_fixations(events_df, aois_df, algorithm='segment')
-    expected_locations = single_trial_result.filter(
-        pl.col('name') == 'fixation_corrected_segment',
-    )['location'].to_list()
+    expected_locations = single_trial_result['location'].to_list()
 
     res_df = correct_fixations(
         events_two_trials, aois_two_trials, algorithm='segment', trial_columns='trial',
     )
-    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_segment')
-    assert corrected_rows.height == 12
+    assert res_df.height == 12
+    assert res_df.filter(pl.col('correction_algorithm') == 'segment').height == 12
 
     # Identical trials must receive identical corrections, each matching the single-trial result.
     for trial in ('TRIAL1', 'TRIAL2'):
-        trial_locations = corrected_rows.filter(pl.col('trial') == trial)['location'].to_list()
+        trial_locations = res_df.filter(pl.col('trial') == trial)['location'].to_list()
         assert trial_locations == expected_locations
 
 
-def test_correct_fixations_rerun_does_not_correct_corrected_events(sample_events_and_aois):
+def test_correct_fixations_rerun_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     once = correct_fixations(events_df, aois_df, algorithm='attach')
-    twice = correct_fixations(once, aois_df, algorithm='chain')
-
-    # The second run must only correct the original fixation events.
-    assert twice.filter(pl.col('name') == 'fixation_corrected_chain').height == 6
-    assert twice.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
-    assert twice.height == 18
+    with pytest.raises(ValueError, match="'fixation' events have already been corrected"):
+        correct_fixations(once, aois_df, algorithm='chain')
 
 
 def test_correct_fixations_custom_fixation_name(sample_events_and_aois):
@@ -355,7 +353,9 @@ def test_correct_fixations_custom_fixation_name(sample_events_and_aois):
     res_df = correct_fixations(
         events_named, aois_df, algorithm='attach', fixation_name='fixation_left',
     )
-    assert res_df.filter(pl.col('name') == 'fixation_left_corrected_attach').height == 6
+    corrected_rows = res_df.filter(pl.col('correction_algorithm') == 'attach')
+    assert corrected_rows.height == 6
+    assert corrected_rows['name'].to_list() == ['fixation_left'] * 6
 
 
 def test_events_correct_fixations(sample_events_and_aois):
@@ -363,7 +363,7 @@ def test_events_correct_fixations(sample_events_and_aois):
     events = pm.Events(events_df, trial_columns='trial')
     result = events.correct_fixations(aois_df, algorithm='attach')
     assert result is None
-    corrected_rows = events.frame.filter(pl.col('name') == 'fixation_corrected_attach')
+    corrected_rows = events.frame.filter(pl.col('correction_algorithm') == 'attach')
     assert corrected_rows.height == 6
 
 
@@ -371,10 +371,10 @@ def test_events_correct_fixations_not_inplace(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     events = pm.Events(events_df, trial_columns='trial')
     result = events.correct_fixations(aois_df, algorithm='attach', inplace=False)
-    assert events.frame.height == 6  # original object unchanged
+    assert 'correction_algorithm' not in events.frame.columns  # original object unchanged
     assert result is not None
     assert result.trial_columns == ['trial']
-    assert result.frame.filter(pl.col('name') == 'fixation_corrected_attach').height == 6
+    assert result.frame.filter(pl.col('correction_algorithm') == 'attach').height == 6
 
 
 def test_events_correct_fixations_with_text_stimulus(sample_events_and_aois):
@@ -389,7 +389,7 @@ def test_events_correct_fixations_with_text_stimulus(sample_events_and_aois):
     )
     events = pm.Events(events_df, trial_columns='trial')
     events.correct_fixations(stimulus, algorithm='attach')
-    corrected_rows = events.frame.filter(pl.col('name') == 'fixation_corrected_attach')
+    corrected_rows = events.frame.filter(pl.col('correction_algorithm') == 'attach')
     assert corrected_rows.height == 6
 
 
@@ -512,48 +512,41 @@ def test_correct_fixation_locations_split_columns():
     np.testing.assert_array_equal(locs[:, 1], [100.0, 200.0])
 
 
-def test_correct_fixations_1d_and_split_columns(monkeypatch):
+def test_correct_fixations_split_columns(sample_events_and_aois):
+    _, aois_df = sample_events_and_aois
     events_df = pl.DataFrame({
-        'name': ['fixation', 'fixation'],
-        'location_x': [100.0, 200.0],
-        'location_y': [105.0, 198.0],
-    })
-    aois_df = pl.DataFrame({
-        'start_y': [80.0, 180.0],
-        'height': [40.0, 40.0],
+        'name': ['fixation', 'saccade', 'fixation'],
+        'location_x': [100.0, 150.0, 200.0],
+        'location_y': [105.0, 150.0, 198.0],
     })
 
-    monkeypatch.setattr(
-        'pymovements.events.correction.fixation_correction.correct_fixation_locations',
-        lambda *args, **kwargs: np.array([100.0, 200.0]),
-    )
+    res_df = correct_fixations(events_df, aois_df.head(4), algorithm='attach')
 
-    res_df = correct_fixations(events_df, aois_df, algorithm='attach')
-    assert res_df.height == 4
-    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
-    assert corrected_rows.height == 2
-    assert 'location_x' in corrected_rows.columns
-    assert 'location_y' in corrected_rows.columns
-    np.testing.assert_array_equal(corrected_rows['location_x'].to_list(), [100.0, 200.0])
-    np.testing.assert_array_equal(corrected_rows['location_y'].to_list(), [100.0, 200.0])
+    assert res_df.height == 3
+    assert res_df['location_x'].to_list() == [100.0, 150.0, 200.0]
+    assert res_df['location_y'].to_list() == [100.0, 150.0, 200.0]
+    assert res_df['location_x_original'].to_list() == [100.0, None, 200.0]
+    assert res_df['location_y_original'].to_list() == [105.0, None, 198.0]
+    assert res_df['correction_algorithm'].to_list() == ['attach', None, 'attach']
 
 
-def test_correct_fixations_1d_with_location_list(monkeypatch):
-    events_df = pl.DataFrame({
-        'name': ['fixation', 'fixation'],
-        'location': [[100.0, 105.0], [200.0, 198.0]],
-    })
-    aois_df = pl.DataFrame({
-        'start_y': [80.0, 180.0],
-        'height': [40.0, 40.0],
-    })
+def test_correct_fixations_preserves_non_fixation_rows(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events_with_saccade = pl.concat([
+        events_df,
+        pl.DataFrame({
+            'trial': ['TRIAL1'],
+            'name': ['saccade'],
+            'onset': [50],
+            'location': [[150.0, 150.0]],
+        }),
+    ])
 
-    monkeypatch.setattr(
-        'pymovements.events.correction.fixation_correction.correct_fixation_locations',
-        lambda *args, **kwargs: np.array([100.0, 200.0]),
-    )
+    res_df = correct_fixations(events_with_saccade, aois_df, algorithm='attach')
 
-    res_df = correct_fixations(events_df, aois_df, algorithm='attach')
-    assert res_df.height == 4
-    corrected_rows = res_df.filter(pl.col('name') == 'fixation_corrected_attach')
-    assert corrected_rows['location'].to_list() == [[100.0, 100.0], [200.0, 200.0]]
+    saccade_row = res_df.filter(pl.col('name') == 'saccade')
+    assert saccade_row['location'].to_list() == [[150.0, 150.0]]
+    assert saccade_row['location_original'].to_list() == [None]
+    assert saccade_row['correction_algorithm'].to_list() == [None]
+    # Row order is unchanged.
+    assert res_df['name'].to_list() == events_with_saccade['name'].to_list()
