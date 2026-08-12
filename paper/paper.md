@@ -65,9 +65,10 @@ bibliography: paper.bib
 
 # Summary
 
-Eye movements indicate where a person's visual attention is directed, such
-as which word is being read, which part of an image is being inspected, or
-which region of a display is being scanned. Eye-tracking devices record
+Eye movements typically indicate where a person's visual attention is
+overtly directed, such as which word is being read, which part of an image
+is being inspected, or which region of a display is being scanned.
+Eye-tracking devices record
 this behavior as a time series of gaze coordinates, and researchers in
 psychology, linguistics, neuroscience, and human-computer interaction use
 these recordings to study reading, visual attention, oculomotor control,
@@ -103,19 +104,20 @@ reproduce or compare analyses across studies. `pymovements`
 was introduced to give research groups a shared, tested, and openly
 licensed interface for these steps, so that processing is documented,
 versioned, and citable rather than re-implemented per project
-[@Krakowczyk2023]. Widely used event-detection algorithms, including the
-velocity-threshold identification (I-VT) and dispersion-threshold
-identification (I-DT) methods [@SalvucciGoldberg2000] and the microsaccade
-detection algorithm of @EngbertKliegl2003 as implemented in the
-Microsaccade Toolbox [@Engbert2015], otherwise exist scattered across
-research code bases and publication-specific scripts. `pymovements`
-packages them, together with blink detection following @Hershman2018 and
-@Nystrom2024, into a single library with a consistent interface.
+[@Krakowczyk2023]. Widely used event-detection algorithms otherwise exist
+scattered across research codebases and publication-specific scripts.
+These include the velocity-threshold identification (I-VT) and
+dispersion-threshold identification (I-DT) methods [@SalvucciGoldberg2000]
+and the microsaccade detection algorithm of @EngbertKliegl2003 as
+implemented in the Microsaccade Toolbox [@Engbert2015]. `pymovements`
+packages these algorithms, together with blink detection following
+@Hershman2018 and @Nystrom2024, into a single library with a consistent
+interface.
 
 Two related problems motivated recent additions to the package.
 First, there has been no consensus on which properties of a recording setup
 or which data-quality metrics should be reported alongside a shared
-eye-tracking dataset, a gap the package's data-quality reporting
+eye-tracking dataset, a gap that the package's data-quality reporting
 functionality was developed to address [@Jakobi2024]. Second, existing
 public datasets are dispersed across repositories with non-standardized
 formats and incomplete metadata. This motivated the package's dataset
@@ -147,8 +149,8 @@ signals. Proprietary vendor software such as SR Research Data Viewer
 specific hardware.
 
 Each of these tools covers a single stage, scope, or paradigm: some begin
-after event detection, event-detection packages stop at classifying
-events, most are confined to the data format of one vendor, and others address
+after event detection, event-detection packages stop at classifying events,
+several are tied to a single vendor's data format, and others address
 recording, feature extraction, statistical analysis, or reading measures in
 isolation. None combines, in a single tested and openly licensed Python
 package, the full path from raw vendor files through coordinate transforms
@@ -156,7 +158,7 @@ and event detection to reading-level measures, and none offers a
 standardized, community-extensible layer for discovering, downloading, and
 harmonizing published datasets. `pymovements` was built to fill that gap
 rather than to duplicate any single tool: where established algorithms
-exist [@SalvucciGoldberg2000; @EngbertKliegl2003; @Carr2022], it reimplements
+exist [@SalvucciGoldberg2000; @EngbertKliegl2003], it reimplements
 them behind one consistent interface rather than inventing new ones, and it
 adds the dataset-harmonization layer that has no counterpart among them.
 
@@ -171,7 +173,7 @@ pixel-to-degree conversion be expressed without the user re-supplying
 calibration parameters at each call. The object is backed by the `polars`
 dataframe library [@polars], whose columnar, Rust-based engine provides the
 throughput needed to process large raw gaze recordings; this trades some
-familiarity for performance, as most researchers know the `pandas`
+familiarity for performance, as many researchers know the `pandas`
 ecosystem better. Constructors from `pandas` dataframes [@pandas] and
 `numpy` arrays [@numpy] mitigate this cost and keep the package
 interoperable with these widely used libraries. At load time, the
@@ -184,15 +186,16 @@ event-detection algorithms, and measures are each exposed through
 registries so that a research group can add and dispatch its own methods
 without modifying the package. Public datasets are described declaratively
 as dataset definitions that point at the resources published by each
-dataset's original authors rather than redistributing any data; this
-keeps the catalog on firm legal and ethical ground as it grows, lets
-definitions be contributed as lightweight YAML files by researchers without
-deep Python experience, and is backed by automated checks that the
-referenced resources remain reachable and that downloaded files match their
-published checksums. The package aligns with community data standards to
-keep its outputs findable, accessible, interoperable, and reusable
-[@Wilkinson2016]: participant and phenotype data follow the metadata
-conventions of the Brain Imaging Data Structure (BIDS) [@Gorgolewski2016],
+dataset's original authors rather than redistributing the data itself.
+This keeps the catalog on firm legal and ethical ground as it grows, lets
+definitions be contributed as lightweight YAML files by researchers
+without deep Python experience, and is backed by automated checks that the
+referenced resources remain reachable and that downloaded files match
+their published checksums. The package aligns with community data
+standards to keep its outputs FAIR (findable, accessible, interoperable,
+and reusable) [@Wilkinson2016]: participant and phenotype data follow the
+metadata conventions of the Brain Imaging Data Structure (BIDS)
+[@Gorgolewski2016],
 and data-quality reports are written as BIDS derivatives.
 
 The package follows established open-development practices: it is released
@@ -218,16 +221,16 @@ projects; four multi-day contributor meetings organized through the COST
 Action brought together contributors from across Europe to jointly design
 and implement core features of the package [@Krakowczyk2026]. `pymovements`
 has more than 50 contributors from multiple laboratories and is distributed
-via PyPI and conda-forge, with more than 92,000 downloads from PyPI
-[@pepyPymovements] and more than 59,000 from conda-forge
+via PyPI and conda-forge, with more than 92,000 cumulative downloads from
+PyPI [@pepyPymovements] and more than 59,000 from conda-forge
 [@condaforgePymovements] as of August 2026.
 
 Beyond the author team, `pymovements` has been taken up in research across
 several domains, including clinical vision research [@Grootjen2025],
 human-computer interaction [@Chiossi2024], and virtual-reality interaction
-[@Li2024; @Wang2026]. It is also cited as a reference point by newer
-eye-tracking analysis tools [@PyNeon2026; @OpenGazeLab2026; @Balaskas2026]
-and featured in a recent review of eye-tracking software [@Niehorster2025].
+[@Li2024; @Wang2026]. Newer eye-tracking analysis tools also cite it as a
+reference point [@PyNeon2026; @OpenGazeLab2026; @Balaskas2026], and it is
+featured in a recent review of eye-tracking software [@Niehorster2025].
 Its dataset catalog has begun to receive contributions from researchers
 outside the core team [@MCFW-Gaze-Paper], supported by a dedicated dataset
 contribution guide that lowers the barrier to adding new datasets.
@@ -248,7 +251,7 @@ content.
 
 # Acknowledgements
 
-The pymovements project was partially funded by the Swiss National Science
+The `pymovements` project was partially funded by the Swiss National Science
 Foundation (SNSF) under grants IZCOZ0_220330 (EyeNLG) and 212276 (MeRID),
 and the German Federal Ministry of Education and Research (BMBF) under grant
 01IS20043. It was further supported by the COST
