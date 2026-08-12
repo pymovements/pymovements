@@ -168,6 +168,39 @@ def test_create_corrected_fixations_locations_explicit_word_xy(sample_events_and
     assert locs.shape == (6, 2)
 
 
+def test_create_corrected_fixations_locations_woc_votes_on_line_indices(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    # Explicit word_XY with y-values offset from the AOI line centers: index-based voting
+    # must still map all ensemble votes onto the AOI line centers.
+    word_XY = np.array([
+        [125.0, 95.0], [325.0, 95.0],
+        [125.0, 195.0], [325.0, 195.0],
+        [125.0, 295.0], [325.0, 295.0],
+    ])
+    locs = create_corrected_fixations_locations(events_df, aois_df, word_XY=word_XY)
+    np.testing.assert_array_equal(locs[:, 1], [100.0, 100.0, 200.0, 200.0, 300.0, 300.0])
+
+
+def test_create_corrected_fixations_locations_woc_word_xy_without_aoi_coordinates():
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 6,
+        'location': [
+            [100.0, 105.0], [200.0, 102.0], [300.0, 198.0],
+            [400.0, 201.0], [100.0, 305.0], [200.0, 301.0],
+        ],
+    })
+    aois_df = pl.DataFrame({'word': ['Word1', 'Word2', 'Word3']})
+    word_XY = np.array([
+        [125.0, 100.0], [325.0, 100.0],
+        [125.0, 200.0], [325.0, 200.0],
+        [125.0, 300.0], [325.0, 300.0],
+    ])
+    locs = create_corrected_fixations_locations(
+        events_df, aois_df, algorithm=['compare', 'warp'], word_XY=word_XY,
+    )
+    assert set(locs[:, 1]).issubset({100.0, 200.0, 300.0})
+
+
 def test_create_corrected_fixations_locations_invalid_location_raises():
     events_df = pl.DataFrame({'name': ['fixation'], 'trial': ['TRIAL1']})
     aois_df = pl.DataFrame({'start_y': [80.0], 'height': [40.0]})

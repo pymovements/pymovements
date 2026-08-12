@@ -248,15 +248,30 @@ def create_corrected_fixations_locations(
     else:
         raise TypeError('algorithm must be a string or a list of strings.')
 
-    candidate_y_list: list[np.ndarray | list[float]] = []
+    # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
+    # split votes through differing float representations of the same text line.
+    has_line_info = (
+        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
+        and 'height' in aois.columns
+    )
+    if has_line_info:
+        line_Y = np.array(_get_lines_of_text_from_aois(aois))
+    else:
+        line_Y = np.unique(np.asarray(word_xy_arg)[:, 1])
+
+    candidate_line_assignments = []
     for candidate_algo in candidate_algos:
         res = create_corrected_fixations_locations(
             events, aois, algorithm=candidate_algo, **kwargs,
         )
-        y_vals = res[:, 1] if res.ndim == 2 else res
-        candidate_y_list.append(y_vals)
-    corrected_y = da.wisdom_of_the_crowd(candidate_y_list)
-    return np.column_stack([fixationXY_arr[:, 0], corrected_y])
+        y_vals = np.asarray(res[:, 1] if res.ndim == 2 else res)
+        candidate_line_assignments.append(
+            np.argmin(np.abs(line_Y[:, np.newaxis] - y_vals[np.newaxis, :]), axis=0),
+        )
+    corrected_line_indices = np.asarray(
+        da.wisdom_of_the_crowd(candidate_line_assignments), dtype=int,
+    )
+    return np.column_stack([fixationXY_arr[:, 0], line_Y[corrected_line_indices]])
 
 
 def add_corrected_fixations(
