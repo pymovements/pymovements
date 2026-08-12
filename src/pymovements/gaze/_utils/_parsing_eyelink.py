@@ -29,6 +29,7 @@ __all__ = [
 
 import calendar
 import datetime
+import math
 import re
 
 import warnings
@@ -38,7 +39,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
@@ -603,9 +603,9 @@ def parse_eyelink(
         samples['x_left_pix'] = prev_x
         samples['y_left_pix'] = prev_y
         samples['pupil_left'] = prev_pupil
-        samples['x_right_pix'] = [np.nan] * n_prev
-        samples['y_right_pix'] = [np.nan] * n_prev
-        samples['pupil_right'] = [np.nan] * n_prev
+        samples['x_right_pix'] = [math.nan] * n_prev
+        samples['y_right_pix'] = [math.nan] * n_prev
+        samples['pupil_right'] = [math.nan] * n_prev
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
