@@ -664,9 +664,16 @@ def test_extract_archive_skips_macosx_metadata_files(tmp_path, make_archive):
             'test.zip', os.path.join('data', '__MACOSX', 'file.txt'), True,
             id='zip_macosx_nested',
         ),
+        # Windows Explorer thumbnail caches must be skipped, regardless of case.
+        pytest.param('test.zip', 'Thumbs.db', True, id='zip_thumbsdb'),
+        pytest.param('test.tar', 'Thumbs.db', True, id='tar_thumbsdb'),
+        pytest.param(
+            'test.zip', os.path.join('data', 'thumbs.db'), True,
+            id='zip_thumbsdb_lowercase_nested',
+        ),
     ],
 )
-def test_extract_archive_macos_metadata_filtering(
+def test_extract_archive_filesystem_metadata_filtering(
         make_archive, tmp_path, archive_name, member, skipped,
 ):
     archive_path = make_archive(
