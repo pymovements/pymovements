@@ -799,6 +799,9 @@ def wisdom_of_the_crowd(
 ) -> list[float]:
     """Ensemble correction choosing line assignment with most votes across algorithms.
 
+    In the event of a tie, the left-most algorithm in ``assignments`` is given priority,
+    following the reference implementation.
+
     Reference: :cite:p:`Mercier2024b`.
 
     Parameters
