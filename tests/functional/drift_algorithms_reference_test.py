@@ -93,6 +93,7 @@ def _import_module_from_file(module_name, filepath):
     spec.loader.exec_module(module)
     return module
 
+
 ALGORITHMS = [
     'attach', 'chain', 'cluster', 'compare', 'merge', 'regress',
     'segment', 'slice', 'split', 'stretch', 'warp',
@@ -147,7 +148,15 @@ def fixture_gazegenie_reference(tmp_path_factory):
 
 
 def load_fixture(testfiles_dirpath, fixture_name):
-    """Load a fixation fixture CSV as an array of shape (N, 2)."""
+    """Load a fixation fixture CSV as a frame with a 'location' column of [x, y] lists."""
+    csv_path = testfiles_dirpath / 'drift_correction' / f'{fixture_name}.csv'
+    return pl.read_csv(csv_path).select(
+        pl.concat_list(['fixation_x', 'fixation_y']).alias('location'),
+    )
+
+
+def load_fixture_array(testfiles_dirpath, fixture_name):
+    """Load a fixation fixture CSV as an array of shape (N, 2) for the reference."""
     csv_path = testfiles_dirpath / 'drift_correction' / f'{fixture_name}.csv'
     return pl.read_csv(csv_path).select(['fixation_x', 'fixation_y']).to_numpy()
 
@@ -161,42 +170,64 @@ def word_xy_grid(fixture_name):
     ])
 
 
+def word_locations_series(fixture_name):
+    """Build the word center grid of a fixture as a series of [x, y] locations."""
+    return pl.Series(
+        'word_location', word_xy_grid(fixture_name).tolist(), dtype=pl.List(pl.Float64),
+    )
+
+
+def build_algorithm_expression(algorithm, fixture_name):
+    """Build the drift correction expression of an algorithm for a fixture."""
+    if algorithm in {'compare', 'warp'}:
+        return getattr(da, algorithm)(word_locations_series(fixture_name))
+    return getattr(da, algorithm)(FIXTURE_LINE_YS[fixture_name].tolist())
+
+
 @pytest.mark.parametrize('fixture_name', list(FIXTURE_LINE_YS))
 @pytest.mark.parametrize('algorithm', ALGORITHMS)
 def test_algorithm_matches_reference_implementation(
         algorithm, fixture_name, reference, testfiles_dirpath,
 ):
-    fixation_xy = load_fixture(testfiles_dirpath, fixture_name)
+    fixation_xy = load_fixture_array(testfiles_dirpath, fixture_name)
     line_ys = FIXTURE_LINE_YS[fixture_name]
 
     reference_kwargs = {}
     if algorithm in {'compare', 'warp'}:
-        target = word_xy_grid(fixture_name)
+        reference_target = word_xy_grid(fixture_name)
         if algorithm == 'compare':
             reference_kwargs = REFERENCE_COMPARE_KWARGS.get(fixture_name, {})
     else:
-        target = line_ys
+        reference_target = line_ys
 
     # The reference implementation mutates its inputs, so it receives its own copies.
     expected = getattr(reference, algorithm)(
-        np.array(fixation_xy, copy=True), np.array(target, copy=True), **reference_kwargs,
+        np.array(fixation_xy, copy=True),
+        np.array(reference_target, copy=True),
+        **reference_kwargs,
     )
-    result = getattr(da, algorithm)(fixation_xy, target)
 
-    np.testing.assert_array_equal(result, expected)
-    # x-coordinates must pass through unchanged and every output y must be a line position.
-    np.testing.assert_array_equal(result[:, 0], fixation_xy[:, 0])
-    assert set(result[:, 1]) <= set(line_ys)
+    fixations = load_fixture(testfiles_dirpath, fixture_name)
+    result = fixations.select(
+        build_algorithm_expression(algorithm, fixture_name),
+    ).to_series()
+
+    np.testing.assert_array_equal(result.to_numpy(), expected[:, 1])
+    # Every output y must be a line position.
+    assert set(result.to_list()) <= set(line_ys)
 
 
 def test_dynamic_time_warping_matches_reference_implementation(reference, testfiles_dirpath):
-    fixation_xy = load_fixture(testfiles_dirpath, 'baseline')
+    fixation_xy = load_fixture_array(testfiles_dirpath, 'baseline')
     word_xy = word_xy_grid('baseline')
 
     expected_cost, expected_path = reference.dynamic_time_warping(
         np.array(fixation_xy[:11], copy=True), np.array(word_xy[:10], copy=True),
     )
-    cost, path = da.dynamic_time_warping(fixation_xy[:11], word_xy[:10])
+    fixations = load_fixture(testfiles_dirpath, 'baseline')
+    cost, path = da.dynamic_time_warping(
+        fixations.to_series().head(11), word_locations_series('baseline').head(10),
+    )
 
     assert cost == pytest.approx(expected_cost)
     assert path == expected_path
@@ -206,41 +237,45 @@ def test_dynamic_time_warping_matches_reference_implementation(reference, testfi
 def test_wisdom_of_the_crowd_matches_reference_implementation(
         fixture_name, gazegenie_reference, testfiles_dirpath,
 ):
-    fixation_xy = load_fixture(testfiles_dirpath, fixture_name)
-    line_ys = FIXTURE_LINE_YS[fixture_name]
+    fixations = load_fixture(testfiles_dirpath, fixture_name)
 
     # Assignments of the line-based algorithms serve as deterministic ensemble votes.
     line_based_algorithms = [
         'attach', 'chain', 'cluster', 'merge', 'regress',
         'segment', 'slice', 'split', 'stretch',
     ]
-    assignments = [
-        getattr(da, name)(fixation_xy, line_ys)[:, 1] for name in line_based_algorithms
-    ]
+    votes = fixations.select([
+        build_algorithm_expression(name, fixture_name).alias(name)
+        for name in line_based_algorithms
+    ])
 
     expected = gazegenie_reference.wisdom_of_the_crowd(
-        [np.array(assignment, copy=True) for assignment in assignments],
+        [votes[name].to_numpy() for name in line_based_algorithms],
     )
-    result = da.wisdom_of_the_crowd(assignments)
+    result = votes.select(da.wisdom_of_the_crowd(line_based_algorithms)).to_series()
 
-    assert list(result) == list(expected)
+    assert result.to_list() == list(expected)
 
 
 def test_wisdom_of_the_crowd_tie_breaking_matches_reference_implementation(
         gazegenie_reference,
 ):
-    """Ties are broken in favor of the left-most algorithm, as in the reference."""
+    """Ties are broken in favor of the left-most column, as in the reference."""
     vote_scenarios = [
         # Full tie between all algorithms.
-        [[100.0, 200.0], [200.0, 100.0], [300.0, 300.0]],
+        {'a': [100.0, 200.0], 'b': [200.0, 100.0], 'c': [300.0, 300.0]},
         # Two-way tie between second and third candidate.
-        [[100.0, 100.0], [200.0, 200.0], [200.0, 300.0], [300.0, 300.0], [100.0, 200.0]],
+        {
+            'a': [100.0, 100.0], 'b': [200.0, 200.0], 'c': [200.0, 300.0],
+            'd': [300.0, 300.0], 'e': [100.0, 200.0],
+        },
         # Unanimous vote.
-        [[100.0, 100.0], [100.0, 100.0], [100.0, 100.0]],
+        {'a': [100.0, 100.0], 'b': [100.0, 100.0], 'c': [100.0, 100.0]},
     ]
-    for assignments in vote_scenarios:
+    for scenario in vote_scenarios:
+        votes = pl.DataFrame(scenario)
         expected = gazegenie_reference.wisdom_of_the_crowd(
-            [np.array(assignment, copy=True) for assignment in assignments],
+            [np.array(assignment) for assignment in scenario.values()],
         )
-        result = da.wisdom_of_the_crowd(assignments)
-        assert list(result) == list(expected)
+        result = votes.select(da.wisdom_of_the_crowd(list(scenario))).to_series()
+        assert result.to_list() == list(expected)

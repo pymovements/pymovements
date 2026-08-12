@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Tests for Dataset.correct_fixations."""
-# pylint: disable=redefined-outer-name
 from __future__ import annotations
 
 import polars as pl

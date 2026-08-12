@@ -845,7 +845,7 @@ class Events:
             algorithm: str | list[str] = 'wisdom_of_the_crowd',
             *,
             text_right_to_left: bool | None = None,
-            word_XY: np.ndarray | None = None,
+            word_locations: pl.Series | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
             inplace: bool = True,
@@ -871,10 +871,10 @@ class Events:
         text_right_to_left: bool | None
             Whether the text is read from right to left. If None, the reading direction is
             inferred from the writing system of the text stimulus. (default: None)
-        word_XY: np.ndarray | None
-            Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare'
-            and 'warp'. If None, word coordinates are derived from the aois dataframe.
-            (default: None)
+        word_locations: pl.Series | None
+            Series of [x, y] word center coordinates for the DTW-based algorithms
+            'compare' and 'warp'. If None, word locations are derived from the aois
+            dataframe. (default: None)
         algorithm_kwargs: dict[str, Any] | None
             Additional tuning parameters passed to underlying drift correction algorithms.
             (default: None)
@@ -910,7 +910,7 @@ class Events:
             algorithm=algorithm,
             trial_columns=self.trial_columns,
             text_right_to_left=text_right_to_left,
-            word_XY=word_XY,
+            word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs,
             fixation_name=fixation_name,
         )

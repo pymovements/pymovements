@@ -52,10 +52,12 @@ import inspect
 import warnings
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 import pymovements.events.correction.drift_algorithms as da
+from pymovements.events.correction.drift_algorithms import _line_index_to_y
+from pymovements.events.correction.drift_algorithms import _location_x
+from pymovements.events.correction.drift_algorithms import _nearest_line_index
 
 
 def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
@@ -114,29 +116,31 @@ def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
     )
 
 
-def _get_word_xy_from_aois(aois: pl.DataFrame) -> np.ndarray:
-    """Calculate word center positions from AOIs for DTW-based drift algorithms.
+def _get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
+    """Calculate word center locations from AOIs for DTW-based drift algorithms.
 
-    Following the word_XY convention of Carr et al. :cite:p:`Carr2022`, the y-coordinate of
-    each word is the center of the text line the word belongs to, not the center of the
-    word's own bounding box. This keeps the y-coordinates identical to the line positions
-    returned by _get_lines_of_text_from_aois.
+    Following the word position convention of Carr et al. :cite:p:`Carr2022`, the
+    y-coordinate of each word is the center of the text line the word belongs to, not the
+    center of the word's own bounding box. This keeps the y-coordinates identical to the
+    line positions returned by _get_lines_of_text_from_aois.
 
     Parameters
     ----------
     aois: pl.DataFrame
-        AOIs dataframe to calculate word positions from.
+        AOIs dataframe to calculate word locations from.
 
     Returns
     -------
-    np.ndarray
-        Array of shape (M, 2) with word center x-coordinates and line center y-coordinates.
+    pl.Series
+        Series of [x, y] word center locations.
     """
     aois_with_line_centers, _ = _with_line_centers(aois)
-    word_x = (aois_with_line_centers['start_x'] + aois_with_line_centers['end_x']) / 2.0
-    return np.column_stack([
-        word_x.to_numpy(), aois_with_line_centers['line_center'].to_numpy(),
-    ])
+    return aois_with_line_centers.select(
+        pl.concat_list([
+            (pl.col('start_x') + pl.col('end_x')) / 2.0,
+            pl.col('line_center'),
+        ]).alias('word_location'),
+    ).to_series()
 
 
 ALL_DRIFT_ALGORITHMS: list[str] = [
@@ -240,15 +244,41 @@ def _select_ensemble_algorithms(
     return candidate_algos
 
 
+def _fixation_location(fixations: pl.DataFrame) -> str | pl.Expr:
+    """Resolve the location column or expression of a fixations dataframe.
+
+    Parameters
+    ----------
+    fixations: pl.DataFrame
+        Fixations dataframe holding either a 'location' column of [x, y] lists or
+        'location_x' and 'location_y' component columns.
+
+    Returns
+    -------
+    str | pl.Expr
+        Location column name or expression of [x, y] fixation locations.
+
+    Raises
+    ------
+    ValueError
+        If no location coordinates are found.
+    """
+    if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
+        return 'location'
+    if 'location_x' in fixations.columns and 'location_y' in fixations.columns:
+        return pl.concat_list([pl.col('location_x'), pl.col('location_y')])
+    raise ValueError('No valid location coordinates found in events dataframe.')
+
+
 def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
     text_right_to_left: bool = False,
-    word_XY: np.ndarray | None = None,
+    word_locations: pl.Series | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
-) -> np.ndarray:
+) -> pl.Series:
     """Correct fixations based on the specified drift algorithm and AOIs.
 
     Parameters
@@ -268,9 +298,9 @@ def correct_fixation_locations(
         algorithms ignore it. The 'compare' algorithm does not support right-to-left
         reading: it is excluded from ensembles with a UserWarning and raises a ValueError
         when selected as a single algorithm. (default: False)
-    word_XY: np.ndarray | None
-        Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare' and
-        'warp'. If None, word coordinates are derived from the aois dataframe. Following
+    word_locations: pl.Series | None
+        Series of [x, y] word center coordinates for the DTW-based algorithms 'compare'
+        and 'warp'. If None, word locations are derived from the aois dataframe. Following
         Carr et al., y-coordinates should be the text line centers. (default: None)
     algorithm_kwargs: dict[str, Any] | None
         Additional tuning parameters passed to underlying drift correction algorithms, e.g.
@@ -283,8 +313,8 @@ def correct_fixation_locations(
 
     Returns
     -------
-    np.ndarray
-        Array of corrected fixation locations of shape (N, 2).
+    pl.Series
+        Series of corrected [x, y] fixation locations.
 
     Raises
     ------
@@ -296,28 +326,19 @@ def correct_fixation_locations(
     """
     if algorithm_kwargs is None:
         algorithm_kwargs = {}
-    for reserved_key in ('text_right_to_left', 'word_XY'):
+    for reserved_key in ('text_right_to_left', 'word_locations', 'location'):
         if reserved_key in algorithm_kwargs:
             raise ValueError(
                 f"'{reserved_key}' must be passed as an explicit parameter, "
                 'not via algorithm_kwargs.',
             )
 
-    # Match the event name exactly so that already corrected fixation events are not
-    # corrected again when running on a previously returned events dataframe.
     aois = _normalize_aois(aois)
 
     fixations = events.filter(pl.col('name') == fixation_name)
-    if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
-        fixationXY = fixations['location'].to_list()
-    elif 'location_x' in fixations.columns and 'location_y' in fixations.columns:
-        fixationXY = fixations.select(['location_x', 'location_y']).to_numpy().tolist()
-    else:
-        raise ValueError('No valid location coordinates found in events dataframe.')
+    location = _fixation_location(fixations)
 
-    fixationXY_arr = np.array(fixationXY)
-
-    has_word_coords = word_XY is not None or _has_word_x_coords(aois)
+    has_word_coords = word_locations is not None or _has_word_x_coords(aois)
 
     if isinstance(algorithm, (list, tuple)):
         if len(algorithm) == 0:
@@ -325,7 +346,8 @@ def correct_fixation_locations(
         if len(algorithm) == 1:
             return correct_fixation_locations(
                 events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
-                word_XY=word_XY, algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
+                word_locations=word_locations, algorithm_kwargs=algorithm_kwargs,
+                fixation_name=fixation_name,
             )
         candidate_algos = _select_ensemble_algorithms(
             list(algorithm), has_word_coords, text_right_to_left,
@@ -347,25 +369,31 @@ def correct_fixation_locations(
                     'line break detection assumes left-to-right reading.',
                 )
             if algorithm in {'compare', 'warp'}:
-                if word_XY is not None:
-                    target_arg = word_XY
-                elif _has_word_x_coords(aois):
-                    target_arg = _get_word_xy_from_aois(aois)
-                else:
-                    raise ValueError(
-                        f"Algorithm '{algorithm}' requires word X coordinates ('start_x', 'end_x') "
-                        "in aois DataFrame or the 'word_XY' parameter.",
-                    )
+                if word_locations is None:
+                    if not _has_word_x_coords(aois):
+                        raise ValueError(
+                            f"Algorithm '{algorithm}' requires word X coordinates "
+                            "('start_x', 'end_x') in aois DataFrame or the "
+                            "'word_locations' parameter.",
+                        )
+                    word_locations = _get_word_locations_from_aois(aois)
+                target: pl.Series | list[float] = word_locations
             else:
-                target_arg = np.array(_get_lines_of_text_from_aois(aois))
+                target = _get_lines_of_text_from_aois(aois)
 
             func = getattr(da, algorithm)
             call_kwargs = dict(algorithm_kwargs)
             if 'text_right_to_left' in inspect.signature(func).parameters:
                 call_kwargs['text_right_to_left'] = text_right_to_left
-            return func(fixationXY_arr, target_arg, **call_kwargs)
+            corrected_y = func(target, location=location, **call_kwargs)
+            return fixations.select(
+                pl.concat_list([_location_x(location), corrected_y]).alias('location'),
+            ).to_series()
     else:
         raise TypeError('algorithm must be a string or a list of strings.')
+
+    if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
+        word_locations = _get_word_locations_from_aois(aois)
 
     # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
     # split votes through differing float representations of the same text line.
@@ -374,9 +402,13 @@ def correct_fixation_locations(
         and 'height' in aois.columns
     )
     if has_line_info:
-        line_Y = np.array(_get_lines_of_text_from_aois(aois))
+        line_values = _get_lines_of_text_from_aois(aois)
     else:
-        line_Y = np.unique(np.asarray(word_XY)[:, 1])
+        assert word_locations is not None
+        line_values = (
+            word_locations.cast(pl.List(pl.Float64))
+            .list.get(1).unique().sort().to_list()
+        )
 
     # Route tuning parameters to those candidate algorithms that accept them, so that
     # algorithm-specific parameters do not break the other algorithms in the ensemble.
@@ -394,24 +426,32 @@ def correct_fixation_locations(
             f'ensemble algorithms {candidate_algos}.',
         )
 
-    candidate_line_assignments = []
+    vote_exprs = []
     for candidate_algo in candidate_algos:
-        algo_kwargs = {
+        func = getattr(da, candidate_algo)
+        call_kwargs = {
             key: value for key, value in algorithm_kwargs.items()
             if key in candidate_params[candidate_algo]
         }
-        res = correct_fixation_locations(
-            events, aois, algorithm=candidate_algo, text_right_to_left=text_right_to_left,
-            word_XY=word_XY, algorithm_kwargs=algo_kwargs, fixation_name=fixation_name,
+        if 'text_right_to_left' in candidate_params[candidate_algo]:
+            call_kwargs['text_right_to_left'] = text_right_to_left
+        if candidate_algo in {'compare', 'warp'}:
+            corrected_y = func(word_locations, location=location, **call_kwargs)
+        else:
+            corrected_y = func(line_values, location=location, **call_kwargs)
+        vote_exprs.append(
+            _nearest_line_index(corrected_y, line_values).alias(candidate_algo),
         )
-        y_vals = np.asarray(res[:, 1] if res.ndim == 2 else res)
-        candidate_line_assignments.append(
-            np.argmin(np.abs(line_Y[:, np.newaxis] - y_vals[np.newaxis, :]), axis=0),
-        )
-    corrected_line_indices = np.asarray(
-        da.wisdom_of_the_crowd(candidate_line_assignments), dtype=int,
+
+    votes = fixations.select(
+        [_location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
     )
-    return np.column_stack([fixationXY_arr[:, 0], line_Y[corrected_line_indices]])
+    return votes.select(
+        pl.concat_list([
+            pl.col('__location_x'),
+            _line_index_to_y(da.wisdom_of_the_crowd(candidate_algos), line_values),
+        ]).alias('location'),
+    ).to_series()
 
 
 def correct_fixations(
@@ -420,7 +460,7 @@ def correct_fixations(
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
     trial_columns: list[str] | str | None = None,
     text_right_to_left: bool = False,
-    word_XY: np.ndarray | None = None,
+    word_locations: pl.Series | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
 ) -> pl.DataFrame:
@@ -450,9 +490,10 @@ def correct_fixations(
         direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
         algorithms ignore it. The 'compare' algorithm does not support right-to-left
         reading and is excluded from ensembles with a UserWarning. (default: False)
-    word_XY: np.ndarray | None
-        Word center coordinates of shape (M, 2) for the DTW-based algorithms 'compare' and
-        'warp'. If None, word coordinates are derived from the aois dataframe. (default: None)
+    word_locations: pl.Series | None
+        Series of [x, y] word center coordinates for the DTW-based algorithms 'compare'
+        and 'warp'. If None, word locations are derived from the aois dataframe.
+        (default: None)
     algorithm_kwargs: dict[str, Any] | None
         Additional tuning parameters passed to underlying drift correction algorithms, e.g.
         ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
@@ -515,8 +556,7 @@ def correct_fixations(
         aoi_trial_columns = []
 
     corrected_indices: list[int] = []
-    corrected_xs: list[float] = []
-    corrected_ys: list[float] = []
+    corrected_locations: list[pl.Series] = []
     for trial_events in trial_event_frames:
         if aoi_trial_columns:
             # Each partition holds a single combination of trial column values.
@@ -535,21 +575,19 @@ def correct_fixations(
 
         corrected_locs = correct_fixation_locations(
             fixation_events, trial_aois, algorithm=algorithm,
-            text_right_to_left=text_right_to_left, word_XY=word_XY,
+            text_right_to_left=text_right_to_left, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         )
 
         corrected_indices.extend(fixation_events['__fixation_correction_index'].to_list())
-        corrected_xs.extend(float(x) for x in corrected_locs[:, 0])
-        corrected_ys.extend(float(y) for y in corrected_locs[:, 1])
+        corrected_locations.append(corrected_locs)
 
     if not corrected_indices:
         return events
 
     updates = pl.DataFrame({
         '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
-        '__corrected_x': pl.Series(corrected_xs, dtype=pl.Float64),
-        '__corrected_y': pl.Series(corrected_ys, dtype=pl.Float64),
+        '__corrected_location': pl.concat(corrected_locations),
     })
     frame = (
         indexed_events
@@ -557,7 +595,7 @@ def correct_fixations(
         .sort('__fixation_correction_index')
     )
 
-    is_corrected = pl.col('__corrected_y').is_not_null()
+    is_corrected = pl.col('__corrected_location').is_not_null()
 
     def _preserving(
         column: str, corrected_value: pl.Expr, dtype: pl.DataType | type[pl.DataType],
@@ -576,7 +614,7 @@ def correct_fixations(
         )
         update_columns.append(
             pl.when(is_corrected)
-            .then(pl.concat_list([pl.col('__corrected_x'), pl.col('__corrected_y')]))
+            .then(pl.col('__corrected_location'))
             .otherwise(pl.col('location'))
             .alias('location'),
         )
@@ -589,13 +627,13 @@ def correct_fixations(
         )
         update_columns.append(
             pl.when(is_corrected)
-            .then(pl.col('__corrected_x'))
+            .then(pl.col('__corrected_location').list.get(0))
             .otherwise(pl.col('location_x'))
             .alias('location_x'),
         )
         update_columns.append(
             pl.when(is_corrected)
-            .then(pl.col('__corrected_y'))
+            .then(pl.col('__corrected_location').list.get(1))
             .otherwise(pl.col('location_y'))
             .alias('location_y'),
         )
@@ -606,5 +644,5 @@ def correct_fixations(
     return (
         frame
         .with_columns(update_columns)
-        .drop(['__fixation_correction_index', '__corrected_x', '__corrected_y'])
+        .drop(['__fixation_correction_index', '__corrected_location'])
     )
