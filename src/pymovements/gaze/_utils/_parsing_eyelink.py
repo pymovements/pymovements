@@ -605,10 +605,12 @@ def parse_eyelink(
         if is_binocular:
             return
         is_binocular = True
-        # In standard EyeLink ASC files, configuration headers (including SAMPLES)
-        # precede all sample data lines, so n_prev is 0. Note: Mid-file mode switches
-        # (monocular <-> binocular or changing tracked eyes) within a single ASC file
-        # are not supported.
+        # Any samples already collected were parsed as monocular; treat them as left-eye
+        # data and fill the right eye with NaN. In standard EyeLink ASC files the SAMPLES
+        # config precedes all sample lines, so n_prev is 0 and no migration happens, but
+        # the code below stays correct if that assumption does not hold. Mid-file mode
+        # switches (binocular <-> monocular or changing the tracked eyes) within a single
+        # file are not supported.
         prev_x = samples.pop('x_pix', [])
         prev_y = samples.pop('y_pix', [])
         prev_pupil = samples.pop('pupil', [])
@@ -639,6 +641,16 @@ def parse_eyelink(
         if matched_ctx:
             current_additional.update(matched_ctx)
 
+        # Detect the tracking configuration independently of the elif chain below, so a
+        # SAMPLES config line is never missed (e.g. if it directly follows a calibration
+        # line while cal_timestamp is still set). The switch to binocular has to happen
+        # before this config block's samples are parsed further down the loop.
+        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
+            samples_config.append(samples_match.groupdict())
+            tracked = samples_match.group('tracked_eye').upper().strip()
+            if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked == 'LR' or tracked == 'L R':
+                _switch_to_binocular()
+
         if cal_timestamp:
             # if a calibration timestamp has been found, the next line will be a
             # calibration pattern, if not, there will only be the timestamp added to the overview
@@ -658,12 +670,6 @@ def parse_eyelink(
             # Drop optional groups that weren't present for legacy behaviour
             rec_cfg = {k: v for k, v in match.groupdict().items() if v is not None}
             recording_config.append(rec_cfg)
-
-        elif match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
-            samples_config.append(match.groupdict())
-            tracked = match.group('tracked_eye').upper().strip()
-            if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked == 'LR' or tracked == 'L R':
-                _switch_to_binocular()
 
         elif match := _match_regex(GAZE_COORDS_REGEX, line):
             left, top, right, bottom = (float(coord) for coord in match.group('resolution').split())

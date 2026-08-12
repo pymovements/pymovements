@@ -1159,6 +1159,40 @@ END	1408795 	SAMPLES	EVENTS	RES	 38.54	 31.12
     )
 
 
+def test_parse_eyelink_binocular_samples_config_after_calibration(make_text_file):
+    """Binocular detection must not be missed when SAMPLES follows a calibration line.
+
+    The SAMPLES config line directly follows an ``!CAL`` calibration-timestamp line, which
+    sets the parser's internal cal_timestamp state for the next line. Binocular tracking
+    still has to be detected so the samples are parsed into left/right columns instead of
+    being misparsed as monocular.
+    """
+    asc_text = (
+        '** TYPE: EDF_FILE BINARY EVENT SAMPLE TAGGED\n'
+        'MSG\t1408659 RECCFG CR 1000 2 1 LR\n'
+        'MSG\t1408659 ELCLCFG BTABLER\n'
+        'MSG\t1408659 GAZE_COORDS 0.00 0.00 1919.00 1079.00\n'
+        'EVENTS\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        'MSG\t1408659 !CAL\n'
+        'SAMPLES\tGAZE\tLEFT\tRIGHT\tRATE\t1000.00\tTRACKING\tCR\tFILTER\t2\n'
+        'START\t1408660 \tLEFT\tRIGHT\tSAMPLES\tEVENTS\n'
+        '1408660\t 964.3\t 541.5\t 288.0\t 960.5\t 538.8\t 305.0\t.....\n'
+        '1408661\t 964.5\t 542.2\t 288.0\t 960.4\t 539.5\t 306.0\t.....\n'
+        'END\t1408661 \tSAMPLES\tEVENTS\tRES\t 38.54\t 31.12\n'
+    )
+
+    filepath = make_text_file(filename='sub_binoc_cal.asc', body=asc_text)
+
+    gaze_df, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
+
+    assert set(gaze_df.columns) == {
+        'time', 'x_left_pix', 'y_left_pix', 'pupil_left',
+        'x_right_pix', 'y_right_pix', 'pupil_right',
+    }
+    assert gaze_df['x_left_pix'].to_list() == [964.3, 964.5]
+    assert gaze_df['x_right_pix'].to_list() == [960.5, 960.4]
+
+
 @pytest.mark.filterwarnings('ignore:No metadata found.')
 @pytest.mark.filterwarnings('ignore:No recording configuration found.')
 @pytest.mark.filterwarnings('ignore:No samples configuration found.')
