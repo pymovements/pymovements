@@ -61,6 +61,7 @@ import numpy as np
 import polars as pl
 import pytest
 
+import pymovements as pm
 import pymovements.events.correction.drift_algorithms as da
 from pymovements import WebSource
 
@@ -279,3 +280,70 @@ def test_wisdom_of_the_crowd_tie_breaking_matches_reference_implementation(
         )
         result = votes.select(da.wisdom_of_the_crowd(list(scenario))).to_series()
         assert result.to_list() == list(expected)
+
+
+def test_events_correct_fixations_matches_reference_ensemble(
+        reference, gazegenie_reference, testfiles_dirpath,
+):
+    """The full high-level pipeline reproduces the reference ensemble end to end.
+
+    This covers the whole chain from AOI-based line extraction through the algorithm
+    expressions and line-index voting: the expected values are computed independently
+    from the reference implementations.
+    """
+    fixture_name = 'baseline'
+    line_ys = FIXTURE_LINE_YS[fixture_name]
+    word_xs = FIXTURE_WORD_XS[fixture_name]
+    fixation_xy = load_fixture_array(testfiles_dirpath, fixture_name)
+
+    # AOI geometry constructed so that line centers and word centers equal the fixture
+    # grid exactly: words of width 80 centered on the grid, vertically centered on lines.
+    aois = pl.DataFrame({
+        'word': [
+            f'word_{line_i}_{word_i}'
+            for line_i in range(len(line_ys)) for word_i in range(len(word_xs))
+        ],
+        'start_x': [word_x - 40.0 for _ in line_ys for word_x in word_xs],
+        'end_x': [word_x + 40.0 for _ in line_ys for word_x in word_xs],
+        'start_y': [line_y - 20.0 for line_y in line_ys for _ in word_xs],
+        'height': [40.0] * (len(line_ys) * len(word_xs)),
+    })
+    stimulus = pm.stimulus.TextStimulus(
+        aois=aois,
+        aoi_column='word',
+        start_x_column='start_x',
+        start_y_column='start_y',
+        end_x_column='end_x',
+        height_column='height',
+    )
+
+    events = pm.Events(
+        pl.DataFrame({
+            'name': ['fixation'] * len(fixation_xy),
+            'onset': list(range(len(fixation_xy))),
+            'offset': [onset + 1 for onset in range(len(fixation_xy))],
+            'location': fixation_xy.tolist(),
+        }),
+    )
+    events.correct_fixations(stimulus)
+
+    # Reference-side expectation: line-index votes of all algorithms, ensembled by the
+    # GazeGenie Wisdom of the Crowd implementation.
+    word_xy = word_xy_grid(fixture_name)
+    votes = []
+    for algorithm in ALGORITHMS:
+        target = word_xy if algorithm in {'compare', 'warp'} else line_ys
+        reference_y = getattr(reference, algorithm)(
+            np.array(fixation_xy, copy=True), np.array(target, copy=True),
+        )[:, 1]
+        votes.append(np.abs(line_ys[None, :] - reference_y[:, None]).argmin(axis=1))
+    winning_indices = gazegenie_reference.wisdom_of_the_crowd(votes)
+    expected_y = [float(line_ys[int(index)]) for index in winning_indices]
+
+    corrected = events.frame.filter(pl.col('correction_algorithm') == 'wisdom_of_the_crowd')
+    assert corrected.height == len(fixation_xy)
+    assert [location[1] for location in corrected['location'].to_list()] == expected_y
+    assert [
+        location[0] for location in corrected['location'].to_list()
+    ] == fixation_xy[:, 0].tolist()
+    assert corrected['location_original'].to_list() == fixation_xy.tolist()
