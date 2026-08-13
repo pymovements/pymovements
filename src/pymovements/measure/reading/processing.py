@@ -279,7 +279,12 @@ def _normalize_aoi_frame(
     if rename:
         aois = aois.rename(rename)
 
-    return aois.with_columns(pl.col('word_idx').cast(pl.Int64, strict=False))
+    casts = [pl.col('word_idx').cast(pl.Int64, strict=False)]
+    if 'char_idx' in aois.columns:
+        # A common dtype keeps char-level tables from different sources compatible, e.g. aois
+        # dict entries whose char_idx columns carry different integer dtypes.
+        casts.append(pl.col('char_idx').cast(pl.Int64, strict=False))
+    return aois.with_columns(casts)
 
 
 def _build_word_table(

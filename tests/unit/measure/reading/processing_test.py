@@ -383,6 +383,35 @@ def test_compute_reading_measures_aois_dict_ignores_trials_with_only_non_fixatio
     assert result['TFT'].to_list() == [100]
 
 
+def test_compute_reading_measures_aois_dict_mixed_char_idx_dtypes():
+    # char_idx dtypes may differ between dict entries; they are cast to a common dtype and
+    # LP is computed per entry.
+    fixations = pl.DataFrame({
+        'word_idx': [1, 1],
+        'char_idx': [1, 2],
+        'duration': [100, 110],
+        'trial': ['t1', 't2'],
+    })
+    aois = {
+        't1': pl.DataFrame({
+            'word_idx': [1, 1],
+            'word': ['ab', 'ab'],
+            'char_idx': pl.Series([0, 1], dtype=pl.UInt32),
+        }),
+        't2': pl.DataFrame({
+            'word_idx': [1, 1],
+            'word': ['cd', 'cd'],
+            'char_idx': pl.Series([2, 3], dtype=pl.Int64),
+        }),
+    }
+
+    result = compute_reading_measures(fixations, aois)
+
+    # t1: fixated char 1, word starts at char 0; t2: fixated char 2, word starts at char 2
+    assert result['trial'].to_list() == ['t1', 't2']
+    assert result['LP'].to_list() == [1, 0]
+
+
 def test_compute_reading_measures_aois_dict_entries_with_page_column():
     fixations = pl.DataFrame({
         'word_idx': [1, 2, 1],
