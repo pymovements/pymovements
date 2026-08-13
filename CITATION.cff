@@ -85,12 +85,12 @@ authors:
   - family-names: "Süss"
     given-names: "Assunta"
     orcid: "https://orcid.org/0000-0002-9797-0278"
-  - family-names: "Jäger"
-    given-names: "Lena A."
-    orcid: "https://orcid.org/0000-0001-9018-9713"
   - family-names: "Wieske"
     given-names: "Roy E."
     orcid: "https://orcid.org/0009-0006-2018-1074"
+  - family-names: "Jäger"
+    given-names: "Lena A."
+    orcid: "https://orcid.org/0000-0001-9018-9713"
 
 type: software
 license: MIT
