@@ -107,6 +107,17 @@ from pymovements.measure.reading.processing import compute_reading_measures
             ),
         ),
         pytest.param(
+            # Fractional word indices are no valid word indices: they become null and are
+            # dropped instead of being silently truncated to the next lower word.
+            pl.DataFrame({'word_idx': [1.0, 2.7], 'duration': [100, 110]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
+            {
+                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SL_out': 0},
+                2: {'FFD': 0, 'TFT': 0, 'TFC': 0, 'skipped': 1},
+            },
+            id='fractional_word_idx',
+        ),
+        pytest.param(
             pl.DataFrame(
                 {'word_idx': [1], 'duration': [None]},
                 schema={'word_idx': pl.Int64, 'duration': pl.Int64},

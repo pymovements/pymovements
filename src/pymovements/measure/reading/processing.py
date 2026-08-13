@@ -208,9 +208,15 @@ def _normalize_fixations(
         event_name: str,
 ) -> pl.DataFrame:
     """Bring a fixation table into the internal schema expected by the annotation pipeline."""
-    # Word indices are integer by nature; non-integer entries become null and are dropped by the
-    # annotation step. This also keeps the join dtype consistent with the word table.
-    fixations = fixations.with_columns(pl.col(word_index_column).cast(pl.Int64, strict=False))
+    # Word indices are integer by nature; non-integer entries (unparsable strings, NaN,
+    # fractional numbers) become null and are dropped by the annotation step. This also keeps
+    # the join dtype consistent with the word table.
+    word_idx = pl.col(word_index_column).cast(pl.Int64, strict=False)
+    if fixations.schema[word_index_column].is_float():
+        # The cast truncates fractional values, which would silently count the fixation on the
+        # next lower word; null them out instead. NaN compares unequal and becomes null too.
+        word_idx = pl.when(pl.col(word_index_column) == word_idx).then(word_idx)
+    fixations = fixations.with_columns(word_idx.alias(word_index_column))
 
     if 'name' not in fixations.columns:
         fixations = fixations.with_columns(pl.lit(event_name).alias('name'))
