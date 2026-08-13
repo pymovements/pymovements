@@ -28,76 +28,93 @@ from pymovements.events._utils._filters import filter_candidates_remove_nans
 
 
 @pytest.mark.parametrize(
-    ('params', 'expected'),
+    ('candidates', 'values', 'expected'),
     [
         pytest.param(
-            {
-                'candidates': [
-                    [0, 1, 2, 3, 4],
-                    [5, 6, 7, 8],
-                ],
-                'values': np.array([
-                    (np.nan, np.nan), (0, 0),
-                    (0, 0), (0, 0),
-                    (np.nan, np.nan),
-                    (np.nan, np.nan),
-                    (0, 0), (0, 0),
-                    (0, 0),
-                ]),
-            },
-            {'values_filter': [np.array([1, 2, 3]), np.array([6, 7, 8])]},
-            id='test_filters',
+            [
+                [0, 1, 2, 3, 4],
+                [5, 6, 7, 8],
+            ],
+            np.array([
+                (np.nan, np.nan), (0, 0),
+                (0, 0), (0, 0),
+                (np.nan, np.nan),
+                (np.nan, np.nan),
+                (0, 0), (0, 0),
+                (0, 0),
+            ]),
+            [np.array([1, 2, 3]), np.array([6, 7, 8])],
+            id='leading_and_trailing_nans',
         ),
         pytest.param(
-            {
-                'candidates': [[0, 1, 2, 3, 4, 5, 6, 7]],
-                'values': np.array([
-                    (0, 0),
-                    (0, 0), (0, 0),
-                    (np.nan, np.nan),
-                    (np.nan, np.nan),
-                    (0, 0), (0, 0),
-                    (0, 0),
-                ]),
-            },
-            {'values_split': [np.array([0, 1, 2]), np.array([5, 6, 7])]},
-            id='test_events_split',
+            [[]],
+            np.array([(0, 0)]),
+            [],
+            id='no_candidates_in_array',
         ),
         pytest.param(
-            {'candidates': [[]], 'values': np.array([(0, 0)])},
-            {'values_filter': []},
-            id='test_no_candidates_in_array',
+            [[0, 1, 2, 3, 4, 5, 6]],   # 7-sample window, all NaN
+            np.array([
+                (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
+                (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
+                (np.nan, np.nan),
+            ]),
+            [],   # all-NaN candidate must be dropped, not crash
+            id='all_nan_candidate_skipped',
         ),
         pytest.param(
-            {'candidates': [[]], 'values': np.array([(np.nan, np.nan)])},
-            {'values_split': []},
-            id='test_no_candidates_in_array_nan',
-        ),
-        pytest.param(
-            {
-                'candidates': [[0, 1, 2, 3, 4, 5, 6]],   # 7-sample window, all NaN
-                'values': np.array([
-                    (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
-                    (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
-                    (np.nan, np.nan),
-                ]),
-            },
-            {'values_filter': []},   # all-NaN candidate must be dropped, not crash
-            id='test_all_nan_candidate_skipped',
+            [[0, 1, 2]],
+            np.array([
+                (np.nan, np.nan), (1.0, 2.0), (np.nan, np.nan),
+            ]),
+            [np.array([1])],   # single valid sample surrounded by NaNs
+            id='single_valid_sample_candidate',
         ),
     ],
 )
-def test_filters(params, expected):
-    if 'values_filter' in expected:
-        results = filter_candidates_remove_nans(
-            params['candidates'],
-            params['values'],
-        )
-        assert np.all(np.array(expected['values_filter']) == np.array(results))
+def test_filter_candidates_remove_nans(candidates, values, expected):
+    results = filter_candidates_remove_nans(candidates, values)
 
-    if 'values_split' in expected:
-        results = events_split_nans(
-            params['candidates'],
-            params['values'],
-        )
-        assert np.all(np.array(expected['values_split']) == np.array(results))
+    assert len(results) == len(expected)
+    for result, expected_candidate in zip(results, expected):
+        assert np.array_equal(result, expected_candidate)
+
+
+@pytest.mark.parametrize(
+    ('candidates', 'values', 'expected'),
+    [
+        pytest.param(
+            [[0, 1, 2, 3, 4, 5, 6, 7]],
+            np.array([
+                (0, 0),
+                (0, 0), (0, 0),
+                (np.nan, np.nan),
+                (np.nan, np.nan),
+                (0, 0), (0, 0),
+                (0, 0),
+            ]),
+            [np.array([0, 1, 2]), np.array([5, 6, 7])],
+            id='nans_in_middle',
+        ),
+        pytest.param(
+            [[]],
+            np.array([(np.nan, np.nan)]),
+            [],
+            id='no_candidates_in_array_nan',
+        ),
+        pytest.param(
+            [[0, 1, 2]],
+            np.array([
+                (np.nan, np.nan), (np.nan, np.nan), (np.nan, np.nan),
+            ]),
+            [],   # all-NaN candidate must be dropped, not crash
+            id='all_nan_candidate_skipped',
+        ),
+    ],
+)
+def test_events_split_nans(candidates, values, expected):
+    results = events_split_nans(candidates, values)
+
+    assert len(results) == len(expected)
+    for result, expected_candidate in zip(results, expected):
+        assert np.array_equal(result, expected_candidate)

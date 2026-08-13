@@ -31,7 +31,8 @@ def filter_candidates_remove_nans(
 ) -> list[np.ndarray]:
     """Filter a list of candidates for an event-detection algorithm.
 
-    Removes leading and ending np.nans for all candidates in candidates
+    Removes leading and ending np.nans for all candidates in candidates.
+    Candidates consisting only of NaN samples are removed entirely.
 
     Parameters
     ----------
@@ -59,7 +60,7 @@ def filter_candidates_remove_nans(
         if start_id >= len(cand_values):
             continue
         end_id = len(cand_values) - 1
-        while end_id > start_id and np.sum(np.isnan(cand_values[end_id, :])) > 0:
+        while np.sum(np.isnan(cand_values[end_id, :])) > 0:
             end_id -= 1
         cur_candidate = list(candidate[start_id:end_id + 1])
         return_candidates.append(np.array(cur_candidate))
@@ -72,7 +73,8 @@ def events_split_nans(
 ) -> list[np.ndarray]:
     """Filter a list of candidates for an event-detection algorithm.
 
-    Splits events if np.nans are within an event
+    Splits events if np.nans are within an event.
+    Candidates consisting only of NaN samples are removed entirely.
 
     Parameters
     ----------
@@ -97,6 +99,8 @@ def events_split_nans(
         cand_list = [
             np.array(candidate[candidate_indices[0]:candidate_indices[-1] + 1])
             for candidate_indices in nan_candidates
+            # skip candidate if every sample is NaN
+            if len(candidate_indices) > 0
         ]
         return_candidates += cand_list
     return return_candidates
