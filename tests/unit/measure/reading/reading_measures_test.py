@@ -60,39 +60,33 @@ CHAR_AOI_DF = pl.DataFrame({
 
 
 @pytest.fixture(name='stimulus', scope='function')
-def fixture_stimulus() -> TextStimulus:
-    def _make_stimulus() -> TextStimulus:
-        return TextStimulus(
-            aois=CHAR_AOI_DF.clone(),
-            aoi_column='char',
-            start_x_column='top_left_x',
-            start_y_column='top_left_y',
-            width_column='width',
-            height_column='height',
-            page_column='page',
-            trial_column='trial',
-        )
-
-    return _make_stimulus()
+def fixture_stimulus():
+    return TextStimulus(
+        aois=CHAR_AOI_DF.clone(),
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        trial_column='trial',
+    )
 
 
 @pytest.fixture(name='mapped_events', scope='function')
-def fixture_mapped_events(stimulus: TextStimulus) -> Events:
-    def _make_mapped_events() -> Events:
-        events_df = pl.DataFrame({
-            'name': ['fixation', 'fixation'],
-            'onset': [0, 200],
-            'offset': [200, 400],
-            'duration': [200, 200],
-            'location': [[15., 15.], [55., 15.]],
-            'trial': ['trial_1', 'trial_1'],
-            'page': ['page_1', 'page_1'],
-        })
-        events = Events(data=events_df)
-        events.map_to_aois(stimulus)
-        return events.frame
-
-    return _make_mapped_events()
+def fixture_mapped_events(stimulus):
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'onset': [0, 200],
+        'offset': [200, 400],
+        'duration': [200, 200],
+        'location': [[15., 15.], [55., 15.]],
+        'trial': ['trial_1', 'trial_1'],
+        'page': ['page_1', 'page_1'],
+    })
+    events = Events(data=events_df)
+    events.map_to_aois(stimulus)
+    return events.frame
 
 
 @pytest.fixture(name='annotated_events', scope='function')
