@@ -318,6 +318,32 @@ def test_compute_reading_measures_aois_dict():
     assert result['TFT'].to_list() == [100, 110, 120]
 
 
+def test_compute_reading_measures_aois_dict_warns_on_unused_keys():
+    fixations = pl.DataFrame({
+        'word_idx': [1, 2],
+        'duration': [100, 110],
+        'trial': ['t1', 't1'],
+    })
+    aois = {
+        't1': pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
+        't2': pl.DataFrame({'word_idx': [1], 'word': ['c']}),
+    }
+
+    with pytest.warns(
+        UserWarning, match=r"keys without any matching fixations: \['t2'\]",
+    ):
+        result = compute_reading_measures(fixations, aois)
+
+    # the unused entry stays in the output as a fully skipped word
+    assert result['trial'].to_list() == ['t1', 't1', 't2']
+    unused = result.filter(pl.col('trial') == 't2')
+    assert unused['word'].to_list() == ['c']
+    assert unused['TFT'].to_list() == [0]
+    assert unused['TFC'].to_list() == [0]
+    assert unused['Fix'].to_list() == [0]
+    assert unused['skipped'].to_list() == [1]
+
+
 def test_compute_reading_measures_aois_dict_entries_with_page_column():
     fixations = pl.DataFrame({
         'word_idx': [1, 2, 1],

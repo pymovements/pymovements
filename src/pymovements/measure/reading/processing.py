@@ -76,7 +76,9 @@ def compute_reading_measures(
     * If both inputs carry a group column, it is used for grouping and preserved in the output.
     * If ``aois`` is a dict, its keys are the values of the first group column and each entry is
       the AOI table of that group. The fixations must then carry the first group column and
-      every fixation group must have an entry in the dict.
+      every fixation group must have an entry in the dict. Dict entries without any matching
+      fixations are kept in the output as fully skipped words (all measures zero,
+      ``skipped = 1``) and a warning names their keys.
     * If the fixations carry the first group column but a plain ``aois`` frame does not, the AOI
       table is broadcast to every fixation group and a warning is issued.
     * Any other one-sided group column raises a ``ValueError``, as the join would otherwise
@@ -459,6 +461,21 @@ def _word_table_from_dict(
         raise ValueError(
             f'fixations contain {sequence_column} values without an entry in the aois dict: '
             f'{sorted(missing_keys[sequence_column].to_list())}',
+        )
+
+    # The converse is legitimate (e.g. the full stimulus set is passed while the fixations
+    # cover a subset), but the resulting all-skipped rows are indistinguishable from words a
+    # subject genuinely skipped, so it deserves a warning.
+    unused_keys = (
+        words.select(sequence_column).unique().join(
+            fixations.select(sequence_column).unique(), on=sequence_column, how='anti',
+        )
+    )
+    if unused_keys.height > 0:
+        warnings.warn(
+            f'aois dict contains {sequence_column} keys without any matching fixations: '
+            f'{sorted(unused_keys[sequence_column].to_list())}. Their words are kept in the '
+            'output with all measures zero and skipped = 1.',
         )
 
     output_group_columns = [sequence_column] + present_layout_columns
