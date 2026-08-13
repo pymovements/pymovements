@@ -132,6 +132,39 @@ def compute_reading_measures(
         If ``group_columns`` contains reserved column names, if a group column is present in
         only one of the inputs (except for the broadcast case described above), if its dtypes
         do not match, or if the ``aois`` dict is inconsistent with the fixation groups.
+
+    Examples
+    --------
+    Four fixations over a three-word text, with a regression from the second word back to the
+    first. The fixation table needs the fixated word index and the fixation duration, the AOI
+    table maps word indices to words:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import compute_reading_measures
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 0, 2],
+    ...     'duration': [220, 180, 140, 250],
+    ... })
+    >>> aois = pl.DataFrame({
+    ...     'word_idx': [0, 1, 2],
+    ...     'word': ['The', 'quick', 'fox'],
+    ... })
+    >>> measures = compute_reading_measures(fixations, aois)
+    >>> measures.select('word_index', 'word', 'FFD', 'TFT', 'TFC', 'TRC_in', 'skipped')
+    shape: (3, 7)
+    ┌────────────┬───────┬─────┬─────┬─────┬────────┬─────────┐
+    │ word_index ┆ word  ┆ FFD ┆ TFT ┆ TFC ┆ TRC_in ┆ skipped │
+    │ ---        ┆ ---   ┆ --- ┆ --- ┆ --- ┆ ---    ┆ ---     │
+    │ i64        ┆ str   ┆ i64 ┆ i64 ┆ u64 ┆ u64    ┆ i64     │
+    ╞════════════╪═══════╪═════╪═════╪═════╪════════╪═════════╡
+    │ 0          ┆ The   ┆ 220 ┆ 360 ┆ 2   ┆ 1      ┆ 0       │
+    │ 1          ┆ quick ┆ 180 ┆ 180 ┆ 1   ┆ 0      ┆ 0       │
+    │ 2          ┆ fox   ┆ 250 ┆ 250 ┆ 1   ┆ 0      ┆ 0       │
+    └────────────┴───────┴─────┴─────┴─────┴────────┴─────────┘
+
+    Fixations recorded across several trials or pages are kept apart with ``group_columns``;
+    fixations produced by :py:meth:`~pymovements.Events.map_to_aois` already carry the word
+    index and duration columns.
     """
     if group_columns is None:
         group_columns = ['trial', 'page']

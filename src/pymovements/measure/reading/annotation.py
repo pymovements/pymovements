@@ -314,7 +314,8 @@ def annotate_fixations(
       fixations.
     * **is_reg_in / is_reg_out**: whether the fixation arrives from a higher-index word
       (regression in) or departs to a lower-index word (regression out).
-    * **is_first_fix**: whether this is the first fixation ever on the word within the trial.
+    * **is_first_fix**: whether this is the first fixation ever on the word within the reading
+      sequence.
     * **is_first_pass**: whether the fixation belongs to the first-pass reading episode of the word
       (see :func:`~pymovements.measure.reading.is_first_pass`).
     * **regression_path_word**: the word whose regression-path window the fixation belongs to
@@ -345,6 +346,32 @@ def annotate_fixations(
         ``next_word_idx``, ``delta_in``, ``delta_out``,
         ``is_reg_in``, ``is_reg_out``, ``is_first_fix``,
         ``is_first_pass``, and ``regression_path_word``.
+
+    Examples
+    --------
+    Four fixations over a three-word text, with a regression from the second word back to the
+    first:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import annotate_fixations
+    >>> fixations = pl.DataFrame({
+    ...     'name': ['fixation'] * 4,
+    ...     'onset': [0, 250, 500, 750],
+    ...     'word_idx': [0, 1, 0, 2],
+    ... })
+    >>> annotated = annotate_fixations(fixations)
+    >>> annotated.select('word_idx', 'run_id', 'is_first_pass', 'regression_path_word')
+    shape: (4, 4)
+    ┌──────────┬────────┬───────────────┬──────────────────────┐
+    │ word_idx ┆ run_id ┆ is_first_pass ┆ regression_path_word │
+    │ ---      ┆ ---    ┆ ---           ┆ ---                  │
+    │ i64      ┆ i64    ┆ bool          ┆ i64                  │
+    ╞══════════╪════════╪═══════════════╪══════════════════════╡
+    │ 0        ┆ 1      ┆ true          ┆ 0                    │
+    │ 1        ┆ 2      ┆ true          ┆ 1                    │
+    │ 0        ┆ 3      ┆ false         ┆ 1                    │
+    │ 2        ┆ 4      ┆ true          ┆ 2                    │
+    └──────────┴────────┴───────────────┴──────────────────────┘
     """
     group_columns = list(group_columns or [])
 
