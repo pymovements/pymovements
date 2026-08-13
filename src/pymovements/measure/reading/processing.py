@@ -135,9 +135,21 @@ def compute_reading_measures(
     """
     if group_columns is None:
         group_columns = ['trial', 'page']
-    # Word identity columns cannot double as group columns: the user-facing names are renamed
-    # onto the internal schema and 'word_index' is produced on output.
-    reserved_columns = {word_index_column, word_column, 'word_idx', 'word', 'word_index'}
+    # Columns the pipeline produces or consumes cannot double as group columns: the annotation
+    # step would silently overwrite them and the measures would be computed on wrong groups.
+    reserved_columns = {
+        # word identity columns: renamed onto the internal schema, 'word_index' is the output
+        word_index_column, word_column, 'word_idx', 'word', 'word_index',
+        # fixation schema columns consumed by the pipeline
+        'name', 'onset', 'duration',
+        # annotation columns produced by annotate_fixations
+        'fixation_id', 'run_id', 'prev_word_idx', 'next_word_idx', 'delta_in', 'delta_out',
+        'is_reg_in', 'is_reg_out', 'is_first_fix', 'is_first_pass', 'regression_path_word',
+        # internal working columns
+        'word_start_char', '_is_aoi', '_group',
+        # measure output columns
+        'FPFC', *_MEASURE_COLUMNS,
+    }
     if reserved := reserved_columns.intersection(group_columns):
         raise ValueError(f'group_columns must not contain the reserved columns {sorted(reserved)}.')
 
@@ -347,6 +359,7 @@ def _word_table_from_dict(
 
     tables = []
     entries_with_column = dict.fromkeys(layout_columns, 0)
+    entries_with_char_idx = 0
     for sequence_key, frame in zip(sequence_keys, aois_dict.values()):
         frame = _normalize_aoi_frame(
             frame, word_index_column=word_index_column, word_column=word_column,
@@ -358,13 +371,23 @@ def _word_table_from_dict(
             )
         for column in layout_columns:
             entries_with_column[column] += int(column in frame.columns)
+        entries_with_char_idx += int('char_idx' in frame.columns)
         _check_group_dtypes(
-            fixations, frame, [column for column in layout_columns if column in frame.columns],
+            fixations, frame, [
+                column for column in layout_columns
+                if column in frame.columns and column in fixations.columns
+            ],
         )
         tables.append(
             _word_table(frame, group_columns).with_columns(
                 pl.lit(sequence_key, dtype=sequence_dtype).alias(sequence_column),
             ),
+        )
+
+    # Mixing character-level and word-level entries would make the word tables incompatible.
+    if entries_with_char_idx not in (0, len(tables)):
+        raise ValueError(
+            "either all or no aois dict entries must have a 'char_idx' column.",
         )
 
     present_layout_columns = []

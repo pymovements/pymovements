@@ -207,6 +207,27 @@ def test_compute_reading_measures_aois_dict():
     assert result['TFT'].to_list() == [100, 110, 120]
 
 
+def test_compute_reading_measures_aois_dict_entries_with_page_column():
+    fixations = pl.DataFrame({
+        'word_idx': [1, 2, 1],
+        'duration': [100, 110, 120],
+        'trial': ['t1', 't1', 't2'],
+        'page': ['p1', 'p2', 'p1'],
+    })
+    aois = {
+        't1': pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b'], 'page': ['p1', 'p2']}),
+        't2': pl.DataFrame({'word_idx': [1], 'word': ['c'], 'page': ['p1']}),
+    }
+
+    result = compute_reading_measures(fixations, aois)
+
+    assert result.columns[:4] == ['trial', 'page', 'word_index', 'word']
+    assert result['trial'].to_list() == ['t1', 't1', 't2']
+    assert result['page'].to_list() == ['p1', 'p2', 'p1']
+    assert result['word'].to_list() == ['a', 'b', 'c']
+    assert result['TFT'].to_list() == [100, 110, 120]
+
+
 def test_compute_reading_measures_shared_trial_and_page_columns_preserved():
     fixations = pl.DataFrame({
         'word_idx': [1, 1],
@@ -279,6 +300,45 @@ def test_compute_reading_measures_shared_trial_and_page_columns_preserved():
             'aois dict is empty',
             id='empty_dict',
         ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'duration': [100], 'trial': [1]}),
+            {'t1': pl.DataFrame({'word_idx': [1], 'word': ['a']})},
+            'aois dict keys are not compatible with the fixation trial dtype Int64',
+            id='dict_key_dtype_mismatch',
+        ),
+        pytest.param(
+            pl.DataFrame({
+                'word_idx': [1, 1], 'duration': [100, 100],
+                'trial': ['t1', 't2'], 'page': ['p1', 'p1'],
+            }),
+            {
+                't1': pl.DataFrame({'word_idx': [1], 'word': ['a'], 'page': ['p1']}),
+                't2': pl.DataFrame({'word_idx': [1], 'word': ['b']}),
+            },
+            "either all or no aois dict entries must have a 'page' column",
+            id='dict_mixed_page_entries',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'duration': [100], 'trial': ['t1']}),
+            {'t1': pl.DataFrame({'word_idx': [1], 'word': ['a'], 'page': ['p1']})},
+            "aois has a 'page' column but fixations does not",
+            id='dict_page_only_in_aois',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'duration': [100], 'trial': ['t1'], 'page': ['p1']}),
+            {'t1': pl.DataFrame({'word_idx': [1], 'word': ['a']})},
+            "fixations has a 'page' column but aois does not",
+            id='dict_page_only_in_fixations',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1, 1], 'duration': [100, 100], 'trial': ['t1', 't2']}),
+            {
+                't1': pl.DataFrame({'word_idx': [1], 'word': ['a'], 'char_idx': [0]}),
+                't2': pl.DataFrame({'word_idx': [1], 'word': ['b']}),
+            },
+            "either all or no aois dict entries must have a 'char_idx' column",
+            id='dict_mixed_char_level_entries',
+        ),
     ],
 )
 def test_compute_reading_measures_raises_value_error(fixations, aois, match):
@@ -347,6 +407,14 @@ def test_compute_reading_measures_custom_group_columns():
     [
         pytest.param(['word_idx'], 'reserved', id='reserved_word_idx'),
         pytest.param(['trial', 'word'], 'reserved', id='reserved_word'),
+        # annotation output columns would be overwritten by the annotation step
+        pytest.param(['run_id'], r"reserved columns \['run_id'\]", id='reserved_run_id'),
+        pytest.param(['trial', 'prev_word_idx'], 'reserved', id='reserved_prev_word_idx'),
+        # internal working columns of the pipeline
+        pytest.param(['_group'], r"reserved columns \['_group'\]", id='reserved_group'),
+        pytest.param(['word_start_char'], 'reserved', id='reserved_word_start_char'),
+        # measure output columns
+        pytest.param(['TFT'], 'reserved', id='reserved_measure_column'),
     ],
 )
 def test_compute_reading_measures_invalid_group_columns(group_columns, match):
