@@ -552,7 +552,7 @@ def test_annotate_fixations(events):
         'trial', 'stimulus', 'page', 'name', 'word_idx', 'onset',
         'fixation_id', 'run_id', 'prev_word_idx', 'next_word_idx',
         'delta_in', 'delta_out', 'is_reg_in', 'is_reg_out',
-        'is_first_fix', 'is_first_pass',
+        'is_first_fix', 'is_first_pass', 'regression_path_word',
     ]
     expected_length = len(
         events.filter(
