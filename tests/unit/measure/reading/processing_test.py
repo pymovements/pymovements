@@ -155,6 +155,11 @@ from pymovements.measure.reading.processing import compute_reading_measures
                 # two first-pass fixations (one zero-duration) -> not a single fixation
                 2: {'FFD': 100, 'TFT': 100, 'SFD': 0, 'TFC': 2},
                 3: {'FFD': 100, 'TFT': 100, 'TRC_out': 0},
+                # PoTeC reference (zero-duration folding, see the divergence tests below and
+                # tests/functional/reading_measures_potec_test.py): the zero-duration fixation
+                # is folded into the current word, so word 2 keeps single-fixation status:
+                # 2: {'FFD': 100, 'TFT': 100, 'SFD': 100, 'TFC': 2},
+                # 3: {'FFD': 0, 'TFT': 0, 'TRC_out': 0},  # last fixation never processed
             },
             id='zero_duration_fixation',
         ),
@@ -181,6 +186,101 @@ def test_compute_reading_measures(fixations, aois, expected_results):
         assert not row.is_empty()
         for col, val in expected.items():
             assert row[col][0] == val
+
+
+@pytest.mark.parametrize(
+    ('fixations', 'aois', 'expected_results'),
+    [
+        pytest.param(
+            # Divergence: the reference loop never processes the last fixation of a sequence,
+            # pymovements processes all fixations.
+            pl.DataFrame({'word_idx': [1, 2, 3], 'duration': [100, 110, 120]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
+            {
+                2: {'TFT': 110, 'TFC': 1, 'SL_out': 1},
+                3: {'FFD': 120, 'TFT': 120, 'TFC': 1, 'Fix': 1, 'skipped': 0},
+                # PoTeC reference (word 3 carries the last fixation, which is never processed):
+                # 3: {'FFD': 0, 'TFT': 0, 'TFC': 0, 'Fix': 0, 'skipped': 1},
+            },
+            id='unprocessed_last_fixation',
+        ),
+        pytest.param(
+            # Divergence: the reference loop starts from a -1 word sentinel, so SL_in of the
+            # first fixated word equals its one-based word position; pymovements has no
+            # previous fixation there and reports 0.
+            pl.DataFrame({'word_idx': [2, 3], 'duration': [100, 110]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
+            {
+                2: {'SL_in': 0, 'TFT': 100, 'TFC': 1},
+                # PoTeC reference (saccade from the -1 sentinel into word 2):
+                # 2: {'SL_in': 2, 'TFT': 100, 'TFC': 1},
+            },
+            id='sl_in_sentinel_at_first_word',
+        ),
+        pytest.param(
+            # Divergence: end-of-sequence handling. The reference loop still uses the final
+            # fixation as lookahead for word 3 (same FRT/SL_out/TRC_out as pymovements) but
+            # never processes it, leaving the last fixated word 2 without any measures. The
+            # functional test masks FRT/SL_out/TRC_out at the last fixated words because it
+            # feeds pymovements the sequence without the final fixation, which also removes
+            # this lookahead transition.
+            pl.DataFrame({'word_idx': [1, 3, 2], 'duration': [100, 110, 120]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
+            {
+                3: {'FRT': 110, 'SL_out': -1, 'TRC_out': 1},
+                2: {'FRT': 120, 'TFT': 120, 'TFC': 1, 'TRC_in': 1, 'SL_in': -1, 'Fix': 1},
+                # PoTeC reference (word 2 carries the last fixation, which is never processed):
+                # 3: {'FRT': 110, 'SL_out': -1, 'TRC_out': 1},
+                # 2: {'FRT': 0, 'TFT': 0, 'TFC': 0, 'TRC_in': 0, 'SL_in': 0, 'Fix': 0},
+            },
+            id='end_of_sequence_lookahead',
+        ),
+        pytest.param(
+            # Divergence: FRT of a run that is still open at the end of the sequence. The
+            # reference loop sets FRT only when the word is left, so a first run lasting until
+            # the sequence end keeps FRT at 0; pymovements closes the run at the sequence end.
+            pl.DataFrame({'word_idx': [1, 2, 2], 'duration': [100, 110, 120]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
+            {
+                2: {'FRT': 230, 'FPRT': 230, 'TFT': 230, 'TFC': 2, 'SFD': 0},
+                # PoTeC reference (run never left before the sequence ended, last fixation
+                # never processed):
+                # 2: {'FRT': 0, 'FPRT': 110, 'TFT': 110, 'TFC': 1, 'SFD': 110},
+            },
+            id='frt_of_run_open_at_sequence_end',
+        ),
+        pytest.param(
+            # Divergence: the reference loop folds a zero-duration fixation into the current
+            # word (next_fix_word_idx = cur_fix_word_idx), pymovements treats it as an
+            # ordinary fixation on its own word.
+            pl.DataFrame({'word_idx': [1, 2, 3], 'duration': [100, 0, 110]}),
+            pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
+            {
+                1: {'TFT': 100, 'TFC': 1, 'SL_out': 1},
+                2: {'TFT': 0, 'TFC': 1, 'FFD': 0, 'Fix': 0, 'skipped': 0},
+                3: {'TFT': 110, 'TFC': 1},
+                # PoTeC reference (the zero-duration fixation on word 2 is folded into word 1,
+                # word 3 carries the last fixation, which is never processed):
+                # 1: {'TFT': 100, 'TFC': 2, 'SL_out': 2},
+                # 2: {'TFT': 0, 'TFC': 0, 'FFD': 0, 'Fix': 0, 'skipped': 1},
+                # 3: {'TFT': 0, 'TFC': 0},
+            },
+            id='zero_duration_fixation_folded_into_current_word',
+        ),
+    ],
+)
+def test_compute_reading_measures_potec_reference_divergences(fixations, aois, expected_results):
+    # Pins current pymovements behavior where it is known to diverge from the PoTeC reference
+    # implementation. The commented-out lines next to each expectation give the values the
+    # reference loop would produce for the same input; the functional comparison in
+    # tests/functional/reading_measures_potec_test.py documents and masks these differences.
+    result = compute_reading_measures(fixations, aois)
+
+    for word_idx, expected in expected_results.items():
+        row = result.filter(pl.col('word_index') == word_idx)
+        assert not row.is_empty()
+        for col, val in expected.items():
+            assert row[col][0] == val, (word_idx, col)
 
 
 def test_compute_reading_measures_broadcasts_aois_across_trials():
