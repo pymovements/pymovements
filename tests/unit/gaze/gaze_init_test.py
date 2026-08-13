@@ -129,24 +129,6 @@ from pymovements import Gaze
             id='df_single_row_two_pixel_columns',
         ),
 
-        pytest.param(
-            {
-                'data': pl.from_dict(
-                    {'x': [1.23], 'y': [4.56]}, schema={'x': pl.Float64, 'y': pl.Float64},
-                ),
-                'pixel_columns': ['x', 'y'],
-            },
-            pl.from_dict(
-                {'pixel': [[1.23, 4.56]]},
-                schema={'pixel': pl.List(pl.Float64)},
-            ),
-            2,
-            marks=pytest.mark.filterwarnings(
-                'ignore:.*data.*samples.*:DeprecationWarning',
-            ),
-            id='deprecated_data_argument',
-        ),
-
 
         pytest.param(
             {
@@ -1727,17 +1709,6 @@ def test_init_gaze_has_expected_trial_columns(init_kwargs, expected_trial_column
 
         pytest.param(
             {
-                'samples': pl.DataFrame(),
-                'data': pl.DataFrame(),
-            },
-            ValueError,
-            'The arguments "samples" and "data" are mutually exclusive.',
-            marks=pytest.mark.filterwarnings('ignore:.*data.*samples.*:DeprecationWarning'),
-            id='samples_data_mutually_exclusive',
-        ),
-
-        pytest.param(
-            {
                 'samples': pl.from_dict(
                     {
                         'pixel': [[1.23, 4.56], None, [7.89, 10.11, 12.13]],
@@ -1855,38 +1826,3 @@ def test_gaze_init_warnings():
 
     assert len(record) == 1
     assert record[0].message.args[0].startswith(expected_msg_prefix)
-
-
-@pytest.mark.parametrize(
-    'init_kwargs',
-    [
-        pytest.param(
-            {'data': pl.DataFrame()},
-            id='data',
-        ),
-    ],
-)
-def test_gaze_init_parameter_is_deprecated(init_kwargs):
-    with pytest.warns(DeprecationWarning):
-        Gaze(**init_kwargs)
-
-
-@pytest.mark.parametrize(
-    'init_kwargs',
-    [
-        pytest.param(
-            {'data': pl.DataFrame()},
-            id='data',
-        ),
-    ],
-)
-def test_gaze_init_parameter_is_removed(init_kwargs, assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        Gaze(**init_kwargs)
-
-    assert_deprecation_is_removed(
-        function_name=f'Gaze init argument {list(init_kwargs.keys())[0]}',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
