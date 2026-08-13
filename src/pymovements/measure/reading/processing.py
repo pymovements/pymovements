@@ -197,6 +197,7 @@ def compute_reading_measures(
         word_index_column=word_index_column,
         word_column=word_column,
         group_columns=group_columns,
+        event_name=event_name,
     )
 
     # Without group columns there is no grouping: the whole input is one reading sequence. The
@@ -288,6 +289,7 @@ def _build_word_table(
         word_index_column: str,
         word_column: str,
         group_columns: list[str],
+        event_name: str,
 ) -> tuple[pl.DataFrame, list[str]]:
     """Build the word table from ``aois`` and validate group column symmetry with the fixations.
 
@@ -301,6 +303,7 @@ def _build_word_table(
             word_index_column=word_index_column,
             word_column=word_column,
             group_columns=group_columns,
+            event_name=event_name,
         )
     else:
         words, output_group_columns = _word_table_from_frame(
@@ -371,6 +374,7 @@ def _word_table_from_dict(
         word_index_column: str,
         word_column: str,
         group_columns: list[str],
+        event_name: str,
 ) -> tuple[pl.DataFrame, list[str]]:
     """Build the word table from a dict mapping sequence values to AOI frames."""
     if not group_columns:
@@ -452,8 +456,14 @@ def _word_table_from_dict(
 
     words = pl.concat(tables)
 
+    # Key symmetry is judged against the rows that will actually be processed: rows with a
+    # different event name are dropped by the annotation step and never produce measures.
+    # _normalize_fixations synthesizes the name column when the input has none, so in that
+    # case every row counts.
+    named_fixations = fixations.filter(pl.col('name') == event_name)
+
     missing_keys = (
-        fixations.select(sequence_column).unique().join(
+        named_fixations.select(sequence_column).unique().join(
             words.select(sequence_column).unique(), on=sequence_column, how='anti',
         )
     )
@@ -468,7 +478,7 @@ def _word_table_from_dict(
     # subject genuinely skipped, so it deserves a warning.
     unused_keys = (
         words.select(sequence_column).unique().join(
-            fixations.select(sequence_column).unique(), on=sequence_column, how='anti',
+            named_fixations.select(sequence_column).unique(), on=sequence_column, how='anti',
         )
     )
     if unused_keys.height > 0:

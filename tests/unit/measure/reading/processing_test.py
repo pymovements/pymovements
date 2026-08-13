@@ -344,6 +344,45 @@ def test_compute_reading_measures_aois_dict_warns_on_unused_keys():
     assert unused['skipped'].to_list() == [1]
 
 
+def test_compute_reading_measures_aois_dict_warns_on_key_with_only_non_fixation_events():
+    # t2 exists in the fixation frame but only via a saccade row, which never produces
+    # measures, so its dict entry counts as unused and gets the warning.
+    fixations = pl.DataFrame({
+        'name': ['fixation', 'saccade'],
+        'word_idx': [1, 1],
+        'duration': [100, 50],
+        'trial': ['t1', 't2'],
+    })
+    aois = {
+        't1': pl.DataFrame({'word_idx': [1], 'word': ['a']}),
+        't2': pl.DataFrame({'word_idx': [1], 'word': ['b']}),
+    }
+
+    with pytest.warns(
+        UserWarning, match=r"keys without any matching fixations: \['t2'\]",
+    ):
+        result = compute_reading_measures(fixations, aois)
+
+    assert result.filter(pl.col('trial') == 't2')['skipped'].to_list() == [1]
+
+
+def test_compute_reading_measures_aois_dict_ignores_trials_with_only_non_fixation_events():
+    # t2 exists in the fixation frame but only via a saccade row, so it does not demand a
+    # dict entry.
+    fixations = pl.DataFrame({
+        'name': ['fixation', 'saccade'],
+        'word_idx': [1, 1],
+        'duration': [100, 50],
+        'trial': ['t1', 't2'],
+    })
+    aois = {'t1': pl.DataFrame({'word_idx': [1], 'word': ['a']})}
+
+    result = compute_reading_measures(fixations, aois)
+
+    assert result['trial'].to_list() == ['t1']
+    assert result['TFT'].to_list() == [100]
+
+
 def test_compute_reading_measures_aois_dict_entries_with_page_column():
     fixations = pl.DataFrame({
         'word_idx': [1, 2, 1],
