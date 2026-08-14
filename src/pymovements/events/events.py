@@ -27,7 +27,6 @@ from typing import overload
 
 import numpy as np
 import polars as pl
-from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements._utils import _checks
@@ -554,25 +553,6 @@ class Events:
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
         )
-
-    @deprecated(
-        reason='Please use Events.clone() instead. '
-               'This function will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def copy(self) -> Events:
-        """Return a copy of an Events object.
-
-        .. deprecated:: v0.23.0
-           Please use :py:meth:`~pymovements.Events.clone()` instead.
-           This function will be removed in v0.28.0.
-
-        Returns
-        -------
-        Events
-            A copy of the Events.
-        """
-        return self.clone()
 
     @overload
     def split(

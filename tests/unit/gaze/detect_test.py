@@ -522,7 +522,156 @@ from pymovements.synthetic import step_function
             id='ivt_constant_position_single_fixation_per_trial',
         ),
 
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                time=np.arange(0, 100, 1),
+                velocity=np.ones((2, 100)) * 20,
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.events.Events(),
+            id='ihmm_constant_velocity_no_fixation',
+        ),
 
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                velocity=np.zeros((2, 100)),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='fixation', onsets=[0], offsets=[99]),
+            id='ihmm_constant_position_single_fixation',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+                'name': 'custom_fixation',
+            },
+            pm.gaze.from_numpy(
+                velocity=np.zeros((2, 100)),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
+            id='ihmm_constant_position_single_fixation_custom_name',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                velocity=step_function(
+                    length=100, steps=[49, 51], values=[(90, 90), (0, 0)], start_value=(0, 0),
+                ),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.events.Events(name='fixation', onsets=[0, 51], offsets=[48, 99]),
+            id='ihmm_three_steps_two_fixations',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                velocity=step_function(
+                    length=100, steps=[10, 20, 90],
+                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
+                ),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            # unlike idt/ivt, ihmm does not split on interior NaNs: the short gap
+            # is bridged by the fixation state's high self-transition probability.
+            pm.events.Events(name='fixation', onsets=[0], offsets=[89]),
+            id='ihmm_interior_nan_does_not_split_fixation',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 2,
+            },
+            pm.gaze.from_numpy(
+                time=np.arange(1000, 1100, dtype=int),
+                velocity=step_function(length=100, steps=[0], values=[(0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.events.Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='ihmm_constant_position_single_fixation_with_timesteps_int',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                trial=np.array(['A'] * 50 + ['B'] * 50),
+                velocity=np.zeros((2, 100)),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
+            id='ihmm_constant_position_single_fixation_per_trial',
+        ),
 
         pytest.param(
             'microsaccades',

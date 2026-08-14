@@ -27,7 +27,6 @@ from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from dataclasses import replace
 from typing import Any
-from warnings import warn
 
 from deprecated.sphinx import deprecated
 
@@ -174,8 +173,8 @@ class ResourceDefinition:
         """The URL to the downloadable resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -206,8 +205,8 @@ class ResourceDefinition:
         """The target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -238,8 +237,8 @@ class ResourceDefinition:
         """The MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -270,8 +269,8 @@ class ResourceDefinition:
         """A list of additional mirror URLs to download the resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -306,19 +305,6 @@ class ResourceDefinition:
         ResourceDefinition
             An initialized ``Resource`` instance.
         """
-        if 'resource' in dictionary:
-            warn(
-                DeprecationWarning(
-                    'from_dict() key "resource" is deprecated since version v0.23.0. '
-                    'Please use key "source" instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
-
-            url = dictionary['resource']
-            dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
-            dictionary['url'] = url
-
         if 'source' in dictionary and isinstance(dictionary['source'], dict):
             dictionary['source'] = WebSource.from_dict(dictionary['source'])
 

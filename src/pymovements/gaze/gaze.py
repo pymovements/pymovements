@@ -34,7 +34,6 @@ from warnings import warn
 
 import polars
 import yaml
-from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements import transforms
@@ -124,10 +123,6 @@ class Gaze:
         from the experiment definition. This column will be renamed to ``distance``. (default: None)
     auto_column_detect: bool
         Flag indicating if the column names should be inferred automatically. (default: False)
-    data: polars.DataFrame | None
-        A dataframe that contains gaze samples. (default: None)
-        .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Attributes
     ----------
@@ -295,19 +290,7 @@ class Gaze:
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
             auto_column_detect: bool = False,
-            data: polars.DataFrame | None = None,
     ):
-        if data is not None:
-            warn(
-                DeprecationWarning(
-                    "Gaze.__init__() argument 'data' is deprecated since version v0.23.0. "
-                    "Please use argument 'samples' instead. "
-                    'This argument will be removed in v0.28.0.',
-                ),
-            )
-            check_is_mutual_exclusive(samples=samples, data=data)
-            samples = data
-
         if samples is None:
             samples = polars.DataFrame()
         else:
@@ -1568,36 +1551,6 @@ class Gaze:
     def columns(self) -> list[str]:
         """List of column names in samples dataframe."""
         return self.samples.columns
-
-    @property
-    @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def frame(self) -> polars.DataFrame:
-        """Gaze samples dataframe.
-
-        .. deprecated:: v0.23.0
-        Please use Gaze.samples instead.
-        This property will be removed in v0.28.0.
-
-        Returns
-        -------
-        polars.DataFrame
-            Gaze samples dataframe.
-
-        """
-        return self.samples
-
-    @frame.setter
-    @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def frame(self, data: polars.DataFrame) -> None:
-        self.samples = data
 
     def map_to_aois(
             self,
