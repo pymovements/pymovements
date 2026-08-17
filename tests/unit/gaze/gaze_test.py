@@ -1861,7 +1861,14 @@ def test_gaze_drop_nulls_raises_missing_samples_columns():
     assert len(gaze.samples) == 4
 
 
-def test_gaze_drop_nulls_raises_invalid_how():
+@pytest.mark.parametrize(
+    'subset',
+    [
+        pytest.param(None, id='subset_none'),
+        pytest.param([], id='subset_empty'),
+    ],
+)
+def test_gaze_drop_nulls_raises_invalid_how(subset):
     gaze = Gaze(
         pl.DataFrame(
             {
@@ -1873,8 +1880,34 @@ def test_gaze_drop_nulls_raises_invalid_how():
         pixel_columns=['x', 'y'],
     )
     with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
-        gaze.drop_nulls(how='anny')
+        gaze.drop_nulls(subset=subset, how='anny')
     assert len(gaze.samples) == 2
+
+
+def test_gaze_drop_nulls_empty_subset_is_noop():
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1],
+                'x': [None, 1.0],
+                'y': [0.0, 1.0],
+            },
+        ),
+        pixel_columns=['x', 'y'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 1],
+                    'offset': [1, 2],
+                    'trial': [1, None],
+                },
+            ),
+        ),
+    )
+    gaze.drop_nulls(subset=[])
+    assert gaze.samples['time'].to_list() == [0, 1]
+    assert gaze.events.frame['onset'].to_list() == [0, 1]
 
 
 @pytest.mark.parametrize(

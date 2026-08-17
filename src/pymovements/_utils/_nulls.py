@@ -34,7 +34,8 @@ def row_is_null(
 
     A scalar column counts as null if its value is null. A nested list column (e.g. ``pixel`` or
     ``position``) counts as null if any of its components is null under ``how='any'``, and only if
-    all of its components are null under ``how='all'``.
+    all of its components are null under ``how='all'``. For an empty subset, no row counts as
+    null, matching :py:meth:`polars.DataFrame.drop_nulls` with an empty subset.
 
     Parameters
     ----------
@@ -59,6 +60,9 @@ def row_is_null(
     """
     if how not in ('any', 'all'):
         raise ValueError(f"how must be either 'any' or 'all' but is '{how}'")
+
+    if not subset:
+        return pl.lit(False)
 
     column_null_expressions = []
     for column in subset:

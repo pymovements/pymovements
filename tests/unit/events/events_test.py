@@ -1406,7 +1406,14 @@ def test_events_drop_nulls_raises_missing_columns():
     assert len(events.frame) == 2
 
 
-def test_events_drop_nulls_raises_invalid_how():
+@pytest.mark.parametrize(
+    'subset',
+    [
+        pytest.param(None, id='subset_none'),
+        pytest.param([], id='subset_empty'),
+    ],
+)
+def test_events_drop_nulls_raises_invalid_how(subset):
     events = Events(
         pl.DataFrame(
             {
@@ -1417,5 +1424,20 @@ def test_events_drop_nulls_raises_invalid_how():
         ),
     )
     with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
-        events.drop_nulls(how='anny')
+        events.drop_nulls(subset=subset, how='anny')
     assert len(events.frame) == 2
+
+
+def test_events_drop_nulls_empty_subset_is_noop():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+                'trial': [1, None],
+            },
+        ),
+    )
+    events.drop_nulls(subset=[])
+    assert events.frame['onset'].to_list() == [0, 1]
