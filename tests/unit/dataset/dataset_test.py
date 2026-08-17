@@ -990,6 +990,20 @@ def test_load_subset(subset, fileinfo_idx, gaze_dataset_configuration):
     assert_frame_equal(dataset.fileinfo['gaze'], expected_fileinfo)
 
 
+@pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
+@pytest.mark.parametrize(
+    'gaze_dataset_configuration',
+    ['ToyAOI'],
+    indirect=['gaze_dataset_configuration'],
+)
+def test_load_subset_loads_stimuli(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(subset={'subject_id': 1})
+
+    assert len(dataset.stimuli) == 3
+    assert all(isinstance(stimulus, TextStimulus) for stimulus in dataset.stimuli)
+
+
 @pytest.mark.parametrize(
     ('init_kwargs', 'load_kwargs', 'exception'),
     [
