@@ -1454,3 +1454,25 @@ def test_detect_clear():
     # After detection, the events should be replaced with the new events
     expected_events = pm.Events(name='fixation', onsets=[20], offsets=[30])
     assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
+
+
+def test_detect_after_clear_events_with_trial_columns():
+    """Test that detection succeeds after clear_events() on a gaze with trial columns.
+
+    Regression test: clearing events used to assign a bare Events() without trial
+    columns, which made subsequent per-trial event detection fail.
+    """
+    gaze = pm.gaze.from_numpy(
+        trial=np.array(['A'] * 50 + ['B'] * 50),
+        position=step_function(length=100, steps=[0], values=[(0, 0)]),
+        orient='row',
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+    gaze.detect('idt', dispersion_threshold=1, minimum_duration=2)
+    gaze.clear_events()
+    gaze.detect('idt', dispersion_threshold=1, minimum_duration=2)
+
+    expected_events = pm.Events(
+        name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B'],
+    )
+    assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)

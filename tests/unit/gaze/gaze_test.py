@@ -1961,13 +1961,16 @@ def test_gaze_drop_nulls_nested_components(
 
 
 def test_gaze_clear_events():
+    """Test that clear_events() preserves trial columns with dtypes taken from samples."""
     gaze = Gaze(
         samples=pl.DataFrame({'x': [0, 1], 'y': [2, 3], 'trial': ['a', 'b'], 'page': [1, 2]}),
         events=Events(
             pl.DataFrame({
-                'trial': ['a'], 'page': [1], 'name': [
-                    'saccade',
-                ], 'onset': [0], 'offset': [1],
+                'trial': ['a'],
+                'page': [1],
+                'name': ['saccade'],
+                'onset': [0],
+                'offset': [1],
             }),
         ),
         pixel_columns=['x', 'y'],
