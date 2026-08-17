@@ -2032,20 +2032,45 @@ class Gaze:
 
         Examples
         --------
-        Let's initialize a Gaze with a null pixel component in the first sample:
+        Let's initialize a Gaze with null pixel components in the samples and an events frame
+        with a null trial value:
 
         >>> import polars
         >>> import pymovements as pm
         >>> gaze = pm.Gaze(
         ...     polars.DataFrame({
-        ...         'time': [0, 1, 2],
-        ...         'x': [None, 0.2, 0.4],
-        ...         'y': [0.1, 0.3, 0.5],
+        ...         'time': [0, 1, 2, 3],
+        ...         'x': [0.1, None, None, 0.7],
+        ...         'y': [0.2, 0.4, None, 0.8],
         ...     }),
         ...     pixel_columns=['x', 'y'],
+        ...     events=pm.Events(
+        ...         polars.DataFrame({
+        ...             'name': ['fixation', 'fixation', 'fixation'],
+        ...             'onset': [0, 1, 2],
+        ...             'offset': [1, 2, 3],
+        ...             'trial': [1, None, 2],
+        ...         }),
+        ...     ),
         ... )
 
-        Dropping null values removes the first sample:
+        Under ``how='all'``, a sample is only dropped if all of its pixel components are null:
+
+        >>> gaze.drop_nulls(subset=['pixel'], how='all', events=False)
+        >>> gaze.samples
+        shape: (3, 2)
+        ┌──────┬─────────────┐
+        │ time ┆ pixel       │
+        │ ---  ┆ ---         │
+        │ i64  ┆ list[f64]   │
+        ╞══════╪═════════════╡
+        │ 0    ┆ [0.1, 0.2]  │
+        │ 1    ┆ [null, 0.4] │
+        │ 3    ┆ [0.7, 0.8]  │
+        └──────┴─────────────┘
+
+        Under the default ``how='any'``, a single null component suffices. The default call
+        also drops events with null values, with each frame checked on its own columns:
 
         >>> gaze.drop_nulls()
         >>> gaze.samples
@@ -2055,9 +2080,19 @@ class Gaze:
         │ ---  ┆ ---        │
         │ i64  ┆ list[f64]  │
         ╞══════╪════════════╡
-        │ 1    ┆ [0.2, 0.3] │
-        │ 2    ┆ [0.4, 0.5] │
+        │ 0    ┆ [0.1, 0.2] │
+        │ 3    ┆ [0.7, 0.8] │
         └──────┴────────────┘
+        >>> gaze.events
+        shape: (2, 5)
+        ┌──────────┬───────┬────────┬───────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════════╡
+        │ fixation ┆ 0     ┆ 1      ┆ 1     ┆ 1        │
+        │ fixation ┆ 2     ┆ 3      ┆ 2     ┆ 1        │
+        └──────────┴───────┴────────┴───────┴──────────┘
         """
         if subset is None:
             samples_subset = self.samples.columns

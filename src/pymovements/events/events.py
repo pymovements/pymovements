@@ -644,29 +644,48 @@ class Events:
 
         Examples
         --------
-        Let's create some events with a trial column containing a null value:
+        Let's create some events with null values in the trial and page columns:
 
+        >>> import polars as pl
         >>> import pymovements as pm
         >>> events = pm.Events(
-        ...     name=['fixation', 'fixation', 'fixation'],
-        ...     onsets=[0, 110, 165],
-        ...     offsets=[100, 150, 200],
-        ...     trials=[1, None, 2],
+        ...     pl.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 110, 165],
+        ...         'offset': [100, 150, 200],
+        ...         'trial': [1, None, None],
+        ...         'page': [1, 2, None],
+        ...     }),
         ... )
 
-        Dropping events with null values in the trial column removes the second fixation:
+        Under ``how='all'``, an event is only dropped if all subset columns are null,
+        removing the third fixation:
 
-        >>> events.drop_nulls(subset=['trial'])
+        >>> events.drop_nulls(subset=['trial', 'page'], how='all')
         >>> events
-        shape: (2, 5)
-        ┌───────┬──────────┬───────┬────────┬──────────┐
-        │ trial ┆ name     ┆ onset ┆ offset ┆ duration │
-        │ ---   ┆ ---      ┆ ---   ┆ ---    ┆ ---      │
-        │ i64   ┆ str      ┆ i64   ┆ i64    ┆ i64      │
-        ╞═══════╪══════════╪═══════╪════════╪══════════╡
-        │ 1     ┆ fixation ┆ 0     ┆ 100    ┆ 100      │
-        │ 2     ┆ fixation ┆ 165   ┆ 200    ┆ 35       │
-        └───────┴──────────┴───────┴────────┴──────────┘
+        shape: (2, 6)
+        ┌──────────┬───────┬────────┬───────┬──────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ page ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---  ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64  ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════╪══════════╡
+        │ fixation ┆ 0     ┆ 100    ┆ 1     ┆ 1    ┆ 100      │
+        │ fixation ┆ 110   ┆ 150    ┆ null  ┆ 2    ┆ 40       │
+        └──────────┴───────┴────────┴───────┴──────┴──────────┘
+
+        Under the default ``how='any'``, a single null value suffices, removing the second
+        fixation too:
+
+        >>> events.drop_nulls(subset=['trial', 'page'])
+        >>> events
+        shape: (1, 6)
+        ┌──────────┬───────┬────────┬───────┬──────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ page ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---  ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64  ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════╪══════════╡
+        │ fixation ┆ 0     ┆ 100    ┆ 1     ┆ 1    ┆ 100      │
+        └──────────┴───────┴────────┴───────┴──────┴──────────┘
         """
         if subset is None:
             subset = self.frame.columns
