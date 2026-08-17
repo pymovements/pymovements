@@ -40,7 +40,7 @@ from tqdm import tqdm
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import build_null_condition
+from pymovements._utils._nulls import row_is_null
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -2083,7 +2083,7 @@ class Gaze:
                         'in the events frame. Use events=False to only drop samples',
                     )
 
-        condition = build_null_condition(self.samples, samples_subset, how)
+        condition = row_is_null(self.samples.schema, samples_subset, how)
         self.samples = self.samples.remove(condition)
         if events:
             self.events.drop_nulls(subset, how=how)

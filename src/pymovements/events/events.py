@@ -32,7 +32,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements._utils._nulls import build_null_condition
+from pymovements._utils._nulls import row_is_null
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -677,7 +677,7 @@ class Events:
                     f'columns {missing_columns} from subset do not exist in the events frame',
                 )
 
-        self.frame = self.frame.remove(build_null_condition(self.frame, subset, how))
+        self.frame = self.frame.remove(row_is_null(self.frame.schema, subset, how))
 
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add minimal schema columns to :py:class:`polars.DataFrame` if they are missing.

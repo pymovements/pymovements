@@ -25,8 +25,8 @@ from typing import Literal
 import polars as pl
 
 
-def build_null_condition(
-        frame: pl.DataFrame,
+def row_is_null(
+        schema: pl.Schema,
         subset: list[str],
         how: Literal['all', 'any'],
 ) -> pl.Expr:
@@ -38,8 +38,8 @@ def build_null_condition(
 
     Parameters
     ----------
-    frame: pl.DataFrame
-        Dataframe to build the expression for, used to look up column dtypes.
+    schema: pl.Schema
+        Schema of the dataframe to build the expression for, used to look up column dtypes.
     subset: list[str]
         List of column names to check for null values.
     how: Literal['all', 'any']
@@ -62,7 +62,7 @@ def build_null_condition(
 
     column_null_expressions = []
     for column in subset:
-        if isinstance(frame.schema[column], pl.List):
+        if isinstance(schema[column], pl.List):
             component_nulls = pl.col(column).list.eval(pl.element().is_null())
             if how == 'any':
                 column_counts_as_null = component_nulls.list.any()
