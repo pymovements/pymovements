@@ -1141,8 +1141,8 @@ class Gaze:
         >>> gaze.clear_events()
         >>> gaze.events.frame.is_empty()
         True
-        >>> gaze.events.frame.schema
-        Schema({'trial': Int64, 'name': String, 'onset': Int64, 'offset': Int64, 'duration': Int64})
+        >>> dict(gaze.events.frame.schema)
+        {'trial': Int64, 'name': String, 'onset': Int64, 'offset': Int64, 'duration': Int64}
         """
         if self.trial_columns is None:
             self.events = Events()
