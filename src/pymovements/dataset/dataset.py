@@ -1202,6 +1202,9 @@ class Dataset:
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
 
+        Clears the event DataFrame of each gaze object via :py:meth:`~.Gaze.clear_events`,
+        which preserves trial columns in the emptied event DataFrames.
+
         Returns
         -------
         Dataset
