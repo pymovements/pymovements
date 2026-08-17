@@ -2160,6 +2160,7 @@ class Gaze:
             max_deviation=max_deviation,
             min_fraction=min_fraction,
         )
+
     def drop_nulls(
         self,
         subset: list[str] | None = None,
