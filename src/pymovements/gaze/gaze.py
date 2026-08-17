@@ -40,6 +40,7 @@ from tqdm import tqdm
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._nulls import build_null_condition
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -2010,32 +2011,80 @@ class Gaze:
         Parameters
         ----------
         subset: list[str] | None
-            List of column names to check for null values. By default, all columns are considered.
+            List of column names to check for null values. If None, each frame is checked on its
+            own columns: the samples frame on all sample columns, the events frame on all event
+            columns. If a list is given and `events` is True, all named columns must exist in
+            both the samples and the events frame. (default: None)
         how: Literal['all', 'any']
             If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
-            where *all* of the specified columns are null. (default: 'any')
+            where *all* of the specified columns are null. A nested list column like ``pixel`` or
+            ``position`` counts as null if any of its components is null under 'any', and only if
+            all of its components are null under 'all'. (default: 'any')
         events: bool
-            If True, also drop matching events. `subset` must exist in both the samples and the
-            events dataframe.
+            If True, also drop events with null values. (default: True)
 
         Raises
         ------
         ValueError
-            If `events` is True but the specified columns don't exist.
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in the samples frame, or that do not exist in the events frame while `events`
+            is True.
+
+        Examples
+        --------
+        Let's initialize a Gaze with a null pixel component in the first sample:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     polars.DataFrame({
+        ...         'time': [0, 1, 2],
+        ...         'x': [None, 0.2, 0.4],
+        ...         'y': [0.1, 0.3, 0.5],
+        ...     }),
+        ...     pixel_columns=['x', 'y'],
+        ... )
+
+        Dropping null values removes the first sample:
+
+        >>> gaze.drop_nulls()
+        >>> gaze.samples
+        shape: (2, 2)
+        ┌──────┬────────────┐
+        │ time ┆ pixel      │
+        │ ---  ┆ ---        │
+        │ i64  ┆ list[f64]  │
+        ╞══════╪════════════╡
+        │ 1    ┆ [0.2, 0.3] │
+        │ 2    ┆ [0.4, 0.5] │
+        └──────┴────────────┘
         """
         if subset is None:
-            subset = self.samples.columns
+            samples_subset = self.samples.columns
+        else:
+            samples_subset = subset
 
-        condition = polars.any_horizontal if how == 'any' else polars.all_horizontal
-
-        if events:
-            if not all(column in self.events.frame.columns for column in subset):
+            missing_sample_columns = [
+                column for column in subset if column not in self.samples.columns
+            ]
+            if missing_sample_columns:
                 raise ValueError(
-                    f'Not all columns {subset} exist in events. '
-                    'Use events=False to only remove samples',
+                    f'columns {missing_sample_columns} from subset do not exist '
+                    'in the samples frame',
                 )
 
-        self.samples = self.samples.remove(condition(polars.col(subset).is_null()))
+            if events:
+                missing_event_columns = [
+                    column for column in subset if column not in self.events.frame.columns
+                ]
+                if missing_event_columns:
+                    raise ValueError(
+                        f'columns {missing_event_columns} from subset do not exist '
+                        'in the events frame. Use events=False to only drop samples',
+                    )
+
+        condition = build_null_condition(self.samples, samples_subset, how)
+        self.samples = self.samples.remove(condition)
         if events:
             self.events.drop_nulls(subset, how=how)
 

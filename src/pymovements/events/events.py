@@ -32,6 +32,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._nulls import build_null_condition
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -627,16 +628,56 @@ class Events:
         Parameters
         ----------
         subset: list[str] | None
-            List of column names to check for null values. By default, all columns are checked.
+            List of column names to check for null values. If None, all columns of the events
+            frame are checked. (default: None)
         how: Literal['all', 'any']
             If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
-            where *all* of the specified columns are null. (default: 'any')
+            where *all* of the specified columns are null. A nested list column counts as null if
+            any of its components is null under 'any', and only if all of its components are null
+            under 'all'. (default: 'any')
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in the events frame.
+
+        Examples
+        --------
+        Let's create some events with a trial column containing a null value:
+
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     name=['fixation', 'saccade', 'fixation'],
+        ...     onsets=[0, 110, 165],
+        ...     offsets=[100, 150, 200],
+        ...     trials=[1, None, 2],
+        ... )
+
+        Dropping events with null values in the trial column removes the saccade:
+
+        >>> events.drop_nulls(subset=['trial'])
+        >>> events
+        shape: (2, 5)
+        ┌───────┬──────────┬───────┬────────┬──────────┐
+        │ trial ┆ name     ┆ onset ┆ offset ┆ duration │
+        │ ---   ┆ ---      ┆ ---   ┆ ---    ┆ ---      │
+        │ i64   ┆ str      ┆ i64   ┆ i64    ┆ i64      │
+        ╞═══════╪══════════╪═══════╪════════╪══════════╡
+        │ 1     ┆ fixation ┆ 0     ┆ 100    ┆ 100      │
+        │ 2     ┆ fixation ┆ 165   ┆ 200    ┆ 35       │
+        └───────┴──────────┴───────┴────────┴──────────┘
         """
         if subset is None:
             subset = self.frame.columns
+        else:
+            missing_columns = [column for column in subset if column not in self.frame.columns]
+            if missing_columns:
+                raise ValueError(
+                    f'columns {missing_columns} from subset do not exist in the events frame',
+                )
 
-        condition = pl.any_horizontal if how == 'any' else pl.all_horizontal
-        self.frame = self.frame.remove(condition(pl.col(subset).is_null()))
+        self.frame = self.frame.remove(build_null_condition(self.frame, subset, how))
 
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add minimal schema columns to :py:class:`polars.DataFrame` if they are missing.

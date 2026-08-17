@@ -1348,3 +1348,74 @@ def test_events_drop_nulls(trial_data, kwargs, expected_events_kept):
     )
     events.drop_nulls(**kwargs)
     assert events.frame['onset'].to_list() == expected_events_kept
+
+
+@pytest.mark.parametrize(
+    ('location', 'how', 'expected_events_kept'),
+    [
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'any',
+            [1, 2],
+            id='any_single_null_component_dropped',
+        ),
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [0, 1, 2],
+            id='all_single_null_component_kept',
+        ),
+        pytest.param(
+            [[None, None], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [1, 2],
+            id='all_components_null_dropped',
+        ),
+    ],
+)
+def test_events_drop_nulls_nested_components(location, how, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation', 'fixation'],
+                'onset': [0, 1, 2],
+                'offset': [1, 2, 3],
+                'location': location,
+            },
+        ),
+    )
+    events.drop_nulls(subset=['location'], how=how)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+def test_events_drop_nulls_raises_missing_columns():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(
+            ValueError,
+            match=r"columns \['trial'\] from subset do not exist in the events frame",
+    ):
+        events.drop_nulls(subset=['trial'])
+    assert len(events.frame) == 2
+
+
+def test_events_drop_nulls_raises_invalid_how():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
+        events.drop_nulls(how='anny')
+    assert len(events.frame) == 2
