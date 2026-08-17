@@ -1121,7 +1121,29 @@ class Gaze:
         self.samples = self.samples.drop(name)
 
     def clear_events(self) -> None:
-        """Clear event DataFrame."""
+        """Clear event DataFrame.
+
+        Unlike assigning a bare :py:class:`~pymovements.Events` instance, this preserves
+        :py:attr:`~.Gaze.trial_columns` in the emptied event DataFrame, with dtypes taken
+        from :py:attr:`~.Gaze.samples`, so that subsequent per-trial event detection via
+        :py:meth:`~.Gaze.detect` keeps working.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Events, Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame({'x': [0.1, 0.2], 'y': [0.3, 0.4], 'trial': [1, 2]}),
+        ...     pixel_columns=['x', 'y'],
+        ...     trial_columns=['trial'],
+        ...     events=Events(name='fixation', onsets=[0], offsets=[1], trials=[1]),
+        ... )
+        >>> gaze.clear_events()
+        >>> gaze.events.frame.is_empty()
+        True
+        >>> gaze.events.frame.schema['trial']
+        Int64
+        """
         if self.trial_columns is None:
             self.events = Events()
         else:  # Ensure that trial columns with correct dtype are present in event dataframe.
@@ -2154,6 +2176,7 @@ class Gaze:
             max_deviation=max_deviation,
             min_fraction=min_fraction,
         )
+
     def drop_nulls(
         self,
         subset: list[str] | None = None,
