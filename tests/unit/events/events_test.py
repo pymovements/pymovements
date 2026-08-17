@@ -573,29 +573,6 @@ def test_clone(events):
     assert_frame_equal(events.frame, events_copy.frame)
 
 
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_copy():
-    events = Events(name='saccade', onsets=[0], offsets=[123])
-    events_copy = events.copy()
-
-    # We want to have separate dataframes but with the exact same data.
-    assert events is not events_copy
-    assert events.frame is not events_copy.frame
-    assert_frame_equal(events.frame, events_copy.frame)
-
-
-def test_copy_removed(assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        Events().copy()
-
-    assert_deprecation_is_removed(
-        function_name='Events.copy()',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
-
-
 def test_clones_trial_columns():
     events = Events(data=pl.DataFrame({'trial': 'trial'}), trial_columns='trial')
     events_copy = events.clone()
