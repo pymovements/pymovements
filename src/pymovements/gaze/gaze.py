@@ -306,17 +306,7 @@ class Gaze:
         )
 
         if events is None:
-            if self.trial_columns is None:
-                self.events = Events()
-            else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = Events(
-                    data=polars.DataFrame(
-                        schema={
-                            column: self.samples.schema[column] for column in self.trial_columns
-                        },
-                    ),
-                    trial_columns=self.trial_columns,
-                )
+            self.clear_events()
         else:
             self.events = events.clone()
 
@@ -1130,6 +1120,42 @@ class Gaze:
 
         self.samples = self.samples.drop(name)
 
+    def clear_events(self) -> None:
+        """Clear event DataFrame.
+
+        Unlike assigning a bare :py:class:`~pymovements.Events` instance, this preserves
+        :py:attr:`~.Gaze.trial_columns` in the emptied event DataFrame, with dtypes taken
+        from :py:attr:`~.Gaze.samples`, so that subsequent per-trial event detection via
+        :py:meth:`~.Gaze.detect` keeps working.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Events, Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame({'x': [0.1, 0.2], 'y': [0.3, 0.4], 'trial': [1, 2]}),
+        ...     pixel_columns=['x', 'y'],
+        ...     trial_columns=['trial'],
+        ...     events=Events(name='fixation', onsets=[0], offsets=[1], trials=[1]),
+        ... )
+        >>> gaze.clear_events()
+        >>> gaze.events.frame.is_empty()
+        True
+        >>> dict(gaze.events.frame.schema)
+        {'trial': Int64, 'name': String, 'onset': Int64, 'offset': Int64, 'duration': Int64}
+        """
+        if self.trial_columns is None:
+            self.events = Events()
+        else:  # Ensure that trial columns with correct dtype are present in event dataframe.
+            self.events = Events(
+                data=polars.DataFrame(
+                    schema={
+                        column: self.samples.schema[column] for column in self.trial_columns
+                    },
+                ),
+                trial_columns=self.trial_columns,
+            )
+
     def detect(
             self,
             method: Callable[..., Events] | str,
@@ -1155,17 +1181,7 @@ class Gaze:
             Additional keyword arguments to be passed to the event detection method.
         """
         if self.events is None or clear:
-            if self.trial_columns is None:
-                self.events = Events()
-            else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = Events(
-                    data=polars.DataFrame(
-                        schema={
-                            column: self.samples.schema[column] for column in self.trial_columns
-                        },
-                    ),
-                    trial_columns=self.trial_columns,
-                )
+            self.clear_events()
 
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)

@@ -1958,3 +1958,32 @@ def test_gaze_drop_nulls_nested_components(
     )
     gaze.drop_nulls(subset=[nested_column], how=how, events=False)
     assert gaze.samples['time'].to_list() == expected_times_kept
+
+
+def test_gaze_clear_events():
+    """Test that clear_events() preserves trial columns with dtypes taken from samples."""
+    gaze = Gaze(
+        samples=pl.DataFrame({'x': [0, 1], 'y': [2, 3], 'trial': ['a', 'b'], 'page': [1, 2]}),
+        events=Events(
+            pl.DataFrame({
+                'trial': ['a'],
+                'page': [1],
+                'name': ['saccade'],
+                'onset': [0],
+                'offset': [1],
+            }),
+        ),
+        pixel_columns=['x', 'y'],
+        trial_columns=['trial', 'page'],
+    )
+    gaze.clear_events()
+    expected_schema = {
+        'trial': pl.Utf8,
+        'page': pl.Int64,
+        'name': pl.Utf8,
+        'onset': pl.Int64,
+        'offset': pl.Int64,
+        'duration': pl.Int64,
+    }
+    assert gaze.events.frame.schema == expected_schema
+    assert gaze.events.frame.is_empty()
