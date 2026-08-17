@@ -20,7 +20,6 @@
 """Module to create a Gaze from a numpy array."""
 from __future__ import annotations
 
-import warnings
 from typing import Literal
 from typing import overload
 
@@ -73,6 +72,22 @@ def _resolve_columns(
     return [_resolve_column(column, available_columns) for column in columns]
 
 
+def _flatten_single_column_array(array: np.ndarray, name: str) -> np.ndarray:
+    """Validate and flatten an array that maps to a single output column.
+
+    Singleton dimensions are removed so that shapes like ``(1, N)`` or ``(N, 1, 1)`` are accepted.
+    The array must be at least one-dimensional and must not have more than one non-singleton
+    dimension, otherwise flattening would silently reorder or merge samples.
+    """
+    if array.ndim == 0 or sum(size != 1 for size in array.shape) > 1:
+        raise ValueError(
+            f'{name} array must be at least one-dimensional and have at most one '
+            'non-singleton dimension, '
+            f'but got shape {array.shape}',
+        )
+    return array.reshape(-1)
+
+
 def from_numpy(
         samples: np.ndarray | None = None,
         experiment: Experiment | None = None,
@@ -95,13 +110,12 @@ def from_numpy(
         velocity_columns: list[str | int] | None = None,
         acceleration_columns: list[str | int] | None = None,
         distance_column: str | int | None = None,
-        data: np.ndarray | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a numpy array.
 
     There are two mutually exclusive ways of conversion.
 
-    **Single data array**: Pass a single numpy array via `data` and specify its schema and
+    **Single data array**: Pass a single numpy array via `samples` and specify its schema and
     orientation. You can then additionally pass column specifiers, e.g. `time_column` and
     `position_columns`.
 
@@ -118,9 +132,12 @@ def from_numpy(
     events: Events | None
         A dataframe of events in the gaze signal. (default: None)
     trial: np.ndarray | None
-        Array of trial identifiers for each timestep. (default: None)
+        Array of trial identifiers for each timestep. Singleton dimensions are removed
+        automatically. The array must be at least one-dimensional and cannot have more than one
+        non-singleton dimension. (default: None)
     time: np.ndarray | None
-        Array of timestamps. (default: None)
+        Array of timestamps. Singleton dimensions are removed automatically. The array must be at
+        least one-dimensional and cannot have more than one non-singleton dimension. (default: None)
     pixel: np.ndarray | None
         Array of gaze pixel positions. (default: None)
     position: np.ndarray | None
@@ -130,7 +147,9 @@ def from_numpy(
     acceleration: np.ndarray | None
         Array of gaze accelerations in degrees of visual angle per square second. (default: None)
     distance: np.ndarray | None
-        Array of eye-to-screen distances in millimeters. (default: None)
+        Array of eye-to-screen distances in millimeters. Singleton dimensions are removed
+        automatically. The array must be at least one-dimensional and cannot have more than one
+        non-singleton dimension. (default: None)
     schema: list[str] | None
         A list of column names. (default: None)
     orient: Literal['col', 'row']
@@ -164,10 +183,6 @@ def from_numpy(
         in the samples data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
-    data: np.ndarray | None
-        Two-dimensional samples data represented as a numpy ndarray. (default: None)
-        .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Returns
     -------
@@ -277,17 +292,6 @@ def from_numpy(
     │ 0    ┆ [0.0, 0.0] │
     └──────┴────────────┘
     """
-    if data is not None:
-        warnings.warn(
-            DeprecationWarning(
-                "from_numpy() argument 'data' is deprecated since version v0.23.0. "
-                "Please use argument 'samples' instead. "
-                'This argument will be removed in v0.28.0.',
-            ),
-        )
-        _checks.check_is_mutual_exclusive(samples=samples, data=data)
-        samples = data
-
     # Either samples or {time, pixel, position, velocity, acceleration} must be None.
     _checks.check_is_mutual_exclusive(samples=samples, time=time)
     _checks.check_is_mutual_exclusive(samples=samples, pixel=pixel)
@@ -339,12 +343,14 @@ def from_numpy(
 
     trial_columns = None
     if trial is not None:
+        trial = _flatten_single_column_array(trial, 'trial')
         sample_component = pl.from_numpy(data=trial, schema=['trial'], orient=orient)
         sample_components.append(sample_component)
         trial_columns = 'trial'
 
     time_column = None
     if time is not None:
+        time = _flatten_single_column_array(time, 'time')
         sample_component = pl.from_numpy(data=time, schema=['time'], orient=orient)
         sample_components.append(sample_component)
         time_column = 'time'
@@ -388,6 +394,7 @@ def from_numpy(
 
     distance_column = None
     if distance is not None:
+        distance = _flatten_single_column_array(distance, 'distance')
         sample_component = pl.from_numpy(data=distance, schema=['distance'], orient=orient)
         sample_components.append(sample_component)
         distance_column = 'distance'
@@ -421,7 +428,6 @@ def from_pandas(
         velocity_columns: list[str] | None = None,
         acceleration_columns: list[str] | None = None,
         distance_column: str | None = None,
-        data: pd.DataFrame | None = None,
 ) -> Gaze:
     """Get a :py:class:`~pymovements.Gaze` from a pandas DataFrame.
 
@@ -458,27 +464,12 @@ def from_pandas(
         in the input data frame. If specified, the column will be used for pixel to dva
         transformations. If not specified, the constant eye-to-screen distance will be taken from
         the experiment definition. (default: None)
-    data: pd.DataFrame | None
-        Gaze samples represented as a pandas DataFrame.
-        .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0. (default: None)
 
     Returns
     -------
     Gaze
         Returns initialized gaze object with data read from pandas data frame.
     """
-    if data is not None:
-        warnings.warn(
-            DeprecationWarning(
-                "from_pandas() argument 'data' is deprecated since version v0.23.0. "
-                "Please use argument 'samples' instead. "
-                'This argument will be removed in v0.28.0.',
-            ),
-        )
-        _checks.check_is_mutual_exclusive(samples=samples, data=data)
-        samples = data
-
     return Gaze(
         samples=pl.from_pandas(data=samples),
         experiment=experiment,

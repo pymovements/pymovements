@@ -30,6 +30,7 @@ import pymovements as pm
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.plotting import heatmap
+from pymovements.stimulus.image import from_file
 
 
 @pytest.fixture(name='experiment_fixture')
@@ -112,16 +113,7 @@ def position_column_mapping_fixture():
         pytest.param(
             {'show_cbar': False}, id='show_cbar_false',
         ),
-        pytest.param(
-            {
-                'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
-                'stimulus_origin': 'lower',
-            }, id='add_stimulus_true',
-        ),
-        pytest.param(
-            {'add_stimulus': False}, id='add_stimulus_false',
-        ),
+        # Removed deprecated add_stimulus test cases
     ],
 )
 def test_heatmap_returns_figure_and_axes(args, kwargs, position_column_mapping):
@@ -235,3 +227,69 @@ def test_heatmap_invalid_screen_origin_raises(origin, gaze):
     gaze.experiment.screen.origin = origin
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
         pm.plotting.heatmap(gaze)
+
+
+@pytest.mark.parametrize(
+    ('origin'),
+    (
+        pytest.param('upper', id='stimulus_origin_upper'),
+        pytest.param('lower', id='stimulus_origin_lower'),
+    ),
+)
+def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
+    """Test that heatmap correctly plots with an ImageStimulus."""
+    image_path = 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+
+    image_stimulus.origin = origin
+
+    fig, ax = plt.subplots()
+
+    image_stimulus.plot(0, ax=ax)
+
+    with pytest.warns(
+        UserWarning, match='heatmap: "figsize" is ignored because'
+        ' an external Axes was provided.',
+    ):
+        returned_fig, returned_ax = heatmap(
+            gaze,
+            position_column='pixel',
+            origin='upper',
+            ax=ax,
+            savepath=str(tmp_path / 'heatmap_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+
+    assert len(ax.images) >= 2
+
+    assert (tmp_path / 'heatmap_with_stimulus.svg').is_file()
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_heatmap_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        heatmap(gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"heatmap argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )
