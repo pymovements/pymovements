@@ -648,13 +648,13 @@ class Events:
 
         >>> import pymovements as pm
         >>> events = pm.Events(
-        ...     name=['fixation', 'saccade', 'fixation'],
+        ...     name=['fixation', 'fixation', 'fixation'],
         ...     onsets=[0, 110, 165],
         ...     offsets=[100, 150, 200],
         ...     trials=[1, None, 2],
         ... )
 
-        Dropping events with null values in the trial column removes the saccade:
+        Dropping events with null values in the trial column removes the second fixation:
 
         >>> events.drop_nulls(subset=['trial'])
         >>> events
