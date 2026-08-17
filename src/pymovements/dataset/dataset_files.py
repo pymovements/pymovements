@@ -20,6 +20,7 @@
 """Functionality to scan, load and save dataset files."""
 from __future__ import annotations
 
+import operator
 from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -155,8 +156,8 @@ def scan_dataset(
         if not filepaths:
             raise RuntimeError(f'no matching files found in {resource_dirpath} with regex {regex}')
 
+        filepaths = sorted(filepaths, key=operator.itemgetter('filepath'))
         fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=None)
-        fileinfo_df = fileinfo_df.sort(by='filepath')
 
         if resource_definition.filename_pattern_schema_overrides:
             items = resource_definition.filename_pattern_schema_overrides.items()

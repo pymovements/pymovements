@@ -35,7 +35,6 @@ from pymovements import DatasetPaths
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
-from pymovements._utils._paths import match_filepaths
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_files import load_gaze_file
 from pymovements.dataset.dataset_files import load_precomputed_event_file
@@ -1478,20 +1477,12 @@ def test_load_stimulus_file_raises_unknown_stimulus_content_type():
         load_stimulus_file(file)
 
 
-def test_scan_dataset_optional_pattern_field_missing_in_first_rows(tmp_path, monkeypatch):
+def test_scan_dataset_optional_pattern_field_missing_in_first_rows(tmp_path):
     raw_dirpath = tmp_path / 'raw'
     raw_dirpath.mkdir()
     for subject_id in range(100, 210):
         (raw_dirpath / f'{subject_id}.csv').touch()
     (raw_dirpath / '900_extra.csv').touch()
-
-    # Filesystem iteration order is not deterministic, so sort the match results by filepath
-    # to guarantee that the 110 rows without the optional field come before the row with it.
-    def match_filepaths_sorted(**kwargs):
-        return sorted(match_filepaths(**kwargs), key=lambda match_dict: match_dict['filepath'])
-    monkeypatch.setattr(
-        'pymovements.dataset.dataset_files.match_filepaths', match_filepaths_sorted,
-    )
 
     definition = DatasetDefinition(
         name='test',
