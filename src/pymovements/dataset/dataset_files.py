@@ -155,7 +155,7 @@ def scan_dataset(
         if not filepaths:
             raise RuntimeError(f'no matching files found in {resource_dirpath} with regex {regex}')
 
-        fileinfo_df = pl.from_dicts(data=filepaths)
+        fileinfo_df = pl.from_dicts(data=filepaths, infer_schema_length=None)
         fileinfo_df = fileinfo_df.sort(by='filepath')
 
         if resource_definition.filename_pattern_schema_overrides:

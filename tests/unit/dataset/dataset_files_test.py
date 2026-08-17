@@ -31,9 +31,11 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import DatasetDefinition
+from pymovements import DatasetPaths
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements import ResourceDefinition
+from pymovements._utils._paths import match_filepaths
 from pymovements.dataset.dataset_files import DatasetFile
 from pymovements.dataset.dataset_files import load_gaze_file
 from pymovements.dataset.dataset_files import load_precomputed_event_file
@@ -42,6 +44,7 @@ from pymovements.dataset.dataset_files import load_precomputed_reading_measure_f
 from pymovements.dataset.dataset_files import load_precomputed_reading_measures
 from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
+from pymovements.dataset.dataset_files import scan_dataset
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
 
@@ -1473,3 +1476,43 @@ def test_load_stimulus_file_raises_unknown_stimulus_content_type():
     )
     with pytest.raises(ValueError, match=message):
         load_stimulus_file(file)
+
+
+def test_scan_dataset_optional_pattern_field_missing_in_first_rows(tmp_path, monkeypatch):
+    raw_dirpath = tmp_path / 'raw'
+    raw_dirpath.mkdir()
+    for subject_id in range(100, 210):
+        (raw_dirpath / f'{subject_id}.csv').touch()
+    (raw_dirpath / '900_extra.csv').touch()
+
+    # Filesystem iteration order is not deterministic, so sort the match results by filepath
+    # to guarantee that the 110 rows without the optional field come before the row with it.
+    def match_filepaths_sorted(**kwargs):
+        return sorted(match_filepaths(**kwargs), key=lambda match_dict: match_dict['filepath'])
+    monkeypatch.setattr(
+        'pymovements.dataset.dataset_files.match_filepaths', match_filepaths_sorted,
+    )
+
+    definition = DatasetDefinition(
+        name='test',
+        resources=[{
+            'content': 'gaze',
+            'filename_pattern': '{subject_id:d}(_{session_name})?.csv',
+        }],
+    )
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    fileinfo_dicts, files = scan_dataset(definition=definition, paths=paths)
+
+    fileinfo_df = fileinfo_dicts['gaze']
+    assert fileinfo_df.height == 111
+    assert fileinfo_df.schema['session_name'] == pl.String
+    assert fileinfo_df['session_name'].null_count() == 110
+    assert fileinfo_df.row(0, named=True) == {
+        'subject_id': '100', 'session_name': None, 'filepath': '100.csv',
+    }
+    assert fileinfo_df.row(110, named=True) == {
+        'subject_id': '900', 'session_name': 'extra', 'filepath': '900_extra.csv',
+    }
+    assert len(files) == 111
+    assert files[110].metadata == {'subject_id': '900', 'session_name': 'extra'}
