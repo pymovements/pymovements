@@ -31,6 +31,7 @@ from tqdm import tqdm
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
+from pymovements._utils._nulls import row_is_null
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -596,6 +597,86 @@ class Events:
             Events(frame, trial_columns=self.trial_columns)
             for frame in event_dfs
         ]
+
+    def drop_nulls(
+        self,
+        subset: list[str] | None = None,
+        how: Literal['all', 'any'] = 'any',
+    ) -> None:
+        """Drop events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, all columns of the events
+            frame are checked. (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column counts as null if
+            any of its components is null under 'any', and only if all of its components are null
+            under 'all'. (default: 'any')
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in the events frame.
+
+        Examples
+        --------
+        Let's create some events with null values in the trial and page columns:
+
+        >>> import polars as pl
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     pl.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 110, 165],
+        ...         'offset': [100, 150, 200],
+        ...         'trial': [1, None, None],
+        ...         'page': [1, 2, None],
+        ...     }),
+        ... )
+
+        Under ``how='all'``, an event is only dropped if all subset columns are null,
+        removing the third fixation:
+
+        >>> events.drop_nulls(subset=['trial', 'page'], how='all')
+        >>> events
+        shape: (2, 6)
+        ┌──────────┬───────┬────────┬───────┬──────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ page ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---  ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64  ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════╪══════════╡
+        │ fixation ┆ 0     ┆ 100    ┆ 1     ┆ 1    ┆ 100      │
+        │ fixation ┆ 110   ┆ 150    ┆ null  ┆ 2    ┆ 40       │
+        └──────────┴───────┴────────┴───────┴──────┴──────────┘
+
+        Under the default ``how='any'``, a single null value suffices, removing the second
+        fixation too:
+
+        >>> events.drop_nulls(subset=['trial', 'page'])
+        >>> events
+        shape: (1, 6)
+        ┌──────────┬───────┬────────┬───────┬──────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ page ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---  ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64  ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════╪══════════╡
+        │ fixation ┆ 0     ┆ 100    ┆ 1     ┆ 1    ┆ 100      │
+        └──────────┴───────┴────────┴───────┴──────┴──────────┘
+        """
+        if subset is None:
+            subset = self.frame.columns
+        else:
+            missing_columns = [column for column in subset if column not in self.frame.columns]
+            if missing_columns:
+                raise ValueError(
+                    f'columns {missing_columns} from subset do not exist in the events frame',
+                )
+
+        self.frame = self.frame.remove(row_is_null(self.frame.schema, subset, how))
 
     def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add minimal schema columns to :py:class:`polars.DataFrame` if they are missing.

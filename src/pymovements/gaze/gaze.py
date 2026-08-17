@@ -39,6 +39,7 @@ from tqdm import tqdm
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._nulls import row_is_null
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze.experiment import Experiment
@@ -2159,6 +2160,128 @@ class Gaze:
             max_deviation=max_deviation,
             min_fraction=min_fraction,
         )
+    def drop_nulls(
+        self,
+        subset: list[str] | None = None,
+        how: Literal['all', 'any'] = 'any',
+        events: bool = True,
+    ) -> None:
+        """Drop samples and events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, each frame is checked on its
+            own columns: the samples frame on all sample columns, the events frame on all event
+            columns. If a list is given and `events` is True, all named columns must exist in
+            both the samples and the events frame. (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column like ``pixel`` or
+            ``position`` counts as null if any of its components is null under 'any', and only if
+            all of its components are null under 'all'. (default: 'any')
+        events: bool
+            If True, also drop events with null values. (default: True)
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in the samples frame, or that do not exist in the events frame while `events`
+            is True.
+
+        Examples
+        --------
+        Let's initialize a Gaze with null pixel components in the samples and an events frame
+        with a null trial value:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     polars.DataFrame({
+        ...         'time': [0, 1, 2, 3],
+        ...         'x': [0.1, None, None, 0.7],
+        ...         'y': [0.2, 0.4, None, 0.8],
+        ...     }),
+        ...     pixel_columns=['x', 'y'],
+        ...     events=pm.Events(
+        ...         polars.DataFrame({
+        ...             'name': ['fixation', 'fixation', 'fixation'],
+        ...             'onset': [0, 1, 2],
+        ...             'offset': [1, 2, 3],
+        ...             'trial': [1, None, 2],
+        ...         }),
+        ...     ),
+        ... )
+
+        Under ``how='all'``, a sample is only dropped if all of its pixel components are null:
+
+        >>> gaze.drop_nulls(subset=['pixel'], how='all', events=False)
+        >>> gaze.samples
+        shape: (3, 2)
+        ┌──────┬─────────────┐
+        │ time ┆ pixel       │
+        │ ---  ┆ ---         │
+        │ i64  ┆ list[f64]   │
+        ╞══════╪═════════════╡
+        │ 0    ┆ [0.1, 0.2]  │
+        │ 1    ┆ [null, 0.4] │
+        │ 3    ┆ [0.7, 0.8]  │
+        └──────┴─────────────┘
+
+        Under the default ``how='any'``, a single null component suffices. The default call
+        also drops events with null values, with each frame checked on its own columns:
+
+        >>> gaze.drop_nulls()
+        >>> gaze.samples
+        shape: (2, 2)
+        ┌──────┬────────────┐
+        │ time ┆ pixel      │
+        │ ---  ┆ ---        │
+        │ i64  ┆ list[f64]  │
+        ╞══════╪════════════╡
+        │ 0    ┆ [0.1, 0.2] │
+        │ 3    ┆ [0.7, 0.8] │
+        └──────┴────────────┘
+        >>> gaze.events
+        shape: (2, 5)
+        ┌──────────┬───────┬────────┬───────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════════╡
+        │ fixation ┆ 0     ┆ 1      ┆ 1     ┆ 1        │
+        │ fixation ┆ 2     ┆ 3      ┆ 2     ┆ 1        │
+        └──────────┴───────┴────────┴───────┴──────────┘
+        """
+        if subset is None:
+            samples_subset = self.samples.columns
+        else:
+            samples_subset = subset
+
+            missing_sample_columns = [
+                column for column in subset if column not in self.samples.columns
+            ]
+            if missing_sample_columns:
+                raise ValueError(
+                    f'columns {missing_sample_columns} from subset do not exist '
+                    'in the samples frame',
+                )
+
+            if events:
+                missing_event_columns = [
+                    column for column in subset if column not in self.events.frame.columns
+                ]
+                if missing_event_columns:
+                    raise ValueError(
+                        f'columns {missing_event_columns} from subset do not exist '
+                        'in the events frame. Use events=False to only drop samples',
+                    )
+
+        condition = row_is_null(self.samples.schema, samples_subset, how)
+        self.samples = self.samples.remove(condition)
+        if events:
+            self.events.drop_nulls(subset, how=how)
 
     def _check_experiment(self) -> None:
         """Check if the experiment attribute has been set.
