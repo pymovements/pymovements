@@ -2296,6 +2296,12 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
             0,
             id='none',
         ),
+        pytest.param(
+            {},
+            1,
+            1,
+            id='samples_and_events_default',
+        ),
     ],
 )
 def test_drop_nulls(
@@ -2320,10 +2326,11 @@ def test_drop_nulls(
 
     samples_before = len(dataset.gaze[0].samples)
     events_before = len(dataset.events[0].frame)
-    dataset.drop_nulls(**kwargs)
+    result = dataset.drop_nulls(**kwargs)
     samples_after = len(dataset.gaze[0].samples)
     events_after = len(dataset.events[0].frame)
 
+    assert result is dataset
     assert samples_before - samples_after == expected_samples_dropped
     assert events_before - events_after == expected_events_dropped
 
