@@ -47,7 +47,7 @@ def tsplot(
         show_yticks: bool = True,
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
-        plot_events: bool = False,
+        show_events: bool = False,
         savepath: str | None = None,
         ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -86,7 +86,7 @@ def tsplot(
         Figure size. (default: (15, 5))
     title: str | None
         Figure title. (default: None)
-    plot_events: bool
+    show_events: bool
         Whether to plot events as shaded areas. Event spans are colored by event name and
         their labels are registered, so calling ``fig.legend()`` on the returned figure
         shows one entry per event name. (default: False)
@@ -174,7 +174,7 @@ def tsplot(
         ylim_min = np.nanmin(arr)
         ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
-    if plot_events:
+    if show_events:
         events = gaze.events.frame
         palette = plt.colormaps['tab10'].colors
         event_colors = {
@@ -240,7 +240,7 @@ def tsplot(
         ax.set_xlabel(xlabel)
 
         # plot events as shaded areas
-        if plot_events:
+        if show_events:
             # only add each event to the legend once
             add_to_legend = set(event_colors) if channel_id == 0 else set()
             for event in event_rows:

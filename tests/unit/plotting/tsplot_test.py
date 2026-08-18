@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
+from matplotlib.colors import to_rgba
 
 from pymovements import Events
 from pymovements import Experiment
@@ -200,16 +201,11 @@ def test_tsplot_external_ax_ignored_when_multi_channel(gaze):
 
 def test_tsplot_events(gaze):
     gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
-    fig, ax = tsplot(gaze=gaze, plot_events=True)
+    fig, ax = tsplot(gaze=gaze, show_events=True)
 
     assert len(ax.patches) == 2
-    # tab10[0] (blue) and tab10[1] (orange) with alpha 0.5
-    assert ax.patches[0].get_facecolor() == (
-        0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
-    )
-    assert ax.patches[1].get_facecolor() == (
-        1.0, 0.4980392156862745, 0.054901960784313725, 0.5,
-    )
+    assert ax.patches[0].get_facecolor() == to_rgba('tab:blue', alpha=0.5)
+    assert ax.patches[1].get_facecolor() == to_rgba('tab:orange', alpha=0.5)
 
     legend = fig.legend()
     assert [text.get_text() for text in legend.get_texts()] == ['fixation', 'saccade']
@@ -223,20 +219,20 @@ def test_tsplot_events_empty_events_frame():
     )
     gaze.unnest('pixel', output_columns=['x', 'y'])
 
-    fig, ax = tsplot(gaze=gaze, plot_events=True)
+    fig, ax = tsplot(gaze=gaze, show_events=True)
 
     assert isinstance(fig, plt.Figure)
     assert len(ax.patches) == 0
 
 
 @pytest.mark.parametrize(
-    ('plot_events', 'expected_n_patches'),
+    ('show_events', 'expected_n_patches'),
     [
-        pytest.param(False, 0, id='plot_events_false'),
-        pytest.param(True, 1, id='plot_events_true'),
+        pytest.param(False, 0, id='show_events_false'),
+        pytest.param(True, 1, id='show_events_true'),
     ],
 )
-def test_tsplot_without_time_column_uses_sample_index(plot_events, expected_n_patches):
+def test_tsplot_without_time_column_uses_sample_index(show_events, expected_n_patches):
     events = Events(
         pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [2]}),
     )
@@ -248,7 +244,7 @@ def test_tsplot_without_time_column_uses_sample_index(plot_events, expected_n_pa
     gaze.unnest('pixel', output_columns=['x', 'y'])
     assert 'time' not in gaze.samples.columns
 
-    _, ax = tsplot(gaze=gaze, plot_events=plot_events)
+    _, ax = tsplot(gaze=gaze, show_events=show_events)
 
     assert list(ax.get_lines()[0].get_xdata()) == [0, 1, 2]
     assert len(ax.patches) == expected_n_patches
@@ -274,17 +270,12 @@ def test_tsplot_events_cycles_colors_beyond_ten_event_names():
     )
     gaze.unnest('pixel', output_columns=['x', 'y'])
 
-    _, ax = tsplot(gaze=gaze, plot_events=True)
+    _, ax = tsplot(gaze=gaze, show_events=True)
 
     assert len(ax.patches) == 11
-    # tab10[0] (blue) with alpha 0.5
-    assert ax.patches[0].get_facecolor() == (
-        0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
-    )
-    # the eleventh event name cycles back to tab10[0]
-    assert ax.patches[10].get_facecolor() == (
-        0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
-    )
+    assert ax.patches[0].get_facecolor() == to_rgba('tab:blue', alpha=0.5)
+    # the eleventh event name cycles back to the first palette color
+    assert ax.patches[10].get_facecolor() == ax.patches[0].get_facecolor()
 
 
 def test_tsplot_events_duplicate_event_names_deduplicated_in_legend():
@@ -306,7 +297,7 @@ def test_tsplot_events_duplicate_event_names_deduplicated_in_legend():
     )
     gaze.unnest('pixel', output_columns=['x', 'y'])
 
-    fig, ax = tsplot(gaze=gaze, plot_events=True)
+    fig, ax = tsplot(gaze=gaze, show_events=True)
 
     # one span per event row, but only one legend entry per unique event name
     assert len(ax.patches) == 3
