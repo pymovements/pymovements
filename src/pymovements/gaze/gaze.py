@@ -34,17 +34,28 @@ from warnings import warn
 
 import polars
 import yaml
-from deprecated.sphinx import deprecated
 from tqdm import tqdm
 
 from pymovements import transforms
 from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
+from pymovements._utils._nulls import row_is_null
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
 from pymovements.gaze._utils._column_nesting import get_nested_columns
 from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.gaze.experiment import Experiment
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import run_report
+from pymovements.gaze.validation import check_gaze_components_defined
+from pymovements.gaze.validation import check_gaze_range
+from pymovements.gaze.validation import check_max_gap
+from pymovements.gaze.validation import check_sampling_rate_consistency
+from pymovements.gaze.validation import check_time_column_exists
+from pymovements.gaze.validation import check_time_monotone
+from pymovements.gaze.validation import check_trial_columns_dtype
+from pymovements.gaze.validation import check_trial_columns_exist
+from pymovements.gaze.validation import CheckResult
 from pymovements.measure.events.processing import EventSamplesProcessor
 from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
@@ -115,10 +126,6 @@ class Gaze:
         from the experiment definition. This column will be renamed to ``distance``. (default: None)
     auto_column_detect: bool
         Flag indicating if the column names should be inferred automatically. (default: False)
-    data: polars.DataFrame | None
-        A dataframe that contains gaze samples. (default: None)
-        .. deprecated:: v0.23.0
-        Please use ``samples`` instead. This field will be removed in v0.28.0.
 
     Attributes
     ----------
@@ -276,19 +283,7 @@ class Gaze:
             acceleration_columns: list[str] | None = None,
             distance_column: str | None = None,
             auto_column_detect: bool = False,
-            data: polars.DataFrame | None = None,
     ):
-        if data is not None:
-            warn(
-                DeprecationWarning(
-                    "Gaze.__init__() argument 'data' is deprecated since version v0.23.0. "
-                    "Please use argument 'samples' instead. "
-                    'This argument will be removed in v0.28.0.',
-                ),
-            )
-            check_is_mutual_exclusive(samples=samples, data=data)
-            samples = data
-
         if samples is None:
             samples = polars.DataFrame()
         else:
@@ -313,17 +308,7 @@ class Gaze:
         )
 
         if events is None:
-            if self.trial_columns is None:
-                self.events = Events()
-            else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = Events(
-                    data=polars.DataFrame(
-                        schema={
-                            column: self.samples.schema[column] for column in self.trial_columns
-                        },
-                    ),
-                    trial_columns=self.trial_columns,
-                )
+            self.clear_events()
         else:
             self.events = events.clone()
 
@@ -1137,6 +1122,42 @@ class Gaze:
 
         self.samples = self.samples.drop(name)
 
+    def clear_events(self) -> None:
+        """Clear event DataFrame.
+
+        Unlike assigning a bare :py:class:`~pymovements.Events` instance, this preserves
+        :py:attr:`~.Gaze.trial_columns` in the emptied event DataFrame, with dtypes taken
+        from :py:attr:`~.Gaze.samples`, so that subsequent per-trial event detection via
+        :py:meth:`~.Gaze.detect` keeps working.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Events, Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame({'x': [0.1, 0.2], 'y': [0.3, 0.4], 'trial': [1, 2]}),
+        ...     pixel_columns=['x', 'y'],
+        ...     trial_columns=['trial'],
+        ...     events=Events(name='fixation', onsets=[0], offsets=[1], trials=[1]),
+        ... )
+        >>> gaze.clear_events()
+        >>> gaze.events.frame.is_empty()
+        True
+        >>> dict(gaze.events.frame.schema)
+        {'trial': Int64, 'name': String, 'onset': Int64, 'offset': Int64, 'duration': Int64}
+        """
+        if self.trial_columns is None:
+            self.events = Events()
+        else:  # Ensure that trial columns with correct dtype are present in event dataframe.
+            self.events = Events(
+                data=polars.DataFrame(
+                    schema={
+                        column: self.samples.schema[column] for column in self.trial_columns
+                    },
+                ),
+                trial_columns=self.trial_columns,
+            )
+
     def detect(
             self,
             method: Callable[..., Events] | str,
@@ -1162,17 +1183,7 @@ class Gaze:
             Additional keyword arguments to be passed to the event detection method.
         """
         if self.events is None or clear:
-            if self.trial_columns is None:
-                self.events = Events()
-            else:  # Ensure that trial columns with correct dtype are present in event dataframe.
-                self.events = Events(
-                    data=polars.DataFrame(
-                        schema={
-                            column: self.samples.schema[column] for column in self.trial_columns
-                        },
-                    ),
-                    trial_columns=self.trial_columns,
-                )
+            self.clear_events()
 
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
@@ -1549,36 +1560,6 @@ class Gaze:
     def columns(self) -> list[str]:
         """List of column names in samples dataframe."""
         return self.samples.columns
-
-    @property
-    @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def frame(self) -> polars.DataFrame:
-        """Gaze samples dataframe.
-
-        .. deprecated:: v0.23.0
-        Please use Gaze.samples instead.
-        This property will be removed in v0.28.0.
-
-        Returns
-        -------
-        polars.DataFrame
-            Gaze samples dataframe.
-
-        """
-        return self.samples
-
-    @frame.setter
-    @deprecated(
-        reason='Please use Gaze.samples instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def frame(self, data: polars.DataFrame) -> None:
-        self.samples = data
 
     def map_to_aois(
             self,
@@ -2000,6 +1981,326 @@ class Gaze:
         )
         gaze.n_components = self.n_components
         return gaze
+
+    def validate(
+            self,
+            *,
+            trial_columns_exist: bool = True,
+            trial_columns_dtype: bool = True,
+            time_column_exists: bool = True,
+            gaze_components_defined: bool = True,
+            time_monotone: bool = True,
+            max_gap: bool = True,
+            max_gap_factor: float = 5.0,
+            sampling_rate_consistency: bool = True,
+            max_deviation: float = 0.05,
+            gaze_range: bool = True,
+            min_fraction: float = 0.95,
+            source_path: str = '',
+    ) -> list[CheckResult]:
+        """Run data quality validation checks on this gaze object.
+
+        Each check can be individually enabled or disabled via its boolean argument.
+        By default all eight checks are run.
+
+        Parameters
+        ----------
+        trial_columns_exist : bool
+            Check that every column listed in ``trial_columns`` is present in the
+            sample schema. (default: True)
+        trial_columns_dtype : bool
+            Check that trial-identifier columns have integer or string dtype, not
+            float. (default: True)
+        time_column_exists : bool
+            Check that a numeric ``'time'`` column is present. (default: True)
+        gaze_components_defined : bool
+            Check that at least one coordinate column (pixel, position, velocity or
+            acceleration) is present. (default: True)
+        time_monotone : bool
+            Check that timestamps are strictly monotone increasing within each trial.
+            (default: True)
+        max_gap : bool
+            Check that no inter-sample gap exceeds ``max_gap_factor`` times the
+            expected inter-sample interval. (default: True)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Only used when *max_gap* is ``True``. (default: 5.0)
+        sampling_rate_consistency : bool
+            Check that the empirical median ISI matches the declared sampling rate
+            within ``max_deviation``. (default: True)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Only used when *sampling_rate_consistency* is ``True``.
+            (default: 0.05, i.e. 5%)
+        gaze_range : bool
+            Check that at least ``min_fraction`` of gaze samples fall within screen
+            bounds. (default: True)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen bounds.
+            Only used when *gaze_range* is ``True``. (default: 0.95, i.e. 95%)
+        source_path : str
+            Identifier for this gaze object (e.g. a file path). Included in the
+            ``sources`` field of any failing :py:class:`CheckResult`.
+            (default: ``''``)
+
+        Returns
+        -------
+        list[CheckResult]
+            One :py:class:`~pymovements.CheckResult` per enabled
+            check, in the order listed above.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> samples = pl.DataFrame(
+        ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ... )
+        >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
+        >>> results = gaze.validate()
+        >>> all(r.severity in {'pass', 'warning', 'fail', 'error'} for r in results)
+        True
+        """
+        results: list[CheckResult] = []
+        if trial_columns_exist:
+            results.append(check_trial_columns_exist(self, source_path))
+        if trial_columns_dtype:
+            results.append(check_trial_columns_dtype(self, source_path))
+        if time_column_exists:
+            results.append(check_time_column_exists(self, source_path))
+        if gaze_components_defined:
+            results.append(check_gaze_components_defined(self, source_path))
+        if time_monotone:
+            results.append(check_time_monotone(self, source_path))
+        if max_gap:
+            results.append(check_max_gap(self, source_path, max_gap_factor=max_gap_factor))
+        if sampling_rate_consistency:
+            results.append(
+                check_sampling_rate_consistency(self, source_path, max_deviation=max_deviation),
+            )
+        if gaze_range:
+            results.append(check_gaze_range(self, source_path, min_fraction=min_fraction))
+        return results
+
+    def report_data_quality(
+            self,
+            *,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+            output_path: Path | str | None = None,
+            source_path: str = '',
+            max_gap_factor: float = 5.0,
+            max_deviation: float = 0.05,
+            min_fraction: float = 0.95,
+    ) -> DataQualityReport:
+        """Generate a data quality report for this gaze object.
+
+        Runs validation checks via :py:meth:`validate` and computes quality
+        measures (data loss, fixation precision) for this single gaze file.
+        The result is a :py:class:`~pymovements.DataQualityReport`
+        that can optionally be saved as BIDS-conformant derivative files.
+
+        Parameters
+        ----------
+        checks : list[str] | None
+            Check identifiers to run. ``None`` runs all eight checks.
+            Valid values: ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
+            ``'time_column_exists'``, ``'gaze_components_defined'``,
+            ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
+            ``'gaze_range'``.
+        measures : list[str] | None
+            Measures to compute. ``None`` computes all four.
+            Valid values: ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``,
+            ``'bcea'``.
+        levels : list[str] | None
+            Aggregation levels. ``None`` defaults to ``['dataset', 'trial']``
+            (meaningful for a single file; pass ``'subject'`` or ``'session'``
+            explicitly if needed).
+        raise_on_error : bool
+            If ``True``, raise :py:exc:`~pymovements.ValidationError` on the
+            first ``'fail'`` or ``'error'``-severity check result. (default: ``False``)
+        output_path : Path | str | None
+            If given, write BIDS-conformant derivative files here via
+            :py:meth:`~DataQualityReport.save_bids_report`.
+            (default: ``None``)
+        source_path : str
+            Identifier for this gaze object (e.g. a file path). Used as
+            ``affected_files`` in failing :py:class:`CheckResult` objects.
+            (default: ``''``)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Passed to the ``'max_gap'`` check. (default: 5.0)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Passed to the ``'sampling_rate_consistency'`` check.
+            (default: 0.05, i.e. 5%)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen
+            bounds. Passed to the ``'gaze_range'`` check. (default: 0.95)
+
+        Returns
+        -------
+        DataQualityReport
+            Aggregated check results, quality measures, pass/fail status, and
+            any Python warnings captured during the run.
+
+        Raises
+        ------
+        pymovements.ValidationError
+            If *raise_on_error* is ``True`` and any check produces an error
+            result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Gaze
+        >>> samples = pl.DataFrame(
+        ...     {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ... )
+        >>> gaze = Gaze(samples=samples, pixel_columns=['x', 'y'])
+        >>> report = gaze.report_data_quality(checks=['time_column_exists'])
+        >>> report.passed
+        True
+        """
+        return run_report(
+            gaze=self,
+            checks=checks,
+            measures=measures,
+            levels=levels,
+            raise_on_error=raise_on_error,
+            output_path=output_path,
+            source_path=source_path,
+            max_gap_factor=max_gap_factor,
+            max_deviation=max_deviation,
+            min_fraction=min_fraction,
+        )
+
+    def drop_nulls(
+        self,
+        subset: list[str] | None = None,
+        how: Literal['all', 'any'] = 'any',
+        events: bool = True,
+    ) -> None:
+        """Drop samples and events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, each frame is checked on its
+            own columns: the samples frame on all sample columns, the events frame on all event
+            columns. If a list is given and `events` is True, all named columns must exist in
+            both the samples and the events frame. (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column like ``pixel`` or
+            ``position`` counts as null if any of its components is null under 'any', and only if
+            all of its components are null under 'all'. (default: 'any')
+        events: bool
+            If True, also drop events with null values. (default: True)
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in the samples frame, or that do not exist in the events frame while `events`
+            is True.
+
+        Examples
+        --------
+        Let's initialize a Gaze with null pixel components in the samples and an events frame
+        with a null trial value:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> gaze = pm.Gaze(
+        ...     polars.DataFrame({
+        ...         'time': [0, 1, 2, 3],
+        ...         'x': [0.1, None, None, 0.7],
+        ...         'y': [0.2, 0.4, None, 0.8],
+        ...     }),
+        ...     pixel_columns=['x', 'y'],
+        ...     events=pm.Events(
+        ...         polars.DataFrame({
+        ...             'name': ['fixation', 'fixation', 'fixation'],
+        ...             'onset': [0, 1, 2],
+        ...             'offset': [1, 2, 3],
+        ...             'trial': [1, None, 2],
+        ...         }),
+        ...     ),
+        ... )
+
+        Under ``how='all'``, a sample is only dropped if all of its pixel components are null:
+
+        >>> gaze.drop_nulls(subset=['pixel'], how='all', events=False)
+        >>> gaze.samples
+        shape: (3, 2)
+        ┌──────┬─────────────┐
+        │ time ┆ pixel       │
+        │ ---  ┆ ---         │
+        │ i64  ┆ list[f64]   │
+        ╞══════╪═════════════╡
+        │ 0    ┆ [0.1, 0.2]  │
+        │ 1    ┆ [null, 0.4] │
+        │ 3    ┆ [0.7, 0.8]  │
+        └──────┴─────────────┘
+
+        Under the default ``how='any'``, a single null component suffices. The default call
+        also drops events with null values, with each frame checked on its own columns:
+
+        >>> gaze.drop_nulls()
+        >>> gaze.samples
+        shape: (2, 2)
+        ┌──────┬────────────┐
+        │ time ┆ pixel      │
+        │ ---  ┆ ---        │
+        │ i64  ┆ list[f64]  │
+        ╞══════╪════════════╡
+        │ 0    ┆ [0.1, 0.2] │
+        │ 3    ┆ [0.7, 0.8] │
+        └──────┴────────────┘
+        >>> gaze.events
+        shape: (2, 5)
+        ┌──────────┬───────┬────────┬───────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════════╡
+        │ fixation ┆ 0     ┆ 1      ┆ 1     ┆ 1        │
+        │ fixation ┆ 2     ┆ 3      ┆ 2     ┆ 1        │
+        └──────────┴───────┴────────┴───────┴──────────┘
+        """
+        if subset is None:
+            samples_subset = self.samples.columns
+        else:
+            samples_subset = subset
+
+            missing_sample_columns = [
+                column for column in subset if column not in self.samples.columns
+            ]
+            if missing_sample_columns:
+                raise ValueError(
+                    f'columns {missing_sample_columns} from subset do not exist '
+                    'in the samples frame',
+                )
+
+            if events:
+                missing_event_columns = [
+                    column for column in subset if column not in self.events.frame.columns
+                ]
+                if missing_event_columns:
+                    raise ValueError(
+                        f'columns {missing_event_columns} from subset do not exist '
+                        'in the events frame. Use events=False to only drop samples',
+                    )
+
+        condition = row_is_null(self.samples.schema, samples_subset, how)
+        self.samples = self.samples.remove(condition)
+        if events:
+            self.events.drop_nulls(subset, how=how)
 
     def _check_experiment(self) -> None:
         """Check if the experiment attribute has been set.

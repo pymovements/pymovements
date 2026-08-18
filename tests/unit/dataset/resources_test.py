@@ -368,24 +368,6 @@ def test_resource_is_not_equal(resource1, resource2):
         pytest.param(
             {
                 'content': 'gaze',
-                'filename': 'test.csv',
-                'resource': 'https://example.com',
-            },
-            ResourceDefinition(
-                content='gaze',
-                source=WebSource(
-                    url='https://example.com',
-                    filename='test.csv',
-                    md5=None,
-                ),
-            ),
-            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
-            id='deprecated_resource_key',
-        ),
-
-        pytest.param(
-            {
-                'content': 'gaze',
                 'filename_pattern': 'test.csv',
             },
             ResourceDefinition(
@@ -714,106 +696,6 @@ def test_resource_get_attribute_is_deprecated(
         function_name=f'ResourceDefinition.{attribute}',
         warning_message=info.value.args[0],
         scheduled_version=scheduled_version,
-    )
-
-
-@pytest.mark.filterwarnings('ignore:.*from_dicts.*:DeprecationWarning')
-@pytest.mark.parametrize(
-    ('init_resources', 'expected_resources'),
-    [
-        pytest.param(
-            None,
-            ResourceDefinitions(),
-            id='none',
-        ),
-
-        pytest.param(
-            {
-                'gaze': None,
-            },
-            ResourceDefinitions(),
-            id='none_gaze_list',
-        ),
-
-        pytest.param(
-            {
-                'gaze': [],
-            },
-            ResourceDefinitions(),
-            id='empty_gaze_list',
-        ),
-
-        pytest.param(
-            {
-                'gaze': [{'filename_pattern': 'myfile.txt'}],
-            },
-            ResourceDefinitions(
-                [
-                    ResourceDefinition(content='gaze', filename_pattern='myfile.txt'),
-                ],
-            ),
-            id='single_gaze_resource',
-        ),
-
-        pytest.param(
-            {
-                'gaze': [{'filename_pattern': 'myfile1.zip'}, {'filename_pattern': 'myfile2.zip'}],
-            },
-            ResourceDefinitions(
-                [
-                    ResourceDefinition(content='gaze', filename_pattern='myfile1.zip'),
-                    ResourceDefinition(content='gaze', filename_pattern='myfile2.zip'),
-                ],
-            ),
-            id='two_gaze_resources',
-        ),
-
-        pytest.param(
-            {
-                'precomputed_events': [{'filename_pattern': 'myevents.csv'}],
-            },
-            ResourceDefinitions(
-                [
-                    ResourceDefinition(
-                        content='precomputed_events', filename_pattern='myevents.csv',
-                    ),
-                ],
-            ),
-            id='single_precomputed_events_resource',
-        ),
-
-        pytest.param(
-            {
-                'precomputed_reading_measures': [{'filename_pattern': 'reading_measures.csv'}],
-            },
-            ResourceDefinitions(
-                [
-                    ResourceDefinition(
-                        content='precomputed_reading_measures',
-                        filename_pattern='reading_measures.csv',
-                    ),
-                ],
-            ),
-            id='single_precomputed_events_resource',
-        ),
-
-    ],
-)
-def test_resources_from_dict_expected(init_resources, expected_resources):
-    assert ResourceDefinitions.from_dict(init_resources) == expected_resources
-
-
-def test_resource_definitions_from_dict_deprecated(assert_deprecation_is_removed):
-    resources_dict = {'gaze': [{'filename_pattern': 'myfile.txt'}]}
-
-    with pytest.raises(DeprecationWarning) as info:
-        ResourceDefinitions.from_dict(resources_dict)
-
-    assert_deprecation_is_removed(
-        function_name='ResourceDefinitions.from_dict()',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
     )
 
 
@@ -1166,19 +1048,6 @@ def test_resources_has_content_expected(resources, expected_has_content):
 )
 def test_resources_from_dicts_expected(dicts, expected_resources):
     assert ResourceDefinitions.from_dicts(dicts) == expected_resources
-
-
-def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecation_is_removed):
-    resource_dict = {'content': 'samples', 'resource': 'http://www.example.com'}
-    with pytest.raises(DeprecationWarning) as info:
-        ResourceDefinition.from_dict(resource_dict)
-
-    assert_deprecation_is_removed(
-        function_name='from_dict() key "resources"',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
 
 
 def test_resource_definition_source_only():
