@@ -991,3 +991,19 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.parametrize(
+    'mode', [
+        'r',
+        'rb',
+    ],
+)
+def test_from_asc_accepts_file_object(make_example_file, mode):
+    """Test that from_asc can accept a file-like object instead of a file path."""
+    filepath = make_example_file('eyelink_monocular_example.asc')
+
+    with open(filepath, mode, encoding='utf-8') as f:
+        gaze = from_asc(f)
+
+    assert gaze.samples.height > 0
