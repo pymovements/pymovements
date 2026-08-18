@@ -37,7 +37,6 @@ import yaml
 from tqdm import tqdm
 
 from pymovements import transforms
-from pymovements._utils._checks import check_is_mutual_exclusive
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
 from pymovements.events import EventDetectionLibrary
@@ -1930,8 +1929,7 @@ class Gaze:
         ----------
         input_columns: list[str] | str | None
             Name(s) of input column(s) to be unnested into several component columns.
-            If None all list columns 'pixel', 'position', 'velocity' and
-            'acceleration' will be unnested if existing. (default: None)
+            If None, all list columns will be unnested if existing. (default: None)
         output_suffixes: list[str] | None
             Suffixes to append to the column names. (default: None)
         output_columns: list[str] | None

@@ -36,7 +36,7 @@ def unnest_list_columns(
 ) -> polars.DataFrame:
     """Explode a column of type ``polars.List`` into one column for each list component.
 
-    The unnested columns will be dropped. from the returned data frame.
+    The unnested input columns are dropped from the returned dataframe.
 
     Parameters
     ----------
@@ -44,8 +44,7 @@ def unnest_list_columns(
         Unnest columns from that dataframe.
     input_columns: list[str] | str | None
         Name(s) of input column(s) to be unnested into several component columns.
-        If None all list columns 'pixel', 'position', 'velocity' and
-        'acceleration' will be unnested if existing. (default: None)
+        If None, all list columns will be unnested if existing. (default: None)
     output_suffixes: list[str] | None
         Suffixes to append to the column names. (default: None)
     output_columns: list[str] | None
