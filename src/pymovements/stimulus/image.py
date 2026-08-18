@@ -23,8 +23,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import PIL.Image
+from deprecated.sphinx import deprecated
 
 from pymovements._utils._html import repr_html
 from pymovements._utils._paths import get_filepaths
@@ -39,25 +40,82 @@ class ImageStimulus:
     ----------
     images: list[Path]
         Image stimulus list.
+    origin : str
+        Image origin position for plotting.
+        (default: 'upper')
     metadata: dict[str, Any] | None
-        Dictionary containing additional metadata. (default: None)
+        Dictionary containing additional metadata.
+        (default: None)
     """
 
-    def __init__(self, images: list[Path], metadata: dict[str, Any] | None = None) -> None:
+    def __init__(
+            self,
+            images: list[Path],
+            origin: str = 'upper',
+            metadata: dict[str, Any] | None = None,
+    ) -> None:
         self.images = images
+        self.origin = origin
         self.metadata = metadata if metadata is not None else {}
 
+    @deprecated(
+        reason='Please use ImageStimulus.plot() instead. '
+               'This method will be removed in v0.33.0.',
+        version='v0.28.0',
+    )
     def show(self, stimulus_id: int, origin: str = 'upper') -> None:
-        """Show image stimulus.
+        """Display an image stimulus.
+
+        .. deprecated:: v0.28.0
+           Please use :py:meth:`~pymovements.stimulus.ImageStimulus.plot` instead.
+           This method will be removed in v0.33.0.
 
         Parameters
         ----------
-        stimulus_id: int
-            Number of stimulus to be shown.
-        origin: str
-            Origin of the stimulus to be shown.
+        stimulus_id : int
+            Index of the stimulus to display.
+        origin : str
+            Image origin position for plotting.
+            (default: 'upper')
+
+        Notes
+        -----
+        This is a convenience wrapper that draws the stimulus via
+        :py:meth:`~pymovements.stimulus.ImageStimulus.plot` and then displays it.
         """
-        _draw_image_stimulus(self.images[stimulus_id], origin=origin, show=True)
+        self.origin = origin
+
+        self.plot(stimulus_id)
+
+        plt.show()
+
+    def plot(
+        self,
+        stimulus_id: int,
+        *,
+        ax: plt.Axes | None = None,
+    ) -> tuple[plt.Figure, plt.Axes]:
+        """Plot an image stimulus.
+
+        Parameters
+        ----------
+        stimulus_id : int
+            Index of the stimulus to plot.
+        ax : plt.Axes | None
+            Axes to draw the image on.
+            (default: None)
+
+        Returns
+        -------
+        tuple[plt.Figure, plt.Axes]
+            Figure and axes containing the plot.
+        """
+        if ax is not None:
+            fig = ax.figure
+        else:
+            fig = None
+
+        return _draw_image_stimulus(self.images[stimulus_id], fig=fig, ax=ax, origin=self.origin)
 
     @staticmethod
     def from_file(path: str | Path, metadata: dict[str, Any] | None = None) -> ImageStimulus:
@@ -121,9 +179,9 @@ def _draw_image_stimulus(
         show: bool = False,
         figsize: tuple[float, float] = (15, 10),
         extent: list[float] | None = None,
-        fig: matplotlib.pyplot.figure | None = None,
-        ax: matplotlib.pyplot.Axes | None = None,
-) -> tuple[matplotlib.pyplot.figure, matplotlib.pyplot.Axes]:
+        fig: plt.figure | None = None,
+        ax: plt.Axes | None = None,
+) -> tuple[plt.figure, plt.Axes]:
     """Draw stimulus.
 
     Parameters
@@ -138,15 +196,15 @@ def _draw_image_stimulus(
         Size of the figure. (default: (15, 10))
     extent: list[float] | None
         Extent of image. (default: None)
-    fig: matplotlib.pyplot.figure | None
+    fig: plt.figure | None
         Matplotlib canvas. (default: None)
-    ax: matplotlib.pyplot.Axes | None
+    ax: plt.Axes | None
         Matplotlib axes. (default: None)
 
     Returns
     -------
-    fig: matplotlib.pyplot.figure
-    ax: matplotlib.pyplot.Axes
+    fig: plt.figure
+    ax: plt.Axes
     """
     try:
         img = PIL.Image.open(image_stimulus)
@@ -157,9 +215,9 @@ def _draw_image_stimulus(
         ) from exception
 
     if not fig:
-        fig, ax = matplotlib.pyplot.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize)
     assert ax
     ax.imshow(img, origin=origin, extent=extent)
     if show:
-        matplotlib.pyplot.show()
+        plt.show()
     return fig, ax
