@@ -573,29 +573,6 @@ def test_clone(events):
     assert_frame_equal(events.frame, events_copy.frame)
 
 
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_copy():
-    events = Events(name='saccade', onsets=[0], offsets=[123])
-    events_copy = events.copy()
-
-    # We want to have separate dataframes but with the exact same data.
-    assert events is not events_copy
-    assert events.frame is not events_copy.frame
-    assert_frame_equal(events.frame, events_copy.frame)
-
-
-def test_copy_removed(assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        Events().copy()
-
-    assert_deprecation_is_removed(
-        function_name='Events.copy()',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
-
-
 def test_clones_trial_columns():
     events = Events(data=pl.DataFrame({'trial': 'trial'}), trial_columns='trial')
     events_copy = events.clone()
@@ -1301,3 +1278,143 @@ def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
 def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
     assert_frame_equal(events.frame, result_frame)
+
+
+@pytest.mark.parametrize(
+    ('trial_data', 'kwargs', 'expected_events_kept'),
+    [
+        pytest.param(
+            {
+                'trial': ['a', 'a', 'b', None],
+                'page': [0, 1, None, 0],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 2, 3],
+            id='none_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 3],
+            id='some_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {},
+            [1],
+            id='some_dropped_any',
+        ),
+    ],
+)
+def test_events_drop_nulls(trial_data, kwargs, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation'] * len(trial_data['trial']),
+                'onset': range(len(trial_data['trial'])),
+                'offset': range(1, len(trial_data['trial']) + 1),
+                **trial_data,
+            },
+        ),
+    )
+    events.drop_nulls(**kwargs)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+@pytest.mark.parametrize(
+    ('location', 'how', 'expected_events_kept'),
+    [
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'any',
+            [1, 2],
+            id='any_single_null_component_dropped',
+        ),
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [0, 1, 2],
+            id='all_single_null_component_kept',
+        ),
+        pytest.param(
+            [[None, None], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [1, 2],
+            id='all_components_null_dropped',
+        ),
+    ],
+)
+def test_events_drop_nulls_nested_components(location, how, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation', 'fixation'],
+                'onset': [0, 1, 2],
+                'offset': [1, 2, 3],
+                'location': location,
+            },
+        ),
+    )
+    events.drop_nulls(subset=['location'], how=how)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+def test_events_drop_nulls_raises_missing_columns():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(
+            ValueError,
+            match=r"columns \['trial'\] from subset do not exist in the events frame",
+    ):
+        events.drop_nulls(subset=['trial'])
+    assert len(events.frame) == 2
+
+
+@pytest.mark.parametrize(
+    'subset',
+    [
+        pytest.param(None, id='subset_none'),
+        pytest.param([], id='subset_empty'),
+    ],
+)
+def test_events_drop_nulls_raises_invalid_how(subset):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
+        events.drop_nulls(subset=subset, how='anny')
+    assert len(events.frame) == 2
+
+
+def test_events_drop_nulls_empty_subset_is_noop():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+                'trial': [1, None],
+            },
+        ),
+    )
+    events.drop_nulls(subset=[])
+    assert events.frame['onset'].to_list() == [0, 1]

@@ -17,6 +17,7 @@ These How-Tos provide detailed guides to implement the most important use cases 
     preprocessing-raw-data
     reading-measures
     saving-loading-preprocessed
+    data-quality-report
     event-handling
     creating-synthetic-data
     blink-detection

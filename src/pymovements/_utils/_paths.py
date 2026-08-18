@@ -81,7 +81,7 @@ def match_filepaths(
         regex: re.Pattern,
         relative: bool = True,
         relative_anchor: Path | None = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, str | None]]:
     """Traverse path and match regular expression.
 
     Parameters
@@ -98,8 +98,9 @@ def match_filepaths(
 
     Returns
     -------
-    list[dict[str, str]]
+    list[dict[str, str | None]]
         Each entry contains the match group dictionary of the regular expression.
+        Values of optional capture groups are ``None`` if the group did not match.
 
     Raises
     ------
@@ -117,7 +118,7 @@ def match_filepaths(
     if relative and relative_anchor is None:
         relative_anchor = path
 
-    match_dicts: list[dict[str, str]] = []
+    match_dicts: list[dict[str, str | None]] = []
     for childpath in path.iterdir():
         if childpath.is_dir():
             recursive_results = match_filepaths(

@@ -1718,49 +1718,272 @@ def test_gaze_compute_event_properties_null_trial():
 
 
 @pytest.mark.parametrize(
-    ('gaze', 'attribute'),
+    ('trial_data', 'kwargs', 'expected_samples_kept', 'expected_events_kept'),
     [
         pytest.param(
-            Gaze(),
-            'frame',
-            id='frame',
+            {
+                'trial': ['a', 'a', 'b', None],
+                'page': [0, 1, None, 0],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+            id='none_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 3],
+            [0, 1, 3],
+            id='some_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {'subset': ['trial', 'page']},
+            [1],
+            [1],
+            id='some_dropped_any',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'subset': ['trial', 'page'], 'events': False, 'how': 'all'},
+            [0, 1, 3],
+            [0, 1, 2, 3],
+            id='some_dropped_all_without_events',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {'how': 'any', 'events': False},
+            [1],
+            [0, 1, 2, 3],
+            id='some_dropped_any_without_events',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {},
+            [1],
+            [1],
+            id='some_dropped_default_subset_per_frame',
         ),
     ],
 )
-def test_dataset_definition_get_attribute_is_deprecated(gaze, attribute):
-    with pytest.warns(DeprecationWarning):
-        getattr(gaze, attribute)
-
-
-@pytest.mark.parametrize(
-    ('gaze', 'attribute', 'value'),
-    [
-        pytest.param(
-            Gaze(),
-            'frame',
-            pl.DataFrame(),
-            id='frame',
+def test_gaze_drop_nulls(trial_data, kwargs, expected_samples_kept, expected_events_kept):
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': range(len(trial_data['trial'])),
+                'x': range(len(trial_data['trial'])),
+                'y': range(len(trial_data['trial'])),
+                **trial_data,
+            },
         ),
-    ],
-)
-def test_gaze_set_attribute_is_deprecated(gaze, attribute, value):
-    with pytest.warns(DeprecationWarning):
-        setattr(gaze, attribute, value)
-
-
-@pytest.mark.parametrize(
-    'attribute',
-    [
-        'frame',
-    ],
-)
-def test_gaze_get_attribute_is_removed(attribute, assert_deprecation_is_removed):
-    definition = Gaze()
-    with pytest.raises(DeprecationWarning) as info:
-        getattr(definition, attribute)
-
-    assert_deprecation_is_removed(
-        function_name=f'Gaze.{attribute}',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
+        pixel_columns=['x', 'y'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'] * len(trial_data['trial']),
+                    'onset': range(len(trial_data['trial'])),
+                    'offset': range(1, len(trial_data['trial']) + 1),
+                    **trial_data,
+                },
+            ),
+        ),
     )
+    gaze.drop_nulls(**kwargs)
+    assert gaze.samples['time'].to_list() == expected_samples_kept
+    assert gaze.events.frame['onset'].to_list() == expected_events_kept
+
+
+def test_gaze_drop_nulls_raises_missing_columns():
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': range(4),
+                'x': range(4),
+                'y': range(4),
+                'trial': [1, 1, None, None],
+                'page': [1, 1, None, None],
+            },
+        ),
+        pixel_columns=['x', 'y'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'] * 4,
+                    'onset': range(4),
+                    'offset': range(1, 5),
+                    'trial': [1, 1, None, None],
+                },
+            ),
+        ),
+    )
+    with pytest.raises(
+            ValueError,
+            match=r"columns \['page'\] from subset do not exist in the events frame\. "
+                  r'Use events=False to only drop samples',
+    ):
+        gaze.drop_nulls(['trial', 'page'])
+    assert len(gaze.samples) == 4
+    assert len(gaze.events.frame) == 4
+
+
+def test_gaze_drop_nulls_raises_missing_samples_columns():
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': range(4),
+                'x': range(4),
+                'y': range(4),
+            },
+        ),
+        pixel_columns=['x', 'y'],
+    )
+    with pytest.raises(
+            ValueError,
+            match=r"columns \['trial'\] from subset do not exist in the samples frame",
+    ):
+        gaze.drop_nulls(['trial'])
+    assert len(gaze.samples) == 4
+
+
+@pytest.mark.parametrize(
+    'subset',
+    [
+        pytest.param(None, id='subset_none'),
+        pytest.param([], id='subset_empty'),
+    ],
+)
+def test_gaze_drop_nulls_raises_invalid_how(subset):
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1],
+                'x': [None, 1.0],
+                'y': [0.0, 1.0],
+            },
+        ),
+        pixel_columns=['x', 'y'],
+    )
+    with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
+        gaze.drop_nulls(subset=subset, how='anny')
+    assert len(gaze.samples) == 2
+
+
+def test_gaze_drop_nulls_empty_subset_is_noop():
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1],
+                'x': [None, 1.0],
+                'y': [0.0, 1.0],
+            },
+        ),
+        pixel_columns=['x', 'y'],
+        events=Events(
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 1],
+                    'offset': [1, 2],
+                    'trial': [1, None],
+                },
+            ),
+        ),
+    )
+    gaze.drop_nulls(subset=[])
+    assert gaze.samples['time'].to_list() == [0, 1]
+    assert gaze.events.frame['onset'].to_list() == [0, 1]
+
+
+@pytest.mark.parametrize(
+    ('component_columns_kwarg', 'nested_column'),
+    [
+        pytest.param('pixel_columns', 'pixel', id='pixel'),
+        pytest.param('position_columns', 'position', id='position'),
+    ],
+)
+@pytest.mark.parametrize(
+    ('x', 'y', 'how', 'expected_times_kept'),
+    [
+        pytest.param(
+            [None, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            'any',
+            [1, 2],
+            id='any_single_null_component_dropped',
+        ),
+        pytest.param(
+            [None, 1.0, 2.0],
+            [0.0, 1.0, 2.0],
+            'all',
+            [0, 1, 2],
+            id='all_single_null_component_kept',
+        ),
+        pytest.param(
+            [None, 1.0, 2.0],
+            [None, 1.0, 2.0],
+            'all',
+            [1, 2],
+            id='all_components_null_dropped',
+        ),
+    ],
+)
+def test_gaze_drop_nulls_nested_components(
+        component_columns_kwarg, nested_column, x, y, how, expected_times_kept,
+):
+    gaze = Gaze(
+        pl.DataFrame(
+            {
+                'time': [0, 1, 2],
+                'x': x,
+                'y': y,
+            },
+        ),
+        **{component_columns_kwarg: ['x', 'y']},
+    )
+    gaze.drop_nulls(subset=[nested_column], how=how, events=False)
+    assert gaze.samples['time'].to_list() == expected_times_kept
+
+
+def test_gaze_clear_events():
+    """Test that clear_events() preserves trial columns with dtypes taken from samples."""
+    gaze = Gaze(
+        samples=pl.DataFrame({'x': [0, 1], 'y': [2, 3], 'trial': ['a', 'b'], 'page': [1, 2]}),
+        events=Events(
+            pl.DataFrame({
+                'trial': ['a'],
+                'page': [1],
+                'name': ['saccade'],
+                'onset': [0],
+                'offset': [1],
+            }),
+        ),
+        pixel_columns=['x', 'y'],
+        trial_columns=['trial', 'page'],
+    )
+    gaze.clear_events()
+    expected_schema = {
+        'trial': pl.Utf8,
+        'page': pl.Int64,
+        'name': pl.Utf8,
+        'onset': pl.Int64,
+        'offset': pl.Int64,
+        'duration': pl.Int64,
+    }
+    assert gaze.events.frame.schema == expected_schema
+    assert gaze.events.frame.is_empty()
