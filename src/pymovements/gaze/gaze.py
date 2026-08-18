@@ -2768,6 +2768,27 @@ class Gaze:
         """
         return self.__str__()
 
+    def summary(self) -> None:
+        """Print a summary of the gaze object.
+
+        The summary includes the string representation with experiment, samples and messages,
+        followed by an overview of the detected events grouped by event name.
+
+        See Also
+        --------
+        pymovements.Gaze.report_data_quality :
+            Check gaze configuration and compute data quality measures.
+        """
+        lines = [str(self)]
+
+        lines.append(f'events: {len(self.events)} total')
+        if len(self.events):
+            name_counts = self.events.frame['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'  {name}: {count}')
+
+        print('\n'.join(lines))
+
     def save(
             self,
             dirpath: str | Path,
