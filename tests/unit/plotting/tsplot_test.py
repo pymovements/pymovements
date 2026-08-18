@@ -28,6 +28,7 @@ import pytest
 from pymovements import Events
 from pymovements import Experiment
 from pymovements.gaze import from_numpy
+from pymovements.gaze import Gaze
 from pymovements.plotting import tsplot
 
 
@@ -57,8 +58,7 @@ def gaze_fixture(request):
     arr = np.column_stack((x, y)).transpose()
 
     events = Events(
-        pl.DataFrame
-        (
+        pl.DataFrame(
             {
                 'name': ['fixation', 'saccade'],
                 'onset': [100, 200],
@@ -202,9 +202,86 @@ def test_tsplot_events(gaze):
     gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
     fig, ax = tsplot(gaze=gaze, plot_events=True)
 
-    rectangles = [patch for patch in ax.patches if isinstance(patch, plt.Rectangle)]
-    assert len(rectangles) == len(gaze.events.frame)
-    assert rectangles[0].get_facecolor() != rectangles[1].get_facecolor()
+    assert len(ax.patches) == 2
+    # tab10[0] (blue) and tab10[1] (orange) with alpha 0.5
+    assert ax.patches[0].get_facecolor() == (
+        0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
+    )
+    assert ax.patches[1].get_facecolor() == (
+        1.0, 0.4980392156862745, 0.054901960784313725, 0.5,
+    )
 
     legend = fig.legend()
-    assert len(legend.get_texts()) == len(gaze.events.frame)
+    assert [text.get_text() for text in legend.get_texts()] == ['fixation', 'saccade']
+
+
+def test_tsplot_events_empty_events_frame():
+    gaze = Gaze(
+        samples=pl.DataFrame({'x': [0.0, 1.0, 2.0], 'y': [3.0, 4.0, 5.0]}),
+        events=Events(),
+        pixel_columns=['x', 'y'],
+    )
+    gaze.unnest('pixel', output_columns=['x', 'y'])
+
+    fig, ax = tsplot(gaze=gaze, plot_events=True)
+
+    assert isinstance(fig, plt.Figure)
+    assert len(ax.patches) == 0
+
+
+@pytest.mark.parametrize(
+    ('plot_events', 'expected_n_patches'),
+    [
+        pytest.param(False, 0, id='plot_events_false'),
+        pytest.param(True, 1, id='plot_events_true'),
+    ],
+)
+def test_tsplot_without_time_column_uses_sample_index(plot_events, expected_n_patches):
+    events = Events(
+        pl.DataFrame({'name': ['fixation'], 'onset': [0], 'offset': [2]}),
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame({'x': [0.0, 1.0, 2.0], 'y': [3.0, 4.0, 5.0]}),
+        events=events,
+        pixel_columns=['x', 'y'],
+    )
+    gaze.unnest('pixel', output_columns=['x', 'y'])
+    assert 'time' not in gaze.samples.columns
+
+    _, ax = tsplot(gaze=gaze, plot_events=plot_events)
+
+    assert list(ax.get_lines()[0].get_xdata()) == [0, 1, 2]
+    assert len(ax.patches) == expected_n_patches
+
+
+def test_tsplot_events_cycles_colors_beyond_ten_event_names():
+    event_names = [f'event_{i:02d}' for i in range(11)]
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': event_names,
+                'onset': [i * 10 for i in range(11)],
+                'offset': [i * 10 + 5 for i in range(11)],
+            },
+        ),
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {'x': [float(i) for i in range(110)], 'y': [float(i) for i in range(110)]},
+        ),
+        events=events,
+        pixel_columns=['x', 'y'],
+    )
+    gaze.unnest('pixel', output_columns=['x', 'y'])
+
+    _, ax = tsplot(gaze=gaze, plot_events=True)
+
+    assert len(ax.patches) == 11
+    # tab10[0] (blue) with alpha 0.5
+    assert ax.patches[0].get_facecolor() == (
+        0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
+    )
+    # the eleventh event name cycles back to tab10[0]
+    assert ax.patches[10].get_facecolor() == (
+        0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
+    )
