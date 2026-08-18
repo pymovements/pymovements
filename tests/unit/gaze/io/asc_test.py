@@ -1007,3 +1007,9 @@ def test_from_asc_accepts_file_object(make_example_file, mode, encoding):
         gaze = from_asc(f)
 
     assert gaze.samples.height > 0
+
+
+def test_from_asc_rejects_nonfile_objects():
+    """Test that from_asc raises an error when given a non-file object."""
+    with pytest.raises(TypeError, match='Expected a file path or a file-like object'):
+        from_asc(12345)
