@@ -285,3 +285,30 @@ def test_tsplot_events_cycles_colors_beyond_ten_event_names():
     assert ax.patches[10].get_facecolor() == (
         0.12156862745098039, 0.4666666666666667, 0.7058823529411765, 0.5,
     )
+
+
+def test_tsplot_events_duplicate_event_names_deduplicated_in_legend():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation', 'saccade'],
+                'onset': [0, 20, 40],
+                'offset': [10, 30, 50],
+            },
+        ),
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {'x': [float(i) for i in range(60)], 'y': [float(i) for i in range(60)]},
+        ),
+        events=events,
+        pixel_columns=['x', 'y'],
+    )
+    gaze.unnest('pixel', output_columns=['x', 'y'])
+
+    fig, ax = tsplot(gaze=gaze, plot_events=True)
+
+    # one span per event row, but only one legend entry per unique event name
+    assert len(ax.patches) == 3
+    legend = fig.legend()
+    assert [text.get_text() for text in legend.get_texts()] == ['fixation', 'saccade']
