@@ -208,8 +208,8 @@ def test_tsplot_ylims_per_channel_when_y_not_shared(kwargs):
 
     fig, _ = tsplot(gaze=gaze, channels=['x_pix', 'y_pix'], **kwargs)
 
-    assert fig.axes[0].get_ylim() == pytest.approx((0.0, 11.0))
-    assert fig.axes[1].get_ylim() == pytest.approx((-4.4, 2.2))
+    assert fig.axes[0].get_ylim() == pytest.approx((-1.0, 11.0))
+    assert fig.axes[1].get_ylim() == pytest.approx((-4.6, 2.6))
 
 
 def test_tsplot_external_ax_ignored_when_multi_channel(gaze):

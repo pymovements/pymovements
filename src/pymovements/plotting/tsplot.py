@@ -245,4 +245,5 @@ def _compute_ylims(
         return -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
     ylim_max = np.max(finite_values)
     ylim_min = np.min(finite_values)
-    return ylim_min * y_pad_factor, ylim_max * y_pad_factor
+    y_pad = (ylim_max - ylim_min) * (y_pad_factor - 1)
+    return ylim_min - y_pad, ylim_max + y_pad
