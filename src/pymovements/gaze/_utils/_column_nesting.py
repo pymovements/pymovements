@@ -63,7 +63,6 @@ def unnest_list_columns(
         If output columns / suffixes are not unique.
         If no columns to unnest exist and none are specified.
         If output columns are specified and more than one input column is specified.
-    AttributeError
         If number of components is not 2, 4 or 6.
     Warning
         If no columns to unnest exist and none are specified.
