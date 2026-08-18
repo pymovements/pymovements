@@ -83,6 +83,11 @@ def gaze_fixture(request):
     [
         pytest.param({}, id='no_kwargs'),
         pytest.param({'share_y': False}, id='share_y_false'),
+        pytest.param({'share_y': True}, id='share_y_true'),
+        pytest.param(
+            {'share_y': True, 'zero_centered_yaxis': True},
+            id='share_y_true_zero_centered',
+        ),
         pytest.param({'zero_centered_yaxis': True}, id='zero_centered_yaxis_true'),
         pytest.param({'zero_centered_yaxis': False}, id='zero_centered_yaxis_false'),
         pytest.param(
@@ -167,6 +172,44 @@ def test_tsplot_handles_nan_inf_variations(gaze, bad_x, bad_y):
 
     assert fig is not None
     assert ax is not None
+
+
+def test_tsplot_default_channels_unnest_list_columns(gaze):
+    fig, _ = tsplot(gaze=gaze)
+
+    assert [ax.get_ylabel() for ax in fig.axes] == [
+        'time',
+        'pixel_x', 'pixel_y',
+        'position_x', 'position_y',
+        'velocity_x', 'velocity_y',
+    ]
+
+
+def test_tsplot_single_list_column_string_channel(gaze):
+    fig, _ = tsplot(gaze=gaze, channels='pixel')
+
+    assert [ax.get_ylabel() for ax in fig.axes] == ['pixel_x', 'pixel_y']
+
+
+@pytest.mark.parametrize(
+    'kwargs',
+    [
+        pytest.param({}, id='default_kwargs'),
+        pytest.param({'share_y': False, 'zero_centered_yaxis': False}, id='explicit_kwargs'),
+    ],
+)
+def test_tsplot_ylims_per_channel_when_y_not_shared(kwargs):
+    gaze = from_numpy(
+        samples=np.array([[0.0, 10.0], [-4.0, 2.0]]),
+        schema=['x_pix', 'y_pix'],
+        pixel_columns=['x_pix', 'y_pix'],
+    )
+    gaze.unnest('pixel', output_columns=['x_pix', 'y_pix'])
+
+    fig, _ = tsplot(gaze=gaze, channels=['x_pix', 'y_pix'], **kwargs)
+
+    assert fig.axes[0].get_ylim() == pytest.approx((-1.0, 11.0))
+    assert fig.axes[1].get_ylim() == pytest.approx((-4.6, 2.6))
 
 
 def test_tsplot_external_ax_ignored_when_multi_channel(gaze):
