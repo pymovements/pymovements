@@ -53,6 +53,9 @@ def tsplot(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
 
+    The x-axis shows the values of the ``time`` column of the gaze samples
+    (usually in milliseconds) if present, otherwise the sample index.
+
     Parameters
     ----------
     gaze: Gaze
@@ -84,7 +87,9 @@ def tsplot(
     title: str | None
         Figure title. (default: None)
     plot_events: bool
-        Whether to plot events as shaded areas. (default: False)
+        Whether to plot events as shaded areas. Event spans are colored by event name and
+        their labels are registered, so calling ``fig.legend()`` on the returned figure
+        shows one entry per event name. (default: False)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
     ax: plt.Axes | None
@@ -151,8 +156,10 @@ def tsplot(
         )
         axs = axs_grid.flatten()
 
-    # t = np.arange(n_samples)
-    t = gaze.samples['time'].to_numpy()
+    if 'time' in gaze.samples.columns:
+        t = gaze.samples['time'].to_numpy()
+    else:
+        t = np.arange(arr.shape[1])
     xlims = t.min(), t.max()
 
     y_pad_factor = 1.1
@@ -167,8 +174,17 @@ def tsplot(
         ylim_min = np.nanmin(arr)
         ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
 
-    events = gaze.events.frame
-    event_colors = dict(zip(sorted(events['name'].unique()), plt.colormaps['tab10'].colors))
+    if plot_events:
+        events = gaze.events.frame
+        palette = plt.colormaps['tab10'].colors
+        event_colors = {
+            name: palette[i % len(palette)]
+            for i, name in enumerate(sorted(events['name'].unique()))
+        }
+        event_rows = events.rows(named=True)
+    else:
+        event_colors = {}
+        event_rows = []
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
@@ -227,7 +243,7 @@ def tsplot(
         if plot_events:
             # only add each event to the legend once
             add_to_legend = set(event_colors) if channel_id == 0 else set()
-            for event in gaze.events.frame.iter_rows(named=True):
+            for event in event_rows:
                 event_name = event['name']
                 ax.axvspan(
                     event['onset'], event['offset'],
