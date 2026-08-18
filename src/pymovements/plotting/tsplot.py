@@ -28,20 +28,21 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
+from pymovements.gaze._utils._column_nesting import get_nested_columns
 from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.plotting._matplotlib import prepare_figure
 
 
 def tsplot(
         gaze: Gaze,
-        channels: list[str] | None = None,
+        channels: str | list[str] | None = None,
         *,
         xlabel: str | None = None,
         n_cols: int | None = None,
         n_rows: int | None = None,
         rotate_ylabels: bool = True,
-        share_y: bool = True,
-        zero_centered_yaxis: bool = True,
+        share_y: bool = False,
+        zero_centered_yaxis: bool = False,
         line_color: tuple[int, int, int] | str = 'k',
         line_width: int = 1,
         show_grid: bool = True,
@@ -57,8 +58,10 @@ def tsplot(
     ----------
     gaze: Gaze
         The Gaze to plot.
-    channels: list[str] | None
-        List of channel names to plot. If None, all channels will be plotted. (default: None)
+    channels: str | list[str] | None
+        Name(s) of channels to plot. List columns are unnested into one channel per component,
+        e.g. ``pixel`` becomes ``pixel_x`` and ``pixel_y``. If None, all numeric columns
+        including list columns with numeric components will be plotted. (default: None)
     xlabel: str | None
         Set the x label. (default: None)
     n_cols: int | None
@@ -68,9 +71,9 @@ def tsplot(
     rotate_ylabels: bool
         Set whether to rotate ylabels. (default: True)
     share_y: bool
-        Set if y-axes should share a common axis. (default: True)
+        Set if y-axes should share a common axis. (default: False)
     zero_centered_yaxis: bool
-        Set if y-axis should be zero-centered. (default: True)
+        Set if y-axis should be zero-centered. (default: False)
     line_color: tuple[int, int, int] | str
         Set line color. (default: 'k')
     line_width: int
@@ -109,7 +112,10 @@ def tsplot(
             )
         ]
 
-    df = unnest_list_columns(gaze.samples[channels])
+    df = gaze.samples.select(channels)
+    nested_columns = get_nested_columns(df)
+    if nested_columns:
+        df = unnest_list_columns(df, nested_columns)
     channels = df.columns
     arr = df.to_numpy().transpose()
 
@@ -163,17 +169,9 @@ def tsplot(
     t = np.arange(n_samples)
     xlims = t.min(), t.max()
 
-    y_pad_factor = 1.1
-
     # set ylims to have zero centered y-axis (for all axes)
     # will be overwritten if share_y is False
-    if zero_centered_yaxis:
-        ylim_abs = np.nanmax(np.abs(arr))
-        ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
-    else:
-        ylim_max = np.nanmax(arr)
-        ylim_min = np.nanmin(arr)
-        ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+    ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
@@ -181,17 +179,12 @@ def tsplot(
         x_channel = arr[channel_id, :]
         ax.plot(t, x_channel, color=line_color, linewidth=line_width)
 
-        if not share_y and zero_centered_yaxis:
-            ylim_abs = np.nanmax(np.abs(arr[channel_id]))
-            ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
-        elif not share_y and not zero_centered_yaxis:
-            ylim_max = np.nanmax(arr[channel_id])
-            ylim_min = np.nanmin(arr[channel_id])
-            ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+        if not share_y:
+            ylims = _compute_ylims(arr[channel_id], zero_centered_yaxis=zero_centered_yaxis)
 
         if xlims[0] != xlims[1]:
             ax.set_xlim(xlims)
-        if ylims[0] != ylims[1]:
+        if ylims is not None and ylims[0] != ylims[1]:
             ax.set_ylim(ylims)
 
         ax.grid(show_grid, which='major')
@@ -235,3 +228,21 @@ def tsplot(
         fig.savefig(savepath)
 
     return fig, axs[0]
+
+
+def _compute_ylims(
+        values: np.ndarray,
+        *,
+        zero_centered_yaxis: bool,
+        y_pad_factor: float = 1.1,
+) -> tuple[float, float] | None:
+    """Compute padded y-axis limits, or None if there are no finite values to infer them from."""
+    finite_values = values[np.isfinite(values)]
+    if finite_values.size == 0:
+        return None
+    if zero_centered_yaxis:
+        ylim_abs = np.max(np.abs(finite_values))
+        return -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
+    ylim_max = np.max(finite_values)
+    ylim_min = np.min(finite_values)
+    return ylim_min * y_pad_factor, ylim_max * y_pad_factor
