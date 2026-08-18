@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,9 +19,12 @@
 # SOFTWARE.
 """Test file fixtures."""
 import filecmp
+import json
 from pathlib import Path
 
+import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 
 def test_testfiles_dirpath_has_files(testfiles_dirpath):
@@ -46,13 +49,27 @@ def test_make_example_file_returns_copy(filename, make_example_file, testfiles_d
     assert filecmp.cmp(fixture_filepath, testfiles_filepath)  # same content
 
 
-def test_make_text_file_accepts_relative_path_object(make_text_file):
-    p = make_text_file(Path('nested') / 'custom.txt', header='H', body='B')
+@pytest.mark.parametrize(
+    'filename',
+    [
+        pytest.param('nested/custom.txt', id='str'),
+        pytest.param(Path('nested') / 'custom.txt', id='object'),
+    ],
+)
+def test_make_text_file_accepts_relative_path(filename, make_text_file):
+    p = make_text_file(filename, header='H', body='B')
     assert p.name == 'custom.txt'
     assert p.parent.name == 'nested'
-    print(f"dir in parent: {p.parent}")
     assert p.exists()
     assert p.read_text(encoding='utf-8') == 'HB'
+
+
+def test_make_text_file_accepts_absolute_path(tmp_path, make_text_file):
+    p = make_text_file(tmp_path / 'test.txt', header='h', body='b')
+    assert p.name == 'test.txt'
+    assert p.parent == tmp_path
+    assert p.exists()
+    assert p.read_text(encoding='utf-8') == 'hb'
 
 
 def test_make_text_file_rejects_non_pathlike(make_text_file):
@@ -90,13 +107,128 @@ def test_make_text_file_overwrites_existing(make_text_file):
     assert p1.read_text(encoding='utf-8') == 'CD'
 
 
-def test_make_text_file_rejects_absolute_paths(make_text_file):
-    with pytest.raises(ValueError, match='relative path'):
-        make_text_file(Path('/absolute.txt'), header='h', body='b')
-    with pytest.raises(ValueError, match='relative path'):
-        make_text_file('/absolute.txt', header='h', body='b')
-
-
 def test_make_text_file_rejects_tilde_home(make_text_file):
     with pytest.raises(ValueError, match=r"~\' \(home\) is not allowed|relative path"):
         make_text_file('~/.secret.txt', header='h', body='b')
+
+
+@pytest.mark.parametrize(
+    'files',
+    [
+        [],
+        ['test.txt'],
+        ['test1.txt', 'test2.txt'],
+        ['a/test.txt', 'b/test.txt'],
+        ['a/test1.txt', 'a/test2.txt', 'b/test1.txt', 'b/test2.txt'],
+    ],
+)
+class TestMakeTextFiles:
+
+    def test_make_text_files_returns_path(self, files, make_text_files):
+        result = make_text_files(files)
+        assert isinstance(result, Path)
+
+    def test_make_text_files_created_correct_filepaths(self, files, make_text_files):
+        rootpath = make_text_files(files)
+
+        created_files = set()
+        for path_object in rootpath.rglob('*'):
+            if path_object.is_file():
+                created_files.add(path_object)
+
+        expected_files = {
+            rootpath / relative_filepath
+            for relative_filepath in files
+        }
+
+        assert created_files == expected_files
+
+
+@pytest.mark.parametrize(
+    ('filename', 'data', 'header', 'kwargs', 'read_kwargs'),
+    [
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), None, None, None,
+            id='no_header_single_column_no_kwargs',
+        ),
+
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3], 'b': ['A', 'B', 'C']}), None, None, None,
+            id='no_header_two_columns_no_kwargs',
+        ),
+
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), '# test header', None, {'skip_lines': 1},
+            id='single_line_header_single_column_no_kwargs',
+        ),
+
+        pytest.param(
+            'test.csv', pl.DataFrame({'a': [1, 2, 3]}), None,
+            {'separator': '\t'}, {'separator': '\t'},
+            id='no_header_single_column_tab_separated',
+        ),
+    ],
+)
+def test_make_csv_file(filename, data, header, kwargs, read_kwargs, make_csv_file):
+    if kwargs is not None:
+        filepath = make_csv_file(filename, data, header=header, **kwargs)
+    else:
+        filepath = make_csv_file(filename, data, header=header)
+
+    if header is not None:
+        with open(filepath, encoding='utf-8') as opened_file:
+            header_lines = len(header.split('\n'))
+            written_header = ''.join([next(opened_file) for _ in range(header_lines)])
+    else:
+        written_header = None
+
+    # read dataframe contents csv file
+    if read_kwargs is not None:
+        written_data = pl.read_csv(filepath, **read_kwargs)
+    else:
+        written_data = pl.read_csv(filepath)
+
+    assert filepath.name == filename
+    if header is None:
+        assert written_header is None
+    else:
+        assert written_header == header + '\n'
+    assert_frame_equal(written_data, data)
+
+
+@pytest.mark.parametrize(
+    'data',
+    [
+        pytest.param({'a': 1, 'b': 'B', 'C': 5.0}, id='flat_dict'),
+        pytest.param([1, 'a', [1, 2], {'a': 1, 'b': [6, 7]}], id='nested_list'),
+    ],
+)
+@pytest.mark.parametrize('encoding', ['utf-8', 'ascii'])
+def test_make_json_file_writes_correct_data(data, encoding, make_json_file):
+    filepath = make_json_file('test.json', data, encoding=encoding)
+
+    assert filepath.exists()
+    with open(filepath, encoding=encoding) as opened_file:
+        saved_data = json.load(opened_file)
+    assert saved_data == data
+
+
+@pytest.mark.parametrize(
+    'filename',
+    [
+        pytest.param('nested/custom.json', id='str'),
+        pytest.param(Path('nested') / 'custom.json', id='object'),
+    ],
+)
+def test_make_json_file_accepts_relative_path(filename, make_json_file):
+    filepath = make_json_file(filename, data=[1, 2, 3])
+    assert filepath.name == 'custom.json'
+    assert filepath.parent.name == 'nested'
+    assert filepath.exists()
+
+
+def test_make_json_file_accepts_absolute_path(tmp_path, make_json_file):
+    filepath = make_json_file(tmp_path / 'test.json', data={'A': 1})
+    assert filepath.name == 'test.json'
+    assert filepath.parent == tmp_path
+    assert filepath.exists()

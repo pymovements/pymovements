@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 The pymovements Project Authors
+# Copyright (c) 2024-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,9 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test for Experiment class."""
-from re import escape
-
-import polars as pl
+import numpy as np
 import pytest
 
 from pymovements import Experiment
@@ -220,34 +218,6 @@ def test_experiment_from_dict(dictionary, expected_experiment):
             },
             id='false_all_none',
         ),
-        pytest.param(
-            Experiment(
-                origin=None, messages=pl.DataFrame(
-                    schema={
-                        'time': pl.Float64,
-                        'content': pl.String,
-                    },
-                    data=[
-                        (12300, 12333, 14666, 14777, 14888, 15555),
-                        (
-                            'TASK A', 'PRACTICE', 'TRIAL 1',
-                            'TASK B', 'PRACTICE', 'TRIAL 1',
-                        ),
-                    ],
-                ),
-            ),
-            True,
-            {
-                'messages': {
-                    'time': [12300, 12333, 14666, 14777, 14888, 15555],
-                    'content': [
-                        'TASK A', 'PRACTICE', 'TRIAL 1',
-                        'TASK B', 'PRACTICE', 'TRIAL 1',
-                    ],
-                },
-            },
-            id='messages_default',
-        ),
     ],
 )
 def test_experiment_to_dict_exclude_none(experiment, exclude_none, expected_dict):
@@ -286,84 +256,36 @@ def test_experiment_bool(experiment, expected_bool):
     assert bool(experiment) == expected_bool
 
 
-@pytest.mark.parametrize(
-    'bad_messages',
-    [
-        pytest.param(123, id='int'),
-        pytest.param('foo', id='str'),
-        pytest.param({'a': 1}, id='dict'),
-        pytest.param([1, 2, 3], id='list'),
-        pytest.param(pl.Series('x', [1, 2]), id='polars_series'),
-    ],
-)
-def test_experiment_messages_must_be_polars_dataframe(bad_messages):
-    """Ensure that non-DataFrame `messages` raises a TypeError with exact message."""
-    expected = (
-        f"The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-        f"not {type(bad_messages)}."
+@pytest.mark.filterwarnings('ignore:.*pos2vel.*:DeprecationWarning')
+def test_pos2vel():
+    experiment = Experiment(sampling_rate=1000.0)
+    arr = [[0., 0.], [1., 1.], [2., 2.], [3., 3.], [4., 4.], [5., 5.]]
+    expected = np.array(
+        [
+            [500., 500.],
+            [1000., 1000.],
+            [1000., 1000.],
+            [1000., 1000.],
+            [1000., 1000.],
+            [500., 500.],
+        ],
     )
-    with pytest.raises(TypeError, match=escape(expected)):
-        Experiment(messages=bad_messages)
+
+    result = experiment.pos2vel(arr)
+
+    assert np.equal(result, expected).all()
 
 
-@pytest.mark.parametrize(
-    'good_messages',
-    [
-        pytest.param(None, id='none'),
-        pytest.param(pl.DataFrame({'time': [1], 'content': ['hello']}), id='polars_dataframe'),
-    ],
-)
-def test_experiment_messages_accepts_none_or_polars_dataframe(good_messages):
-    """Ensure that `messages` accepts None or a polars DataFrame without raising."""
-    experiment = Experiment(messages=good_messages)
-    if good_messages is None:
-        assert experiment.messages is None
-    else:
-        assert experiment.messages is good_messages
+def test_pos2vel_is_deprecated_and_removed_as_scheduled(assert_deprecation_is_removed):
+    experiment = Experiment(sampling_rate=1000.0)
+    arr = [[0., 0.], [1., 1.], [2., 2.], [3., 3.], [4., 4.], [5., 5.]]
 
+    with pytest.raises(DeprecationWarning) as info:
+        experiment.pos2vel(arr)
 
-@pytest.mark.parametrize(
-    'bad_df',
-    [
-        pytest.param(pl.DataFrame({'time': [1, 2]}), id='missing_content'),
-        pytest.param(pl.DataFrame({'content': ['a', 'b']}), id='missing_time'),
-        pytest.param(pl.DataFrame({'timestamp': [1], 'content': ['a']}), id='wrong_time_name'),
-        pytest.param(pl.DataFrame({'time': [1], 'message': ['a']}), id='wrong_content_name'),
-        pytest.param(pl.DataFrame({'foo': [1], 'bar': ['a']}), id='no_required_cols'),
-    ],
-)
-def test_experiment_messages_dataframe_must_have_time_and_content_columns(bad_df):
-    """Ensure that a polars DataFrame missing required columns raises a TypeError."""
-    expected = (
-        "The `messages` polars DataFrame must contain the columns ['time', 'content']."
+    assert_deprecation_is_removed(
+        function_name='pos2vel',
+        warning_message=info.value.args[0],
+        scheduled_version='0.32.0',
+
     )
-    with pytest.raises(TypeError, match=escape(expected)):
-        Experiment(messages=bad_df)
-
-
-@pytest.mark.parametrize(
-    ('messages_df', 'expected_fragment'),
-    [
-        pytest.param(
-            None,
-            'None',
-            id='messages_none',
-        ),
-        pytest.param(
-            pl.DataFrame(schema={'time': pl.Float64, 'content': pl.String}),
-            '0 rows',
-            id='messages_empty_df',
-        ),
-        pytest.param(
-            pl.DataFrame({'time': [1.0, 2.0], 'content': ['a', 'b']}),
-            '2 rows',
-            id='messages_two_rows',
-        ),
-    ],
-)
-def test_experiment_str_messages_variations(messages_df, expected_fragment):
-    """Check __str__ shows clear messages summary."""
-    experiment = Experiment(messages=messages_df) if messages_df is not None else Experiment()
-    s = str(experiment)
-    assert s.startswith('Experiment(')
-    assert f"messages={expected_fragment}" in s

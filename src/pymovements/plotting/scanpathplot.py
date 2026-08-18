@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import math
-import sys
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -30,25 +29,19 @@ import numpy as np
 import polars as pl
 from matplotlib.patches import Circle
 
-from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.gaze import Gaze
+from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
 from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
-from pymovements.plotting._matplotlib import finalize_figure
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
-
-# This is really a dirty workaround to use the Agg backend if runnning pytest.
-# This is needed as Windows workers on GitHub fail randomly with other backends.
-# Unfortunately the Agg module cannot show plots in jupyter notebooks.
-if 'pytest' in sys.modules:  # pragma: no cover
-    matplotlib.use('Agg')
 
 
 def scanpathplot(
         gaze: Gaze | None = None,
         position_column: str = 'location',
+        *,
         cval: np.ndarray | None = None,
         cmap: matplotlib.colors.Colormap | None = None,
         cmap_norm: matplotlib.colors.Normalize | str | None = None,
@@ -60,19 +53,20 @@ def scanpathplot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: bool = True,
         color: str = 'blue',
         alpha: float = 0.5,
         add_traceplot: bool = False,
         gaze_position_column: str = 'pixel',
         add_stimulus: bool = False,
+        add_arrows: bool = True,
+        arrow_color: str = 'black',
+        arrow_rad: float = 0.25,
+        arrow_style: str = 'simple',
+        arrow_scale: float = 40.,
         path_to_image_stimulus: str | None = None,
         stimulus_origin: str = 'upper',
-        events: Events | EventDataFrame | None = None,
-        *,
         event_name: str = 'fixation',
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot scanpath from positional data.
 
@@ -96,7 +90,7 @@ def scanpathplot(
         Shows color bar if True. (default: False)
     padding: float | None
         Absolute padding value.
-        If None it is inferred from pad_factor and limits. (default: None)
+        If None, it is inferred from pad_factor and limits. (default: None)
     pad_factor: float | None
         Relative padding factor to construct padding value if not given. (default: 0.5)
     figsize: tuple[int, int]
@@ -105,8 +99,6 @@ def scanpathplot(
         Set figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     color: str
         Color of fixations. (default: 'blue')
     alpha: float
@@ -116,19 +108,26 @@ def scanpathplot(
     gaze_position_column: str
         Position column in the gaze dataframe. (default: 'pixel')
     add_stimulus: bool
-        Boolean value indicationg whether to plot the scanpath on the stimuls. (default: False)
+        Boolean value indicating whether to plot the scanpath on the stimuls. (default: False)
+    add_arrows: bool
+        Boolean value indicating whether to plot the scanpath with arrows
+        connecting events. (default: True)
+    arrow_color: str
+        Color of arrows. (default: 'black')
+    arrow_rad: float
+        Controlling the curvature of the arrows. (default: 0.25)
+    arrow_style: str
+        The styling of arrow head, tail and shaft. (default: 'simple')
+    arrow_scale: float
+        Value with which attributes of arrowstyle will be scaled. (default: 40.)
     path_to_image_stimulus: str | None
         Path of the stimulus to be shown. (default: None)
     stimulus_origin: str
         Origin of stimuls to plot on the stimulus. (default: 'upper')
-    events: Events | EventDataFrame | None
-        The events to plot. (default: None)
     event_name: str
-        Filters events for a particular value in ``name`` column. (default: 'fixation')
+        Filters events for a particular value in the `` name `` column. (default: 'fixation')
     ax: plt.Axes | None
-        External axes to draw into. If provided, the function will not show or close the figure.
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created the figure.
+        External axes to draw into.
 
     Returns
     -------
@@ -138,35 +137,49 @@ def scanpathplot(
     Raises
     ------
     TypeError
-        If both gaze and events are 'None'.
+        If gaze is 'None' or gaze.events is 'None'.
     ValueError
         If length of x and y coordinates do not match or if ``cmap_norm`` is unknown.
 
     """
-    if events is not None:
+    if add_stimulus:
         warn(
             DeprecationWarning(
-                "scanpathplot argument 'events' is deprecated since version v0.23.1. "
-                "Please use argument 'gaze' instead. "
-                'This argument will be removed in v0.28.0.',
+                "scanpathplot argument 'add_stimulus' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
             ),
         )
-    else:
-        if gaze is None:
-            raise TypeError("scanpathplot argument 'gaze' or 'events' must not be both None")
-        if gaze.events is None:
-            raise TypeError("scanpathplot 'gaze.events' must not be None")
-        assert gaze is not None
-        assert gaze.events is not None
-        events = gaze.events
+
+    if path_to_image_stimulus is not None:
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'path_to_image_stimulus' is deprecated since version "
+                'v0.28.0. Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if stimulus_origin != 'upper':
+        warn(
+            DeprecationWarning(
+                "scanpathplot argument 'stimulus_origin' is deprecated since version v0.28.0. "
+                'Use ImageStimulus.plot() and pass the returned axes to '
+                'scanpathplot(ax=...) instead. This argument will be removed in v0.33.0.',
+            ),
+        )
+
+    if gaze is None:
+        raise TypeError("scanpathplot argument 'gaze' must not be None")
+    if gaze.events is None:
+        raise TypeError("scanpathplot 'gaze.events' must not be None")
+    events = gaze.events
     assert isinstance(events, Events)  # otherwise mypy complains
 
     fixations = events.frame.filter(pl.col('name') == event_name)
 
     x_signal = fixations[position_column].list.get(0)
     y_signal = fixations[position_column].list.get(1)
-
-    own_figure = ax is None
 
     fig, ax, cmap, cmap_norm, cval, show_cbar = _setup_axes_and_colormap(
         x_signal,
@@ -197,7 +210,7 @@ def scanpathplot(
         ax.add_patch(fixation)
 
     if add_traceplot:
-        if gaze is None or gaze.samples is None:
+        if gaze.samples is None:
             raise TypeError("scanpathplot 'gaze.samples' must not be None")
         gaze_x_signal = gaze.samples[gaze_position_column].list.get(0)
         gaze_y_signal = gaze.samples[gaze_position_column].list.get(1)
@@ -214,19 +227,24 @@ def scanpathplot(
             # sm.set_array(cval)
             fig.colorbar(line, label=cbar_label, ax=ax)
 
+    if add_arrows:
+        _draw_arrow_data(
+            x_signal,
+            y_signal,
+            ax,
+            color=arrow_color,
+            rad=arrow_rad,
+            arrowstyle=arrow_style,
+            mutation_scale=arrow_scale,
+        )
+
     if gaze is not None and gaze.experiment is not None:
         _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
 
     if title:
         ax.set_title(title)
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='scanpathplot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
     return fig, ax

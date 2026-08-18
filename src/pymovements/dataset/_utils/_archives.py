@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -50,8 +50,9 @@ def extract_archive(
 ) -> Path:
     """Extract an archive.
 
-    The archive type and a possible compression is automatically detected from the file name.
-    If the file is compressed but not an archive the call is dispatched to :func:`_decompress`.
+    The archive type and possible compression are automatically detected from the file name.
+    If the file is compressed but not an archive, the file is decompressed into
+    ``destination_path``.
 
     Parameters
     ----------
@@ -61,7 +62,7 @@ def extract_archive(
         Path to the directory the file will be extracted to. If omitted, the directory of the file
         is used. (default: None)
     recursive: bool
-        Recursively extract archives which are included in extracted archive. (default: True)
+        Recursively extract archives which are included in the extracted archive. (default: True)
     remove_finished: bool
         If ``True``, remove the file after the extraction. (default: False)
     remove_top_level: bool
@@ -149,6 +150,33 @@ def extract_archive(
     return destination_path
 
 
+def _is_filesystem_metadata(member_name: str) -> bool:
+    """Check whether an archive member is operating system filesystem metadata.
+
+    macOS zip archives place resource forks in a ``__MACOSX`` directory as ``._`` prefixed twins
+    that mirror the tree they belong to, and the Finder scatters ``.DS_Store`` files into every
+    directory. Windows Explorer similarly leaves ``Thumbs.db`` thumbnail caches behind. None of
+    these carry payload, and a ``._archive.zip`` twin is not a valid archive and would break
+    nested extraction. An entry is treated as metadata when any path component is the
+    ``__MACOSX`` directory, the filename is ``.DS_Store``, or the filename is ``Thumbs.db``
+    (matched case-insensitively, as Windows filesystems are case-insensitive). The ``._`` prefix
+    on its own is intentionally not matched, so a legitimately named ``._`` file outside
+    ``__MACOSX`` is kept.
+
+    Parameters
+    ----------
+    member_name: str
+        The archive member path as stored in the archive.
+
+    Returns
+    -------
+    bool
+        ``True`` if the member is filesystem metadata and should be skipped during extraction.
+    """
+    parts = member_name.replace('\\', '/').split('/')
+    return '__MACOSX' in parts or parts[-1] == '.DS_Store' or parts[-1].lower() == 'thumbs.db'
+
+
 def _extract_tar(
         source_path: Path,
         destination_path: Path,
@@ -168,15 +196,25 @@ def _extract_tar(
     compression: str | None
         Compression filename suffix.
     resume: bool
-        Resume if archive was already previous extracted.
+        Resume if archive was already previously extracted.
     verbose: int
-        Print messages for resuming each dataset resource.
+        If ``True``, show a progress bar and print messages for resuming each dataset resource.
     """
     mode = f'r:{compression[1:]}' if compression else 'r'
 
     # ignore mypy error for now, see issue #1020
     with tarfile.open(source_path, mode) as archive:  # type: ignore[call-overload]
-        for member in tqdm(archive.getmembers()):
+        members = archive.getmembers()
+        for member in tqdm(
+                members,
+                total=len(members),
+                desc='Extracting archive',
+                unit='file',
+                ncols=80,
+                disable=not verbose,
+        ):
+            if _is_filesystem_metadata(member.name):
+                continue
             if resume:
                 member_dest_path = os.path.join(destination_path, member.name)
                 if (
@@ -212,13 +250,21 @@ def _extract_zip(
     compression: str | None
         Compression filename suffix.
     resume: bool
-        Resume if archive was already previous extracted.
+        Resume if archive was already previously extracted.
     verbose: int
-        Print messages for resuming each dataset resource.
+        If ``True``, show a progress bar and print messages for resuming each dataset resource.
     """
     compression_id = _ZIP_COMPRESSION_MAP[compression] if compression else zipfile.ZIP_STORED
     with zipfile.ZipFile(source_path, 'r', compression=compression_id) as archive:
-        for member in tqdm(archive.filelist):
+        for member in tqdm(
+                archive.filelist,
+                total=len(archive.filelist),
+                desc='Extracting archive',
+                unit='file',
+                disable=not verbose,
+        ):
+            if _is_filesystem_metadata(member.filename):
+                continue
             if resume:
                 member_dest_path = os.path.join(destination_path, member.filename)
                 if (

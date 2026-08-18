@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,21 +20,53 @@
 """Exceptions module."""
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
 
-class InvalidProperty(Exception):
-    """Raised if requested property is invalid.
+
+@dataclass(slots=True, eq=False)
+class ChecksumError(Exception):
+    """Exception raised when a checksum integrity check fails.
+
+    Attributes
+    ----------
+    expected: str
+        Expected checksum.
+    actual: str
+        Actual checksum.
+    path: Path
+        Path of checked file.
+    algorithm: str
+        Name of the checksum algorithm. (default: 'MD5')
+    """
+
+    expected: str
+    actual: str
+    path: Path
+    algorithm: str = 'MD5'
+
+    def __str__(self) -> str:
+        """Get exception message."""
+        return (
+            f"{self.algorithm} checksum mismatch for file '{self.path}'"
+            f": expected '{self.expected}', got '{self.actual}'"
+        )
+
+
+class UnknownMeasure(Exception):
+    """Raised if requested measure is unknown.
 
     Parameters
     ----------
-    property_name: str
+    measure_name: str
         Name of the property which is invalid.
 
-    valid_properties: list[str]
+    known_measures: list[str]
         List of valid properties.
     """
 
-    def __init__(self, property_name: str, valid_properties: list[str]):
-        message = f"property '{property_name}' is invalid. Valid properties are: {valid_properties}"
+    def __init__(self, measure_name: str, known_measures: list[str]):
+        message = f"Measure '{measure_name}' is unknown. Known measures are: {known_measures}"
         super().__init__(message)
 
 

@@ -1,3 +1,5 @@
+.. _dataset_sec:
+
 Dataset
 =======
 
@@ -13,63 +15,14 @@ in different formats.
     :nosignatures:
     :template: class.rst
 
+    CheckResult
+    DataQualityReport
     Dataset
     DatasetDefinition
     DatasetLibrary
     DatasetPaths
+    ValidationError
     ResourceDefinition
     ResourceDefinitions
-
-
-.. currentmodule:: pymovements.datasets
-
-.. rubric:: Dataset Definitions
-
-.. autosummary::
-    :toctree: api
-    :nosignatures:
-    :template: class.rst
-
-    BSC
-    BSCII
-    ChineseReading
-    CodeComprehension
-    CoLAGaze
-    CopCo
-    DAEMONS
-    DIDEC
-    EMTeC
-    ETDD70
-    FakeNewsPerception
-    Gaze4Hate
-    GazeBase
-    GazeBaseVR
-    GazeGraph
-    GazeOnFaces
-    HBN
-    IITB_HGC
-    InteRead
-    JuDo1000
-    MECOL1W1
-    MECOL2W1
-    MECOL2W2
-    MouseCursor
-    OneStop
-    PoTeC
-    PotsdamBingeRemotePVT
-    PotsdamBingeWearablePVT
-    Provo
-    SBSAT
-    TECO
-    UCL
-
-
-.. rubric:: Example Datasets
-
-.. autosummary::
-    :toctree: api
-    :template: class.rst
-    :nosignatures:
-
-    ToyDataset
-    ToyDatasetEyeLink
+    WebSource
+    Participants

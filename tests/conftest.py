@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,4 +22,7 @@
 pytest_plugins = [
     'tests.fixtures.deprecation_fixtures',
     'tests.fixtures.file_fixtures',
+    'tests.fixtures.gaze_fixtures',
+    'tests.fixtures.plotting_fixtures',
+    'tests.fixtures.text_stimulus_fixtures',
 ]

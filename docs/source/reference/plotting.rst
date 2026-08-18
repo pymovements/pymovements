@@ -1,3 +1,5 @@
+.. _plotting_sec:
+
 ========
 Plotting
 ========
@@ -11,6 +13,7 @@ Plotting
     :nosignatures:
     :template: function.rst
 
+    data_loss_histogram
     heatmap
     main_sequence_plot
     scanpathplot

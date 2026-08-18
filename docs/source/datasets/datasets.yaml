@@ -9,6 +9,7 @@
 - EMTeC
 - ETDD70
 - FakeNewsPerception
+- GGTG
 - Gaze4Hate
 - GazeBase
 - GazeBaseVR
@@ -18,7 +19,9 @@
 - IITB_HGC
 - InteRead
 - JuDo1000
+- MCFW-Gaze
 - MECOL1W1
+- MECOL1W2
 - MECOL2W1
 - MECOL2W2
 - MouseCursor
@@ -27,6 +30,7 @@
 - PotsdamBingeRemotePVT
 - PotsdamBingeWearablePVT
 - Provo
+- RaCCooNS
 - SBSAT
 - TECO
 - ToyDataset

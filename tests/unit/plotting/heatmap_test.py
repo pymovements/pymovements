@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 import pytest
-from matplotlib import figure
 
 import pymovements as pm
 from pymovements import Experiment
 from pymovements import Gaze
 from pymovements.plotting import heatmap
+from pymovements.stimulus.image import from_file
 
 
 @pytest.fixture(name='experiment_fixture')
@@ -68,33 +68,28 @@ def args_fixture(experiment_fixture, request):
     return gaze, request.param
 
 
+@pytest.fixture(name='position_column_mapping')
+def position_column_mapping_fixture():
+    return {
+        'pix': 'pixel',
+        'pos': 'position',
+    }
+
+
 @pytest.mark.parametrize(
     'kwargs',
     [
+        pytest.param({'cmap': 'jet'}, id='str_cmap'),
         pytest.param(
-            {'cmap': 'jet'}, id='str_cmap',
+            {'cmap': matplotlib.colors.ListedColormap(['red', 'blue', 'green'])},
+            id='custom_cmap',
         ),
-        pytest.param(
-            {'cmap': matplotlib.colors.ListedColormap(['red', 'blue', 'green'])}, id='custom_cmap',
-        ),
-        pytest.param(
-            {'gridsize': (10, 10)}, id='default_gridsize',
-        ),
-        pytest.param(
-            {'gridsize': (15, 20)}, id='custom_gridsize',
-        ),
-        pytest.param(
-            {'interpolation': 'gaussian'}, id='default_interpolation',
-        ),
-        pytest.param(
-            {'interpolation': 'bilinear'}, id='custom_interpolation',
-        ),
-        pytest.param(
-            {'origin': 'lower'}, id='default_origin',
-        ),
-        pytest.param(
-            {'origin': 'upper'}, id='custom_origin',
-        ),
+        pytest.param({'gridsize': (10, 10)}, id='default_gridsize'),
+        pytest.param({'gridsize': (15, 20)}, id='custom_gridsize'),
+        pytest.param({'interpolation': 'gaussian'}, id='default_interpolation'),
+        pytest.param({'interpolation': 'bilinear'}, id='custom_interpolation'),
+        pytest.param({'origin': 'lower'}, id='default_origin'),
+        pytest.param({'origin': 'upper'}, id='custom_origin'),
         pytest.param(
             {
                 'title': None,
@@ -118,87 +113,64 @@ def args_fixture(experiment_fixture, request):
         pytest.param(
             {'show_cbar': False}, id='show_cbar_false',
         ),
-        pytest.param(
-            {
-                'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/pexels-zoorg-1000498.jpg',
-                'stimulus_origin': 'lower',
-            }, id='add_stimulus_true',
-        ),
-        pytest.param(
-            {'add_stimulus': False}, id='add_stimulus_false',
-        ),
+        # Removed deprecated add_stimulus test cases
     ],
 )
-def test_heatmap_show(args, kwargs, monkeypatch):
+def test_heatmap_returns_figure_and_axes(args, kwargs, position_column_mapping):
+    position_column = position_column_mapping[args[1]]
+    kwargs['position_column'] = position_column
+    fig, ax = heatmap(args[0], **kwargs)
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+
+
+def test_heatmap_noshow(args, position_column_mapping, monkeypatch):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    if args[1] == 'pix':
-        kwargs['position_column'] = 'pixel'
-    else:
-        kwargs['position_column'] = 'position'
-
-    heatmap(args[0], **kwargs)
-
-    mock.assert_called_once()
-
-
-def test_heatmap_noshow(args, monkeypatch):
-    mock = Mock()
-    monkeypatch.setattr(plt, 'show', mock)
-
-    if args[1] == 'pix':
-        position_column = 'pixel'
-    else:
-        position_column = 'position'
-
-    heatmap(args[0], position_column=position_column, show=False)
+    position_column = position_column_mapping[args[1]]
+    heatmap(args[0], position_column=position_column)
 
     mock.assert_not_called()
 
 
-def test_heatmap_noshow_no_pixel_or_position_column(args, monkeypatch):
+def test_heatmap_noshow_no_pixel_or_position_column(
+    args, position_column_mapping, monkeypatch,
+):
     mock = Mock()
     monkeypatch.setattr(plt, 'show', mock)
 
-    if args[1] == 'pix':
-        position_column = 'pixel'
-    else:
-        position_column = 'position'
-
+    position_column = position_column_mapping[args[1]]
     gaze = args[0]
     gaze.samples = gaze.samples.rename({position_column: 'custom_column'})
 
-    heatmap(gaze, position_column='custom_column', show=False)
+    heatmap(gaze, position_column='custom_column')
 
     mock.assert_not_called()
 
 
-def test_heatmap_save(args, monkeypatch, tmp_path):
-    mock = Mock()
-    monkeypatch.setattr(figure.Figure, 'savefig', mock)
+def test_heatmap_save(args, position_column_mapping, tmp_path):
+    filepath = tmp_path / 'test.svg'
+    assert not filepath.is_file()
 
-    if args[1] == 'pix':
-        position_column = 'pixel'
-    else:
-        position_column = 'position'
-
+    position_column = position_column_mapping[args[1]]
     heatmap(
-        args[0], position_column=position_column, show=False, savepath=str(tmp_path / 'test.svg'),
+        args[0],
+        position_column=position_column,
+        savepath=str(filepath),
     )
 
-    mock.assert_called_once()
+    assert filepath.is_file()
 
 
-def test_heatmap_invalid_position_columns(args):
-    if args[1] == 'pix':
-        position_column = 'position'
-    else:
-        position_column = 'pixel'
+def test_heatmap_invalid_position_columns(args, position_column_mapping):
+    position_column = position_column_mapping[args[1]]
+    # Use the opposite column to trigger ColumnNotFoundError
+    invalid_column = 'position' if position_column == 'pixel' else 'pixel'
 
     with pytest.raises(pl.exceptions.ColumnNotFoundError):
-        heatmap(gaze=args[0], position_column=position_column, show=False)
+        heatmap(gaze=args[0], position_column=invalid_column)
 
 
 def test_heatmap_no_experiment_property():
@@ -212,7 +184,7 @@ def test_heatmap_no_experiment_property():
     gaze = Gaze(samples=df, pixel_columns=['x_pix', 'y_pix'], experiment=None)
 
     with pytest.raises(ValueError):
-        heatmap(gaze, show=False)
+        heatmap(gaze)
 
 
 @pytest.fixture(name='gaze')
@@ -243,16 +215,81 @@ def gaze_fixture():
 
 
 def test_heatmap_sets_screen_axes_correctly(gaze):
-    fig, ax = pm.plotting.heatmap(gaze, show=False)
+    _, ax = pm.plotting.heatmap(gaze)
     screen = gaze.experiment.screen
     assert ax.get_xlim() == (0, screen.width_px)
     assert ax.get_ylim() == (screen.height_px, 0)
     assert ax.get_aspect() == 1.0
-    plt.close(fig)
 
 
 @pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
 def test_heatmap_invalid_screen_origin_raises(origin, gaze):
     gaze.experiment.screen.origin = origin
     with pytest.raises(ValueError, match='screen origin must be "upper left"'):
-        pm.plotting.heatmap(gaze, show=False)
+        pm.plotting.heatmap(gaze)
+
+
+@pytest.mark.parametrize(
+    ('origin'),
+    (
+        pytest.param('upper', id='stimulus_origin_upper'),
+        pytest.param('lower', id='stimulus_origin_lower'),
+    ),
+)
+def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
+    """Test that heatmap correctly plots with an ImageStimulus."""
+    image_path = 'tests/files/stimuli/pexels-zoorg-1000498.jpg'
+    image_stimulus = from_file(image_path)
+
+    image_stimulus.origin = origin
+
+    fig, ax = plt.subplots()
+
+    image_stimulus.plot(0, ax=ax)
+
+    with pytest.warns(
+        UserWarning, match='heatmap: "figsize" is ignored because'
+        ' an external Axes was provided.',
+    ):
+        returned_fig, returned_ax = heatmap(
+            gaze,
+            position_column='pixel',
+            origin='upper',
+            ax=ax,
+            savepath=str(tmp_path / 'heatmap_with_stimulus.svg'),
+        )
+
+    assert returned_fig is fig
+    assert returned_ax is ax
+
+    assert len(ax.images) >= 2
+
+    assert (tmp_path / 'heatmap_with_stimulus.svg').is_file()
+
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    ('deprecated_argument', 'value'),
+    (
+        pytest.param('add_stimulus', True, id='add_stimulus'),
+        pytest.param(
+            'path_to_image_stimulus',
+            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            id='path_to_image_stimulus',
+        ),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+    ),
+)
+def test_heatmap_deprecated_parameters(
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+):
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
+    with pytest.raises(DeprecationWarning) as info:
+        heatmap(gaze, **{deprecated_argument: value})
+
+    assert_deprecation_is_removed(
+        function_name=f"heatmap argument '{deprecated_argument}'",
+        warning_message=info.value.args[0],
+        scheduled_version='0.33.0',
+    )

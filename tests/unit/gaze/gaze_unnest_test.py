@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -360,34 +360,34 @@ def test_gaze_unnest_has_expected_frame_multiple_unnest(
 
 
 @pytest.mark.parametrize(
-    ('init_data', 'unnest_kwargs', 'exception', 'exception_msg'),
+    ('init_data', 'unnest_kwargs', 'exception', 'message'),
     [
         pytest.param(
             pl.DataFrame({'pixel': [[1.23, 4.56]]}),
             {'input_columns': 'pixel', 'output_suffixes': ['_x', '_y', '_z']},
             ValueError,
-            'Number of output columns / suffixes (3) must match number of components (2)',
+            r'Number of output columns .* must match number of components \(2\)',
             id='df_single_row_two_pixel_components_three_output_suffixes',
         ),
         pytest.param(
             pl.DataFrame({'pixel': [[1.23, 4.56]]}),
             {'input_columns': 'pixel', 'output_columns': ['x']},
             ValueError,
-            'Number of output columns / suffixes (1) must match number of components (2)',
+            r'Number of output columns .* must match number of components \(2\)',
             id='df_single_row_two_pixel_components_one_output_column',
         ),
         pytest.param(
             pl.DataFrame({'pixel': [[1.23, 4.56]]}),
             {'input_columns': 'pixel', 'output_suffixes': ['_x', '_x']},
             ValueError,
-            'Output columns / suffixes must be unique',
+            'Output suffixes must be unique',
             id='df_single_row_two_output_suffixes_non_unique',
         ),
         pytest.param(
             pl.DataFrame({'pixel': [[1.23, 4.56]]}),
             {'input_columns': 'pixel', 'output_columns': ['x', 'x']},
             ValueError,
-            'Output columns / suffixes must be unique',
+            'Output columns must be unique',
             id='df_single_row_two_output_columns_non_unique',
         ),
         pytest.param(
@@ -427,55 +427,49 @@ def test_gaze_unnest_has_expected_frame_multiple_unnest(
             'Please specify output suffixes or use a single input column instead.',
             id='df_single_row_two_components_unnest_all_default_values_multiple_columns_specified',
         ),
-        pytest.param(
-            pl.DataFrame({
-                'wrong_pixel_name': [[1.23, 4.56]],
-                'wrong_position_name': [[1.23, 4.56]],
-                'wrong_velocity_name': [[1.23, 4.56]],
-                'wrong_acceleration_name': [[1.23, 4.56]],
-            }),
-            {},
-            Warning,
-            'No columns to unnest. '
-            'Please specify columns to unnest via the "input_columns" argument.',
-            marks=pytest.mark.filterwarnings(
-                'ignore:Gaze contains samples but no.*:UserWarning',
-            ),
-            id='df_single_row_two_components_unnest_all_default_values_no_cols_to_unnest',
-        ),
     ],
 
 )
-def test_gaze_unnest_errors(init_data, unnest_kwargs, exception, exception_msg):
-    with pytest.raises(exception) as exc_info:
+def test_gaze_unnest_errors(init_data, unnest_kwargs, exception, message):
+    with pytest.raises(exception, match=message):
         gaze = pm.Gaze(init_data)
         gaze.unnest(**unnest_kwargs)
 
-    msg, = exc_info.value.args
-    assert msg == exception_msg
+
+def test_gaze_unnest_no_nested_columns_warns():
+    df = pl.DataFrame({
+        'pixel': [[1.23, 4.56], [1.23, 4.56]],  # avoids warning on gaze initialization
+        'non_nested_data': [1.23, 4.56],
+    })
+    gaze = pm.Gaze(samples=df)
+    gaze.samples = gaze.samples.drop('pixel')
+    samples_before = gaze.samples.clone()
+
+    message = 'No columns to unnest..*input_columns.*'
+    with pytest.warns(UserWarning, match=message):
+        gaze.unnest()
+
+    assert_frame_equal(gaze.samples, samples_before)
 
 
 @pytest.mark.parametrize(
-    ('init_data', 'unnest_kwargs', 'n_components', 'exception', 'exception_msg'),
+    ('init_data', 'unnest_kwargs', 'n_components', 'exception', 'message'),
     [
         pytest.param(
-            pl.DataFrame({'pixel': [[1.23, 4.56]]}),
-            {'input_columns': 'pixel', 'output_suffixes': ['_x', '_y']},
+            pl.DataFrame({'pixel': [[1.23, 4.56, 7.89]]}),
+            {'input_columns': 'pixel'},
             1,
-            AttributeError,
-            'Number of components required but no gaze components could be inferred.',
-            id='df_single_row_two_pixel_component_invalid_number_of_components',
+            ValueError,
+            "Inferring suffixes .* list length of column 'pixel' is: 3.",
+            id='three_components_auto_suffixes',
         ),
     ],
 
 )
 def test_gaze_unnest_invalid_number_of_components(
-        init_data, unnest_kwargs, n_components, exception, exception_msg,
+        init_data, unnest_kwargs, n_components, exception, message,
 ):
-    with pytest.raises(exception) as exc_info:
+    with pytest.raises(exception, match=message):
         gaze = pm.Gaze(init_data)
         gaze.n_components = n_components
         gaze.unnest(**unnest_kwargs)
-
-    msg, = exc_info.value.args
-    assert msg.startswith(exception_msg)

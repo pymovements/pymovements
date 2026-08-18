@@ -12,11 +12,13 @@ These How-Tos provide detailed guides to implement the most important use cases 
     pymovements-in-10-minutes
     public-datasets
     local-dataset
+    parsing-dataset
+    plotting
     preprocessing-raw-data
     saving-loading-preprocessed
+    data-quality-report
     event-handling
-    plot-main-sequence
-    scanpathplot
-    heatmap
     creating-synthetic-data
+    blink-detection
+    blink-cleaning
     R-tutorial

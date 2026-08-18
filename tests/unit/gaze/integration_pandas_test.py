@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -153,32 +153,3 @@ def test_from_pandas_events(samples, events):
     assert_frame_equal(gaze.events.frame, expected_events)
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
-
-
-@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
-def test_from_pandas_data_argument_is_deprecated():
-    pandas_df = pd.DataFrame(
-        {
-            'x_pix': [0, 1, 2, 3],
-            'y_pix': [0, 1, 2, 3],
-            'x_pos': [0, 1, 2, 3],
-            'y_pos': [0, 1, 2, 3],
-        },
-    )
-
-    with pytest.warns(DeprecationWarning):
-        gaze = from_pandas(samples=None, data=pandas_df)
-
-    assert gaze.samples.shape == (4, 4)
-
-
-def test_from_pandas_data_argument_is_removed(assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        from_pandas(samples=None, data=pd.DataFrame())
-
-    assert_deprecation_is_removed(
-        function_name='from_pandas() keyword argument data',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )

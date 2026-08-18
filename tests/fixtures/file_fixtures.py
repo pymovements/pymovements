@@ -1,4 +1,4 @@
-# Copyright (c) 2025 The pymovements Project Authors
+# Copyright (c) 2025-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,10 +20,13 @@
 """Provide fixtures to securely make files from examples in ``tests/files``."""
 from __future__ import annotations
 
+import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
+import polars as pl
 import pytest
 
 
@@ -34,7 +37,9 @@ def fixture_testfiles_dirpath(request):
 
 
 @pytest.fixture(name='make_example_file', scope='function')
-def fixture_make_example_file(testfiles_dirpath: Path, tmp_path: Path) -> Callable[[str], Path]:
+def fixture_make_example_file(
+        testfiles_dirpath: Path, tmp_path: Path,
+) -> Callable[[str, str | None], Path]:
     """Make a temporary copy of a file from one of the example files in tests/files.
 
     This way each file can be used in tests without the risk of changing contents.
@@ -48,13 +53,35 @@ def fixture_make_example_file(testfiles_dirpath: Path, tmp_path: Path) -> Callab
 
     Returns
     -------
-    Callable[[str], Path]
-        Function that takes a filename and returns the Path to the copied file.
+    Callable[[str, str | None], Path]
+        Function that takes a example_filename and returns the Path to the copied file.
 
     """
-    def _make_example_file(filename: str) -> Path:
-        source_filepath = testfiles_dirpath / filename
-        target_filepath = tmp_path / filename
+    def _make_example_file(example_filename: str, target_filename: str | None = None) -> Path:
+        """Make a temporary copy of a file from one of the example files in tests/files.
+
+        The example file is automatically copied into a ``tmp_path``.
+
+        Parameters
+        ----------
+        example_filename : str
+            Use this file as a source to make the test file.
+        target_filename : str | None
+            Use this as the filename of the target file. If ``None``, use ``example_filename``.
+            (default: None)
+
+        Returns
+        -------
+        Path
+            Path to created example test file.
+
+        """
+        if target_filename is None:
+            target_filename = example_filename
+        source_filepath = testfiles_dirpath / example_filename
+        target_filepath = tmp_path / target_filename
+        # assure parent directory exists
+        target_filepath.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_filepath, target_filepath)
         return target_filepath
     return _make_example_file
@@ -67,7 +94,7 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
     Parameters
     ----------
     tmp_path : Path
-        Temporary directory where files are copied to. Existing fixture.
+        Temporary directory where files are copied to. Built-in fixture.
 
     Returns
     -------
@@ -78,35 +105,251 @@ def fixture_make_text_file(tmp_path: Path) -> Callable[[str | Path, str, str, st
         The file is saved into a temporary directory.
 
     """
-    def _ensure_rel_filename(filename: str | Path) -> Path:
-        """Ensure filename is a relative path.
-
-        Accepts str or Path. Rejects other types with TypeError.
-        Rejects absolute paths, drive letters (Windows),
-        and user home shortcuts '~' with ValueError.
-        Returns a Path relative to current directory (to be joined with tmp_path).
-        """
-        if not isinstance(filename, (str, Path)):
-            raise TypeError(f"filename must be a str or Path, got {type(filename).__name__}")
-
-        if isinstance(filename, str) and filename.startswith('~'):
-            raise ValueError("filename must be a relative path; '~' (home) is not allowed")
-
-        p = Path(filename)
-        # On Windows, p.drive captures drive letters; p.anchor is non-empty for absolute paths
-        if p.is_absolute() or p.anchor or getattr(p, 'drive', ''):
-            raise ValueError('filename must be a relative path without drive or root')
-        return p
-
     def _make_text_file(
             filename: str | Path, header: str = '', body: str = '\n', encoding: str = 'utf-8',
     ) -> Path:
-        rel = _ensure_rel_filename(filename)
-        content = header + body
-        filepath = tmp_path / rel
+        filepath = _make_filepath(tmp_path, filename)
         # assure parent directory exists
         filepath.parent.mkdir(parents=True, exist_ok=True)
         # write contents to a file
+        content = header + body
         filepath.write_text(content, encoding=encoding)
         return filepath
     return _make_text_file
+
+
+@pytest.fixture(name='make_text_files', scope='function')
+def fixture_make_text_files(tmp_path: Path) -> Callable[[list[str]], Path]:
+    """Make text files.
+
+    Files are created relative to an implicitly created tmp_path.
+
+    Empty directories cannot be created with this fixture.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where files are copied to. Built-in fixture.
+
+    Returns
+    -------
+    Callable[[list[str]], Path]
+        Function that takes a list of relative filepaths and returns the path to the root directory.
+        The files are saved into a temporary directory.
+
+    """
+    def _make_text_files(files: list[str]) -> Path:
+        for relative_filepath in files:
+            absolute_filepath = tmp_path / relative_filepath
+            if not absolute_filepath.parent.is_dir():
+                absolute_filepath.parent.mkdir(parents=True)
+            absolute_filepath.write_text('test')
+        return tmp_path
+
+    return _make_text_files
+
+
+@pytest.fixture(name='make_csv_file', scope='function')
+def fixture_make_csv_file(tmp_path: Path) -> Callable:
+    """Make a csv file with optional header.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where file is written to. Built-in fixture.
+
+    Returns
+    -------
+    Callable
+        Function that takes a filename, a data frame, an optional header, and optional keyword
+        arguments to be passed to :py:class:`polars.write_csv`.
+        Returns the path to the created file. The file is saved into a temporary directory.
+
+    """
+    def _make_csv_file(
+            filename: str | Path,
+            data: pl.DataFrame,
+            *,
+            header: str | None = None,
+            include_bom: bool = False,
+            include_header: bool = True,
+            separator: str = ',',
+            line_terminator: str = '\n',
+            quote_char: str = '"',
+            datetime_format: str | None = None,
+            date_format: str | None = None,
+            time_format: str | None = None,
+            float_scientific: bool | None = None,
+            float_precision: int | None = None,
+            null_value: str | None = None,
+            quote_style: pl._typing.CsvQuoteStyle | None = None,
+    ) -> Path:
+        r"""Make a csv file with optional header.
+
+        This is the actual function called when using the ``make_csv_file`` fixture.
+
+        Parameters
+        ----------
+        filename: str | Path
+            Make csv file with this filename. Can also be a relative path.
+        data: pl.DataFrame
+            Write this data frame into csv file.
+        header: str | None
+            Write this string in the line before the actual column header of the csv file.
+            (default: None)
+        include_bom: bool
+            Whether to include UTF-8 BOM in the CSV output. (default: False)
+        include_header: bool
+            Whether to include header in the CSV output. (default: True)
+        separator: str
+            Separate CSV fields with this symbol. (default: ",")
+        line_terminator: str
+            String used to end each row. (default: "\n")
+        quote_char: str
+            Byte to use as quoting character. (default '"')
+        datetime_format: str | None
+            A format string, with the specifiers defined by the
+            `chrono <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>`_
+            Rust crate. If no format specified, the default fractional-second
+            precision is inferred from the maximum timeunit found in the frame's
+            Datetime cols (if any). (default: None)
+        date_format: str | None
+            A format string, with the specifiers defined by the
+            `chrono <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>`_
+            Rust crate. (default: None)
+        time_format: str | None
+            A format string, with the specifiers defined by the
+            `chrono <https://docs.rs/chrono/latest/chrono/format/strftime/index.html>`_
+            Rust crate. (default: None)
+        float_scientific: bool | None
+            Whether to use scientific form always (true), never (false), or
+            automatically (None) for `Float32` and `Float64` datatypes. (default: None)
+        float_precision: int | None
+            Number of decimal places to write, applied to both `Float32` and
+            `Float64` datatypes. (default: None)
+        null_value: str | None
+            A string representing null values (defaulting to the empty string).
+        quote_style : pl._typing.CsvQuoteStyle | None
+            Determines the quoting strategy used.
+            Valid quote styles are: {'necessary', 'always', 'non_numeric', 'never'}
+
+            - necessary (default): This puts quotes around fields only when necessary.
+              They are necessary when fields contain a quote,
+              separator or record terminator.
+              Quotes are also necessary when writing an empty record
+              (which is indistinguishable from a record with one empty field).
+              This is the default.
+            - always: This puts quotes around every field. Always.
+            - never: This never puts quotes around fields, even if that results in
+              invalid CSV data (e.g.: by not quoting strings containing the separator).
+            - non_numeric: This puts quotes around all fields that are non-numeric.
+              Namely, when writing a field that does not parse as a valid float
+              or integer, then quotes will be used even if they aren`t strictly
+              necessary.
+
+        Returns
+        -------
+        Path
+            Path to csv file.
+
+        """
+        filepath = _make_filepath(tmp_path, filename)
+        # assure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(filepath, mode='x', encoding='utf-8') as opened_file:
+            # write header into
+            if header is not None:
+                opened_file.write(header + '\n')
+            # write contents to a file
+            data.write_csv(
+                opened_file,
+                include_bom=include_bom,
+                include_header=include_header,
+                separator=separator,
+                line_terminator=line_terminator,
+                quote_char=quote_char,
+                datetime_format=datetime_format,
+                date_format=date_format,
+                time_format=time_format,
+                float_scientific=float_scientific,
+                float_precision=float_precision,
+                null_value=null_value,
+                quote_style=quote_style,
+            )
+        return filepath
+    return _make_csv_file
+
+
+@pytest.fixture(name='make_json_file', scope='function')
+def fixture_make_json_file(tmp_path: Path) -> Callable:
+    """Make a json file.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory where file is written to. Built-in fixture.
+
+    Returns
+    -------
+    Callable
+        Function that takes a filename, a dictionary, and an optional encoding.
+        Returns the path to the created file. The file is saved into a temporary directory.
+
+    """
+    def _make_json_file(
+            filename: str | Path,
+            data: dict[str, Any],
+            *,
+            encoding: str = 'utf-8',
+    ) -> Path:
+        r"""Make a json file with optional header.
+
+        This is the actual function called when using the ``make_json_file`` fixture.
+
+        Parameters
+        ----------
+        filename: str | Path
+            Make json file with this filename. Can also be a relative path.
+        data: dict[str, Any]
+            Write this data frame into json file.
+        encoding: str
+            Use this encoding for writing json file.
+
+        Returns
+        -------
+        Path
+            Path to json file.
+
+        """
+        filepath = _make_filepath(tmp_path, filename)
+        # assure parent directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(filepath, mode='x', encoding=encoding) as opened_file:
+            json.dump(data, opened_file)
+        return filepath
+    return _make_json_file
+
+
+def _make_filepath(tmp_path: Path, filename: str | Path) -> Path:
+    """Ensure filename is a relative path.
+
+    Accepts str or Path. Rejects other types with TypeError.
+    Rejects absolute paths, drive letters (Windows),
+    and user home shortcuts '~' with ValueError.
+    Returns a Path relative to current directory (to be joined with tmp_path).
+    """
+    if not isinstance(filename, (str, Path)):
+        raise TypeError(f'filename must be a str or Path, got {type(filename).__name__}')
+
+    if isinstance(filename, str) and filename.startswith('~'):
+        raise ValueError("filename must be an absolute or relative path; '~' (home) is not allowed")
+
+    filepath = Path(filename)
+    # On Windows, p.drive captures drive letters; p.anchor is non-empty for absolute paths
+    if filepath.is_absolute() or filepath.anchor or getattr(filepath, 'drive', None):
+        # If absolute path given, use this as filepath and ignore tmp_path.
+        return filepath
+    # Assume relative path to tmp_path
+    return tmp_path / filepath

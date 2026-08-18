@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Gaze detect method."""
+import warnings
+
 import numpy as np
 import polars as pl
 import pytest
@@ -30,20 +32,7 @@ from pymovements.synthetic import step_function
 @pytest.mark.parametrize(
     ('method', 'kwargs', 'gaze', 'expected'),
     [
-        pytest.param(
-            'idt',
-            {
-                'dispersion_threshold': 1,
-                'minimum_duration': 10,
-            },
-            pm.gaze.from_numpy(
-                time=np.arange(0, 100, 1),
-                position=np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=0),
-                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
-            ),
-            pm.events.Events(),
-            id='idt_constant_velocity_no_fixation',
-        ),
+
 
         pytest.param(
             'idt',
@@ -534,18 +523,154 @@ from pymovements.synthetic import step_function
         ),
 
         pytest.param(
-            'microsaccades',
+            'ihmm',
             {
-                'threshold': 10,
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
             },
             pm.gaze.from_numpy(
-                time=np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
-                velocity=step_function(length=100, steps=[40, 50], values=[(9, 9), (0, 0)]),
+                time=np.arange(0, 100, 1),
+                velocity=np.ones((2, 100)) * 20,
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.events.Events(),
+            id='ihmm_constant_velocity_no_fixation',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                velocity=np.zeros((2, 100)),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='fixation', onsets=[0], offsets=[99]),
+            id='ihmm_constant_position_single_fixation',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+                'name': 'custom_fixation',
+            },
+            pm.gaze.from_numpy(
+                velocity=np.zeros((2, 100)),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='custom_fixation', onsets=[0], offsets=[99]),
+            id='ihmm_constant_position_single_fixation_custom_name',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                velocity=step_function(
+                    length=100, steps=[49, 51], values=[(90, 90), (0, 0)], start_value=(0, 0),
+                ),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
             ),
-            pm.Events(),
-            id='microsaccades_two_steps_one_saccade_high_threshold_no_events',
+            pm.events.Events(name='fixation', onsets=[0, 51], offsets=[48, 99]),
+            id='ihmm_three_steps_two_fixations',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                velocity=step_function(
+                    length=100, steps=[10, 20, 90],
+                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
+                ),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            # unlike idt/ivt, ihmm does not split on interior NaNs: the short gap
+            # is bridged by the fixation state's high self-transition probability.
+            pm.events.Events(name='fixation', onsets=[0], offsets=[89]),
+            id='ihmm_interior_nan_does_not_split_fixation',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 2,
+            },
+            pm.gaze.from_numpy(
+                time=np.arange(1000, 1100, dtype=int),
+                velocity=step_function(length=100, steps=[0], values=[(0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.events.Events(
+                name='fixation',
+                onsets=[1000],
+                offsets=[1099],
+            ),
+            id='ihmm_constant_position_single_fixation_with_timesteps_int',
+        ),
+
+        pytest.param(
+            'ihmm',
+            {
+                'hmm_parameters_dict': {
+                    'mu': np.array([1.0, 20.0]),
+                    'sigma': np.array([1.0, 1.0]),
+                    'init': np.array([0.5, 0.5]),
+                    'trans': np.array([[0.95, 0.05], [0.05, 0.95]]),
+                },
+                'minimum_duration': 1,
+            },
+            pm.gaze.from_numpy(
+                trial=np.array(['A'] * 50 + ['B'] * 50),
+                velocity=np.zeros((2, 100)),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B']),
+            id='ihmm_constant_position_single_fixation_per_trial',
         ),
 
         pytest.param(
@@ -681,25 +806,7 @@ from pymovements.synthetic import step_function
             id='microsaccades_two_steps_one_saccade_timesteps',
         ),
 
-        pytest.param(
-            'microsaccades',
-            {
-                'threshold': 'std',
-            },
-            pm.gaze.from_numpy(
-                time=np.arange(1000, 1100, dtype=int),
-                velocity=step_function(
-                    length=100,
-                    steps=[40, 50],
-                    values=[(9, 9), (0, 0)],
-                    start_value=(0, 0),
-                ),
-                orient='row',
-                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
-            ),
-            pm.Events(),
-            id='microsaccades_two_steps_one_saccade_timesteps',
-        ),
+
 
         pytest.param(
             'microsaccades',
@@ -893,42 +1000,182 @@ from pymovements.synthetic import step_function
             id='fill_fixation_events_exceed_time_boundaries',
         ),
 
+        # out_of_screen: auto-fill pixels and screen boundaries from experiment
         pytest.param(
-            'fill',
-            {'clear': True},
+            'out_of_screen',
+            {},
             pm.gaze.from_numpy(
-                position=step_function(
-                    length=100, steps=[10, 20, 90],
-                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
-                ),
+                pixel=np.array([[960, 540], [960, 540], [-1, 540]]),
                 orient='row',
-                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
-                events=pm.events.Events(name='fixation', onsets=[0, 20], offsets=[9, 89]),
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
             ),
-            pm.events.Events(name='unclassified', onsets=[0], offsets=[99]),
-            id='fill_clear_events_no_trials',
+            pm.Events(name='out_of_screen', onsets=[2], offsets=[2]),
+            id='out_of_screen_auto_fill_screen_boundaries',
         ),
 
         pytest.param(
-            'fill',
-            {'clear': True},
+            'out_of_screen',
+            {},
             pm.gaze.from_numpy(
-                trial=np.repeat('A', 100),
-                position=step_function(
-                    length=100, steps=[10, 20, 90],
-                    values=[(np.nan, np.nan), (0, 0), (np.nan, np.nan)],
+                pixel=np.array([[960, 540], [960, 540], [960, 540]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(),
+            id='out_of_screen_all_within_screen_no_events',
+        ),
+
+        pytest.param(
+            'out_of_screen',
+            {},
+            pm.gaze.from_numpy(
+                time=np.array([1000, 1001, 1002], dtype=int),
+                pixel=np.array([[-1, 540], [960, 540], [960, 1081]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='out_of_screen', onsets=[1000, 1002], offsets=[1000, 1002]),
+            id='out_of_screen_with_timesteps',
+        ),
+
+        pytest.param(
+            'out_of_screen',
+            {
+                'x_min': 100,
+                'x_max': 1000,
+                'y_min': 100,
+                'y_max': 500,
+            },
+            pm.gaze.from_numpy(
+                pixel=np.array([[50, 300], [500, 300], [500, 300]]),
+                orient='row',
+                experiment=pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(name='out_of_screen', onsets=[0], offsets=[0]),
+            id='out_of_screen_explicit_boundaries_override_auto_fill',
+        ),
+
+        pytest.param(
+            'blink',
+            {
+                'minimum_gap': 0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            pm.gaze.Gaze(
+                pl.DataFrame({
+                    'time': np.arange(200, dtype=np.int64),
+                    'x': np.zeros(200),
+                    'y': np.zeros(200),
+                    'pupil': np.concatenate([
+                        np.full(10, 500.0),
+                        np.full(80, np.nan),
+                        np.full(110, 500.0),
+                    ]),
+                }),
+                time_column='time',
+                position_columns=['x', 'y'],
+            ),
+            pm.Events(name='blink', onsets=[10], offsets=[89]),
+            id='blink_scalar_pupil_auto_fill',
+        ),
+
+        pytest.param(
+            'blink',
+            {
+                'minimum_gap': 0,
+                'minimum_duration': 1,
+                'maximum_duration': None,
+            },
+            pm.gaze.Gaze(
+                pl.DataFrame({
+                    'time': np.arange(200, dtype=np.int64),
+                    'x': np.zeros(200),
+                    'y': np.zeros(200),
+                    'pupil': [
+                        [left, right] for left, right in zip(
+                            np.concatenate([
+                                np.full(10, 500.0),
+                                np.full(80, np.nan),
+                                np.full(110, 500.0),
+                            ]),
+                            np.full(200, 500.0),
+                        )
+                    ],
+                }),
+                time_column='time',
+                position_columns=['x', 'y'],
+            ),
+            pm.Events(name='blink', onsets=[10], offsets=[89]),
+            id='blink_list_pupil_binocular_auto_fill',
+        ),
+
+
+    ],
+)
+@pytest.mark.filterwarnings('ignore:.*No events were detected.*:UserWarning')
+def test_gaze_detect(method, kwargs, gaze, expected):
+    gaze.detect(method, **kwargs)
+    assert_frame_equal(gaze.events.frame, expected.frame, check_row_order=False)
+
+
+@pytest.mark.parametrize(
+    ('method', 'kwargs', 'gaze', 'expected'),
+    [
+        pytest.param(
+            'idt',
+            {
+                'dispersion_threshold': 1,
+                'minimum_duration': 10,
+            },
+            pm.gaze.from_numpy(
+                time=np.arange(0, 100, 1),
+                position=np.stack([np.arange(0, 200, 2), np.arange(0, 200, 2)], axis=0),
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 10),
+            ),
+            pm.events.Events(),
+            id='idt_constant_velocity_no_fixation',
+        ),
+
+        pytest.param(
+            'microsaccades',
+            {
+                'threshold': 10,
+            },
+            pm.gaze.from_numpy(
+                time=np.reshape(np.arange(1000, 1100, dtype=int), (100, 1)),
+                velocity=step_function(length=100, steps=[40, 50], values=[(9, 9), (0, 0)]),
+                orient='row',
+                experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+            ),
+            pm.Events(),
+            id='microsaccades_two_steps_one_saccade_high_threshold_no_events',
+        ),
+
+        pytest.param(
+            'microsaccades',
+            {
+                'threshold': 'std',
+            },
+            pm.gaze.from_numpy(
+                time=np.arange(1000, 1100, dtype=int),
+                velocity=step_function(
+                    length=100,
+                    steps=[40, 50],
+                    values=[(9, 9), (0, 0)],
+                    start_value=(0, 0),
                 ),
                 orient='row',
                 experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
-                events=pm.events.Events(name='fixation', onsets=[0, 20], offsets=[9, 89]),
             ),
-            pm.events.Events(name='unclassified', onsets=[0], offsets=[99], trials=['A']),
-            id='fill_clear_events_with_trials',
+            pm.Events(),
+            id='microsaccades_two_steps_one_saccade_timesteps',
         ),
     ],
 )
-def test_gaze_detect(method, kwargs, gaze, expected):
-    gaze.detect(method, **kwargs)
+def test_gaze_detect_with_warning(method, kwargs, gaze, expected):
+    with pytest.warns(UserWarning, match='No events were detected'):
+        gaze.detect(method, **kwargs)
     assert_frame_equal(gaze.events.frame, expected.frame, check_row_order=False)
 
 
@@ -940,7 +1187,8 @@ def test_gaze_detect_custom_method_no_arguments():
 
     expected = pm.Events()
 
-    gaze.detect(custom_method)
+    with pytest.warns(UserWarning, match='No events were detected'):
+        gaze.detect(custom_method)
     assert_frame_equal(gaze.events.frame, expected.frame)
 
 
@@ -1028,6 +1276,24 @@ def test_gaze_detect_custom_method_no_arguments():
             id='ivt_cyclops_eye_four_components_raises_attribute_error',
         ),
 
+        pytest.param(
+            'out_of_screen',
+            {},
+            pm.gaze.Gaze(None, pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000)),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'pixel' not found. Available columns are: ['time']",
+            id='out_of_screen_no_pixel_raises_column_not_found_error',
+        ),
+
+        pytest.param(
+            'blink',
+            {},
+            pm.gaze.Gaze(None, pm.Experiment(1920, 1080, 38, 30, 60, 'center', 1000)),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'pupil' not found. Available columns are: ['time']",
+            id='blink_no_pupil_raises_column_not_found_error',
+        ),
+
     ],
 )
 def test_gaze_detect_raises_exception(method, kwargs, gaze, exception, exception_msg):
@@ -1066,11 +1332,13 @@ def test_gaze_detect_missing_trial_column_events_raises_exception():
     [
         ('ivt', 'velocity'),
         ('idt', 'position'),
+        ('out_of_screen', 'pixel'),
     ],
 )
 def test_gaze_detect_missing_missing_eye_components_raises_exception(method, column):
     gaze = pm.gaze.from_numpy(
         trial=np.ones(100),
+        pixel=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         position=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         velocity=step_function(length=100, steps=[0], values=[(0, 0, 0, 0)]),
         orient='row',
@@ -1087,3 +1355,124 @@ def test_gaze_detect_missing_missing_eye_components_raises_exception(method, col
 
     msg, = exc_info.value.args
     assert msg == f'eye_components must not be None if passing {column} to event detection'
+
+
+def dummy_detect_no_events(**_kwargs):
+    """Return no events."""
+    return pm.Events()
+
+
+def dummy_detect_with_events(**_kwargs):
+    """Return one event."""
+    return pm.Events(name='fixation', onsets=[0], offsets=[1])
+
+
+def test_detect_no_events_warning():
+    """Test that a warning is emitted when no events are detected."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+
+    with pytest.warns(UserWarning, match='dummy_detect_no_events: No events were detected.'):
+        gaze.detect(dummy_detect_no_events)
+
+
+def test_detect_no_events_warning_trial_columns():
+    """Test that a warning is emitted when no events are detected with trial columns."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        trial=np.array(['A'] * 50 + ['B'] * 50),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+
+    with pytest.warns(UserWarning, match='dummy_detect_no_events: No events were detected.'):
+        gaze.detect(dummy_detect_no_events)
+
+
+def test_detect_with_events_no_warning():
+    """Test that no warning is emitted when events are detected."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter('always')
+        gaze.detect(dummy_detect_with_events)
+
+    # Check that no UserWarning about "No events" was issued
+    assert not any(
+        isinstance(w.message, UserWarning) and 'No events were detected' in str(w.message)
+        for w in record
+    )
+
+
+def test_detect_with_events_trial_columns_warns_on_any_empty_trial():
+    """Test that a warning is emitted when any trial has no events detected."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        trial=np.array(['A'] * 50 + ['B'] * 50),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+
+    # Custom detect that only returns events for the first trial it is called for.
+    call_count = [0]
+
+    def detect_only_once(**_kwargs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return pm.Events(name='fixation', onsets=[0], offsets=[1])
+        return pm.Events()
+
+    # Now we expect a warning because the second trial has no events
+    with pytest.warns(UserWarning, match='detect_only_once: No events were detected.'):
+        gaze.detect(detect_only_once)
+
+
+def test_detect_clear():
+    """Test that clear=True clears existing events before detection."""
+    gaze = pm.gaze.from_numpy(
+        time=np.arange(100),
+        position=np.zeros((2, 100)),
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+        events=pm.Events(name='fixation', onsets=[0], offsets=[10]),
+    )
+    # Ensure events are present before detection
+    assert not gaze.events.frame.is_empty()
+
+    # Use a dummy detect function that returns new events
+    def dummy_detect(**_kwargs):
+        return pm.Events(name='fixation', onsets=[20], offsets=[30])
+
+    gaze.detect(dummy_detect, clear=True)
+
+    # After detection, the events should be replaced with the new events
+    expected_events = pm.Events(name='fixation', onsets=[20], offsets=[30])
+    assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)
+
+
+def test_detect_after_clear_events_with_trial_columns():
+    """Test that detection succeeds after clear_events() on a gaze with trial columns.
+
+    Regression test: clearing events used to assign a bare Events() without trial
+    columns, which made subsequent per-trial event detection fail.
+    """
+    gaze = pm.gaze.from_numpy(
+        trial=np.array(['A'] * 50 + ['B'] * 50),
+        position=step_function(length=100, steps=[0], values=[(0, 0)]),
+        orient='row',
+        experiment=pm.Experiment(1024, 768, 38, 30, 60, 'center', 1000),
+    )
+    gaze.detect('idt', dispersion_threshold=1, minimum_duration=2)
+    gaze.clear_events()
+    gaze.detect('idt', dispersion_threshold=1, minimum_duration=2)
+
+    expected_events = pm.Events(
+        name='fixation', onsets=[0, 50], offsets=[49, 99], trials=['A', 'B'],
+    )
+    assert_frame_equal(gaze.events.frame, expected_events.frame, check_row_order=False)

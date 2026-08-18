@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -111,7 +111,7 @@ def test_dataset_library_contains_all_public_datasets_files():
         dataset_path = Path(filename)
         if dataset_path.name == 'datasets.yaml':
             continue
-        with open(filename, encoding='ascii') as f:
+        with open(filename, encoding='utf-8') as f:
             dataset_file = yaml.safe_load(f)
         dataset_name = dataset_file['name']
         assert dataset_name in library, f'please add {dataset_name} to `datasets.yaml`'

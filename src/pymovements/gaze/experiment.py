@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,16 @@ from typing import Any
 
 import numpy as np
 import yaml
-from polars import DataFrame
+from deprecated.sphinx import deprecated
 
 from pymovements._utils import _checks
 from pymovements._utils._html import repr_html
-from pymovements.gaze import transforms_numpy
 from pymovements.gaze.eyetracker import EyeTracker
 from pymovements.gaze.screen import Screen
+from pymovements.transforms.numpy import pos2vel
 
 
-@repr_html()
+@repr_html(['eyetracker', 'screen'])
 class Experiment:
     """Experiment class for holding experiment properties.
 
@@ -63,9 +63,6 @@ class Experiment:
         (default: None)
     eyetracker: EyeTracker | None
         EyeTracker object for experiment. Mutually exclusive with sampling_rate. (default: None)
-    messages: DataFrame | None
-        DataFrame containing messages from the experiment.
-        The required columns are 'time' and 'content'. (default: None)
 
     Examples
     --------
@@ -79,13 +76,13 @@ class Experiment:
     ...     sampling_rate=1000.0,
     ... )
     >>> print(experiment)
-    Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-     distance_cm=68.0, origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
-      right=None, model=None, version=None, vendor=None, mount=None), messages=None)
+    Experiment(screen=Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0,
+      origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None,
+      right=None, model=None, version=None, vendor=None, mount=None))
 
     We can also access the screen boundaries in degrees of visual angle via the
-    :py:attr:`~pymovements.gaze.Screen` object. This only works if the
-    `distance_cm` attribute is specified.
+    :py:attr:`~pymovements.Experiment.screen` attribute. This only works if the
+    :py:attr:`~pymovements.Screen.distance_cm` attribute is specified.
 
     >>> experiment.screen.x_min_dva# doctest:+ELLIPSIS
     -15.59...
@@ -109,7 +106,6 @@ class Experiment:
             *,
             screen: Screen | None = None,
             eyetracker: EyeTracker | None = None,
-            messages: DataFrame | None = None,
     ):
         _checks.check_is_mutual_exclusive(screen_width_px=screen_width_px, screen=screen)
         _checks.check_is_mutual_exclusive(screen_height_px=screen_height_px, screen=screen)
@@ -136,19 +132,6 @@ class Experiment:
 
         if self.sampling_rate is not None:
             _checks.check_is_greater_than_zero(sampling_rate=self.sampling_rate)
-
-        if messages is not None:
-            if not isinstance(messages, DataFrame):
-                raise TypeError(
-                    "The `messages` must be a polars DataFrame with columns ['time', 'content'], "
-                    f"not {type(messages)}.",
-                )
-            required_cols = {'time', 'content'}
-            if not required_cols.issubset(set(messages.columns)):
-                raise TypeError(
-                    "The `messages` polars DataFrame must contain the columns ['time', 'content'].",
-                )
-        self.messages = messages
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> Experiment:
@@ -177,11 +160,9 @@ class Experiment:
         ...     "sampling_rate": 1000.0,
         ... })
         >>> print(experiment)
-        Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-                                 distance_cm=68.0, origin=None),
-                   eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
-                                        model=None, version=None, vendor=None, mount=None),
-                                        messages=None)
+        Experiment(screen=Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0,
+          origin=None), eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
+          model=None, version=None, vendor=None, mount=None))
 
         The same result using nested dictionaries for `screen` and `eyetracker`:
 
@@ -199,11 +180,9 @@ class Experiment:
         ...     }
         ... })
         >>> print(experiment)
-        Experiment(screen=Screen(width_px=1280, height_px=1024, width_cm=38.0, height_cm=30.0,
-                                 distance_cm=68.0, origin='upper left'),
-                   eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
-                                        model=None, version=None, vendor=None, mount=None),
-                                        messages=None)
+        Experiment(screen=Screen(resolution=(1280, 1024), size=(38.0, 30.0), distance_cm=68.0,
+          origin='upper left'), eyetracker=EyeTracker(sampling_rate=1000.0, left=None, right=None,
+          model=None, version=None, vendor=None, mount=None))
 
         Returns
         -------
@@ -236,6 +215,11 @@ class Experiment:
         """Set sampling rate of experiment."""
         self.eyetracker.sampling_rate = sampling_rate
 
+    @deprecated(
+        reason='Please use pymovements.transforms.pos2vel() instead. '
+               'This method will be removed in v0.32.0.',
+        version='v0.27.1',
+    )
     def pos2vel(
             self,
             arr: list[float] | list[list[float]] | np.ndarray,
@@ -247,12 +231,17 @@ class Experiment:
         Methods 'smooth', 'neighbors' and 'preceding' are adapted from
             Engbert et al.: Microsaccade Toolbox 0.9.
 
+        .. deprecated:: v0.27.1
+           Please use :py:func:`~pymovements.transforms.pos2vel` instead.
+           This method will be removed in v0.32.0.
+
         Parameters
         ----------
         arr: list[float] | list[list[float]] | np.ndarray
             Continuous 2D position time series.
         method: str
-            Computation method. See :func:`~transforms.pos2vel` for details. (default: 'smooth')
+            Computation method. See :func:`~pymovements.transforms.pos2vel` for details.
+            (default: ``'smooth'``)
         **kwargs: int | float | str
             Additional keyword arguments used for savitzky golay method.
 
@@ -264,7 +253,7 @@ class Experiment:
         Raises
         ------
         ValueError
-            If selected method is invalid, input array is too short for the
+            If the selected method is invalid, the input array is too short for the
             selected method or the sampling rate is below zero
 
         Examples
@@ -282,7 +271,7 @@ class Experiment:
         >>> experiment.pos2vel(
         ...    arr=arr,
         ...    method="smooth",
-        ... )
+        ... )# doctest: +SKIP
         array([[ 500.,  500.],
                [1000., 1000.],
                [1000., 1000.],
@@ -291,7 +280,7 @@ class Experiment:
                [ 500.,  500.]])
         """
         assert self.sampling_rate is not None
-        return transforms_numpy.pos2vel(
+        return pos2vel(
             arr=arr, sampling_rate=self.sampling_rate, method=method, **kwargs,
         )
 
@@ -314,7 +303,7 @@ class Experiment:
         Returns
         -------
         dict[str, Any | dict[str, str | float | None]]
-            Experiment as dictionary.
+            Experiment as a dictionary.
         """
         data: dict[str, dict[str, str | float | None]] = {}
 
@@ -322,27 +311,14 @@ class Experiment:
             data['eyetracker'] = self.eyetracker.to_dict(exclude_none=exclude_none)
         if self.screen or not exclude_none:
             data['screen'] = self.screen.to_dict(exclude_none=exclude_none)
-        if self.messages is not None:
-            data['messages'] = self.messages.to_dict(as_series=False)
 
         return data
 
     def __str__(self: Experiment) -> str:
-        """Return Experiment string.
-
-        The messages field expresses:
-        - 'messages=None' if no messages are provided.
-        - 'messages=<N> rows' if a messages DataFrame is provided,
-          where N is the number of rows.
-        """
-        if self.messages is None:
-            messages_repr = 'None'
-        else:
-            # polars DataFrame: use height (number of rows)
-            messages_repr = f"{self.messages.height} rows"
+        """Return Experiment string."""
         return (
-            f"{type(self).__name__}(screen={self.screen}, "
-            f"eyetracker={self.eyetracker}, messages={messages_repr})"
+            f'{type(self).__name__}(screen={self.screen}, '
+            f'eyetracker={self.eyetracker})'
         )
 
     def __bool__(self) -> bool:

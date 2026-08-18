@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 The pymovements Project Authors
+# Copyright (c) 2022-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,19 +28,21 @@ import numpy as np
 import polars as pl
 
 from pymovements.gaze import Gaze
-from pymovements.plotting._matplotlib import finalize_figure
+from pymovements.gaze._utils._column_nesting import get_nested_columns
+from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.plotting._matplotlib import prepare_figure
 
 
 def tsplot(
         gaze: Gaze,
-        channels: list[str] | None = None,
+        channels: str | list[str] | None = None,
+        *,
         xlabel: str | None = None,
         n_cols: int | None = None,
         n_rows: int | None = None,
         rotate_ylabels: bool = True,
-        share_y: bool = True,
-        zero_centered_yaxis: bool = True,
+        share_y: bool = False,
+        zero_centered_yaxis: bool = False,
         line_color: tuple[int, int, int] | str = 'k',
         line_width: int = 1,
         show_grid: bool = True,
@@ -48,10 +50,7 @@ def tsplot(
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
         savepath: str | None = None,
-        show: bool = True,
-        *,
         ax: plt.Axes | None = None,
-        closefig: bool | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
 
@@ -59,8 +58,10 @@ def tsplot(
     ----------
     gaze: Gaze
         The Gaze to plot.
-    channels: list[str] | None
-        List of channel names to plot. If None, all channels will be plotted. (default: None)
+    channels: str | list[str] | None
+        Name(s) of channels to plot. List columns are unnested into one channel per component,
+        e.g. ``pixel`` becomes ``pixel_x`` and ``pixel_y``. If None, all numeric columns
+        including list columns with numeric components will be plotted. (default: None)
     xlabel: str | None
         Set the x label. (default: None)
     n_cols: int | None
@@ -70,9 +71,9 @@ def tsplot(
     rotate_ylabels: bool
         Set whether to rotate ylabels. (default: True)
     share_y: bool
-        Set if y-axes should share common axis. (default: True)
+        Set if y-axes should share a common axis. (default: False)
     zero_centered_yaxis: bool
-        Set if y-axis should be zero centered. (default: True)
+        Set if y-axis should be zero-centered. (default: False)
     line_color: tuple[int, int, int] | str
         Set line color. (default: 'k')
     line_width: int
@@ -87,14 +88,9 @@ def tsplot(
         Figure title. (default: None)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
-    show: bool
-        If True, figure will be shown. (default: True)
     ax: plt.Axes | None
         External axes to draw into when plotting a single channel. Ignored when
         ``n_channels > 1``. (default: None)
-    closefig: bool | None
-        Whether to close the figure. If None, close only when the function created
-        the figure. (default: None)
 
     Returns
     -------
@@ -107,9 +103,21 @@ def tsplot(
         If array has more than two dimensions.
     """
     if channels is None:
-        channels = [c for c in gaze.samples.columns if gaze.samples[c].dtype != pl.List]
+        # Select all numeric (and nested numeric) channels
+        channels = [
+            c
+            for c in gaze.samples.columns
+            if gaze.samples[c].dtype.is_numeric() or (
+                gaze.samples[c].dtype == pl.List and gaze.samples[c].dtype.inner.is_numeric()
+            )
+        ]
 
-    arr = gaze.samples[channels].to_numpy().transpose()
+    df = gaze.samples.select(channels)
+    nested_columns = get_nested_columns(df)
+    if nested_columns:
+        df = unnest_list_columns(df, nested_columns)
+    channels = df.columns
+    arr = df.to_numpy().transpose()
 
     if arr.ndim == 1:
         arr = np.expand_dims(arr, axis=0)
@@ -135,8 +143,7 @@ def tsplot(
     external_ax = ax is not None
 
     if n_channels == 1:
-        fig, ax, own_figure = prepare_figure(ax, figsize, func_name='tsplot')
-        assert ax is not None
+        fig, ax = prepare_figure(ax, figsize, func_name='tsplot')
         axs = [ax]
     else:
         if external_ax:
@@ -158,22 +165,13 @@ def tsplot(
             },
         )
         axs = axs_grid.flatten()
-        own_figure = True
 
     t = np.arange(n_samples)
     xlims = t.min(), t.max()
 
-    y_pad_factor = 1.1
-
     # set ylims to have zero centered y-axis (for all axes)
     # will be overwritten if share_y is False
-    if zero_centered_yaxis:
-        ylim_abs = np.nanmax(np.abs(arr))
-        ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
-    else:
-        ylim_max = np.nanmax(arr)
-        ylim_min = np.nanmin(arr)
-        ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+    ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
@@ -181,17 +179,12 @@ def tsplot(
         x_channel = arr[channel_id, :]
         ax.plot(t, x_channel, color=line_color, linewidth=line_width)
 
-        if not share_y and zero_centered_yaxis:
-            ylim_abs = np.nanmax(np.abs(arr[channel_id]))
-            ylims = -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
-        elif not share_y and not zero_centered_yaxis:
-            ylim_max = np.nanmax(arr)
-            ylim_min = np.nanmin(arr)
-            ylims = ylim_min * y_pad_factor, ylim_max * y_pad_factor
+        if not share_y:
+            ylims = _compute_ylims(arr[channel_id], zero_centered_yaxis=zero_centered_yaxis)
 
         if xlims[0] != xlims[1]:
             ax.set_xlim(xlims)
-        if ylims[0] != ylims[1]:
+        if ylims is not None and ylims[0] != ylims[1]:
             ax.set_ylim(ylims)
 
         ax.grid(show_grid, which='major')
@@ -224,19 +217,33 @@ def tsplot(
         else:
             ax.set_ylabel(channels[channel_id])
 
-    # print x label on the last axis (bottom-most in a column)
-    axs[-1].set_xlabel(xlabel)
+        # set x label on all axes
+        # share_y=True will automatically hide those that are not on the bottom
+        ax.set_xlabel(xlabel)
 
     if title:
         axs[0].set_title(title)
 
-    finalize_figure(
-        fig,
-        show=show,
-        savepath=savepath,
-        closefig=closefig,
-        own_figure=own_figure,
-        func_name='tsplot',
-    )
+    if savepath is not None:
+        fig.savefig(savepath)
 
     return fig, axs[0]
+
+
+def _compute_ylims(
+        values: np.ndarray,
+        *,
+        zero_centered_yaxis: bool,
+        y_pad_factor: float = 1.1,
+) -> tuple[float, float] | None:
+    """Compute padded y-axis limits, or None if there are no finite values to infer them from."""
+    finite_values = values[np.isfinite(values)]
+    if finite_values.size == 0:
+        return None
+    if zero_centered_yaxis:
+        ylim_abs = np.max(np.abs(finite_values))
+        return -ylim_abs * y_pad_factor, ylim_abs * y_pad_factor
+    ylim_max = np.max(finite_values)
+    ylim_min = np.min(finite_values)
+    y_pad = (ylim_max - ylim_min) * (y_pad_factor - 1)
+    return ylim_min - y_pad, ylim_max + y_pad

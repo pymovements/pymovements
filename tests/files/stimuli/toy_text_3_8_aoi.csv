@@ -1,0 +1,20 @@
+char_idx,char,top_left_x,top_left_y,width,height,char_idx_in_line,line_idx,page,word_idx,word_idx_in_line,word,question_image_version
+0,T,81.0,99.0,13,30,0,0,question_08111,0,0,This,question_images_version_1
+1,h,94.0,99.0,13,30,1,0,question_08111,0,0,This,question_images_version_1
+2,i,107.0,99.0,13,30,2,0,question_08111,0,0,This,question_images_version_1
+3,s,120.0,99.0,13,30,3,0,question_08111,0,0,This,question_images_version_1
+4, ,133.0,99.0,13,30,4,0,question_08111,0,0,,question_images_version_1
+5,i,146.0,99.0,13,30,5,0,question_08111,1,1,is,question_images_version_1
+6,s,159.0,99.0,13,30,6,0,question_08111,1,1,is,question_images_version_1
+7, ,172.0,99.0,13,30,7,0,question_08111,1,1,,question_images_version_1
+8,a,185.0,99.0,13,30,8,0,question_08111,2,2,a,question_images_version_1
+9, ,198.0,99.0,13,30,9,0,question_08111,2,2,,question_images_version_1
+10,v,211.0,99.0,13,30,10,0,question_08111,3,3,very,question_images_version_1
+11,e,224.0,99.0,13,30,11,0,question_08111,3,3,very,question_images_version_1
+12,r,237.0,99.0,13,30,12,0,question_08111,3,3,very,question_images_version_1
+13,y,250.0,99.0,13,30,13,0,question_08111,3,3,very,question_images_version_1
+14, ,263.0,99.0,13,30,14,0,question_08111,3,3,,question_images_version_1
+15,l,276.0,99.0,13,30,15,0,question_08111,4,4,long,question_images_version_1
+16,o,289.0,99.0,13,30,16,0,question_08111,4,4,long,question_images_version_1
+17,n,302.0,99.0,13,30,17,0,question_08111,4,4,long,question_images_version_1
+18,g,315.0,99.0,13,30,18,0,question_08111,4,4,long,question_images_version_1

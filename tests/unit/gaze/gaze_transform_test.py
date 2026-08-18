@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ def fixture_experiment():
                 ),
                 'pixel_columns': ['x_pix', 'y_pix'],
             },
-            pm.gaze.transforms.downsample, {'factor': 1},
+            pm.transforms.downsample, {'factor': 1},
             pm.Gaze(
                 samples=pl.from_dict(
                     {
@@ -825,7 +825,7 @@ def fixture_experiment():
                 ),
                 'position_columns': ['x_dva', 'y_dva'],
             },
-            pm.gaze.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
+            pm.transforms.smooth, {'method': 'moving_average', 'window_length': 3},
             pm.Gaze(
                 samples=pl.from_dict(
                     {

@@ -34,7 +34,13 @@ and render plots to visually analyze your results.
 
 ## Getting Started
 
-With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away
+If you are new to pymovements or to eye-tracking data analysis, we recommend starting with the **User Guide**, which introduces the concepts, data
+structures, and workflows used throughout the library: 👉 :doc:`user-guide/index`
+
+
+### Quick example
+
+For a minimal example of loading and processing eye-tracking data with pymovements:
 
 ```python
 import pymovements as pm
@@ -47,28 +53,26 @@ dataset.download()  # download a public dataset from our dataset library
 dataset.load()  # load the dataset
 ```
 
-calculate velocities on the fly
+Transform coordinates and calculate velocities:
 
 ```python
 dataset.pix2deg()  # transform pixel coordinates to degrees of visual angle
 dataset.pos2vel()  # transform positional data to velocity data
 ```
 
-and extract events with different eye movements event extraction algorithms
+Detect oculomotoric events:
 
 ```python
 dataset.detect('ivt')  # detect fixation using the I-VT algorithm
 dataset.detect('microsaccades')  # detect saccades using the microsaccades algorithm
 ```
 
-Check out our guide on how to install *pymovements* and get started here:
-[Installation](https://pymovements.readthedocs.io/en/stable/getting-started.html)
+<!-- With pymovements loading your eye movement [datasets](https://pymovements.readthedocs.io/en/stable/datasets/index.html) is just a few lines of code away -->
 
-We provide a range of tutorial aimed at beginners:
-[Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
-
-The complete reference of the package can be found here:
-[API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
+### Quick Links
+- :doc:`Installation Options <user-guide/getting-started/installation>`
+- [Tutorials](https://pymovements.readthedocs.io/en/stable/tutorials/index.html)
+- [API Reference](https://pymovements.readthedocs.io/en/stable/reference/index.html)
 
 ## Contributing
 
@@ -77,29 +81,62 @@ We welcome any sort of contribution to pymovements!
 For a detailed guide, please refer to our [CONTRIBUTING.md](https://github.com/pymovements/pymovements/blob/main/CONTRIBUTING.md) first.
 
 If you have any questions, please [open an issue](
-https://github.com/pymovements/pymovements/issues/new/choose) or write us at
+https://github.com/pymovements/pymovements/issues/new/choose) or write to us at
 [pymovements@python.org](mailto:pymovements@python.org)
 
 ## Citing
 
-If you are using pymovements in your research, we would be happy if you cite our work by using the following BibTex entry:
+If you use pymovements for a scientific publication, we would appreciate citations to the published
+software and the following paper:
 
-```bibtex
-@inproceedings{pymovements,
-    author = {Krakowczyk, Daniel G. and Reich, David R. and Chwastek, Jakob and Jakobi, Deborah N.
- and Prasse, Paul and Süss, Assunta and Turuta, Oleksii and Kasprowski, Paweł
- and Jäger, Lena A.},
-    title = {pymovements: A Python Package for Processing Eye Movement Data},
-    year = {2023},
-    isbn = {979-8-4007-0150-4/23/05},
-    publisher = {Association for Computing Machinery},
-    address = {New York, NY, USA},
-    url = {https://doi.org/10.1145/3588015.3590134},
-    doi = {10.1145/3588015.3590134},
-    booktitle = {2023 Symposium on Eye Tracking Research and Applications},
-    location = {Tubingen, Germany},
-    series = {ETRA '23},
-}
-```
+- [pymovements on Zenodo](https://doi.org/10.5281/zenodo.17397139). Please find us on Zenodo and
+  replace with the citation for the version you are using. You can replace the full author list from
+  there with "The pymovements project team" like in the example below.
 
-There is also a preprint available on [arxiv](https://arxiv.org/abs/2304.09859).
+  ```bibtex
+    @software{pymovements,
+      author    = {The pymovements project team},
+      title     = {pymovements: A Python Package for Processing Eye Movement Data},
+      month     = apr,
+      year      = 2026,
+      publisher = {Zenodo},
+      version   = {v0.26.2},
+      doi       = {10.5281/zenodo.19486286},
+      url       = {https://doi.org/10.5281/zenodo.19486286},
+    }
+  ```
+- [pymovements: A Python Package for Processing Eye Movement Data <pymovementsPaper](https://doi.org/10.1145/3588015.3590134)
+
+  ```bibtex
+    @inproceedings{pymovementsPaper,
+      author    = {
+        Krakowczyk, Daniel G. and Reich, David R. and Chwastek, Jakob and Jakobi, Deborah N.
+        and Prasse, Paul and Süss, Assunta and Turuta, Oleksii and Kasprowski, Pawe\l{}
+        and J\"{a}ger, Lena A.
+      },
+      title     = {pymovements: A Python Package for Processing Eye Movement Data},
+      year      = {2023},
+      isbn      = {9798400701504},
+      publisher = {Association for Computing Machinery},
+      address   = {New York, NY, USA},
+      url       = {https://doi.org/10.1145/3588015.3590134},
+      doi       = {10.1145/3588015.3590134},
+      booktitle = {Proceedings of the 2023 Symposium on Eye Tracking Research and Applications},
+      articleno = {53},
+      numpages  = {2},
+      location  = {Tubingen, Germany},
+      series    = {ETRA '23}
+    }
+  ```
+
+In case you want to cite specific parts of the package, like our dataset library or data quality
+reports, please consider citing our other publications listed on our
+[citing page](https://pymovements.readthedocs.io/en/stable/about-us/citing.html).
+
+
+## Acknowledgements
+
+The pymovements project was partially funded by the Swiss National Science Foundation (SNSF) and
+the German Federal Ministry of Education and Research (BMBF). Please refer to our
+[acknowledgements page](https://pymovements.readthedocs.io/en/stable/about-us/acknowledgments.html)
+for a comprehensive overview of funding and support.

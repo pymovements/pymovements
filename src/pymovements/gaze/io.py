@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,9 @@ from typing import Any
 
 import polars as pl
 
-import pymovements as pm  # pylint: disable=cyclic-import
-from pymovements.events.frame import Events
-from pymovements.gaze._utils.parsing import parse_eyelink
+from pymovements.events.events import Events
+from pymovements.gaze._utils._parsing_begaze import parse_begaze
+from pymovements.gaze._utils._parsing_eyelink import parse_eyelink
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.gaze import Gaze
 
@@ -50,8 +50,8 @@ def from_csv(
         column_map: dict[str, str] | None = None,
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, type] | None = None,
-        definition: pm.DatasetDefinition | None = None,
         read_csv_kwargs: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs: Any,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
@@ -65,14 +65,14 @@ def from_csv(
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     time_column: str | None
         The name of the timestamp column in the input data frame. (default: None)
     time_unit: str | None
         The unit of the timestamps in the timestamp column in the input data frame. Supported
         units are 's' for seconds, 'ms' for milliseconds and 'step' for steps. If the unit is
-        'step' the experiment definition must be specified. All timestamps will be converted to
+        'step,' the experiment definition must be specified. All timestamps will be converted to
         milliseconds. If time_unit is None, milliseconds are assumed. (default: None)
     pixel_columns: list[str] | None
         The name of the pixel position columns in the input data frame. These columns will be
@@ -106,13 +106,12 @@ def from_csv(
     column_schema_overrides:  dict[str, type] | None
         Dictionary containing types for columns.
         (default: None)
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
-        (default: None)
     read_csv_kwargs: dict[str, Any] | None
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
         for columns. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     **kwargs: Any
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
@@ -129,7 +128,7 @@ def from_csv(
     and ``acceleration_columns``:
 
     By passing a list of columns as any of these arguments, these columns will be merged into a
-    single column with the corresponding name , e.g. using `pixel_columns` will merge the
+    single column with the corresponding name, e.g. using `pixel_columns` will merge the
     respective columns into the column `pixel`.
 
     The supported number of component columns with the expected order are:
@@ -165,7 +164,7 @@ def from_csv(
     │ 9    ┆ 0          ┆ 0          │
     └──────┴────────────┴────────────┘
 
-    We can now load the data into a ``Gaze`` by specyfing the experimental setting
+    We can now load the data into a ``Gaze`` by specifying the experimental setting
     and the names of the pixel position columns. We can specify a custom separator for the csv
     file by passing it as a keyword argument to :py:func:`polars.read_csv`:
 
@@ -238,21 +237,12 @@ def from_csv(
         warnings.warn(
             DeprecationWarning(
                 "from_csv() argument '**kwargs' is deprecated since version v0.24.0. "
-                'This argument will be removed in v0.29.0.',
+                'This argument will be removed in v0.29.0.'
                 "Please use argument 'read_csv_kwargs' instead. ",
             ),
         )
         # merge dictionaries, **kwargs takes precedence
         read_csv_kwargs = {**read_csv_kwargs, **kwargs}
-
-    # explicit arguments take precedence over definition.
-    if definition:
-        if column_map is None:
-            column_map = definition.column_map
-
-        if not read_csv_kwargs and 'gaze' in definition.custom_read_kwargs:
-            if definition.custom_read_kwargs['gaze']:
-                read_csv_kwargs = definition.custom_read_kwargs['gaze']
 
     # Read data.
     samples = pl.read_csv(file, **read_csv_kwargs)
@@ -288,16 +278,16 @@ def from_csv(
             ])
 
     if column_schema_overrides is not None:
+        # Apply overrides as provided - callers should pass concrete pl.DataType instances
         samples = samples.with_columns([
-            pl.col(fileinfo_key).cast(fileinfo_dtype)
-            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Create gaze object.
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
-        definition=definition,
         trial_columns=trial_columns,
         time_column=time_column,
         time_unit=time_unit,
@@ -307,8 +297,88 @@ def from_csv(
         acceleration_columns=acceleration_columns,
         distance_column=distance_column,
         auto_column_detect=auto_column_detect,
+        metadata=metadata,
     )
     return gaze
+
+
+def metadata_to_cal_frame(metadata: dict[str, Any]) -> pl.DataFrame:
+    """Convert and consume EyeLink calibration metadata to a DataFrame.
+
+    Pops the 'calibrations' key from the metadata dict and returns a DataFrame with schema:
+    time(f64), num_points(i64), eye(utf8), tracking_mode(utf8).
+    """
+    cal_items = metadata.pop('calibrations', []) or []
+    if cal_items:
+        return pl.from_dicts([
+            {
+                'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
+                else None,
+                'num_points': int(item.get('num_points')) if item.get('num_points')
+                not in (None, '') else None,
+                'eye': (
+                    'left' if (item.get('tracked_eye') or '').upper() == 'LEFT' else
+                    'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
+                ),
+                'tracking_mode': item.get('type') if item.get('type') not in (None, '') else None,
+            }
+            for item in cal_items
+        ]).with_columns([
+            pl.col('time').cast(pl.Float64),
+            pl.col('num_points').cast(pl.Int64),
+            pl.col('eye').cast(pl.Utf8),
+            pl.col('tracking_mode').cast(pl.Utf8),
+        ])
+    return pl.DataFrame(
+        schema={
+            'time': pl.Float64,
+            'num_points': pl.Int64,
+            'eye': pl.Utf8,
+            'tracking_mode': pl.Utf8,
+        },
+    )
+
+
+def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
+    """Convert and consume EyeLink validation metadata to a DataFrame.
+
+    Pops the 'validations' key from the metadata dict and returns a DataFrame with schema:
+    time(f64), num_points(i64), eye(utf8), accuracy_avg(f64), accuracy_max(f64).
+    """
+    val_items = metadata.pop('validations', []) or []
+    if val_items:
+        return pl.from_dicts([
+            {
+                'time': float(item.get('timestamp')) if item.get('timestamp') not in (None, '')
+                else None,
+                'num_points': int(item.get('num_points')) if item.get('num_points')
+                not in (None, '') else None,
+                'eye': (
+                    'left' if (item.get('tracked_eye') or '').upper() == 'LEFT' else
+                    'right' if (item.get('tracked_eye') or '').upper() == 'RIGHT' else None
+                ),
+                'accuracy_avg': float(item.get('validation_score_avg')) if
+                item.get('validation_score_avg') not in (None, '') else None,
+                'accuracy_max': float(item.get('validation_score_max')) if
+                item.get('validation_score_max') not in (None, '') else None,
+            }
+            for item in val_items
+        ]).with_columns([
+            pl.col('time').cast(pl.Float64),
+            pl.col('num_points').cast(pl.Int64),
+            pl.col('eye').cast(pl.Utf8),
+            pl.col('accuracy_avg').cast(pl.Float64),
+            pl.col('accuracy_max').cast(pl.Float64),
+        ])
+    return pl.DataFrame(
+        schema={
+            'time': pl.Float64,
+            'num_points': pl.Int64,
+            'eye': pl.Utf8,
+            'accuracy_avg': pl.Float64,
+            'accuracy_max': pl.Float64,
+        },
+    )
 
 
 def from_asc(
@@ -322,9 +392,10 @@ def from_asc(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, Any] | None = None,
         encoding: str | None = None,
-        definition: pm.DatasetDefinition | None = None,
         events: bool = False,
         messages: bool | list[str] = False,
+        metadata: dict[str, Any] | None = None,
+        extend_resolution: bool | None = None,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
 
@@ -356,9 +427,6 @@ def from_asc(
         (default: None)
     encoding: str | None
         Text encoding of the file. If None, the locale encoding is used. (default: None)
-    definition: pm.DatasetDefinition | None
-        A dataset definition. Explicitly passed arguments take precedence over definition.
-        (default: None)
     events: bool
         Flag indicating if events should be parsed from the asc file. (default: False)
     messages: bool | list[str]
@@ -366,11 +434,21 @@ def from_asc(
         and stored in :py:class:`pymovements.gaze.experiment.Experiment`.
         The message format is 'MSG <timestamp> <content>'.
         If True, all available messages will be parsed from the asc,
-        alternatively, a list of regular expressions can be passed and only the
+        alternatively, a list of regular expressions can be passed, and only the
         messages that match any of the regular expressions will be kept.
         Regular expressions are only applied to the message content,
         implicitly parsing the `MSG <timestamp>` prefix.
         (default: False)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
+    extend_resolution: bool | None
+        Extend the parsed screen resolution by 1 pixel if ``True``.
+        If ``None``, the resolution is extended by 1 pixel unless the file was recorded by
+        ``libeyelink.py`` (e.g., if *PyGaze* was used for recording data).
+        Some files that were not recorded by SR Research software may need to specify
+        ``False`` if their reported screen resolution is inconsistent with the
+        SR Research specification.
+        (default: None)
 
     Returns
     -------
@@ -420,7 +498,6 @@ def from_asc(
     ``-e`` or ``-ns`` to output only events or ``-s`` or ``-ne`` to only output samples will not
     work with this function, as it expects both samples and events to be present in the ASC file.
 
-
     Examples
     --------
     We can load an asc file stored at `tests/files/eyelink_monocular_example.asc` into a ``Gaze``:
@@ -458,40 +535,15 @@ def from_asc(
     else:
         _patterns = patterns
 
-    # Explicit arguments take precedence over definition.
-    if definition:
-        if experiment is None:
-            experiment = definition.experiment
-
-        if trial_columns is None:
-            trial_columns = definition.trial_columns
-
-        if 'gaze' in definition.custom_read_kwargs and definition.custom_read_kwargs['gaze']:
-            custom_read_kwargs = definition.custom_read_kwargs['gaze']
-
-            if _patterns is None and 'patterns' in custom_read_kwargs:
-                _patterns = custom_read_kwargs['patterns']
-
-            if metadata_patterns is None and 'metadata_patterns' in custom_read_kwargs:
-                metadata_patterns = custom_read_kwargs['metadata_patterns']
-
-            if schema is None and 'schema' in custom_read_kwargs:
-                schema = custom_read_kwargs['schema']
-
-            if column_schema_overrides is None and 'column_schema_overrides' in custom_read_kwargs:
-                column_schema_overrides = custom_read_kwargs['column_schema_overrides']
-
-            if encoding is None and 'encoding' in custom_read_kwargs:
-                encoding = custom_read_kwargs['encoding']
-
     # Read data.
-    samples, event_data, metadata, messages_df = parse_eyelink(
+    samples, event_data, parsed_metadata, messages_df = parse_eyelink(
         file,
         patterns=_patterns,
         schema=schema,
         metadata_patterns=metadata_patterns,
         encoding=encoding,
         messages=messages,
+        extend_resolution=extend_resolution,
     )
 
     if add_columns is not None:
@@ -503,17 +555,12 @@ def from_asc(
 
     if column_schema_overrides is not None:
         samples = samples.with_columns([
-            pl.col(fileinfo_key).cast(fileinfo_dtype)
-            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Fill experiment with parsed metadata.
-    experiment = _fill_experiment_from_parsing_metadata(experiment, metadata)
-
-    # Add parsed messages to experiment
-    if experiment.messages is not None:
-        warnings.warn('Experiment already has messages, overwriting them with newly parsed ones.')
-    experiment.messages = messages_df
+    experiment = _fill_experiment_from_parsing_eyelink_metadata(experiment, parsed_metadata)
 
     # Detect pixel / position column names (monocular or binocular) and pass them to Gaze
     # Note: column detection for ASC files now uses simple substring matching
@@ -535,16 +582,25 @@ def from_asc(
             pl.concat_list([pl.col('pupil_left'), pl.col('pupil_right')]).alias('pupil'),
         ).drop(['pupil_left', 'pupil_right'])
 
+    # Build cal/val frames and consume them from metadata dict
+    calibrations = metadata_to_cal_frame(parsed_metadata)
+    validations = metadata_to_val_frame(parsed_metadata)
+
     gaze = Gaze(
         samples=samples,
         experiment=experiment,
         events=Events(event_data) if events else None,
+        messages=messages_df,
         trial_columns=trial_columns,
         time_column='time',
         time_unit='ms',
         pixel_columns=detected_pixel_columns,
+        metadata=metadata,
+        calibrations=calibrations,
+        validations=validations,
     )
-    gaze._metadata = metadata  # pylint: disable=protected-access
+    # Keep remaining metadata privately on Gaze
+    gaze._metadata = dict(parsed_metadata)  # pylint: disable=protected-access
     return gaze
 
 
@@ -557,6 +613,7 @@ def from_ipc(
         add_columns: dict[str, str] | None = None,
         column_schema_overrides: dict[str, type] | None = None,
         read_ipc_kwargs: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs: Any,
 ) -> Gaze:
     """Initialize a :py:class:`~pymovements.Gaze`.
@@ -571,7 +628,7 @@ def from_ipc(
     trial_columns: str | list[str] | None
         The name of the trial columns in the input data frame. If the list is empty or None,
         the input data frame is assumed to contain only one trial. If the list is not empty,
-        the input data frame is assumed to contain multiple trials and the transformation
+        the input data frame is assumed to contain multiple trials, and the transformation
         methods will be applied to each trial separately. (default: None)
     column_map: dict[str, str] | None
         The keys are the columns to read, the values are the names to which they should be renamed.
@@ -584,6 +641,8 @@ def from_ipc(
         (default: None)
     read_ipc_kwargs: dict[str, Any] | None
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
     **kwargs: Any
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`.
 
@@ -654,8 +713,8 @@ def from_ipc(
 
     if column_schema_overrides is not None:
         samples = samples.with_columns([
-            pl.col(fileinfo_key).cast(fileinfo_dtype)
-            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+            pl.col(column_key).cast(column_dtype)
+            for column_key, column_dtype in column_schema_overrides.items()
         ])
 
     # Create gaze object.
@@ -663,90 +722,281 @@ def from_ipc(
         samples=samples,
         experiment=experiment,
         trial_columns=trial_columns,
+        metadata=metadata,
     )
     return gaze
 
 
-def _fill_experiment_from_parsing_metadata(
+def _fill_experiment_from_parsing_eyelink_metadata(
         experiment: Experiment | None,
         metadata: dict[str, Any],
 ) -> Experiment:
     """Fill Experiment with metadata gained from parsing."""
     if experiment is None:
-        experiment = Experiment(sampling_rate=metadata['sampling_rate'])
+        experiment = Experiment(sampling_rate=metadata.get('sampling_rate'))
+    else:
+        # we overwrite fields so make sure we're working on a copy.
+        # experiment = deepcopy(experiment)
+        pass
 
     # Compare metadata from experiment definition with metadata from ASC file.
-    # Fill in missing metadata in experiment definition and raise an error if there are conflicts
+    # Fill in missing metadata in experiment definition and raise a warning if there are conflicts
     issues = []
 
     # Screen resolution (assuming that width and height will always be missing or set together)
     experiment_resolution = (experiment.screen.width_px, experiment.screen.height_px)
-    if experiment_resolution == (None, None):
-        try:
-            width, height = metadata['resolution']
-            experiment.screen.width_px = math.ceil(width)
-            experiment.screen.height_px = math.ceil(height)
-        except TypeError:
-            warnings.warn('No screen resolution found.')
-    elif experiment_resolution != metadata['resolution']:
-        issues.append(f"Screen resolution: {experiment_resolution} != {metadata['resolution']}")
+    resolution = metadata.get('resolution', (None, None))
+    try:
+        width, height = resolution
+        parsed_resolution = (math.ceil(width), math.ceil(height))
+    except (TypeError, ValueError):
+        parsed_resolution = None
+    if parsed_resolution is None:
+        warnings.warn('No screen resolution found.')
+    else:
+        if experiment_resolution not in {(None, None), parsed_resolution}:
+            issues.append(
+                'Screen resolution: '
+                f'{experiment_resolution[0]}x{experiment_resolution[1]} != '
+                f'{parsed_resolution[0]}x{parsed_resolution[1]}',
+            )
+        experiment.screen.width_px, experiment.screen.height_px = parsed_resolution
 
     # Sampling rate
-    if experiment.eyetracker.sampling_rate != metadata['sampling_rate']:
-        issues.append(
-            f"Sampling rate: {experiment.eyetracker.sampling_rate} != {metadata['sampling_rate']}",
-        )
+    parsed_sampling_rate = metadata.get('sampling_rate')
+    if parsed_sampling_rate is None:
+        warnings.warn('No sampling rate found.')
+    else:
+        if experiment.eyetracker.sampling_rate not in {None, parsed_sampling_rate}:
+            issues.append(
+                f'Sampling rate: {experiment.eyetracker.sampling_rate} != {parsed_sampling_rate}',
+            )
+        experiment.eyetracker.sampling_rate = parsed_sampling_rate
 
     # Tracked eye
-    asc_left_eye = 'L' in (metadata['tracked_eye'] or '')
-    asc_right_eye = 'R' in (metadata['tracked_eye'] or '')
-    if experiment.eyetracker.left is None:
+    parsed_tracked_eye: str = metadata.get('tracked_eye', '')
+    if parsed_tracked_eye in {None, ''}:
+        warnings.warn('No tracked eye information found.')
+    else:
+        asc_left_eye = 'L' in parsed_tracked_eye
+        asc_right_eye = 'R' in parsed_tracked_eye
+        if experiment.eyetracker.left not in {None, asc_left_eye}:
+            issues.append(f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}')
         experiment.eyetracker.left = asc_left_eye
-    elif experiment.eyetracker.left != asc_left_eye:
-        issues.append(f'Left eye tracked: {experiment.eyetracker.left} != {asc_left_eye}')
-    if experiment.eyetracker.right is None:
+        if experiment.eyetracker.right not in {None, asc_right_eye}:
+            issues.append(f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}')
         experiment.eyetracker.right = asc_right_eye
-    elif experiment.eyetracker.right != asc_right_eye:
-        issues.append(f'Right eye tracked: {experiment.eyetracker.right} != {asc_right_eye}')
 
     # Mount configuration
-    if experiment.eyetracker.mount is None:
-        try:
-            experiment.eyetracker.mount = metadata['mount_configuration']['mount_type']
-        except KeyError:
-            warnings.warn('No mount configuration found.')
-    elif experiment.eyetracker.mount != metadata['mount_configuration']['mount_type']:
-        issues.append(
-            f'Mount configuration: {experiment.eyetracker.mount} != '
-            f"{metadata['mount_configuration']['mount_type']}",
-        )
+    parsed_mount = metadata.get('mount_configuration', {}).get('mount_type')
+    if parsed_mount is None:
+        warnings.warn('No mount configuration found.')
+    else:
+        if experiment.eyetracker.mount not in {None, parsed_mount}:
+            issues.append(f'Mount configuration: {experiment.eyetracker.mount} != {parsed_mount}')
+        experiment.eyetracker.mount = parsed_mount
 
     # Eye tracker vendor
-    asc_vendor = 'EyeLink' if 'EyeLink' in metadata['model'] else None
-    if experiment.eyetracker.vendor is None:
+    asc_vendor = 'EyeLink' if 'EyeLink' in (metadata.get('model') or '') else None
+    if asc_vendor is None:
+        warnings.warn('No eye tracker vendor found.')
+    else:
+        if experiment.eyetracker.vendor not in {None, asc_vendor}:
+            issues.append(f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}')
         experiment.eyetracker.vendor = asc_vendor
-    elif experiment.eyetracker.vendor != asc_vendor:
-        issues.append(f'Eye tracker vendor: {experiment.eyetracker.vendor} != {asc_vendor}')
 
     # Eye tracker model
-    if experiment.eyetracker.model is None:
-        experiment.eyetracker.model = metadata['model']
-    elif experiment.eyetracker.model != metadata['model']:
-        issues.append(f"Eye tracker model: {experiment.eyetracker.model} != {metadata['model']}")
+    parsed_model = metadata.get('model') or ''
+    if parsed_model == 'unknown':
+        warnings.warn('No eye tracker model found.')
+    else:
+        if experiment.eyetracker.model not in {None, parsed_model}:
+            issues.append(f'Eye tracker model: {experiment.eyetracker.model} != {parsed_model}')
+        experiment.eyetracker.model = parsed_model
 
     # Eye tracker software version
-    if experiment.eyetracker.version is None:
-        experiment.eyetracker.version = metadata['version_number']
-    elif experiment.eyetracker.version != metadata['version_number']:
-        issues.append(
-            f'Eye tracker software version: {experiment.eyetracker.version} != '
-            f"{metadata['version_number']}",
-        )
+    parsed_version = metadata.get('version_number')
+    if parsed_version == 'unknown':
+        warnings.warn('No eye tracker software version found.')
+    else:
+        if experiment.eyetracker.version not in {None, parsed_version}:
+            issues.append(
+                'Eye tracker software version: '
+                f'{experiment.eyetracker.version} != {parsed_version}',
+            )
+        experiment.eyetracker.version = parsed_version
 
     if issues:
-        raise ValueError(
-            'Experiment metadata does not match the metadata in the ASC file:\n'
-            + '\n'.join(f'- {issue}' for issue in issues),
+        warnings.warn(
+            'Experiment metadata does not match the metadata parsed from the ASC file:\n'
+            + '\n'.join(f'- {issue}' for issue in issues) + '\n'
+            'Experiment metadata was overwritten with parsed metadata.',
         )
 
     return experiment
+
+
+def _fill_experiment_from_parsing_begaze_metadata(
+        experiment: Experiment | None,
+        metadata: dict[str, Any],
+) -> Experiment:
+    """Fill Experiment with BeGaze metadata.
+
+    Behavior:
+    - Create a new ``Experiment`` if none is provided, using the parsed sampling rate.
+    - If a field on ``experiment`` is None, set it from parsed metadata when available.
+    - If a field is already set and differs from parsed metadata, emit a warning and keep the
+      existing value (do not raise).
+    """
+    # Ensure an Experiment exists
+    if experiment is None:
+        experiment = Experiment()
+
+    # Only set the sampling rate if not set
+    if experiment.eyetracker.sampling_rate is None:
+        experiment.eyetracker.sampling_rate = metadata['sampling_rate']
+
+    # Tracked eye flags if present (metadata may provide 'L'/'R')
+    tracked = (metadata.get('tracked_eye') or '')
+    left_parsed = 'L' in tracked
+    right_parsed = 'R' in tracked
+
+    if experiment.eyetracker.left is None:
+        experiment.eyetracker.left = left_parsed
+    elif experiment.eyetracker.left != left_parsed:
+        warnings.warn(
+            f'BeGaze metadata suggests left tracked={left_parsed} but experiment has '
+            f'{experiment.eyetracker.left}; keeping experiment value.',
+        )
+
+    if experiment.eyetracker.right is None:
+        experiment.eyetracker.right = right_parsed
+    elif experiment.eyetracker.right != right_parsed:
+        warnings.warn(
+            f'BeGaze metadata suggests right tracked={right_parsed} but experiment has '
+            f'{experiment.eyetracker.right}; keeping experiment value.',
+        )
+
+    # BeGaze headers typically do not include screen resolution in a standard way; if present as
+    # 'resolution' in metadata, only set when experiment fields are None; warn on mismatch
+    if 'resolution' in metadata:
+        res = metadata['resolution']
+        try:
+            width, height = res
+        except (TypeError, ValueError):
+            width = height = None
+        if experiment.screen.width_px is None and width is not None:
+            experiment.screen.width_px = int(width)
+        elif width is not None and experiment.screen.width_px not in (None, int(width)):
+            warnings.warn(
+                f'BeGaze metadata screen width={width} differs from experiment value '
+                f'{experiment.screen.width_px}; keeping experiment value.',
+            )
+        if experiment.screen.height_px is None and height is not None:
+            experiment.screen.height_px = int(height)
+        elif height is not None and experiment.screen.height_px not in (None, int(height)):
+            warnings.warn(
+                f'BeGaze metadata screen height={height} differs from experiment value '
+                f'{experiment.screen.height_px}; keeping experiment value.',
+            )
+
+    return experiment
+
+
+def from_begaze(
+        file: str | Path,
+        *,
+        patterns: list[dict[str, Any] | str] | None = None,
+        metadata_patterns: list[dict[str, Any] | str] | None = None,
+        schema: dict[str, Any] | None = None,
+        experiment: Experiment | None = None,
+        trial_columns: str | list[str] | None = None,
+        add_columns: dict[str, str] | None = None,
+        column_schema_overrides: dict[str, Any] | None = None,
+        encoding: str | None = 'ascii',
+        prefer_eye: str = 'L',
+        metadata: dict[str, Any] | None = None,
+) -> Gaze:
+    """Initialize a :py:class:`~pymovements.Gaze` from a BeGaze text export.
+
+    Parameters
+    ----------
+    file: str | Path
+        Path of BeGaze text export.
+    patterns: list[dict[str, Any] | str] | None
+        List of patterns to match for additional columns (on BeGaze `MSG` lines).
+    metadata_patterns: list[dict[str, Any] | str] | None
+        List of patterns to match for extracting metadata from custom logged messages.
+    schema: dict[str, Any] | None
+        Dictionary to optionally specify types of columns parsed by patterns.
+    experiment: Experiment | None
+        The experiment definition. (default: None)
+    trial_columns: str | list[str] | None
+        The names of the columns (extracted by patterns) to use as trial columns.
+    add_columns: dict[str, str] | None
+        Dictionary containing columns to add to loaded data frame.
+    column_schema_overrides: dict[str, Any] | None
+        Dictionary containing types for columns.
+    encoding: str | None
+        Text encoding of the file. Defaults to ASCII, which is the common BeGaze export encoding.
+    prefer_eye: str
+        Preferred eye to parse when both eyes are present ("L" or "R"). Defaults to "L".
+    metadata: dict[str, Any] | None
+        Dictionary containing additional metadata. (default: None)
+
+    Returns
+    -------
+    Gaze
+        The initialized gaze object read from the BeGaze text file.
+    """
+    # Read data via BeGaze parser.
+    samples, event_data, parsed_metadata = parse_begaze(
+        file,
+        patterns=patterns,
+        schema=schema,
+        metadata_patterns=metadata_patterns,
+        encoding=encoding or 'ascii',
+        prefer_eye=prefer_eye,
+        harmonise_trial_header=False,
+    )
+
+    if add_columns is not None:
+        samples = samples.with_columns([
+            pl.lit(value).alias(column)
+            for column, value in add_columns.items()
+            if column not in samples.columns
+        ])
+
+    if column_schema_overrides is not None:
+        samples = samples.with_columns([
+            pl.col(fileinfo_key).cast(fileinfo_dtype)
+            for fileinfo_key, fileinfo_dtype in column_schema_overrides.items()
+        ])
+
+    # Fill experiment with parsed metadata.
+    experiment = _fill_experiment_from_parsing_begaze_metadata(experiment, parsed_metadata)
+
+    # Ensure required trial columns exist (e.g. 'Stimulus' for DIDEC) even if missing in file
+    if trial_columns:
+        # Normalise to a list of column names to avoid iterating over characters
+        trial_cols_list = (
+            [trial_columns] if isinstance(trial_columns, str) else list(trial_columns)
+        )
+        missing = [c for c in trial_cols_list if c not in samples.columns]
+        if missing:
+            samples = samples.with_columns([pl.lit(None).alias(c) for c in set(missing)])
+
+    # Detect pixel columns to pass to Gaze (monocular naming from BeGaze uses 'x_pix', 'y_pix').
+    detected_pixel_columns: list[str] | None = [c for c in samples.columns if '_pix' in c]
+
+    gaze = Gaze(
+        samples=samples,
+        experiment=experiment,
+        events=Events(event_data),
+        trial_columns=trial_columns,
+        time_column='time',
+        time_unit='ms',
+        pixel_columns=detected_pixel_columns,
+        metadata=metadata,
+    )
+    return gaze

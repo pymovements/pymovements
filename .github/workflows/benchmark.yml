@@ -1,12 +1,13 @@
 name: benchmark
+
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: benchmark-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
@@ -73,4 +74,4 @@ jobs:
           comment-on-alert: true
           fail-on-alert: true
           summary-always: true
-          alert-comment-cc-users: '@dkrako,@SiQube'
+          alert-comment-cc-users: '@dkrako,@cbueth,@SiQube'

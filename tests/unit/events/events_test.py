@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -280,6 +280,48 @@ def test_init_expected(args, kwargs, expected_df_data, expected_schema_after_ini
             ),
             id='data_one_event_trial_column_enforce_start',
         ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'trial_id': [1, 1, 2],
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_preserves_custom_property',
+        ),
+        pytest.param(
+            [], {
+                'data': pl.from_dict({
+                    'name': ['fixation', 'saccade', 'fixation'],
+                    'onset': [100, 200, 300],
+                    'offset': [150, 250, 350],
+                    'trial_id': [1, 1, 2],
+                    'custom_property': [1.5, 2.5, 1.5],
+                }),
+                'trial_columns': 'trial_id',
+            },
+            pl.DataFrame({
+                'trial_id': [1, 1, 2],
+                'name': ['fixation', 'saccade', 'fixation'],
+                'onset': [100, 200, 300],
+                'offset': [150, 250, 350],
+                'custom_property': [1.5, 2.5, 1.5],
+                'duration': [50, 50, 50],
+            }),
+            id='data_with_trial_columns_enforce_start_and_preserve_custom',
+        ),
     ],
 )
 def test_init_expected_df(args, kwargs, expected_df):
@@ -498,37 +540,37 @@ def test_columns_same_as_frame():
     assert events.columns == events.frame.columns
 
 
-def test_clone():
-    events = Events(name='saccade', onsets=[0], offsets=[123])
+@pytest.mark.parametrize(
+    'events',
+    [
+        pytest.param(
+            Events(name='saccade', onsets=[0], offsets=[123]),
+            id='simple_events_no_trials',
+        ),
+        pytest.param(
+            Events(
+                data=pl.from_dict(
+                    {
+                        'trial_id': [1],
+                        'name': ['saccade'],
+                        'onset': [0],
+                        'offset': [123],
+                        'custom_property': [42],
+                    },
+                ),
+                trial_columns='trial_id',
+            ),
+            id='events_with_trial_columns_and_custom_property',  # regression test for #1349
+        ),
+    ],
+)
+def test_clone(events):
     events_copy = events.clone()
 
     # We want to have separate dataframes but with the exact same data.
     assert events is not events_copy
     assert events.frame is not events_copy.frame
     assert_frame_equal(events.frame, events_copy.frame)
-
-
-@pytest.mark.filterwarnings('ignore::DeprecationWarning')
-def test_copy():
-    events = Events(name='saccade', onsets=[0], offsets=[123])
-    events_copy = events.copy()
-
-    # We want to have separate dataframes but with the exact same data.
-    assert events is not events_copy
-    assert events.frame is not events_copy.frame
-    assert_frame_equal(events.frame, events_copy.frame)
-
-
-def test_copy_removed(assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        Events().copy()
-
-    assert_deprecation_is_removed(
-        function_name='Events.copy()',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
 
 
 def test_clones_trial_columns():
@@ -879,16 +921,49 @@ def test_split_as_dict_returns_expected_dict(events, by, expected_splits):
     assert splits == expected_splits
 
 
+def test_filter_by_name_literal_substring(make_events):
+    events = make_events(['fixation.ivt', 'fixation', 'saccade.ivt', 'blink'])
+    out = events.filter_by_name('fixation')
+    assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
+
+
 def test_fixations_filter(make_events):
     events = make_events(['fixation', 'fixation_ivt', 'saccade', 'blink'])
     out = events.fixations
     assert set(out['name'].to_list()) == {'fixation', 'fixation_ivt'}
 
 
+def test_filter_by_name_prefix_regex(make_events):
+    events = make_events(['fixation.ivt', 'fixation', 'saccade.ivt', 'blink'])
+    out = events.filter_by_name(r'^fixation')
+    assert set(out['name'].to_list()) == {'fixation.ivt', 'fixation'}
+
+
+def test_filter_by_name_missing_column_raises_column_not_found_error(make_events):
+    events = make_events(['microsaccade', 'microsaccade_x', 'saccade'])
+    events.frame = events.frame.drop('name')
+    expected_msg = "Events frame is missing the 'name' column."
+
+    with pytest.raises(ValueError, match=expected_msg):
+        events.filter_by_name('saccade')
+
+
 def test_saccades_filter(make_events):
     events = make_events(['saccade', 'saccade_algo', 'fixation'])
     out = events.saccades
     assert set(out['name'].to_list()) == {'saccade', 'saccade_algo'}
+
+
+def test_filter_by_name_exact_match_regex(make_events):
+    events = make_events(['fixation.ivt', 'fixation', 'fixation_ivt', 'saccade'])
+    out = events.filter_by_name(r'^fixation\.ivt$')
+    assert out['name'].to_list() == ['fixation.ivt']
+
+
+def test_filter_by_name_no_matches(make_events):
+    events = make_events(['fixation', 'saccade'])
+    out = events.filter_by_name(r'^blink$')
+    assert out.height == 0
 
 
 def test_blinks_filter(make_events):
@@ -964,3 +1039,382 @@ def test_drop_event_properties_raises_exception(
 
     with pytest.raises(exception, match=message):
         events.drop(remove_properties)
+
+
+@pytest.mark.parametrize(
+    'locations, expected_x, expected_y',
+    [
+        pytest.param(
+            [[1, 2], [3, 4]],
+            [1, 3],
+            [2, 4],
+            id='two_rows_integers',
+        ),
+        pytest.param(
+            [[None, None]],
+            [None],
+            [None],
+            id='none_pairs_propagate',
+        ),
+    ],
+)
+def test_unnest_location_basic(
+        locations: list[list[int | None]],
+        expected_x: list[int | None],
+        expected_y: list[int | None],
+) -> None:
+    """Events.unnest splits 'location' list into 'location_x'/'location_y' and drops input.
+
+    This test covers typical integer values and None pairs - values are propagated as-is.
+    """
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'] * len(locations),
+            'onset': list(range(len(locations))),
+            'offset': list(range(1, len(locations) + 1)),
+            'location': locations,
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest()
+
+    assert 'location' not in events.frame.columns
+    assert events.frame.get_column('location_x').to_list() == expected_x
+    assert events.frame.get_column('location_y').to_list() == expected_y
+
+
+def test_unnest_location_absent_is_noop() -> None:
+    """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+        },
+    )
+    events = Events(data=df)
+
+    before_cols = set(events.frame.columns)
+    events.unnest()
+    after_cols = set(events.frame.columns)
+
+    assert before_cols == after_cols
+
+
+@pytest.mark.parametrize('max_gap', range(6))
+@pytest.mark.parametrize(
+    'events',
+    [
+        Events(
+            pl.DataFrame(
+                {
+                    'name': [
+                        'fixation',
+                        'fixation',
+                        'fixation',
+                        'blink',
+                        'saccade',
+                        'blink',
+                        'fixation',
+                        'fixation',
+                        'fixation',
+                        'fixation',
+                    ],
+                    'onset': [0, 2, 5, 13, 21, 22, 30, 40, 53, 73],
+                    'offset': [1, 3, 10, 20, 22, 29, 35, 49, 70, 90],
+                    'other_col': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+                    'other_col_2': ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+                },
+            ),
+        ),
+    ],
+)
+def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
+    events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=True)
+    assert (max_gap + len(events.frame)) == 10, \
+        f'Expected {10 - max_gap} events after merging,' + \
+        f' but got {len(events.frame)} for max_gap={max_gap}'
+
+
+@pytest.mark.parametrize('verbose', [True, False])
+@pytest.mark.parametrize(
+    ('events', 'max_gap', 'result_frame'),
+    [
+        pytest.param(
+            Events(),
+            6,
+            Events().frame,
+            id='empty_events',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation'],
+                        'onset': [0],
+                        'offset': [1],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'duration': [1],
+                },
+            ),
+            id='single_event_left_unchanged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation'],
+                        'onset': [0, 3],
+                        'offset': [1, 5],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [5],
+                    'duration': [5],
+                },
+            ),
+            id='two_events_small_gap_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation'],
+                        'onset': [0, 103],
+                        'offset': [1, 105],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 103],
+                    'offset': [1, 105],
+                    'duration': [1, 2],
+                },
+            ),
+            id='two_events_big_gap_not_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation', 'fixation'],
+                        'onset': [0, 4, 103],
+                        'offset': [1, 10, 105],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'fixation'],
+                    'onset': [0, 103],
+                    'offset': [10, 105],
+                    'duration': [10, 2],
+                },
+            ),
+            id='three_events_small_gap_two_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'fixation', 'fixation'],
+                        'onset': [0, 4, 13],
+                        'offset': [1, 10, 15],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [15],
+                    'duration': [15],
+                },
+            ),
+            id='three_events_small_gap_three_merged',
+        ),
+        pytest.param(
+            Events(
+                pl.DataFrame(
+                    {
+                        'name': ['fixation', 'saccade', 'fixation'],
+                        'onset': [0, 2, 5],
+                        'offset': [1, 4, 12],
+                    },
+                ),
+            ),
+            6,
+            pl.DataFrame(
+                {
+                    'name': ['fixation', 'saccade'],
+                    'onset': [0, 2],
+                    'offset': [12, 4],
+                    'duration': [12, 2],
+                },
+            ),
+            id='three_events_small_gap_two_merged_inbetween',
+        ),
+    ],
+)
+def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
+    events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
+    assert_frame_equal(events.frame, result_frame)
+
+
+@pytest.mark.parametrize(
+    ('trial_data', 'kwargs', 'expected_events_kept'),
+    [
+        pytest.param(
+            {
+                'trial': ['a', 'a', 'b', None],
+                'page': [0, 1, None, 0],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 2, 3],
+            id='none_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 3],
+            id='some_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {},
+            [1],
+            id='some_dropped_any',
+        ),
+    ],
+)
+def test_events_drop_nulls(trial_data, kwargs, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation'] * len(trial_data['trial']),
+                'onset': range(len(trial_data['trial'])),
+                'offset': range(1, len(trial_data['trial']) + 1),
+                **trial_data,
+            },
+        ),
+    )
+    events.drop_nulls(**kwargs)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+@pytest.mark.parametrize(
+    ('location', 'how', 'expected_events_kept'),
+    [
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'any',
+            [1, 2],
+            id='any_single_null_component_dropped',
+        ),
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [0, 1, 2],
+            id='all_single_null_component_kept',
+        ),
+        pytest.param(
+            [[None, None], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [1, 2],
+            id='all_components_null_dropped',
+        ),
+    ],
+)
+def test_events_drop_nulls_nested_components(location, how, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation', 'fixation'],
+                'onset': [0, 1, 2],
+                'offset': [1, 2, 3],
+                'location': location,
+            },
+        ),
+    )
+    events.drop_nulls(subset=['location'], how=how)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+def test_events_drop_nulls_raises_missing_columns():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(
+            ValueError,
+            match=r"columns \['trial'\] from subset do not exist in the events frame",
+    ):
+        events.drop_nulls(subset=['trial'])
+    assert len(events.frame) == 2
+
+
+@pytest.mark.parametrize(
+    'subset',
+    [
+        pytest.param(None, id='subset_none'),
+        pytest.param([], id='subset_empty'),
+    ],
+)
+def test_events_drop_nulls_raises_invalid_how(subset):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
+        events.drop_nulls(subset=subset, how='anny')
+    assert len(events.frame) == 2
+
+
+def test_events_drop_nulls_empty_subset_is_noop():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+                'trial': [1, None],
+            },
+        ),
+    )
+    events.drop_nulls(subset=[])
+    assert events.frame['onset'].to_list() == [0, 1]

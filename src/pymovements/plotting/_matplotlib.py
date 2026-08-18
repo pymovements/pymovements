@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 The pymovements Project Authors
+# Copyright (c) 2023-2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,16 +25,17 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Literal
-from typing import Union
+from typing import TypeAlias
 from warnings import warn
 
-import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL.Image
+from matplotlib import colors
 from matplotlib import scale as mpl_scale
 from matplotlib.collections import LineCollection
-from typing_extensions import TypeAlias
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import FancyArrowPatch
 
 from pymovements.gaze.experiment import Screen
 
@@ -83,16 +84,14 @@ DEFAULT_SEGMENTDATA_TWOSLOPE: LinearSegmentedColormapType = {
     ],
 }
 
-CmapNormType: TypeAlias = Union[
-    matplotlib.colors.TwoSlopeNorm,
-    matplotlib.colors.Normalize,
-    matplotlib.colors.NoNorm,
-]
+CmapNormType: TypeAlias = (
+    colors.TwoSlopeNorm | colors.Normalize | colors.NoNorm
+)
 
 MatplotlibSetupType: TypeAlias = tuple[
     plt.figure,
     plt.Axes,
-    matplotlib.colors.Colormap,
+    colors.Colormap,
     CmapNormType,
     np.ndarray,
     bool,
@@ -102,7 +101,7 @@ MatplotlibSetupType: TypeAlias = tuple[
 def prepare_figure(
     ax: plt.Axes | None, figsize: tuple[int, int] | tuple[float, float] | None,
     *, func_name: str,
-) -> tuple[plt.Figure, plt.Axes, bool]:
+) -> tuple[plt.Figure, plt.Axes]:
     """Prepare a matplotlib figure and axes.
 
     Create or reuse a matplotlib Figure/Axes pair. If an external Axes is provided,
@@ -119,9 +118,8 @@ def prepare_figure(
 
     Returns
     -------
-    tuple[plt.Figure, plt.Axes, bool]
-        A tuple ``(fig, ax, own)`` where ``own`` indicates whether the Axes was
-        created internally (True) or provided externally (False).
+    tuple[plt.Figure, plt.Axes]
+        A tuple of a figure and its corresponding axes.
     """
     if ax is None:
         # figsize may be None for some callers
@@ -129,83 +127,23 @@ def prepare_figure(
             fig, ax = plt.subplots()
         else:
             fig, ax = plt.subplots(figsize=figsize)
-        own = True
     else:
         fig = ax.figure
-        own = False
         if figsize is not None:
             warn(
                 f'{func_name}: "figsize" is ignored because an external Axes was provided.',
                 UserWarning,
                 stacklevel=2,
             )
-    return fig, ax, own
-
-
-def finalize_figure(
-    fig: plt.Figure,
-    *,
-    show: bool,
-    savepath: str | None,
-    closefig: bool | None,
-    own_figure: bool,
-    func_name: str,
-) -> None:
-    """Finalize a matplotlib figure (save/show/close).
-
-    Manage saving, showing, and closing behavior consistently. When plotting into an
-    external Axes, ``show=True`` and ``closefig=True`` are ignored with a warning.
-
-    Parameters
-    ----------
-    fig : plt.Figure
-        Matplotlib figure to finalize.
-    show : bool
-        Whether to display the figure.
-    savepath : str | None
-        File path to save the figure to. If None, the figure is not saved.
-    closefig : bool | None
-        Whether to close the figure. If None, close only when the figure is owned
-        by the current function (``own_figure=True``).
-    own_figure : bool
-        Indicates whether the figure was created by the current function.
-    func_name : str
-        Name of the calling function, used in warning messages.
-    """
-    if savepath is not None:
-        fig.savefig(savepath)
-
-    if show:
-        if own_figure:
-            plt.show()
-        else:
-            warn(
-                f'{func_name}: "show=True" has no effect if plotting into an external Axes.',
-                UserWarning,
-                stacklevel=2,
-            )
-
-    if closefig is None:
-        do_close = own_figure
-    else:
-        if not own_figure and closefig:
-            warn(
-                f'{func_name}: "closefig=True" is ignored if an external Axes is provided.',
-                UserWarning,
-                stacklevel=2,
-            )
-        do_close = bool(closefig) and own_figure
-
-    if do_close:
-        plt.close(fig)
+    return fig, ax
 
 
 def _setup_axes_and_colormap(
     x_signal: np.ndarray,
     y_signal: np.ndarray,
     figsize: tuple[int, int] | tuple[float, float],
-    cmap: matplotlib.colors.Colormap | None = None,
-    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap: colors.Colormap | None = None,
+    cmap_norm: colors.Normalize | str | None = None,
     cmap_segmentdata: LinearSegmentedColormapType | None = None,
     cval: np.ndarray | None = None,
     show_cbar: bool = False,
@@ -238,9 +176,19 @@ def _setup_axes_and_colormap(
         img = PIL.Image.open(path_to_image_stimulus)
         ax.imshow(img, origin=stimulus_origin, extent=None)
     else:
-        if n > 0:  # autoset axes limits if there is at least one data point
-            x_min, x_max = np.nanmin(x_signal), np.nanmax(x_signal)
-            y_min, y_max = np.nanmin(y_signal), np.nanmax(y_signal)
+
+        # Convert to NumPy arrays first
+        x_arr = np.asarray(x_signal)
+        y_arr = np.asarray(y_signal)
+
+        valid_x = x_arr[np.isfinite(x_arr)]
+        valid_y = y_arr[np.isfinite(y_arr)]
+
+        if valid_x.size > 0 and valid_y.size > 0:
+
+            # autoset axes limits if there is at least one data point
+            x_min, x_max = np.nanmin(valid_x), np.nanmax(valid_x)
+            y_min, y_max = np.nanmin(valid_y), np.nanmax(valid_y)
 
             if padding is None:  # dynamic padding relative to data range
                 x_pad = (x_max - x_min) * pad_factor
@@ -284,20 +232,20 @@ def _setup_axes_and_colormap(
             else:
                 cmap_segmentdata = DEFAULT_SEGMENTDATA
 
-        cmap = matplotlib.colors.LinearSegmentedColormap(
+        cmap = colors.LinearSegmentedColormap(
             'line_cmap', segmentdata=cmap_segmentdata, N=512,
         )
 
     if cmap_norm == 'twoslope':
-        cmap_norm = matplotlib.colors.TwoSlopeNorm(
+        cmap_norm = colors.TwoSlopeNorm(
             vcenter=0, vmin=-cval_max, vmax=cval_max,
         )
     elif cmap_norm == 'normalize':
-        cmap_norm = matplotlib.colors.Normalize(
+        cmap_norm = colors.Normalize(
             vmin=cval_min, vmax=cval_max,
         )
     elif cmap_norm == 'nonorm':
-        cmap_norm = matplotlib.colors.NoNorm()
+        cmap_norm = colors.NoNorm()
 
     elif isinstance(cmap_norm, str):
         # pylint: disable=protected-access
@@ -306,18 +254,43 @@ def _setup_axes_and_colormap(
         ) is None:
             raise ValueError(f'cmap_norm string {cmap_norm} is not supported')
 
-        norm_class = matplotlib.colors.make_norm_from_scale(scale_class)
-        cmap_norm = norm_class(matplotlib.colors.Normalize)()
+        norm_class = colors.make_norm_from_scale(scale_class)
+        cmap_norm = norm_class(colors.Normalize)()
 
     return fig, ax, cmap, cmap_norm, cval, show_cbar
+
+
+def _draw_arrow_data(
+    fixation_x: np.ndarray,
+    fixation_y: np.ndarray,
+    ax: plt.Axes,
+    rad: float = 0.25,
+    color: str = 'black',
+    arrowstyle: str = 'simple',
+    mutation_scale: float = 40.,
+) -> PatchCollection:
+    """Draw arrow data as arrows and return the collection."""
+    arrows = []
+    for i in range(len(fixation_x) - 1):
+        arrow = FancyArrowPatch(
+            (fixation_x[i], fixation_y[i]), (fixation_x[i + 1], fixation_y[i + 1]),
+            arrowstyle=arrowstyle,
+            connectionstyle='arc3,rad=' + str(rad),
+            color=color,
+            mutation_scale=mutation_scale,
+        )
+        arrows.append(arrow)
+    arrow_collection = PatchCollection(arrows)
+    collection = ax.add_collection(arrow_collection)
+    return collection
 
 
 def _draw_line_data(
     x_signal: np.ndarray,
     y_signal: np.ndarray,
     ax: plt.Axes,
-    cmap: matplotlib.colors.Colormap | None = None,
-    cmap_norm: matplotlib.colors.Normalize | str | None = None,
+    cmap: colors.Colormap | None = None,
+    cmap_norm: colors.Normalize | str | None = None,
     cval: np.ndarray | None = None,
 ) -> LineCollection:
     """Draw line data as a colored LineCollection and return the collection."""
