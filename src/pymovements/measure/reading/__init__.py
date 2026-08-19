@@ -36,6 +36,8 @@ from pymovements.measure.reading.measures import first_pass_fixation_count
 from pymovements.measure.reading.measures import first_pass_reading_time
 from pymovements.measure.reading.measures import first_reading_time
 from pymovements.measure.reading.measures import landing_position
+from pymovements.measure.reading.measures import non_aoi_fixation_count_ratio
+from pymovements.measure.reading.measures import non_aoi_fixation_duration_ratio
 from pymovements.measure.reading.measures import regression_count_in
 from pymovements.measure.reading.measures import regression_count_out
 from pymovements.measure.reading.measures import regression_path_duration
@@ -83,4 +85,6 @@ __all__ = [
     'saccade_length_in',
     'saccade_length_out',
     'total_fixation_count',
+    'non_aoi_fixation_count_ratio',
+    'non_aoi_fixation_duration_ratio',
 ]
