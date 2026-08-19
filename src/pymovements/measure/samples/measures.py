@@ -266,11 +266,15 @@ def location(
         \text{Location} = \text{median} \left(\text{position}_1, \ldots,
          \text{position}_n \right)
 
+    For methods ``start`` and ``end`` the location is the position of the first and last sample in
+    the event, respectively.
+
 
     Parameters
     ----------
     method: str
-        The centroid method to be used for calculation. Supported methods are ``mean``, ``median``.
+        The centroid method to be used for calculation. Supported methods are ``mean``, ``median``,
+        ``first``, and ``last``.
         (default: 'mean')
     position_column: str
         The column name of the position tuples. (default: 'position')
@@ -288,10 +292,10 @@ def location(
     ValueError
         If method is not one of the supported methods.
     """
-    if method not in {'mean', 'median'}:
+    if method not in {'mean', 'median', 'first', 'last'}:
         raise ValueError(
             f"Method '{method}' not supported. "
-            f"Please choose one of the following: ['mean', 'median'].",
+            f"Please choose one of the following: ['mean', 'median', 'first', 'last'].",
         )
 
     component_expressions = []
@@ -304,8 +308,12 @@ def location(
 
         if method == 'mean':
             expression_component = position_component.mean()
-        else:  # by exclusion this must be median
+        elif method == 'median':
             expression_component = position_component.median()
+        elif method == 'first':
+            expression_component = position_component.first()
+        else:  # by exclusion this must be last
+            expression_component = position_component.last()
 
         component_expressions.append(expression_component)
 
