@@ -1298,7 +1298,7 @@ class Gaze:
             self,
             event_properties: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
-            column_names: str | list[str] | None = None,
+            column_names: str | list[str | None] | None = None,
             name: str | None = None,
     ) -> None:
         """Calculate event properties for given events.
@@ -1310,7 +1310,7 @@ class Gaze:
         ----------
         event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
             The event properties to compute.
-        column_names: str | list[str] | None
+        column_names: str | list[str | None] | None
             The name(s) of the column(s) to be added to the event dataframe. If None, columns will
             be named after the event properties. (default: None)
         name: str | None

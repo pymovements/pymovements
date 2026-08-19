@@ -88,7 +88,7 @@ class EventSamplesProcessor:
     ----------
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
         List of sample measures.
-    column_names: str | list[str] | None
+    column_names: str | list[str | None] | None
         The name(s) of the column(s) to be added to the event dataframe. If None, columns will
         be named after the sample measures. (default: None)
 
@@ -106,7 +106,7 @@ class EventSamplesProcessor:
             self,
             measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
-            column_names: str | list[str] | None = None,
+            column_names: str | list[str | None] | None = None,
     ):
         _check_measures(measures)
 
@@ -133,12 +133,18 @@ class EventSamplesProcessor:
         if column_names is not None and len(column_names) != len(measures_with_kwargs):
             raise ValueError("Number of 'column_names' must match number of 'measures'.")
         if column_names is None:
-            column_names = [
-                SampleMeasureLibrary.get(measure_name)(**measure_kwargs).meta.output_name()
-                for measure_name, measure_kwargs in measures_with_kwargs
-            ]
-        if len(column_names) != len(set(column_names)):
-            duplicates = {name for name in column_names if column_names.count(name) > 1}
+            column_names = [None] * len(measures_with_kwargs)
+        # Check for duplicates in eventual column names.
+        evaluated_column_names = [
+            measure_name if column_name is None else column_name
+            for (measure_name, _), column_name in zip(measures_with_kwargs, column_names)
+        ]
+        if len(evaluated_column_names) != len(set(evaluated_column_names)):
+            duplicates = {
+                name
+                for name in evaluated_column_names
+                if isinstance(name, str) and evaluated_column_names.count(name) > 1
+            }
             raise ValueError(
                 f"Duplicate column names found: {', '.join(duplicates)}. "
                 "Use 'column_names' to specify unique names for each measure.",
@@ -146,9 +152,13 @@ class EventSamplesProcessor:
 
         self.measures: list[pl.Expr] = [
             # initialize measure functions to create polars expressions.
-            SampleMeasureLibrary.get(measure_name)(**measure_kwargs).alias(column_name)
-            for (measure_name, measure_kwargs), column_name
-            in zip(measures_with_kwargs, column_names)
+            SampleMeasureLibrary.get(measure_name)(**measure_kwargs)
+            for (measure_name, measure_kwargs) in measures_with_kwargs
+        ]
+        # Re-alias measures to the specified column names.
+        self.measures = [
+            measure.alias(column_name) if column_name is not None else measure
+            for measure, column_name in zip(self.measures, column_names)
         ]
 
     def process(
