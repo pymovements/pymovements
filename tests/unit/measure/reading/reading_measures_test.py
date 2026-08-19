@@ -32,8 +32,8 @@ from pymovements.measure.reading.measures import first_pass_fixation_count
 from pymovements.measure.reading.measures import first_pass_reading_time
 from pymovements.measure.reading.measures import first_reading_time
 from pymovements.measure.reading.measures import landing_position
-from pymovements.measure.reading.measures import non_aoi_fixation_ratio_by_count
-from pymovements.measure.reading.measures import non_aoi_fixation_ratio_by_duration
+from pymovements.measure.reading.measures import non_aoi_fixation_count_ratio
+from pymovements.measure.reading.measures import non_aoi_fixation_duration_ratio
 from pymovements.measure.reading.measures import regression_count_in
 from pymovements.measure.reading.measures import regression_count_out
 from pymovements.measure.reading.measures import regression_path_duration
@@ -243,14 +243,14 @@ def test_regression_path_duration_no_first_pass():
 
 
 # ---------------------------
-# non_aoi_fixation_ratio_by_count
+# non_aoi_fixation_count_ratio
 # ---------------------------
 
 
 @pytest.mark.parametrize(
     ('fixations', 'expected'),
     [
-        # All fixations inside AOI -> NAFC == 0.0
+        # All fixations inside AOI -> NAFCR == 0.0
         (
             pl.DataFrame({
                 'trial': ['1', '1', '1'],
@@ -260,10 +260,10 @@ def test_regression_path_duration_no_first_pass():
             pl.DataFrame({
                 'trial': ['1'],
                 'page': ['1'],
-                'NAFC': [0.0],
+                'NAFCR': [0.0],
             }),
         ),
-        # All fixations outside AOI -> NAFC == 1.0
+        # All fixations outside AOI -> NAFCR == 1.0
         (
             pl.DataFrame({
                 'trial': ['1', '1'],
@@ -273,10 +273,10 @@ def test_regression_path_duration_no_first_pass():
             pl.DataFrame({
                 'trial': ['1'],
                 'page': ['1'],
-                'NAFC': [1.0],
+                'NAFCR': [1.0],
             }),
         ),
-        # Mix of inside / outside fixations -> NAFC == 0.5
+        # Mix of inside / outside fixations -> NAFCR == 0.5
         (
             pl.DataFrame({
                 'trial': ['1', '1', '1', '1'],
@@ -286,10 +286,10 @@ def test_regression_path_duration_no_first_pass():
             pl.DataFrame({
                 'trial': ['1'],
                 'page': ['1'],
-                'NAFC': [0.5],
+                'NAFCR': [0.5],
             }),
         ),
-        # Multiple trials get separate NAFC values
+        # Multiple trials get separate NAFCR values
         (
             pl.DataFrame({
                 'trial': ['1', '1', '2', '2', '2'],
@@ -299,30 +299,30 @@ def test_regression_path_duration_no_first_pass():
             pl.DataFrame({
                 'trial': ['1', '2'],
                 'page': ['1', '1'],
-                'NAFC': [0.5, 2 / 3],
+                'NAFCR': [0.5, 2 / 3],
             }),
         ),
         # Empty fixations table yields empty output DataFrame
         (
             pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'word_idx': pl.Int64}),
-            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'NAFC': pl.Float64}),
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'NAFCR': pl.Float64}),
         ),
     ],
 )
-def test_non_aoi_fixation_ratio_by_count(fixations, expected):
-    result = non_aoi_fixation_ratio_by_count(fixations)
+def test_non_aoi_fixation_count_ratio(fixations, expected):
+    result = non_aoi_fixation_count_ratio(fixations)
     assert_frame_equal(result, expected)
 
 
 # ---------------------------
-# non_aoi_fixation_ratio_by_duration
+# non_aoi_fixation_duration_ratio
 # ---------------------------
 
 
 @pytest.mark.parametrize(
     ('fixations', 'expected'),
     [
-        # All fixations inside AOI -> NAFD == 0.0
+        # All fixations inside AOI -> NAFDR == 0.0
         (
             pl.DataFrame({
                 'trial': ['1', '1'],
@@ -333,10 +333,10 @@ def test_non_aoi_fixation_ratio_by_count(fixations, expected):
             pl.DataFrame({
                 'trial': ['1'],
                 'page': ['1'],
-                'NAFD': [0.0],
+                'NAFDR': [0.0],
             }),
         ),
-        # All fixations outside AOI -> NAFD == 1.0
+        # All fixations outside AOI -> NAFDR == 1.0
         (
             pl.DataFrame({
                 'trial': ['1', '1'],
@@ -347,10 +347,10 @@ def test_non_aoi_fixation_ratio_by_count(fixations, expected):
             pl.DataFrame({
                 'trial': ['1'],
                 'page': ['1'],
-                'NAFD': [1.0],
+                'NAFDR': [1.0],
             }),
         ),
-        # Mixed fixations -> NAFD == 150 / 400
+        # Mixed fixations -> NAFDR == 150 / 400
         (
             pl.DataFrame({
                 'trial': ['1', '1', '1', '1'],
@@ -361,10 +361,10 @@ def test_non_aoi_fixation_ratio_by_count(fixations, expected):
             pl.DataFrame({
                 'trial': ['1'],
                 'page': ['1'],
-                'NAFD': [150 / 400],
+                'NAFDR': [150 / 400],
             }),
         ),
-        # Zero total duration yields None for NAFD
+        # Zero total duration yields None for NAFDR
         (
             pl.DataFrame({
                 'trial': ['1', '1'],
@@ -376,12 +376,12 @@ def test_non_aoi_fixation_ratio_by_count(fixations, expected):
                 {
                     'trial': ['1'],
                     'page': ['1'],
-                    'NAFD': [None],
+                    'NAFDR': [None],
                 },
-                schema={'trial': pl.String, 'page': pl.String, 'NAFD': pl.Float64},
+                schema={'trial': pl.String, 'page': pl.String, 'NAFDR': pl.Float64},
             ),
         ),
-        # Multiple trials get separate NAFD values
+        # Multiple trials get separate NAFDR values
         (
             pl.DataFrame({
                 'trial': ['1', '1', '2', '2'],
@@ -392,10 +392,10 @@ def test_non_aoi_fixation_ratio_by_count(fixations, expected):
             pl.DataFrame({
                 'trial': ['1', '2'],
                 'page': ['1', '1'],
-                'NAFD': [0.5, 0.75],
+                'NAFDR': [0.5, 0.75],
             }),
         ),
-        # Multiple pages get separate NAFD values
+        # Multiple pages get separate NAFDR values
         (
             pl.DataFrame({
                 'trial': ['1', '1', '1', '1'],
@@ -406,11 +406,11 @@ def test_non_aoi_fixation_ratio_by_count(fixations, expected):
             pl.DataFrame({
                 'trial': ['1', '1'],
                 'page': ['p1', 'p2'],
-                'NAFD': [0.5, 1.0],
+                'NAFDR': [0.5, 1.0],
             }),
         ),
     ],
 )
-def test_non_aoi_fixation_ratio_by_duration(fixations, expected):
-    result = non_aoi_fixation_ratio_by_duration(fixations)
+def test_non_aoi_fixation_duration_ratio(fixations, expected):
+    result = non_aoi_fixation_duration_ratio(fixations)
     assert_frame_equal(result, expected, abs_tol=1e-5)
