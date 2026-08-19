@@ -1096,7 +1096,8 @@ def test_unnest_location_absent_is_noop() -> None:
     events = Events(data=df)
 
     before_cols = set(events.frame.columns)
-    events.unnest()
+    with pytest.warns(UserWarning, match='No columns to unnest.'):
+        events.unnest()
     after_cols = set(events.frame.columns)
 
     assert before_cols == after_cols

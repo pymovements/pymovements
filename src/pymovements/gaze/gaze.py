@@ -37,12 +37,12 @@ import yaml
 from tqdm import tqdm
 
 from pymovements import transforms
+from pymovements._utils._column_nesting import get_nested_columns
+from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
 from pymovements.events import EventDetectionLibrary
 from pymovements.events import Events
-from pymovements.gaze._utils._column_nesting import get_nested_columns
-from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.gaze.experiment import Experiment
 from pymovements.gaze.quality import DataQualityReport
 from pymovements.gaze.quality import run_report
@@ -1921,9 +1921,9 @@ class Gaze:
             *,
             output_columns: list[str] | None = None,
     ) -> None:
-        """Explode a column of type ``polars.List`` into one column for each list component.
+        """Explode columns of type ``polars.List`` into one column for each list component.
 
-        The input column will be dropped.
+        The input columns will be dropped.
 
         Parameters
         ----------
