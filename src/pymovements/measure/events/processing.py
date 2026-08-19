@@ -88,18 +88,25 @@ class EventSamplesProcessor:
     ----------
     measures: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
         List of sample measures.
+    column_names: str | list[str] | None
+        The name(s) of the column(s) to be added to the event dataframe. If None, columns will
+        be named after the sample measures. (default: None)
 
     Raises
     ------
     UnknownMeasure
         If ``event_properties`` includes an unknown measure. See :ref:`sample-measures` and
         :ref:`event-measures` for an overview of supported measures.
+    ValueError
+        If ``column_names`` has a different length than ``measures``, or if there are
+        duplicate column names.
     """
 
     def __init__(
             self,
             measures: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
+            column_names: str | list[str] | None = None,
     ):
         _check_measures(measures)
 
@@ -121,10 +128,27 @@ class EventSamplesProcessor:
                     measure_name=measure_name, known_measures=known_measures,
                 )
 
+        if isinstance(column_names, str):
+            column_names = [column_names]
+        if column_names is not None and len(column_names) != len(measures_with_kwargs):
+            raise ValueError("Number of 'column_names' must match number of 'measures'.")
+        if column_names is None:
+            column_names = [
+                SampleMeasureLibrary.get(measure_name)(**measure_kwargs).meta.output_name()
+                for measure_name, measure_kwargs in measures_with_kwargs
+            ]
+        if len(column_names) != len(set(column_names)):
+            duplicates = {name for name in column_names if column_names.count(name) > 1}
+            raise ValueError(
+                f"Duplicate column names found: {', '.join(duplicates)}. "
+                "Use 'column_names' to specify unique names for each measure.",
+            )
+
         self.measures: list[pl.Expr] = [
             # initialize measure functions to create polars expressions.
-            SampleMeasureLibrary.get(measure_name)(**measure_kwargs)
-            for measure_name, measure_kwargs in measures_with_kwargs
+            SampleMeasureLibrary.get(measure_name)(**measure_kwargs).alias(column_name)
+            for (measure_name, measure_kwargs), column_name
+            in zip(measures_with_kwargs, column_names)
         ]
 
     def process(
