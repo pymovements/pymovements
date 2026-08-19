@@ -41,6 +41,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
@@ -137,6 +138,22 @@ def test_reading_measures_init_df():
     assert isinstance(reading_measures.frame, pl.DataFrame)
     assert reading_measures.frame.shape == (3, 1)
     assert reading_measures.frame['a'].to_list() == [1, 2, 3]
+
+
+def test_compute_reading_measures_preserves_zero_based_word_indices():
+    aois = pl.DataFrame({
+        'word_idx': [0, 0, 1, 1],
+        'word': ['zero', 'zero', 'one', 'one'],
+    })
+    fixations = pl.DataFrame({
+        'word_idx': [0, 1],
+        'duration': [100, 200],
+    })
+
+    result = compute_reading_measures(fixations, aois)
+
+    assert result['word_index'].to_list() == [0, 1]
+    assert result['word'].to_list() == ['zero', 'one']
 
 
 def test_build_word_level_table(annotated_events, all_tokens):

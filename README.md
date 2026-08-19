@@ -105,7 +105,7 @@ software and the following paper:
       url       = {https://doi.org/10.5281/zenodo.19486286},
     }
   ```
-- [pymovements: A Python Package for Processing Eye Movement Data <pymovementsPaper](https://doi.org/10.1145/3588015.3590134)
+- [pymovements: A Python Package for Processing Eye Movement Data](https://doi.org/10.1145/3588015.3590134)
 
   ```bibtex
     @inproceedings{pymovementsPaper,
