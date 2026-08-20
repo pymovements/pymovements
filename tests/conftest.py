@@ -17,10 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Fixtures for datasets.
-
-Doctest support fixtures live in ``tests/doctest/``.
-"""
+"""Fixtures for datasets."""
 
 pytest_plugins = [
     'tests.fixtures.deprecation_fixtures',
