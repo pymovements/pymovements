@@ -55,11 +55,16 @@ def compute_reading_measures(
     pl.DataFrame
         DataFrame with computed reading measures.
     """
+    # Normalize one-based AOI indices while preserving zero-based inputs.
+    index_offset = 0 if aois[word_index_column].eq(0).any() else 1
+
     # Append an extra dummy fixation to have the next fixation for the actual last fixation.
     dummy_fixation_dict: dict[str, list[int] | list[str]] = {}
     for col, dtype in fixations.schema.items():
         if dtype == pl.String:
             dummy_fixation_dict[col] = ['']
+        elif col == word_index_column:
+            dummy_fixation_dict[col] = [index_offset - 1]
         else:
             dummy_fixation_dict[col] = [0]
     dummy_fixation = pl.DataFrame(
@@ -68,13 +73,11 @@ def compute_reading_measures(
     )
     fixations = pl.concat([fixations, dummy_fixation])
 
-    # Adjust AOI indices (fix off by one error).
-    aois = aois.with_columns(
-        (pl.col(word_index_column) - 1).alias(word_index_column),
-    )
-
-    # Get original words of the text and their indices.
-    word_indices = aois[word_index_column].to_list()
+    # Get the original words of the text and their normalized indices.
+    word_indices = [
+        int(word_index) - index_offset
+        for word_index in aois[word_index_column].to_list()
+    ]
     words = aois[word_column].to_list()
 
     # Initialize dictionary for reading measures per word.
@@ -102,7 +105,7 @@ def compute_reading_measures(
     # Iterate over fixation data.
     for fixation in fixations.to_dicts():
         try:
-            aoi = int(fixation[word_index_column]) - 1
+            aoi = int(fixation[word_index_column]) - index_offset
             if aoi not in rm_dict:
                 continue
         except (ValueError, TypeError):
