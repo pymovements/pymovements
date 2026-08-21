@@ -1203,7 +1203,10 @@ def _make_real_gaze() -> Gaze:
     )
 
 
-def _make_real_dataset(gaze_list: list[Gaze], fileinfo: object | None = None) -> Dataset:
+def _make_real_dataset(
+        gaze_list: list[Gaze],
+        fileinfo: dict[str, pl.DataFrame] | None = None,
+) -> Dataset:
     ds = Dataset(DatasetDefinition, path='.')
     ds.gaze = gaze_list
     if fileinfo is not None:

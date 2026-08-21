@@ -65,6 +65,20 @@ class Events:
     trial_columns: list[str] | None
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
+    schema: pl.type_aliases.SchemaDict
+        Schema of the event dataframe.
+    columns: list[str]
+        List of column names in the event dataframe.
+    event_property_columns: list[str]
+        Event property columns for this dataframe.
+    fixations: pl.DataFrame
+        Fixation events.
+    saccades: pl.DataFrame
+        Saccade events.
+    blinks: pl.DataFrame
+        Blink events.
+    microsaccades: pl.DataFrame
+        Microsaccade events.
 
     Raises
     ------

@@ -201,8 +201,6 @@ def load_event_files(
         Path of directory containing event files.
     events_dirname: str | None
         One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.events_rootpath`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `tsv`, `txt`.
@@ -274,8 +272,6 @@ def load_gaze_files(
     preprocessed_dirname : str | None
         One-time usage of an alternative directory name to save data relative to
         :py:meth:`pymovements.Dataset.path`.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.preprocessed_rootpath`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `txt`, `tsv`.
@@ -735,9 +731,8 @@ def save_events(
     paths: DatasetPaths
         Path of directory containing event files.
     events_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.events_rootpath`. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)
@@ -805,9 +800,8 @@ def save_preprocessed(
     paths: DatasetPaths
         Path of directory containing event files.
     preprocessed_dirname: str | None
-        One-time usage of an alternative directory name to save data relative to dataset path.
-        This argument is used only for this single call and does not alter
-        :py:meth:`pymovements.Dataset.preprocessed_rootpath`. (default: None)
+        One-time usage of an alternative directory name to save data relative to
+        dataset path. (default: None)
     verbose: int
         Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
         (default: 1)

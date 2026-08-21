@@ -150,6 +150,16 @@ class Gaze:
         The validations from the data: timestamp, num_points, tracked eye, accuracy_avg,
         accuracy_max.
         None by default, to be populated by I/O helpers (e.g. from_asc).
+    schema: polars.type_aliases.SchemaDict
+        Schema of the samples dataframe.
+    columns: list[str]
+        List of column names in the samples dataframe.
+    frame: polars.DataFrame
+        Gaze samples dataframe.
+
+        .. deprecated:: v0.23.0
+            Please use ``samples`` instead.
+            This property will be removed in v0.28.0.
 
     Notes
     -----
@@ -2804,8 +2814,6 @@ class Gaze:
         ----------
         dirpath: str | Path
             Absolute directory name to save data.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`.
         save_events: bool | None
             Save events in events.{extension} file
         save_samples: bool | None
