@@ -29,6 +29,7 @@ __all__ = [
 
 import calendar
 import datetime
+import io
 import math
 import re
 
@@ -37,7 +38,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 import polars as pl
 
@@ -476,7 +477,7 @@ def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
 
 
 def parse_eyelink(
-        filepath: Path | str,
+        file: Path | str | IO[str] | IO[bytes],
         patterns: list[dict[str, Any] | str] | None = None,
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
@@ -488,8 +489,8 @@ def parse_eyelink(
 
     Parameters
     ----------
-    filepath: Path | str
-        file name of ascii file to convert.
+    file: Path | str | IO[str] | IO[bytes]
+        Path of ASC file or file-like object.
     patterns: list[dict[str, Any] | str] | None
         List of patterns to match for additional columns. (default: None)
     schema: dict[str, Any] | None
@@ -523,6 +524,8 @@ def parse_eyelink(
     ------
     Warning
         If no metadata is found in the file.
+    TypeError
+        If the `file` parameter is not a string, Path, or file-like object.
     ValueError
         If the `messages` parameter is not bool or a list of strings.
 
@@ -570,8 +573,18 @@ def parse_eyelink(
         **{additional_column: [] for additional_column in additional_columns},
     }
 
-    with open(filepath, encoding=encoding) as asc_file:
-        lines = asc_file.readlines()
+    if isinstance(file, (str, Path)):
+        with open(file, encoding=encoding) as asc_file:
+            lines = asc_file.readlines()
+    elif isinstance(file, io.TextIOBase):
+        lines = file.readlines()
+    elif isinstance(file, io.BufferedIOBase):
+        with io.TextIOWrapper(file, encoding=encoding) as asc_file:
+            lines = asc_file.readlines()
+    else:
+        raise TypeError(
+            f'Expected a file path or a file-like object, but got {type(file)}.',
+        )
 
     # will return an empty string if the key does not exist
     metadata: defaultdict = defaultdict(str)
@@ -699,7 +712,7 @@ def parse_eyelink(
             except UnboundLocalError:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{filepath}' may be corrupted. "
+                    f"File '{file}' may be corrupted. "
                     'Total recording duration may be incorrect.',
                 )
             else:  # this will only be executed if no exception was raised in the try block.

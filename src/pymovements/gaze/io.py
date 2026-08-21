@@ -24,6 +24,7 @@ import math
 import warnings
 from pathlib import Path
 from typing import Any
+from typing import IO
 
 import polars as pl
 
@@ -35,7 +36,7 @@ from pymovements.gaze.gaze import Gaze
 
 
 def from_csv(
-        file: str | Path,
+        file: str | Path | IO[str] | IO[bytes],
         experiment: Experiment | None = None,
         *,
         trial_columns: str | list[str] | None = None,
@@ -58,8 +59,8 @@ def from_csv(
 
     Parameters
     ----------
-    file: str | Path
-        Path of gaze file.
+    file: str | Path | IO[str] | IO[bytes]
+        Path of gaze file or file-like object.
     experiment : Experiment | None
         The experiment definition. (default: None)
     trial_columns: str | list[str] | None
@@ -382,7 +383,7 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
 
 
 def from_asc(
-        file: str | Path,
+        file: str | Path | IO[str] | IO[bytes],
         *,
         patterns: str | list[dict[str, Any] | str] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
@@ -401,8 +402,8 @@ def from_asc(
 
     Parameters
     ----------
-    file: str | Path
-        Path of ASC file.
+    file: str | Path | IO[str] | IO[bytes]
+        Path of ASC file or file-like object.
     patterns: str | list[dict[str, Any] | str] | None
         List of patterns to match for additional columns or a key identifier of eye tracker specific
         default patterns. Supported values are: `'eyelink'`. If `None` is passed, `'eyelink'` is
@@ -605,7 +606,7 @@ def from_asc(
 
 
 def from_ipc(
-        file: str | Path,
+        file: str | Path | IO[bytes],
         experiment: Experiment | None = None,
         *,
         trial_columns: str | list[str] | None = None,
@@ -620,8 +621,8 @@ def from_ipc(
 
     Parameters
     ----------
-    file: str | Path
-        Path of IPC/feather file.
+    file: str | Path | IO[bytes]
+        Path of IPC/feather file or file-like object.
     experiment : Experiment | None
         The experiment definition.
         (default: None)

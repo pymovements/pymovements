@@ -991,3 +991,25 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.parametrize(
+    ('mode', 'encoding'), [
+        pytest.param('r', 'utf-8', id='text_mode'),
+        pytest.param('rb', None, id='binary_mode'),
+    ],
+)
+def test_from_asc_accepts_file_object(make_example_file, mode, encoding):
+    """Test that from_asc can accept a file-like object instead of a file path."""
+    filepath = make_example_file('eyelink_monocular_example.asc')
+
+    with open(filepath, mode, encoding=encoding) as f:
+        gaze = from_asc(f)
+
+    assert gaze.samples.height > 0
+
+
+def test_from_asc_rejects_nonfile_objects():
+    """Test that from_asc raises an error when given a non-file object."""
+    with pytest.raises(TypeError, match='Expected a file path or a file-like object'):
+        from_asc(12345)
