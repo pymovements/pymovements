@@ -60,6 +60,7 @@ author = 'The pymovements Project Authors'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
     'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
@@ -206,7 +207,7 @@ nitpick_ignore_regex = [
     (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
 
     # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
-    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment|ResourceDefinition)\..*'),
+    (r'py:attr', r'^pymovements\..*'),
 
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),

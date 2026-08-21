@@ -29,6 +29,7 @@ __all__ = [
 
 import calendar
 import datetime
+import math
 import re
 
 import warnings
@@ -38,11 +39,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 from pymovements.gaze._utils._parsing import compile_patterns, get_pattern_keys, \
-    check_nan, _calculate_data_loss_ratio
+    check_nan
 
 
 # Define separate regex patterns for monocular and binocular cases
@@ -335,16 +335,6 @@ def parse_eyelink_event_end(line: str) -> tuple[str, str, float, float] | None:
     return None
 
 
-def _config_inconsistent(config_list: list[dict[str, Any]], key: str = 'sampling_rate') -> bool:
-    """Check if ``config_list`` has inconsistent values for a key."""
-    vals = []
-    for d in config_list:
-        val = d.get(key)
-        if val is not None:
-            vals.append(val)
-    return len(set(vals)) > 1
-
-
 def _check_patterns(line: str, compiled_patterns: list[dict[str, Any]]) -> dict[str, Any]:
     """Check line against compiled patterns and return matched context."""
     context = {}
@@ -458,6 +448,33 @@ def _match_events_with_context(
     return matched_events
 
 
+def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
+    """Switch the sample column schema from monocular to binocular.
+
+    Samples collected so far were parsed as monocular; they are treated as left-eye data
+    and the right eye is filled with NaN. In standard EyeLink ASC files the binocular
+    SAMPLES config precedes all sample lines, so no samples have been collected yet and no
+    migration happens, but the code below stays correct if that assumption does not hold.
+    Mid-file mode switches (binocular <-> monocular or changing the tracked eyes) within a
+    single file are not supported.
+
+    Parameters
+    ----------
+    samples: dict[str, list[Any]]
+        Dictionary of sample columns to migrate in place.
+    """
+    prev_x = samples.pop('x_pix', [])
+    prev_y = samples.pop('y_pix', [])
+    prev_pupil = samples.pop('pupil', [])
+    n_prev = len(prev_x)
+    samples['x_left_pix'] = prev_x
+    samples['y_left_pix'] = prev_y
+    samples['pupil_left'] = prev_pupil
+    samples['x_right_pix'] = [math.nan] * n_prev
+    samples['y_right_pix'] = [math.nan] * n_prev
+    samples['pupil_right'] = [math.nan] * n_prev
+
+
 def parse_eyelink(
         filepath: Path | str,
         patterns: list[dict[str, Any] | str] | None = None,
@@ -553,9 +570,6 @@ def parse_eyelink(
         **{additional_column: [] for additional_column in additional_columns},
     }
 
-    blink_intervals: list[tuple[float, float]] = []
-    blinking = False
-
     with open(filepath, encoding=encoding) as asc_file:
         lines = asc_file.readlines()
 
@@ -596,53 +610,9 @@ def parse_eyelink(
     samples_config: list[dict[str, Any]] = []
 
     total_recording_duration = 0.0
-    num_expected_samples = 0
-    num_valid_samples = 0  # excluding blinks
-    # First pass: collect SAMPLES config for binocular detection only
     is_binocular = False
-    for line in lines:
-        if match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
-            samples_config.append(match.groupdict())
-            tracked = match.group('tracked_eye').upper().strip()
-            # consider 'LEFT' in tracked and 'RIGHT' in tracked or tracked == 'LR' or
-            # tracked == 'L R': set is_binocular to True if any config indicates binocular
-            is_binocular = is_binocular or (
-                ('LEFT' in tracked and 'RIGHT' in tracked) or
-                tracked == 'LR' or tracked == 'L R'
-            )
 
-    # Update the samples dictionary to include binocular data with correct column names if needed
-    if is_binocular:
-        samples.update({
-            'x_left_pix': [],
-            'y_left_pix': [],
-            'pupil_left': [],
-            'x_right_pix': [],
-            'y_right_pix': [],
-            'pupil_right': [],
-        })
-        # remove monocular-only keys to avoid mismatched column lengths
-        for _k in ('x_pix', 'y_pix', 'pupil'):
-            samples.pop(_k, None)
-    else:
-        # Ensure monocular fields are present in the samples dictionary
-        samples.update({
-            'x_pix': [],
-            'y_pix': [],
-            'pupil': [],
-        })
-        # remove binocular-only keys to avoid mismatched column lengths
-        for _k in (
-            'x_left_pix', 'y_left_pix', 'pupil_left',
-            'x_right_pix', 'y_right_pix', 'pupil_right',
-        ):
-            samples.pop(_k, None)
-
-    # Reset additional columns before second pass
-    for col in additional_columns:
-        current_additional[col] = None
-
-    # Second pass: collect events, patterns, samples, and metadata
+    # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
@@ -660,6 +630,19 @@ def parse_eyelink(
         matched_ctx = _check_patterns(line, compiled_patterns)
         if matched_ctx:
             current_additional.update(matched_ctx)
+
+        # Detect the tracking configuration independently of the elif chain below, so a
+        # SAMPLES config line is never missed (e.g. if it directly follows a calibration
+        # line while cal_timestamp is still set). The switch to binocular has to happen
+        # before this config block's samples are parsed further down the loop.
+        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
+            samples_config.append(samples_match.groupdict())
+            tracked = samples_match.group('tracked_eye').upper().strip()
+            if not is_binocular and (
+                ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}
+            ):
+                _migrate_samples_to_binocular(samples)
+                is_binocular = True
 
         if cal_timestamp:
             # if a calibration timestamp has been found, the next line will be a
@@ -712,20 +695,15 @@ def parse_eyelink(
             stop_recording_timestamp = match.groupdict()['timestamp']
 
             try:
-                # Safely obtain the sampling rate from the last recording_config entry.
                 block_duration = float(stop_recording_timestamp) - float(start_recording_timestamp)
-                current_sampling_rate = recording_config[-1].get('sampling_rate')
             except UnboundLocalError:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{filepath}' may be corrupted. Data-loss metrics may be incorrect.",
+                    f"File '{filepath}' may be corrupted. "
+                    'Total recording duration may be incorrect.',
                 )
             else:  # this will only be executed if no exception was raised in the try block.
                 total_recording_duration += block_duration
-                if current_sampling_rate:
-                    num_expected_samples += round(
-                        block_duration * float(current_sampling_rate) / 1000,
-                    )
 
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
@@ -765,13 +743,6 @@ def parse_eyelink(
                 samples['y_right_pix'].append(y_right_pix)
                 samples['pupil_right'].append(pupil_right)
 
-                if not blinking and all(
-                    not np.isnan(val) for val in (
-                        x_left_pix, y_left_pix, pupil_left,
-                        x_right_pix, y_right_pix, pupil_right,
-                    )
-                ):
-                    num_valid_samples += 1
             else:
                 x_pix_s = eye_tracking_sample_match.group('x_pix')
                 y_pix_s = eye_tracking_sample_match.group('y_pix')
@@ -784,9 +755,6 @@ def parse_eyelink(
                 samples['x_pix'].append(x_pix)
                 samples['y_pix'].append(y_pix)
                 samples['pupil'].append(pupil)
-
-                if not blinking and all(not np.isnan(val) for val in (x_pix, y_pix, pupil)):
-                    num_valid_samples += 1
 
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
@@ -829,9 +797,6 @@ def parse_eyelink(
     for event in matched_events:
         for key, value in event.items():
             events[key].append(value)
-
-        if event['name'] == 'blink_eyelink':
-            blink_intervals.append((event['onset'], event['offset']))
 
     # the actual tracked eye is in the samples config, not in the recording config
     # the recording config contains the eyes that were recorded
@@ -878,67 +843,6 @@ def parse_eyelink(
     pre_processed_metadata['recording_config'] = recording_config
     pre_processed_metadata['total_recording_duration_ms'] = total_recording_duration
 
-    # compute num_blink_samples from collected blink intervals to avoid double-counting overlaps
-    num_blink_samples = 0
-    if blink_intervals and recording_config:
-        try:
-            sampling_rate = float(recording_config[-1]['sampling_rate'])
-        except (KeyError, TypeError, ValueError):
-            sampling_rate = None
-
-        if sampling_rate:
-            # merge overlapping intervals
-            intervals = sorted(blink_intervals, key=lambda x: x[0])
-            merged: list[tuple[float, float]] = []
-            current_start, current_end = intervals[0]
-            for s, e in intervals[1:]:
-                if s <= current_end:
-                    current_end = max(current_end, e)
-                else:
-                    merged.append((current_start, current_end))
-                    current_start, current_end = s, e
-            merged.append((current_start, current_end))
-
-            sample_length = 1 / sampling_rate * 1000
-            for s, e in merged:
-                num_blink_samples += round((e - s) / sample_length) + 1
-
-    # If no sampling rate could be determined from either SAMPLES or RECCFG,
-    # only warn the user when there is evidence of samples or recording
-    # configuration present (or blink intervals) — otherwise keep silent to
-    # avoid noisy warnings for minimal metadata-only files.
-    # If we were able to compute an expected number of samples from STOP_RECORDING
-    # blocks (num_expected_samples > 0), trust that calculation and compute the
-    # data-loss metrics even if the SAMPLES/RECCFG metadata keys are missing or
-    # inconsistent. Otherwise, fall back to the previous behavior: warn (when
-    # appropriate) and set metrics to None.
-    if num_expected_samples > 0:
-        (
-            pre_processed_metadata['data_loss_ratio'],
-            pre_processed_metadata['data_loss_ratio_blinks'],
-        ) = _calculate_data_loss_ratio(num_expected_samples, num_valid_samples, num_blink_samples)
-    else:
-        # Determine if the sampling rate keys were present but inconsistent
-        inconsistent_reccfg = _config_inconsistent(recording_config)
-        inconsistent_samples = _config_inconsistent(samples_config)
-
-        # Only warn if we truly don't have a sampling-rate value from either
-        # the SAMPLES or RECCFG messages. If a sampling rate was present
-        # (even when num_expected_samples == 0), there's no need to emit
-        # the generic warning — the presence of inconsistent config
-        # warnings is already handled above.
-        if not (sampling_rate_samples_config or sampling_rate_reccfg):
-            if (samples_config or recording_config or blink_intervals) and not (
-                inconsistent_reccfg or inconsistent_samples
-            ):
-                warnings.warn(
-                    'Could not determine sampling rate from SAMPLES or RECCFG; '
-                    'data-loss metrics will be unavailable.',
-                )
-
-        pre_processed_metadata['data_loss_ratio'] = None
-        pre_processed_metadata['data_loss_ratio_blinks'] = None
-
     gaze_schema_overrides = {
         'time': pl.Float64,
     }
@@ -959,16 +863,15 @@ def parse_eyelink(
             'pupil': pl.Float64,
         })
 
-    if schema is not None:
-        gaze_schema_overrides.update(schema)
-
     event_schema_overrides = {
         'name': pl.String,
         'eye': pl.String,
         'onset': pl.Float64,
         'offset': pl.Float64,
     }
+
     if schema is not None:
+        gaze_schema_overrides.update(schema)
         event_schema_overrides.update(schema)
 
     gaze_df = pl.from_dict(data=samples).cast(gaze_schema_overrides)

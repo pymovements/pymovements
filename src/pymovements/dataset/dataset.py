@@ -21,11 +21,13 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Callable
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from typing import Literal
 from warnings import warn
 
 import polars as pl
@@ -43,6 +45,10 @@ from pymovements.dataset.participants import Participants
 from pymovements.events import Events
 from pymovements.events.precomputed import PrecomputedEventDataFrame
 from pymovements.gaze import Gaze
+from pymovements.gaze.quality import compute_measures
+from pymovements.gaze.quality import DataQualityReport
+from pymovements.gaze.quality import ValidationError
+from pymovements.gaze.validation import _ALL_CHECKS
 from pymovements.measure.reading import compute_reading_measures
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.stimulus import text
@@ -615,14 +621,18 @@ class Dataset:
 
         Examples
         --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
         Let's load in our dataset first,
         >>> import pymovements as pm
         >>>
-        >>> dataset = pm.Dataset("ToyDataset", path='toy_dataset')
+        >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
         >>> dataset.download()# doctest:+ELLIPSIS
-        Downloading ... to toy_dataset...downloads...
+        Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
-        Extracting ... to toy_dataset...raw
+        Extracting ... to data...toy_dataset...raw
         <pymovements.dataset.dataset.Dataset object at ...>
         >>> dataset.load()# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
@@ -1196,6 +1206,9 @@ class Dataset:
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
 
+        Clears the event DataFrame of each gaze object via :py:meth:`~.Gaze.clear_events`,
+        which preserves trial columns in the emptied event DataFrames.
+
         Returns
         -------
         Dataset
@@ -1205,7 +1218,70 @@ class Dataset:
             return self
 
         for gaze in self.gaze:
-            gaze.events = Events()
+            gaze.clear_events()
+
+        return self
+
+    def drop_nulls(
+            self,
+            subset: list[str] | None = None,
+            how: Literal['all', 'any'] = 'any',
+            samples: bool = True,
+            events: bool = True,
+    ) -> Dataset:
+        """Drop samples and events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, each frame is checked on its
+            own columns: sample frames on all sample columns, event frames on all event columns.
+            If a list is given, all named columns must exist in every targeted frame.
+            (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column like ``pixel`` or
+            ``position`` counts as null if any of its components is null under 'any', and only if
+            all of its components are null under 'all'. (default: 'any')
+        samples: bool
+            If True, drop samples with null values. (default: True)
+        events: bool
+            If True, drop events with null values. (default: True)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in a targeted frame.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Drop all samples and events with null values:
+
+        >>> dataset.drop_nulls()# doctest: +SKIP
+
+        Drop only samples where any pixel component is null:
+
+        >>> dataset.drop_nulls(subset=['pixel'], events=False)# doctest: +SKIP
+        """
+        if samples:
+            for gaze in self.gaze:
+                gaze.drop_nulls(subset, how=how, events=events)
+        elif events:
+            for events_ in self.events:
+                events_.drop_nulls(subset, how=how)
 
         return self
 
@@ -1333,6 +1409,157 @@ class Dataset:
             extension=extension,
         )
         return self
+
+    def report_data_quality(
+            self,
+            *,
+            output_path: Path | str | None = None,
+            checks: list[str] | None = None,
+            measures: list[str] | None = None,
+            levels: list[str] | None = None,
+            raise_on_error: bool = False,
+            max_gap_factor: float = 5.0,
+            max_deviation: float = 0.05,
+            min_fraction: float = 0.95,
+    ) -> DataQualityReport:
+        """Run sanity checks and compute data quality measures for all loaded gaze data.
+
+        Three processing stages are executed in sequence:
+
+        1. **Validation checks** — eight stimulus-agnostic checks (see *checks* parameter)
+           that verify column presence, dtypes, temporal continuity, and gaze range.
+        2. **Quality measures** — ``data_loss``, ``std_rms``, ``rms_s2s``, and ``bcea``
+           aggregated at dataset, subject, session, and trial level.
+        3. **BIDS output** (optional) — writes derivative TSV/JSON files and a
+           ``warnings.log`` under ``output_path / 'derivatives' / 'pymovements' /``.
+
+        Parameters
+        ----------
+        output_path : Path | str | None
+            If provided, write BIDS-conformant derivative report files here.
+            (default: None)
+        checks : list[str] | None
+            Check identifiers to run. ``None`` runs all eight checks. Valid identifiers:
+            ``'trial_columns_exist'``, ``'trial_columns_dtype'``,
+            ``'time_column_exists'``, ``'gaze_components_defined'``,
+            ``'time_monotone'``, ``'max_gap'``, ``'sampling_rate_consistency'``,
+            ``'gaze_range'``.
+            (default: None)
+        measures : list[str] | None
+            Measure identifiers to compute. ``None`` computes all four. Valid:
+            ``'data_loss'``, ``'std_rms'``, ``'rms_s2s'``, ``'bcea'``.
+            (default: None)
+        levels : list[str] | None
+            Aggregation levels for measures. ``None`` uses all four. Valid:
+            ``'dataset'``, ``'subject'``, ``'session'``, ``'trial'``.
+            (default: None)
+        raise_on_error : bool
+            If ``True``, raise :py:exc:`~pymovements.ValidationError`
+            on the first check result with severity ``'fail'`` or ``'error'``. (default: False)
+        max_gap_factor : float
+            Maximum allowed inter-sample gap as a multiple of the expected ISI.
+            Passed to the ``'max_gap'`` check. (default: 5.0)
+        max_deviation : float
+            Maximum allowed relative deviation between empirical and declared
+            sampling rate. Passed to the ``'sampling_rate_consistency'`` check.
+            (default: 0.05, i.e. 5%)
+        min_fraction : float
+            Minimum fraction of non-null samples that must lie within screen bounds.
+            Passed to the ``'gaze_range'`` check. (default: 0.95, i.e. 95%)
+
+        Returns
+        -------
+        DataQualityReport
+            An object containing all :py:class:`~pymovements.CheckResult` objects
+            and per-level measure :py:class:`polars.DataFrame` tables.
+
+        Raises
+        ------
+        ValidationError
+            If *raise_on_error* is ``True`` and any check produces an error result.
+        ValueError
+            If any name in *checks* is not a valid check identifier.
+
+        Examples
+        --------
+        >>> import pymovements as pm
+        >>> # dataset = pm.Dataset('ExampleDataset', path='data/')
+        >>> # dataset.load()
+        >>> # report = dataset.report_data_quality()
+        >>> # print(report.summary())
+        """
+        checks_to_run = set(checks) if checks is not None else set(_ALL_CHECKS.keys())
+        levels_to_run = (
+            levels if levels is not None else ['dataset', 'subject', 'session', 'trial']
+        )
+
+        if checks is not None:
+            unknown = checks_to_run - set(_ALL_CHECKS.keys())
+            if unknown:
+                raise ValueError(
+                    f'Unknown check identifier(s) {sorted(unknown)!r}. '
+                    f'Valid identifiers: {list(_ALL_CHECKS.keys())!r}',
+                )
+
+        # Use real file paths from fileinfo when available; otherwise leave blank.
+        if (
+            isinstance(self.fileinfo, dict)
+            and 'gaze' in self.fileinfo
+            and 'filepath' in self.fileinfo['gaze'].columns
+        ):
+            source_paths: list[str] = self.fileinfo['gaze']['filepath'].cast(pl.Utf8).to_list()
+        else:
+            source_paths = ['' for _ in self.gaze]
+
+        check_results: list = []
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+
+            for idx, gaze in enumerate(self.gaze):
+                src = source_paths[idx] if idx < len(source_paths) else ''
+                results = gaze.validate(
+                    trial_columns_exist='trial_columns_exist' in checks_to_run,
+                    trial_columns_dtype='trial_columns_dtype' in checks_to_run,
+                    time_column_exists='time_column_exists' in checks_to_run,
+                    gaze_components_defined='gaze_components_defined' in checks_to_run,
+                    time_monotone='time_monotone' in checks_to_run,
+                    max_gap='max_gap' in checks_to_run,
+                    max_gap_factor=max_gap_factor,
+                    sampling_rate_consistency='sampling_rate_consistency' in checks_to_run,
+                    max_deviation=max_deviation,
+                    gaze_range='gaze_range' in checks_to_run,
+                    min_fraction=min_fraction,
+                    source_path=src,
+                )
+                for result in results:
+                    check_results.append(result)
+                    if raise_on_error and result.severity in {'fail', 'error'}:
+                        raise ValidationError(
+                            check_id=result.code,
+                            message=str(result.message),
+                            affected_files=result.sources,
+                        )
+
+            measure_results = compute_measures(
+                gaze_list=self.gaze,
+                fileinfo=self.fileinfo,
+                levels=levels_to_run,
+                measures=measures,
+            )
+
+            captured_warnings = [str(w.message) for w in caught]
+
+        report = DataQualityReport(
+            check_results=check_results,
+            measures=measure_results,
+            warning_log=captured_warnings,
+        )
+
+        if output_path is not None:
+            report.save_bids_report(Path(output_path))
+
+        return report
 
     def download(
             self,
