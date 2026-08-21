@@ -138,7 +138,7 @@ def get_nested_columns(df: polars.DataFrame) -> list[str]:
 
 def _infer_list_n_components(series: polars.Series) -> int:
     """Dynamically infer number of list components in series."""
-    n_component_candidates = series.list.len().unique()
+    n_component_candidates = series.drop_nulls().list.len().unique()
     if len(n_component_candidates) != 1:
         raise ValueError(
             'number of components inconsistent in column '

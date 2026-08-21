@@ -1084,6 +1084,29 @@ def test_unnest_location_basic(
     assert events.frame.get_column('location_y').to_list() == expected_y
 
 
+def test_unnest_multiple_properties() -> None:
+    """Events.unnest can unnest multiple properties, even when they apply only to some events."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'saccade'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[1, 2], None],
+            'amplitude': [None, [5, 6]],
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest()
+
+    assert 'location' not in events.frame.columns
+    assert 'amplitude' not in events.frame.columns
+    assert events.frame.get_column('location_x').to_list() == [1, None]
+    assert events.frame.get_column('location_y').to_list() == [2, None]
+    assert events.frame.get_column('amplitude_x').to_list() == [None, 5]
+    assert events.frame.get_column('amplitude_y').to_list() == [None, 6]
+
+
 def test_unnest_location_absent_is_noop() -> None:
     """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
     df = pl.DataFrame(
@@ -1096,7 +1119,8 @@ def test_unnest_location_absent_is_noop() -> None:
     events = Events(data=df)
 
     before_cols = set(events.frame.columns)
-    events.unnest()
+    with pytest.warns(UserWarning, match='No columns to unnest.'):
+        events.unnest()
     after_cols = set(events.frame.columns)
 
     assert before_cols == after_cols
