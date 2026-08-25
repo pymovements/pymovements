@@ -19,12 +19,15 @@
 # SOFTWARE.
 """Tests for WebSource and download utilities."""
 import hashlib
+import io
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 import pytest
 
+from pymovements.dataset.websource import _download_url
 from pymovements.dataset.websource import _DownloadProgressBar
 from pymovements.dataset.websource import _get_redirected_url
 from pymovements.dataset.websource import ChecksumError
@@ -369,6 +372,30 @@ def test__get_redirected_url_with_redirects_max_hops():
         'https://github.com/pymovements/pymovements/archive/master.zip '\
         'exceeded 0 redirects. The last redirect points to '\
         'https://codeload.github.com/pymovements/pymovements/zip/main.'
+
+
+def test__get_redirected_url_http_error_closes_response():
+    url = 'http://example.com/file.zip'
+    http_error = HTTPError(url=url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''))
+
+    with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
+        with mock.patch('urllib.request.urlopen', side_effect=http_error):
+            with pytest.raises(HTTPError):
+                _get_redirected_url(url)
+
+    mock_close.assert_called_once()
+
+
+def test__download_url_http_error_closes_response(tmp_path):
+    url = 'http://example.com/file.zip'
+    http_error = HTTPError(url=url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''))
+
+    with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
+        with mock.patch('urllib.request.urlretrieve', side_effect=http_error):
+            with pytest.raises(HTTPError):
+                _download_url(url, tmp_path / 'file.zip', verbose=False)
+
+    mock_close.assert_called_once()
 
 
 def test__DownloadProgressBar_tsize_not_None():
