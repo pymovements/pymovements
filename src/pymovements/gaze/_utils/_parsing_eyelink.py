@@ -29,6 +29,7 @@ __all__ = [
 
 import calendar
 import datetime
+import math
 import re
 
 import warnings
@@ -447,6 +448,33 @@ def _match_events_with_context(
     return matched_events
 
 
+def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
+    """Switch the sample column schema from monocular to binocular.
+
+    Samples collected so far were parsed as monocular; they are treated as left-eye data
+    and the right eye is filled with NaN. In standard EyeLink ASC files the binocular
+    SAMPLES config precedes all sample lines, so no samples have been collected yet and no
+    migration happens, but the code below stays correct if that assumption does not hold.
+    Mid-file mode switches (binocular <-> monocular or changing the tracked eyes) within a
+    single file are not supported.
+
+    Parameters
+    ----------
+    samples: dict[str, list[Any]]
+        Dictionary of sample columns to migrate in place.
+    """
+    prev_x = samples.pop('x_pix', [])
+    prev_y = samples.pop('y_pix', [])
+    prev_pupil = samples.pop('pupil', [])
+    n_prev = len(prev_x)
+    samples['x_left_pix'] = prev_x
+    samples['y_left_pix'] = prev_y
+    samples['pupil_left'] = prev_pupil
+    samples['x_right_pix'] = [math.nan] * n_prev
+    samples['y_right_pix'] = [math.nan] * n_prev
+    samples['pupil_right'] = [math.nan] * n_prev
+
+
 def parse_eyelink(
         filepath: Path | str,
         patterns: list[dict[str, Any] | str] | None = None,
@@ -582,51 +610,9 @@ def parse_eyelink(
     samples_config: list[dict[str, Any]] = []
 
     total_recording_duration = 0.0
-    # First pass: collect SAMPLES config for binocular detection only
     is_binocular = False
-    for line in lines:
-        if match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
-            samples_config.append(match.groupdict())
-            tracked = match.group('tracked_eye').upper().strip()
-            # consider 'LEFT' in tracked and 'RIGHT' in tracked or tracked == 'LR' or
-            # tracked == 'L R': set is_binocular to True if any config indicates binocular
-            is_binocular = is_binocular or (
-                ('LEFT' in tracked and 'RIGHT' in tracked) or
-                tracked == 'LR' or tracked == 'L R'
-            )
 
-    # Update the samples dictionary to include binocular data with correct column names if needed
-    if is_binocular:
-        samples.update({
-            'x_left_pix': [],
-            'y_left_pix': [],
-            'pupil_left': [],
-            'x_right_pix': [],
-            'y_right_pix': [],
-            'pupil_right': [],
-        })
-        # remove monocular-only keys to avoid mismatched column lengths
-        for _k in ('x_pix', 'y_pix', 'pupil'):
-            samples.pop(_k, None)
-    else:
-        # Ensure monocular fields are present in the samples dictionary
-        samples.update({
-            'x_pix': [],
-            'y_pix': [],
-            'pupil': [],
-        })
-        # remove binocular-only keys to avoid mismatched column lengths
-        for _k in (
-            'x_left_pix', 'y_left_pix', 'pupil_left',
-            'x_right_pix', 'y_right_pix', 'pupil_right',
-        ):
-            samples.pop(_k, None)
-
-    # Reset additional columns before second pass
-    for col in additional_columns:
-        current_additional[col] = None
-
-    # Second pass: collect events, patterns, samples, and metadata
+    # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
         # Collect event starts/ends for deterministic matching
         # Store context BEFORE processing this line's patterns (context is from previous lines)
@@ -644,6 +630,19 @@ def parse_eyelink(
         matched_ctx = _check_patterns(line, compiled_patterns)
         if matched_ctx:
             current_additional.update(matched_ctx)
+
+        # Detect the tracking configuration independently of the elif chain below, so a
+        # SAMPLES config line is never missed (e.g. if it directly follows a calibration
+        # line while cal_timestamp is still set). The switch to binocular has to happen
+        # before this config block's samples are parsed further down the loop.
+        if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
+            samples_config.append(samples_match.groupdict())
+            tracked = samples_match.group('tracked_eye').upper().strip()
+            if not is_binocular and (
+                ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}
+            ):
+                _migrate_samples_to_binocular(samples)
+                is_binocular = True
 
         if cal_timestamp:
             # if a calibration timestamp has been found, the next line will be a
@@ -864,16 +863,15 @@ def parse_eyelink(
             'pupil': pl.Float64,
         })
 
-    if schema is not None:
-        gaze_schema_overrides.update(schema)
-
     event_schema_overrides = {
         'name': pl.String,
         'eye': pl.String,
         'onset': pl.Float64,
         'offset': pl.Float64,
     }
+
     if schema is not None:
+        gaze_schema_overrides.update(schema)
         event_schema_overrides.update(schema)
 
     gaze_df = pl.from_dict(data=samples).cast(gaze_schema_overrides)
