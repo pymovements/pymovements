@@ -29,6 +29,7 @@ __all__ = [
 
 import calendar
 import datetime
+import io
 import math
 import re
 
@@ -37,7 +38,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 import polars as pl
 
@@ -476,7 +477,7 @@ def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
 
 
 def parse_eyelink(
-        filepath: Path | str,
+        file: Path | str | IO[str] | IO[bytes],
         patterns: list[dict[str, Any] | str] | None = None,
         schema: dict[str, Any] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
@@ -488,8 +489,10 @@ def parse_eyelink(
 
     Parameters
     ----------
-    filepath: Path | str
-        file name of ascii file to convert.
+    file: Path | str | IO[str] | IO[bytes]
+        Path of ASC file or file-like object. Accepted file objects are text streams
+        inheriting from ``io.TextIOBase`` and binary streams inheriting from
+        ``io.RawIOBase`` or ``io.BufferedIOBase``.
     patterns: list[dict[str, Any] | str] | None
         List of patterns to match for additional columns. (default: None)
     schema: dict[str, Any] | None
@@ -497,7 +500,9 @@ def parse_eyelink(
     metadata_patterns: list[dict[str, Any] | str] | None
         list of patterns to match for additional metadata. (default: None)
     encoding: str | None
-        Text encoding of the file. If None, the locale encoding is used. (default: None)
+        Text encoding of the file. If None, the locale encoding is used.
+        Only applies to file paths and binary file objects; text file objects
+        are already decoded. (default: None)
     messages: bool | Sequence[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
@@ -523,6 +528,8 @@ def parse_eyelink(
     ------
     Warning
         If no metadata is found in the file.
+    TypeError
+        If the `file` parameter is not a string, Path, or file-like object.
     ValueError
         If the `messages` parameter is not bool or a list of strings.
 
@@ -570,8 +577,23 @@ def parse_eyelink(
         **{additional_column: [] for additional_column in additional_columns},
     }
 
-    with open(filepath, encoding=encoding) as asc_file:
-        lines = asc_file.readlines()
+    if isinstance(file, (str, Path)):
+        with open(file, encoding=encoding) as asc_file:
+            lines = asc_file.readlines()
+    elif isinstance(file, io.TextIOBase):
+        lines = file.readlines()
+    elif isinstance(file, (io.RawIOBase, io.BufferedIOBase)):
+        wrapper = io.TextIOWrapper(file, encoding=encoding)
+        lines = wrapper.readlines()
+        # Detach so that the caller's file object is not closed with the wrapper.
+        wrapper.detach()
+    else:
+        raise TypeError(
+            f'Expected a file path or a file-like object, but got {type(file)}.',
+        )
+
+    # Used in warnings: the full path for path inputs, the name attribute for file objects.
+    file_name = file if isinstance(file, (str, Path)) else getattr(file, 'name', file)
 
     # will return an empty string if the key does not exist
     metadata: defaultdict = defaultdict(str)
@@ -696,7 +718,7 @@ def parse_eyelink(
             if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{filepath}' may be corrupted. "
+                    f"File '{file_name}' may be corrupted. "
                     'Recording intervals may be incomplete.',
                 )
             else:

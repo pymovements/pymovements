@@ -333,7 +333,7 @@ def test_parse_eyelink_no_messages(make_text_file):
 def test_from_asc_metadata_patterns(filename, kwargs, expected_metadata, make_example_file):
     filepath = make_example_file(filename)
     _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
-        filepath=filepath, **kwargs,
+        file=filepath, **kwargs,
     )
 
     for key, value in expected_metadata.items():

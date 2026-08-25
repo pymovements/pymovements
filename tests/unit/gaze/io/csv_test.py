@@ -18,8 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+import io
+
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import DatasetLibrary
 from pymovements.gaze import from_csv
@@ -270,6 +273,30 @@ def test_from_asc_parameter_is_deprecated(
         scheduled_version='0.29.0',
 
     )
+
+
+@pytest.mark.parametrize(
+    ('buffer_class', 'mode', 'encoding'), [
+        pytest.param(io.StringIO, 'r', 'utf-8', id='io_stringio'),
+        pytest.param(io.BytesIO, 'rb', None, id='io_bytesio'),
+    ],
+)
+def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example_file):
+    """Test that from_csv reads a file object equivalently to a path and keeps it open."""
+    filepath = make_example_file('monocular_example.csv')
+    kwargs = {
+        'time_column': 'time',
+        'time_unit': 'ms',
+        'pixel_columns': ['x_left_pix', 'y_left_pix'],
+    }
+    expected_gaze = from_csv(file=filepath, **kwargs)
+
+    with open(filepath, mode, encoding=encoding) as csv_file:
+        buffer = buffer_class(csv_file.read())
+    gaze = from_csv(file=buffer, **kwargs)
+
+    assert not buffer.closed
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
 
 
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
