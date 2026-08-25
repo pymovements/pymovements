@@ -31,10 +31,13 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 2, 2, 3], 'duration': [100, 110, 120, 130]}),
             pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                1: {'FFD': 100, 'TFT': 100, 'FPRT': 100, 'TFC': 1, 'SL_in': 0, 'SL_out': 1},
-                2: {'FFD': 110, 'TFT': 230, 'FPRT': 230, 'TFC': 2, 'SFD': 0},
+                1: {
+                    'FFD': 100, 'TFT': 100, 'FPRT': 100, 'FPFC': 1, 'TFC': 1,
+                    'SL_in': 0, 'SL_out': 1,
+                },
+                2: {'FFD': 110, 'TFT': 230, 'FPRT': 230, 'FPFC': 2, 'TFC': 2, 'SFD': 0},
                 # last fixated word: no spurious regression out, no negative saccade out
-                3: {'FFD': 130, 'TFT': 130, 'TFC': 1, 'TRC_out': 0, 'SL_out': 0},
+                3: {'FFD': 130, 'TFT': 130, 'FPFC': 1, 'TFC': 1, 'TRC_out': 0, 'SL_out': 0},
             },
             id='forward',
         ),
@@ -43,11 +46,14 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
                 1: {
-                    'FFD': 100, 'TFT': 220, 'FPRT': 100, 'RRT': 120, 'TFC': 2,
+                    'FFD': 100, 'TFT': 220, 'FPRT': 100, 'FPFC': 1, 'RRT': 120, 'TFC': 2,
                     'TRC_in': 1, 'SL_in': 0,
                 },
-                2: {'FFD': 110, 'TFT': 110, 'TRC_out': 1, 'SL_out': -1, 'RPD_exc': 120, 'FPReg': 1},
-                3: {'FFD': 130, 'TFT': 130, 'TRC_out': 0, 'SL_out': 0, 'SL_in': 2},
+                2: {
+                    'FFD': 110, 'TFT': 110, 'FPFC': 1, 'TRC_out': 1, 'SL_out': -1,
+                    'RPD_exc': 120, 'FPReg': 1,
+                },
+                3: {'FFD': 130, 'TFT': 130, 'FPFC': 1, 'TRC_out': 0, 'SL_out': 0, 'SL_in': 2},
             },
             id='regression',
         ),
@@ -55,9 +61,12 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 3], 'duration': [100, 130]}),
             pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SL_out': 2, 'skipped': 0},
-                2: {'FFD': 0, 'TFT': 0, 'TFC': 0, 'Fix': 0, 'skipped': 1},
-                3: {'FFD': 130, 'TFT': 130, 'TFC': 1, 'SL_in': 2, 'SL_out': 0, 'skipped': 0},
+                1: {'FFD': 100, 'TFT': 100, 'FPFC': 1, 'TFC': 1, 'SL_out': 2, 'skipped': 0},
+                2: {'FFD': 0, 'TFT': 0, 'FPFC': 0, 'TFC': 0, 'Fix': 0, 'skipped': 1},
+                3: {
+                    'FFD': 130, 'TFT': 130, 'FPFC': 1, 'TFC': 1, 'SL_in': 2,
+                    'SL_out': 0, 'skipped': 0,
+                },
             },
             id='skipping',
         ),
@@ -70,8 +79,8 @@ from pymovements.measure.reading.processing import compute_reading_measures
             ),
             pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'TRC_out': 0, 'SL_out': 1},
-                2: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SL_in': 1},
+                1: {'FFD': 100, 'TFT': 100, 'FPFC': 1, 'TFC': 1, 'TRC_out': 0, 'SL_out': 1},
+                2: {'FFD': 100, 'TFT': 100, 'FPFC': 1, 'TFC': 1, 'SL_in': 1},
             },
             id='out_of_bounds_null',
         ),
@@ -79,7 +88,10 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1], 'duration': [100]}),
             pl.DataFrame({'word_idx': [1], 'word': ['a']}),
             {
-                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SFD': 100, 'SL_in': 0, 'SL_out': 0},
+                1: {
+                    'FFD': 100, 'TFT': 100, 'FPFC': 1, 'TFC': 1, 'SFD': 100,
+                    'SL_in': 0, 'SL_out': 0,
+                },
             },
             id='single_word_sfd',
         ),
@@ -87,8 +99,8 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 2, 3], 'duration': [100, 100, 100]}),
             pl.DataFrame({'word_idx': [1, 4], 'word': ['a', 'd']}),
             {
-                1: {'FFD': 100, 'TFT': 100},
-                4: {'FFD': 0, 'TFT': 0, 'TFC': 0},
+                1: {'FFD': 100, 'TFT': 100, 'FPFC': 1},
+                4: {'FFD': 0, 'TFT': 0, 'FPFC': 0, 'TFC': 0},
             },
             id='missing_aois_in_middle',
         ),
@@ -99,7 +111,7 @@ from pymovements.measure.reading.processing import compute_reading_measures
             ),
             pl.DataFrame({'word_idx': [1], 'word': ['a']}),
             {
-                1: {'FFD': 0, 'TFT': 0, 'TFC': 0},
+                1: {'FFD': 0, 'TFT': 0, 'FPFC': 0, 'TFC': 0},
             },
             id='invalid_type_aoi',
             marks=pytest.mark.filterwarnings(
@@ -112,8 +124,8 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1.0, 2.7], 'duration': [100, 110]}),
             pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                1: {'FFD': 100, 'TFT': 100, 'TFC': 1, 'SL_out': 0},
-                2: {'FFD': 0, 'TFT': 0, 'TFC': 0, 'skipped': 1},
+                1: {'FFD': 100, 'TFT': 100, 'FPFC': 1, 'TFC': 1, 'SL_out': 0},
+                2: {'FFD': 0, 'TFT': 0, 'FPFC': 0, 'TFC': 0, 'skipped': 1},
             },
             id='fractional_word_idx',
         ),
@@ -124,7 +136,9 @@ from pymovements.measure.reading.processing import compute_reading_measures
             ),
             pl.DataFrame({'word_idx': [1], 'word': ['a']}),
             {
-                1: {'FFD': 0, 'TFT': 0},
+                # the null-duration fixation contributes no time but still counts as a
+                # first-pass fixation
+                1: {'FFD': 0, 'TFT': 0, 'FPFC': 1},
             },
             id='null_duration',
         ),
@@ -133,8 +147,8 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
                 # regression out belongs to word 2 (2 -> 1), not to the last fixated word 1
-                1: {'TFT': 200, 'TFC': 2, 'TRC_in': 1, 'TRC_out': 0, 'RR': 1},
-                2: {'TFT': 100, 'TFC': 1, 'TRC_out': 1, 'SL_out': -1},
+                1: {'TFT': 200, 'FPFC': 1, 'TFC': 2, 'TRC_in': 1, 'TRC_out': 0, 'RR': 1},
+                2: {'TFT': 100, 'FPFC': 1, 'TFC': 1, 'TRC_out': 1, 'SL_out': -1},
             },
             id='trc_out',
         ),
@@ -142,8 +156,8 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 2, 1, 2], 'duration': [100, 100, 100, 100]}),
             pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                1: {'TFT': 200, 'FPRT': 100, 'TRC_out': 0, 'TRC_in': 1},
-                2: {'TFT': 200, 'FPRT': 100, 'TRC_out': 1, 'SL_out': -1},
+                1: {'TFT': 200, 'FPRT': 100, 'FPFC': 1, 'TRC_out': 0, 'TRC_in': 1},
+                2: {'TFT': 200, 'FPRT': 100, 'FPFC': 1, 'TRC_out': 1, 'SL_out': -1},
             },
             id='trc_out_multiple_passes',
         ),
@@ -151,10 +165,10 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, 2, 2, 3], 'duration': [100, 100, 0, 100]}),
             pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
-                1: {'FFD': 100, 'TFT': 100},
+                1: {'FFD': 100, 'TFT': 100, 'FPFC': 1},
                 # two first-pass fixations (one zero-duration) -> not a single fixation
-                2: {'FFD': 100, 'TFT': 100, 'SFD': 0, 'TFC': 2},
-                3: {'FFD': 100, 'TFT': 100, 'TRC_out': 0},
+                2: {'FFD': 100, 'TFT': 100, 'SFD': 0, 'FPFC': 2, 'TFC': 2},
+                3: {'FFD': 100, 'TFT': 100, 'FPFC': 1, 'TRC_out': 0},
                 # PoTeC reference (zero-duration folding, see the divergence tests below and
                 # tests/functional/reading_measures_potec_test.py): the zero-duration fixation
                 # is folded into the current word, so word 2 keeps single-fixation status:
@@ -169,8 +183,8 @@ from pymovements.measure.reading.processing import compute_reading_measures
             pl.DataFrame({'word_idx': [1, -1, 2], 'duration': [100, 100, 100]}),
             pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
             {
-                1: {'TFT': 100, 'TRC_out': 0, 'SL_out': 1},
-                2: {'TFT': 100, 'TRC_in': 0, 'SL_in': 1},
+                1: {'TFT': 100, 'FPFC': 1, 'TRC_out': 0, 'SL_out': 1},
+                2: {'TFT': 100, 'FPFC': 1, 'TRC_in': 0, 'SL_in': 1},
             },
             id='sentinel_out_of_aoi',
         ),

@@ -44,7 +44,7 @@ from pymovements.measure.reading.measures import total_fixation_count
 
 # Measure output columns, in order. Group columns and word identity are prepended on output.
 _MEASURE_COLUMNS = [
-    'FFD', 'SFD', 'FD', 'FPRT', 'FRT', 'TFT', 'RRT',
+    'FFD', 'SFD', 'FD', 'FPRT', 'FPFC', 'FRT', 'TFT', 'RRT',
     'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'skipped', 'FPF', 'RR', 'FPReg', 'TRC_out',
     'TRC_in', 'SL_in', 'SL_out', 'LP', 'TFC',
 ]
@@ -183,7 +183,7 @@ def compute_reading_measures(
         # internal working columns
         'word_start_char', '_is_aoi', '_group',
         # measure output columns
-        'FPFC', *_MEASURE_COLUMNS,
+        *_MEASURE_COLUMNS,
     }
     if reserved := reserved_columns.intersection(group_columns):
         raise ValueError(f'group_columns must not contain the reserved columns {sorted(reserved)}.')
