@@ -58,6 +58,24 @@ from pymovements.measure.reading.processing import compute_reading_measures
             id='regression',
         ),
         pytest.param(
+            # Pins the intent of main's dropped old-engine test
+            # test_regression_path_duration_no_first_pass: word 1 is entered only from the
+            # right, so it never has a first pass and never opens a regression-path window.
+            pl.DataFrame({'word_idx': [2, 1, 2], 'duration': [100, 150, 120]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
+            {
+                1: {
+                    'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'FFD': 0, 'FPRT': 0, 'RRT': 150,
+                    'TFT': 150, 'FPFC': 0, 'TFC': 1, 'TRC_in': 1, 'SL_in': -1,
+                },
+                2: {
+                    'RPD_inc': 370, 'RPD_exc': 150, 'RBRT': 220, 'FFD': 100, 'FPRT': 100,
+                    'RRT': 120, 'TFT': 220, 'FPFC': 1, 'TRC_out': 1, 'SL_out': -1, 'FPReg': 1,
+                },
+            },
+            id='rpd_no_first_pass',
+        ),
+        pytest.param(
             pl.DataFrame({'word_idx': [1, 3], 'duration': [100, 130]}),
             pl.DataFrame({'word_idx': [1, 2, 3], 'word': ['a', 'b', 'c']}),
             {
