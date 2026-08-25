@@ -85,6 +85,7 @@ def test_shapes(filename, kwargs, shape, make_example_file):
 
 
 def test_from_ipc_accepts_file_object(make_example_file):
+    """Test that from_ipc reads a file object equivalently to a path and keeps it open."""
     filepath = make_example_file('monocular_example.feather')
     expected_gaze = from_ipc(file=filepath)
 
@@ -92,6 +93,7 @@ def test_from_ipc_accepts_file_object(make_example_file):
         buffer = io.BytesIO(ipc_file.read())
     gaze = from_ipc(file=buffer)
 
+    assert not buffer.closed
     assert_frame_equal(gaze.samples, expected_gaze.samples)
 
 

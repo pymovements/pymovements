@@ -282,6 +282,7 @@ def test_from_asc_parameter_is_deprecated(
     ],
 )
 def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example_file):
+    """Test that from_csv reads a file object equivalently to a path and keeps it open."""
     filepath = make_example_file('monocular_example.csv')
     kwargs = {
         'time_column': 'time',
@@ -294,6 +295,7 @@ def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example
         buffer = buffer_class(csv_file.read())
     gaze = from_csv(file=buffer, **kwargs)
 
+    assert not buffer.closed
     assert_frame_equal(gaze.samples, expected_gaze.samples)
 
 
