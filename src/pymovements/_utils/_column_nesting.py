@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Utility functions for working with nested columns in gaze dataframes."""
+"""Utility functions for working with nested columns in dataframes."""
 from __future__ import annotations
 
 from warnings import warn
@@ -139,6 +139,10 @@ def get_nested_columns(df: polars.DataFrame) -> list[str]:
 def _infer_list_n_components(series: polars.Series) -> int:
     """Dynamically infer number of list components in series."""
     n_component_candidates = series.drop_nulls().list.len().unique()
+    if len(n_component_candidates) == 0:
+        raise ValueError(
+            f"cannot infer number of components in all-null column '{series.name}'",
+        )
     if len(n_component_candidates) != 1:
         raise ValueError(
             'number of components inconsistent in column '
