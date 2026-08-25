@@ -40,7 +40,9 @@ group, which the annotation step guarantees.
 
 The regression-path measures are the exception to the word grouping: their windows span
 fixations on other words, so they aggregate over ``regression_path_word`` groups instead of
-``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`).
+``word_idx`` groups (see :func:`~pymovements.measure.reading.regression_path_word`). The
+sequence-level summary measures are the other exception: they describe a whole reading
+sequence, so they aggregate over reading-sequence groups (e.g. ``['trial', 'page']``).
 """
 from __future__ import annotations
 
@@ -361,102 +363,6 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
     """
     return as_expr(duration).sum().alias('RPD_inc')
 
-# ---------------------------
-# Summary measures
-# ---------------------------
-
-
-def non_aoi_fixation_count_ratio(fixations: pl.DataFrame) -> pl.DataFrame:
-    """Compute the ratio of fixations outside any AOI, by count.
-
-    A fixation counts as outside all AOIs if and only if its ``word_idx``
-    value is null, which is the convention produced by
-    :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
-    outside-AOI fixations with a sentinel value such as ``-1`` must
-    convert those values to null first, otherwise the ratio is silently
-    underestimated.
-
-    The input must contain only fixation events, so filter the event
-    frame to fixations first: non-fixation rows carry null AOI columns
-    after :py:meth:`~pymovements.Events.map_to_aois` and would inflate
-    the ratio.
-
-    Parameters
-    ----------
-    fixations : pl.DataFrame
-        Fixation table containing at least ``trial``, ``page``,
-        and ``word_idx`` columns.
-
-    Returns
-    -------
-    pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, and ``NAFCR``
-        (Non-AOI Fixation Count Ratio: proportion of fixations
-        without a mapped word, 0.0 to 1.0).
-    """
-    return (
-        fixations.group_by(['trial', 'page'], maintain_order=True)
-        .agg(
-            [
-                (pl.col('word_idx').is_null()).sum().alias('fix_outside_aoi'),
-                pl.len().alias('total_fixations'),
-            ],
-        )
-        .with_columns(
-            (pl.col('fix_outside_aoi') / pl.col('total_fixations')).alias('NAFCR'),
-        )
-        .select(['trial', 'page', 'NAFCR'])
-    )
-
-
-def non_aoi_fixation_duration_ratio(fixations: pl.DataFrame) -> pl.DataFrame:
-    """Compute the ratio of fixation duration outside any AOI.
-
-    A fixation counts as outside all AOIs if and only if its ``word_idx``
-    value is null, which is the convention produced by
-    :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
-    outside-AOI fixations with a sentinel value such as ``-1`` must
-    convert those values to null first, otherwise the ratio is silently
-    underestimated.
-
-    The input must contain only fixation events, so filter the event
-    frame to fixations first: non-fixation rows carry null AOI columns
-    after :py:meth:`~pymovements.Events.map_to_aois` and would inflate
-    the ratio.
-
-    Parameters
-    ----------
-    fixations : pl.DataFrame
-        Fixation table containing at least ``trial``, ``page``,
-        ``word_idx``, and ``duration`` columns.
-
-    Returns
-    -------
-    pl.DataFrame
-        DataFrame with columns ``trial``, ``page``, and ``NAFDR``
-        (Non-AOI Fixation Duration Ratio: proportion of fixation
-        duration without a mapped word, 0.0 to 1.0).
-    """
-    return (
-        fixations.group_by(['trial', 'page'], maintain_order=True)
-        .agg(
-            [
-                pl.when(pl.col('word_idx').is_null())
-                .then(pl.col('duration'))
-                .otherwise(0)
-                .sum()
-                .alias('duration_outside_aoi'),
-                pl.col('duration').sum().alias('total_duration'),
-            ],
-        )
-        .with_columns(
-            pl.when(pl.col('total_duration') > 0)
-            .then(pl.col('duration_outside_aoi') / pl.col('total_duration'))
-            .otherwise(None)
-            .alias('NAFDR'),
-        )
-        .select(['trial', 'page', 'NAFDR'])
-    )
 
 def regression_path_duration_exclusive(
     duration: str | pl.Expr = 'duration',
@@ -526,4 +432,86 @@ def right_bounded_reading_time(
         .filter(as_expr(word_idx) == as_expr(regression_path_word))
         .sum()
         .alias('RBRT')
+    )
+
+
+# ---------------------------
+# Sequence-level summary measures
+# ---------------------------
+
+
+def non_aoi_fixation_count_ratio(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
+    """Ratio of fixations outside any AOI, by count (NAFCR).
+
+    NAFCR is a summary of a whole reading sequence, not a word-level measure: aggregate it over
+    reading-sequence groups (e.g. ``['trial', 'page']``) instead of word groups.
+
+    A fixation counts as outside all AOIs if and only if its word index is null, which is the
+    convention produced by :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
+    outside-AOI fixations with a sentinel value such as ``-1`` must convert those values to null
+    first, otherwise the ratio is silently underestimated.
+
+    The input must contain only fixation events, so filter the event frame to fixations first:
+    non-fixation rows carry null AOI columns after :py:meth:`~pymovements.Events.map_to_aois`
+    and would inflate the ratio.
+
+    Parameters
+    ----------
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``NAFCR`` column (proportion of fixations without
+        a mapped word, 0.0 to 1.0).
+    """
+    return as_expr(word_idx).is_null().mean().alias('NAFCR')
+
+
+def non_aoi_fixation_duration_ratio(
+    duration: str | pl.Expr = 'duration',
+    word_idx: str | pl.Expr = 'word_idx',
+) -> pl.Expr:
+    """Ratio of fixation duration outside any AOI (NAFDR).
+
+    NAFDR is a summary of a whole reading sequence, not a word-level measure: aggregate it over
+    reading-sequence groups (e.g. ``['trial', 'page']``) instead of word groups. Null when the
+    total fixation duration of the group is zero.
+
+    A fixation counts as outside all AOIs if and only if its word index is null, which is the
+    convention produced by :py:meth:`~pymovements.Events.map_to_aois`. Datasets that encode
+    outside-AOI fixations with a sentinel value such as ``-1`` must convert those values to null
+    first, otherwise the ratio is silently underestimated.
+
+    The input must contain only fixation events, so filter the event frame to fixations first:
+    non-fixation rows carry null AOI columns after :py:meth:`~pymovements.Events.map_to_aois`
+    and would inflate the ratio.
+
+    Parameters
+    ----------
+    duration : str | pl.Expr
+        Column name or expression of the fixation duration.
+        (default: ``'duration'``)
+    word_idx : str | pl.Expr
+        Column name or expression of the fixated word index.
+        (default: ``'word_idx'``)
+
+    Returns
+    -------
+    pl.Expr
+        Aggregation expression producing the ``NAFDR`` column (proportion of fixation duration
+        without a mapped word, 0.0 to 1.0).
+    """
+    total_duration = as_expr(duration).sum()
+    non_aoi_duration = as_expr(duration).filter(as_expr(word_idx).is_null()).sum()
+    # A group with zero total duration has no defined ratio; dividing would yield NaN, so it
+    # becomes null instead. Empty groups cannot occur inside group_by, so unlike this zero
+    # total duration case they need no guard.
+    return (
+        pl.when(total_duration > 0)
+        .then(non_aoi_duration / total_duration)
+        .otherwise(None)
+        .alias('NAFDR')
     )

@@ -337,7 +337,9 @@ def test_regression_path_duration_with_regression():
     ],
 )
 def test_non_aoi_fixation_count_ratio(fixations, expected):
-    result = non_aoi_fixation_count_ratio(fixations)
+    result = fixations.group_by(['trial', 'page'], maintain_order=True).agg(
+        non_aoi_fixation_count_ratio(),
+    )
     assert_frame_equal(result, expected)
 
 
@@ -439,5 +441,7 @@ def test_non_aoi_fixation_count_ratio(fixations, expected):
     ],
 )
 def test_non_aoi_fixation_duration_ratio(fixations, expected):
-    result = non_aoi_fixation_duration_ratio(fixations)
+    result = fixations.group_by(['trial', 'page'], maintain_order=True).agg(
+        non_aoi_fixation_duration_ratio(),
+    )
     assert_frame_equal(result, expected, abs_tol=1e-5)
