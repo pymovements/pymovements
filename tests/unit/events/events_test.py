@@ -1107,8 +1107,64 @@ def test_unnest_multiple_properties() -> None:
     assert events.frame.get_column('amplitude_y').to_list() == [None, 6]
 
 
-def test_unnest_location_absent_is_noop() -> None:
-    """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
+@pytest.mark.parametrize(
+    ('unnest_kwargs', 'expected_column_x', 'expected_column_y'),
+    [
+        pytest.param(
+            {'input_columns': 'location', 'output_columns': ['x', 'y']},
+            'x',
+            'y',
+            id='input_columns_output_columns',
+        ),
+        pytest.param(
+            {'input_columns': ['location'], 'output_suffixes': ['_px', '_py']},
+            'location_px',
+            'location_py',
+            id='input_columns_output_suffixes',
+        ),
+    ],
+)
+def test_unnest_explicit_arguments(unnest_kwargs, expected_column_x, expected_column_y):
+    """Events.unnest passes input_columns, output_suffixes and output_columns through."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[1, 2]],
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest(**unnest_kwargs)
+
+    assert 'location' not in events.frame.columns
+    assert events.frame.get_column(expected_column_x).to_list() == [1]
+    assert events.frame.get_column(expected_column_y).to_list() == [2]
+
+
+def test_unnest_all_null_list_column_raises():
+    """Events.unnest raises a clear error for a list column containing only nulls."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [None],
+        },
+        schema_overrides={'location': pl.List(pl.Float64)},
+    )
+    events = Events(data=df)
+
+    with pytest.raises(
+            ValueError,
+            match="cannot infer number of components in all-null column 'location'",
+    ):
+        events.unnest()
+
+
+def test_unnest_no_list_columns_warns() -> None:
+    """If no list columns exist, unnest warns and adds no new columns."""
     df = pl.DataFrame(
         {
             'name': ['fixation'],
