@@ -2828,6 +2828,10 @@ class Gaze:
 
         Examples
         --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
         Save all available data fields to a directory:
 
         >>> import polars as pl

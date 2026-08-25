@@ -621,14 +621,18 @@ class Dataset:
 
         Examples
         --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
         Let's load in our dataset first,
         >>> import pymovements as pm
         >>>
-        >>> dataset = pm.Dataset("ToyDataset", path='toy_dataset')
+        >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
         >>> dataset.download()# doctest:+ELLIPSIS
-        Downloading ... to toy_dataset...downloads...
+        Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
-        Extracting ... to toy_dataset...raw
+        Extracting ... to data...toy_dataset...raw
         <pymovements.dataset.dataset.Dataset object at ...>
         >>> dataset.load()# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
