@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
+import re
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -871,6 +873,27 @@ def test_from_asc_warns(
 
     with pytest.warns(expected_warning, match=expected_message):
         from_asc(filepath, **from_asc_kwargs)
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_corrupted_file_warning_contains_full_path(make_text_file):
+    """Test that the corrupted file warning prints the full path for a Path input."""
+    filepath = make_text_file(
+        filename='test.asc',
+        body='END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
+    )
+
+    with pytest.warns(UserWarning, match=f"File '{re.escape(str(filepath))}' may be corrupted"):
+        from_asc(filepath)
 
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')

@@ -592,6 +592,9 @@ def parse_eyelink(
             f'Expected a file path or a file-like object, but got {type(file)}.',
         )
 
+    # Used in warnings: the full path for path inputs, the name attribute for file objects.
+    file_name = file if isinstance(file, (str, Path)) else getattr(file, 'name', file)
+
     # will return an empty string if the key does not exist
     metadata: defaultdict = defaultdict(str)
 
@@ -715,7 +718,7 @@ def parse_eyelink(
             if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{getattr(file, 'name', file)}' may be corrupted. "
+                    f"File '{file_name}' may be corrupted. "
                     'Recording intervals may be incomplete.',
                 )
             else:
