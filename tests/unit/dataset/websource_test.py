@@ -27,7 +27,6 @@ from urllib.error import HTTPError
 
 import pytest
 
-from pymovements.dataset.websource import _download_url
 from pymovements.dataset.websource import _DownloadProgressBar
 from pymovements.dataset.websource import _get_redirected_url
 from pymovements.dataset.websource import ChecksumError
@@ -374,26 +373,35 @@ def test__get_redirected_url_with_redirects_max_hops():
         'https://codeload.github.com/pymovements/pymovements/zip/main.'
 
 
-def test__get_redirected_url_http_error_closes_response():
-    url = 'http://example.com/file.zip'
-    http_error = HTTPError(url=url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''))
+def test_websource_download_http_error_on_redirect_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    http_error = HTTPError(
+        url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
+    )
 
     with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
         with mock.patch('urllib.request.urlopen', side_effect=http_error):
-            with pytest.raises(HTTPError):
-                _get_redirected_url(url)
+            with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+                source.download(tmp_path, verbose=False)
 
     mock_close.assert_called_once()
 
 
-def test__download_url_http_error_closes_response(tmp_path):
-    url = 'http://example.com/file.zip'
-    http_error = HTTPError(url=url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''))
+def test_websource_download_http_error_on_retrieve_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    http_error = HTTPError(
+        url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
+    )
+    mock_response = mock.MagicMock()
+    mock_response.url = source.url
 
     with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
-        with mock.patch('urllib.request.urlretrieve', side_effect=http_error):
-            with pytest.raises(HTTPError):
-                _download_url(url, tmp_path / 'file.zip', verbose=False)
+        with mock.patch('urllib.request.urlopen', return_value=mock_response):
+            with mock.patch('urllib.request.urlretrieve', side_effect=http_error):
+                with pytest.raises(
+                        RuntimeError, match=f'Downloading resource {source.url} failed',
+                ):
+                    source.download(tmp_path, verbose=False)
 
     mock_close.assert_called_once()
 
