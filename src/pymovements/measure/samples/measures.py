@@ -203,9 +203,11 @@ def duration(*, time_column: str = 'time') -> pl.Expr:
     """Duration spanned by a group of samples.
 
     The duration is defined as the difference between the maximum and minimum
-    timestamps in the group. When used with :meth:`pymovements.Gaze.measure_samples`,
-    the duration is calculated for the complete recording or separately for each
-    trial, depending on whether trial columns are configured.
+    timestamps in the group. The result is expressed in the unit of the time
+    column (usually milliseconds). When used with
+    :meth:`~pymovements.Gaze.measure_samples`, the duration is calculated for
+    the complete recording or separately for each trial, depending on whether
+    trial columns are configured.
 
     This measures only the observed sample span. It can be shorter than the
     EyeLink ``START``-to-``END`` recording span when samples are absent because

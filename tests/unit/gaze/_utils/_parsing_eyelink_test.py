@@ -1150,7 +1150,11 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file)
 
 
 def test_parse_eyelink_stop_recording_preserves_duration_metadata(make_text_file):
-    """Write a minimal asc file with RECCFG, START, and END."""
+    """A matched START/END pair sets total_recording_duration_ms from message timestamps.
+
+    The file contains no samples, so the expected 1000.0 (END at 1000 ms minus
+    START at 0 ms) can only come from the START/END messages.
+    """
     content = (
         'MSG 0 RECCFG CR 1000 0 0 LR\n'
         'START 0 RIGHT types\n'
