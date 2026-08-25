@@ -1143,23 +1143,41 @@ def test_unnest_explicit_arguments(unnest_kwargs, expected_column_x, expected_co
     assert events.frame.get_column(expected_column_y).to_list() == [2]
 
 
-def test_unnest_all_null_list_column_raises():
-    """Events.unnest raises a clear error for a list column containing only nulls."""
-    df = pl.DataFrame(
-        {
-            'name': ['fixation'],
-            'onset': [0],
-            'offset': [1],
-            'location': [None],
-        },
-        schema_overrides={'location': pl.List(pl.Float64)},
-    )
+@pytest.mark.parametrize(
+    ('df', 'expected_message'),
+    [
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'location': [None],
+                },
+                schema_overrides={'location': pl.List(pl.Float64)},
+            ),
+            "cannot infer number of components in all-null column 'location'",
+            id='all_null_list_column',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                schema={
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                },
+            ),
+            "cannot infer number of components in empty column 'location'",
+            id='empty_list_column',
+        ),
+    ],
+)
+def test_unnest_uninferable_list_column_raises(df, expected_message):
+    """Events.unnest raises a clear error if a list column allows no component inference."""
     events = Events(data=df)
 
-    with pytest.raises(
-            ValueError,
-            match="cannot infer number of components in all-null column 'location'",
-    ):
+    with pytest.raises(ValueError, match=expected_message):
         events.unnest()
 
 

@@ -1943,6 +1943,7 @@ class Gaze:
             If output columns / suffixes are not unique.
             If no columns to unnest exist and none are specified.
             If output columns are specified and more than one input column is specified.
+            If a list column to unnest is empty (has no rows).
             If a list column to unnest contains only null values.
             If number of components is not 2, 4 or 6.
         Warning
