@@ -403,7 +403,9 @@ def from_asc(
     Parameters
     ----------
     file: str | Path | IO[str] | IO[bytes]
-        Path of ASC file or file-like object.
+        Path of ASC file or file-like object. Accepted file objects are text streams
+        inheriting from :class:`io.TextIOBase` and binary streams inheriting from
+        :class:`io.RawIOBase` or :class:`io.BufferedIOBase`.
     patterns: str | list[dict[str, Any] | str] | None
         List of patterns to match for additional columns or a key identifier of eye tracker specific
         default patterns. Supported values are: `'eyelink'`. If `None` is passed, `'eyelink'` is
@@ -427,7 +429,9 @@ def from_asc(
         Dictionary containing types for columns.
         (default: None)
     encoding: str | None
-        Text encoding of the file. If None, the locale encoding is used. (default: None)
+        Text encoding of the file. If None, the locale encoding is used.
+        Only applies to file paths and binary file objects; text file objects
+        are already decoded. (default: None)
     events: bool
         Flag indicating if events should be parsed from the asc file. (default: False)
     messages: bool | list[str]
@@ -526,6 +530,14 @@ def from_asc(
     └─────────┴───────┴────────────────┘
     >>> gaze.experiment.eyetracker.sampling_rate
     1000.0
+
+    Instead of a path, we can also pass an open file object, for example an upload
+    received by a web application:
+
+    >>> with open('tests/files/eyelink_monocular_example.asc', 'rb') as asc_file:
+    ...     gaze = from_asc(asc_file)
+    >>> gaze.samples.height
+    16
     """
     if isinstance(patterns, str):
         if patterns == 'eyelink':
