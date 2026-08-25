@@ -18,7 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from IPC/feather."""
+import io
+
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.gaze import from_ipc
 
@@ -79,6 +82,17 @@ def test_shapes(filename, kwargs, shape, make_example_file):
     gaze = from_ipc(file=filepath, **kwargs)
 
     assert gaze.samples.shape == shape
+
+
+def test_from_ipc_accepts_file_object(make_example_file):
+    filepath = make_example_file('monocular_example.feather')
+    expected_gaze = from_ipc(file=filepath)
+
+    with open(filepath, 'rb') as ipc_file:
+        buffer = io.BytesIO(ipc_file.read())
+    gaze = from_ipc(file=buffer)
+
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
 
 
 @pytest.mark.parametrize(
