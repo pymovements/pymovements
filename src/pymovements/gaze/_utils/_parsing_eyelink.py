@@ -490,7 +490,9 @@ def parse_eyelink(
     Parameters
     ----------
     file: Path | str | IO[str] | IO[bytes]
-        Path of ASC file or file-like object.
+        Path of ASC file or file-like object. Accepted file objects are text streams
+        inheriting from ``io.TextIOBase`` and binary streams inheriting from
+        ``io.RawIOBase`` or ``io.BufferedIOBase``.
     patterns: list[dict[str, Any] | str] | None
         List of patterns to match for additional columns. (default: None)
     schema: dict[str, Any] | None
@@ -498,7 +500,9 @@ def parse_eyelink(
     metadata_patterns: list[dict[str, Any] | str] | None
         list of patterns to match for additional metadata. (default: None)
     encoding: str | None
-        Text encoding of the file. If None, the locale encoding is used. (default: None)
+        Text encoding of the file. If None, the locale encoding is used.
+        Only applies to file paths and binary file objects; text file objects
+        are already decoded. (default: None)
     messages: bool | Sequence[str]
         Flag indicating if any additional messages should be parsed from the asc file
         and returned as a DataFrame with 'time' (f64) and 'content' (str) columns.
@@ -578,9 +582,11 @@ def parse_eyelink(
             lines = asc_file.readlines()
     elif isinstance(file, io.TextIOBase):
         lines = file.readlines()
-    elif isinstance(file, io.BufferedIOBase):
-        with io.TextIOWrapper(file, encoding=encoding) as asc_file:
-            lines = asc_file.readlines()
+    elif isinstance(file, (io.RawIOBase, io.BufferedIOBase)):
+        wrapper = io.TextIOWrapper(file, encoding=encoding)
+        lines = wrapper.readlines()
+        # Detach so that the caller's file object is not closed with the wrapper.
+        wrapper.detach()
     else:
         raise TypeError(
             f'Expected a file path or a file-like object, but got {type(file)}.',

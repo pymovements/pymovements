@@ -994,19 +994,37 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
 
 
 @pytest.mark.parametrize(
+    ('mode', 'encoding', 'buffering'), [
+        pytest.param('r', 'utf-8', -1, id='text_mode'),
+        pytest.param('rb', None, -1, id='binary_mode'),
+        pytest.param('rb', None, 0, id='binary_mode_unbuffered'),
+    ],
+)
+def test_from_asc_accepts_file_object(make_example_file, mode, encoding, buffering):
+    """Test that from_asc reads a file-like object equivalently to a file path."""
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    expected_gaze = from_asc(filepath)
+
+    with open(filepath, mode, encoding=encoding, buffering=buffering) as asc_file:
+        gaze = from_asc(asc_file)
+
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
+
+
+@pytest.mark.parametrize(
     ('mode', 'encoding'), [
         pytest.param('r', 'utf-8', id='text_mode'),
         pytest.param('rb', None, id='binary_mode'),
     ],
 )
-def test_from_asc_accepts_file_object(make_example_file, mode, encoding):
-    """Test that from_asc can accept a file-like object instead of a file path."""
+def test_from_asc_does_not_close_file_object(make_example_file, mode, encoding):
+    """Test that from_asc leaves the caller's file object open."""
     filepath = make_example_file('eyelink_monocular_example.asc')
 
-    with open(filepath, mode, encoding=encoding) as f:
-        gaze = from_asc(f)
+    with open(filepath, mode, encoding=encoding) as asc_file:
+        from_asc(asc_file)
 
-    assert gaze.samples.height > 0
+        assert not asc_file.closed
 
 
 def test_from_asc_rejects_nonfile_objects():
