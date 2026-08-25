@@ -715,7 +715,7 @@ def parse_eyelink(
             if start_recording_timestamp is None:
                 warnings.warn(
                     'END recording message without associated START recording message. '
-                    f"File '{file}' may be corrupted. "
+                    f"File '{getattr(file, 'name', file)}' may be corrupted. "
                     'Recording intervals may be incomplete.',
                 )
             else:
