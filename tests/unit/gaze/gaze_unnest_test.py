@@ -436,6 +436,23 @@ def test_gaze_unnest_errors(init_data, unnest_kwargs, exception, message):
         gaze.unnest(**unnest_kwargs)
 
 
+def test_gaze_unnest_all_null_list_column_raises():
+    """Gaze.unnest raises a clear error for a list column containing only nulls."""
+    df = pl.DataFrame({
+        'pixel': [[1.23, 4.56]],  # avoids warning on gaze initialization
+    })
+    gaze = pm.Gaze(samples=df)
+    gaze.samples = gaze.samples.with_columns(
+        pl.Series('pixel', [None], dtype=pl.List(pl.Float64)),
+    )
+
+    with pytest.raises(
+            ValueError,
+            match="cannot infer number of components in all-null column 'pixel'",
+    ):
+        gaze.unnest()
+
+
 def test_gaze_unnest_no_nested_columns_warns():
     df = pl.DataFrame({
         'pixel': [[1.23, 4.56], [1.23, 4.56]],  # avoids warning on gaze initialization
