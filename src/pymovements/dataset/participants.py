@@ -151,6 +151,8 @@ class Participants:
     ) -> Participants:
         r"""Load participant data from participant files.
 
+        Values encoded as ``'n/a'`` are read as null values per BIDS.
+
         Parameters
         ----------
         path: Path | str
@@ -179,7 +181,7 @@ class Participants:
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
-            Use this encoding for writing the metadata json file.
+            Use this encoding for loading the metadata json file.
             (default: ``utf-8``)
 
         Returns
@@ -259,6 +261,8 @@ class Participants:
         metadata_encoding: str = 'utf-8',
     ) -> None:
         r"""Save participants data including metadata.
+
+        Null values are written as ``'n/a'`` per BIDS.
 
         Parameters
         ----------
@@ -413,7 +417,7 @@ class Participants:
             warnings_list.extend(_check_na_conformity(self.data))
         else:
             raise ValueError(
-                "Unknown verification level '{level}'. "
+                f"Unknown verification level '{level}'. "
                 "Supported values are 'RECOMMENDED' and 'REQUIRED'",
             )
 

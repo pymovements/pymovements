@@ -718,7 +718,7 @@ def test_verify_bids_invalid_level():
     participants = Participants(data, verify_bids=False)
     with pytest.raises(
         ValueError,
-        match="Unknown verification level '{level}'. Supported values are",
+        match="Unknown verification level 'INVALID'. Supported values are",
     ):
         participants.verify_bids('INVALID')  # type: ignore[arg-type]
 

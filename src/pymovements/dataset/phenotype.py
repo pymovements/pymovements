@@ -192,6 +192,8 @@ class Phenotype:
     ) -> Phenotype:
         r"""Load phenotypic data from phenotype files.
 
+        Values encoded as ``'n/a'`` are read as null values per BIDS.
+
         Parameters
         ----------
         path: Path | str
@@ -276,6 +278,8 @@ class Phenotype:
         metadata_encoding: str = 'utf-8',
     ) -> None:
         r"""Save phenotypic data including metadata.
+
+        Null values are written as ``'n/a'`` per BIDS.
 
         Parameters
         ----------
