@@ -627,6 +627,30 @@ def test_compute_reading_measures_landing_position_within_word():
     assert result['LP'].to_list() == [2, 3, 0]
 
 
+def test_compute_reading_measures_landing_position_null_for_null_char_idx_fixation():
+    # Char-level AOI table: word 1 spans chars 0-1, word 2 spans chars 3-4.
+    aois = pl.DataFrame({
+        'word_idx': [1, 1, 2, 2],
+        'word': ['ab'] * 2 + ['cd'] * 2,
+        'char_idx': [0, 1, 3, 4],
+    })
+    # Word 1 is fixated, but its first fixation carries no char_idx value.
+    fixations = pl.DataFrame({
+        'word_idx': [1, 2],
+        'char_idx': [None, 4],
+        'duration': [100, 100],
+    })
+
+    result = compute_reading_measures(fixations, aois)
+
+    # Word 1: fixated (TFC 1, not skipped) but the landing position is not determinable, so LP
+    # stays null instead of colliding with the 0 = never fixated fill. Word 2: first fixation on
+    # char 4, word starts at char 3, one-based position 2.
+    assert result['LP'].to_list() == [None, 2]
+    assert result['TFC'].to_list() == [1, 1]
+    assert result['skipped'].to_list() == [0, 0]
+
+
 def test_compute_reading_measures_custom_group_columns():
     fixations = pl.DataFrame({
         'word_idx': [1, 2, 1],

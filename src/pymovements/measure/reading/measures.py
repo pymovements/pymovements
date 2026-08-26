@@ -250,7 +250,8 @@ def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
     Requires onset-sorted input. The aggregation emits the ``char_idx`` of the word's first
     fixation plus one. Within :func:`~pymovements.measure.reading.compute_reading_measures` the
     word's start character is subtracted, making the position relative to the word (its first
-    character is 1), and words that were never fixated are filled with 0. The resulting values
+    character is 1), and words that were never fixated are filled with 0; a fixated word whose
+    first fixation has a null ``char_idx`` keeps a null position. The resulting values
     match the landing position of the PoTeC reference implementation.
 
     Parameters

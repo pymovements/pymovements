@@ -94,7 +94,8 @@ def compute_reading_measures(
     The landing position ``LP`` is the one-based character position of the first fixation within
     the word (the word's first character is 1), computed from the ``char_idx`` columns of
     fixations and AOI table. Words that were never fixated get 0. If either input has no
-    ``char_idx`` column, ``LP`` is null.
+    ``char_idx`` column, or the word's first fixation carries a null ``char_idx`` value,
+    ``LP`` is null.
 
     Parameters
     ----------
@@ -217,7 +218,8 @@ def compute_reading_measures(
         * - ``LP``
           - **Landing Position**: one-based character position of the first fixation within
             the word (the word's first character is 1), 0 if the word was never fixated, null
-            when either input has no character-level (``char_idx``) data, see
+            when either input has no character-level (``char_idx``) data or the word's first
+            fixation carries no ``char_idx`` value, see
             :py:func:`~pymovements.measure.reading.landing_position`.
         * - ``TFC``
           - **Total Fixation Count**: total number of fixations on the word, see
@@ -706,11 +708,17 @@ def _assemble_word_level_measures(
 
     if 'LP' in table.columns:
         # Landing position within the word, one-based; unfixated words are filled 0 like every
-        # other measure. The whole column stays null when the AOI table is word-level (no word
-        # start characters to align to).
+        # other measure. The zero-fill is keyed on the join miss (TFC is null exactly for
+        # unfixated words at this point, before the shared fill below), so a fixated word whose
+        # first fixation has a null char_idx keeps a null LP. The whole column stays null when
+        # the AOI table is word-level (no word start characters to align to).
         table = table.with_columns(
             pl.when(pl.col('word_start_char').is_not_null())
-            .then((pl.col('LP') - pl.col('word_start_char')).fill_null(0))
+            .then(
+                pl.when(pl.col('TFC').is_null())
+                .then(0)
+                .otherwise(pl.col('LP') - pl.col('word_start_char')),
+            )
             .alias('LP'),
         )
     else:
