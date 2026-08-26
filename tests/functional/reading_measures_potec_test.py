@@ -33,10 +33,6 @@ from pymovements, so the comparison replicates or masks three known differences:
   is handled and are masked.
 
 Everything else must match exactly.
-
-TODO: Clarify with Deborah whether these are deliberate choices of the reference implementation
-rather than artifacts. Dropping the final fixation in particular might be reasonable, in which
-case pymovements should adopt the behavior instead of masking it here.
 """
 from __future__ import annotations
 
