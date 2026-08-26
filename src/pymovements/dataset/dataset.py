@@ -634,26 +634,26 @@ class Dataset:
         Checking integrity of ...
         Extracting ... to data...toy_dataset...raw
         <pymovements.dataset.dataset.Dataset object at ...>
-        >>> dataset.load()# doctest:+ELLIPSIS,+REMOTE_DATA
+        >>> dataset.load()# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
         Use apply for your gaze transformations:
-        >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS,+REMOTE_DATA
+        >>> dataset.apply('pix2deg')# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
-        >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS,+REMOTE_DATA
+        >>> dataset.apply('pos2vel', method='neighbors')# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
         Use apply for your event detection:
-        >>> dataset.apply('ivt')# doctest:+ELLIPSIS,+REMOTE_DATA
+        >>> dataset.apply('ivt')# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
-        >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS,+REMOTE_DATA
+        >>> dataset.apply('microsaccades', minimum_duration=8)# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
 
         Use apply for upsampling, downsampling or making the sampling rate constant
         using resample:
-        >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS,+REMOTE_DATA
+        >>> dataset.apply('resample', resampling_rate=2000)# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
         """
         self._check_gaze()

@@ -159,7 +159,7 @@ disallow_untyped_defs = false
 skip-checking-raises = true
 
 [tool.pytest.ini_options]
-addopts = "-ra -l --tb=long --doctest-modules --doctest-plus --import-mode=importlib -p doctest_fixtures"
+addopts = "-ra -l --tb=long --doctest-modules --doctest-plus --remote-data=any --import-mode=importlib -p doctest_fixtures"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 filterwarnings = [
   "error",
