@@ -140,57 +140,87 @@ def compute_reading_measures(
     The output contains one row per word. Group columns present in the input are prepended,
     followed by these columns in order:
 
-    * ``word_index``: index of the word as given in the AOI definitions. The indexing of
-      ``aois`` is preserved, whether zero-based, one-based, or any other scheme.
-    * ``word``: the word (AOI) within the text.
-    * ``FFD`` (First Fixation Duration): duration of the first fixation on the word during the
-      first pass, see :py:func:`~pymovements.measure.reading.first_fixation_duration`.
-    * ``SFD`` (Single Fixation Duration): equal to ``FFD`` if the word received exactly one
-      fixation during the first pass, 0 otherwise.
-    * ``FD`` (Fixation Duration): duration of the first fixation on the word, regardless of
-      reading pass, see :py:func:`~pymovements.measure.reading.first_duration`.
-    * ``FPRT`` (First Pass Reading Time): sum of all fixation durations on the word during the
-      first pass, see :py:func:`~pymovements.measure.reading.first_pass_reading_time`.
-    * ``FPFC`` (First Pass Fixation Count): number of fixations on the word during the first
-      pass, see :py:func:`~pymovements.measure.reading.first_pass_fixation_count`.
-    * ``FRT`` (First Reading Time): total dwell time from first entering the word until first
-      leaving it, see :py:func:`~pymovements.measure.reading.first_reading_time`.
-    * ``TFT`` (Total Fixation Time): total fixation time on the word (``FPRT + RRT``).
-    * ``RRT`` (Rereading Time): sum of fixation durations on the word after the first pass,
-      see :py:func:`~pymovements.measure.reading.rereading_time`.
-    * ``RPD_inc`` (Regression-Path Duration, inclusive): sum of all fixation durations from
-      first entering the word until the first fixation to its right, including fixations on the
-      word itself, see
-      :py:func:`~pymovements.measure.reading.regression_path_duration_inclusive`.
-    * ``RPD_exc`` (Regression-Path Duration, exclusive): time spent on regressed words within
-      the regression-path window, excluding fixations on the word itself, see
-      :py:func:`~pymovements.measure.reading.regression_path_duration_exclusive`.
-    * ``RBRT`` (Right-Bounded Reading Time): sum of fixation durations on the word before any
-      word to its right is fixated, see
-      :py:func:`~pymovements.measure.reading.right_bounded_reading_time`.
-    * ``Fix`` (Fixation Indicator): 1 if the word was fixated (``TFT > 0``).
-    * ``skipped`` (Skipping Indicator): 1 if the word was never fixated (``TFC == 0``).
-    * ``FPF`` (First Pass Fixation Indicator): 1 if the word was fixated during the first pass
-      (``FPRT > 0``).
-    * ``RR`` (Rereading Indicator): 1 if the word was reread (``RRT > 0``).
-    * ``FPReg`` (Regression Indicator): 1 if a regression was initiated from the word
-      (``RPD_exc > 0``).
-    * ``TRC_out`` (Total Regression Count, outgoing): number of regressions going out of the
-      word, see :py:func:`~pymovements.measure.reading.regression_count_out`.
-    * ``TRC_in`` (Total Regression Count, ingoing): number of regressions landing on the word,
-      see :py:func:`~pymovements.measure.reading.regression_count_in`.
-    * ``SL_in`` (Saccade Length, ingoing): signed word distance between the current word and the
-      previously fixated word at the first fixation on the current word, see
-      :py:func:`~pymovements.measure.reading.saccade_length_in`.
-    * ``SL_out`` (Saccade Length, outgoing): signed word distance from the current word to the
-      next fixated word, measured at the last fixation of the first run, see
-      :py:func:`~pymovements.measure.reading.saccade_length_out`.
-    * ``LP`` (Landing Position): zero-based character position of the first fixation within the
-      word, null when either input has no character-level (``char_idx``) data or when the word
-      was never fixated, see
-      :py:func:`~pymovements.measure.reading.landing_position`.
-    * ``TFC`` (Total Fixation Count): total number of fixations on the word, see
-      :py:func:`~pymovements.measure.reading.total_fixation_count`.
+    .. list-table::
+        :header-rows: 1
+        :widths: 15 85
+
+        * - Column
+          - Description
+        * - ``word_index``
+          - index of the word as given in the AOI definitions. The indexing of ``aois`` is
+            preserved, whether zero-based, one-based, or any other scheme.
+        * - ``word``
+          - the word (AOI) within the text.
+        * - ``FFD``
+          - **First Fixation Duration**: duration of the first fixation on the word during the
+            first pass, see :py:func:`~pymovements.measure.reading.first_fixation_duration`.
+        * - ``SFD``
+          - **Single Fixation Duration**: equal to ``FFD`` if the word received exactly one
+            fixation during the first pass, 0 otherwise.
+        * - ``FD``
+          - **Fixation Duration**: duration of the first fixation on the word, regardless of
+            reading pass, see :py:func:`~pymovements.measure.reading.first_duration`.
+        * - ``FPRT``
+          - **First Pass Reading Time**: sum of all fixation durations on the word during the
+            first pass, see :py:func:`~pymovements.measure.reading.first_pass_reading_time`.
+        * - ``FPFC``
+          - **First Pass Fixation Count**: number of fixations on the word during the first
+            pass, see :py:func:`~pymovements.measure.reading.first_pass_fixation_count`.
+        * - ``FRT``
+          - **First Reading Time**: total dwell time from first entering the word until first
+            leaving it, see :py:func:`~pymovements.measure.reading.first_reading_time`.
+        * - ``TFT``
+          - **Total Fixation Time**: total fixation time on the word (``FPRT + RRT``).
+        * - ``RRT``
+          - **Rereading Time**: sum of fixation durations on the word after the first pass,
+            see :py:func:`~pymovements.measure.reading.rereading_time`.
+        * - ``RPD_inc``
+          - **Regression-Path Duration, inclusive**: sum of all fixation durations from
+            first entering the word until the first fixation to its right, including fixations
+            on the word itself, see
+            :py:func:`~pymovements.measure.reading.regression_path_duration_inclusive`.
+        * - ``RPD_exc``
+          - **Regression-Path Duration, exclusive**: time spent on regressed words within
+            the regression-path window, excluding fixations on the word itself, see
+            :py:func:`~pymovements.measure.reading.regression_path_duration_exclusive`.
+        * - ``RBRT``
+          - **Right-Bounded Reading Time**: sum of fixation durations on the word before any
+            word to its right is fixated, see
+            :py:func:`~pymovements.measure.reading.right_bounded_reading_time`.
+        * - ``Fix``
+          - **Fixation Indicator**: 1 if the word was fixated (``TFT > 0``).
+        * - ``skipped``
+          - **Skipping Indicator**: 1 if the word was never fixated (``TFC == 0``).
+        * - ``FPF``
+          - **First Pass Fixation Indicator**: 1 if the word was fixated during the first pass
+            (``FPRT > 0``).
+        * - ``RR``
+          - **Rereading Indicator**: 1 if the word was reread (``RRT > 0``).
+        * - ``FPReg``
+          - **Regression Indicator**: 1 if a regression was initiated from the word
+            (``RPD_exc > 0``).
+        * - ``TRC_out``
+          - **Total Regression Count, outgoing**: number of regressions going out of the
+            word, see :py:func:`~pymovements.measure.reading.regression_count_out`.
+        * - ``TRC_in``
+          - **Total Regression Count, ingoing**: number of regressions landing on the word,
+            see :py:func:`~pymovements.measure.reading.regression_count_in`.
+        * - ``SL_in``
+          - **Saccade Length, ingoing**: signed word distance between the current word and the
+            previously fixated word at the first fixation on the current word, see
+            :py:func:`~pymovements.measure.reading.saccade_length_in`.
+        * - ``SL_out``
+          - **Saccade Length, outgoing**: signed word distance from the current word to the
+            next fixated word, measured at the last fixation of the first run, see
+            :py:func:`~pymovements.measure.reading.saccade_length_out`.
+        * - ``LP``
+          - **Landing Position**: zero-based character position of the first fixation within
+            the word, null when either input has no character-level (``char_idx``) data or when
+            the word was never fixated, see
+            :py:func:`~pymovements.measure.reading.landing_position`.
+        * - ``TFC``
+          - **Total Fixation Count**: total number of fixations on the word, see
+            :py:func:`~pymovements.measure.reading.total_fixation_count`.
 
     Examples
     --------
