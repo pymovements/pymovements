@@ -63,9 +63,9 @@ def test_compute_reading_measures(dummy_dataset, make_example_file):
     )
 
     expected_columns = [
-        'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT',
-        'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
-        'TRC_in', 'SL_in', 'SL_out', 'TFC',
+        'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FPFC',
+        'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg',
+        'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'TFC',
     ]
     result_frame = reading_measures.frame
 
@@ -88,9 +88,9 @@ def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_fil
     )
 
     expected_columns = [
-        'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FRT',
-        'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out',
-        'TRC_in', 'SL_in', 'SL_out', 'TFC',
+        'word_index', 'word', 'subject_id', 'text_id', 'FFD', 'SFD', 'FD', 'FPRT', 'FPFC',
+        'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc', 'RBRT', 'Fix', 'FPF', 'RR', 'FPReg',
+        'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'TFC',
     ]
     expected_file = Path(tmp_path) / '5-b0-reading_measures.csv'
 

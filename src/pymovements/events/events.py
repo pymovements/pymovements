@@ -30,6 +30,7 @@ import polars as pl
 from tqdm import tqdm
 
 from pymovements._utils import _checks
+from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
 from pymovements.measure.events.measures import duration
@@ -703,25 +704,47 @@ class Events:
         )
         return df
 
-    def unnest(self) -> None:
-        """Explode a column of type ``pl.List`` into one column for each list component."""
-        cols = ['location']
-        input_columns = [col for col in cols if col in self.frame.columns]
+    def unnest(
+            self,
+            input_columns: list[str] | str | None = None,
+            output_suffixes: list[str] | None = None,
+            *,
+            output_columns: list[str] | None = None,
+    ) -> None:
+        """Explode columns of type ``polars.List`` into one column for each list component.
 
-        output_suffixes = ['_x', '_y']
+        The input columns will be dropped.
 
-        col_names = [
-            [f'{input_col}{suffix}' for suffix in output_suffixes]
-            for input_col in input_columns
-        ]
+        Parameters
+        ----------
+        input_columns: list[str] | str | None
+            Name(s) of input column(s) to be unnested into several component columns.
+            If None, all list columns will be unnested if existing. (default: None)
+        output_suffixes: list[str] | None
+            Suffixes to append to the column names. (default: None)
+        output_columns: list[str] | None
+            Name of the resulting tuple columns. (default: None)
 
-        for input_col, column_names in zip(input_columns, col_names):
-            self.frame = self.frame.with_columns(
-                [
-                    pl.col(input_col).list.get(component_id).alias(names)
-                    for component_id, names in enumerate(column_names)
-                ],
-            ).drop(input_col)
+        Raises
+        ------
+        ValueError
+            If both output_columns and output_suffixes are specified.
+            If number of output columns / suffixes does not match number of components.
+            If output columns / suffixes are not unique.
+            If no columns to unnest exist and none are specified.
+            If output columns are specified and more than one input column is specified.
+            If a list column to unnest is empty (has no rows).
+            If a list column to unnest contains only null values.
+            If number of components is not 2, 4 or 6.
+        Warning
+            If no columns to unnest exist and none are specified.
+        """
+        self.frame = unnest_list_columns(
+            df=self.frame,
+            input_columns=input_columns,
+            output_suffixes=output_suffixes,
+            output_columns=output_columns,
+        )
 
     def map_to_aois(
             self,

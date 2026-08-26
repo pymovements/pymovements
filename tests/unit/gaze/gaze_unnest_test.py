@@ -436,6 +436,33 @@ def test_gaze_unnest_errors(init_data, unnest_kwargs, exception, message):
         gaze.unnest(**unnest_kwargs)
 
 
+@pytest.mark.parametrize(
+    ('samples', 'expected_message'),
+    [
+        pytest.param(
+            pl.DataFrame({'pixel': [None]}, schema_overrides={'pixel': pl.List(pl.Float64)}),
+            "cannot infer number of components in all-null column 'pixel'",
+            id='all_null_list_column',
+        ),
+        pytest.param(
+            pl.DataFrame(schema={'pixel': pl.List(pl.Float64)}),
+            "cannot infer number of components in empty column 'pixel'",
+            id='empty_list_column',
+        ),
+    ],
+)
+def test_gaze_unnest_uninferable_list_column_raises(samples, expected_message):
+    """Gaze.unnest raises a clear error if a list column allows no component inference."""
+    df = pl.DataFrame({
+        'pixel': [[1.23, 4.56]],  # avoids warning on gaze initialization
+    })
+    gaze = pm.Gaze(samples=df)
+    gaze.samples = samples
+
+    with pytest.raises(ValueError, match=expected_message):
+        gaze.unnest()
+
+
 def test_gaze_unnest_no_nested_columns_warns():
     df = pl.DataFrame({
         'pixel': [[1.23, 4.56], [1.23, 4.56]],  # avoids warning on gaze initialization

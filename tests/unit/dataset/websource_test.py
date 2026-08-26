@@ -19,9 +19,11 @@
 # SOFTWARE.
 """Tests for WebSource and download utilities."""
 import hashlib
+import io
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 import pytest
 
@@ -369,6 +371,39 @@ def test__get_redirected_url_with_redirects_max_hops():
         'https://github.com/pymovements/pymovements/archive/master.zip '\
         'exceeded 0 redirects. The last redirect points to '\
         'https://codeload.github.com/pymovements/pymovements/zip/main.'
+
+
+def test_websource_download_http_error_on_redirect_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    http_error = HTTPError(
+        url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
+    )
+
+    with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
+        with mock.patch('urllib.request.urlopen', side_effect=http_error):
+            with pytest.raises(RuntimeError, match=f'Downloading resource {source.url} failed'):
+                source.download(tmp_path, verbose=False)
+
+    mock_close.assert_called_once()
+
+
+def test_websource_download_http_error_on_retrieve_closes_response(tmp_path):
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    http_error = HTTPError(
+        url=source.url, code=404, msg='Not Found', hdrs=None, fp=io.BytesIO(b''),
+    )
+    mock_response = mock.MagicMock()
+    mock_response.url = source.url
+
+    with mock.patch.object(http_error, 'close', wraps=http_error.close) as mock_close:
+        with mock.patch('urllib.request.urlopen', return_value=mock_response):
+            with mock.patch('urllib.request.urlretrieve', side_effect=http_error):
+                with pytest.raises(
+                        RuntimeError, match=f'Downloading resource {source.url} failed',
+                ):
+                    source.download(tmp_path, verbose=False)
+
+    mock_close.assert_called_once()
 
 
 def test__DownloadProgressBar_tsize_not_None():
