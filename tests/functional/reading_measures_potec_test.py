@@ -24,18 +24,23 @@ implementation that pymovements' original ``compute_reading_measures`` descends 
 recomputes the measures from the published fixation sequences and compares them cell by cell.
 
 The reference implementation handles the start and end of the fixation sequence differently
-from pymovements, so the comparison replicates or masks three known differences:
+from pymovements, so the comparison replicates or masks four known differences:
 
 * The reference never processes the final fixation of a trial, so it is dropped from the input.
 * ``SL_in`` of the first fixated word equals the word position instead of 0 (the reference
   starts from a ``-1`` sentinel) and is masked.
 * ``FRT``, ``SL_out``, and ``TRC_out`` of the last fixated words depend on how the sequence end
   is handled and are masked.
+* ``LP`` is one-based and zero-filled for unfixated words in the reference; pymovements
+  reports it zero-based and null for unfixated words. The comparison shifts by one, maps null
+  to the zero fill, and masks ``LP`` at the word of the trial's final fixation (set by the
+  reference from the dropped fixation).
 
 Everything else must match exactly.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import polars as pl
@@ -57,9 +62,18 @@ READING_MEASURES_SOURCE = WebSource(
     md5='b7ada7ca91f3a807d873598b821de88d',
 )
 
+WORD_LIMITS_SOURCE = WebSource(
+    url=(
+        'https://raw.githubusercontent.com/DiLi-Lab/PoTeC/'
+        '343cfcac70d0c27b9346ba147c6f490a1a2a5ee9/preprocessing_scripts/word_limits.json'
+    ),
+    filename='word_limits.json',
+    md5='69d4fed384c3b7faef25ad4197901558',
+)
+
 MEASURE_COLUMNS = [
     'FFD', 'SFD', 'FD', 'FPRT', 'FRT', 'TFT', 'RRT', 'RPD_inc', 'RPD_exc',
-    'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'TFC',
+    'RBRT', 'Fix', 'FPF', 'RR', 'FPReg', 'TRC_out', 'TRC_in', 'SL_in', 'SL_out', 'LP', 'TFC',
 ]
 
 # Measures that are masked at the last fixated words (see module docstring).
@@ -77,6 +91,7 @@ def fixture_potec_directory(tmp_path_factory: pytest.TempPathFactory) -> Path:
         extract_archive(
             archive_path, directory / archive_path.stem, remove_finished=True, verbose=0,
         )
+    WORD_LIMITS_SOURCE.download(directory, verbose=False)
     return directory
 
 
@@ -87,6 +102,8 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
         if not path.name.startswith('._')  # skip macOS resource fork files in the archive
     )[::SAMPLE_STRIDE]
     assert scanpath_files
+
+    word_limits = json.loads((potec_directory / 'word_limits.json').read_text())
 
     mismatches = []
     for scanpath_file in scanpath_files:
@@ -108,11 +125,19 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
         fixations = scanpaths.sort('fixation_index').select(
             pl.col('word_index_in_text').alias('word_idx'),
             pl.col('fixation_duration').alias('duration'),
+            # The reference computes LP from the aoi column, not char_index_in_text.
+            pl.col('aoi').alias('char_idx'),
         )
         # The reference implementation never processed the trial's final fixation.
         fixations = fixations.head(fixations.height - 1)
 
+        # The i-th zero-based entry of word_starts is the start character of word i + 1.
+        text_id = stem.split('_')[1]
+        word_starts = word_limits[text_id][0]
         aois = expected.select(pl.col('word_index_in_text').alias('word_idx'), 'word')
+        aois = aois.with_columns(
+            pl.Series('char_idx', [word_starts[word_idx - 1] for word_idx in aois['word_idx']]),
+        )
 
         result = compute_reading_measures(fixations, aois).sort('word_index')
         assert result.height == expected.height, stem
@@ -120,6 +145,8 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
         word_sequence = scanpaths.sort('fixation_index')['word_index_in_text'].drop_nulls()
         first_word = word_sequence[0]
         last_words = set(word_sequence.tail(2))
+        # The reference sets LP of this word from the final fixation dropped from the input.
+        final_fixation_word = word_sequence[-1]
 
         for result_row, expected_row in zip(result.to_dicts(), expected.to_dicts()):
             word = result_row['word_index']
@@ -128,6 +155,17 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
                 if column == 'SL_in' and word == first_word:
                     continue
                 if column in SEQUENCE_END_MEASURES and word in last_words:
+                    continue
+                if column == 'LP':
+                    if word == final_fixation_word:
+                        continue
+                    # The reference LP is one-based and zero-filled for unfixated words.
+                    result_lp = result_row['LP']
+                    reference_lp = (result_lp + 1) if result_lp is not None else 0
+                    if reference_lp != expected_row['LP']:
+                        mismatches.append(
+                            (stem, word, column, result_lp, expected_row['LP']),
+                        )
                     continue
                 if result_row[column] != expected_row[column]:
                     mismatches.append(
