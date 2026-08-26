@@ -31,10 +31,8 @@ from pymovements, so the comparison replicates or masks four known differences:
   starts from a ``-1`` sentinel) and is masked.
 * ``FRT``, ``SL_out``, and ``TRC_out`` of the last fixated words depend on how the sequence end
   is handled and are masked.
-* ``LP`` is one-based and zero-filled for unfixated words in the reference; pymovements
-  reports it zero-based and null for unfixated words. The comparison shifts by one, maps null
-  to the zero fill, and masks ``LP`` at the word of the trial's final fixation (set by the
-  reference from the dropped fixation).
+* ``LP`` at the word of a trial's final fixation is masked: the reference sets it from the
+  fixation dropped from the input.
 
 Everything else must match exactly.
 """
@@ -156,16 +154,7 @@ def test_reading_measures_match_published_potec_measures(potec_directory):
                     continue
                 if column in SEQUENCE_END_MEASURES and word in last_words:
                     continue
-                if column == 'LP':
-                    if word == final_fixation_word:
-                        continue
-                    # The reference LP is one-based and zero-filled for unfixated words.
-                    result_lp = result_row['LP']
-                    reference_lp = (result_lp + 1) if result_lp is not None else 0
-                    if reference_lp != expected_row['LP']:
-                        mismatches.append(
-                            (stem, word, column, result_lp, expected_row['LP']),
-                        )
+                if column == 'LP' and word == final_fixation_word:
                     continue
                 if result_row[column] != expected_row[column]:
                     mismatches.append(
