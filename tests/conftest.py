@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Fixtures for datasets."""
+import pytest
 
 pytest_plugins = [
     'tests.fixtures.deprecation_fixtures',
@@ -26,3 +27,10 @@ pytest_plugins = [
     'tests.fixtures.plotting_fixtures',
     'tests.fixtures.text_stimulus_fixtures',
 ]
+
+
+def pytest_collection_modifyitems(items):
+    """Retry network tests to absorb transient connectivity issues and rate limiting."""
+    for item in items:
+        if item.get_closest_marker('network'):
+            item.add_marker(pytest.mark.flaky(reruns=2, reruns_delay=30))
