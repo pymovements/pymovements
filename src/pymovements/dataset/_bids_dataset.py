@@ -20,6 +20,7 @@
 """Shared helpers for BIDS dataset classes."""
 from __future__ import annotations
 
+import math
 import re
 import warnings
 from collections.abc import Callable
@@ -123,6 +124,56 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
         f"polars datatype {dtype} has no mapping to bids format descriptor. "
         f"Supported polars datatypes are: Integer, Float, String",
     )
+
+
+def _check_na_conformity(data: polars.DataFrame) -> list[str]:
+    """Check that null values are coded as 'n/a' in BIDS columns.
+
+    BIDS requires that missing and non-applicable values MUST be coded as 'n/a'.
+    """
+    validation_warnings: list[str] = []
+    # Standard BIDS columns that we check for 'n/a' conformity
+    bids_columns = ['age', 'sex', 'handedness', 'species', 'strain', 'strain_rrid']
+    na_alternatives = {'N/A', 'NA', 'na', 'NaN', 'nan', ''}
+
+    for col in data.columns:
+        if col in bids_columns:
+            values = data[col].to_list()
+            invalid_na = []
+            for v in values:
+                if v is None:
+                    invalid_na.append('None')
+                elif isinstance(v, float) and math.isnan(v):
+                    invalid_na.append('NaN')
+                elif isinstance(v, str) and v in na_alternatives:
+                    invalid_na.append(v)
+
+            if invalid_na:
+                validation_warnings.append(
+                    f"Column '{col}' contains invalid null values: {set(invalid_na)}. "
+                    "BIDS requires missing values to be coded as 'n/a'.",
+                )
+    return validation_warnings
+
+
+def _infer_metadata_column_format(
+        data: polars.DataFrame,
+        metadata: dict[str, Any],
+) -> dict[str, Any]:
+    """Infer bids format of each column in data and update metadata."""
+    for column in data.columns:
+        if column not in metadata:
+            metadata[column] = {}
+
+        if 'Format' not in metadata[column]:
+            # infer format from BIDS specification or use polars datatypes of data columns
+            if column == 'participant_id':
+                metadata[column]['Format'] = 'string'
+            else:
+                # convert polars datatype to bids format descriptor
+                metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)
+
+    return metadata
 
 
 def _cast_columns_to_metadata_format(

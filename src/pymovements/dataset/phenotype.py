@@ -31,11 +31,11 @@ import polars
 
 from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
+from pymovements.dataset._bids_dataset import _check_na_conformity
+from pymovements.dataset._bids_dataset import _infer_metadata_column_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 from pymovements.dataset._bids_dataset import _verify_bids_handler
-from pymovements.dataset.participants import _check_na_conformity
-from pymovements.dataset.participants import _infer_metadata_column_format
 
 
 @dataclass
