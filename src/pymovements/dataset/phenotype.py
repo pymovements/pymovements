@@ -33,6 +33,8 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _check_na_conformity
 from pymovements.dataset._bids_dataset import _infer_metadata_column_format
+from pymovements.dataset._bids_dataset import _merge_read_csv_kwargs
+from pymovements.dataset._bids_dataset import _merge_write_csv_kwargs
 from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 from pymovements.dataset._bids_dataset import _verify_bids_handler
@@ -188,10 +190,7 @@ class Phenotype:
         dir_path = data_path.parent
         default_metadata_path = data_path.with_suffix('.json')
 
-        if read_csv_kwargs is None:
-            read_csv_kwargs = {'separator': separator}
-        else:
-            read_csv_kwargs = {'separator': separator, **read_csv_kwargs}
+        read_csv_kwargs = _merge_read_csv_kwargs(separator, read_csv_kwargs)
 
         data = polars.read_csv(data_path, **read_csv_kwargs)
 
@@ -257,14 +256,9 @@ class Phenotype:
         data_path = Path(path)
         default_metadata_path = data_path.with_suffix('.json')
 
-        if write_csv_kwargs is None:
-            write_csv_kwargs = {'separator': separator}
-        else:
-            write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
+        write_csv_kwargs = _merge_write_csv_kwargs(separator, write_csv_kwargs)
 
-        # Ensure null values are encoded as n/a.
-        data_to_save = self.data.fill_null('n/a')
-        data_to_save.write_csv(data_path, **write_csv_kwargs)
+        self.data.write_csv(data_path, **write_csv_kwargs)
 
         if metadata_path is None:
             metadata_path = default_metadata_path

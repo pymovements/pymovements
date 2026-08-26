@@ -358,6 +358,22 @@ def test_participants_save_data_to_dirpath(tmp_path):
     assert_frame_equal(saved_data, data)
 
 
+def test_participants_save_load_roundtrip_numeric_null(tmp_path):
+    data = pl.DataFrame(
+        {'participant_id': ['sub-01', 'sub-02'], 'age': [34.5, None]},
+        schema={'participant_id': pl.String, 'age': pl.Float64},
+    )
+    participants = Participants(data)
+
+    save_path = tmp_path / 'participants.tsv'
+    participants.save(save_path)
+
+    assert save_path.read_text() == 'participant_id\tage\nsub-01\t34.5\nsub-02\tn/a\n'
+
+    reloaded = Participants.load(save_path)
+    assert_frame_equal(reloaded.data, data)
+
+
 def test_verify_bids_valid():
     data = pl.DataFrame({'participant_id': ['sub-01', 'sub-02']})
     participants = Participants(data, verify_bids=False)
@@ -847,9 +863,9 @@ def test_verify_bids_invalid_level():
             ),
             None,
             'REQUIRED',
-            ["Column 'age' contains invalid null values"],
             [],
-            id='age_null_value',
+            ["Column 'age' contains invalid null values"],
+            id='age_null_value_conformant',
         ),
     ],
 )

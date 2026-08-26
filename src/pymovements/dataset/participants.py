@@ -35,6 +35,8 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _check_na_conformity
 from pymovements.dataset._bids_dataset import _infer_metadata_column_format
+from pymovements.dataset._bids_dataset import _merge_read_csv_kwargs
+from pymovements.dataset._bids_dataset import _merge_write_csv_kwargs
 from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 from pymovements.dataset._bids_dataset import _verify_bids_handler
@@ -202,11 +204,7 @@ class Participants:
                     stacklevel=2,
                 )
 
-        if read_csv_kwargs is None:
-            read_csv_kwargs = {'separator': separator}
-        else:
-            # **read_csv_kwargs takes precedence over explicit separator argument.
-            read_csv_kwargs = {'separator': separator, **read_csv_kwargs}
+        read_csv_kwargs = _merge_read_csv_kwargs(separator, read_csv_kwargs)
 
         if verify_bids is not False:
             if read_csv_kwargs.get('separator') != '\t':
@@ -307,11 +305,7 @@ class Participants:
                     stacklevel=2,
                 )
 
-        if write_csv_kwargs is None:
-            write_csv_kwargs = {'separator': separator}
-        else:
-            # **write_csv_kwargs takes precedence over explicit separator argument.
-            write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
+        write_csv_kwargs = _merge_write_csv_kwargs(separator, write_csv_kwargs)
 
         if verify_bids is not False:
             if write_csv_kwargs.get('separator') != '\t':
@@ -335,10 +329,7 @@ class Participants:
                     stacklevel=2,
                 )
 
-        # Ensure null values are encoded as n/a.
-        data_to_save = self.data.fill_null('n/a')
-
-        data_to_save.write_csv(data_path, **write_csv_kwargs)
+        self.data.write_csv(data_path, **write_csv_kwargs)
 
         # Save metadata to json file.
         with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:

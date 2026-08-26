@@ -429,6 +429,22 @@ def test_phenotype_save_data_write_csv_kwargs_precedence_over_separator(tmp_path
     assert_frame_equal(saved_data, data)
 
 
+def test_phenotype_save_load_roundtrip_numeric_null(tmp_path):
+    data = pl.DataFrame(
+        {'participant_id': ['sub-01', 'sub-02'], 'adhd_score': [21.0, None]},
+        schema={'participant_id': pl.String, 'adhd_score': pl.Float64},
+    )
+    phenotype = Phenotype(data)
+
+    save_path = tmp_path / 'acds_adult.tsv'
+    phenotype.save(save_path)
+
+    assert save_path.read_text() == 'participant_id\tadhd_score\nsub-01\t21.0\nsub-02\tn/a\n'
+
+    reloaded = Phenotype.load(save_path)
+    assert_frame_equal(reloaded.data, data)
+
+
 @pytest.mark.parametrize(
     'phenotype',
     [

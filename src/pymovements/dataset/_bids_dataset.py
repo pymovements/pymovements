@@ -127,9 +127,11 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
 
 
 def _check_na_conformity(data: polars.DataFrame) -> list[str]:
-    """Check that null values are coded as 'n/a' in BIDS columns.
+    """Check that missing values are coded as 'n/a' in BIDS columns.
 
     BIDS requires that missing and non-applicable values MUST be coded as 'n/a'.
+    Null values are conformant: they are written as 'n/a' on save and read back
+    as nulls on load.
     """
     validation_warnings: list[str] = []
     # Standard BIDS columns that we check for 'n/a' conformity
@@ -141,9 +143,7 @@ def _check_na_conformity(data: polars.DataFrame) -> list[str]:
             values = data[col].to_list()
             invalid_na = []
             for v in values:
-                if v is None:
-                    invalid_na.append('None')
-                elif isinstance(v, float) and math.isnan(v):
+                if isinstance(v, float) and math.isnan(v):
                     invalid_na.append('NaN')
                 elif isinstance(v, str) and v in na_alternatives:
                     invalid_na.append(v)
@@ -187,6 +187,36 @@ def _cast_columns_to_metadata_format(
         if bids_format:
             schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
     return data.cast(schema_overrides)
+
+
+def _merge_read_csv_kwargs(
+    separator: str,
+    read_csv_kwargs: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Merge default read_csv keyword arguments with user-supplied overrides.
+
+    Values encoded as 'n/a' are read back as nulls per BIDS specification.
+    User-supplied keyword arguments take precedence over the defaults.
+    """
+    kwargs: dict[str, Any] = {'separator': separator, 'null_values': ['n/a']}
+    if read_csv_kwargs:
+        kwargs.update(read_csv_kwargs)
+    return kwargs
+
+
+def _merge_write_csv_kwargs(
+    separator: str,
+    write_csv_kwargs: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Merge default write_csv keyword arguments with user-supplied overrides.
+
+    Null values are written as 'n/a' per BIDS specification.
+    User-supplied keyword arguments take precedence over the defaults.
+    """
+    kwargs: dict[str, Any] = {'separator': separator, 'null_value': 'n/a'}
+    if write_csv_kwargs:
+        kwargs.update(write_csv_kwargs)
+    return kwargs
 
 
 def _verify_bids_handler(
