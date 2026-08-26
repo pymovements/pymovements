@@ -12,12 +12,18 @@ description: 'CERVINO dataset :cite:p:`CERVINO-Paper,CERVINO-Zenodo`.
   reading four Italian legal texts, with each participant reading a single text.
 
 
-  Eye movements were recorded at 120 Hz with a Tobii eye tracker. The dataset also
-  provides
+  Eye movements were recorded at 120 Hz with a Tobii eye tracker. Although
 
-  comprehension results, participant metadata, AOI properties, and the source
+  participants were initially positioned at approximately 60 cm, viewing distance
 
-  texts.
+  was not fixed because no head-stabilization device was used and could vary
+
+  slightly during the experiment.
+
+
+  The dataset also provides comprehension results, participant metadata,
+
+  AOI properties, and the source texts.
 
 
   See the paper :cite:p:`CERVINO-Paper`, the
