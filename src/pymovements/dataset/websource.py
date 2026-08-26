@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 from urllib.error import URLError
 from warnings import warn
 
@@ -323,6 +324,8 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
     ------
     RuntimeError
         If number of redirects exceed `max_hops`.
+    HTTPError
+        If the server returns an HTTP error status.
     """
     initial_url = url
     headers = {'Method': 'HEAD', 'User-Agent': USER_AGENT}
@@ -331,7 +334,15 @@ def _get_redirected_url(url: str, max_hops: int = 3) -> str:
     urllib.request.install_opener(opener)
 
     for _ in range(max_hops + 1):
-        with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as response:
+        try:
+            response = urllib.request.urlopen(urllib.request.Request(url, headers=headers))
+        except HTTPError as e:
+            # Close explicitly, otherwise the buffered error response leaks a temporary file
+            # on Python 3.14, causing a ResourceWarning during garbage collection.
+            e.close()
+            raise
+
+        with response:
             if response.url == url or response.url is None:
                 return url
             url = response.url
@@ -393,5 +404,11 @@ def _download_url(url: str, destination: Path, verbose: bool = True) -> None:
         If True, show progressbar.
     """
     with _DownloadProgressBar(desc=destination.name, disable=not verbose) as t:
-        urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
+        try:
+            urllib.request.urlretrieve(url=url, filename=destination, reporthook=t.update_to)
+        except HTTPError as e:
+            # Close explicitly, otherwise the buffered error response leaks a temporary file
+            # on Python 3.14, causing a ResourceWarning during garbage collection.
+            e.close()
+            raise
         t.total = t.n

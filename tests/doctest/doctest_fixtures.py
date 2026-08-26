@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,28 +17,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test measure library."""
+"""Fixtures for doctest support.
+
+Modules in this directory are pytest plugins for doctest support. They are
+registered as plugins so their fixtures reach the doctests in ``src/``. A
+doctest requests a fixture from within a hidden ``.. testsetup::`` block via
+``getfixture(...)``.
+"""
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
-from pymovements import SampleMeasureLibrary
-from pymovements.measure import samples
 
+@pytest.fixture(name='doctest_tmp_cwd')
+def fixture_doctest_tmp_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Change the working directory of the requesting doctest to pytest's tmp path.
 
-@pytest.mark.parametrize(
-    ('measure', 'name'),
-    [
-        pytest.param(samples.amplitude, 'amplitude', id='amplitude'),
-        pytest.param(samples.dispersion, 'dispersion', id='dispersion'),
-        pytest.param(samples.disposition, 'disposition', id='disposition'),
-        pytest.param(samples.duration, 'duration', id='duration'),
-        pytest.param(samples.location, 'location', id='location'),
-        pytest.param(samples.null_ratio, 'null_ratio', id='null_ratio'),
-        pytest.param(samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
-    ],
-)
-def test_measure_registered(measure, name):
-    assert name in SampleMeasureLibrary()
-    assert SampleMeasureLibrary.get(name) == measure
-    assert SampleMeasureLibrary.get(name).__name__ == name
+    Doctests that write relative paths request this fixture in a hidden
+    ``.. testsetup::`` block at the start of their Examples section::
+
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
+    This changes the working directory of the requesting doctest to pytest's
+    temporary directory, so artifacts never land in the repository. Doctests
+    that read repository files via relative paths must not request it.
+    """
+    monkeypatch.chdir(tmp_path)

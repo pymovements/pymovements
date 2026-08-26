@@ -85,7 +85,7 @@ def compute_reading_measures(
         word_index: {
             'word': word,
             'word_index': word_index,
-            'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
+            'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FPFC': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
             'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
             'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
         } for word_index, word in zip(word_indices, words)
@@ -94,7 +94,7 @@ def compute_reading_measures(
     # Add a catch-all entry for the dummy fixation and invalid AOIs
     rm_dict[-1] = {
         'word': None, 'word_index': -1,
-        'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
+        'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FPFC': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
         'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
         'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
     }
@@ -138,6 +138,7 @@ def compute_reading_measures(
         if right_most_word == cur_fix_word_idx:
             if rm_dict[cur_fix_word_idx]['TRC_out'] == 0:
                 rm_dict[cur_fix_word_idx]['FPRT'] += int(cur_fix_dur)
+                rm_dict[cur_fix_word_idx]['FPFC'] += 1
                 if last_fix_word_idx < cur_fix_word_idx:
                     rm_dict[cur_fix_word_idx]['FFD'] += int(cur_fix_dur)
         else:
