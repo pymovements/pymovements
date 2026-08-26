@@ -10,9 +10,13 @@ description: |
   scanpaths and aggregated word-level eye-tracking measures from 207 participants
   reading four Italian legal texts, with each participant reading a single text.
 
-  Eye movements were recorded at 120 Hz with a Tobii eye tracker. The dataset also provides
-  comprehension results, participant metadata, AOI properties, and the source
-  texts.
+  Eye movements were recorded at 120 Hz with a Tobii eye tracker. Although
+  participants were initially positioned at approximately 60 cm, viewing distance
+  was not fixed because no head-stabilization device was used and could vary
+  slightly during the experiment.
+  
+  The dataset also provides comprehension results, participant metadata,
+  AOI properties, and the source texts.
 
   See the paper :cite:p:`CERVINO-Paper`, the
   `Zenodo record <https://doi.org/10.5281/zenodo.22082820>`__, and the
