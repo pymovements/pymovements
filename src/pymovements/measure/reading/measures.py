@@ -68,7 +68,7 @@ def total_fixation_count() -> pl.Expr:
 
 
 def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') -> pl.Expr:
-    """Count the fixations during the first pass (FPFC).
+    """Total number of fixations during the first pass (FPFC).
 
     Parameters
     ----------
@@ -343,7 +343,7 @@ def saccade_length_out(
 
 
 def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> pl.Expr:
-    """Sum all fixation durations within the regression-path window of a word (RPD_inc).
+    """Sum of all fixation durations within the regression-path window of a word (RPD_inc).
 
     The window spans from first entering the word until the first fixation to its right,
     *including* fixations on the word itself. Aggregate over ``regression_path_word`` groups
@@ -369,7 +369,7 @@ def regression_path_duration_exclusive(
     word_idx: str | pl.Expr = 'word_idx',
     regression_path_word: str | pl.Expr = 'regression_path_word',
 ) -> pl.Expr:
-    """Sum the regressed-time fixation durations within the regression-path window (RPD_exc).
+    """Sum of the regressed-time fixation durations within the regression-path window (RPD_exc).
 
     Same window as :func:`regression_path_duration_inclusive`, but *excluding* fixations on the
     word itself (i.e., time spent on regressed words only). Aggregate over ``regression_path_word``
@@ -405,7 +405,7 @@ def right_bounded_reading_time(
     word_idx: str | pl.Expr = 'word_idx',
     regression_path_word: str | pl.Expr = 'regression_path_word',
 ) -> pl.Expr:
-    """Sum the fixation durations on a word before any word to its right is visited (RBRT).
+    """Sum of fixation durations on a word before any word to its right is visited (RBRT).
 
     Aggregate over ``regression_path_word`` groups (see
     :func:`~pymovements.measure.reading.regression_path_word`).
