@@ -71,8 +71,9 @@ def run_id(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``run_id`` column.
     """
+    word_idx_expr = as_expr(word_idx)
     return (
-        (as_expr(word_idx) != as_expr(word_idx).shift())
+        (word_idx_expr != word_idx_expr.shift())
         .fill_null(True)
         .cast(pl.Int8)
         .cum_sum()
@@ -96,7 +97,8 @@ def prev_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``prev_word_idx`` column.
     """
-    return as_expr(word_idx).shift().alias('prev_word_idx')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.shift().alias('prev_word_idx')
 
 
 def next_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
@@ -115,7 +117,8 @@ def next_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``next_word_idx`` column.
     """
-    return as_expr(word_idx).shift(-1).alias('next_word_idx')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.shift(-1).alias('next_word_idx')
 
 
 def delta_in(
@@ -140,7 +143,9 @@ def delta_in(
     pl.Expr
         Expression producing the ``delta_in`` column.
     """
-    return (as_expr(word_idx) - as_expr(prev_word_idx)).alias('delta_in')
+    word_idx_expr = as_expr(word_idx)
+    prev_word_idx_expr = as_expr(prev_word_idx)
+    return (word_idx_expr - prev_word_idx_expr).alias('delta_in')
 
 
 def delta_out(
@@ -165,7 +170,9 @@ def delta_out(
     pl.Expr
         Expression producing the ``delta_out`` column.
     """
-    return (as_expr(next_word_idx) - as_expr(word_idx)).alias('delta_out')
+    word_idx_expr = as_expr(word_idx)
+    next_word_idx_expr = as_expr(next_word_idx)
+    return (next_word_idx_expr - word_idx_expr).alias('delta_out')
 
 
 def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
@@ -184,7 +191,8 @@ def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
     pl.Expr
         Expression producing the ``is_reg_in`` column.
     """
-    return (as_expr(delta_in) < 0).alias('is_reg_in')
+    delta_in_expr = as_expr(delta_in)
+    return (delta_in_expr < 0).alias('is_reg_in')
 
 
 def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
@@ -203,7 +211,8 @@ def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
     pl.Expr
         Expression producing the ``is_reg_out`` column.
     """
-    return (as_expr(delta_out) < 0).alias('is_reg_out')
+    delta_out_expr = as_expr(delta_out)
+    return (delta_out_expr < 0).alias('is_reg_out')
 
 
 def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
@@ -223,7 +232,8 @@ def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``is_first_fix`` column.
     """
-    return as_expr(word_idx).cum_count().eq(1).alias('is_first_fix')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.cum_count().eq(1).alias('is_first_fix')
 
 
 def is_first_pass(
@@ -261,13 +271,15 @@ def is_first_pass(
         Expression producing the ``is_first_pass`` column.
     """
     group_columns = list(group_columns or [])
+    word_idx_expr = as_expr(word_idx)
+    run_id_expr = as_expr(run_id)
 
     no_higher_word_seen = (
-        as_expr(word_idx) >= _over(as_expr(word_idx).cum_max().shift(), group_columns)
+        word_idx_expr >= _over(word_idx_expr.cum_max().shift(), group_columns)
     ).fill_null(True)
 
     first_run_of_word = (
-        as_expr(run_id) == as_expr(run_id).min().over(group_columns + [as_expr(word_idx)])
+        run_id_expr == run_id_expr.min().over(group_columns + [word_idx_expr])
     )
 
     return (no_higher_word_seen & first_run_of_word).alias('is_first_pass')
@@ -296,7 +308,8 @@ def regression_path_word(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     pl.Expr
         Expression producing the ``regression_path_word`` column.
     """
-    return as_expr(word_idx).cum_max().alias('regression_path_word')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.cum_max().alias('regression_path_word')
 
 
 def annotate_fixations(
@@ -374,9 +387,10 @@ def annotate_fixations(
     └──────────┴────────┴───────────────┴──────────────────────┘
     """
     group_columns = list(group_columns or [])
+    word_idx_expr = as_expr(word_idx)
 
     fixations = (
-        events.filter((pl.col('name') == event_name) & (as_expr(word_idx).is_not_null()))
+        events.filter((pl.col('name') == event_name) & (word_idx_expr.is_not_null()))
         .with_row_index('fixation_id')
         # fixation_id breaks onset ties deterministically (it preserves the input order), so the
         # run/pass annotations are reproducible even when two fixations share an onset.

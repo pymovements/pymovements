@@ -81,7 +81,8 @@ def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') ->
     pl.Expr
         Aggregation expression producing the ``FPFC`` column.
     """
-    return as_expr(is_first_pass).sum().cast(pl.UInt64).alias('FPFC')
+    is_first_pass_expr = as_expr(is_first_pass)
+    return is_first_pass_expr.sum().cast(pl.UInt64).alias('FPFC')
 
 
 def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
@@ -100,7 +101,8 @@ def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``FD`` column.
     """
-    return as_expr(duration).first().alias('FD')
+    duration_expr = as_expr(duration)
+    return duration_expr.first().alias('FD')
 
 
 def first_reading_time(
@@ -126,9 +128,11 @@ def first_reading_time(
     pl.Expr
         Aggregation expression producing the ``FRT`` column.
     """
+    duration_expr = as_expr(duration)
+    run_id_expr = as_expr(run_id)
     return (
-        as_expr(duration)
-        .filter(as_expr(run_id) == as_expr(run_id).min())
+        duration_expr
+        .filter(run_id_expr == run_id_expr.min())
         .sum()
         .alias('FRT')
     )
@@ -156,7 +160,9 @@ def first_fixation_duration(
     pl.Expr
         Aggregation expression producing the ``FFD`` column.
     """
-    return as_expr(duration).filter(as_expr(is_first_pass)).first().alias('FFD')
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(is_first_pass_expr).first().alias('FFD')
 
 
 def first_pass_reading_time(
@@ -179,7 +185,9 @@ def first_pass_reading_time(
     pl.Expr
         Aggregation expression producing the ``FPRT`` column.
     """
-    return as_expr(duration).filter(as_expr(is_first_pass)).sum().alias('FPRT')
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(is_first_pass_expr).sum().alias('FPRT')
 
 
 def rereading_time(
@@ -202,7 +210,9 @@ def rereading_time(
     pl.Expr
         Aggregation expression producing the ``RRT`` column.
     """
-    return as_expr(duration).filter(~as_expr(is_first_pass)).sum().alias('RRT')
+    duration_expr = as_expr(duration)
+    is_first_pass_expr = as_expr(is_first_pass)
+    return duration_expr.filter(~is_first_pass_expr).sum().alias('RRT')
 
 
 # ---------------------------
@@ -224,7 +234,8 @@ def regression_count_in(is_reg_in: str | pl.Expr = 'is_reg_in') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``TRC_in`` column.
     """
-    return as_expr(is_reg_in).sum().cast(pl.UInt64).alias('TRC_in')
+    is_reg_in_expr = as_expr(is_reg_in)
+    return is_reg_in_expr.sum().cast(pl.UInt64).alias('TRC_in')
 
 
 def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
@@ -241,7 +252,8 @@ def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``TRC_out`` column.
     """
-    return as_expr(is_reg_out).sum().cast(pl.UInt64).alias('TRC_out')
+    is_reg_out_expr = as_expr(is_reg_out)
+    return is_reg_out_expr.sum().cast(pl.UInt64).alias('TRC_out')
 
 
 def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
@@ -265,7 +277,8 @@ def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``LP`` column.
     """
-    return (as_expr(char_idx).first() + 1).alias('LP')
+    char_idx_expr = as_expr(char_idx)
+    return (char_idx_expr.first() + 1).alias('LP')
 
 
 def saccade_length_in(
@@ -297,9 +310,12 @@ def saccade_length_in(
     pl.Expr
         Aggregation expression producing the ``SL_in`` column.
     """
+    word_idx_expr = as_expr(word_idx)
+    prev_word_idx_expr = as_expr(prev_word_idx)
+    is_first_fix_expr = as_expr(is_first_fix)
     return (
-        (as_expr(word_idx) - as_expr(prev_word_idx))
-        .filter(as_expr(is_first_fix))
+        (word_idx_expr - prev_word_idx_expr)
+        .filter(is_first_fix_expr)
         .first()
         .alias('SL_in')
     )
@@ -333,9 +349,12 @@ def saccade_length_out(
     pl.Expr
         Aggregation expression producing the ``SL_out`` column.
     """
+    word_idx_expr = as_expr(word_idx)
+    next_word_idx_expr = as_expr(next_word_idx)
+    run_id_expr = as_expr(run_id)
     return (
-        (as_expr(next_word_idx) - as_expr(word_idx))
-        .filter(as_expr(run_id) == as_expr(run_id).min())
+        (next_word_idx_expr - word_idx_expr)
+        .filter(run_id_expr == run_id_expr.min())
         .last()
         .fill_null(0)
         .alias('SL_out')
@@ -366,7 +385,8 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
     pl.Expr
         Aggregation expression producing the ``RPD_inc`` column.
     """
-    return as_expr(duration).sum().alias('RPD_inc')
+    duration_expr = as_expr(duration)
+    return duration_expr.sum().alias('RPD_inc')
 
 
 def regression_path_duration_exclusive(
@@ -397,9 +417,12 @@ def regression_path_duration_exclusive(
     pl.Expr
         Aggregation expression producing the ``RPD_exc`` column.
     """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    regression_path_word_expr = as_expr(regression_path_word)
     return (
-        as_expr(duration)
-        .filter(as_expr(word_idx) != as_expr(regression_path_word))
+        duration_expr
+        .filter(word_idx_expr != regression_path_word_expr)
         .sum()
         .alias('RPD_exc')
     )
@@ -432,9 +455,12 @@ def right_bounded_reading_time(
     pl.Expr
         Aggregation expression producing the ``RBRT`` column.
     """
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    regression_path_word_expr = as_expr(regression_path_word)
     return (
-        as_expr(duration)
-        .filter(as_expr(word_idx) == as_expr(regression_path_word))
+        duration_expr
+        .filter(word_idx_expr == regression_path_word_expr)
         .sum()
         .alias('RBRT')
     )
@@ -472,7 +498,8 @@ def non_aoi_fixation_count_ratio(word_idx: str | pl.Expr = 'word_idx') -> pl.Exp
         Aggregation expression producing the ``NAFCR`` column (proportion of fixations without
         a mapped word, 0.0 to 1.0).
     """
-    return as_expr(word_idx).is_null().mean().alias('NAFCR')
+    word_idx_expr = as_expr(word_idx)
+    return word_idx_expr.is_null().mean().alias('NAFCR')
 
 
 def non_aoi_fixation_duration_ratio(
@@ -509,8 +536,10 @@ def non_aoi_fixation_duration_ratio(
         Aggregation expression producing the ``NAFDR`` column (proportion of fixation duration
         without a mapped word, 0.0 to 1.0).
     """
-    total_duration = as_expr(duration).sum()
-    non_aoi_duration = as_expr(duration).filter(as_expr(word_idx).is_null()).sum()
+    duration_expr = as_expr(duration)
+    word_idx_expr = as_expr(word_idx)
+    total_duration = duration_expr.sum()
+    non_aoi_duration = duration_expr.filter(word_idx_expr.is_null()).sum()
     # A group with zero total duration has no defined ratio; dividing would yield NaN, so it
     # becomes null instead. Empty groups cannot occur inside group_by, so unlike this zero
     # total duration case they need no guard.
