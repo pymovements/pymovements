@@ -30,11 +30,13 @@ import polars
 
 
 def _validate_participant_id_structure(data: polars.DataFrame) -> None:
-    """Validate participant_id column exists and is first column."""
+    """Validate that a participant_id column exists.
+
+    All other conformity issues, including the participant_id column not being the
+    first column, are reported as warnings by _validate_participant_id_format.
+    """
     if 'participant_id' not in data.columns:
         raise ValueError("data must have column named 'participant_id'")
-    if data.columns[0] != 'participant_id':
-        raise ValueError("first column in data must be named 'participant_id'")
 
 
 def _validate_participant_id_format(data: polars.DataFrame) -> list[str]:

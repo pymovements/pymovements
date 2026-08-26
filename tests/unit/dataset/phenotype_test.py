@@ -134,7 +134,7 @@ def test_phenotype_init_no_metadata_infer(data):
             pl.DataFrame({'a': [1], 'participant_id': ['001']}),
             True,
             ValueError,
-            "first column in data must be named 'participant_id'",
+            'BIDS non-conformities found:.*participant_id column must be the first column',
             id='participant_id_not_first_column',
         ),
         pytest.param(

@@ -41,6 +41,10 @@ class TestValidateParticipantId:
                 pl.DataFrame({'participant_id': ['sub-01'], 'age': [25]}),
                 id='valid_with_additional_columns',
             ),
+            pytest.param(
+                pl.DataFrame({'age': [25], 'participant_id': ['sub-01']}),
+                id='participant_id_not_first_passes',
+            ),
         ],
     )
     def test_valid_participant_id_passes(self, data):
@@ -53,11 +57,6 @@ class TestValidateParticipantId:
                 pl.DataFrame({'subject': ['sub-01']}),
                 "data must have column named 'participant_id'",
                 id='missing_participant_id_column',
-            ),
-            pytest.param(
-                pl.DataFrame({'age': [25], 'participant_id': ['sub-01']}),
-                "first column in data must be named 'participant_id'",
-                id='participant_id_not_first',
             ),
         ],
     )

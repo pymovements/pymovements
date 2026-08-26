@@ -63,7 +63,8 @@ class Participants:
         (default: ``None``)
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
         Verify BIDS conformity. If True, raise exception on non-conformity at REQUIRED level.
-        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level,
+        except for a missing ``participant_id`` column, which raises a ValueError.
         If False, do not verify.
         (default: ``False``)
     infer_metadata: bool
@@ -99,7 +100,7 @@ class Participants:
         self.data = data
         self.metadata = metadata
 
-        _verify_bids_handler(verify_bids, self.verify_bids, stacklevel=2)
+        _verify_bids_handler(verify_bids, self.verify_bids)
 
     def update(
             self,
@@ -161,7 +162,8 @@ class Participants:
             (default: None)
         verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
             Verify BIDS conformity. If True, raise exception on non-conformity at REQUIRED level.
-            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level,
+            except for a missing ``participant_id`` column, which raises a ValueError.
             If False, do not verify.
             (default: ``False``)
         separator: str

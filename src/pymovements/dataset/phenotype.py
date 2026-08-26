@@ -70,7 +70,8 @@ class Phenotype:
         Verify BIDS conformity after initialization. If True, raise exception on
         non-conformity at REQUIRED level.
         If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that
-        level.
+        level, except for a missing ``participant_id`` column, which raises a
+        ValueError.
         If False, do not verify.
         (default: ``False``)
     """
@@ -103,7 +104,7 @@ class Phenotype:
         self.data = data
         self.metadata = metadata
 
-        _verify_bids_handler(verify_bids, self.verify_bids, stacklevel=2)
+        _verify_bids_handler(verify_bids, self.verify_bids)
 
     def verify_bids(
         self,
@@ -173,7 +174,8 @@ class Phenotype:
             Verify BIDS conformity after loading. If True, raise exception on
             non-conformity at REQUIRED level.
             If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that
-            level.
+            level, except for a missing ``participant_id`` column, which raises a
+            ValueError.
             If False, do not verify.
             (default: ``False``)
 

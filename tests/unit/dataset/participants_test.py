@@ -957,58 +957,92 @@ def test_participants_init_null_dtype():
 
 class TestVerifyBidsInit:
     @pytest.mark.parametrize(
-        ('data', 'verify_bids', 'expected_exception', 'expected_message'),
+        ('data', 'verify_bids', 'expected_message'),
         [
             pytest.param(
-                pl.DataFrame({'participant_id': ['sub-01']}),
+                pl.DataFrame({'age': [25]}),
                 'REQUIRED',
-                None,
-                None,
-                id='verify_required_no_exception',
+                "data must have column named 'participant_id'",
+                id='missing_participant_id_required_raises',
             ),
             pytest.param(
-                pl.DataFrame({'participant_id': ['01']}),
-                'REQUIRED',
-                None,
-                None,
-                id='verify_required_warning',
+                pl.DataFrame({'age': [25]}),
+                'RECOMMENDED',
+                "data must have column named 'participant_id'",
+                id='missing_participant_id_recommended_raises',
+            ),
+            pytest.param(
+                pl.DataFrame({'age': [25]}),
+                True,
+                "data must have column named 'participant_id'",
+                id='missing_participant_id_true_raises',
             ),
             pytest.param(
                 pl.DataFrame({'participant_id': ['01']}),
                 True,
-                ValueError,
                 'BIDS non-conformities found',
-                id='verify_true_raises',
-            ),
-            pytest.param(
-                pl.DataFrame({'participant_id': ['sub-01']}),
-                False,
-                None,
-                None,
-                id='verify_false_no_check',
+                id='invalid_id_true_raises',
             ),
         ],
     )
-    def test_verify_bids_init(
-        self,
-        data,
-        verify_bids,
-        expected_exception,
-        expected_message,
-    ):
-        if expected_exception:
-            with pytest.raises(expected_exception, match=expected_message):
-                Participants(data, verify_bids=verify_bids)
-        else:
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter('always')
-                _ = Participants(data, verify_bids=verify_bids)
-                if verify_bids not in (False, None):
-                    if expected_message:
-                        warning_messages = [str(warning.message) for warning in w]
-                        assert any(expected_message in msg for msg in warning_messages)
-                else:
-                    assert not w
+    def test_verify_bids_init_raises(self, data, verify_bids, expected_message):
+        with pytest.raises(ValueError, match=expected_message):
+            Participants(data, verify_bids=verify_bids)
+
+    @pytest.mark.parametrize(
+        ('data', 'verify_bids', 'expected_message'),
+        [
+            pytest.param(
+                pl.DataFrame({'participant_id': ['01']}),
+                'REQUIRED',
+                "participant_id values must match 'sub-<label>' pattern. "
+                "Invalid values: ['01']",
+                id='invalid_id_required_warns',
+            ),
+            pytest.param(
+                pl.DataFrame({'age': [25], 'participant_id': ['sub-01']}),
+                'REQUIRED',
+                'participant_id column must be the first column',
+                id='not_first_column_required_warns',
+            ),
+        ],
+    )
+    def test_verify_bids_init_warns(self, data, verify_bids, expected_message):
+        with pytest.warns(UserWarning) as record:
+            Participants(data, verify_bids=verify_bids)
+        warning_messages = [str(warning.message) for warning in record]
+        assert expected_message in warning_messages
+
+    @pytest.mark.parametrize(
+        ('data', 'verify_bids'),
+        [
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01']}),
+                'REQUIRED',
+                id='conformant_required_silent',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01']}),
+                True,
+                id='conformant_true_silent',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['01']}),
+                False,
+                id='nonconformant_false_silent',
+            ),
+            pytest.param(
+                pl.DataFrame({'age': [25]}),
+                False,
+                id='missing_participant_id_false_silent',
+            ),
+        ],
+    )
+    def test_verify_bids_init_silent(self, data, verify_bids):
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter('always')
+            Participants(data, verify_bids=verify_bids)
+        assert not record
 
 
 class TestVerifyBidsLoad:
