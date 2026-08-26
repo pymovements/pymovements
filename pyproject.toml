@@ -74,6 +74,8 @@ dev = [
   "pytest>=8.4.0",
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=4.0.0",
+  "pytest-doctestplus>=1.7.0",
+  "pytest-remotedata>=0.4.1",
   "pytest-rerunfailures>=16.0",
   "setuptools>=61.0.0",
   "types-tqdm>=4.67.0",
@@ -157,7 +159,7 @@ disallow_untyped_defs = false
 skip-checking-raises = true
 
 [tool.pytest.ini_options]
-addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib -p doctest_fixtures"
+addopts = "-ra -l --tb=long --doctest-modules --doctest-plus --import-mode=importlib -p doctest_fixtures"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 filterwarnings = [
   "error",

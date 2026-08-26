@@ -20,11 +20,23 @@
 """Retry network tests to absorb transient connectivity issues and rate limiting."""
 from __future__ import annotations
 
+import doctest
+
 import pytest
+
+REMOTE_DATA = doctest.register_optionflag('REMOTE_DATA')
+
+
+def _is_network_doctest(item):
+    """Detect doctests declaring network usage via the REMOTE_DATA doctest option flag."""
+    dtest = getattr(item, 'dtest', None)
+    return dtest is not None and any(example.options.get(REMOTE_DATA) for example in dtest.examples)
 
 
 def pytest_collection_modifyitems(items):
-    """Apply a retry marker to all network tests."""
+    """Apply the network marker to downloading doctests and a retry marker to all network tests."""
     for item in items:
+        if _is_network_doctest(item):
+            item.add_marker(pytest.mark.network)
         if item.get_closest_marker('network'):
             item.add_marker(pytest.mark.flaky(reruns=2, reruns_delay=30))
