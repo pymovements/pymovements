@@ -148,9 +148,8 @@ class Phenotype:
         Parameters
         ----------
         path: Path | str
-            If this points to a directory, assume file with name matching the directory
-            basename inside a ``phenotype`` subdirectory.
-            If this points to a file, load from that file.
+            Path of the phenotype tabular data file, e.g. ``phenotype/acds_adult.tsv``.
+            Each file holds the data of a single measurement tool.
         metadata: Path | str | dict[str, Any] | None
             Additional metadata. Can be directly passed as a dictionary. If path or string:
             load metadata from json file. If a relative path given, path is assumed to be
@@ -183,15 +182,9 @@ class Phenotype:
         Phenotype
             Phenotype initialised with data from loaded files.
         """
-        path = Path(path)
-        if path.is_dir():
-            dir_path = path
-            data_path = path / 'phenotype' / f"{path.name}.tsv"
-            default_metadata_path = path / f"{path.name}.json"
-        else:
-            dir_path = path.parent
-            data_path = path
-            default_metadata_path = data_path.with_suffix('.json')
+        data_path = Path(path)
+        dir_path = data_path.parent
+        default_metadata_path = data_path.with_suffix('.json')
 
         if read_csv_kwargs is None:
             read_csv_kwargs = {'separator': separator}
@@ -234,8 +227,7 @@ class Phenotype:
         Parameters
         ----------
         path: Path | str
-            Save phenotypic data to this path. If this is a directory, use the basename of
-            the directory as filename stem and save as ``phenotype/<stem>.tsv``.
+            Save phenotypic data to this file path, e.g. ``phenotype/acds_adult.tsv``.
         verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
             Verify BIDS conformity before saving. If True, raise exception on non-conformity
             at REQUIRED level.
@@ -244,7 +236,7 @@ class Phenotype:
             (default: ``False``)
         metadata_path: Path | str | None
             Save metadata json to this path. If this is a relative path it is assumed to be
-            relative to the directory specified by ``path``. If None: use stem from ``path``
+            relative to the directory of the data file. If None: use stem from ``path``
             and save as ``<stem>.json`` in same directory as data file.
             (default: ``None``)
         separator: str
@@ -260,15 +252,8 @@ class Phenotype:
         """
         _verify_bids_handler(verify_bids, self.verify_bids)
 
-        path = Path(path)
-        if path.is_dir():
-            phenotype_dir = path / 'phenotype'
-            phenotype_dir.mkdir(parents=True, exist_ok=True)
-            data_path = phenotype_dir / f"{path.name}.tsv"
-            default_metadata_path = path / f"{path.name}.json"
-        else:
-            data_path = path
-            default_metadata_path = data_path.with_suffix('.json')
+        data_path = Path(path)
+        default_metadata_path = data_path.with_suffix('.json')
 
         if write_csv_kwargs is None:
             write_csv_kwargs = {'separator': separator}

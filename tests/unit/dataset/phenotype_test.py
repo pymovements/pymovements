@@ -230,44 +230,15 @@ def test_phenotype_load_data_from_csv(data, make_csv_file):
     assert_frame_equal(phenotype.data, data)
 
 
-def test_phenotype_load_data_from_directory(make_csv_file):
-    """Test that phenotype/<name>.tsv is loaded when file path in phenotype dir is provided."""
+def test_phenotype_load_data_from_phenotype_directory(make_csv_file):
+    """Test that a file inside a phenotype directory is loaded from its file path."""
     data = pl.DataFrame({'participant_id': ['1']})
-    phenotype_file = make_csv_file('phenotype.tsv', data, separator='\t')
+    phenotype_file = make_csv_file('acds_adult.tsv', data, separator='\t')
     phenotype_dir = phenotype_file.parent / 'phenotype'
     phenotype_dir.mkdir(parents=True, exist_ok=True)
-    phenotype_file.rename(phenotype_dir / 'phenotype.tsv')
+    phenotype_file.rename(phenotype_dir / 'acds_adult.tsv')
 
-    phenotype = Phenotype.load(phenotype_dir / 'phenotype.tsv')
-
-    assert_frame_equal(phenotype.data, data)
-
-
-def test_phenotype_load_from_directory_path(tmp_path):
-    """Test that phenotype data is loaded when directory path is provided."""
-    data = pl.DataFrame({'participant_id': ['1']})
-    dataset_dir = tmp_path / 'mydataset'
-    phenotype_dir = dataset_dir / 'phenotype'
-    phenotype_dir.mkdir(parents=True)
-    data_file = phenotype_dir / 'mydataset.tsv'
-    data.write_csv(data_file, separator='\t')
-
-    phenotype = Phenotype.load(dataset_dir)
-
-    assert_frame_equal(phenotype.data, data)
-
-
-def test_phenotype_load_from_directory_path_with_existing_phenotype_dir(tmp_path):
-    """Test loading when phenotype directory already exists."""
-    data = pl.DataFrame({'participant_id': ['1']})
-    dataset_dir = tmp_path / 'mydataset'
-    dataset_dir.mkdir()
-    phenotype_dir = dataset_dir / 'phenotype'
-    phenotype_dir.mkdir()
-    data_file = phenotype_dir / 'mydataset.tsv'
-    data.write_csv(data_file, separator='\t')
-
-    phenotype = Phenotype.load(dataset_dir)
+    phenotype = Phenotype.load(phenotype_dir / 'acds_adult.tsv')
 
     assert_frame_equal(phenotype.data, data)
 
@@ -458,22 +429,6 @@ def test_phenotype_save_data_write_csv_kwargs_precedence_over_separator(tmp_path
     assert_frame_equal(saved_data, data)
 
 
-def test_phenotype_save_data_to_dirpath(tmp_path):
-    data = pl.DataFrame({'participant_id': [1], 'adhd_score': [21.0]})
-    phenotype = Phenotype(data)
-
-    phenotype.save(tmp_path)
-
-    save_path = tmp_path / 'phenotype' / f"{tmp_path.name}.tsv"
-
-    assert save_path.is_file()
-    saved_data = pl.read_csv(save_path, separator='\t')
-    assert_frame_equal(saved_data, data)
-
-    metadata_path = tmp_path / f"{tmp_path.name}.json"
-    assert metadata_path.is_file()
-
-
 @pytest.mark.parametrize(
     'phenotype',
     [
@@ -498,11 +453,11 @@ def test_phenotype_save_data_to_dirpath(tmp_path):
     ['utf-8', 'ascii'],
 )
 class TestPhenotypeSaveMetadata:
-    def test_phenotype_save_metadata_to_dirpath(self, phenotype, encoding, tmp_path):
+    def test_phenotype_save_metadata_to_default_path(self, phenotype, encoding, tmp_path):
         metadata = deepcopy(phenotype.metadata)
-        phenotype.save(tmp_path, metadata_encoding=encoding)
+        phenotype.save(tmp_path / 'acds_adult.tsv', metadata_encoding=encoding)
 
-        save_path = tmp_path / f"{tmp_path.name}.json"
+        save_path = tmp_path / 'acds_adult.json'
         assert save_path.is_file()
         with open(save_path, encoding=encoding) as opened_file:
             saved_metadata = json.load(opened_file)
@@ -512,7 +467,7 @@ class TestPhenotypeSaveMetadata:
         metadata = deepcopy(phenotype.metadata)
         metadata_path = tmp_path / 'test_phenotype.json'
         phenotype.save(
-            tmp_path,
+            tmp_path / 'acds_adult.tsv',
             metadata_path=metadata_path,
             metadata_encoding=encoding,
         )
