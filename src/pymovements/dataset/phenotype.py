@@ -77,6 +77,23 @@ class Phenotype:
         ValueError.
         If False, do not verify.
         (default: ``False``)
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements import Phenotype
+    >>> data = pl.DataFrame({
+    ...     'participant_id': ['sub-01', 'sub-02'],
+    ...     'adhd_score': [21.0, None],
+    ... })
+    >>> phenotype = Phenotype(data)
+    >>> phenotype.metadata
+    {'participant_id': {'Format': 'string'}, 'adhd_score': {'Format': 'number'}}
+
+    Saving and loading round-trips through BIDS conformant tsv and json files:
+
+    >>> phenotype.save('phenotype/acds_adult.tsv')  # doctest: +SKIP
+    >>> phenotype = Phenotype.load('phenotype/acds_adult.tsv')  # doctest: +SKIP
     """
 
     data: polars.DataFrame
@@ -127,6 +144,27 @@ class Phenotype:
         list[str]
             List of warning messages for each non-conformity found.
             Empty list if data is BIDS conformant.
+
+        Examples
+        --------
+        Verify BIDS compliance at REQUIRED level (default):
+
+        >>> import polars as pl
+        >>> from pymovements import Phenotype
+        >>> data = pl.DataFrame({
+        ...     'participant_id': ['sub-01', 'sub-02'],
+        ...     'adhd_score': [21.0, 17.5],
+        ... })
+        >>> phenotype = Phenotype(data)
+        >>> phenotype.verify_bids('REQUIRED')
+        []
+
+        Non-conformant participant ids yield warning messages:
+
+        >>> data = pl.DataFrame({'participant_id': ['01']})
+        >>> phenotype = Phenotype(data)
+        >>> phenotype.verify_bids()
+        ["participant_id values must match 'sub-<label>' pattern. Invalid values: ['01']"]
         """
         warnings_list: list[str] = []
 
@@ -262,7 +300,7 @@ class Phenotype:
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
-            Use this encoding for loading the metadata json file.
+            Use this encoding for writing the metadata json file.
             (default: ``utf-8``)
         """
         _verify_bids_handler(verify_bids, self.verify_bids)

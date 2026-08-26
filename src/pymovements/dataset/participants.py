@@ -283,7 +283,7 @@ class Participants:
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
-            Use this encoding for loading the metadata json file.
+            Use this encoding for writing the metadata json file.
             (default: ``utf-8``)
         """
         _verify_bids_handler(verify_bids, self.verify_bids)

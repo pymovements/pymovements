@@ -239,12 +239,11 @@ class TestBidsFormatRoundTrip:
 
 
 class TestVerifyBidsHandler:
-    @pytest.mark.parametrize('verify_bids', [False])
-    def test_false_does_not_call_verify_func(self, verify_bids):
+    def test_false_does_not_call_verify_func(self):
         def verify_func(level):
             raise AssertionError('should not be called')
 
-        _verify_bids_handler(verify_bids, verify_func)
+        _verify_bids_handler(False, verify_func)
 
     @pytest.mark.parametrize(
         ('verify_bids', 'expected_level'),

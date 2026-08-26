@@ -23,3 +23,4 @@ in different formats.
     ResourceDefinitions
     WebSource
     Participants
+    Phenotype
