@@ -3,6 +3,8 @@ name: "CERVINO"
 long_name: "Corpus of Eye-movements while Reading Valle d'Aosta Italian NOrms"
 
 description: |
+  CERVINO dataset :cite:p:`CERVINO-Paper,CERVINO-Zenodo`.
+
   CERVINO (Corpus of Eye-movements while Reading Valle d'Aosta Italian NOrms)
   is an Italian eye-tracking dataset for reading research. It contains fixation
   scanpaths and aggregated word-level eye-tracking measures from 207 participants
@@ -12,7 +14,8 @@ description: |
   comprehension results, participant metadata, AOI properties, and the source
   texts.
 
-  See the `Zenodo record <https://doi.org/10.5281/zenodo.22082820>`__ and the
+  See the paper :cite:p:`CERVINO-Paper`, the
+  `Zenodo record <https://doi.org/10.5281/zenodo.22082820>`__, and the
   `CERVINO repository <https://github.com/calogero-jerik-scozzaro/cervino>`__
   for details.
 
@@ -41,9 +44,11 @@ resources:
 experiment:
   eyetracker:
     vendor: Tobii
+    model: Tobii Pro Fusion
     sampling_rate: 120
   screen:
     width_px: 1920
     height_px: 1080
     width_cm: 34.5
     height_cm: 19.5
+    origin: "upper left"
