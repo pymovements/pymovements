@@ -1,6 +1,7 @@
 Dataset,Samples,Events,Reading Measures,# Subjects,# Sessions per Subject,Sampling Rate,Stimulus Type
 ":ref:`BSC` :cite:p:`BSC`",,X,,60,1,500 Hz,Text (sentences)
 ":ref:`BSCII` :cite:p:`BSCII`",,X,,60,1,1000 Hz,Text (sentences)
+":ref:`CERVINO` :cite:p:`CERVINO-Paper,CERVINO-Zenodo`",,X,X,207,1,120 Hz,Text (documents)
 ":ref:`ChineseReading` :cite:p:`ChineseReading`",,X,X,303,1,1000 Hz,Text (sentences)
 ":ref:`CodeComprehension` :cite:p:`CodeComprehension`",,X,,27,1-2,2000 Hz,Text (code)
 ":ref:`CoLAGaze` :cite:p:`CoLAGaze`",,X,X,42,1,2000 Hz,Text (sentences)

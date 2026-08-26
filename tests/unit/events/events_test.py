@@ -1084,8 +1084,105 @@ def test_unnest_location_basic(
     assert events.frame.get_column('location_y').to_list() == expected_y
 
 
-def test_unnest_location_absent_is_noop() -> None:
-    """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
+def test_unnest_multiple_properties() -> None:
+    """Events.unnest can unnest multiple properties, even when they apply only to some events."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'saccade'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[1, 2], None],
+            'amplitude': [None, [5, 6]],
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest()
+
+    assert 'location' not in events.frame.columns
+    assert 'amplitude' not in events.frame.columns
+    assert events.frame.get_column('location_x').to_list() == [1, None]
+    assert events.frame.get_column('location_y').to_list() == [2, None]
+    assert events.frame.get_column('amplitude_x').to_list() == [None, 5]
+    assert events.frame.get_column('amplitude_y').to_list() == [None, 6]
+
+
+@pytest.mark.parametrize(
+    ('unnest_kwargs', 'expected_column_x', 'expected_column_y'),
+    [
+        pytest.param(
+            {'input_columns': 'location', 'output_columns': ['x', 'y']},
+            'x',
+            'y',
+            id='input_columns_output_columns',
+        ),
+        pytest.param(
+            {'input_columns': ['location'], 'output_suffixes': ['_px', '_py']},
+            'location_px',
+            'location_py',
+            id='input_columns_output_suffixes',
+        ),
+    ],
+)
+def test_unnest_explicit_arguments(unnest_kwargs, expected_column_x, expected_column_y):
+    """Events.unnest passes input_columns, output_suffixes and output_columns through."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[1, 2]],
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest(**unnest_kwargs)
+
+    assert 'location' not in events.frame.columns
+    assert events.frame.get_column(expected_column_x).to_list() == [1]
+    assert events.frame.get_column(expected_column_y).to_list() == [2]
+
+
+@pytest.mark.parametrize(
+    ('df', 'expected_message'),
+    [
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'location': [None],
+                },
+                schema_overrides={'location': pl.List(pl.Float64)},
+            ),
+            "cannot infer number of components in all-null column 'location'",
+            id='all_null_list_column',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                schema={
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                },
+            ),
+            "cannot infer number of components in empty column 'location'",
+            id='empty_list_column',
+        ),
+    ],
+)
+def test_unnest_uninferable_list_column_raises(df, expected_message):
+    """Events.unnest raises a clear error if a list column allows no component inference."""
+    events = Events(data=df)
+
+    with pytest.raises(ValueError, match=expected_message):
+        events.unnest()
+
+
+def test_unnest_no_list_columns_warns() -> None:
+    """If no list columns exist, unnest warns and adds no new columns."""
     df = pl.DataFrame(
         {
             'name': ['fixation'],
@@ -1096,7 +1193,8 @@ def test_unnest_location_absent_is_noop() -> None:
     events = Events(data=df)
 
     before_cols = set(events.frame.columns)
-    events.unnest()
+    with pytest.warns(UserWarning, match='No columns to unnest.'):
+        events.unnest()
     after_cols = set(events.frame.columns)
 
     assert before_cols == after_cols
@@ -1278,3 +1376,143 @@ def test_merge_subsequent_close_events_with_varying_max_gap(events, max_gap):
 def test_merge_subsequent_close_events_result_dataframe(events, max_gap, verbose, result_frame):
     events.merge_subsequent_close_events('fixation', max_gap=max_gap, verbose=verbose)
     assert_frame_equal(events.frame, result_frame)
+
+
+@pytest.mark.parametrize(
+    ('trial_data', 'kwargs', 'expected_events_kept'),
+    [
+        pytest.param(
+            {
+                'trial': ['a', 'a', 'b', None],
+                'page': [0, 1, None, 0],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 2, 3],
+            id='none_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': ['a', 'a', None, 'b'],
+                'page': [0, 1, None, None],
+            },
+            {'subset': ['trial', 'page'], 'how': 'all'},
+            [0, 1, 3],
+            id='some_dropped_all',
+        ),
+        pytest.param(
+            {
+                'trial': [None, 'a', 'b', None],
+                'page': [None, 1, None, 0],
+            },
+            {},
+            [1],
+            id='some_dropped_any',
+        ),
+    ],
+)
+def test_events_drop_nulls(trial_data, kwargs, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation'] * len(trial_data['trial']),
+                'onset': range(len(trial_data['trial'])),
+                'offset': range(1, len(trial_data['trial']) + 1),
+                **trial_data,
+            },
+        ),
+    )
+    events.drop_nulls(**kwargs)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+@pytest.mark.parametrize(
+    ('location', 'how', 'expected_events_kept'),
+    [
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'any',
+            [1, 2],
+            id='any_single_null_component_dropped',
+        ),
+        pytest.param(
+            [[None, 1.0], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [0, 1, 2],
+            id='all_single_null_component_kept',
+        ),
+        pytest.param(
+            [[None, None], [2.0, 3.0], [4.0, 5.0]],
+            'all',
+            [1, 2],
+            id='all_components_null_dropped',
+        ),
+    ],
+)
+def test_events_drop_nulls_nested_components(location, how, expected_events_kept):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation', 'fixation'],
+                'onset': [0, 1, 2],
+                'offset': [1, 2, 3],
+                'location': location,
+            },
+        ),
+    )
+    events.drop_nulls(subset=['location'], how=how)
+    assert events.frame['onset'].to_list() == expected_events_kept
+
+
+def test_events_drop_nulls_raises_missing_columns():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(
+            ValueError,
+            match=r"columns \['trial'\] from subset do not exist in the events frame",
+    ):
+        events.drop_nulls(subset=['trial'])
+    assert len(events.frame) == 2
+
+
+@pytest.mark.parametrize(
+    'subset',
+    [
+        pytest.param(None, id='subset_none'),
+        pytest.param([], id='subset_empty'),
+    ],
+)
+def test_events_drop_nulls_raises_invalid_how(subset):
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+            },
+        ),
+    )
+    with pytest.raises(ValueError, match="how must be either 'any' or 'all' but is 'anny'"):
+        events.drop_nulls(subset=subset, how='anny')
+    assert len(events.frame) == 2
+
+
+def test_events_drop_nulls_empty_subset_is_noop():
+    events = Events(
+        pl.DataFrame(
+            {
+                'name': ['fixation', 'fixation'],
+                'onset': [0, 1],
+                'offset': [1, 2],
+                'trial': [1, None],
+            },
+        ),
+    )
+    events.drop_nulls(subset=[])
+    assert events.frame['onset'].to_list() == [0, 1]
