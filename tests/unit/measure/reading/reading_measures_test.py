@@ -145,8 +145,8 @@ def test_compute_reading_measures_word_level(mapped_events):
     assert 'FFD' in result.columns
     assert 'TFT' in result.columns
     assert result.columns[:4] == ['trial', 'page', 'word_index', 'word']
-    # both fixations land on the first character of their word
-    assert result['LP'].to_list() == [0, 0]
+    # both fixations land on the first character of their word, one-based position 1
+    assert result['LP'].to_list() == [1, 1]
     assert result.filter(pl.col('word') == 'The')['FFD'][0] == 200
     assert result.filter(pl.col('word') == 'quick')['FFD'][0] == 200
 
@@ -220,7 +220,8 @@ def test_regression_count_out(annotated_events):
 def test_landing_position(annotated_events):
     result = _aggregate(annotated_events, landing_position())
     assert 'LP' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['LP'][0] == 0
+    # first fixation on char_idx 0, emitted one-based as 1
+    assert result.filter(pl.col('word_idx') == 0)['LP'][0] == 1
 
 
 def test_saccade_length_in(annotated_events):

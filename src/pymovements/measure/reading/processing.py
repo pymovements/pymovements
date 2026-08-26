@@ -91,9 +91,10 @@ def compute_reading_measures(
     like fixations with a null word index: they are excluded from the fixation sequence and do not
     affect any measure.
 
-    The landing position ``LP`` is the zero-based character position of the first fixation within
-    the word, computed from the ``char_idx`` columns of fixations and AOI table. If either input
-    has no ``char_idx`` column, or the word was never fixated, ``LP`` is null.
+    The landing position ``LP`` is the one-based character position of the first fixation within
+    the word (the word's first character is 1), computed from the ``char_idx`` columns of
+    fixations and AOI table. Words that were never fixated get 0. If either input has no
+    ``char_idx`` column, ``LP`` is null.
 
     Parameters
     ----------
@@ -214,9 +215,9 @@ def compute_reading_measures(
             next fixated word, measured at the last fixation of the first run, see
             :py:func:`~pymovements.measure.reading.saccade_length_out`.
         * - ``LP``
-          - **Landing Position**: zero-based character position of the first fixation within
-            the word, null when either input has no character-level (``char_idx``) data or when
-            the word was never fixated, see
+          - **Landing Position**: one-based character position of the first fixation within
+            the word (the word's first character is 1), 0 if the word was never fixated, null
+            when either input has no character-level (``char_idx``) data, see
             :py:func:`~pymovements.measure.reading.landing_position`.
         * - ``TFC``
           - **Total Fixation Count**: total number of fixations on the word, see
@@ -704,14 +705,20 @@ def _assemble_word_level_measures(
     )
 
     if 'LP' in table.columns:
-        # Landing position within the word, zero-based. Null when the AOI table is word-level.
-        table = table.with_columns((pl.col('LP') - pl.col('word_start_char')).alias('LP'))
+        # Landing position within the word, one-based; unfixated words are filled 0 like every
+        # other measure. The whole column stays null when the AOI table is word-level (no word
+        # start characters to align to).
+        table = table.with_columns(
+            pl.when(pl.col('word_start_char').is_not_null())
+            .then((pl.col('LP') - pl.col('word_start_char')).fill_null(0))
+            .alias('LP'),
+        )
     else:
         table = table.with_columns(pl.lit(None, dtype=pl.Int64).alias('LP'))
     table = table.drop('word_start_char')
 
-    # Unfixated words get 0 for every joined measure column. LP is the exception: 0 is a valid
-    # landing position, so unfixated words keep null.
+    # Unfixated words get 0 for every joined measure column. LP got its fill above: it must stay
+    # null when no landing positions can be computed.
     joined_measure_columns = [
         column
         for frame in (word_level, regression_paths)

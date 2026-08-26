@@ -439,9 +439,10 @@ def test_compute_reading_measures_aois_dict_mixed_char_idx_dtypes():
 
     result = compute_reading_measures(fixations, aois)
 
-    # t1: fixated char 1, word starts at char 0; t2: fixated char 2, word starts at char 2
+    # t1: fixated char 1, word starts at char 0, one-based position 2; t2: fixated char 2,
+    # word starts at char 2, position 1
     assert result['trial'].to_list() == ['t1', 't2']
-    assert result['LP'].to_list() == [1, 0]
+    assert result['LP'].to_list() == [2, 1]
 
 
 def test_compute_reading_measures_aois_dict_entries_with_page_column():
@@ -607,11 +608,11 @@ def test_compute_reading_measures_count_dtypes_are_uint64():
 
 
 def test_compute_reading_measures_landing_position_within_word():
-    # Char-level AOI table: word 1 spans chars 0-2, word 2 spans chars 3-7.
+    # Char-level AOI table: word 1 spans chars 0-2, word 2 spans chars 3-7, word 3 chars 8-9.
     aois = pl.DataFrame({
-        'word_idx': [1, 1, 1, 2, 2, 2, 2, 2],
-        'word': ['The'] * 3 + ['quick'] * 5,
-        'char_idx': [0, 1, 2, 3, 4, 5, 6, 7],
+        'word_idx': [1, 1, 1, 2, 2, 2, 2, 2, 3, 3],
+        'word': ['The'] * 3 + ['quick'] * 5 + ['ox'] * 2,
+        'char_idx': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     })
     fixations = pl.DataFrame({
         'word_idx': [1, 2, 2],
@@ -621,7 +622,9 @@ def test_compute_reading_measures_landing_position_within_word():
 
     result = compute_reading_measures(fixations, aois)
 
-    assert result['LP'].to_list() == [1, 2]
+    # Word 1: first fixation on char 1, one-based position 2. Word 2: first fixation on char 5,
+    # word starts at char 3, position 3. Word 3 was never fixated and gets 0.
+    assert result['LP'].to_list() == [2, 3, 0]
 
 
 def test_compute_reading_measures_custom_group_columns():
@@ -721,10 +724,27 @@ def test_compute_reading_measures_custom_event_name():
     assert result['TFT'].to_list() == [100, 0]
 
 
-def test_compute_reading_measures_landing_position_null_without_char_idx():
-    fixations = pl.DataFrame({'word_idx': [1], 'duration': [100]})
-    aois = pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']})
-
+@pytest.mark.parametrize(
+    ('fixations', 'aois'),
+    [
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'duration': [100]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
+            id='no_char_idx_at_all',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'char_idx': [0], 'duration': [100]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']}),
+            id='char_idx_only_in_fixations',
+        ),
+        pytest.param(
+            pl.DataFrame({'word_idx': [1], 'duration': [100]}),
+            pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b'], 'char_idx': [0, 1]}),
+            id='char_idx_only_in_aois',
+        ),
+    ],
+)
+def test_compute_reading_measures_landing_position_null_without_char_idx(fixations, aois):
     result = compute_reading_measures(fixations, aois)
 
     assert result['LP'].to_list() == [None, None]

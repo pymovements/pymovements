@@ -245,9 +245,13 @@ def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
 
 
 def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
-    """Character index of the first fixation on each word (LP).
+    """One-based character position of the first fixation on each word (LP).
 
-    Requires onset-sorted input.
+    Requires onset-sorted input. The aggregation emits the ``char_idx`` of the word's first
+    fixation plus one. Within :func:`~pymovements.measure.reading.compute_reading_measures` the
+    word's start character is subtracted, making the position relative to the word (its first
+    character is 1), and words that were never fixated are filled with 0. The resulting values
+    match the landing position of the PoTeC reference implementation.
 
     Parameters
     ----------
@@ -260,7 +264,7 @@ def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
     pl.Expr
         Aggregation expression producing the ``LP`` column.
     """
-    return as_expr(char_idx).first().alias('LP')
+    return (as_expr(char_idx).first() + 1).alias('LP')
 
 
 def saccade_length_in(
