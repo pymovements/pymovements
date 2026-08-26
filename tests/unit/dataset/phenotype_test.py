@@ -390,7 +390,7 @@ class TestPhenotypeCastsFromMetadata:
 
 
 def test_phenotype_save_data_to_filepath(tmp_path):
-    data = pl.DataFrame({'participant_id': [1], 'adhd_score': [21.0]})
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'adhd_score': [21.0]})
     phenotype = Phenotype(data)
 
     save_path = tmp_path / 'test_phenotype.tsv'
@@ -406,11 +406,11 @@ def test_phenotype_save_data_to_filepath(tmp_path):
     ['\t', ','],
 )
 def test_phenotype_save_data_to_filepath_custom_separator(separator, tmp_path):
-    data = pl.DataFrame({'participant_id': [1], 'adhd_score': [21.0]})
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'adhd_score': [21.0]})
     phenotype = Phenotype(data)
 
     save_path = tmp_path / 'test_phenotype.tsv'
-    phenotype.save(save_path, separator=separator)
+    phenotype.save(save_path, separator=separator, verify_bids=False)
 
     assert save_path.is_file()
     saved_data = pl.read_csv(save_path, separator=separator)
@@ -418,7 +418,7 @@ def test_phenotype_save_data_to_filepath_custom_separator(separator, tmp_path):
 
 
 def test_phenotype_save_data_write_csv_kwargs_precedence_over_separator(tmp_path):
-    data = pl.DataFrame({'participant_id': [1], 'adhd_score': [21.0]})
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'adhd_score': [21.0]})
     phenotype = Phenotype(data)
 
     save_path = tmp_path / 'test_phenotype.tsv'
@@ -449,7 +449,7 @@ def test_phenotype_save_load_roundtrip_numeric_null(tmp_path):
     'phenotype',
     [
         Phenotype(
-            data=pl.DataFrame({'participant_id': [1], 'adhd_score': [21]}),
+            data=pl.DataFrame({'participant_id': ['sub-01'], 'adhd_score': [21]}),
             metadata={
                 'participant_id': {
                     'Description': 'id of the participant',
@@ -573,18 +573,21 @@ def test_phenotype_with_derivative_field():
             True,
             id='invalid_id',
         ),
-        pytest.param(
-            pl.DataFrame({'participant_id': ['sub-01']}),
-            'INVALID',
-            False,
-            id='unknown_level',
-        ),
     ],
 )
 def test_phenotype_verify_bids_method(data, level, expect_warnings):
     phenotype = Phenotype(data, verify_bids=False)
     warnings_list = phenotype.verify_bids(level)  # type: ignore[arg-type]
     assert (len(warnings_list) > 0) == expect_warnings
+
+
+def test_phenotype_verify_bids_unknown_level_raises():
+    phenotype = Phenotype(pl.DataFrame({'participant_id': ['sub-01']}))
+    with pytest.raises(
+        ValueError,
+        match="Unknown verification level 'INVALID'. Supported values are",
+    ):
+        phenotype.verify_bids('INVALID')  # type: ignore[arg-type]
 
 
 def test_phenotype_verify_bids_init_raises():
@@ -636,3 +639,29 @@ def test_phenotype_verify_bids_save_passes(tmp_path):
     )
     phenotype.save(tmp_path / 'phenotype.tsv', verify_bids=True)
     assert (tmp_path / 'phenotype.tsv').exists()
+
+
+def test_phenotype_save_default_verify_bids_required_warns(tmp_path):
+    phenotype = Phenotype(
+        pl.DataFrame({'participant_id': ['01']}),
+        verify_bids=False,
+    )
+    with pytest.warns(UserWarning, match="match 'sub-<label>' pattern"):
+        phenotype.save(tmp_path / 'acds_adult.tsv')
+
+
+def test_phenotype_save_non_tab_separator_warns(tmp_path):
+    phenotype = Phenotype(
+        pl.DataFrame({'participant_id': ['sub-01']}),
+        verify_bids=False,
+    )
+    with pytest.warns(UserWarning, match='BIDS requires tab-separated files'):
+        phenotype.save(tmp_path / 'acds_adult.tsv', separator=',', verify_bids='REQUIRED')
+
+
+def test_phenotype_load_non_tab_separator_warns(make_csv_file):
+    data = pl.DataFrame({'participant_id': ['sub-01']})
+    path = make_csv_file('acds_adult.csv', data)
+
+    with pytest.warns(UserWarning, match='BIDS requires tab-separated files'):
+        Phenotype.load(path, separator=',', verify_bids='REQUIRED')

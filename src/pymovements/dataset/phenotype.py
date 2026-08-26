@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -132,6 +133,11 @@ class Phenotype:
         if level in {'REQUIRED', 'RECOMMENDED'}:
             warnings_list.extend(_validate_participant_id_format(self.data))
             warnings_list.extend(_check_na_conformity(self.data))
+        else:
+            raise ValueError(
+                f"Unknown verification level '{level}'. "
+                "Supported values are 'RECOMMENDED' and 'REQUIRED'",
+            )
 
         return warnings_list
 
@@ -192,6 +198,14 @@ class Phenotype:
 
         read_csv_kwargs = _merge_read_csv_kwargs(separator, read_csv_kwargs)
 
+        if verify_bids is not False:
+            if read_csv_kwargs.get('separator') != '\t':
+                warnings.warn(
+                    "BIDS requires tab-separated files, but separator is not '\\t'",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         data = polars.read_csv(data_path, **read_csv_kwargs)
 
         if rename:
@@ -217,7 +231,7 @@ class Phenotype:
         self,
         path: Path | str,
         *,
-        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = False,
+        verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool = 'REQUIRED',
         metadata_path: Path | str | None = None,
         separator: str = '\t',
         write_csv_kwargs: dict[str, Any] | None = None,
@@ -234,7 +248,7 @@ class Phenotype:
             at REQUIRED level.
             If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
             If False, do not verify.
-            (default: ``False``)
+            (default: ``'REQUIRED'``)
         metadata_path: Path | str | None
             Save metadata json to this path. If this is a relative path it is assumed to be
             relative to the directory of the data file. If None: use stem from ``path``
@@ -257,6 +271,14 @@ class Phenotype:
         default_metadata_path = data_path.with_suffix('.json')
 
         write_csv_kwargs = _merge_write_csv_kwargs(separator, write_csv_kwargs)
+
+        if verify_bids is not False:
+            if write_csv_kwargs.get('separator') != '\t':
+                warnings.warn(
+                    "BIDS requires tab-separated files, but separator is not '\\t'",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         self.data.write_csv(data_path, **write_csv_kwargs)
 
