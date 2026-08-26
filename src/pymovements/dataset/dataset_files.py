@@ -61,7 +61,7 @@ class DatasetFile:
     definition: ResourceDefinition
         Associated :py:class:`~pymovements.ResourceDefinition`.
     metadata: dict[str, Any]
-        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        Additional metadata parsed via :py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
 
     Parameters
     ----------
@@ -71,7 +71,7 @@ class DatasetFile:
         Associated :py:class:`~pymovements.ResourceDefinition`.
         (default: None)
     metadata: dict[str, Any] | None
-        Additional metadata parsed via `:py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
+        Additional metadata parsed via :py:attr:`~pymovements.ResourceDefinition.filename_pattern`.
         (default: None)
     """
 
