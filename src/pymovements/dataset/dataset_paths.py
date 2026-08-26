@@ -520,7 +520,12 @@ class DatasetPaths:
     def stimuli(self) -> Path:
         """The path to the stimuli directory.
 
-        Example:
+        Returns
+        -------
+        Path
+            The path to the stimuli directory under the dataset path.
+
+        Example
         -------
         >>> import pymovements as pm
         >>>
