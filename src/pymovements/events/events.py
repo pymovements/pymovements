@@ -895,10 +895,7 @@ class Events:
                     aoi_row = aoi_row.select([])
             out_rows.append(aoi_row)
 
-        if out_rows:
-            aoi_df = polars.concat(out_rows)
-        else:
-            aoi_df = polars.DataFrame({col: [] for col in aoi_columns})
+        aoi_df = polars.concat(out_rows)
         self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
