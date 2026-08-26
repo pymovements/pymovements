@@ -271,7 +271,7 @@ def load_gaze_files(
         (default: False)
     preprocessed_dirname : str | None
         One-time usage of an alternative directory name to save data relative to
-        :py:meth:`pymovements.Dataset.path`.
+        :py:attr:`pymovements.Dataset.path`.
     extension: str
         Specifies the file format for loading data. Valid options are: `csv`, `feather`,
         `txt`, `tsv`.

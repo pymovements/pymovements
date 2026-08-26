@@ -154,12 +154,6 @@ class Gaze:
         Schema of the samples dataframe.
     columns: list[str]
         List of column names in the samples dataframe.
-    frame: polars.DataFrame
-        Gaze samples dataframe.
-
-        .. deprecated:: v0.23.0
-            Please use ``samples`` instead.
-            This property will be removed in v0.28.0.
 
     Notes
     -----
