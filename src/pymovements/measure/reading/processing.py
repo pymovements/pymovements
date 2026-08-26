@@ -93,7 +93,7 @@ def compute_reading_measures(
 
     The landing position ``LP`` is the zero-based character position of the first fixation within
     the word, computed from the ``char_idx`` columns of fixations and AOI table. If either input
-    has no ``char_idx`` column, ``LP`` is null.
+    has no ``char_idx`` column, or the word was never fixated, ``LP`` is null.
 
     Parameters
     ----------
@@ -186,7 +186,8 @@ def compute_reading_measures(
       next fixated word, measured at the last fixation of the first run, see
       :py:func:`~pymovements.measure.reading.saccade_length_out`.
     * ``LP`` (Landing Position): zero-based character position of the first fixation within the
-      word, null when either input has no character-level (``char_idx``) data, see
+      word, null when either input has no character-level (``char_idx``) data or when the word
+      was never fixated, see
       :py:func:`~pymovements.measure.reading.landing_position`.
     * ``TFC`` (Total Fixation Count): total number of fixations on the word, see
       :py:func:`~pymovements.measure.reading.total_fixation_count`.
