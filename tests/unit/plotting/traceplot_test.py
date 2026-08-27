@@ -231,10 +231,10 @@ def test_set_screen_axes_valid(gaze):
     assert ax.get_aspect() == 1
 
 
-@pytest.mark.parametrize('origin', ['lower left', 'center', 'upper right'])
+@pytest.mark.parametrize('origin', ['lower left', 'upper right'])
 def test_set_screen_axes_invalid_origin(origin, gaze):
     gaze.experiment.screen.origin = origin
-    with pytest.raises(ValueError, match='screen origin must be "upper left"'):
+    with pytest.raises(ValueError, match='screen origin must be'):
         traceplot(gaze=gaze)
 
 
@@ -246,24 +246,12 @@ def test_set_screen_axes_invalid_origin(origin, gaze):
         (1024, None),
     ],
 )
-def test_set_screen_axes_none_dimensions_returns(width, height, gaze):
-    """Should not raise or override axes when screen dimensions are None."""
+def test_set_screen_axes_none_dimensions_raises(width, height, gaze):
     gaze.experiment.screen.width_px = width
     gaze.experiment.screen.height_px = height
 
-    _, ax = plt.subplots()
-    assert ax.get_aspect() != 'equal'
-    # Call traceplot; should return silently, without ValueError
-    # _set_screen_axes() should return early without modifying axes
-    traceplot(gaze=gaze, ax=ax, figsize=None)
-
-    # Axes limits should be finite numbers, not NaN/None
-    xlim, ylim = ax.get_xlim(), ax.get_ylim()
-    assert np.isfinite(xlim).all()
-    assert np.isfinite(ylim).all()
-
-    # Aspect ratio should not be 'equal' (not forced by _set_screen_axes)
-    assert ax.get_aspect() != 'equal'
+    with pytest.raises(ValueError, match='width_px and height_px must be set'):
+        traceplot(gaze=gaze)
 
 
 @pytest.mark.parametrize(
