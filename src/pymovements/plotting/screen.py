@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 SUPPORTED_ORIGINS = ('upper left', 'center')
 
-#: imshow origin corresponding to both supported screen origins. See :func:`screen`.
+# imshow origin corresponding to both supported screen origins. See screen().
 IMSHOW_ORIGIN = 'upper'
 
 
@@ -72,7 +72,7 @@ def screen(
     (``'upper left'`` / ``'center'``) and the imshow origin vocabulary
     (``'upper'`` / ``'lower'``). Both supported screen origins keep screen y
     increasing downward, which corresponds to imshow origin ``'upper'``, exposed
-    as :data:`IMSHOW_ORIGIN`. Stimulus plotters should pass that value when
+    as the module constant ``IMSHOW_ORIGIN``. Stimulus plotters should pass that value when
     drawing an image onto a canvas created here, so that the image and the gaze
     data drawn over it share one orientation.
 

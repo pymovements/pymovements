@@ -313,7 +313,7 @@ def _set_screen_axes(
 ) -> None:
     """Set axes limits and aspect ratio from a screen's pixel extent, if available.
 
-    Thin wrapper around :func:`pymovements.plotting.screen` that keeps the gaze
+    Thin wrapper around ``pymovements.plotting.screen()`` that keeps the gaze
     plotters' behavior: skip silently when the resolution is unset, and accept
     only the ``'upper left'`` origin the gaze data is expressed in.
 
