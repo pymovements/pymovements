@@ -114,7 +114,7 @@ def collect_property_members():
             properties = [
                 member_name
                 for member_name in dir(obj)
-                if isinstance(inspect.getattr_static(obj, member_name), property)
+                if isinstance(inspect.getattr_static(obj, member_name, None), property)
             ]
             if properties:
                 property_members[f'{module.__name__}.{name}'] = properties
