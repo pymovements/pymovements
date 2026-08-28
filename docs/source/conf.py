@@ -30,6 +30,7 @@
 import importlib.resources
 import inspect
 import os
+import pkgutil
 import string
 import sys
 from subprocess import CalledProcessError
@@ -95,6 +96,29 @@ def doctree_resolved_handler(app, doctree, docname):
         if uri.startswith(('http://', 'https://')):
             node['target'] = '_blank'
             node['rel'] = 'noopener noreferrer'
+
+
+def collect_property_members():
+    """Collect property names for every importable pymovements class path."""
+    package = importlib.import_module('pymovements')
+    modules = [package]
+    for module_info in pkgutil.walk_packages(package.__path__, f'{package.__name__}.'):
+        try:
+            modules.append(importlib.import_module(module_info.name))
+        except ImportError:
+            continue
+
+    property_members = {}
+    for module in modules:
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            properties = [
+                member_name
+                for member_name in dir(obj)
+                if isinstance(inspect.getattr_static(obj, member_name), property)
+            ]
+            if properties:
+                property_members[f'{module.__name__}.{name}'] = properties
+    return property_members
 
 
 def setup(app):
@@ -202,6 +226,7 @@ nitpick_ignore_regex = [
 autosummary_generate = True
 autosummary_generate_overwrite = True
 autosummary_imported_members = False
+autosummary_context = {'property_members': collect_property_members()}
 add_module_names = True
 
 # -- Options for HTML output -------------------------------------------------
