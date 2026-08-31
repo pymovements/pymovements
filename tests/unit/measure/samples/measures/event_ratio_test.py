@@ -209,8 +209,7 @@ class TestEventRatio:
     def test_event_ratio_with_trials(self, samples, trial_columns, events_data, expected_ratios):
         """Test event ratio calculation with trial columns."""
         if events_data:
-            events = pm.Events(pl.DataFrame(events_data))
-            events.trial_columns = trial_columns
+            events = pm.Events(pl.DataFrame(events_data), trial_columns=trial_columns)
         else:
             events = None
 
@@ -368,19 +367,18 @@ class TestEventRatio:
             ),
         ],
     )
-    def test_event_ratio_trial_columns_none(
+    def test_event_ratio_trial_columns_empty(
         self,
         samples,
         gaze_trial_columns,
         events_data,
         expected_ratio,
     ):
-        """trial_columns=None yields a single session-level scalar and item() works."""
-        events = pm.Events(pl.DataFrame(events_data))
-        events.trial_columns = gaze_trial_columns
+        """trial_columns=[] yields a single session-level scalar and item() works."""
+        events = pm.Events(pl.DataFrame(events_data), trial_columns=gaze_trial_columns)
         gaze = pm.Gaze(samples=samples, events=events, trial_columns=gaze_trial_columns)
 
-        result = gaze.samples.select(gaze.measure_events_ratio('blink', trial_columns=None))
+        result = gaze.samples.select(gaze.measure_events_ratio('blink', trial_columns=[]))
 
         assert result.shape == (1, 1)
         assert result.item() == pytest.approx(expected_ratio)
@@ -422,8 +420,7 @@ class TestEventRatio:
         expected_ratios,
     ):
         """Not passing trial_columns preserves existing behavior (uses self.trial_columns)."""
-        events = pm.Events(pl.DataFrame(events_data))
-        events.trial_columns = gaze_trial_columns
+        events = pm.Events(pl.DataFrame(events_data), trial_columns=gaze_trial_columns)
         gaze = pm.Gaze(samples=samples, events=events, trial_columns=gaze_trial_columns)
 
         default_result = gaze.samples.group_by(gaze_trial_columns, maintain_order=True).agg(
@@ -475,8 +472,7 @@ class TestEventRatio:
         expected_ratios,
     ):
         """Passing explicit trial_columns overrides self.trial_columns."""
-        events = pm.Events(pl.DataFrame(events_data))
-        events.trial_columns = gaze_trial_columns
+        events = pm.Events(pl.DataFrame(events_data), trial_columns=gaze_trial_columns)
         gaze = pm.Gaze(samples=samples, events=events, trial_columns=gaze_trial_columns)
 
         result = gaze.samples.group_by(override_trial_columns, maintain_order=True).agg(

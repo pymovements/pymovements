@@ -60,9 +60,6 @@ from pymovements.measure.samples.library import SampleMeasureLibrary
 from pymovements.stimulus import TextStimulus
 
 
-_MISSING = object()
-
-
 @repr_html(['samples', 'events', 'metadata', 'messages', 'trial_columns', 'experiment'])
 class Gaze:
     """Self-contained data structure containing gaze represented as samples or events.
@@ -1436,7 +1433,7 @@ class Gaze:
         sampling_rate: float | None = None,
         onset_column: str = 'onset',
         offset_column: str = 'offset',
-        trial_columns: list[str] | None = _MISSING,
+        trial_columns: list[str] | None = None,
     ) -> polars.Expr:
         r"""Calculate ratio of time associated with specific events.
 
@@ -1473,9 +1470,9 @@ class Gaze:
             Name of the column containing event offset times (default: 'offset').
         trial_columns: list[str] | None
             Names of the columns identifying trials to use for grouping the ratio
-            calculation. Defaults to :py:attr:`~.Gaze.trial_columns`. Pass ``None``
-            to compute a single session-level ratio without any trial grouping.
-            (default: the gaze's ``trial_columns``)
+            calculation. Defaults to :py:attr:`~.Gaze.trial_columns`. Pass an empty
+            list ``[]`` to compute a single session-level ratio without any trial
+            grouping. (default: the gaze's ``trial_columns``)
 
         Returns
         -------
@@ -1541,10 +1538,10 @@ class Gaze:
         │ 2     ┆ 0.0               │
         └───────┴───────────────────┘
 
-        Pass ``trial_columns=None`` to ignore the gaze's ``trial_columns`` and
+        Pass ``trial_columns=[]`` to ignore the gaze's ``trial_columns`` and
         compute a single session-level scalar:
 
-        >>> gaze.samples.select(gaze.measure_events_ratio('blink', trial_columns=None)).item()
+        >>> gaze.samples.select(gaze.measure_events_ratio('blink', trial_columns=[])).item()
         0.5
 
         Pass custom ``trial_columns`` to override the gaze's ``trial_columns``:
@@ -1588,7 +1585,7 @@ class Gaze:
                 f'Available columns: {self.samples.columns}',
             )
 
-        if trial_columns is _MISSING:
+        if trial_columns is None:
             trial_columns = self.trial_columns
 
         if sampling_rate is None and self.experiment is not None:
