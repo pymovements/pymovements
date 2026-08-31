@@ -446,7 +446,10 @@ class TestEventRatio:
         assert_frame_equal(default_result, expected)
 
     @pytest.mark.parametrize(
-        ('samples', 'gaze_trial_columns', 'override_trial_columns', 'events_data', 'expected_ratios'),
+        (
+            'samples', 'gaze_trial_columns', 'override_trial_columns', 'events_data',
+            'expected_ratios',
+        ),
         [
             # Gaze is trialized by (trial, session), but override groups by session only.
             pytest.param(
