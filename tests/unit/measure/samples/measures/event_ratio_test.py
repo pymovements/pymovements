@@ -436,7 +436,10 @@ class TestEventRatio:
         unique_trials = samples.select(gaze_trial_columns).unique().sort(gaze_trial_columns)
         for trial in unique_trials.to_dicts():
             expected_data.append(
-                {**trial, 'event_ratio_blink': expected_ratios.get(trial[gaze_trial_columns[0]], 0.0)},
+                {
+                    **trial,
+                    'event_ratio_blink': expected_ratios.get(trial[gaze_trial_columns[0]], 0.0),
+                },
             )
 
         expected = pl.DataFrame(expected_data)
