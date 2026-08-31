@@ -26,6 +26,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering",
   "Typing :: Typed"
 ]
@@ -70,7 +71,7 @@ dev = [
   "codespell>=2.2",
   "tox>=4.12.0",
   "pybtex>=0.25.0",
-  "pytest>=7.0.0",
+  "pytest>=8.4.0",
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=4.0.0",
   "setuptools>=61.0.0",
@@ -153,9 +154,10 @@ disallow_untyped_defs = false
 
 [tool.pydoclint]
 skip-checking-raises = true
+treat-property-methods-as-class-attributes = true
 
 [tool.pytest.ini_options]
-addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib"
+addopts = "-ra -l --tb=long --doctest-modules --import-mode=importlib -p doctest_fixtures"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 filterwarnings = [
   "error",
@@ -167,7 +169,7 @@ filterwarnings = [
   "ignore:datetime.datetime.utcfromtimestamp() is deprecated.*:DeprecationWarning"
 ]
 markers = ["network: mark a test as requiring network access"]
-pythonpath = ['docs/source']
+pythonpath = ['docs/source', 'tests/doctest']
 testpaths = ['tests', 'src']
 xfail_strict = true
 

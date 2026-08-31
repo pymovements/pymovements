@@ -102,6 +102,8 @@ class DataQualityReport:
     warning_log : list[str]
         Python warnings captured during the run. Written to ``warnings.log``
         by :py:meth:`save_bids_report`.
+    passed : bool
+        ``True`` when no check result has severity ``'fail'`` or ``'error'``.
 
     Examples
     --------
