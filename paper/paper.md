@@ -234,7 +234,7 @@ human-computer interaction [@Chiossi2024], and virtual-reality interaction
 reference point [@PyNeon2026; @OpenGazeLab2026; @Balaskas2026], and it is
 featured in a recent review of eye-tracking software [@Niehorster2025].
 Its dataset catalog has begun to receive contributions from researchers
-outside the core team [@MCFW-Gaze-Paper], supported by a dedicated dataset
+outside the core team [@Nagasawa2026], supported by a dedicated dataset
 contribution guide that lowers the barrier to adding new datasets.
 
 # AI usage disclosure
