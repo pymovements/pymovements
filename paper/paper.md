@@ -171,9 +171,10 @@ downstream operations require, as well as any detected events. Keeping the
 signal and its acquisition context together lets steps such as
 pixel-to-degree conversion be expressed without the user re-supplying
 calibration parameters at each call. The object is backed by the `polars`
-dataframe library [@polars], whose columnar, Rust-based engine provides the
-throughput needed to process large raw gaze recordings; this trades some
-familiarity for performance, as many researchers know the `pandas`
+dataframe library [@polars], whose columnar, Rust-based engine is designed
+for efficient processing of large tables such as raw gaze recordings, which
+can comprise millions of samples per session; this choice trades some
+familiarity for scalability, as many researchers know the `pandas`
 ecosystem better. Constructors from `pandas` dataframes [@pandas] and
 `numpy` arrays [@numpy] mitigate this cost and keep the package
 interoperable with these widely used libraries. At load time, the
