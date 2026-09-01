@@ -268,38 +268,18 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
 
 
 @pytest.mark.parametrize(
-    ('deprecated_kwargs', 'deprecated_argument'),
+    ('deprecated_argument', 'value'),
     (
-        pytest.param(
-            {
-                'add_stimulus': True,
-                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
-            },
-            'add_stimulus',
-            id='add_stimulus',
-        ),
-        pytest.param(
-            {'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg'},
-            'path_to_image_stimulus',
-            id='path_to_image_stimulus',
-        ),
-        pytest.param({'stimulus_origin': 'lower'}, 'stimulus_origin', id='stimulus_origin'),
+        pytest.param('path_to_image_stimulus', 'stimulus.png', id='path_to_image_stimulus'),
+        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
     ),
 )
 def test_heatmap_deprecated_parameters(
-        gaze, deprecated_kwargs, deprecated_argument, assert_deprecation_is_removed,
+        gaze, deprecated_argument, value, assert_deprecation_is_removed,
 ):
-    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal.
-
-    The ``add_stimulus`` case also passes ``path_to_image_stimulus`` so the deprecated
-    stimulus rendering path is exercised while it still exists.
-    """
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
     with pytest.warns(DeprecationWarning) as record:
-        fig, ax = heatmap(gaze, position_column='pixel', **deprecated_kwargs)
-
-    assert isinstance(fig, plt.Figure)
-    assert isinstance(ax, plt.Axes)
-    plt.close(fig)
+        heatmap(gaze, position_column='pixel', **{deprecated_argument: value})
 
     warning_message = next(
         str(warning.message) for warning in record
@@ -307,6 +287,33 @@ def test_heatmap_deprecated_parameters(
     )
     assert_deprecation_is_removed(
         function_name=f"heatmap argument '{deprecated_argument}'",
+        warning_message=warning_message,
+        scheduled_version='0.33.0',
+    )
+
+
+def test_heatmap_deprecated_add_stimulus_renders_stimulus(
+        gaze, make_example_file, assert_deprecation_is_removed,
+):
+    """The deprecated ``add_stimulus`` path renders the stimulus and is scheduled for removal."""
+    image_path = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
+
+    with pytest.warns(DeprecationWarning) as record:
+        fig, ax = heatmap(
+            gaze,
+            position_column='pixel',
+            add_stimulus=True,
+            path_to_image_stimulus=image_path,
+        )
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+
+    warning_message = next(
+        str(warning.message) for warning in record if "'add_stimulus'" in str(warning.message)
+    )
+    assert_deprecation_is_removed(
+        function_name="heatmap argument 'add_stimulus'",
         warning_message=warning_message,
         scheduled_version='0.33.0',
     )
