@@ -706,16 +706,28 @@ def _assemble_word_level_measures(
         .join(regression_paths, on=on, how='left', nulls_equal=True)
     )
 
+    # Zero-fill the join misses and derive skipped first so the LP block below can reuse it;
+    # LP is excluded from the fill so its null states survive.
+    joined_measure_columns = [
+        column
+        for frame in (word_level, regression_paths)
+        for column in frame.columns
+        if column not in on and column != 'LP'
+    ]
+    table = table.with_columns(
+        [pl.col(column).fill_null(0) for column in joined_measure_columns],
+    ).with_columns(
+        # total skipping: the word received no fixation at all
+        (pl.col('TFC') == 0).cast(pl.Int64).alias('skipped'),
+    )
+
     if 'LP' in table.columns:
-        # Landing position within the word, one-based; unfixated words are filled 0 like every
-        # other measure. The zero-fill is keyed on the join miss (TFC is null exactly for
-        # unfixated words at this point, before the shared fill below), so a fixated word whose
-        # first fixation has a null char_idx keeps a null LP. The whole column stays null when
-        # the AOI table is word-level (no word start characters to align to).
+        # A fixated word whose first fixation has a null char_idx keeps a null LP; the whole
+        # column stays null for word-level AOI tables.
         table = table.with_columns(
             pl.when(pl.col('word_start_char').is_not_null())
             .then(
-                pl.when(pl.col('TFC').is_null())
+                pl.when(pl.col('skipped') == 1)
                 .then(0)
                 .otherwise(pl.col('LP') - pl.col('word_start_char')),
             )
@@ -724,16 +736,6 @@ def _assemble_word_level_measures(
     else:
         table = table.with_columns(pl.lit(None, dtype=pl.Int64).alias('LP'))
     table = table.drop('word_start_char')
-
-    # Unfixated words get 0 for every joined measure column. LP got its fill above: it must stay
-    # null when no landing positions can be computed.
-    joined_measure_columns = [
-        column
-        for frame in (word_level, regression_paths)
-        for column in frame.columns
-        if column not in on and column != 'LP'
-    ]
-    table = table.with_columns([pl.col(column).fill_null(0) for column in joined_measure_columns])
 
     return table.with_columns([
         # total fixation time
@@ -747,6 +749,4 @@ def _assemble_word_level_measures(
     ]).with_columns([
         # fixated-at-all indicator (depends on the derived TFT column above)
         (pl.col('TFT') > 0).cast(pl.Int64).alias('Fix'),
-        # total skipping: the word received no fixation at all
-        (pl.col('TFC') == 0).cast(pl.Int64).alias('skipped'),
     ]).rename({'word_idx': 'word_index'})
