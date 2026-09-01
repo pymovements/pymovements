@@ -202,7 +202,7 @@ and data-quality reports are written as BIDS derivatives.
 The package follows established open-development practices: it is released
 under the permissive MIT license; an automated
 test suite with 100% code coverage runs under continuous integration;
-every change requires a line-by-line review by a maintainer before merging;
+every change requires an approving review by a maintainer before merging;
 a contributing guide documents the workflow for new contributors; and the
 documentation, with tutorials and a full API reference, is hosted on Read
 the Docs. The substantial engineering effort of the project lies in this
@@ -242,8 +242,8 @@ Generative AI tools were used, under human direction, in developing both
 the software and this paper. Anthropic's Claude, JetBrains' Junie, and
 GitHub Copilot assisted some contributors with code generation and review,
 and Claude was used to draft and copy-edit this paper. Every change to the
-codebase requires an approving line-by-line review from at least one
-maintainer before merging, enforced by the repository's branch protection,
+codebase requires an approving review from at least one maintainer before
+merging, enforced by the repository's branch protection,
 so no AI-assisted contribution reaches the released package without human
 review. All design decisions were made by the human authors, who reviewed
 and validated the AI-assisted outputs in this paper, verified every
