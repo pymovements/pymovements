@@ -140,7 +140,9 @@ def test_compute_reading_measures_preserves_zero_based_word_indices():
 
 
 def test_compute_reading_measures_word_level(mapped_events):
-    result = compute_reading_measures(mapped_events, CHAR_AOI_DF.clone())
+    result = compute_reading_measures(
+        mapped_events, CHAR_AOI_DF.clone(), group_columns=['trial', 'page'],
+    )
     assert result.height == 2  # one row per word
     assert 'FFD' in result.columns
     assert 'TFT' in result.columns

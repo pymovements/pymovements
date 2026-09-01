@@ -123,9 +123,9 @@ def compute_reading_measures(
         (default: ``'fixation'``)
     group_columns : list[str] | None
         Column names used to partition the data into independent reading sequences. The first
-        column takes the trial role, the remaining columns take the page role (see above). An
-        empty list disables grouping entirely and treats the input as a single reading
-        sequence. If ``None``, defaults to ``['trial', 'page']``.
+        column takes the trial role, the remaining columns take the page role (see above). If
+        ``None`` or empty, the whole input is treated as a single reading sequence.
+        (default: None)
 
     Returns
     -------
@@ -262,7 +262,7 @@ def compute_reading_measures(
     index and duration columns.
     """
     if group_columns is None:
-        group_columns = ['trial', 'page']
+        group_columns = []
     # Columns the pipeline produces or consumes cannot double as group columns: the annotation
     # step would silently overwrite them and the measures would be computed on wrong groups.
     reserved_columns = {

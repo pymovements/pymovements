@@ -1156,12 +1156,6 @@ class Dataset:
         ReadingMeasures
             Returns a ReadingMeasures object containing the computed reading measures.
         """
-        # Default to a single sequence per subject-text rather than the compute_reading_measures
-        # default of ['trial', 'page'], which would split fixations carrying those columns and
-        # warn while broadcasting the flat per-text AOI table.
-        if group_columns is None:
-            group_columns = []
-
         reading_measures_list = []
 
         for events in tqdm(self.events):

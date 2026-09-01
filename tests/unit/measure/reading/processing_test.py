@@ -324,7 +324,7 @@ def test_compute_reading_measures_broadcasts_aois_across_trials():
     aois = pl.DataFrame({'word_idx': [1, 2], 'word': ['a', 'b']})
 
     with pytest.warns(UserWarning, match='broadcast'):
-        result = compute_reading_measures(fixations, aois)
+        result = compute_reading_measures(fixations, aois, group_columns=['trial'])
 
     assert result.columns[:3] == ['trial', 'word_index', 'word']
     assert result['trial'].to_list() == ['t1', 't1', 't2', 't2']
@@ -343,7 +343,7 @@ def test_compute_reading_measures_aois_dict():
         't2': pl.DataFrame({'word_idx': [1], 'word': ['c']}),
     }
 
-    result = compute_reading_measures(fixations, aois)
+    result = compute_reading_measures(fixations, aois, group_columns=['trial'])
 
     assert result['trial'].to_list() == ['t1', 't1', 't2']
     assert result['word'].to_list() == ['a', 'b', 'c']
@@ -364,7 +364,7 @@ def test_compute_reading_measures_aois_dict_warns_on_unused_keys():
     with pytest.warns(
         UserWarning, match=r"keys without any matching fixations: \['t2'\]",
     ):
-        result = compute_reading_measures(fixations, aois)
+        result = compute_reading_measures(fixations, aois, group_columns=['trial'])
 
     # the unused entry stays in the output as a fully skipped word
     assert result['trial'].to_list() == ['t1', 't1', 't2']
@@ -393,7 +393,7 @@ def test_compute_reading_measures_aois_dict_warns_on_key_with_only_non_fixation_
     with pytest.warns(
         UserWarning, match=r"keys without any matching fixations: \['t2'\]",
     ):
-        result = compute_reading_measures(fixations, aois)
+        result = compute_reading_measures(fixations, aois, group_columns=['trial'])
 
     assert result.filter(pl.col('trial') == 't2')['skipped'].to_list() == [1]
 
@@ -409,7 +409,7 @@ def test_compute_reading_measures_aois_dict_ignores_trials_with_only_non_fixatio
     })
     aois = {'t1': pl.DataFrame({'word_idx': [1], 'word': ['a']})}
 
-    result = compute_reading_measures(fixations, aois)
+    result = compute_reading_measures(fixations, aois, group_columns=['trial'])
 
     assert result['trial'].to_list() == ['t1']
     assert result['TFT'].to_list() == [100]
@@ -437,7 +437,7 @@ def test_compute_reading_measures_aois_dict_mixed_char_idx_dtypes():
         }),
     }
 
-    result = compute_reading_measures(fixations, aois)
+    result = compute_reading_measures(fixations, aois, group_columns=['trial'])
 
     # t1: fixated char 1, word starts at char 0, one-based position 2; t2: fixated char 2,
     # word starts at char 2, position 1
@@ -457,7 +457,7 @@ def test_compute_reading_measures_aois_dict_entries_with_page_column():
         't2': pl.DataFrame({'word_idx': [1], 'word': ['c'], 'page': ['p1']}),
     }
 
-    result = compute_reading_measures(fixations, aois)
+    result = compute_reading_measures(fixations, aois, group_columns=['trial', 'page'])
 
     assert result.columns[:4] == ['trial', 'page', 'word_index', 'word']
     assert result['trial'].to_list() == ['t1', 't1', 't2']
@@ -480,7 +480,7 @@ def test_compute_reading_measures_shared_trial_and_page_columns_preserved():
         'page': ['p1', 'p2'],
     })
 
-    result = compute_reading_measures(fixations, aois)
+    result = compute_reading_measures(fixations, aois, group_columns=['trial', 'page'])
 
     assert result.columns[:4] == ['trial', 'page', 'word_index', 'word']
     assert result['page'].to_list() == ['p1', 'p2']
@@ -581,7 +581,7 @@ def test_compute_reading_measures_shared_trial_and_page_columns_preserved():
 )
 def test_compute_reading_measures_raises_value_error(fixations, aois, match):
     with pytest.raises(ValueError, match=match):
-        compute_reading_measures(fixations, aois)
+        compute_reading_measures(fixations, aois, group_columns=['trial', 'page'])
 
 
 def test_compute_reading_measures_deduplicates_inconsistent_word_labels():
