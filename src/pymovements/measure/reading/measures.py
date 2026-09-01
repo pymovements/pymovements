@@ -88,7 +88,7 @@ def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') ->
 def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
     """Duration of the first fixation on each word (FD), regardless of reading pass.
 
-    Requires onset-sorted input.
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -144,7 +144,7 @@ def first_fixation_duration(
 ) -> pl.Expr:
     """Duration of the first fixation during first pass only (FFD).
 
-    Requires onset-sorted input.
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -259,12 +259,14 @@ def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
 def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
     """One-based character position of the first fixation on each word (LP).
 
-    Requires onset-sorted input. The aggregation emits the ``char_idx`` of the word's first
+    The aggregation emits the ``char_idx`` of the word's first
     fixation plus one. Within :func:`~pymovements.measure.reading.compute_reading_measures` the
     word's start character is subtracted, making the position relative to the word (its first
     character is 1), and words that were never fixated are filled with 0; a fixated word whose
     first fixation has a null ``char_idx`` keeps a null position. The resulting values
     match the landing position of the PoTeC reference implementation.
+
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------
@@ -329,8 +331,9 @@ def saccade_length_out(
     """Saccade length at first-pass word exit (SL_out).
 
     SL_out is the signed word distance from the current word to the next fixated word, measured
-    at the last fixation of the first run. Requires onset-sorted input. Zero when the word ends
-    the sequence.
+    at the last fixation of the first run. Zero when the word ends the sequence.
+
+    .. warning:: Requires onset-sorted input.
 
     Parameters
     ----------

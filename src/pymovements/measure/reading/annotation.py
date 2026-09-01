@@ -60,6 +60,8 @@ def run_id(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     A run is a contiguous sequence of fixations on the same word. Apply ``.over(group_columns)``
     to partition into independent reading sequences.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     word_idx : str | pl.Expr
@@ -86,6 +88,8 @@ def prev_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
 
     Apply ``.over(group_columns)`` to partition into independent reading sequences.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     word_idx : str | pl.Expr
@@ -105,6 +109,8 @@ def next_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     """Get the word index of the next fixation.
 
     Apply ``.over(group_columns)`` to partition into independent reading sequences.
+
+    .. warning:: Requires onset-sorted input within each sequence.
 
     Parameters
     ----------
@@ -221,6 +227,8 @@ def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     Apply ``.over(group_columns + ['word_idx'])`` so the flag is evaluated per word within each
     reading sequence.
 
+    .. warning:: Requires onset-sorted input within each sequence.
+
     Parameters
     ----------
     word_idx : str | pl.Expr
@@ -252,6 +260,8 @@ def is_first_pass(
 
     Unlike the other annotation expressions, this one combines two different windows internally
     and therefore takes the group columns as a parameter instead of a trailing ``.over(...)``.
+
+    .. warning:: Requires onset-sorted input within each sequence.
 
     Parameters
     ----------
@@ -296,6 +306,8 @@ def regression_path_word(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     fixation belongs to the regression path of exactly one word: the current running maximum.
 
     Apply ``.over(group_columns)`` to partition into independent reading sequences.
+
+    .. warning:: Requires onset-sorted input within each sequence.
 
     Parameters
     ----------
