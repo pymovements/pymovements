@@ -407,12 +407,10 @@ def annotate_fixations(
     )
 
     if not fixations.is_empty():
-        # Equal onsets are tolerated; the sort below breaks ties deterministically via
-        # fixation_id. Only decreasing onsets indicate unsorted input.
-        onsets_out_of_order = fixations.select(
-            (_over(pl.col('onset').diff(), group_columns) < 0).any(),
+        onsets_sorted = fixations.select(
+            (_over(pl.col('onset').diff(), group_columns) >= 0).all(),
         ).item()
-        if onsets_out_of_order:
+        if not onsets_sorted:
             warnings.warn(
                 'fixation onsets are not sorted within a reading sequence; sorting by onset. '
                 'If these fixations span several trials or pages, pass group_columns.',
