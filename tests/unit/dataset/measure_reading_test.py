@@ -99,6 +99,42 @@ def test_compute_reading_measures_save(dummy_dataset, tmp_path, make_example_fil
     assert set(saved_df.columns) == set(expected_columns)
 
 
+def test_measure_reading_default_keeps_single_sequence(dummy_dataset, make_example_file):
+    """A varying ``trial`` column must not silently split a subject-text under the default."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.Series('trial', [1, 1, 2, 2]))
+
+    reading_measures = dummy_dataset.measure_reading(
+        aoi_dict,
+        word_index_column='aoi',
+        word_column='character',
+    )
+
+    assert 'trial' not in reading_measures.frame.columns
+
+
+def test_measure_reading_group_columns_partition_output(dummy_dataset, make_example_file):
+    """An explicit ``group_columns`` computes measures per group and keeps the column."""
+    aoi_path = make_example_file('potec_word_aoi_b0.tsv')
+    aoi_dict = {'b0': aoi_path}
+
+    events = dummy_dataset.gaze[0].events
+    events.frame = events.frame.with_columns(pl.Series('trial', [1, 1, 2, 2]))
+
+    with pytest.warns(UserWarning, match='broadcast'):
+        reading_measures = dummy_dataset.measure_reading(
+            aoi_dict,
+            group_columns=['trial'],
+            word_index_column='aoi',
+            word_column='character',
+        )
+
+    assert 'trial' in reading_measures.frame.columns
+
+
 def test_compute_reading_measures_empty_dataset(tmp_path):
     definition = DatasetDefinition(name='dummy')
     dataset = Dataset(definition, path=tmp_path)
