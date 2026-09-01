@@ -85,6 +85,9 @@ def compute_reading_measures(
       silently produce all-zero measures.
     * If neither input carries a group column, the fixations are treated as a single sequence.
 
+    Fixation onsets that are not sorted within a group trigger a warning, as this usually means
+    independent reading sequences were concatenated without a separating group column.
+
     The returned ``word_index`` preserves the word indexing of ``aois`` (zero-based, one-based, or
     any other start), so word indices are not shifted. Fixations whose word index has no entry in
     the AOI table (for example sentinel values like ``-1`` for out-of-text fixations) are treated

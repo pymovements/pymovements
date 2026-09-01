@@ -174,11 +174,33 @@ def test_compute_reading_measures_is_invariant_to_input_row_order(stimulus):
     reference = compute_reading_measures(mapped, CHAR_AOI_DF.clone())
     # a fixed permutation that is not onset order
     scrambled = mapped[[2, 0, 3, 1]]
-    result = compute_reading_measures(scrambled, CHAR_AOI_DF.clone())
+    with pytest.warns(UserWarning, match='not sorted'):
+        result = compute_reading_measures(scrambled, CHAR_AOI_DF.clone())
 
     assert_frame_equal(result, reference)
     # the temporally first fixation of each word sets LP; a wrong order would change these
     assert reference.sort('word_index')['LP'].to_list() == [1, 2]
+
+
+def test_compute_reading_measures_warns_on_unsorted_onsets_without_group_columns():
+    aois = pl.DataFrame({
+        'trial': ['t1', 't1', 't2', 't2'],
+        'word_idx': [0, 1, 0, 1],
+        'word': ['The', 'quick', 'The', 'quick'],
+    })
+    # two concatenated trials whose clocks restart, so the onset drops at the trial boundary
+    fixations = pl.DataFrame({
+        'trial': ['t1', 't1', 't2', 't2'],
+        'word_idx': [0, 1, 0, 1],
+        'onset': [0, 100, 0, 100],
+        'duration': [100, 100, 100, 100],
+    })
+
+    with pytest.warns(UserWarning, match='not sorted'):
+        compute_reading_measures(fixations, aois, group_columns=[])
+
+    result = compute_reading_measures(fixations, aois, group_columns=['trial'])
+    assert result.height == 4
 
 
 def _aggregate(annotated_events, expression):

@@ -392,6 +392,22 @@ def annotate_fixations(
     fixations = (
         events.filter((pl.col('name') == event_name) & (word_idx_expr.is_not_null()))
         .with_row_index('fixation_id')
+    )
+
+    if not fixations.is_empty():
+        # Equal onsets are tolerated; the sort below breaks ties deterministically via
+        # fixation_id. Only decreasing onsets indicate unsorted input.
+        onsets_out_of_order = fixations.select(
+            (_over(pl.col('onset').diff(), group_columns) < 0).any(),
+        ).item()
+        if onsets_out_of_order:
+            warnings.warn(
+                'fixation onsets are not sorted within a reading sequence; sorting by onset. '
+                'If these fixations span several trials or pages, pass group_columns.',
+            )
+
+    fixations = (
+        fixations
         # Every downstream expression assumes onset-sorted rows: the annotations use running
         # windows (cum_max / cum_count / shift) and the word-level measures read the first row of
         # each group (.first()), so both encode "temporally first" as "first by row position".
