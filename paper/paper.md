@@ -221,10 +221,11 @@ reading-research consortium, with continuous exchange between the two
 projects; four multi-day contributor meetings organized through the COST
 Action brought together contributors from across Europe to jointly design
 and implement core features of the package [@Krakowczyk2026]. `pymovements`
-has more than 50 contributors from multiple laboratories and is distributed
-via PyPI and conda-forge, with more than 92,000 cumulative downloads from
-PyPI [@pepyPymovements] and more than 59,000 from conda-forge
-[@condaforgePymovements] as of August 2026.
+has more than 50 contributors from multiple laboratories; it is distributed
+via PyPI and conda-forge, with each release archived on Zenodo
+[@pymovementsZenodo], and has accumulated more than 92,000 downloads from
+PyPI [@pymovementsPepy] and more than 59,000 from conda-forge
+[@pymovementsConda] as of August 2026.
 
 Beyond the author team, `pymovements` has been taken up in research across
 several domains, including clinical vision research [@Grootjen2025],
