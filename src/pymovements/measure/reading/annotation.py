@@ -392,8 +392,11 @@ def annotate_fixations(
     fixations = (
         events.filter((pl.col('name') == event_name) & (word_idx_expr.is_not_null()))
         .with_row_index('fixation_id')
-        # fixation_id breaks onset ties deterministically (it preserves the input order), so the
-        # run/pass annotations are reproducible even when two fixations share an onset.
+        # Every downstream expression assumes onset-sorted rows: the annotations use running
+        # windows (cum_max / cum_count / shift) and the word-level measures read the first row of
+        # each group (.first()), so both encode "temporally first" as "first by row position".
+        # fixation_id breaks onset ties deterministically (it preserves the input order), so these
+        # stay reproducible even when two fixations share an onset.
         .sort(group_columns + ['onset', 'fixation_id'])
     )
 

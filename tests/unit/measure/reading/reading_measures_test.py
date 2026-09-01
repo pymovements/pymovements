@@ -151,6 +151,36 @@ def test_compute_reading_measures_word_level(mapped_events):
     assert result.filter(pl.col('word') == 'quick')['FFD'][0] == 200
 
 
+def test_compute_reading_measures_is_invariant_to_input_row_order(stimulus):
+    """Input row order must not change the output.
+
+    ``annotate_fixations`` sorts by onset, so the ``.first()``-based measures (LP, FFD, SL_in)
+    stay correct even when the caller passes fixations in a non-onset order.
+    """
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'onset': [0, 100, 200, 300],
+        'offset': [100, 200, 300, 400],
+        'duration': [100, 100, 100, 100],
+        # word 0 char 0, word 1 char 5, word 0 char 2 (regression), word 1 char 4
+        'location': [[15., 20.], [65., 20.], [35., 20.], [55., 20.]],
+        'trial': ['trial_1'] * 4,
+        'page': ['page_1'] * 4,
+    })
+    events = Events(data=events_df)
+    events.map_to_aois(stimulus)
+    mapped = events.frame
+
+    reference = compute_reading_measures(mapped, CHAR_AOI_DF.clone())
+    # a fixed permutation that is not onset order
+    scrambled = mapped[[2, 0, 3, 1]]
+    result = compute_reading_measures(scrambled, CHAR_AOI_DF.clone())
+
+    assert_frame_equal(result, reference)
+    # the temporally first fixation of each word sets LP; a wrong order would change these
+    assert reference.sort('word_index')['LP'].to_list() == [1, 2]
+
+
 def _aggregate(annotated_events, expression):
     return annotated_events.group_by(['trial', 'page', 'word_idx']).agg(expression)
 
