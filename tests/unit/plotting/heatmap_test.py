@@ -266,30 +266,47 @@ def test_heatmap_with_image_stimulus(gaze, origin, tmp_path):
 
     assert (tmp_path / 'heatmap_with_stimulus.svg').is_file()
 
-    plt.close(fig)
-
 
 @pytest.mark.parametrize(
-    ('deprecated_argument', 'value'),
+    ('deprecated_kwargs', 'deprecated_argument'),
     (
-        pytest.param('add_stimulus', True, id='add_stimulus'),
         pytest.param(
+            {
+                'add_stimulus': True,
+                'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg',
+            },
+            'add_stimulus',
+            id='add_stimulus',
+        ),
+        pytest.param(
+            {'path_to_image_stimulus': './tests/files/stimuli/pexels-zoorg-1000498.jpg'},
             'path_to_image_stimulus',
-            './tests/files/stimuli/pexels-zoorg-1000498.jpg',
             id='path_to_image_stimulus',
         ),
-        pytest.param('stimulus_origin', 'lower', id='stimulus_origin'),
+        pytest.param({'stimulus_origin': 'lower'}, 'stimulus_origin', id='stimulus_origin'),
     ),
 )
 def test_heatmap_deprecated_parameters(
-        gaze, deprecated_argument, value, assert_deprecation_is_removed,
+        gaze, deprecated_kwargs, deprecated_argument, assert_deprecation_is_removed,
 ):
-    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal."""
-    with pytest.raises(DeprecationWarning) as info:
-        heatmap(gaze, **{deprecated_argument: value})
+    """Test that a deprecated stimulus parameter triggers a warning scheduled for removal.
 
+    The ``add_stimulus`` case also passes ``path_to_image_stimulus`` so the deprecated
+    stimulus rendering path is exercised while it still exists.
+    """
+    with pytest.warns(DeprecationWarning) as record:
+        fig, ax = heatmap(gaze, position_column='pixel', **deprecated_kwargs)
+
+    assert isinstance(fig, plt.Figure)
+    assert isinstance(ax, plt.Axes)
+    plt.close(fig)
+
+    warning_message = next(
+        str(warning.message) for warning in record
+        if f"'{deprecated_argument}'" in str(warning.message)
+    )
     assert_deprecation_is_removed(
         function_name=f"heatmap argument '{deprecated_argument}'",
-        warning_message=info.value.args[0],
+        warning_message=warning_message,
         scheduled_version='0.33.0',
     )

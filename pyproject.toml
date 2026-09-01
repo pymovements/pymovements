@@ -106,7 +106,7 @@ ignore-words-list = 'bund,InstRead'
 
 [tool.coverage.paths]
 source = [
-  '{toxworkdir}/src/pymovements',
+  'src/pymovements',
   '*/.tox/*/lib/python*/site-packages/pymovements',
   '*/src/pymovements'
 ]
