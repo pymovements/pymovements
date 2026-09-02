@@ -26,12 +26,13 @@ from typing import Literal
 from typing import overload
 
 import numpy as np
-import polars as pl
-from deprecated.sphinx import deprecated
+import polars
 from tqdm import tqdm
 
 from pymovements._utils import _checks
+from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
+from pymovements._utils._nulls import row_is_null
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
@@ -44,7 +45,7 @@ class Events:
 
     Parameters
     ----------
-    data: pl.DataFrame | None
+    data: polars.DataFrame | None
         A dataframe to be transformed to a polars dataframe. This argument is mutually
         exclusive with all the other arguments. (default: None)
     name: str | list[str] | None
@@ -60,11 +61,25 @@ class Events:
 
     Attributes
     ----------
-    frame: pl.DataFrame
+    frame: polars.DataFrame
         A dataframe of events.
     trial_columns: list[str] | None
         The name of the trial columns in the data frame. If not None, processing methods
         will be applied to each trial separately.
+    schema: polars.type_aliases.SchemaDict
+        Schema of the event dataframe.
+    columns: list[str]
+        List of column names in the event dataframe.
+    event_property_columns: list[str]
+        Event property columns for this dataframe.
+    fixations: polars.DataFrame
+        Fixation events.
+    saccades: polars.DataFrame
+        Saccade events.
+    blinks: polars.DataFrame
+        Blink events.
+    microsaccades: polars.DataFrame
+        Microsaccade events.
 
     Raises
     ------
@@ -96,15 +111,15 @@ class Events:
     └──────────┴─────────┴─────────┴──────────┘
     """
 
-    frame: pl.DataFrame
+    frame: polars.DataFrame
 
     trial_columns: list[str] | None
 
-    _minimal_schema = {'name': pl.Utf8, 'onset': pl.Float64, 'offset': pl.Float64}
+    _minimal_schema = {'name': polars.Utf8, 'onset': polars.Float64, 'offset': polars.Float64}
 
     def __init__(
             self,
-            data: pl.DataFrame | None = None,
+            data: polars.DataFrame | None = None,
             name: str | list[str] | None = None,
             onsets: list[int | float] | np.ndarray | None = None,
             offsets: list[int | float] | np.ndarray | None = None,
@@ -157,26 +172,26 @@ class Events:
                     name = [name] * len(onsets)
 
                 data_dict = {
-                    'name': pl.Series(name, dtype=pl.Utf8),
-                    'onset': pl.Series(onsets, dtype=pl.Float64),
-                    'offset': pl.Series(offsets, dtype=pl.Float64),
+                    'name': polars.Series(name, dtype=polars.Utf8),
+                    'onset': polars.Series(onsets, dtype=polars.Float64),
+                    'offset': polars.Series(offsets, dtype=polars.Float64),
                 }
 
                 if trials is not None:
-                    data_dict['trial'] = pl.Series('trial', trials)
+                    data_dict['trial'] = polars.Series('trial', trials)
                     self.trial_columns = ['trial']
                 else:
                     self.trial_columns = None
 
             else:
                 data_dict = {
-                    'name': pl.Series([], dtype=pl.Utf8),
-                    'onset': pl.Series([], dtype=pl.Float64),
-                    'offset': pl.Series([], dtype=pl.Float64),
+                    'name': polars.Series([], dtype=polars.Utf8),
+                    'onset': polars.Series([], dtype=polars.Float64),
+                    'offset': polars.Series([], dtype=polars.Float64),
                 }
                 self.trial_columns = None
 
-        self.frame = pl.DataFrame(data=data_dict, schema_overrides=self._minimal_schema)
+        self.frame = polars.DataFrame(data=data_dict, schema_overrides=self._minimal_schema)
 
         # Ensure column order: trial columns, then minimal schema, keeping all other columns.
         if self.trial_columns is not None:
@@ -191,22 +206,22 @@ class Events:
 
         # Convert to int if possible.
         all_decimals = self.frame.select(
-            pl.all_horizontal(
-                pl.col('onset', 'offset').round()
-                .eq(pl.col('onset', 'offset'))
+            polars.all_horizontal(
+                polars.col('onset', 'offset').round()
+                .eq(polars.col('onset', 'offset'))
                 .all(),
             ),
         ).item()
         if all_decimals:
             self.frame = self.frame.with_columns(
-                pl.col('onset', 'offset').cast(pl.Int64),
+                polars.col('onset', 'offset').cast(polars.Int64),
             )
 
         if 'duration' not in self.frame.columns:
             self._add_duration_property()
 
     @property
-    def schema(self) -> pl.type_aliases.SchemaDict:
+    def schema(self) -> polars.type_aliases.SchemaDict:
         """Schema of event dataframe."""
         return self.frame.schema
 
@@ -225,23 +240,23 @@ class Events:
 
     def _add_duration_property(self) -> None:
         """Add duration property column to dataframe."""
-        self.frame = self.frame.select([pl.all(), duration().alias('duration')])
+        self.frame = self.frame.select([polars.all(), duration().alias('duration')])
 
     def add_event_properties(
             self,
-            event_properties: pl.DataFrame,
+            event_properties: polars.DataFrame,
             join_on: str | list[str],
     ) -> None:
         """Add new event properties into dataframe.
 
         Parameters
         ----------
-        event_properties: pl.DataFrame
+        event_properties: polars.DataFrame
             Dataframe with new event properties.
         join_on: str | list[str]
             Columns to join event properties on.
         """
-        self.frame = self.frame.join(event_properties, on=join_on, how='left')
+        self.frame = self.frame.join(event_properties, on=join_on, how='left', nulls_equal=True)
 
     def drop(
             self,
@@ -315,11 +330,11 @@ class Events:
 
         self.frame = self.frame.select(
             [
-                pl.lit(column_data).alias(column_name) if not isinstance(column_data, int)
+                polars.lit(column_data).alias(column_name) if not isinstance(column_data, int)
                 # Enforce Int64 columns for integers.
-                else pl.lit(column_data).alias(column_name).cast(pl.Int64)
+                else polars.lit(column_data).alias(column_name).cast(polars.Int64)
                 for column_name, column_data in trial_columns.items()
-            ] + [pl.all()],
+            ] + [polars.all()],
         )
 
     @property
@@ -336,7 +351,7 @@ class Events:
         event_property_columns -= set(self._additional_columns)
         return list(event_property_columns)
 
-    def filter_by_name(self, name: str) -> pl.DataFrame:
+    def filter_by_name(self, name: str) -> polars.DataFrame:
         """Filter events by name.
 
         Parameters
@@ -471,21 +486,21 @@ class Events:
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             DataFrame containing matching events.
         """
         if 'name' not in self.frame.columns:
             raise ValueError("Events frame is missing the 'name' column.")
 
-        return self.frame.filter(pl.col('name').str.contains(name))
+        return self.frame.filter(polars.col('name').str.contains(name))
 
     @property
-    def fixations(self) -> pl.DataFrame:
+    def fixations(self) -> polars.DataFrame:
         """Fixation events.
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             DataFrame containing all fixation events, i.e., rows where
             ``name`` starts with ``"fixation"`` (e.g., ``"fixation"``, ``"fixation_ivt"``,
             ``"fixation_eyelink"``).
@@ -493,36 +508,36 @@ class Events:
         return self.filter_by_name('fixation')
 
     @property
-    def saccades(self) -> pl.DataFrame:
+    def saccades(self) -> polars.DataFrame:
         """Saccade events.
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             DataFrame containing all saccade events, i.e., rows where
             ``name`` starts with ``"saccade"`` (e.g., ``"saccade"``, ``"saccade_algo"``).
         """
         return self.filter_by_name('saccade')
 
     @property
-    def blinks(self) -> pl.DataFrame:
+    def blinks(self) -> polars.DataFrame:
         """Blink events.
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             DataFrame containing all blink events, i.e., rows where
             ``name`` starts with ``"blink"`` (e.g., ``"blink"``, ``"blink_detectorX"``).
         """
         return self.filter_by_name('blink')
 
     @property
-    def microsaccades(self) -> pl.DataFrame:
+    def microsaccades(self) -> polars.DataFrame:
         """Microsaccade events.
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             DataFrame containing all microsaccade events, i.e., rows where
             ``name`` starts with ``"microsaccade"`` (e.g., ``"microsaccade"``).
         """
@@ -540,25 +555,6 @@ class Events:
             data=self.frame.clone(),
             trial_columns=self.trial_columns,
         )
-
-    @deprecated(
-        reason='Please use Events.clone() instead. '
-               'This function will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def copy(self) -> Events:
-        """Return a copy of an Events object.
-
-        .. deprecated:: v0.23.0
-           Please use :py:meth:`~pymovements.events.Events.clone()` instead.
-           This function will be removed in v0.28.0.
-
-        Returns
-        -------
-        Events
-            A copy of the Events.
-        """
-        return self.clone()
 
     @overload
     def split(
@@ -617,50 +613,152 @@ class Events:
             for frame in event_dfs
         ]
 
-    def _add_minimal_schema_columns(self, df: pl.DataFrame) -> pl.DataFrame:
+    def drop_nulls(
+        self,
+        subset: list[str] | None = None,
+        how: Literal['all', 'any'] = 'any',
+    ) -> None:
+        """Drop events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, all columns of the events
+            frame are checked. (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column counts as null if
+            any of its components is null under 'any', and only if all of its components are null
+            under 'all'. (default: 'any')
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in the events frame.
+
+        Examples
+        --------
+        Let's create some events with null values in the trial and page columns:
+
+        >>> import polars
+        >>> import pymovements as pm
+        >>> events = pm.Events(
+        ...     polars.DataFrame({
+        ...         'name': ['fixation', 'fixation', 'fixation'],
+        ...         'onset': [0, 110, 165],
+        ...         'offset': [100, 150, 200],
+        ...         'trial': [1, None, None],
+        ...         'page': [1, 2, None],
+        ...     }),
+        ... )
+
+        Under ``how='all'``, an event is only dropped if all subset columns are null,
+        removing the third fixation:
+
+        >>> events.drop_nulls(subset=['trial', 'page'], how='all')
+        >>> events
+        shape: (2, 6)
+        ┌──────────┬───────┬────────┬───────┬──────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ page ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---  ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64  ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════╪══════════╡
+        │ fixation ┆ 0     ┆ 100    ┆ 1     ┆ 1    ┆ 100      │
+        │ fixation ┆ 110   ┆ 150    ┆ null  ┆ 2    ┆ 40       │
+        └──────────┴───────┴────────┴───────┴──────┴──────────┘
+
+        Under the default ``how='any'``, a single null value suffices, removing the second
+        fixation too:
+
+        >>> events.drop_nulls(subset=['trial', 'page'])
+        >>> events
+        shape: (1, 6)
+        ┌──────────┬───────┬────────┬───────┬──────┬──────────┐
+        │ name     ┆ onset ┆ offset ┆ trial ┆ page ┆ duration │
+        │ ---      ┆ ---   ┆ ---    ┆ ---   ┆ ---  ┆ ---      │
+        │ str      ┆ i64   ┆ i64    ┆ i64   ┆ i64  ┆ i64      │
+        ╞══════════╪═══════╪════════╪═══════╪══════╪══════════╡
+        │ fixation ┆ 0     ┆ 100    ┆ 1     ┆ 1    ┆ 100      │
+        └──────────┴───────┴────────┴───────┴──────┴──────────┘
+        """
+        if subset is None:
+            subset = self.frame.columns
+        else:
+            missing_columns = [column for column in subset if column not in self.frame.columns]
+            if missing_columns:
+                raise ValueError(
+                    f'columns {missing_columns} from subset do not exist in the events frame',
+                )
+
+        self.frame = self.frame.remove(row_is_null(self.frame.schema, subset, how))
+
+    def _add_minimal_schema_columns(self, df: polars.DataFrame) -> polars.DataFrame:
         """Add minimal schema columns to :py:class:`polars.DataFrame` if they are missing.
 
         Parameters
         ----------
-        df: pl.DataFrame
+        df: polars.DataFrame
             A dataframe to be transformed to a polars dataframe.
 
         Returns
         -------
-        pl.DataFrame
+        polars.DataFrame
             A dataframe with minimal schema columns added.
         """
         if len(df) == 0:
-            return pl.DataFrame(schema={**self._minimal_schema, **df.schema})
+            return polars.DataFrame(schema={**self._minimal_schema, **df.schema})
 
         df = df.select(
             [
-                pl.lit(None).cast(column_type).alias(column_name)
+                polars.lit(None).cast(column_type).alias(column_name)
                 for column_name, column_type in self._minimal_schema.items()
                 if column_name not in df.columns
-            ] + [pl.all()],
+            ] + [polars.all()],
         )
         return df
 
-    def unnest(self) -> None:
-        """Explode a column of type ``pl.List`` into one column for each list component."""
-        cols = ['location']
-        input_columns = [col for col in cols if col in self.frame.columns]
+    def unnest(
+            self,
+            input_columns: list[str] | str | None = None,
+            output_suffixes: list[str] | None = None,
+            *,
+            output_columns: list[str] | None = None,
+    ) -> None:
+        """Explode columns of type ``polars.List`` into one column for each list component.
 
-        output_suffixes = ['_x', '_y']
+        The input columns will be dropped.
 
-        col_names = [
-            [f'{input_col}{suffix}' for suffix in output_suffixes]
-            for input_col in input_columns
-        ]
+        Parameters
+        ----------
+        input_columns: list[str] | str | None
+            Name(s) of input column(s) to be unnested into several component columns.
+            If None, all list columns will be unnested if existing. (default: None)
+        output_suffixes: list[str] | None
+            Suffixes to append to the column names. (default: None)
+        output_columns: list[str] | None
+            Name of the resulting tuple columns. (default: None)
 
-        for input_col, column_names in zip(input_columns, col_names):
-            self.frame = self.frame.with_columns(
-                [
-                    pl.col(input_col).list.get(component_id).alias(names)
-                    for component_id, names in enumerate(column_names)
-                ],
-            ).drop(input_col)
+        Raises
+        ------
+        ValueError
+            If both output_columns and output_suffixes are specified.
+            If number of output columns / suffixes does not match number of components.
+            If output columns / suffixes are not unique.
+            If no columns to unnest exist and none are specified.
+            If output columns are specified and more than one input column is specified.
+            If a list column to unnest is empty (has no rows).
+            If a list column to unnest contains only null values.
+            If number of components is not 2, 4 or 6.
+        Warning
+            If no columns to unnest exist and none are specified.
+        """
+        self.frame = unnest_list_columns(
+            df=self.frame,
+            input_columns=input_columns,
+            output_suffixes=output_suffixes,
+            output_columns=output_columns,
+        )
 
     def map_to_aois(
             self,
@@ -721,8 +819,8 @@ class Events:
         ):
             self.frame = self.frame.with_columns(
                 [
-                    pl.col('location').list.get(0).alias('location_x'),
-                    pl.col('location').list.get(1).alias('location_y'),
+                    polars.col('location').list.get(0).alias('location_x'),
+                    polars.col('location').list.get(1).alias('location_y'),
                 ],
             ).drop('location')
 
@@ -733,16 +831,16 @@ class Events:
 
         # Build a stable dtype schema for the AOI columns to avoid concat SchemaError when
         # mixing empty rows (all None) with real AOI rows (strings/floats, etc.).
-        aoi_schema: dict[str, pl.PolarsDataType] = (
+        aoi_schema: dict[str, polars.PolarsDataType] = (
             {col: aoi_dataframe.aois.schema[col] for col in aoi_columns}
             if aoi_columns else {}
         )
 
-        def _empty_aoi_row() -> pl.DataFrame:
+        def _empty_aoi_row() -> polars.DataFrame:
             # Create one row of all-None cast to expected AOI dtypes
-            return pl.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
+            return polars.DataFrame({col: [None] for col in aoi_columns}).cast(aoi_schema)
 
-        out_rows: list[pl.DataFrame] = []
+        out_rows: list[polars.DataFrame] = []
         for row in tqdm(
                 self.frame.iter_rows(named=True),
                 total=len(self.frame),
@@ -786,7 +884,8 @@ class Events:
                     present = [c for c in aoi_columns if c in aoi_row.columns]
                     missing = [c for c in aoi_columns if c not in aoi_row.columns]
                     aoi_row = aoi_row.select(
-                        [pl.col(c) for c in present] + [pl.lit(None).alias(c) for c in missing],
+                        [polars.col(c) for c in present]
+                        + [polars.lit(None).alias(c) for c in missing],
                     )
                     # Cast to the stable AOI schema to ensure consistent dtypes across rows
                     aoi_row = aoi_row.cast(aoi_schema)
@@ -796,8 +895,8 @@ class Events:
                     aoi_row = aoi_row.select([])
             out_rows.append(aoi_row)
 
-        aoi_df = pl.concat(out_rows) if out_rows else pl.DataFrame({col: [] for col in aoi_columns})
-        self.frame = pl.concat([self.frame, aoi_df], how='horizontal_extend')
+        aoi_df = polars.concat(out_rows)
+        self.frame = polars.concat([self.frame, aoi_df], how='horizontal_extend')
 
         # Backward-compatibility: some pipelines expect that a prior unnest removed the
         # original 'location' list column and kept only component columns. We avoid unnesting,
@@ -809,7 +908,7 @@ class Events:
             self.frame = self.frame.drop('location')
 
     def __eq__(self, other: Events) -> bool:
-        """Check equality between this and another :py:cls:`~pymovements.Events` object."""
+        """Check equality between this and another :py:class:`~pymovements.Events` object."""
         frames_equal = self.frame.equals(other.frame, null_equal=True)
         trial_columns_equal = self.trial_columns == other.trial_columns
         return frames_equal and trial_columns_equal
@@ -870,20 +969,20 @@ class Events:
 
         """
         # Step 1: Filter events of the specified type and sort by onset
-        events = self.frame.filter(pl.col('name') == name).sort('onset')
+        events = self.frame.filter(polars.col('name') == name).sort('onset')
         # set aside other events to merge them back later
-        other = self.frame.filter(pl.col('name') != name)
+        other = self.frame.filter(polars.col('name') != name)
 
         number_of_events = len(events)
 
         # Step 2: Calculate the gap between the current onset and the previous offset
-        events = events.with_columns(gap=pl.col('onset') - pl.col('offset').shift(1))
+        events = events.with_columns(gap=polars.col('onset') - polars.col('offset').shift(1))
 
         # Step 3: Create a 'group' identifier for merging
         events = events.with_columns(
             # calculate when gap is null or > max_gap
-            (pl.col('gap').is_null() | (pl.col('gap') > max_gap))
-            .cast(pl.Int64)
+            (polars.col('gap').is_null() | (polars.col('gap') > max_gap))
+            .cast(polars.Int64)
             # cumulative sum (of ones) in 'group' to assign a unique group number
             # to each sequence of events to be merged
             .cum_sum()
@@ -895,16 +994,16 @@ class Events:
         # Step 4: Aggregate events by group to merge them
         events = events.group_by('group').agg([
             # all columns from the first group element except offset and duration
-            pl.exclude(['offset', 'duration']).first(),
+            polars.exclude(['offset', 'duration']).first(),
             # the offset of the merged event is the last offset in the group
-            pl.col('offset').last().alias('offset'),
+            polars.col('offset').last().alias('offset'),
         ]).drop(['group', 'gap'])  # we don't need the group and gap columns anymore
         # the duration of the merged event is the last offset minus the first onset in the group
         events = events.with_columns(duration().alias('duration'))
 
         # Step 5: concatenate new events
         events = events.select(self.frame.columns)  # reorder columns to match original frame
-        self.frame = pl.concat([events, other]).sort('onset')
+        self.frame = polars.concat([events, other]).sort('onset')
 
         if verbose:
             print(

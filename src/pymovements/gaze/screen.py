@@ -50,6 +50,26 @@ class Screen:
         Specifies the screen location of the origin of the pixel
         coordinate system.
         (default: None)
+    width_px: int | None
+        Width of screen in pixels.
+    height_px: int | None
+        Height of screen in pixels.
+    resolution: tuple[int | None, int | None] | None
+        Resolution of screen in pixels (width, height).
+    width_cm: float | None
+        Width of screen in centimeters.
+    height_cm: float | None
+        Height of screen in centimeters.
+    size: tuple[float | None, float | None] | None
+        Size of screen in centimeters (width, height).
+    x_max_dva: float
+        Maximum screen x-coordinate in degrees of visual angle.
+    y_max_dva: float
+        Maximum screen y-coordinate in degrees of visual angle.
+    x_min_dva: float
+        Minimum screen x-coordinate in degrees of visual angle.
+    y_min_dva: float
+        Minimum screen y-coordinate in degrees of visual angle.
 
     Parameters
     ----------

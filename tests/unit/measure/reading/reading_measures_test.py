@@ -20,6 +20,7 @@
 """Reading measure tests."""
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
@@ -31,6 +32,8 @@ from pymovements.measure.reading.measures import first_pass_fixation_count
 from pymovements.measure.reading.measures import first_pass_reading_time
 from pymovements.measure.reading.measures import first_reading_time
 from pymovements.measure.reading.measures import landing_position
+from pymovements.measure.reading.measures import non_aoi_fixation_count_ratio
+from pymovements.measure.reading.measures import non_aoi_fixation_duration_ratio
 from pymovements.measure.reading.measures import regression_count_in
 from pymovements.measure.reading.measures import regression_count_out
 from pymovements.measure.reading.measures import regression_path_duration
@@ -38,6 +41,7 @@ from pymovements.measure.reading.measures import rereading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
+from pymovements.measure.reading.processing import compute_reading_measures
 from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
@@ -134,6 +138,22 @@ def test_reading_measures_init_df():
     assert isinstance(reading_measures.frame, pl.DataFrame)
     assert reading_measures.frame.shape == (3, 1)
     assert reading_measures.frame['a'].to_list() == [1, 2, 3]
+
+
+def test_compute_reading_measures_preserves_zero_based_word_indices():
+    aois = pl.DataFrame({
+        'word_idx': [0, 0, 1, 1],
+        'word': ['zero', 'zero', 'one', 'one'],
+    })
+    fixations = pl.DataFrame({
+        'word_idx': [0, 1],
+        'duration': [100, 200],
+    })
+
+    result = compute_reading_measures(fixations, aois)
+
+    assert result['word_index'].to_list() == [0, 1]
+    assert result['word'].to_list() == ['zero', 'one']
 
 
 def test_build_word_level_table(annotated_events, all_tokens):
@@ -237,3 +257,177 @@ def test_regression_path_duration_no_first_pass():
     })
     result = regression_path_duration(df)
     assert result['RPD_inc'][0] == 0
+
+
+# ---------------------------
+# non_aoi_fixation_count_ratio
+# ---------------------------
+
+
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        # All fixations inside AOI -> NAFCR == 0.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1'],
+                'page': ['1', '1', '1'],
+                'word_idx': [0, 1, 2],
+            }),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFCR': [0.0],
+            }),
+        ),
+        # All fixations outside AOI -> NAFCR == 1.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [None, None],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFCR': [1.0],
+            }),
+        ),
+        # Mix of inside / outside fixations -> NAFCR == 0.5
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, 1, None],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFCR': [0.5],
+            }),
+        ),
+        # Multiple trials get separate NAFCR values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '2', '2', '2'],
+                'page': ['1', '1', '1', '1', '1'],
+                'word_idx': [0, None, None, None, 0],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'page': ['1', '1'],
+                'NAFCR': [0.5, 2 / 3],
+            }),
+        ),
+        # Empty fixations table yields empty output DataFrame
+        (
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'word_idx': pl.Int64}),
+            pl.DataFrame(schema={'trial': pl.String, 'page': pl.String, 'NAFCR': pl.Float64}),
+        ),
+    ],
+)
+def test_non_aoi_fixation_count_ratio(fixations, expected):
+    result = non_aoi_fixation_count_ratio(fixations)
+    assert_frame_equal(result, expected)
+
+
+# ---------------------------
+# non_aoi_fixation_duration_ratio
+# ---------------------------
+
+
+@pytest.mark.parametrize(
+    ('fixations', 'expected'),
+    [
+        # All fixations inside AOI -> NAFDR == 0.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [0, 1],
+                'duration': [100, 200],
+            }),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFDR': [0.0],
+            }),
+        ),
+        # All fixations outside AOI -> NAFDR == 1.0
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [None, None],
+                'duration': [50, 150],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFDR': [1.0],
+            }),
+        ),
+        # Mixed fixations -> NAFDR == 150 / 400
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, 1, None],
+                'duration': [100, 50, 150, 100],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1'],
+                'page': ['1'],
+                'NAFDR': [150 / 400],
+            }),
+        ),
+        # Zero total duration yields None for NAFDR
+        (
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['1', '1'],
+                'word_idx': [0, 1],
+                'duration': [0, 0],
+            }),
+            pl.DataFrame(
+                {
+                    'trial': ['1'],
+                    'page': ['1'],
+                    'NAFDR': [None],
+                },
+                schema={'trial': pl.String, 'page': pl.String, 'NAFDR': pl.Float64},
+            ),
+        ),
+        # Multiple trials get separate NAFDR values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '2', '2'],
+                'page': ['1', '1', '1', '1'],
+                'word_idx': [0, None, None, 0],
+                'duration': [100, 100, 300, 100],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '2'],
+                'page': ['1', '1'],
+                'NAFDR': [0.5, 0.75],
+            }),
+        ),
+        # Multiple pages get separate NAFDR values
+        (
+            pl.DataFrame({
+                'trial': ['1', '1', '1', '1'],
+                'page': ['p1', 'p1', 'p2', 'p2'],
+                'word_idx': [0, None, None, None],
+                'duration': [100, 100, 200, 200],
+            }).cast({'word_idx': pl.Int64}),
+            pl.DataFrame({
+                'trial': ['1', '1'],
+                'page': ['p1', 'p2'],
+                'NAFDR': [0.5, 1.0],
+            }),
+        ),
+    ],
+)
+def test_non_aoi_fixation_duration_ratio(fixations, expected):
+    result = non_aoi_fixation_duration_ratio(fixations)
+    assert_frame_equal(result, expected, abs_tol=1e-5)

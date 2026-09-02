@@ -22,13 +22,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Sequence
-from copy import deepcopy
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from dataclasses import replace
 from typing import Any
-from warnings import warn
 
 from deprecated.sphinx import deprecated
 
@@ -59,6 +57,30 @@ class ResourceDefinition:
         by the file extension. Refer to :ref:`gaze-io` for available function names. (default: None)
     load_kwargs: dict[str, Any]
         A dictionary of additional keyword arguments that are passed to the ``load_function``.
+    url: str | None
+        The URL to the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    filename: str | None
+        The target filename of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    md5: str | None
+        The MD5 checksum of the downloadable resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
+    mirrors: list[str] | None
+        A list of additional mirror URLs to download the resource. (default: None)
+
+        .. deprecated:: v0.26.2
+            Please use ``source`` instead.
+            This property will be removed in v0.31.0.
 
     Parameters
     ----------
@@ -151,8 +173,8 @@ class ResourceDefinition:
         """The URL to the downloadable resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -183,8 +205,8 @@ class ResourceDefinition:
         """The target filename of the downloadable resource. This may be an archive.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -215,8 +237,8 @@ class ResourceDefinition:
         """The MD5 checksum of the downloadable resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -247,8 +269,8 @@ class ResourceDefinition:
         """A list of additional mirror URLs to download the resource.
 
         .. deprecated:: v0.26.2
-        Please use ResourceDefinition.source instead.
-        This property will be removed in v0.31.0.
+           Please use ResourceDefinition.source instead.
+           This property will be removed in v0.31.0.
 
         Returns
         -------
@@ -283,19 +305,6 @@ class ResourceDefinition:
         ResourceDefinition
             An initialized ``Resource`` instance.
         """
-        if 'resource' in dictionary:
-            warn(
-                DeprecationWarning(
-                    'from_dict() key "resource" is deprecated since version v0.23.0. '
-                    'Please use key "source" instead. '
-                    'This field will be removed in v0.28.0.',
-                ),
-            )
-
-            url = dictionary['resource']
-            dictionary = {key: value for key, value in dictionary.items() if key != 'resource'}
-            dictionary['url'] = url
-
         if 'source' in dictionary and isinstance(dictionary['source'], dict):
             dictionary['source'] = WebSource.from_dict(dictionary['source'])
 
@@ -376,42 +385,6 @@ class ResourceDefinitions(list):
         return ResourceDefinitions(resources)
 
     @staticmethod
-    @deprecated(
-        reason='Please use ResourceDefinitions.from_dicts() instead. '
-               'This property will be removed in v0.28.0.',
-        version='v0.23.0',
-    )
-    def from_dict(
-        dictionary: dict[str, Sequence[dict[str, Any]]] | None,
-    ) -> ResourceDefinitions:
-        """Create a ``ResourceDefinitions`` instance from a dictionary of lists of dictionaries.
-
-        Parameters
-        ----------
-        dictionary : dict[str, Sequence[dict[str, Any]]] | None
-            A list of dictionaries containing ``ResourceDefinition`` parameters.
-
-        Returns
-        -------
-        ResourceDefinitions
-            An initialized ``ResourceDefinitions`` instance.
-        """
-        if dictionary is None:
-            return ResourceDefinitions()
-
-        resources = []
-        for content_type, content_dictionaries in dictionary.items():
-            if not content_dictionaries:
-                continue
-            for content_dictionary in content_dictionaries:
-                _dictionary = deepcopy(content_dictionary)
-                _dictionary['content'] = content_type
-                resource = ResourceDefinition.from_dict(_dictionary)
-                resources.append(resource)
-
-        return ResourceDefinitions(resources)
-
-    @staticmethod
     def from_dicts(dictionaries: Sequence[dict[str, Any]] | None) -> ResourceDefinitions:
         """Create a ``ResourceDefinitions`` instance from a list of dictionaries.
 
@@ -467,39 +440,3 @@ class ResourceDefinitions(list):
     def __getitem__(self, index: int) -> ResourceDefinition:
         """Get ``ResourceDefinition`` at index."""
         return super().__getitem__(index)
-
-
-class _HasResourcesIndexer:
-    """Helper class for :py:meth:`~pymovements.dataset.DatasetDefinition.has_resources` property.
-
-    Provides dynamic inference on the presence of any
-    :py:meth:`~pymovements.dataset.DatasetDefinition.resources`.
-    """
-
-    def __init__(self, resources: ResourceDefinitions) -> None:
-        self._resources = resources
-
-    def set_resources(self, resources: ResourceDefinitions) -> None:
-        """Set dataset definition resources for lookup."""
-        self._resources = resources
-
-    def __getitem__(self, key: str) -> bool:
-        """Lookup if resources of specific content are set."""
-        return self.__bool__() and self._resources.has_content(key)
-
-    def __bool__(self) -> bool:
-        """Lookup if resources of any content are set."""
-        return bool(self._resources)
-
-    def __eq__(self, other: Any) -> bool:
-        """Return self == other.
-
-        Automatically casts to bool if compared to a boolean.
-        """
-        if isinstance(other, bool):  # Needed to check equality against booleans.
-            return self.__bool__() == other
-        return super().__eq__(other)
-
-    def __repr__(self) -> str:
-        """Return string with boolean value whether any resources are set."""
-        return str(self.__bool__())
