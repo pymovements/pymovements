@@ -60,6 +60,7 @@ author = 'The pymovements Project Authors'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
     'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
     'sphinx.ext.linkcode',
@@ -176,14 +177,6 @@ nitpick_ignore_regex = [
     # Matplotlib pyplot short alias references like plt.X
     (r'py:(class|mod|func|meth|obj|attr)', r'^plt\..*'),
 
-
-
-    # Internal cross-refs to objects/attrs/methods that autosummary may not emit
-    (r'py:obj', r'^pymovements\..*'),
-
-
-
-
     # Matplotlib color types referenced in plotting API
     (
         r'py:class',
@@ -200,22 +193,12 @@ nitpick_ignore_regex = [
     # generic types https://github.com/sphinx-doc/sphinx/issues/14159
     (r'py:class', r'.*dict\[str'),
 
-
-
-    # Residual autosummary cross-refs to attributes/methods on our high-level classes
-    (r'py:(attr|meth)', r'^(?:Dataset|Gaze|DatasetPaths|Experiment)\..*'),
-
-    # Explicit :py:attr: cross-references to class attributes. broken until #713 is resolved
-    (r'py:attr', r'^pymovements\.(?:Dataset|Gaze|DatasetPaths|Experiment|ResourceDefinition)\..*'),
-
     # Odd matplotlib reference seen in deprecated utils.plotting docs
     (r'py:class', r'^matplotlib\.pyplot\.figure$'),
 ]
 
 
 # -- Options for autosummary -------------------------------------------------
-numpydoc_show_class_members = False
-numpydoc_class_members_toctree = False
 autosummary_generate = True
 autosummary_generate_overwrite = True
 autosummary_imported_members = False

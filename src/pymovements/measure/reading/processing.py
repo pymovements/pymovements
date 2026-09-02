@@ -55,11 +55,16 @@ def compute_reading_measures(
     pl.DataFrame
         DataFrame with computed reading measures.
     """
+    # Normalize one-based AOI indices while preserving zero-based inputs.
+    index_offset = 0 if aois[word_index_column].eq(0).any() else 1
+
     # Append an extra dummy fixation to have the next fixation for the actual last fixation.
     dummy_fixation_dict: dict[str, list[int] | list[str]] = {}
     for col, dtype in fixations.schema.items():
         if dtype == pl.String:
             dummy_fixation_dict[col] = ['']
+        elif col == word_index_column:
+            dummy_fixation_dict[col] = [index_offset - 1]
         else:
             dummy_fixation_dict[col] = [0]
     dummy_fixation = pl.DataFrame(
@@ -68,13 +73,11 @@ def compute_reading_measures(
     )
     fixations = pl.concat([fixations, dummy_fixation])
 
-    # Adjust AOI indices (fix off by one error).
-    aois = aois.with_columns(
-        (pl.col(word_index_column) - 1).alias(word_index_column),
-    )
-
-    # Get original words of the text and their indices.
-    word_indices = aois[word_index_column].to_list()
+    # Get the original words of the text and their normalized indices.
+    word_indices = [
+        int(word_index) - index_offset
+        for word_index in aois[word_index_column].to_list()
+    ]
     words = aois[word_column].to_list()
 
     # Initialize dictionary for reading measures per word.
@@ -82,7 +85,7 @@ def compute_reading_measures(
         word_index: {
             'word': word,
             'word_index': word_index,
-            'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
+            'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FPFC': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
             'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
             'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
         } for word_index, word in zip(word_indices, words)
@@ -91,7 +94,7 @@ def compute_reading_measures(
     # Add a catch-all entry for the dummy fixation and invalid AOIs
     rm_dict[-1] = {
         'word': None, 'word_index': -1,
-        'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
+        'FFD': 0, 'SFD': 0, 'FD': 0, 'FPRT': 0, 'FPFC': 0, 'FRT': 0, 'TFT': 0, 'RRT': 0,
         'RPD_inc': 0, 'RPD_exc': 0, 'RBRT': 0, 'Fix': 0, 'FPF': 0, 'RR': 0,
         'FPReg': 0, 'TRC_out': 0, 'TRC_in': 0, 'SL_in': 0, 'SL_out': 0, 'TFC': 0,
     }
@@ -102,7 +105,7 @@ def compute_reading_measures(
     # Iterate over fixation data.
     for fixation in fixations.to_dicts():
         try:
-            aoi = int(fixation[word_index_column]) - 1
+            aoi = int(fixation[word_index_column]) - index_offset
             if aoi not in rm_dict:
                 continue
         except (ValueError, TypeError):
@@ -135,6 +138,7 @@ def compute_reading_measures(
         if right_most_word == cur_fix_word_idx:
             if rm_dict[cur_fix_word_idx]['TRC_out'] == 0:
                 rm_dict[cur_fix_word_idx]['FPRT'] += int(cur_fix_dur)
+                rm_dict[cur_fix_word_idx]['FPFC'] += 1
                 if last_fix_word_idx < cur_fix_word_idx:
                     rm_dict[cur_fix_word_idx]['FFD'] += int(cur_fix_dur)
         else:
