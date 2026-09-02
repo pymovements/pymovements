@@ -951,8 +951,9 @@ class Events:
     ) -> Events | None:
         """Correct vertical drift of fixation locations.
 
-        Fixations are corrected per trial according to :py:attr:`~pymovements.Events.
-        trial_columns` using the specified drift correction algorithm. Fixation locations
+        Fixations are corrected per trial according to
+        :py:attr:`~pymovements.Events.trial_columns` using the specified drift correction
+        algorithm. Fixation locations
         are replaced with their corrected values; original locations are preserved in a
         ``location_original`` column and the applied algorithm is recorded in a
         ``correction_algorithm`` column. See
