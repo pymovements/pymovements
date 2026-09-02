@@ -1723,6 +1723,26 @@ class Dataset:
         --------
         pymovements.Dataset.report_data_quality :
             Check dataset configuration and compute data quality measures.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Print the dataset summary:
+
+        >>> dataset.summary()# doctest: +SKIP
+        Dataset(name='ToyDataset', path='data/ToyDataset')
+          experiment: Experiment(screen=Screen(...), eyetracker=EyeTracker(...))
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+          total samples: 566,715 (26.1 MB estimated)
+          total events: 0
         """
         lines = [str(self)]
 

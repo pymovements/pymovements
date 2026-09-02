@@ -2778,10 +2778,37 @@ class Gaze:
         --------
         pymovements.Gaze.report_data_quality :
             Check gaze configuration and compute data quality measures.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Events
+        >>> from pymovements import Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame(
+        ...         {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ...     ),
+        ...     pixel_columns=['x', 'y'],
+        ...     events=Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2]),
+        ... )
+        >>> gaze.summary()
+        shape: (3, 2)
+        ┌──────┬────────────┐
+        │ time ┆ pixel      │
+        │ ---  ┆ ---        │
+        │ i64  ┆ list[f64]  │
+        ╞══════╪════════════╡
+        │ 0    ┆ [0.0, 0.0] │
+        │ 1    ┆ [1.0, 1.0] │
+        │ 2    ┆ [2.0, 2.0] │
+        └──────┴────────────┘
+        total events: 2
+          fixation: 1
+          saccade: 1
         """
         lines = [str(self)]
 
-        lines.append(f'events: {len(self.events)} total')
+        lines.append(f'total events: {len(self.events):,}')
         if len(self.events):
             name_counts = self.events.frame['name'].value_counts().sort('name')
             for name, count in name_counts.iter_rows():

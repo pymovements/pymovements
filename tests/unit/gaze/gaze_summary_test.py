@@ -33,7 +33,7 @@ def test_gaze_summary_without_events(capsys):
 
     gaze.summary()
 
-    assert capsys.readouterr().out == f'{gaze}\nevents: 0 total\n'
+    assert capsys.readouterr().out == f'{gaze}\ntotal events: 0\n'
 
 
 def test_gaze_summary_counts_events_by_name(capsys):
@@ -50,5 +50,5 @@ def test_gaze_summary_counts_events_by_name(capsys):
 
     gaze.summary()
 
-    expected = f'{gaze}\nevents: 3 total\n  fixation: 2\n  saccade: 1\n'
+    expected = f'{gaze}\ntotal events: 3\n  fixation: 2\n  saccade: 1\n'
     assert capsys.readouterr().out == expected
