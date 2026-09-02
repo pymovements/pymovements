@@ -333,7 +333,7 @@ def test_parse_eyelink_no_messages(make_text_file):
 def test_from_asc_metadata_patterns(filename, kwargs, expected_metadata, make_example_file):
     filepath = make_example_file(filename)
     _, _, metadata, _ = _parsing_eyelink.parse_eyelink(
-        filepath=filepath, **kwargs,
+        file=filepath, **kwargs,
     )
 
     for key, value in expected_metadata.items():
@@ -1149,11 +1149,11 @@ def test_recording_config_missing_sampling_rate_key(monkeypatch, make_text_file)
         _, _, _, _ = _parsing_eyelink.parse_eyelink(filepath)
 
 
-def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file):
-    """Write a minimal asc file with RECCFG, START, and END to exercise recording_config block.
+def test_parse_eyelink_stop_recording_preserves_duration_metadata(make_text_file):
+    """A matched START/END pair sets total_recording_duration_ms from message timestamps.
 
-    The RECCFG line provides a sampling rate of 1000 Hz and the START/END span 1000 ms,
-    so expected number of samples = 1000 and total_recording_duration_ms should be 1000.0.
+    The file contains no samples, so the expected 1000.0 (END at 1000 ms minus
+    START at 0 ms) can only come from the START/END messages.
     """
     content = (
         'MSG 0 RECCFG CR 1000 0 0 LR\n'
@@ -1167,7 +1167,6 @@ def test_parse_eyelink_stop_recording_calculates_expected_samples(make_text_file
     with pytest.warns(UserWarning):
         _, _, metadata, _ = _parsing_eyelink.parse_eyelink(str(p))
 
-    # Duration should be 1000 ms
     assert metadata['total_recording_duration_ms'] == 1000.0
 
 
@@ -1553,6 +1552,21 @@ def test_parse_eyelink_unmatched_stop_recording_warns(make_text_file):
 END 20 SAMPLES EVENTS RES 0 0
 """
     filepath = make_text_file('unmatched_stop.asc', body=asc_content)
+
+    with pytest.warns(UserWarning, match='END recording message without associated START'):
+        _parsing_eyelink.parse_eyelink(filepath)
+
+
+@pytest.mark.filterwarnings('ignore:No metadata found.')
+@pytest.mark.filterwarnings('ignore:No samples configuration found.')
+def test_parse_eyelink_second_unmatched_stop_recording_warns(make_text_file):
+    """Test that a second STOP recording message cannot reuse an earlier START message."""
+    asc_content = """MSG 10 RECCFG CR 1000 2 1 L
+START 15 SAMPLES EVENTS
+END 20 SAMPLES EVENTS RES 0 0
+END 30 SAMPLES EVENTS RES 0 0
+"""
+    filepath = make_text_file('second_unmatched_stop.asc', body=asc_content)
 
     with pytest.warns(UserWarning, match='END recording message without associated START'):
         _parsing_eyelink.parse_eyelink(filepath)

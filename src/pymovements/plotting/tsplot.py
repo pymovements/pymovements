@@ -27,9 +27,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
+from pymovements._utils._column_nesting import get_nested_columns
+from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements.gaze import Gaze
-from pymovements.gaze._utils._column_nesting import get_nested_columns
-from pymovements.gaze._utils._column_nesting import unnest_list_columns
 from pymovements.plotting._matplotlib import prepare_figure
 
 
@@ -49,10 +49,14 @@ def tsplot(
         show_yticks: bool = True,
         figsize: tuple[int, int] = (15, 5),
         title: str | None = None,
+        show_events: bool = False,
         savepath: str | None = None,
         ax: plt.Axes | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Plot time series with each channel getting a separate subplot.
+
+    The x-axis shows the values of the ``time`` column of the gaze samples
+    (usually in milliseconds) if present, otherwise the sample index.
 
     Parameters
     ----------
@@ -86,6 +90,10 @@ def tsplot(
         Figure size. (default: (15, 5))
     title: str | None
         Figure title. (default: None)
+    show_events: bool
+        Whether to plot events as shaded areas. Event spans are colored by event name and
+        their labels are registered, so calling ``fig.legend()`` on the returned figure
+        shows one entry per event name. (default: False)
     savepath: str | None
         If given, figure will be saved to this path. (default: None)
     ax: plt.Axes | None
@@ -123,10 +131,8 @@ def tsplot(
         arr = np.expand_dims(arr, axis=0)
 
     channel_axis = 0
-    sample_axis = 1
 
     n_channels = arr.shape[channel_axis]
-    n_samples = arr.shape[sample_axis]
 
     if n_cols is None:
         if n_channels % 2 == 0:
@@ -166,12 +172,27 @@ def tsplot(
         )
         axs = axs_grid.flatten()
 
-    t = np.arange(n_samples)
+    if 'time' in gaze.samples.columns:
+        t = gaze.samples['time'].to_numpy()
+    else:
+        t = np.arange(arr.shape[1])
     xlims = t.min(), t.max()
 
     # set ylims to have zero centered y-axis (for all axes)
     # will be overwritten if share_y is False
     ylims = _compute_ylims(arr, zero_centered_yaxis=zero_centered_yaxis)
+
+    if show_events:
+        events = gaze.events.frame
+        palette = plt.colormaps['tab10'].colors
+        event_colors = {
+            name: palette[i % len(palette)]
+            for i, name in enumerate(sorted(events['name'].unique()))
+        }
+        event_rows = events.rows(named=True)
+    else:
+        event_colors = {}
+        event_rows = []
 
     for channel_id in range(n_channels):
         ax = axs[channel_id]
@@ -220,6 +241,20 @@ def tsplot(
         # set x label on all axes
         # share_y=True will automatically hide those that are not on the bottom
         ax.set_xlabel(xlabel)
+
+        # plot events as shaded areas
+        if show_events:
+            # only add each event to the legend once
+            add_to_legend = set(event_colors) if channel_id == 0 else set()
+            for event in event_rows:
+                event_name = event['name']
+                ax.axvspan(
+                    event['onset'], event['offset'],
+                    alpha=0.5,
+                    label=event_name if event_name in add_to_legend else None,
+                    color=event_colors[event_name],
+                )
+                add_to_legend.discard(event_name)
 
     if title:
         axs[0].set_title(title)

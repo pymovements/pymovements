@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,28 +17,23 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test measure library."""
+"""Retry network tests to absorb transient connectivity issues and rate limiting."""
 from __future__ import annotations
 
 import pytest
-
-from pymovements import SampleMeasureLibrary
-from pymovements.measure import samples
+from pytest_doctestplus.output_checker import REMOTE_DATA
 
 
-@pytest.mark.parametrize(
-    ('measure', 'name'),
-    [
-        pytest.param(samples.amplitude, 'amplitude', id='amplitude'),
-        pytest.param(samples.dispersion, 'dispersion', id='dispersion'),
-        pytest.param(samples.disposition, 'disposition', id='disposition'),
-        pytest.param(samples.duration, 'duration', id='duration'),
-        pytest.param(samples.location, 'location', id='location'),
-        pytest.param(samples.null_ratio, 'null_ratio', id='null_ratio'),
-        pytest.param(samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
-    ],
-)
-def test_measure_registered(measure, name):
-    assert name in SampleMeasureLibrary()
-    assert SampleMeasureLibrary.get(name) == measure
-    assert SampleMeasureLibrary.get(name).__name__ == name
+def _is_network_doctest(item):
+    """Detect doctests declaring network usage via the REMOTE_DATA doctest option flag."""
+    dtest = getattr(item, 'dtest', None)
+    return dtest is not None and any(example.options.get(REMOTE_DATA) for example in dtest.examples)
+
+
+def pytest_collection_modifyitems(items):
+    """Apply the network marker to downloading doctests and a retry marker to all network tests."""
+    for item in items:
+        if _is_network_doctest(item):
+            item.add_marker(pytest.mark.network)
+        if item.get_closest_marker('network'):
+            item.add_marker(pytest.mark.flaky(reruns=2, reruns_delay=30))

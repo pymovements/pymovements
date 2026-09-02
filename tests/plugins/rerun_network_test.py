@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,28 +17,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Test measure library."""
-from __future__ import annotations
-
+"""Test that network tests receive the retry marker."""
 import pytest
 
-from pymovements import SampleMeasureLibrary
-from pymovements.measure import samples
+
+@pytest.mark.network
+def test_network_marker_implies_flaky_rerun(request):
+    marker = request.node.get_closest_marker('flaky')
+    assert marker is not None
+    assert marker.kwargs == {'reruns': 2, 'reruns_delay': 30}
 
 
-@pytest.mark.parametrize(
-    ('measure', 'name'),
-    [
-        pytest.param(samples.amplitude, 'amplitude', id='amplitude'),
-        pytest.param(samples.dispersion, 'dispersion', id='dispersion'),
-        pytest.param(samples.disposition, 'disposition', id='disposition'),
-        pytest.param(samples.duration, 'duration', id='duration'),
-        pytest.param(samples.location, 'location', id='location'),
-        pytest.param(samples.null_ratio, 'null_ratio', id='null_ratio'),
-        pytest.param(samples.peak_velocity, 'peak_velocity', id='peak_velocity'),
-    ],
-)
-def test_measure_registered(measure, name):
-    assert name in SampleMeasureLibrary()
-    assert SampleMeasureLibrary.get(name) == measure
-    assert SampleMeasureLibrary.get(name).__name__ == name
+def test_non_network_test_has_no_flaky_marker(request):
+    assert request.node.get_closest_marker('flaky') is None

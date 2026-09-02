@@ -1084,8 +1084,105 @@ def test_unnest_location_basic(
     assert events.frame.get_column('location_y').to_list() == expected_y
 
 
-def test_unnest_location_absent_is_noop() -> None:
-    """If 'location' is absent, unnest should do nothing (no error, no new columns)."""
+def test_unnest_multiple_properties() -> None:
+    """Events.unnest can unnest multiple properties, even when they apply only to some events."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation', 'saccade'],
+            'onset': [0, 1],
+            'offset': [1, 2],
+            'location': [[1, 2], None],
+            'amplitude': [None, [5, 6]],
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest()
+
+    assert 'location' not in events.frame.columns
+    assert 'amplitude' not in events.frame.columns
+    assert events.frame.get_column('location_x').to_list() == [1, None]
+    assert events.frame.get_column('location_y').to_list() == [2, None]
+    assert events.frame.get_column('amplitude_x').to_list() == [None, 5]
+    assert events.frame.get_column('amplitude_y').to_list() == [None, 6]
+
+
+@pytest.mark.parametrize(
+    ('unnest_kwargs', 'expected_column_x', 'expected_column_y'),
+    [
+        pytest.param(
+            {'input_columns': 'location', 'output_columns': ['x', 'y']},
+            'x',
+            'y',
+            id='input_columns_output_columns',
+        ),
+        pytest.param(
+            {'input_columns': ['location'], 'output_suffixes': ['_px', '_py']},
+            'location_px',
+            'location_py',
+            id='input_columns_output_suffixes',
+        ),
+    ],
+)
+def test_unnest_explicit_arguments(unnest_kwargs, expected_column_x, expected_column_y):
+    """Events.unnest passes input_columns, output_suffixes and output_columns through."""
+    df = pl.DataFrame(
+        {
+            'name': ['fixation'],
+            'onset': [0],
+            'offset': [1],
+            'location': [[1, 2]],
+        },
+    )
+    events = Events(data=df)
+
+    events.unnest(**unnest_kwargs)
+
+    assert 'location' not in events.frame.columns
+    assert events.frame.get_column(expected_column_x).to_list() == [1]
+    assert events.frame.get_column(expected_column_y).to_list() == [2]
+
+
+@pytest.mark.parametrize(
+    ('df', 'expected_message'),
+    [
+        pytest.param(
+            pl.DataFrame(
+                {
+                    'name': ['fixation'],
+                    'onset': [0],
+                    'offset': [1],
+                    'location': [None],
+                },
+                schema_overrides={'location': pl.List(pl.Float64)},
+            ),
+            "cannot infer number of components in all-null column 'location'",
+            id='all_null_list_column',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                schema={
+                    'name': pl.Utf8,
+                    'onset': pl.Int64,
+                    'offset': pl.Int64,
+                    'location': pl.List(pl.Float64),
+                },
+            ),
+            "cannot infer number of components in empty column 'location'",
+            id='empty_list_column',
+        ),
+    ],
+)
+def test_unnest_uninferable_list_column_raises(df, expected_message):
+    """Events.unnest raises a clear error if a list column allows no component inference."""
+    events = Events(data=df)
+
+    with pytest.raises(ValueError, match=expected_message):
+        events.unnest()
+
+
+def test_unnest_no_list_columns_warns() -> None:
+    """If no list columns exist, unnest warns and adds no new columns."""
     df = pl.DataFrame(
         {
             'name': ['fixation'],
@@ -1096,7 +1193,8 @@ def test_unnest_location_absent_is_noop() -> None:
     events = Events(data=df)
 
     before_cols = set(events.frame.columns)
-    events.unnest()
+    with pytest.warns(UserWarning, match='No columns to unnest.'):
+        events.unnest()
     after_cols = set(events.frame.columns)
 
     assert before_cols == after_cols

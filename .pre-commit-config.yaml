@@ -93,7 +93,8 @@ repos:
       - id: double-quote-string-fixer
       - id: end-of-file-fixer
       - id: name-tests-test
-        exclude: .*_fixtures\.py
+        # exempt fixture modules anywhere and helper modules in tests/plugins/
+        exclude: .*_fixtures\.py|tests/plugins/
       - id: no-commit-to-branch
       - id: requirements-txt-fixer
       - id: trailing-whitespace
@@ -102,7 +103,7 @@ repos:
     hooks:
       - id: autopep8
   - repo: https://github.com/PyCQA/autoflake
-    rev: v2.3.3
+    rev: v2.4.0
     hooks:
       - id: autoflake
   - repo: https://github.com/PyCQA/doc8
@@ -129,7 +130,7 @@ repos:
             '--ignore=D101,D102,D103,D107,D203,D213',
           ]
   - repo: https://github.com/PyCQA/pylint
-    rev: v4.0.7
+    rev: v4.0.8
     hooks:
       - id: pylint
         name: pylint
