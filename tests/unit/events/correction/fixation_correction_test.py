@@ -248,6 +248,20 @@ def test_correct_fixation_locations_missing_word_x_coords_warns(
         assert locs2.len() == 6
 
 
+def test_correct_fixation_locations_all_candidates_excluded_raises(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    aois_no_x = aois_df.drop(['start_x', 'end_x'])
+    with pytest.warns(
+        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are missing",
+    ):
+        with pytest.raises(ValueError, match='No candidate algorithms remain for the ensemble'):
+            correct_fixation_locations(
+                events_df, aois_no_x, algorithm=['compare', 'warp'],
+            )
+
+
 def test_correct_fixation_locations_single_compare_missing_x_coords_raises(
     sample_events_and_aois,
 ):
@@ -383,6 +397,37 @@ def test_correct_fixations_rerun_raises(sample_events_and_aois):
     once = correct_fixations(events_df, aois_df, algorithm='attach')
     with pytest.raises(ValueError, match="'fixation' events have already been corrected"):
         correct_fixations(once, aois_df, algorithm='chain')
+
+
+def test_correct_fixations_preserves_preexisting_correction_columns(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    # Fixations with null correction columns are correctable; a manually corrected
+    # non-fixation row keeps its existing values.
+    events_precorrected = pl.concat([
+        events_df.with_columns(
+            pl.lit(None, dtype=pl.List(pl.Float64)).alias('location_original'),
+            pl.lit(None, dtype=pl.Utf8).alias('correction_algorithm'),
+        ),
+        pl.DataFrame({
+            'trial': ['TRIAL1'],
+            'name': ['saccade'],
+            'onset': [50],
+            'location': [[150.0, 150.0]],
+            'location_original': [[151.0, 151.0]],
+            'correction_algorithm': ['manual'],
+        }),
+    ])
+
+    res_df = correct_fixations(events_precorrected, aois_df, algorithm='attach')
+
+    corrected_rows = res_df.filter(pl.col('name') == 'fixation')
+    assert corrected_rows['correction_algorithm'].to_list() == ['attach'] * 6
+    assert corrected_rows['location_original'].to_list() == events_df['location'].to_list()
+
+    saccade_row = res_df.filter(pl.col('name') == 'saccade')
+    assert saccade_row['correction_algorithm'].to_list() == ['manual']
+    assert saccade_row['location_original'].to_list() == [[151.0, 151.0]]
+    assert saccade_row['location'].to_list() == [[150.0, 150.0]]
 
 
 def test_correct_fixations_custom_fixation_name(sample_events_and_aois):
