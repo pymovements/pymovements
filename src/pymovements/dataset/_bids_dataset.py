@@ -140,9 +140,12 @@ def _check_na_conformity(data: polars.DataFrame) -> list[str]:
         series = data[column]
         invalid_na: set[str] = set()
 
-        if series.dtype == polars.String:
-            mask = series.is_in(na_alternatives).fill_null(False)
-            invalid_na.update(series.filter(mask).unique().to_list())
+        if series.dtype in (polars.String, polars.Categorical, polars.Enum):
+            # cast to String as is_in raises on Enum columns whose categories
+            # do not include all checked alternatives
+            string_series = series.cast(polars.String)
+            mask = string_series.is_in(na_alternatives).fill_null(False)
+            invalid_na.update(string_series.filter(mask).unique().to_list())
         elif series.dtype in (polars.Float32, polars.Float64):
             if series.drop_nulls().is_nan().any():
                 invalid_na.add('NaN')

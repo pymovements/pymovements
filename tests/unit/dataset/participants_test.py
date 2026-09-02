@@ -918,10 +918,26 @@ def test_verify_bids_age_over_89():
             ["Column 'sex' contains invalid null values"],
             id='sex_na_string',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'sex': ['NA']},
+                schema={'participant_id': pl.String, 'sex': pl.Categorical},
+            ),
+            ["Column 'sex' contains invalid null values"],
+            id='sex_na_categorical',
+        ),
+        pytest.param(
+            pl.DataFrame(
+                {'participant_id': ['sub-01'], 'sex': ['NA']},
+                schema={'participant_id': pl.String, 'sex': pl.Enum(['NA', 'female'])},
+            ),
+            ["Column 'sex' contains invalid null values"],
+            id='sex_na_enum',
+        ),
     ],
 )
 def test_verify_bids_na_conformity_detailed(data, expected_warnings):
-    participants = Participants(data, verify_bids=False)
+    participants = Participants(data, verify_bids=False, infer_metadata=False)
     warnings_list = participants.verify_bids('REQUIRED')
     for expected in expected_warnings:
         assert any(expected in w for w in warnings_list), (
