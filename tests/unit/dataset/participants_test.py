@@ -465,18 +465,6 @@ def test_verify_bids_column_name_not_snake_case():
     assert "Column name 'AgeInYears' should be written in snake_case." in warnings_list
 
 
-def test_verify_bids_init_raises():
-    data = pl.DataFrame({'participant_id': ['01']})
-    with pytest.raises(ValueError, match='BIDS non-conformities found'):
-        Participants(data, verify_bids=True)
-
-
-def test_verify_bids_init_warns():
-    data = pl.DataFrame({'participant_id': ['01']})
-    with pytest.warns(UserWarning, match="match 'sub-<label>' pattern"):
-        Participants(data, verify_bids='REQUIRED')
-
-
 def test_verify_bids_load_raises(make_csv_file):
     data = pl.DataFrame({'participant_id': ['01']})
     path = make_csv_file('participants.tsv', data, separator='\t')
@@ -981,7 +969,7 @@ def test_participants_init_null_dtype():
     assert participants.metadata.get('col', {}).get('Format') == 'string'
 
 
-class TestVerifyBidsInit:
+class TestParticipantsVerifyBidsInit:
     @pytest.mark.parametrize(
         ('data', 'verify_bids', 'expected_message'),
         [
@@ -1011,7 +999,7 @@ class TestVerifyBidsInit:
             ),
         ],
     )
-    def test_verify_bids_init_raises(self, data, verify_bids, expected_message):
+    def test_participants_verify_bids_init_raises(self, data, verify_bids, expected_message):
         with pytest.raises(ValueError, match=expected_message):
             Participants(data, verify_bids=verify_bids)
 
@@ -1033,7 +1021,7 @@ class TestVerifyBidsInit:
             ),
         ],
     )
-    def test_verify_bids_init_warns(self, data, verify_bids, expected_message):
+    def test_participants_verify_bids_init_warns(self, data, verify_bids, expected_message):
         with pytest.warns(UserWarning) as record:
             Participants(data, verify_bids=verify_bids)
         warning_messages = [str(warning.message) for warning in record]
@@ -1064,7 +1052,7 @@ class TestVerifyBidsInit:
             ),
         ],
     )
-    def test_verify_bids_init_silent(self, data, verify_bids):
+    def test_participants_verify_bids_init_silent(self, data, verify_bids):
         with warnings.catch_warnings(record=True) as record:
             warnings.simplefilter('always')
             Participants(data, verify_bids=verify_bids)

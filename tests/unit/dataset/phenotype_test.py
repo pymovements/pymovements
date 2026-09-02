@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Unit tests of Phenotype class functionality."""
 import json
+import warnings
 from copy import deepcopy
 
 import polars as pl
@@ -590,28 +591,94 @@ def test_phenotype_verify_bids_unknown_level_raises():
         phenotype.verify_bids('INVALID')  # type: ignore[arg-type]
 
 
-def test_phenotype_verify_bids_init_raises():
-    with pytest.raises(ValueError, match='BIDS non-conformities found'):
-        Phenotype(
-            pl.DataFrame({'participant_id': ['01']}),
-            verify_bids=True,
-        )
-
-
-def test_phenotype_verify_bids_init_warns():
-    with pytest.warns(UserWarning, match="match 'sub-<label>' pattern"):
-        Phenotype(
-            pl.DataFrame({'participant_id': ['01']}),
-            verify_bids='REQUIRED',
-        )
-
-
-def test_phenotype_verify_bids_init_passes():
-    phenotype = Phenotype(
-        pl.DataFrame({'participant_id': ['sub-01']}),
-        verify_bids=True,
+class TestPhenotypeVerifyBidsInit:
+    @pytest.mark.parametrize(
+        ('data', 'verify_bids', 'expected_message'),
+        [
+            pytest.param(
+                pl.DataFrame({'adhd_score': [21.0]}),
+                'REQUIRED',
+                "data must have column named 'participant_id'",
+                id='missing_participant_id_required_raises',
+            ),
+            pytest.param(
+                pl.DataFrame({'adhd_score': [21.0]}),
+                'RECOMMENDED',
+                "data must have column named 'participant_id'",
+                id='missing_participant_id_recommended_raises',
+            ),
+            pytest.param(
+                pl.DataFrame({'adhd_score': [21.0]}),
+                True,
+                "data must have column named 'participant_id'",
+                id='missing_participant_id_true_raises',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['01']}),
+                True,
+                'BIDS non-conformities found',
+                id='invalid_id_true_raises',
+            ),
+        ],
     )
-    assert phenotype.data.shape == (1, 1)
+    def test_phenotype_verify_bids_init_raises(self, data, verify_bids, expected_message):
+        with pytest.raises(ValueError, match=expected_message):
+            Phenotype(data, verify_bids=verify_bids)
+
+    @pytest.mark.parametrize(
+        ('data', 'verify_bids', 'expected_message'),
+        [
+            pytest.param(
+                pl.DataFrame({'participant_id': ['01']}),
+                'REQUIRED',
+                "participant_id values must match 'sub-<label>' pattern. "
+                "Invalid values: ['01']",
+                id='invalid_id_required_warns',
+            ),
+            pytest.param(
+                pl.DataFrame({'adhd_score': [21.0], 'participant_id': ['sub-01']}),
+                'REQUIRED',
+                'participant_id column must be the first column',
+                id='not_first_column_required_warns',
+            ),
+        ],
+    )
+    def test_phenotype_verify_bids_init_warns(self, data, verify_bids, expected_message):
+        with pytest.warns(UserWarning) as record:
+            Phenotype(data, verify_bids=verify_bids)
+        warning_messages = [str(warning.message) for warning in record]
+        assert expected_message in warning_messages
+
+    @pytest.mark.parametrize(
+        ('data', 'verify_bids'),
+        [
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01']}),
+                'REQUIRED',
+                id='conformant_required_silent',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['sub-01']}),
+                True,
+                id='conformant_true_silent',
+            ),
+            pytest.param(
+                pl.DataFrame({'participant_id': ['01']}),
+                False,
+                id='nonconformant_false_silent',
+            ),
+            pytest.param(
+                pl.DataFrame({'adhd_score': [21.0]}),
+                False,
+                id='missing_participant_id_false_silent',
+            ),
+        ],
+    )
+    def test_phenotype_verify_bids_init_silent(self, data, verify_bids):
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter('always')
+            Phenotype(data, verify_bids=verify_bids)
+        assert not record
 
 
 def test_phenotype_verify_bids_save_raises(tmp_path):
