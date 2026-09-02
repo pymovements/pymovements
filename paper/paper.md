@@ -133,7 +133,7 @@ recording, visualization, processing, and analysis across many separate
 packages [@Niehorster2025]. Several open-source tools address individual
 parts of this workflow. In Python, `eyekit` [@eyekit] analyzes reading
 behavior over text stimuli, offering areas of interest, reading measures,
-and line-assignment correction [@Carr2022], but it operates on
+and line-assignment correction, but it operates on
 already-detected fixations rather than raw signals. Similarly, `cili`
 [@Acland2016] expects EyeLink data files and handles its sample and event
 data, while `sideeye` [@Doucette2019] computes reading measures from fixation
