@@ -941,6 +941,16 @@ def test_verify_bids_na_conformity_detailed(data, expected_warnings):
         )
 
 
+def test_verify_bids_na_conformity_non_standard_column():
+    data = pl.DataFrame({'participant_id': ['sub-01'], 'custom_score': ['NA']})
+    participants = Participants(data, verify_bids=False)
+    warnings_list = participants.verify_bids('REQUIRED')
+    assert any(
+        "Column 'custom_score' contains invalid null values" in w
+        for w in warnings_list
+    )
+
+
 def test_participants_load_relative_metadata_path_with_verify(
     make_csv_file,
     make_json_file,

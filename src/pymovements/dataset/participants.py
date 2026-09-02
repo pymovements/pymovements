@@ -34,9 +34,9 @@ import polars
 from pymovements._utils._html import repr_html
 from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
 from pymovements.dataset._bids_dataset import _check_na_conformity
+from pymovements.dataset._bids_dataset import _default_bids_read_csv_kwargs
+from pymovements.dataset._bids_dataset import _default_bids_write_csv_kwargs
 from pymovements.dataset._bids_dataset import _infer_metadata_column_format
-from pymovements.dataset._bids_dataset import _merge_read_csv_kwargs
-from pymovements.dataset._bids_dataset import _merge_write_csv_kwargs
 from pymovements.dataset._bids_dataset import _validate_participant_id_format
 from pymovements.dataset._bids_dataset import _validate_participant_id_structure
 from pymovements.dataset._bids_dataset import _verify_bids_handler
@@ -158,7 +158,9 @@ class Participants:
         r"""Load participant data from participant files.
 
         By default, values encoded as ``'n/a'`` are read as null values per BIDS.
-        This can be overridden via ``read_csv_kwargs``.
+        A cell whose literal content is ``'n/a'`` therefore cannot be distinguished
+        from a missing value. To keep such strings, pass a different ``null_values``
+        via ``read_csv_kwargs`` (for example ``read_csv_kwargs={'null_values': []}``).
 
         Parameters
         ----------
@@ -213,7 +215,11 @@ class Participants:
                     stacklevel=2,
                 )
 
-        read_csv_kwargs = _merge_read_csv_kwargs(separator, read_csv_kwargs)
+        read_csv_kwargs = {
+            **_default_bids_read_csv_kwargs(),
+            'separator': separator,
+            **(read_csv_kwargs or {}),
+        }
 
         if verify_bids is not False:
             if read_csv_kwargs.get('separator') != '\t':
@@ -317,7 +323,11 @@ class Participants:
                     stacklevel=2,
                 )
 
-        write_csv_kwargs = _merge_write_csv_kwargs(separator, write_csv_kwargs)
+        write_csv_kwargs = {
+            **_default_bids_write_csv_kwargs(),
+            'separator': separator,
+            **(write_csv_kwargs or {}),
+        }
 
         if verify_bids is not False:
             if write_csv_kwargs.get('separator') != '\t':

@@ -20,7 +20,6 @@
 """Shared helpers for BIDS dataset classes."""
 from __future__ import annotations
 
-import math
 import re
 import warnings
 from collections.abc import Callable
@@ -127,32 +126,32 @@ def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
 
 
 def _check_na_conformity(data: polars.DataFrame) -> list[str]:
-    """Check that missing values are coded as 'n/a' in BIDS columns.
+    """Check that missing values are coded as 'n/a' in every column.
 
     BIDS requires that missing and non-applicable values MUST be coded as 'n/a'.
+    The convention applies to all columns, not just standard BIDS columns.
     Null values are conformant: they are written as 'n/a' on save and read back
     as nulls on load.
     """
     validation_warnings: list[str] = []
-    # Standard BIDS columns that we check for 'n/a' conformity
-    bids_columns = ['age', 'sex', 'handedness', 'species', 'strain', 'strain_rrid']
-    na_alternatives = {'N/A', 'NA', 'na', 'NaN', 'nan', ''}
+    na_alternatives = ['N/A', 'NA', 'na', 'NaN', 'nan', '']
 
-    for col in data.columns:
-        if col in bids_columns:
-            values = data[col].to_list()
-            invalid_na = []
-            for v in values:
-                if isinstance(v, float) and math.isnan(v):
-                    invalid_na.append('NaN')
-                elif isinstance(v, str) and v in na_alternatives:
-                    invalid_na.append(v)
+    for column in data.columns:
+        series = data[column]
+        invalid_na: set[str] = set()
 
-            if invalid_na:
-                validation_warnings.append(
-                    f"Column '{col}' contains invalid null values: {set(invalid_na)}. "
-                    "BIDS requires missing values to be coded as 'n/a'.",
-                )
+        if series.dtype == polars.String:
+            mask = series.is_in(na_alternatives).fill_null(False)
+            invalid_na.update(series.filter(mask).unique().to_list())
+        elif series.dtype in (polars.Float32, polars.Float64):
+            if series.drop_nulls().is_nan().any():
+                invalid_na.add('NaN')
+
+        if invalid_na:
+            validation_warnings.append(
+                f"Column '{column}' contains invalid null values: {invalid_na}. "
+                "BIDS requires missing values to be coded as 'n/a'.",
+            )
     return validation_warnings
 
 
@@ -189,34 +188,22 @@ def _cast_columns_to_metadata_format(
     return data.cast(schema_overrides)
 
 
-def _merge_read_csv_kwargs(
-    separator: str,
-    read_csv_kwargs: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Merge default read_csv keyword arguments with user-supplied overrides.
+def _default_bids_read_csv_kwargs() -> dict[str, Any]:
+    """Return default read_csv keyword arguments for BIDS tabular files.
 
-    Values encoded as 'n/a' are read back as nulls per BIDS specification.
-    User-supplied keyword arguments take precedence over the defaults.
+    BIDS tabular files are tab-separated. Values encoded as 'n/a' are read
+    back as nulls per BIDS specification.
     """
-    kwargs: dict[str, Any] = {'separator': separator, 'null_values': ['n/a']}
-    if read_csv_kwargs:
-        kwargs.update(read_csv_kwargs)
-    return kwargs
+    return {'separator': '\t', 'null_values': ['n/a']}
 
 
-def _merge_write_csv_kwargs(
-    separator: str,
-    write_csv_kwargs: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Merge default write_csv keyword arguments with user-supplied overrides.
+def _default_bids_write_csv_kwargs() -> dict[str, Any]:
+    """Return default write_csv keyword arguments for BIDS tabular files.
 
-    Null values are written as 'n/a' per BIDS specification.
-    User-supplied keyword arguments take precedence over the defaults.
+    BIDS tabular files are tab-separated. Null values are written as 'n/a'
+    per BIDS specification.
     """
-    kwargs: dict[str, Any] = {'separator': separator, 'null_value': 'n/a'}
-    if write_csv_kwargs:
-        kwargs.update(write_csv_kwargs)
-    return kwargs
+    return {'separator': '\t', 'null_value': 'n/a'}
 
 
 def _verify_bids_handler(
