@@ -20,11 +20,8 @@
 """Retry network tests to absorb transient connectivity issues and rate limiting."""
 from __future__ import annotations
 
-import doctest
-
 import pytest
-
-REMOTE_DATA = doctest.register_optionflag('REMOTE_DATA')
+from pytest_doctestplus.output_checker import REMOTE_DATA
 
 
 def _is_network_doctest(item):
