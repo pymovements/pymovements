@@ -46,6 +46,12 @@ from pymovements.dataset._bids_dataset import _verify_bids_handler
 class Phenotype:
     """Phenotypic and assessment data conforming to BIDS specification.
 
+    Data and metadata follow the Brain Imaging Data Structure (BIDS)
+    `phenotypic and assessment data specification`_.
+
+    .. _phenotypic and assessment data specification:
+        https://bids-specification.readthedocs.io/en/stable/modality-agnostic-files/phenotypic-and-assessment-data.html
+
     Attributes
     ----------
     data: polars.DataFrame
@@ -192,7 +198,8 @@ class Phenotype:
     ) -> Phenotype:
         r"""Load phenotypic data from phenotype files.
 
-        Values encoded as ``'n/a'`` are read as null values per BIDS.
+        By default, values encoded as ``'n/a'`` are read as null values per BIDS.
+        This can be overridden via ``read_csv_kwargs``.
 
         Parameters
         ----------
@@ -279,7 +286,8 @@ class Phenotype:
     ) -> None:
         r"""Save phenotypic data including metadata.
 
-        Null values are written as ``'n/a'`` per BIDS.
+        By default, null values are written as ``'n/a'`` per BIDS.
+        This can be overridden via ``write_csv_kwargs``.
 
         Parameters
         ----------

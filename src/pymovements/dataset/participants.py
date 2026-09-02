@@ -47,6 +47,12 @@ from pymovements.dataset._bids_dataset import _verify_bids_handler
 class Participants:
     """Participant table with additional metadadata.
 
+    Data and metadata follow the Brain Imaging Data Structure (BIDS)
+    `participants file specification`_.
+
+    .. _participants file specification:
+        https://bids-specification.readthedocs.io/en/stable/modality-agnostic-files/data-summary-files.html#participants-file
+
     Attributes
     ----------
     data: polars.DataFrame
@@ -151,7 +157,8 @@ class Participants:
     ) -> Participants:
         r"""Load participant data from participant files.
 
-        Values encoded as ``'n/a'`` are read as null values per BIDS.
+        By default, values encoded as ``'n/a'`` are read as null values per BIDS.
+        This can be overridden via ``read_csv_kwargs``.
 
         Parameters
         ----------
@@ -262,7 +269,8 @@ class Participants:
     ) -> None:
         r"""Save participants data including metadata.
 
-        Null values are written as ``'n/a'`` per BIDS.
+        By default, null values are written as ``'n/a'`` per BIDS.
+        This can be overridden via ``write_csv_kwargs``.
 
         Parameters
         ----------
