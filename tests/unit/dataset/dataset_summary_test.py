@@ -95,5 +95,20 @@ def test_dataset_summary_prints_str_and_aggregates(tmp_path, capsys):
 
     out = capsys.readouterr().out
     assert out.startswith(f'{dataset}\n')
-    assert '\n  total samples: 5 (0.0 MB estimated)\n' in out
-    assert out.endswith('\n  total events: 3\n')
+    assert '\n  total samples: 5 (0.0 MB in memory)\n' in out
+    assert out.endswith('\n  total events: 3\n    fixation: 2\n    saccade: 1\n')
+
+
+def test_dataset_summary_without_events(tmp_path, capsys):
+    """Ensure that summary prints a zero event total without event name lines."""
+    dataset = Dataset(DatasetDefinition(name='example'), path=tmp_path)
+    dataset.gaze = [
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
+            pixel_columns=['x', 'y'],
+        ),
+    ]
+
+    dataset.summary()
+
+    assert capsys.readouterr().out.endswith('\n  total events: 0\n')

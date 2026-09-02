@@ -921,6 +921,35 @@ class Events:
         """Return string representation of event dataframe."""
         return self.__str__()
 
+    def summary(self) -> None:
+        """Print a summary of the events.
+
+        The summary shows the total number of events, followed by the event counts
+        grouped by event name in alphabetical order.
+
+        See Also
+        --------
+        pymovements.Gaze.summary : Print a summary of a gaze object.
+        pymovements.Dataset.summary : Print a summary of a dataset.
+
+        Examples
+        --------
+        >>> from pymovements import Events
+        >>> events = Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2])
+        >>> events.summary()
+        total events: 2
+          fixation: 1
+          saccade: 1
+        """
+        lines = [f'total events: {len(self):,}']
+
+        if len(self):
+            name_counts = self.frame['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'  {name}: {count:,}')
+
+        print('\n'.join(lines))
+
     def merge_subsequent_close_events(
             self,
             name: str = 'fixation',

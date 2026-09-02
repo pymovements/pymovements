@@ -25,7 +25,7 @@ from pymovements import Gaze
 
 
 def test_gaze_summary_without_events(capsys):
-    """Ensure that summary prints the string representation and a zero event count."""
+    """Ensure that summary prints the samples overview and a zero event count."""
     gaze = Gaze(
         samples=pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
         pixel_columns=['x', 'y'],
@@ -33,7 +33,26 @@ def test_gaze_summary_without_events(capsys):
 
     gaze.summary()
 
-    assert capsys.readouterr().out == f'{gaze}\ntotal events: 0\n'
+    expected = (
+        'total samples: 2 (0.0 MB in memory)\n'
+        'columns: time (Int64), pixel (List(Float64))\n'
+        'total events: 0\n'
+    )
+    assert capsys.readouterr().out == expected
+
+
+def test_gaze_summary_without_samples(capsys):
+    """Ensure that summary handles a gaze object without samples gracefully."""
+    gaze = Gaze()
+
+    gaze.summary()
+
+    expected = (
+        'total samples: 0 (0.0 MB in memory)\n'
+        'columns:\n'
+        'total events: 0\n'
+    )
+    assert capsys.readouterr().out == expected
 
 
 def test_gaze_summary_counts_events_by_name(capsys):
@@ -50,5 +69,11 @@ def test_gaze_summary_counts_events_by_name(capsys):
 
     gaze.summary()
 
-    expected = f'{gaze}\ntotal events: 3\n  fixation: 2\n  saccade: 1\n'
+    expected = (
+        'total samples: 3 (0.0 MB in memory)\n'
+        'columns: time (Int64), pixel (List(Float64))\n'
+        'total events: 3\n'
+        '  fixation: 2\n'
+        '  saccade: 1\n'
+    )
     assert capsys.readouterr().out == expected

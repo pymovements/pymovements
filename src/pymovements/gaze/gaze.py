@@ -2840,11 +2840,13 @@ class Gaze:
     def summary(self) -> None:
         """Print a summary of the gaze object.
 
-        The summary includes the string representation with experiment, samples and messages,
-        followed by an overview of the detected events grouped by event name.
+        The summary includes the total number of samples with their estimated in-memory size,
+        the sample column names with their datatypes, and an overview of the detected events
+        grouped by event name.
 
         See Also
         --------
+        pymovements.Events.summary : Print a summary of the events.
         pymovements.Gaze.report_data_quality :
             Check gaze configuration and compute data quality measures.
 
@@ -2861,29 +2863,21 @@ class Gaze:
         ...     events=Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2]),
         ... )
         >>> gaze.summary()
-        shape: (3, 2)
-        ┌──────┬────────────┐
-        │ time ┆ pixel      │
-        │ ---  ┆ ---        │
-        │ i64  ┆ list[f64]  │
-        ╞══════╪════════════╡
-        │ 0    ┆ [0.0, 0.0] │
-        │ 1    ┆ [1.0, 1.0] │
-        │ 2    ┆ [2.0, 2.0] │
-        └──────┴────────────┘
+        total samples: 3 (0.0 MB in memory)
+        columns: time (Int64), pixel (List(Float64))
         total events: 2
           fixation: 1
           saccade: 1
         """
-        lines = [str(self)]
+        estimated_size_mb = self.samples.estimated_size() / (1024 * 1024)
+        print(f'total samples: {len(self.samples):,} ({estimated_size_mb:.1f} MB in memory)')
 
-        lines.append(f'total events: {len(self.events):,}')
-        if len(self.events):
-            name_counts = self.events.frame['name'].value_counts().sort('name')
-            for name, count in name_counts.iter_rows():
-                lines.append(f'  {name}: {count}')
+        columns = ', '.join(
+            f'{name} ({dtype})' for name, dtype in self.samples.schema.items()
+        )
+        print(f'columns: {columns}'.rstrip())
 
-        print('\n'.join(lines))
+        self.events.summary()
 
     def save(
             self,
