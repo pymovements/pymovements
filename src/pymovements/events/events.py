@@ -38,7 +38,7 @@ from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
 
 
-def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> pl.DataFrame:
+def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> polars.DataFrame:
     """Map the configured column names of a TextStimulus to drift correction column names.
 
     Parameters
@@ -48,7 +48,7 @@ def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> pl.DataFrame:
 
     Returns
     -------
-    pl.DataFrame
+    polars.DataFrame
         AOIs dataframe with columns renamed to the names expected by
         :py:mod:`~pymovements.events.correction`.
     """
@@ -944,7 +944,7 @@ class Events:
             algorithm: str | list[str] = 'wisdom_of_the_crowd',
             *,
             text_right_to_left: bool | None = None,
-            word_locations: pl.Series | None = None,
+            word_locations: polars.Series | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
             inplace: bool = True,
@@ -971,7 +971,7 @@ class Events:
         text_right_to_left: bool | None
             Whether the text is read from right to left. If None, the reading direction is
             inferred from the writing system of the text stimulus. (default: None)
-        word_locations: pl.Series | None
+        word_locations: polars.Series | None
             Series of [x, y] word center coordinates for the DTW-based algorithms
             'compare' and 'warp'. If None, word locations are derived from the aois
             dataframe. (default: None)
