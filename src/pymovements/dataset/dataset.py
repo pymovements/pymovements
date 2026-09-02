@@ -27,6 +27,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from typing import Literal
 from warnings import warn
 
 import polars as pl
@@ -70,6 +71,14 @@ class Dataset:
     ----------
     participants: Participants
         Participant data.
+    fileinfo: dict[str, pl.DataFrame]
+        Parsed file information, keyed by content type (e.g. ``'gaze'``).
+    gaze: list[Gaze]
+        Gaze objects containing loaded samples.
+    events: tuple[Events, ...]
+        Event dataframes for all gaze objects.
+    path: Path
+        Path to the dataset directory.
 
     Parameters
     ----------
@@ -81,13 +90,15 @@ class Dataset:
     """
 
     participants: Participants
+    fileinfo: dict[str, pl.DataFrame]
+    gaze: list[Gaze]
 
     def __init__(
             self,
             definition: str | Path | DatasetDefinition | type[DatasetDefinition],
             path: str | Path | DatasetPaths,
     ):
-        self.fileinfo: pl.DataFrame = pl.DataFrame()
+        self.fileinfo = {}
         self._files: list[DatasetFile] = []
         self.participants = Participants()
         self.gaze: list[Gaze] = []
@@ -156,14 +167,10 @@ class Dataset:
             float, int , str or a list of these. (default: None)
         events_dirname: str | None
             One-time usage of an alternative directory name to load data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to load data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -394,9 +401,7 @@ class Dataset:
             (default: False)
         preprocessed_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`,
             `tsv`, `txt`, `asc`.
@@ -536,9 +541,7 @@ class Dataset:
         ----------
         events_dirname: str | None
             One-time usage of an alternative directory name to save data relative to
-            :py:attr:`~pymovements.Dataset.path`.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            :py:attr:`~pymovements.Dataset.path`. (default: None)
         extension: str
             Specifies the file format for loading data. Valid options are: `csv`, `feather`.
             (default: 'feather')
@@ -620,14 +623,18 @@ class Dataset:
 
         Examples
         --------
+        .. testsetup::
+
+            >>> getfixture('doctest_tmp_cwd')
+
         Let's load in our dataset first,
         >>> import pymovements as pm
         >>>
-        >>> dataset = pm.Dataset("ToyDataset", path='toy_dataset')
+        >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
         >>> dataset.download()# doctest:+ELLIPSIS
-        Downloading ... to toy_dataset...downloads...
+        Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
-        Extracting ... to toy_dataset...raw
+        Extracting ... to data...toy_dataset...raw
         <pymovements.dataset.dataset.Dataset object at ...>
         >>> dataset.load()# doctest:+ELLIPSIS
         <pymovements.dataset.dataset.Dataset object at ...>
@@ -677,7 +684,7 @@ class Dataset:
     ) -> Dataset:
         """Clip gaze signal values.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is clipped.
 
@@ -707,7 +714,7 @@ class Dataset:
         AttributeError
             If :py:attr:`~pymovements.Dataset.gaze` is ``None`` or there are no gaze dataframes
             present in the :py:attr:`~pymovements.Dataset.gaze` attribute, or if the
-            :py:attr:`~pymovements.Dataset.experiment` is ``None``.
+            ``experiment`` is ``None``.
         """
         return self.apply(
             'clip',
@@ -761,7 +768,7 @@ class Dataset:
     def pix2deg(self, verbose: bool = True) -> Dataset:
         """Compute gaze positions in degrees of visual angle from pixel coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -779,7 +786,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pix2deg', verbose=verbose)
 
@@ -792,7 +799,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze positions in pixel coordinates from degrees of visual angle.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting dva columns.
 
@@ -817,7 +824,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'deg2pix',
@@ -837,7 +844,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze accelerations in dva/s^2 from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting acceleration columns.
 
@@ -861,7 +868,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply(
             'pos2acc',
@@ -880,7 +887,7 @@ class Dataset:
     ) -> Dataset:
         """Compute gaze velocities in dva/s from dva coordinates.
 
-        This method requires a properly initialized :py:attr:`~.Dataset.experiment` attribute.
+        This method requires a properly initialized ``experiment`` attribute.
 
         After success, the gaze dataframe is extended by the resulting velocity columns.
 
@@ -904,7 +911,7 @@ class Dataset:
         ------
         AttributeError
             If :py:attr:`~.Dataset.gaze` is None or there are no gaze dataframes present in the
-            :py:attr:`~.Dataset.gaze` attribute, or if :py:attr:`~.Dataset.experiment` is None.
+            :py:attr:`~.Dataset.gaze` attribute, or if ``experiment`` is None.
         """
         return self.apply('pos2vel', method=method, verbose=verbose, **kwargs)
 
@@ -926,7 +933,7 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
@@ -973,7 +980,7 @@ class Dataset:
         eye: str
             Select which eye to choose. Valid options are ``auto``, ``left``, ``right`` or ``None``.
             If ``auto`` is passed, eye is inferred in the order ``['right', 'left', 'eye']`` from
-            the available :py:attr:`~.Dataset.gaze` dataframe columns. (default: 'auto')
+            the available :py:attr:`~pymovements.Dataset.gaze` dataframe columns. (default: 'auto')
         clear: bool
             If ``True``, event DataFrame will be overwritten with a new DataFrame instead of being
              merged into the existing one. (default: False)
@@ -1201,6 +1208,9 @@ class Dataset:
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
 
+        Clears the event DataFrame of each gaze object via :py:meth:`~.Gaze.clear_events`,
+        which preserves trial columns in the emptied event DataFrames.
+
         Returns
         -------
         Dataset
@@ -1210,7 +1220,70 @@ class Dataset:
             return self
 
         for gaze in self.gaze:
-            gaze.events = Events()
+            gaze.clear_events()
+
+        return self
+
+    def drop_nulls(
+            self,
+            subset: list[str] | None = None,
+            how: Literal['all', 'any'] = 'any',
+            samples: bool = True,
+            events: bool = True,
+    ) -> Dataset:
+        """Drop samples and events with null values.
+
+        Parameters
+        ----------
+        subset: list[str] | None
+            List of column names to check for null values. If None, each frame is checked on its
+            own columns: sample frames on all sample columns, event frames on all event columns.
+            If a list is given, all named columns must exist in every targeted frame.
+            (default: None)
+        how: Literal['all', 'any']
+            If 'any', drop rows where *any* of the specified columns are null. If 'all', drop rows
+            where *all* of the specified columns are null. A nested list column like ``pixel`` or
+            ``position`` counts as null if any of its components is null under 'any', and only if
+            all of its components are null under 'all'. (default: 'any')
+        samples: bool
+            If True, drop samples with null values. (default: True)
+        events: bool
+            If True, drop events with null values. (default: True)
+
+        Returns
+        -------
+        Dataset
+            Returns self, useful for method cascading.
+
+        Raises
+        ------
+        ValueError
+            If `how` is neither 'any' nor 'all', or if `subset` contains columns that do not
+            exist in a targeted frame.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Drop all samples and events with null values:
+
+        >>> dataset.drop_nulls()# doctest: +SKIP
+
+        Drop only samples where any pixel component is null:
+
+        >>> dataset.drop_nulls(subset=['pixel'], events=False)# doctest: +SKIP
+        """
+        if samples:
+            for gaze in self.gaze:
+                gaze.drop_nulls(subset, how=how, events=events)
+        elif events:
+            for events_ in self.events:
+                events_.drop_nulls(subset, how=how)
 
         return self
 
@@ -1234,13 +1307,11 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1265,9 +1336,8 @@ class Dataset:
         Parameters
         ----------
         events_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.events_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1309,9 +1379,8 @@ class Dataset:
         Parameters
         ----------
         preprocessed_dirname: str | None
-            One-time usage of an alternative directory name to save data relative to dataset path.
-            This argument is used only for this single call and does not alter
-            :py:attr:`~pymovements.Dataset.preprocessed_rootpath`. (default: None)
+            One-time usage of an alternative directory name to save data relative to
+            dataset path. (default: None)
         verbose: int
             Verbosity level (0: no print output, 1: show progress bar, 2: print saved filepaths)
             (default: 1)
@@ -1502,7 +1571,7 @@ class Dataset:
         """Download dataset resources.
 
         This downloads all resources of the dataset. Per default this also extracts all archives
-        into :py:meth:`Dataset.paths.raw`,
+        into :py:attr:`~pymovements.DatasetPaths.raw`,
         To save space on your device, you can remove the archive files after
         successful extraction with ``remove_finished=True``.
 

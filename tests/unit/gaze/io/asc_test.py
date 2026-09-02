@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from eyelink asc files."""
+import re
+
 import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
@@ -883,6 +885,27 @@ def test_from_asc_warns(
 @pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
+def test_from_asc_corrupted_file_warning_contains_full_path(make_text_file):
+    """Test that the corrupted file warning prints the full path for a Path input."""
+    filepath = make_text_file(
+        filename='test.asc',
+        body='END	1408901 	SAMPLES	EVENTS	RES	  47.75	  45.92',
+    )
+
+    with pytest.warns(UserWarning, match=f"File '{re.escape(str(filepath))}' may be corrupted"):
+        from_asc(filepath)
+
+
+@pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No recording configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No samples configuration.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No screen resolution.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No sampling rate found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No tracked eye information found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
+@pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
 @pytest.mark.parametrize(
     ('body', 'messages', 'expected_data'),
     [
@@ -942,11 +965,6 @@ def test_from_asc_keeps_remaining_metadata_private_and_pops_cal_val(make_example
     assert 'calibrations' not in gaze._metadata
     assert 'validations' not in gaze._metadata
 
-    # Data loss ratios should be present for consumers until we migrate to explicit preprocessing
-    # utilities.
-    assert 'data_loss_ratio' in gaze._metadata
-    assert 'data_loss_ratio_blinks' in gaze._metadata
-
 
 @pytest.mark.filterwarnings('ignore:.*No metadata.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No mount configuration.*:UserWarning')
@@ -996,3 +1014,29 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)
+
+
+@pytest.mark.parametrize(
+    ('mode', 'encoding', 'buffering'), [
+        pytest.param('r', 'utf-8', -1, id='text_mode'),
+        pytest.param('rb', None, -1, id='binary_mode'),
+        pytest.param('rb', None, 0, id='binary_mode_unbuffered'),
+    ],
+)
+def test_from_asc_accepts_file_object(make_example_file, mode, encoding, buffering):
+    """Test that from_asc reads a file object equivalently to a path and keeps it open."""
+    filepath = make_example_file('eyelink_monocular_example.asc')
+    expected_gaze = from_asc(filepath)
+
+    with open(filepath, mode, encoding=encoding, buffering=buffering) as asc_file:
+        gaze = from_asc(asc_file)
+
+        assert not asc_file.closed
+
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
+
+
+def test_from_asc_rejects_nonfile_objects():
+    """Test that from_asc raises an error when given a non-file object."""
+    with pytest.raises(TypeError, match='Expected a file path or a file-like object'):
+        from_asc(12345)

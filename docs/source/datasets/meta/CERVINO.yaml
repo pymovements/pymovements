@@ -1,0 +1,67 @@
+name: CERVINO
+long_name: Corpus of Eye-movements while Reading Valle d'Aosta Italian NOrms
+description: 'CERVINO dataset :cite:p:`CERVINO-Paper,CERVINO-Zenodo`.
+
+
+  CERVINO (Corpus of Eye-movements while Reading Valle d''Aosta Italian NOrms)
+
+  is an Italian eye-tracking dataset for reading research. It contains fixation
+
+  scanpaths and aggregated word-level eye-tracking measures from 207 participants
+
+  reading four Italian legal texts, with each participant reading a single text.
+
+
+  Eye movements were recorded at 120 Hz with a Tobii eye tracker. Although
+
+  participants were initially positioned at approximately 60 cm, viewing distance
+
+  was not fixed because no head-stabilization device was used and could vary
+
+  slightly during the experiment.
+
+
+  The dataset also provides comprehension results, participant metadata,
+
+  AOI properties, and the source texts.
+
+
+  See the paper :cite:p:`CERVINO-Paper`, the
+
+  `Zenodo record <https://doi.org/10.5281/zenodo.22082820>`__, and the
+
+  `CERVINO repository <https://github.com/calogero-jerik-scozzaro/cervino>`__
+
+  for details.
+
+  '
+resources:
+- content: precomputed_events
+  source:
+    url: https://zenodo.org/records/22082820/files/CERVINO.zip?download=1
+    filename: CERVINO.zip
+    md5: ebb67e52863eb8d5a13483d55548a9d9
+  filename_pattern: (?:CERVINO/)?preprocessed_data/{text_id}/lett{subject_id:d}/scanpath.csv
+  filename_pattern_schema_overrides:
+    text_id: '!str'
+    subject_id: '!int'
+- content: precomputed_reading_measures
+  source:
+    url: https://zenodo.org/records/22082820/files/CERVINO.zip?download=1
+    filename: CERVINO.zip
+    md5: ebb67e52863eb8d5a13483d55548a9d9
+  filename_pattern: (?:CERVINO/)?preprocessed_data/{text_id}/lett{subject_id:d}/reading_measures.csv
+  filename_pattern_schema_overrides:
+    text_id: '!str'
+    subject_id: '!int'
+experiment:
+  eyetracker:
+    sampling_rate: 120
+    model: Tobii Pro Fusion
+    vendor: Tobii
+  screen:
+    width_px: 1920
+    height_px: 1080
+    width_cm: 34.5
+    height_cm: 19.5
+    origin: upper left
