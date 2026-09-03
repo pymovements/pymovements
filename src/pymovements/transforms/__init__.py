@@ -35,6 +35,7 @@ from pymovements.transforms.segmentation import events2segmentation
 from pymovements.transforms.segmentation import events2timeratio
 from pymovements.transforms.segmentation import segmentation2events
 from pymovements.transforms.smooth import smooth
+from pymovements.transforms.value_impossible import value_impossible
 
 
 __all__ = [
@@ -58,4 +59,6 @@ __all__ = [
     'register_transform',
 
     'numpy',
+
+    'value_impossible',
 ]
