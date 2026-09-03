@@ -86,6 +86,8 @@ jobs:
       - name: Upload coverage reports to Codecov
         if: success() || failure()
         uses: codecov/codecov-action@v5
+        with:
+          flags: ${{ matrix.os }}-py${{ matrix.python }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -178,7 +180,7 @@ jobs:
         if: success() || failure()
         uses: codecov/codecov-action@v5
         with:
-          flags: minimum-requirements
+          flags: minimum-requirements,ubuntu-latest-py3.10
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
