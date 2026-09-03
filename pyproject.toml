@@ -142,6 +142,10 @@ module = "scipy.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = "sklearn.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "deprecated.*"
 ignore_missing_imports = true
 

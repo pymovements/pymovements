@@ -1,0 +1,673 @@
+# Copyright (c) 2022-2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Module for fixation drift correction routines.
+
+Supported Drift Correction Algorithms
+-------------------------------------
+- **wisdom_of_the_crowd** (or **woc**) : *(Default)* Ensemble correction method combining
+  predictions across multiple algorithms via majority voting per fixation
+  (:cite:p:`Mercier2024b`).
+- **attach** : Snaps each fixation to the vertically closest line of text (:cite:p:`Carr2022`).
+- **chain** : Groups fixations into reading chains based on spatio-temporal distance thresholds
+  and aligns each chain to line centers (:cite:p:`Carr2022`).
+- **cluster** : Uses K-Means clustering to group fixation Y-coordinates into clusters matching
+  text lines (:cite:p:`Carr2022`).
+- **compare** : Matches fixation sequences to candidate text line paths using Dynamic Time
+  Warping (DTW) (:cite:p:`LimaSanches2015,Carr2022`).
+- **merge** : Forms progressive sequences and iteratively merges sequences belonging to the same
+  text line (:cite:p:`Spakov2019,Carr2022`).
+- **regress** : Fits a linear regression model (slope, offset, std) to estimate line assignments
+  (:cite:p:`Cohen2013,Carr2022`).
+- **segment** : Segments fixations into line subsequences using return sweep identification
+  (:cite:p:`Abdulin2015,Carr2022`).
+- **slice** : Slices fixation sequence into proto-lines based on vertical drift thresholds
+  (:cite:p:`Glandorf2021`).
+- **split** : Splits fixations into line subsequences using K-Means return sweep identification
+  (:cite:p:`Carr2022`).
+- **stretch** : Fits scale and offset parameters to stretch or compress fixations onto line
+  centers (:cite:p:`Lohmeier2015,Carr2022`).
+- **warp** : Dynamic Time Warping (DTW) alignment between fixations and word centroids
+  (:cite:p:`Carr2022`).
+"""
+from __future__ import annotations
+
+import inspect
+import warnings
+from typing import Any
+
+import polars as pl
+
+import pymovements.events.correction.drift_algorithms as da
+from pymovements.events.correction.drift_algorithms import _line_index_to_y
+from pymovements.events.correction.drift_algorithms import _location_x
+from pymovements.events.correction.drift_algorithms import _nearest_line_index
+
+
+def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
+    """Annotate each AOI row with the y-center of the text line it belongs to.
+
+    Lines are identified by 'line_idx' if present, otherwise by the top y-coordinate.
+    Assumes that the line of text is vertically centered within each AOI bounding box.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to annotate.
+
+    Returns
+    -------
+    tuple[pl.DataFrame, str]
+        AOIs dataframe with an added 'line_center' column in original row order, and the
+        name of the column identifying lines.
+    """
+    y_col = 'start_y' if 'start_y' in aois.columns else 'top_left_y'
+    line_key = 'line_idx' if 'line_idx' in aois.columns else y_col
+
+    aois_with_line_centers = (
+        aois.filter(pl.col(line_key).is_not_null())
+        .with_columns(
+            (pl.col(y_col) + pl.col('height') / 2.0)
+            .mean()
+            .over(line_key)
+            .alias('line_center'),
+        )
+    )
+    return aois_with_line_centers, line_key
+
+
+def _get_lines_of_text_from_aois(aois: pl.DataFrame) -> list[float]:
+    """Calculate line positions of text based on AOIs.
+
+    Assumes that the line of text is vertically centered within each AOI.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to calculate line positions from.
+
+    Returns
+    -------
+    list[float]
+        Line center y-coordinates of the text.
+    """
+    aois_with_line_centers, line_key = _with_line_centers(aois)
+    return (
+        aois_with_line_centers
+        .unique(subset=line_key)
+        .sort(line_key)['line_center']
+        .to_list()
+    )
+
+
+_CHARACTER_LEVEL_COLUMNS = ('char', 'character', 'char_idx_in_line')
+
+
+def _get_word_locations_from_aois(aois: pl.DataFrame) -> pl.Series:
+    """Calculate word center locations from AOIs for DTW-based drift algorithms.
+
+    Following the word position convention of Carr et al. :cite:p:`Carr2022`, the
+    y-coordinate of each word is the center of the text line the word belongs to, not the
+    center of the word's own bounding box. This keeps the y-coordinates identical to the
+    line positions returned by _get_lines_of_text_from_aois.
+
+    Character-level AOI frames (recognized by a 'word' column next to a character column)
+    are aggregated to one location per word, spanning from the first to the last character
+    of the word. Directly adjacent repetitions of the same word within a line cannot be
+    distinguished and are aggregated into a single word location.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to calculate word locations from.
+
+    Returns
+    -------
+    pl.Series
+        Series of [x, y] word center locations.
+    """
+    aois_with_line_centers, line_key = _with_line_centers(aois)
+
+    is_character_level = 'word' in aois.columns and any(
+        column in aois.columns for column in _CHARACTER_LEVEL_COLUMNS
+    )
+    if is_character_level:
+        word_run = pl.struct([pl.col(line_key), pl.col('word')]).rle_id()
+        return (
+            aois_with_line_centers
+            .group_by(word_run.alias('word_run'), maintain_order=True)
+            .agg(
+                ((pl.col('start_x').min() + pl.col('end_x').max()) / 2.0).alias('word_x'),
+                pl.col('line_center').first(),
+            )
+            .select(pl.concat_list(['word_x', 'line_center']).alias('word_location'))
+            .to_series()
+        )
+
+    return aois_with_line_centers.select(
+        pl.concat_list([
+            (pl.col('start_x') + pl.col('end_x')) / 2.0,
+            pl.col('line_center'),
+        ]).alias('word_location'),
+    ).to_series()
+
+
+ALL_DRIFT_ALGORITHMS: list[str] = [
+    'attach', 'chain', 'cluster', 'compare', 'merge', 'regress',
+    'segment', 'slice', 'split', 'stretch', 'warp',
+]
+
+
+def _has_word_x_coords(aois: pl.DataFrame) -> bool:
+    """Check if word X coordinates are available in the aois DataFrame."""
+    return 'start_x' in aois.columns and 'end_x' in aois.columns
+
+
+def _normalize_aois(aois: pl.DataFrame) -> pl.DataFrame:
+    """Derive missing AOI geometry columns from the available ones.
+
+    Derives 'height' from 'start_y' and 'end_y', and 'end_x' from 'start_x' and 'width',
+    whenever the derived column is missing but its sources are present.
+
+    Parameters
+    ----------
+    aois: pl.DataFrame
+        AOIs dataframe to normalize.
+
+    Returns
+    -------
+    pl.DataFrame
+        AOIs dataframe with derived geometry columns.
+    """
+    derived_columns = []
+    if 'height' not in aois.columns and {'start_y', 'end_y'} <= set(aois.columns):
+        derived_columns.append((pl.col('end_y') - pl.col('start_y')).alias('height'))
+    if 'end_x' not in aois.columns and {'start_x', 'width'} <= set(aois.columns):
+        derived_columns.append((pl.col('start_x') + pl.col('width')).alias('end_x'))
+    if derived_columns:
+        aois = aois.with_columns(derived_columns)
+    return aois
+
+
+def _select_ensemble_algorithms(
+    algorithms: list[str],
+    has_word_coords: bool,
+    text_right_to_left: bool,
+) -> list[str]:
+    """Select candidate algorithms for the ensemble, excluding unsupported ones.
+
+    Parameters
+    ----------
+    algorithms: list[str]
+        Requested algorithm names.
+    has_word_coords: bool
+        Whether word X coordinates are available for the DTW-based algorithms.
+    text_right_to_left: bool
+        Whether the text is read from right to left.
+
+    Returns
+    -------
+    list[str]
+        Candidate algorithm names for the ensemble.
+
+    Raises
+    ------
+    ValueError
+        If an algorithm name is unknown or no candidate algorithms remain.
+    """
+    unknown_algos = [algo for algo in algorithms if algo not in ALL_DRIFT_ALGORITHMS]
+    if unknown_algos:
+        raise ValueError(
+            f'Unknown drift algorithms {unknown_algos}. '
+            f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+        )
+
+    candidate_algos = []
+    excluded_algos = []
+    for algo in algorithms:
+        if algo in {'compare', 'warp'} and not has_word_coords:
+            excluded_algos.append(algo)
+        else:
+            candidate_algos.append(algo)
+    if excluded_algos:
+        warnings.warn(
+            "Word X coordinates ('start_x', 'end_x') are missing from aois DataFrame. "
+            'As a consequence, algorithms requiring word X coordinates '
+            f"({excluded_algos}) are excluded from Wisdom of the Crowd ensemble.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+    if text_right_to_left and 'compare' in candidate_algos:
+        warnings.warn(
+            "Algorithm 'compare' does not support right-to-left reading and is excluded "
+            'from Wisdom of the Crowd ensemble.',
+            UserWarning,
+            stacklevel=3,
+        )
+        candidate_algos = [algo for algo in candidate_algos if algo != 'compare']
+
+    if not candidate_algos:
+        raise ValueError('No candidate algorithms remain for the ensemble.')
+
+    return candidate_algos
+
+
+def _fixation_location(fixations: pl.DataFrame) -> str | pl.Expr:
+    """Resolve the location column or expression of a fixations dataframe.
+
+    Parameters
+    ----------
+    fixations: pl.DataFrame
+        Fixations dataframe holding either a 'location' column of [x, y] lists or
+        'location_x' and 'location_y' component columns.
+
+    Returns
+    -------
+    str | pl.Expr
+        Location column name or expression of [x, y] fixation locations.
+
+    Raises
+    ------
+    ValueError
+        If no location coordinates are found.
+    """
+    if 'location' in fixations.columns and fixations['location'].dtype != pl.Null:
+        return 'location'
+    if 'location_x' in fixations.columns and 'location_y' in fixations.columns:
+        return pl.concat_list([pl.col('location_x'), pl.col('location_y')])
+    raise ValueError('No valid location coordinates found in events dataframe.')
+
+
+def correct_fixation_locations(
+    events: pl.DataFrame,
+    aois: pl.DataFrame,
+    algorithm: str | list[str] = 'wisdom_of_the_crowd',
+    text_right_to_left: bool = False,
+    word_locations: pl.Series | None = None,
+    algorithm_kwargs: dict[str, Any] | None = None,
+    fixation_name: str = 'fixation',
+) -> pl.Series:
+    """Correct fixations based on the specified drift algorithm and AOIs.
+
+    Parameters
+    ----------
+    events: pl.DataFrame
+        Gaze events dataframe.
+    aois: pl.DataFrame
+        AOIs dataframe for line position extraction.
+    algorithm: str | list[str]
+        Name of a single drift algorithm or a list of algorithm names to combine via Wisdom of
+        the Crowd (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which
+        includes all drift algorithms. If word X coordinates ('start_x', 'end_x') are missing in
+        aois, 'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
+    text_right_to_left: bool
+        Whether the text is read from right to left. Passed to those algorithms with
+        direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
+        algorithms ignore it. The 'compare' algorithm does not support right-to-left
+        reading: it is excluded from ensembles with a UserWarning and raises a ValueError
+        when selected as a single algorithm. (default: False)
+    word_locations: pl.Series | None
+        Series of [x, y] word center coordinates for the DTW-based algorithms 'compare'
+        and 'warp'. If None, word locations are derived from the aois dataframe. Following
+        Carr et al., y-coordinates should be the text line centers. (default: None)
+    algorithm_kwargs: dict[str, Any] | None
+        Additional tuning parameters passed to underlying drift correction algorithms, e.g.
+        ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
+        candidate algorithms that accept it; a ValueError is raised if an entry is accepted
+        by none of the candidate algorithms. (default: None)
+    fixation_name: str
+        Name of the fixation events to correct. Only events matching this name exactly are
+        corrected. (default: 'fixation')
+
+    Returns
+    -------
+    pl.Series
+        Series of corrected [x, y] fixation locations.
+
+    Raises
+    ------
+    ValueError
+        If the algorithm name is unknown, an algorithm_kwargs entry is accepted by no
+        candidate algorithm, or required coordinate data is missing.
+    TypeError
+        If algorithm is neither a string nor a list of strings.
+    """
+    if algorithm_kwargs is None:
+        algorithm_kwargs = {}
+    for reserved_key in ('text_right_to_left', 'word_locations', 'location'):
+        if reserved_key in algorithm_kwargs:
+            raise ValueError(
+                f"'{reserved_key}' must be passed as an explicit parameter, "
+                'not via algorithm_kwargs.',
+            )
+
+    aois = _normalize_aois(aois)
+
+    fixations = events.filter(pl.col('name') == fixation_name)
+    location = _fixation_location(fixations)
+
+    has_word_coords = word_locations is not None or _has_word_x_coords(aois)
+
+    if isinstance(algorithm, (list, tuple)):
+        if len(algorithm) == 0:
+            raise ValueError('At least one algorithm must be provided in the algorithm list.')
+        if len(algorithm) == 1:
+            return correct_fixation_locations(
+                events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
+                word_locations=word_locations, algorithm_kwargs=algorithm_kwargs,
+                fixation_name=fixation_name,
+            )
+        candidate_algos = _select_ensemble_algorithms(
+            list(algorithm), has_word_coords, text_right_to_left,
+        )
+    elif isinstance(algorithm, str):
+        if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
+            candidate_algos = _select_ensemble_algorithms(
+                list(ALL_DRIFT_ALGORITHMS), has_word_coords, text_right_to_left,
+            )
+        else:
+            if algorithm not in ALL_DRIFT_ALGORITHMS:
+                raise ValueError(
+                    f"Unknown drift algorithm '{algorithm}'. "
+                    f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
+                )
+            if algorithm == 'compare' and text_right_to_left:
+                raise ValueError(
+                    "Algorithm 'compare' does not support right-to-left reading as its "
+                    'line break detection assumes left-to-right reading.',
+                )
+            if algorithm in {'compare', 'warp'}:
+                if word_locations is None:
+                    if not _has_word_x_coords(aois):
+                        raise ValueError(
+                            f"Algorithm '{algorithm}' requires word X coordinates "
+                            "('start_x', 'end_x') in aois DataFrame or the "
+                            "'word_locations' parameter.",
+                        )
+                    word_locations = _get_word_locations_from_aois(aois)
+                target: pl.Series | list[float] = word_locations
+            else:
+                target = _get_lines_of_text_from_aois(aois)
+
+            func = getattr(da, algorithm)
+            call_kwargs = dict(algorithm_kwargs)
+            if 'text_right_to_left' in inspect.signature(func).parameters:
+                call_kwargs['text_right_to_left'] = text_right_to_left
+            corrected_y = func(target, location=location, **call_kwargs)
+            return fixations.select(
+                pl.concat_list([_location_x(location), corrected_y]).alias('location'),
+            ).to_series()
+    else:
+        raise TypeError('algorithm must be a string or a list of strings.')
+
+    if {'compare', 'warp'} & set(candidate_algos) and word_locations is None:
+        word_locations = _get_word_locations_from_aois(aois)
+
+    # Vote on line indices rather than raw y-coordinates so that candidate algorithms cannot
+    # split votes through differing float representations of the same text line.
+    has_line_info = (
+        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
+        and 'height' in aois.columns
+    )
+    if has_line_info:
+        line_values = _get_lines_of_text_from_aois(aois)
+    else:
+        assert word_locations is not None
+        line_values = (
+            word_locations.cast(pl.List(pl.Float64))
+            .list.get(1).unique().sort().to_list()
+        )
+
+    # Route tuning parameters to those candidate algorithms that accept them, so that
+    # algorithm-specific parameters do not break the other algorithms in the ensemble.
+    candidate_params = {
+        candidate_algo: set(inspect.signature(getattr(da, candidate_algo)).parameters)
+        for candidate_algo in candidate_algos
+    }
+    unknown_kwargs = [
+        key for key in algorithm_kwargs
+        if not any(key in params for params in candidate_params.values())
+    ]
+    if unknown_kwargs:
+        raise ValueError(
+            f'algorithm_kwargs entries {unknown_kwargs} are not accepted by any of the '
+            f'ensemble algorithms {candidate_algos}.',
+        )
+
+    vote_exprs = []
+    for candidate_algo in candidate_algos:
+        func = getattr(da, candidate_algo)
+        call_kwargs = {
+            key: value for key, value in algorithm_kwargs.items()
+            if key in candidate_params[candidate_algo]
+        }
+        if 'text_right_to_left' in candidate_params[candidate_algo]:
+            call_kwargs['text_right_to_left'] = text_right_to_left
+        if candidate_algo in {'compare', 'warp'}:
+            corrected_y = func(word_locations, location=location, **call_kwargs)
+        else:
+            corrected_y = func(line_values, location=location, **call_kwargs)
+        vote_exprs.append(
+            _nearest_line_index(corrected_y, line_values).alias(candidate_algo),
+        )
+
+    votes = fixations.select(
+        [_location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
+    )
+    return votes.select(
+        pl.concat_list([
+            pl.col('__location_x'),
+            _line_index_to_y(da.wisdom_of_the_crowd(candidate_algos), line_values),
+        ]).alias('location'),
+    ).to_series()
+
+
+def correct_fixations(
+    events: pl.DataFrame,
+    aois: pl.DataFrame,
+    algorithm: str | list[str] = 'wisdom_of_the_crowd',
+    trial_columns: list[str] | str | None = None,
+    text_right_to_left: bool = False,
+    word_locations: pl.Series | None = None,
+    algorithm_kwargs: dict[str, Any] | None = None,
+    fixation_name: str = 'fixation',
+) -> pl.DataFrame:
+    """Correct fixation locations per trial using the specified drift algorithm.
+
+    The locations of fixation events are replaced with their corrected values. Original
+    locations are preserved in a 'location_original' column ('location_x_original' /
+    'location_y_original' for split component columns) and the applied algorithm is
+    recorded in a 'correction_algorithm' column, which is null for uncorrected rows.
+
+    Parameters
+    ----------
+    events: pl.DataFrame
+        Polars DataFrame containing gaze events.
+    aois: pl.DataFrame
+        Stimulus AOIs DataFrame.
+    algorithm: str | list[str]
+        Name of drift algorithm or list of algorithm names. Default is 'wisdom_of_the_crowd'.
+        If word X coordinates ('start_x', 'end_x') are not present in aois, 'compare' and 'warp'
+        are automatically excluded from the Wisdom of the Crowd ensemble with a UserWarning.
+    trial_columns: list[str] | str | None
+        Column names identifying trials. Each trial is corrected independently. AOIs are
+        filtered on those trial columns that are present in the aois dataframe. If None,
+        all events are treated as a single trial. (default: None)
+    text_right_to_left: bool
+        Whether the text is read from right to left. Passed to those algorithms with
+        direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
+        algorithms ignore it. The 'compare' algorithm does not support right-to-left
+        reading and is excluded from ensembles with a UserWarning. (default: False)
+    word_locations: pl.Series | None
+        Series of [x, y] word center coordinates for the DTW-based algorithms 'compare'
+        and 'warp'. If None, word locations are derived from the aois dataframe.
+        (default: None)
+    algorithm_kwargs: dict[str, Any] | None
+        Additional tuning parameters passed to underlying drift correction algorithms, e.g.
+        ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
+        candidate algorithms that accept it. (default: None)
+    fixation_name: str
+        Name of the fixation events to correct. Only events matching this name exactly are
+        corrected. (default: 'fixation')
+
+    Returns
+    -------
+    pl.DataFrame
+        Updated events DataFrame with corrected fixation locations.
+
+    Raises
+    ------
+    ValueError
+        If trial_columns are missing from the events dataframe, or if the fixation events
+        have already been corrected.
+    """
+    if isinstance(trial_columns, str):
+        trial_columns = [trial_columns]
+
+    if trial_columns is not None:
+        missing_columns = [
+            column for column in trial_columns if column not in events.columns
+        ]
+        if missing_columns:
+            raise ValueError(
+                f'trial columns {missing_columns} are missing from events dataframe.',
+            )
+
+    if 'correction_algorithm' in events.columns:
+        already_corrected = events.filter(
+            (pl.col('name') == fixation_name)
+            & pl.col('correction_algorithm').is_not_null(),
+        )
+        if already_corrected.height > 0:
+            raise ValueError(
+                f"'{fixation_name}' events have already been corrected with "
+                f"'{already_corrected['correction_algorithm'][0]}'.",
+            )
+
+    if isinstance(algorithm, (list, tuple)):
+        if len(algorithm) > 1:
+            algo_name = 'wisdom_of_the_crowd'
+        else:
+            algo_name = algorithm[0]
+    elif isinstance(algorithm, str) and algorithm.lower() not in {'wisdom_of_the_crowd', 'woc'}:
+        algo_name = algorithm
+    else:
+        algo_name = 'wisdom_of_the_crowd'
+
+    indexed_events = events.with_row_index('__fixation_correction_index')
+
+    if trial_columns is not None:
+        trial_event_frames = indexed_events.partition_by(trial_columns, maintain_order=True)
+        aoi_trial_columns = [column for column in trial_columns if column in aois.columns]
+    else:
+        trial_event_frames = [indexed_events]
+        aoi_trial_columns = []
+
+    corrected_indices: list[int] = []
+    corrected_locations: list[pl.Series] = []
+    for trial_events in trial_event_frames:
+        if aoi_trial_columns:
+            # Each partition holds a single combination of trial column values.
+            trial_aois = aois.filter(
+                pl.all_horizontal([
+                    pl.col(column).eq_missing(pl.lit(trial_events[column][0]))
+                    for column in aoi_trial_columns
+                ]),
+            )
+        else:
+            trial_aois = aois
+
+        fixation_events = trial_events.filter(pl.col('name') == fixation_name)
+        if fixation_events.height == 0:
+            continue
+
+        corrected_locs = correct_fixation_locations(
+            fixation_events, trial_aois, algorithm=algorithm,
+            text_right_to_left=text_right_to_left, word_locations=word_locations,
+            algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
+        )
+
+        corrected_indices.extend(fixation_events['__fixation_correction_index'].to_list())
+        corrected_locations.append(corrected_locs)
+
+    if not corrected_indices:
+        return events
+
+    updates = pl.DataFrame({
+        '__fixation_correction_index': pl.Series(corrected_indices, dtype=pl.UInt32),
+        '__corrected_location': pl.concat(corrected_locations),
+    })
+    frame = (
+        indexed_events
+        .join(updates, on='__fixation_correction_index', how='left')
+        .sort('__fixation_correction_index')
+    )
+
+    is_corrected = pl.col('__corrected_location').is_not_null()
+
+    def _preserving(
+        column: str, corrected_value: pl.Expr, dtype: pl.DataType | type[pl.DataType],
+    ) -> pl.Expr:
+        """Set corrected_value on corrected rows, preserving any existing column values."""
+        if column in events.columns:
+            fallback: pl.Expr = pl.col(column)
+        else:
+            fallback = pl.lit(None, dtype=dtype)
+        return pl.when(is_corrected).then(corrected_value).otherwise(fallback).alias(column)
+
+    update_columns = []
+    if 'location' in events.columns and events['location'].dtype != pl.Null:
+        update_columns.append(
+            _preserving('location_original', pl.col('location'), pl.List(pl.Float64)),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_location'))
+            .otherwise(pl.col('location'))
+            .alias('location'),
+        )
+    if 'location_x' in events.columns and 'location_y' in events.columns:
+        update_columns.append(
+            _preserving('location_x_original', pl.col('location_x'), pl.Float64),
+        )
+        update_columns.append(
+            _preserving('location_y_original', pl.col('location_y'), pl.Float64),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_location').list.get(0))
+            .otherwise(pl.col('location_x'))
+            .alias('location_x'),
+        )
+        update_columns.append(
+            pl.when(is_corrected)
+            .then(pl.col('__corrected_location').list.get(1))
+            .otherwise(pl.col('location_y'))
+            .alias('location_y'),
+        )
+    update_columns.append(
+        _preserving('correction_algorithm', pl.lit(algo_name), pl.Utf8),
+    )
+
+    return (
+        frame
+        .with_columns(update_columns)
+        .drop(['__fixation_correction_index', '__corrected_location'])
+    )

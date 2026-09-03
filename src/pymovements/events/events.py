@@ -33,8 +33,39 @@ from pymovements._utils import _checks
 from pymovements._utils._column_nesting import unnest_list_columns
 from pymovements._utils._html import repr_html
 from pymovements._utils._nulls import row_is_null
+from pymovements.events.correction import fixation_correction
 from pymovements.measure.events.measures import duration
 from pymovements.stimulus.text import TextStimulus
+
+
+def _aois_frame_from_text_stimulus(stimulus: TextStimulus) -> polars.DataFrame:
+    """Map the configured column names of a TextStimulus to drift correction column names.
+
+    Parameters
+    ----------
+    stimulus: TextStimulus
+        Text stimulus whose AOIs dataframe is extracted.
+
+    Returns
+    -------
+    polars.DataFrame
+        AOIs dataframe with columns renamed to the names expected by
+        :py:mod:`~pymovements.events.correction`.
+    """
+    column_mapping = {
+        stimulus.start_x_column: 'start_x',
+        stimulus.start_y_column: 'start_y',
+        stimulus.end_x_column: 'end_x',
+        stimulus.end_y_column: 'end_y',
+        stimulus.width_column: 'width',
+        stimulus.height_column: 'height',
+    }
+    rename_mapping = {
+        source: target
+        for source, target in column_mapping.items()
+        if source is not None and source != target and source in stimulus.aois.columns
+    }
+    return stimulus.aois.rename(rename_mapping)
 
 
 @repr_html(['frame', 'trial_columns'])
@@ -906,6 +937,87 @@ class Events:
             'location_x' in self.frame.columns or 'location_y' in self.frame.columns
         ):
             self.frame = self.frame.drop('location')
+
+    def correct_fixations(
+            self,
+            aois: TextStimulus,
+            algorithm: str | list[str] = 'wisdom_of_the_crowd',
+            *,
+            text_right_to_left: bool | None = None,
+            word_locations: polars.Series | None = None,
+            algorithm_kwargs: dict[str, Any] | None = None,
+            fixation_name: str = 'fixation',
+            inplace: bool = True,
+    ) -> Events | None:
+        """Correct vertical drift of fixation locations.
+
+        Fixations are corrected per trial according to
+        :py:attr:`~pymovements.Events.trial_columns` using the specified drift correction
+        algorithm. Fixation locations
+        are replaced with their corrected values; original locations are preserved in a
+        ``location_original`` column and the applied algorithm is recorded in a
+        ``correction_algorithm`` column. See
+        :py:func:`~pymovements.events.correction.correct_fixations` for details.
+
+        Parameters
+        ----------
+        aois: TextStimulus
+            Text stimulus used for line position extraction. Its configured column names
+            are mapped to the column names expected by the drift correction algorithms and
+            its writing system provides the default reading direction.
+        algorithm: str | list[str]
+            Name of drift algorithm or list of algorithm names.
+            (default: 'wisdom_of_the_crowd')
+        text_right_to_left: bool | None
+            Whether the text is read from right to left. If None, the reading direction is
+            inferred from the writing system of the text stimulus. (default: None)
+        word_locations: polars.Series | None
+            Series of [x, y] word center coordinates for the DTW-based algorithms
+            'compare' and 'warp'. If None, word locations are derived from the aois
+            dataframe. (default: None)
+        algorithm_kwargs: dict[str, Any] | None
+            Additional tuning parameters passed to underlying drift correction algorithms.
+            (default: None)
+        fixation_name: str
+            Name of the fixation events to correct. (default: 'fixation')
+        inplace: bool
+            If ``True``, mutate this object and return None. If ``False``, return a new
+            :py:class:`~pymovements.Events` object with corrected fixation locations,
+            leaving this object unchanged. (default: True)
+
+        Returns
+        -------
+        Events | None
+            None if ``inplace`` is True, otherwise a new
+            :py:class:`~pymovements.Events` object with corrected fixation locations.
+
+        Raises
+        ------
+        TypeError
+            If ``aois`` is not a :py:class:`~pymovements.stimulus.TextStimulus`.
+        """
+        if not isinstance(aois, TextStimulus):
+            raise TypeError(
+                f'aois must be a TextStimulus, but is of type {type(aois).__name__}.',
+            )
+        aois_frame = _aois_frame_from_text_stimulus(aois)
+        if text_right_to_left is None:
+            text_right_to_left = aois.writing_system.directionality == 'right-to-left'
+
+        corrected_frame = fixation_correction.correct_fixations(
+            self.frame,
+            aois_frame,
+            algorithm=algorithm,
+            trial_columns=self.trial_columns,
+            text_right_to_left=text_right_to_left,
+            word_locations=word_locations,
+            algorithm_kwargs=algorithm_kwargs,
+            fixation_name=fixation_name,
+        )
+        if inplace:
+            self.frame = corrected_frame
+            return None
+        return Events(corrected_frame, trial_columns=self.trial_columns)
 
     def __eq__(self, other: Events) -> bool:
         """Check equality between this and another :py:class:`~pymovements.Events` object."""
