@@ -33,9 +33,9 @@ from pymovements.events import Events
 from pymovements.gaze import Gaze
 from pymovements.plotting._matplotlib import _draw_arrow_data
 from pymovements.plotting._matplotlib import _draw_line_data
-from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import _setup_axes_and_colormap
 from pymovements.plotting._matplotlib import LinearSegmentedColormapType
+from pymovements.plotting.screen import screen as screen_canvas
 
 
 def scanpathplot(
@@ -239,7 +239,8 @@ def scanpathplot(
         )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
+        display = gaze.experiment.screen
+        screen_canvas(display.width_px, display.height_px, origin=display.origin, ax=ax)
 
     if title:
         ax.set_title(title)
