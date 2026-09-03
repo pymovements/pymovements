@@ -2837,6 +2837,48 @@ class Gaze:
         """
         return self.__str__()
 
+    def summary(self) -> None:
+        """Print a summary of the gaze object.
+
+        The summary includes the total number of samples with their estimated in-memory size,
+        the sample column names with their datatypes, and an overview of the detected events
+        grouped by event name.
+
+        See Also
+        --------
+        pymovements.Events.summary : Print a summary of the events.
+        pymovements.Gaze.report_data_quality :
+            Check gaze configuration and compute data quality measures.
+
+        Examples
+        --------
+        >>> import polars as pl
+        >>> from pymovements import Events
+        >>> from pymovements import Gaze
+        >>> gaze = Gaze(
+        ...     samples=pl.DataFrame(
+        ...         {'time': [0, 1, 2], 'x': [0.0, 1.0, 2.0], 'y': [0.0, 1.0, 2.0]}
+        ...     ),
+        ...     pixel_columns=['x', 'y'],
+        ...     events=Events(name=['saccade', 'fixation'], onsets=[0, 1], offsets=[1, 2]),
+        ... )
+        >>> gaze.summary()
+        total samples: 3 (0.0 MB in memory)
+        columns: time (Int64), pixel (List(Float64))
+        total events: 2
+          fixation: 1
+          saccade: 1
+        """
+        estimated_size_mb = self.samples.estimated_size() / (1024 * 1024)
+        print(f'total samples: {len(self.samples):,} ({estimated_size_mb:.1f} MB in memory)')
+
+        columns = ', '.join(
+            f'{name} ({dtype})' for name, dtype in self.samples.schema.items()
+        )
+        print(f'columns: {columns}'.rstrip())
+
+        self.events.summary()
+
     def save(
             self,
             dirpath: str | Path,

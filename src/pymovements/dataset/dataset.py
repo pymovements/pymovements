@@ -1715,6 +1715,80 @@ class Dataset:
         if len(self.gaze) == 0:
             raise AttributeError('no files present in gaze attribute')
 
+    def summary(self) -> None:
+        """Print a summary of the dataset.
+
+        The summary extends the string representation with the total number of loaded gaze
+        samples, their estimated in-memory size and the total number of detected events,
+        including the event counts grouped by event name across all recordings.
+
+        See Also
+        --------
+        pymovements.Events.summary : Print a summary of the events.
+        pymovements.Dataset.report_data_quality :
+            Check dataset configuration and compute data quality measures.
+
+        Examples
+        --------
+        Initialize your :py:class:`~pymovements.Dataset` object and load the data first:
+
+        >>> import pymovements as pm
+        >>>
+        >>> dataset = pm.Dataset("ToyDataset", path='data/ToyDataset')# doctest: +SKIP
+        >>> dataset.load()# doctest: +SKIP
+
+        Print the dataset summary:
+
+        >>> dataset.summary()# doctest: +SKIP
+        Dataset(name='ToyDataset', path='data/ToyDataset')
+          experiment: Experiment(screen=Screen(...), eyetracker=EyeTracker(...))
+          resources: 1 defined
+          gaze: 20 recordings
+          events: 20 recordings
+          total samples: 566,715 (26.1 MB in memory)
+          total events: 0
+        """
+        lines = [str(self)]
+
+        total_samples = sum(
+            len(gaze.samples) for gaze in self.gaze if gaze.samples is not None
+        )
+        estimated_size_mb = sum(
+            gaze.samples.estimated_size() for gaze in self.gaze if gaze.samples is not None
+        ) / (1024 * 1024)
+        lines.append(f'  total samples: {total_samples:,} ({estimated_size_mb:.1f} MB in memory)')
+
+        total_events = sum(len(events) for events in self.events)
+        lines.append(f'  total events: {total_events:,}')
+
+        if total_events:
+            name_counts = pl.concat(
+                [events.frame.select('name') for events in self.events],
+            )['name'].value_counts().sort('name')
+            for name, count in name_counts.iter_rows():
+                lines.append(f'    {name}: {count:,}')
+
+        print('\n'.join(lines))
+
+    def __str__(self) -> str:
+        """Return string representation of Dataset.
+
+        The representation includes the dataset name and path, the experiment definition, the
+        number of defined resources and the number of loaded gaze and event recordings.
+        """
+        lines = [f'{type(self).__name__}(name={self.definition.name!r}, path={str(self.path)!r})']
+
+        if self.definition.experiment:
+            lines.append(f'  experiment: {self.definition.experiment}')
+
+        if self.definition.resources:
+            lines.append(f'  resources: {len(self.definition.resources)} defined')
+
+        lines.append(f'  gaze: {len(self.gaze)} recordings')
+        lines.append(f'  events: {len(self.events)} recordings')
+
+        return '\n'.join(lines)
+
     def _disclaimer(self) -> str:
         """Return string for dataset download disclaimer."""
         if self.definition.long_name is not None:
