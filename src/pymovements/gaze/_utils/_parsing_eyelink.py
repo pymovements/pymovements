@@ -449,31 +449,64 @@ def _match_events_with_context(
     return matched_events
 
 
-def _migrate_samples_to_binocular(samples: dict[str, list[Any]]) -> None:
+def _parse_tracked_eye_layout(tracked: str) -> str | None:
+    r"""Map a SAMPLES config tracked-eye token to an eye layout.
+
+    Parameters
+    ----------
+    tracked: str
+        Upper-cased tracked-eye token from a SAMPLES config line
+        (e.g. ``LEFT``, ``RIGHT``, ``LEFT\\tRIGHT``, ``LR``).
+
+    Returns
+    -------
+    str | None
+        ``'left'``, ``'right'`` or ``'both'``, or None for unrecognized tokens.
+    """
+    if ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}:
+        return 'both'
+    if tracked in {'LEFT', 'L'}:
+        return 'left'
+    if tracked in {'RIGHT', 'R'}:
+        return 'right'
+    return None
+
+
+def _migrate_samples_to_binocular(samples: dict[str, list[Any]], prev_eye: str | None) -> None:
     """Switch the sample column schema from monocular to binocular.
 
-    Samples collected so far were parsed as monocular; they are treated as left-eye data
-    and the right eye is filled with NaN. In standard EyeLink ASC files the binocular
-    SAMPLES config precedes all sample lines, so no samples have been collected yet and no
-    migration happens, but the code below stays correct if that assumption does not hold.
-    Mid-file mode switches (binocular <-> monocular or changing the tracked eyes) within a
-    single file are not supported.
+    Samples collected so far were parsed as monocular and belong to ``prev_eye``; they are
+    moved to that eye's channels and the other eye is filled with NaN. In standard EyeLink
+    ASC files the binocular SAMPLES config precedes all sample lines, so no samples have
+    been collected yet and no migration happens, but the code below stays correct if that
+    assumption does not hold.
 
     Parameters
     ----------
     samples: dict[str, list[Any]]
         Dictionary of sample columns to migrate in place.
+    prev_eye: str | None
+        Eye the already-collected monocular samples belong to (``'left'`` or ``'right'``).
+        None (no prior samples) defaults to the left eye.
     """
     prev_x = samples.pop('x_pix', [])
     prev_y = samples.pop('y_pix', [])
     prev_pupil = samples.pop('pupil', [])
     n_prev = len(prev_x)
-    samples['x_left_pix'] = prev_x
-    samples['y_left_pix'] = prev_y
-    samples['pupil_left'] = prev_pupil
-    samples['x_right_pix'] = [math.nan] * n_prev
-    samples['y_right_pix'] = [math.nan] * n_prev
-    samples['pupil_right'] = [math.nan] * n_prev
+    if prev_eye == 'right':
+        samples['x_left_pix'] = [math.nan] * n_prev
+        samples['y_left_pix'] = [math.nan] * n_prev
+        samples['pupil_left'] = [math.nan] * n_prev
+        samples['x_right_pix'] = prev_x
+        samples['y_right_pix'] = prev_y
+        samples['pupil_right'] = prev_pupil
+    else:
+        samples['x_left_pix'] = prev_x
+        samples['y_left_pix'] = prev_y
+        samples['pupil_left'] = prev_pupil
+        samples['x_right_pix'] = [math.nan] * n_prev
+        samples['y_right_pix'] = [math.nan] * n_prev
+        samples['pupil_right'] = [math.nan] * n_prev
 
 
 def parse_eyelink(
@@ -634,6 +667,13 @@ def parse_eyelink(
     total_recording_duration = 0.0
 
     is_binocular = False
+    # Eye layout of the current SAMPLES block ('left', 'right' or 'both') and the single
+    # monocular eye seen so far. If the tracked eye changes within a file (LEFT then RIGHT,
+    # or a monocular block followed by a binocular one), the whole recording is promoted to
+    # a binocular (four-channel) layout, with the non-tracked eye set to NaN for monocular
+    # blocks. See https://github.com/pymovements/pymovements/issues/1401.
+    current_sample_eye: str | None = None
+    mono_eye_seen: str | None = None
 
     # Single pass: collect events, patterns, samples, samples config, and metadata
     for line in lines:
@@ -661,11 +701,17 @@ def parse_eyelink(
         if samples_match := _search_regex(SAMPLES_CONFIG_REGEX, line, re.IGNORECASE):
             samples_config.append(samples_match.groupdict())
             tracked = samples_match.group('tracked_eye').upper().strip()
-            if not is_binocular and (
-                ('LEFT' in tracked and 'RIGHT' in tracked) or tracked in {'LR', 'L R'}
-            ):
-                _migrate_samples_to_binocular(samples)
-                is_binocular = True
+            if (layout := _parse_tracked_eye_layout(tracked)) is not None:
+                if not is_binocular:
+                    if layout == 'both':
+                        _migrate_samples_to_binocular(samples, mono_eye_seen)
+                        is_binocular = True
+                    elif mono_eye_seen is None:
+                        mono_eye_seen = layout
+                    elif mono_eye_seen != layout:
+                        _migrate_samples_to_binocular(samples, mono_eye_seen)
+                        is_binocular = True
+                current_sample_eye = layout
 
         if cal_timestamp:
             # if a calibration timestamp has been found, the next line will be a
@@ -729,10 +775,13 @@ def parse_eyelink(
         if messages and (match := _match_regex(MSG_REGEX, line)):
             messages_list.append([match.groupdict()['timestamp'], match.groupdict()['content']])
 
-        # Use the appropriate regex based on the file type
+        # Parse the current block with the binocular regex only if the current SAMPLES
+        # config is itself binocular. A monocular block within a promoted binocular file is
+        # still parsed with the monocular regex and routed to its tracked eye.
+        current_block_binocular = current_sample_eye == 'both'
         eye_tracking_sample_match = (
             _match_regex(EYE_TRACKING_SAMPLE_BINOCULAR, line)
-            if is_binocular else
+            if current_block_binocular else
             _match_regex(EYE_TRACKING_SAMPLE_MONOCULAR, line)
         )
 
@@ -742,20 +791,23 @@ def parse_eyelink(
             for additional_column in additional_columns:
                 samples[additional_column].append(current_additional[additional_column])
 
-            if is_binocular:
-                x_left_pix_s = eye_tracking_sample_match.group('x_pix_left')
-                y_left_pix_s = eye_tracking_sample_match.group('y_pix_left')
-                pupil_left_s = eye_tracking_sample_match.group('pupil_left')
-                x_right_pix_s = eye_tracking_sample_match.group('x_pix_right')
-                y_right_pix_s = eye_tracking_sample_match.group('y_pix_right')
-                pupil_right_s = eye_tracking_sample_match.group('pupil_right')
+            if not is_binocular:
+                # Monocular file: a single tracked eye throughout, three channels.
+                x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
+                y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
+                pupil = check_nan(eye_tracking_sample_match.group('pupil'))
 
-                x_left_pix = check_nan(x_left_pix_s)
-                y_left_pix = check_nan(y_left_pix_s)
-                pupil_left = check_nan(pupil_left_s)
-                x_right_pix = check_nan(x_right_pix_s)
-                y_right_pix = check_nan(y_right_pix_s)
-                pupil_right = check_nan(pupil_right_s)
+                samples['x_pix'].append(x_pix)
+                samples['y_pix'].append(y_pix)
+                samples['pupil'].append(pupil)
+            elif current_block_binocular:
+                # Binocular block: both eyes present in the sample line.
+                x_left_pix = check_nan(eye_tracking_sample_match.group('x_pix_left'))
+                y_left_pix = check_nan(eye_tracking_sample_match.group('y_pix_left'))
+                pupil_left = check_nan(eye_tracking_sample_match.group('pupil_left'))
+                x_right_pix = check_nan(eye_tracking_sample_match.group('x_pix_right'))
+                y_right_pix = check_nan(eye_tracking_sample_match.group('y_pix_right'))
+                pupil_right = check_nan(eye_tracking_sample_match.group('pupil_right'))
 
                 samples['x_left_pix'].append(x_left_pix)
                 samples['y_left_pix'].append(y_left_pix)
@@ -763,19 +815,27 @@ def parse_eyelink(
                 samples['x_right_pix'].append(x_right_pix)
                 samples['y_right_pix'].append(y_right_pix)
                 samples['pupil_right'].append(pupil_right)
-
             else:
-                x_pix_s = eye_tracking_sample_match.group('x_pix')
-                y_pix_s = eye_tracking_sample_match.group('y_pix')
-                pupil_s = eye_tracking_sample_match.group('pupil')
+                # Monocular block within a promoted binocular file: route the sample to its
+                # tracked eye and fill the other eye with NaN.
+                x_pix = check_nan(eye_tracking_sample_match.group('x_pix'))
+                y_pix = check_nan(eye_tracking_sample_match.group('y_pix'))
+                pupil = check_nan(eye_tracking_sample_match.group('pupil'))
 
-                x_pix = check_nan(x_pix_s)
-                y_pix = check_nan(y_pix_s)
-                pupil = check_nan(pupil_s)
-
-                samples['x_pix'].append(x_pix)
-                samples['y_pix'].append(y_pix)
-                samples['pupil'].append(pupil)
+                if current_sample_eye == 'right':
+                    samples['x_left_pix'].append(math.nan)
+                    samples['y_left_pix'].append(math.nan)
+                    samples['pupil_left'].append(math.nan)
+                    samples['x_right_pix'].append(x_pix)
+                    samples['y_right_pix'].append(y_pix)
+                    samples['pupil_right'].append(pupil)
+                else:
+                    samples['x_left_pix'].append(x_pix)
+                    samples['y_left_pix'].append(y_pix)
+                    samples['pupil_left'].append(pupil)
+                    samples['x_right_pix'].append(math.nan)
+                    samples['y_right_pix'].append(math.nan)
+                    samples['pupil_right'].append(math.nan)
 
             timestamp = float(timestamp_s)
             samples['time'].append(timestamp)
@@ -832,29 +892,44 @@ def parse_eyelink(
                 f' Using the value from the samples message.',
             )
     metadata['sampling_rate'] = sampling_rate_samples_config
-    metadata['recorded_eye'] = _check_reccfg_key(recording_config, 'tracked_eye')
     # the actual tracked eye is in the samples config, not in the recording config
     # the recording config contains the eyes that were recorded
     # RECCFG uses L/R/LR, SAMPLES uses LEFT/RIGHT/LEFT RIGHT
-    tracked_eye_samples_config = _check_samples_config_key(samples_config, 'tracked_eye')
-    if tracked_eye_samples_config == 'LEFT':
-        metadata['tracked_eye'] = 'L'
-    elif tracked_eye_samples_config == 'RIGHT':
-        metadata['tracked_eye'] = 'R'
-    elif tracked_eye_samples_config == 'LEFT\tRIGHT':
+    if is_binocular:
+        # Either a genuinely binocular recording or one where the tracked eye changes
+        # within the file; both use a binocular (four-channel) layout and are reported as
+        # 'LR'. Running the consistency helpers over the tracked eye would emit spurious
+        # 'inconsistent values' warnings for the changing case, so derive the eyes directly
+        # from the observed configs instead. See issue #1401.
         metadata['tracked_eye'] = 'LR'
+        recorded_eyes = {d.get('tracked_eye') for d in recording_config if d.get('tracked_eye')}
+        if not recorded_eyes:
+            metadata['recorded_eye'] = None
+        elif len(recorded_eyes) == 1:
+            metadata['recorded_eye'] = recorded_eyes.pop()
+        else:
+            metadata['recorded_eye'] = 'LR'
+    else:
+        metadata['recorded_eye'] = _check_reccfg_key(recording_config, 'tracked_eye')
+        tracked_eye_samples_config = _check_samples_config_key(samples_config, 'tracked_eye')
+        if tracked_eye_samples_config == 'LEFT':
+            metadata['tracked_eye'] = 'L'
+        elif tracked_eye_samples_config == 'RIGHT':
+            metadata['tracked_eye'] = 'R'
+        elif tracked_eye_samples_config == 'LEFT\tRIGHT':
+            metadata['tracked_eye'] = 'LR'
 
-    if metadata['tracked_eye'] and metadata['recorded_eye']:
-        if metadata['tracked_eye'] != metadata['recorded_eye']:
-            warnings.warn(
-                f'The recorded eye in the recording configuration message and'
-                f' the samples message are inconsistent: '
-                f"[{metadata['recorded_eye']}, {metadata['tracked_eye']}]"
-                f' This could be because the -r or -l flag in edf2asc was used'
-                f' to obtain monocular data from a binocular EDF file.'
-                f' Using the value from the samples message and storing the value from'
-                f" the recording configuration message in 'recorded_eye'.",
-            )
+        if metadata['tracked_eye'] and metadata['recorded_eye']:
+            if metadata['tracked_eye'] != metadata['recorded_eye']:
+                warnings.warn(
+                    f'The recorded eye in the recording configuration message and'
+                    f' the samples message are inconsistent: '
+                    f"[{metadata['recorded_eye']}, {metadata['tracked_eye']}]"
+                    f' This could be because the -r or -l flag in edf2asc was used'
+                    f' to obtain monocular data from a binocular EDF file.'
+                    f' Using the value from the samples message and storing the value from'
+                    f" the recording configuration message in 'recorded_eye'.",
+                )
     metadata['resolution'] = _check_reccfg_key(recording_config, 'resolution')
 
     pre_processed_metadata: dict[str, Any] = _pre_process_metadata(metadata)
