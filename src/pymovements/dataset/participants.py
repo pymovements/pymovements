@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 import warnings
 from copy import deepcopy
@@ -33,12 +32,26 @@ from typing import Literal
 import polars
 
 from pymovements._utils._html import repr_html
+from pymovements.dataset._bids_dataset import _cast_columns_to_metadata_format
+from pymovements.dataset._bids_dataset import _check_na_conformity
+from pymovements.dataset._bids_dataset import _default_bids_read_csv_kwargs
+from pymovements.dataset._bids_dataset import _default_bids_write_csv_kwargs
+from pymovements.dataset._bids_dataset import _infer_metadata_column_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_format
+from pymovements.dataset._bids_dataset import _validate_participant_id_structure
+from pymovements.dataset._bids_dataset import _verify_bids_handler
 
 
 @dataclass
 @repr_html()
 class Participants:
     """Participant table with additional metadadata.
+
+    Data and metadata follow the Brain Imaging Data Structure (BIDS)
+    `participants file specification`_.
+
+    .. _participants file specification:
+        https://bids-specification.readthedocs.io/en/stable/modality-agnostic-files/data-summary-files.html#participants-file
 
     Attributes
     ----------
@@ -58,7 +71,8 @@ class Participants:
         (default: ``None``)
     verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
         Verify BIDS conformity. If True, raise exception on non-conformity at REQUIRED level.
-        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+        If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level,
+        except for a missing ``participant_id`` column, which raises a ValueError.
         If False, do not verify.
         (default: ``False``)
     infer_metadata: bool
@@ -79,6 +93,8 @@ class Participants:
     ):
         if data is None:
             data = polars.DataFrame(schema={'participant_id': polars.String})
+        if verify_bids is not False:
+            _validate_participant_id_structure(data)
 
         if metadata:
             # metadata may be changed and updated, work on copy
@@ -92,18 +108,7 @@ class Participants:
         self.data = data
         self.metadata = metadata
 
-        if verify_bids is not False:
-            level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
-            if isinstance(verify_bids, str):
-                level = verify_bids
-            warnings_list = self.verify_bids(level)
-            if warnings_list:
-                if verify_bids is True:
-                    raise ValueError(
-                        f"BIDS non-conformities found: {'; '.join(warnings_list)}",
-                    )
-                for warning_msg in warnings_list:
-                    warnings.warn(warning_msg, UserWarning, stacklevel=2)
+        _verify_bids_handler(verify_bids, self.verify_bids)
 
     def update(
             self,
@@ -152,6 +157,11 @@ class Participants:
     ) -> Participants:
         r"""Load participant data from participant files.
 
+        By default, values encoded as ``'n/a'`` are read as null values per BIDS.
+        A cell whose literal content is ``'n/a'`` therefore cannot be distinguished
+        from a missing value. To keep such strings, pass a different ``null_values``
+        via ``read_csv_kwargs`` (for example ``read_csv_kwargs={'null_values': []}``).
+
         Parameters
         ----------
         path: Path | str
@@ -165,7 +175,8 @@ class Participants:
             (default: None)
         verify_bids: Literal['REQUIRED', 'RECOMMENDED'] | bool
             Verify BIDS conformity. If True, raise exception on non-conformity at REQUIRED level.
-            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level.
+            If 'REQUIRED' or 'RECOMMENDED', emit warnings for non-conformity at that level,
+            except for a missing ``participant_id`` column, which raises a ValueError.
             If False, do not verify.
             (default: ``False``)
         separator: str
@@ -179,7 +190,7 @@ class Participants:
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
-            Use this encoding for writing the metadata json file.
+            Use this encoding for loading the metadata json file.
             (default: ``utf-8``)
 
         Returns
@@ -204,11 +215,11 @@ class Participants:
                     stacklevel=2,
                 )
 
-        if read_csv_kwargs is None:
-            read_csv_kwargs = {'separator': separator}
-        else:
-            # **read_csv_kwargs takes precedence over explicit separator argument.
-            read_csv_kwargs = {'separator': separator, **read_csv_kwargs}
+        read_csv_kwargs = {
+            **_default_bids_read_csv_kwargs(),
+            'separator': separator,
+            **(read_csv_kwargs or {}),
+        }
 
         if verify_bids is not False:
             if read_csv_kwargs.get('separator') != '\t':
@@ -264,6 +275,9 @@ class Participants:
     ) -> None:
         r"""Save participants data including metadata.
 
+        By default, null values are written as ``'n/a'`` per BIDS.
+        This can be overridden via ``write_csv_kwargs``.
+
         Parameters
         ----------
         path: Path | str
@@ -287,21 +301,10 @@ class Participants:
             Takes precedence over the ``separator`` argument.
             (default: ``None``)
         metadata_encoding: str
-            Use this encoding for loading the metadata json file.
+            Use this encoding for writing the metadata json file.
             (default: ``utf-8``)
         """
-        if verify_bids is not False:
-            level: Literal['REQUIRED', 'RECOMMENDED'] = 'REQUIRED'
-            if isinstance(verify_bids, str):
-                level = verify_bids
-            warnings_list = self.verify_bids(level)
-            if warnings_list:
-                if verify_bids is True:
-                    raise ValueError(
-                        f"BIDS non-conformities found: {'; '.join(warnings_list)}",
-                    )
-                for warning_msg in warnings_list:
-                    warnings.warn(warning_msg, UserWarning, stacklevel=2)
+        _verify_bids_handler(verify_bids, self.verify_bids)
 
         path = Path(path)
         if path.is_dir():
@@ -320,11 +323,11 @@ class Participants:
                     stacklevel=2,
                 )
 
-        if write_csv_kwargs is None:
-            write_csv_kwargs = {'separator': separator}
-        else:
-            # **write_csv_kwargs takes precedence over explicit separator argument.
-            write_csv_kwargs = {'separator': separator, **write_csv_kwargs}
+        write_csv_kwargs = {
+            **_default_bids_write_csv_kwargs(),
+            'separator': separator,
+            **(write_csv_kwargs or {}),
+        }
 
         if verify_bids is not False:
             if write_csv_kwargs.get('separator') != '\t':
@@ -348,10 +351,7 @@ class Participants:
                     stacklevel=2,
                 )
 
-        # Ensure null values are encoded as n/a.
-        data_to_save = self.data.fill_null('n/a')
-
-        data_to_save.write_csv(data_path, **write_csv_kwargs)
+        self.data.write_csv(data_path, **write_csv_kwargs)
 
         # Save metadata to json file.
         with open(metadata_path, 'w', encoding=metadata_encoding) as opened_file:
@@ -431,11 +431,11 @@ class Participants:
         warnings_list: list[str] = []
 
         if level in {'REQUIRED', 'RECOMMENDED'}:
-            warnings_list.extend(_validate_participant_id(self.data))
+            warnings_list.extend(_validate_participant_id_format(self.data))
             warnings_list.extend(_check_na_conformity(self.data))
         else:
             raise ValueError(
-                "Unknown verification level '{level}'. "
+                f"Unknown verification level '{level}'. "
                 "Supported values are 'RECOMMENDED' and 'REQUIRED'",
             )
 
@@ -460,36 +460,6 @@ class Participants:
             warnings_list.extend(_validate_column_names(self.data))
 
         return warnings_list
-
-
-def _check_na_conformity(data: polars.DataFrame) -> list[str]:
-    """Check that null values are coded as 'n/a' in BIDS columns.
-
-    BIDS requires that missing and non-applicable values MUST be coded as 'n/a'.
-    """
-    validation_warnings: list[str] = []
-    # Standard BIDS columns that we check for 'n/a' conformity
-    bids_columns = ['age', 'sex', 'handedness', 'species', 'strain', 'strain_rrid']
-    na_alternatives = {'N/A', 'NA', 'na', 'NaN', 'nan', ''}
-
-    for col in data.columns:
-        if col in bids_columns:
-            values = data[col].to_list()
-            invalid_na = []
-            for v in values:
-                if v is None:
-                    invalid_na.append('None')
-                elif isinstance(v, float) and math.isnan(v):
-                    invalid_na.append('NaN')
-                elif isinstance(v, str) and v in na_alternatives:
-                    invalid_na.append(v)
-
-            if invalid_na:
-                validation_warnings.append(
-                    f"Column '{col}' contains invalid null values: {set(invalid_na)}. "
-                    "BIDS requires missing values to be coded as 'n/a'.",
-                )
-    return validation_warnings
 
 
 def _check_metadata_descriptions(data: polars.DataFrame, metadata: dict[str, Any]) -> list[str]:
@@ -522,52 +492,6 @@ def _validate_column_names(data: polars.DataFrame) -> list[str]:
             validation_warnings.append(
                 f"Column name '{col}' should be written in snake_case.",
             )
-    return validation_warnings
-
-
-def _validate_participant_id(data: polars.DataFrame) -> list[str]:
-    """Validate participant_id column format per BIDS specification.
-
-    Parameters
-    ----------
-    data : polars.DataFrame
-        The participants DataFrame to validate.
-
-    Returns
-    -------
-    list[str]
-        List of warning messages for any non-conformities found.
-    """
-    validation_warnings: list[str] = []
-
-    if 'participant_id' not in data.columns:
-        return ['participant_id column is missing']
-
-    if data.columns[0] != 'participant_id':
-        validation_warnings.append('participant_id column must be the first column')
-
-    # Check dtype. BIDS wants strings.
-    if data['participant_id'].dtype != polars.String:
-        validation_warnings.append('participant_id column must have string (Utf8) data type')
-
-    # Check for null values
-    if data['participant_id'].null_count() > 0:
-        validation_warnings.append('participant_id column contains null values')
-
-    participant_ids = data['participant_id'].drop_nulls().to_list()
-
-    pattern = re.compile(r'^sub-[a-zA-Z0-9+]+$')
-    invalid_ids = [pid for pid in participant_ids if not pattern.match(str(pid))]
-    if invalid_ids:
-        validation_warnings.append(
-            f"participant_id values must match 'sub-<label>' pattern. "
-            f"Invalid values: {invalid_ids[:5]}{'...' if len(invalid_ids) > 5 else ''}",
-        )
-
-    unique_ids = set(participant_ids)
-    if len(unique_ids) != len(participant_ids):
-        validation_warnings.append('participant_id values must be unique')
-
     return validation_warnings
 
 
@@ -777,77 +701,3 @@ def _validate_strain_rrid(data: polars.DataFrame) -> list[str]:
         )
 
     return validation_warnings
-
-
-def _infer_metadata_column_format(
-        data: polars.DataFrame,
-        metadata: dict[str, Any],
-) -> dict[str, Any]:
-    """Infer bids format of each column in data and update metadata."""
-    for column in data.columns:
-        if column not in metadata:
-            metadata[column] = {}
-
-        if 'Format' not in metadata[column]:
-            # infer format from BIDS specification or use polars datatypes of data columns
-            if column == 'participant_id':
-                metadata[column]['Format'] = 'string'
-            else:
-                # convert polars datatype to bids format descriptor
-                metadata[column]['Format'] = _polars_datatype_to_bids_format(data[column].dtype)
-
-    return metadata
-
-
-def _cast_columns_to_metadata_format(
-        data: polars.DataFrame,
-        metadata: dict[str, Any],
-) -> polars.DataFrame:
-    """Cast columns in data according to column bids format specified in metadata."""
-    schema_overrides = {}
-    for column in data.columns:
-        bids_format = metadata.get(column, {}).get('Format', None)
-        if bids_format:
-            schema_overrides[column] = _bids_format_to_polars_datatype(bids_format)
-    data = data.cast(schema_overrides)
-    return data
-
-
-def _bids_format_to_polars_datatype(bids_format: str) -> polars.DataType:
-    """Infer polars datatype from bids format descriptor."""
-    mapping = {
-        'string': polars.String,
-        'number': polars.Float64,
-        'integer': polars.Int64,
-        'bool': polars.Boolean,
-        'index': polars.UInt64,
-        'label': polars.String,
-    }
-
-    if bids_format in mapping:
-        return mapping[bids_format]
-
-    raise TypeError(
-        f'unknown bids format descriptor "{bids_format}". Known formats: {list(mapping.keys())}',
-    )
-
-
-def _polars_datatype_to_bids_format(dtype: polars.DataType) -> str:
-    """Infer bids format descriptor from polars datatype."""
-    if dtype.is_unsigned_integer():
-        return 'index'
-    if dtype.is_integer():
-        return 'integer'
-    if dtype.is_numeric():
-        return 'number'
-    if dtype == polars.Boolean:
-        return 'bool'
-    if dtype == polars.String:
-        return 'string'
-    if dtype == polars.Null:
-        return 'string'
-
-    raise TypeError(
-        f'polars datatype {dtype} has no mapping to bids format descriptor. '
-        f'Supported polars datatypes are: Integer, Float, String',
-    )
