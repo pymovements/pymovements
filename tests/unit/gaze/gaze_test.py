@@ -1987,3 +1987,13 @@ def test_gaze_clear_events():
     }
     assert gaze.events.frame.schema == expected_schema
     assert gaze.events.frame.is_empty()
+
+
+def test_gaze_schema_returns_samples_schema():
+    gaze = Gaze(
+        pl.DataFrame({'time': [0, 1], 'x': [0.0, 1.0], 'y': [0.0, 1.0]}),
+        pixel_columns=['x', 'y'],
+    )
+
+    assert gaze.schema == gaze.samples.schema
+    assert 'pixel' in gaze.schema

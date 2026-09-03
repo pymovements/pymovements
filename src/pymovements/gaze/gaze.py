@@ -2821,8 +2821,7 @@ class Gaze:
         if self.experiment is not None:
             fields.append(self.experiment.__str__())
 
-        if self.samples is not None:
-            fields.append(self.samples.__str__())
+        fields.append(self.samples.__str__())
 
         if self.messages is not None:
             fields.append(f'messages={self.messages.height} rows')

@@ -127,9 +127,6 @@ def tsplot(
     channels = df.columns
     arr = df.to_numpy().transpose()
 
-    if arr.ndim == 1:
-        arr = np.expand_dims(arr, axis=0)
-
     channel_axis = 0
 
     n_channels = arr.shape[channel_axis]
