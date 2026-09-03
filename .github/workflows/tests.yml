@@ -177,6 +177,8 @@ jobs:
       - name: Upload coverage reports to Codecov
         if: success() || failure()
         uses: codecov/codecov-action@v5
+        with:
+          flags: minimum-requirements
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
