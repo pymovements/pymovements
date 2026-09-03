@@ -1302,6 +1302,7 @@ class Gaze:
             self,
             event_properties: str | tuple[str, dict[str, Any]]
             | list[str | tuple[str, dict[str, Any]]],
+            column_names: str | list[str | None] | None = None,
             name: str | None = None,
     ) -> None:
         """Calculate event properties for given events.
@@ -1313,6 +1314,9 @@ class Gaze:
         ----------
         event_properties: str | tuple[str, dict[str, Any]] | list[str | tuple[str, dict[str, Any]]]
             The event properties to compute.
+        column_names: str | list[str | None] | None
+            The name(s) of the column(s) to be added to the event dataframe. If None, columns will
+            be named after the event properties. (default: None)
         name: str | None
             Process only events that match the name. (default: None)
 
@@ -1323,6 +1327,9 @@ class Gaze:
             :ref:`event-measures` for an overview of supported measures.
         RuntimeError
             If specified event name ``name`` is missing from ``events``.
+        ValueError
+            If ``column_names`` has a different length than ``event_properties``, or if there are
+            duplicate column names.
         """
         if len(self.events) == 0:
             warn(
@@ -1332,7 +1339,7 @@ class Gaze:
 
         identifiers = self.trial_columns if self.trial_columns is not None else []
 
-        processor = EventSamplesProcessor(event_properties)
+        processor = EventSamplesProcessor(event_properties, column_names=column_names)
         results = processor.process(
             self.events.frame, self.samples, identifiers=identifiers, name=name,
         )
