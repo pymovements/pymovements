@@ -239,7 +239,13 @@ def scanpathplot(
         )
 
     if gaze is not None and gaze.experiment is not None:
-        _set_screen_axes(ax, gaze.experiment.screen, func_name='scanpathplot')
+        _set_screen_axes(
+            ax,
+            gaze.experiment.screen.width_px,
+            gaze.experiment.screen.height_px,
+            gaze.experiment.screen.origin,
+            func_name='scanpathplot',
+        )
 
     if title:
         ax.set_title(title)
