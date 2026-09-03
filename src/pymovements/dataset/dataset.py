@@ -1122,6 +1122,7 @@ class Dataset:
             aoi_dict: dict[str, str | Path],
             *,
             save_path: str | Path | None = None,
+            group_columns: list[str] | None = None,
             word_index_column: str = 'word_idx',
             word_column: str = 'word',
     ) -> ReadingMeasures:
@@ -1137,6 +1138,11 @@ class Dataset:
         save_path : str | Path | None
             The directory path where the computed reading measures CSV files will be saved.
             If ``None``, no files are saved to disk. (default: None)
+        group_columns : list[str] | None
+            Columns that partition each subject-text's fixations into independent reading
+            sequences. If ``None``, the fixations of a subject-text are treated as a single
+            sequence, matching the flat per-text AOI table. Pass e.g. ``['trial', 'page']`` to
+            split them further. (default: None)
         word_index_column : str
             Shared column name in fixations and AOIs that corresponds to the word index of
             the text.
@@ -1180,6 +1186,7 @@ class Dataset:
             rm_df = compute_reading_measures(
                 fixations=fixations,
                 aois=aoi_df,
+                group_columns=group_columns,
                 word_index_column=word_index_column,
                 word_column=word_column,
             )

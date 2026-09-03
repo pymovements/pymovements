@@ -25,7 +25,6 @@ from polars.testing import assert_frame_equal
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations
-from pymovements.measure.reading.measures import build_word_level_table
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
 from pymovements.measure.reading.measures import first_pass_fixation_count
@@ -36,13 +35,14 @@ from pymovements.measure.reading.measures import non_aoi_fixation_count_ratio
 from pymovements.measure.reading.measures import non_aoi_fixation_duration_ratio
 from pymovements.measure.reading.measures import regression_count_in
 from pymovements.measure.reading.measures import regression_count_out
-from pymovements.measure.reading.measures import regression_path_duration
+from pymovements.measure.reading.measures import regression_path_duration_exclusive
+from pymovements.measure.reading.measures import regression_path_duration_inclusive
 from pymovements.measure.reading.measures import rereading_time
+from pymovements.measure.reading.measures import right_bounded_reading_time
 from pymovements.measure.reading.measures import saccade_length_in
 from pymovements.measure.reading.measures import saccade_length_out
 from pymovements.measure.reading.measures import total_fixation_count
 from pymovements.measure.reading.processing import compute_reading_measures
-from pymovements.measure.reading.words import all_tokens_from_aois
 from pymovements.stimulus.text import TextStimulus
 
 
@@ -63,49 +63,38 @@ CHAR_AOI_DF = pl.DataFrame({
 
 
 @pytest.fixture(name='stimulus', scope='function')
-def fixture_stimulus() -> TextStimulus:
-    def _make_stimulus() -> TextStimulus:
-        return TextStimulus(
-            aois=CHAR_AOI_DF.clone(),
-            aoi_column='char',
-            start_x_column='top_left_x',
-            start_y_column='top_left_y',
-            width_column='width',
-            height_column='height',
-            page_column='page',
-            trial_column='trial',
-        )
-
-    return _make_stimulus()
+def fixture_stimulus():
+    return TextStimulus(
+        aois=CHAR_AOI_DF.clone(),
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        trial_column='trial',
+    )
 
 
 @pytest.fixture(name='mapped_events', scope='function')
-def fixture_mapped_events(stimulus: TextStimulus) -> Events:
-    def _make_mapped_events() -> Events:
-        events_df = pl.DataFrame({
-            'name': ['fixation', 'fixation'],
-            'onset': [0, 200],
-            'offset': [200, 400],
-            'duration': [200, 200],
-            'location': [[15., 15.], [55., 15.]],
-            'trial': ['trial_1', 'trial_1'],
-            'page': ['page_1', 'page_1'],
-        })
-        events = Events(data=events_df)
-        events.map_to_aois(stimulus)
-        return events.frame
-
-    return _make_mapped_events()
+def fixture_mapped_events(stimulus):
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'onset': [0, 200],
+        'offset': [200, 400],
+        'duration': [200, 200],
+        'location': [[15., 15.], [55., 15.]],
+        'trial': ['trial_1', 'trial_1'],
+        'page': ['page_1', 'page_1'],
+    })
+    events = Events(data=events_df)
+    events.map_to_aois(stimulus)
+    return events.frame
 
 
 @pytest.fixture(name='annotated_events', scope='function')
 def fixture_annotated_events(mapped_events):
     return annotate_fixations(mapped_events, group_columns=['trial', 'page'])
-
-
-@pytest.fixture(name='all_tokens', scope='function')
-def fixture_all_tokens(stimulus: TextStimulus) -> pl.DataFrame:
-    return all_tokens_from_aois(stimulus.aois, trial='trial_1')
 
 
 def test_fixture_mapped_events_has_word_and_char_columns(mapped_events):
@@ -118,12 +107,6 @@ def test_annotate_fixations(annotated_events):
     assert 'is_first_pass' in annotated_events.columns
     assert 'run_id' in annotated_events.columns
     assert annotated_events.height == 2
-
-
-def test_all_tokens_from_aois(all_tokens):
-    assert 'word_idx' in all_tokens.columns
-    assert 'word' in all_tokens.columns
-    assert all_tokens.height == 2
 
 
 def test_reading_measures_init_none():
@@ -156,107 +139,189 @@ def test_compute_reading_measures_preserves_zero_based_word_indices():
     assert result['word'].to_list() == ['zero', 'one']
 
 
-def test_build_word_level_table(annotated_events, all_tokens):
-    result = build_word_level_table(words=all_tokens, fixations=annotated_events)
+def test_compute_reading_measures_word_level(mapped_events):
+    result = compute_reading_measures(
+        mapped_events, CHAR_AOI_DF.clone(), group_columns=['trial', 'page'],
+    )
     assert result.height == 2  # one row per word
     assert 'FFD' in result.columns
     assert 'TFT' in result.columns
+    assert result.columns[:4] == ['trial', 'page', 'word_index', 'word']
+    # both fixations land on the first character of their word, one-based position 1
+    assert result['LP'].to_list() == [1, 1]
     assert result.filter(pl.col('word') == 'The')['FFD'][0] == 200
     assert result.filter(pl.col('word') == 'quick')['FFD'][0] == 200
 
 
+def test_compute_reading_measures_is_invariant_to_input_row_order(stimulus):
+    """Input row order must not change the output.
+
+    ``annotate_fixations`` sorts by onset, so the ``.first()``-based measures (LP, FFD, SL_in)
+    stay correct even when the caller passes fixations in a non-onset order.
+    """
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'onset': [0, 100, 200, 300],
+        'offset': [100, 200, 300, 400],
+        'duration': [100, 100, 100, 100],
+        # word 0 char 0, word 1 char 5, word 0 char 2 (regression), word 1 char 4
+        'location': [[15., 20.], [65., 20.], [35., 20.], [55., 20.]],
+        'trial': ['trial_1'] * 4,
+        'page': ['page_1'] * 4,
+    })
+    events = Events(data=events_df)
+    events.map_to_aois(stimulus)
+    mapped = events.frame
+
+    reference = compute_reading_measures(mapped, CHAR_AOI_DF.clone())
+    # a fixed permutation that is not onset order
+    scrambled = mapped[[2, 0, 3, 1]]
+    with pytest.warns(UserWarning, match='not sorted'):
+        result = compute_reading_measures(scrambled, CHAR_AOI_DF.clone())
+
+    assert_frame_equal(result, reference)
+    # the temporally first fixation of each word sets LP; a wrong order would change these
+    assert reference.sort('word_index')['LP'].to_list() == [1, 2]
+
+
+def test_compute_reading_measures_warns_on_unsorted_onsets_without_group_columns():
+    aois = pl.DataFrame({
+        'trial': ['t1', 't1', 't2', 't2'],
+        'word_idx': [0, 1, 0, 1],
+        'word': ['The', 'quick', 'The', 'quick'],
+    })
+    # two concatenated trials whose clocks restart, so the onset drops at the trial boundary
+    fixations = pl.DataFrame({
+        'trial': ['t1', 't1', 't2', 't2'],
+        'word_idx': [0, 1, 0, 1],
+        'onset': [0, 100, 0, 100],
+        'duration': [100, 100, 100, 100],
+    })
+
+    with pytest.warns(UserWarning, match='not sorted'):
+        compute_reading_measures(fixations, aois, group_columns=[])
+
+    result = compute_reading_measures(fixations, aois, group_columns=['trial'])
+    assert result.height == 4
+
+
+def _aggregate(annotated_events, expression):
+    return annotated_events.group_by(['trial', 'page', 'word_idx']).agg(expression)
+
+
 def test_compute_first_duration(annotated_events):
-    result = first_duration(annotated_events)
+    result = _aggregate(annotated_events, first_duration())
     assert 'FD' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FD'][0] == 200
     assert result.filter(pl.col('word_idx') == 1)['FD'][0] == 200
 
 
 def test_compute_first_fixation_duration(annotated_events):
-    result = first_fixation_duration(annotated_events)
+    result = _aggregate(annotated_events, first_fixation_duration())
     assert 'FFD' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FFD'][0] == 200
 
 
 def test_compute_first_pass_reading_time(annotated_events):
-    result = first_pass_reading_time(annotated_events)
+    result = _aggregate(annotated_events, first_pass_reading_time())
     assert 'FPRT' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FPRT'][0] == 200
 
 
 def test_compute_total_fixation_count(annotated_events):
-    result = total_fixation_count(annotated_events)
+    result = _aggregate(annotated_events, total_fixation_count())
     assert 'TFC' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['TFC'][0] == 1
     assert result.filter(pl.col('word_idx') == 1)['TFC'][0] == 1
 
 
 def test_first_pass_fixation_count(annotated_events):
-    result = first_pass_fixation_count(annotated_events)
+    result = _aggregate(annotated_events, first_pass_fixation_count())
     assert 'FPFC' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FPFC'][0] == 1
 
 
 def test_first_reading_time(annotated_events):
-    result = first_reading_time(annotated_events)
+    result = _aggregate(annotated_events, first_reading_time())
     assert 'FRT' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['FRT'][0] == 200
 
 
 def test_rereading_time(annotated_events):
-    result = rereading_time(annotated_events)
+    result = _aggregate(annotated_events, rereading_time())
     assert 'RRT' in result.columns
-    assert result.is_empty()
+    assert result['RRT'].to_list() == [0, 0]
+
+
+def test_measures_aggregate_without_grouping(annotated_events):
+    # Expression measures work with any grouping the caller chooses, including word-only.
+    result = annotated_events.group_by('word_idx').agg(total_fixation_count())
+    assert sorted(result['TFC'].to_list()) == [1, 1]
 
 
 def test_regression_count_in(annotated_events):
-    result = regression_count_in(annotated_events)
+    result = _aggregate(annotated_events, regression_count_in())
     assert 'TRC_in' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['TRC_in'][0] == 0
 
 
 def test_regression_count_out(annotated_events):
-    result = regression_count_out(annotated_events)
+    result = _aggregate(annotated_events, regression_count_out())
     assert 'TRC_out' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['TRC_out'][0] == 0
 
 
 def test_landing_position(annotated_events):
-    result = landing_position(annotated_events)
+    result = _aggregate(annotated_events, landing_position())
     assert 'LP' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['LP'][0] == 0
+    # first fixation on char_idx 0, emitted one-based as 1
+    assert result.filter(pl.col('word_idx') == 0)['LP'][0] == 1
 
 
 def test_saccade_length_in(annotated_events):
-    result = saccade_length_in(annotated_events)
+    result = _aggregate(annotated_events, saccade_length_in())
     assert 'SL_in' in result.columns
     assert result.filter(pl.col('word_idx') == 1)['SL_in'][0] == 1
 
 
 def test_saccade_length_out(annotated_events):
-    result = saccade_length_out(annotated_events)
+    result = _aggregate(annotated_events, saccade_length_out())
     assert 'SL_out' in result.columns
     assert result.filter(pl.col('word_idx') == 0)['SL_out'][0] == 1
 
 
 def test_regression_path_duration(annotated_events):
-    result = regression_path_duration(annotated_events)
-    assert 'RPD_inc' in result.columns
-    assert 'RPD_exc' in result.columns
-    assert result.filter(pl.col('word_idx') == 0)['RPD_inc'][0] == 200
+    result = annotated_events.group_by(['trial', 'page', 'regression_path_word']).agg([
+        regression_path_duration_inclusive(),
+        regression_path_duration_exclusive(),
+        right_bounded_reading_time(),
+    ])
+    assert result.filter(pl.col('regression_path_word') == 0)['RPD_inc'][0] == 200
+    assert result.filter(pl.col('regression_path_word') == 0)['RPD_exc'][0] == 0
+    assert result.filter(pl.col('regression_path_word') == 0)['RBRT'][0] == 200
 
 
-def test_regression_path_duration_no_first_pass():
-    df = pl.DataFrame({
-        'trial': ['1'],
-        'page': ['1'],
-        'word_idx': [0],
-        'onset': [0],
-        'duration': [100],
-        'is_first_pass': [False],
+def test_regression_path_duration_with_regression():
+    # Sequence 2 -> 1 -> 2: word 1 is entered from the right, so it never opens a
+    # regression-path window; both regression fixations belong to word 2's window.
+    events = pl.DataFrame({
+        'name': ['fixation'] * 3,
+        'word_idx': [2, 1, 2],
+        'onset': [0, 100, 200],
+        'duration': [100, 150, 120],
     })
-    result = regression_path_duration(df)
-    assert result['RPD_inc'][0] == 0
+    annotated = annotate_fixations(events)
+
+    result = annotated.group_by('regression_path_word').agg([
+        regression_path_duration_inclusive(),
+        regression_path_duration_exclusive(),
+        right_bounded_reading_time(),
+    ])
+
+    assert result['regression_path_word'].to_list() == [2]
+    assert result['RPD_inc'][0] == 370
+    assert result['RPD_exc'][0] == 150
+    assert result['RBRT'][0] == 220
 
 
 # ---------------------------
@@ -327,7 +392,9 @@ def test_regression_path_duration_no_first_pass():
     ],
 )
 def test_non_aoi_fixation_count_ratio(fixations, expected):
-    result = non_aoi_fixation_count_ratio(fixations)
+    result = fixations.group_by(['trial', 'page'], maintain_order=True).agg(
+        non_aoi_fixation_count_ratio(),
+    )
     assert_frame_equal(result, expected)
 
 
@@ -429,5 +496,7 @@ def test_non_aoi_fixation_count_ratio(fixations, expected):
     ],
 )
 def test_non_aoi_fixation_duration_ratio(fixations, expected):
-    result = non_aoi_fixation_duration_ratio(fixations)
+    result = fixations.group_by(['trial', 'page'], maintain_order=True).agg(
+        non_aoi_fixation_duration_ratio(),
+    )
     assert_frame_equal(result, expected, abs_tol=1e-5)
