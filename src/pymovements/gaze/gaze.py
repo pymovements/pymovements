@@ -1433,6 +1433,7 @@ class Gaze:
         sampling_rate: float | None = None,
         onset_column: str = 'onset',
         offset_column: str = 'offset',
+        trial_columns: list[str] | None = None,
     ) -> polars.Expr:
         r"""Calculate ratio of time associated with specific events.
 
@@ -1467,6 +1468,11 @@ class Gaze:
             Name of the column containing event onset times (default: 'onset').
         offset_column: str
             Name of the column containing event offset times (default: 'offset').
+        trial_columns: list[str] | None
+            Names of the columns identifying trials to use for grouping the ratio
+            calculation. Defaults to :py:attr:`~.Gaze.trial_columns`. Pass an empty
+            list ``[]`` to compute a single session-level ratio without any trial
+            grouping. (default: the gaze's ``trial_columns``)
 
         Returns
         -------
@@ -1476,6 +1482,8 @@ class Gaze:
 
         Examples
         --------
+        Session-level ratio:
+
         >>> import polars
         >>> import pymovements as pm
         >>> gaze = pm.Gaze(
@@ -1498,6 +1506,58 @@ class Gaze:
         ╞═══════════════════╡
         │ 0.75              │
         └───────────────────┘
+
+        By default, the ratio is grouped by the gaze's ``trial_columns``:
+
+        >>> gaze = pm.Gaze(
+        ...     samples=polars.DataFrame({
+        ...         'time': [0, 1, 2, 3],
+        ...         'trial': [1, 1, 2, 2],
+        ...         'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+        ...     }),
+        ...     events=pm.Events(
+        ...         data=polars.DataFrame({
+        ...             'name': ['blink'],
+        ...             'onset': [1],
+        ...             'offset': [2],
+        ...             'trial': [1],
+        ...         }),
+        ...     ),
+        ...     trial_columns=['trial'],
+        ... )
+        >>> gaze.samples.group_by('trial', maintain_order=True).agg(
+        ...     gaze.measure_events_ratio('blink').first(),
+        ... )
+        shape: (2, 2)
+        ┌───────┬───────────────────┐
+        │ trial ┆ event_ratio_blink │
+        │ ---   ┆ ---               │
+        │ i64   ┆ f64               │
+        ╞═══════╪═══════════════════╡
+        │ 1     ┆ 1.0               │
+        │ 2     ┆ 0.0               │
+        └───────┴───────────────────┘
+
+        Pass ``trial_columns=[]`` to ignore the gaze's ``trial_columns`` and
+        compute a single session-level scalar:
+
+        >>> gaze.samples.select(gaze.measure_events_ratio('blink', trial_columns=[])).item()
+        0.5
+
+        Pass custom ``trial_columns`` to override the gaze's ``trial_columns``:
+
+        >>> gaze.samples.group_by('trial', maintain_order=True).agg(
+        ...     gaze.measure_events_ratio('blink', trial_columns=['trial']).first(),
+        ... )
+        shape: (2, 2)
+        ┌───────┬───────────────────┐
+        │ trial ┆ event_ratio_blink │
+        │ ---   ┆ ---               │
+        │ i64   ┆ f64               │
+        ╞═══════╪═══════════════════╡
+        │ 1     ┆ 1.0               │
+        │ 2     ┆ 0.0               │
+        └───────┴───────────────────┘
 
         Raises
         ------
@@ -1525,6 +1585,9 @@ class Gaze:
                 f'Available columns: {self.samples.columns}',
             )
 
+        if trial_columns is None:
+            trial_columns = self.trial_columns
+
         if sampling_rate is None and self.experiment is not None:
             sampling_rate = self.experiment.sampling_rate
 
@@ -1537,8 +1600,8 @@ class Gaze:
                     onset_column: self.samples.schema[time_column],
                     offset_column: self.samples.schema[time_column],
                     **(
-                        {col: self.samples.schema[col] for col in self.trial_columns}
-                        if self.trial_columns else {}
+                        {col: self.samples.schema[col] for col in trial_columns}
+                        if trial_columns else {}
                     ),
                 },
             )
@@ -1548,7 +1611,7 @@ class Gaze:
             samples=self.samples,
             name=name,
             time_column=time_column,
-            trial_columns=self.trial_columns,
+            trial_columns=trial_columns,
             sampling_rate=sampling_rate,
             onset_column=onset_column,
             offset_column=offset_column,
