@@ -209,8 +209,7 @@ class TestEventRatio:
     def test_event_ratio_with_trials(self, samples, trial_columns, events_data, expected_ratios):
         """Test event ratio calculation with trial columns."""
         if events_data:
-            events = pm.Events(pl.DataFrame(events_data))
-            events.trial_columns = trial_columns
+            events = pm.Events(pl.DataFrame(events_data), trial_columns=trial_columns)
         else:
             events = None
 
@@ -323,3 +322,182 @@ class TestEventRatio:
         )
 
         assert result.to_series()[0] == pytest.approx(expected)
+
+    @pytest.mark.parametrize(
+        ('samples', 'gaze_trial_columns', 'events_data', 'expected_ratio'),
+        [
+            # A blink in the first trial only. Session ratio ignores trial grouping.
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 3.0],
+                    'trial': [1, 1, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
+                0.5,
+                id='single_blink_session_ratio',
+            ),
+            # Blinks in both trials combine into a single session-wide ratio.
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 3.0],
+                    'trial': [1, 1, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
+                    {'name': 'blink', 'onset': 2.0, 'offset': 3.0, 'trial': 2},
+                ],
+                1.0,
+                id='blinks_in_both_trials_session_ratio',
+            ),
+            # No matching events yields a session-level zero.
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 0.0, 1.0],
+                    'trial': [1, 1, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [{'name': 'saccade', 'onset': 0.0, 'offset': 1.0, 'trial': 1}],
+                0.0,
+                id='no_matching_events_session_ratio',
+            ),
+        ],
+    )
+    def test_event_ratio_trial_columns_empty(
+        self,
+        samples,
+        gaze_trial_columns,
+        events_data,
+        expected_ratio,
+    ):
+        """trial_columns=[] yields a single session-level scalar and item() works."""
+        events = pm.Events(pl.DataFrame(events_data), trial_columns=gaze_trial_columns)
+        gaze = pm.Gaze(samples=samples, events=events, trial_columns=gaze_trial_columns)
+
+        result = gaze.samples.select(gaze.measure_events_ratio('blink', trial_columns=[]))
+
+        assert result.shape == (1, 1)
+        assert result.item() == pytest.approx(expected_ratio)
+
+    @pytest.mark.parametrize(
+        ('samples', 'gaze_trial_columns', 'events_data', 'expected_ratios'),
+        [
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 0.0, 1.0],
+                    'trial': [1, 1, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial'],
+                [{'name': 'blink', 'onset': 1.0, 'offset': 2.0, 'trial': 1}],
+                {1: 1.0, 2: 0.0},
+                id='single_trial_with_event',
+            ),
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 2.0, 0.0, 1.0, 2.0],
+                    'trial': [1, 1, 1, 2, 2, 2],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5]],
+                }),
+                ['trial'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 1.0, 'trial': 1},
+                ],
+                {1: 2 / 3, 2: 0.0},
+                id='event_partial_trial',
+            ),
+        ],
+    )
+    def test_event_ratio_default_trial_columns(
+        self,
+        samples,
+        gaze_trial_columns,
+        events_data,
+        expected_ratios,
+    ):
+        """Not passing trial_columns preserves existing behavior (uses self.trial_columns)."""
+        events = pm.Events(pl.DataFrame(events_data), trial_columns=gaze_trial_columns)
+        gaze = pm.Gaze(samples=samples, events=events, trial_columns=gaze_trial_columns)
+
+        default_result = gaze.samples.group_by(gaze_trial_columns, maintain_order=True).agg(
+            gaze.measure_events_ratio('blink').mean(),
+        )
+        explicit_result = gaze.samples.group_by(gaze_trial_columns, maintain_order=True).agg(
+            gaze.measure_events_ratio('blink', trial_columns=gaze.trial_columns).mean(),
+        )
+
+        assert_frame_equal(default_result, explicit_result)
+
+        expected_data = []
+        unique_trials = samples.select(gaze_trial_columns).unique().sort(gaze_trial_columns)
+        for trial in unique_trials.to_dicts():
+            expected_data.append(
+                {
+                    **trial,
+                    'event_ratio_blink': expected_ratios.get(trial[gaze_trial_columns[0]], 0.0),
+                },
+            )
+
+        expected = pl.DataFrame(expected_data)
+        assert_frame_equal(default_result, expected)
+
+    @pytest.mark.parametrize(
+        (
+            'samples', 'gaze_trial_columns', 'override_trial_columns', 'events_data',
+            'expected_ratios',
+        ),
+        [
+            # Gaze is trialized by (trial, session), but override groups by session only.
+            pytest.param(
+                pl.DataFrame({
+                    'time': [0.0, 1.0, 0.0, 1.0],
+                    'trial': [1, 1, 2, 2],
+                    'session': [1, 1, 1, 1],
+                    'pixel': [[0, 0], [1, 1], [2, 2], [3, 3]],
+                }),
+                ['trial', 'session'],
+                ['session'],
+                [
+                    {'name': 'blink', 'onset': 0.0, 'offset': 0.0, 'trial': 1, 'session': 1},
+                ],
+                {1: 0.5},
+                id='override_trial_columns_by_session',
+            ),
+        ],
+    )
+    def test_event_ratio_trial_columns_override(
+        self,
+        samples,
+        gaze_trial_columns,
+        override_trial_columns,
+        events_data,
+        expected_ratios,
+    ):
+        """Passing explicit trial_columns overrides self.trial_columns."""
+        events = pm.Events(pl.DataFrame(events_data), trial_columns=gaze_trial_columns)
+        gaze = pm.Gaze(samples=samples, events=events, trial_columns=gaze_trial_columns)
+
+        result = gaze.samples.group_by(override_trial_columns, maintain_order=True).agg(
+            gaze.measure_events_ratio('blink', trial_columns=override_trial_columns).mean(),
+        )
+
+        expected_data = []
+        unique_groups = (
+            samples.select(override_trial_columns).unique().sort(override_trial_columns)
+        )
+        for group in unique_groups.to_dicts():
+            expected_data.append(
+                {
+                    **group,
+                    'event_ratio_blink': expected_ratios.get(
+                        group[override_trial_columns[0]], 0.0,
+                    ),
+                },
+            )
+
+        expected = pl.DataFrame(expected_data)
+        assert_frame_equal(result, expected)

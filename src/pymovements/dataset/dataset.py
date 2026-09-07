@@ -631,7 +631,7 @@ class Dataset:
         >>> import pymovements as pm
         >>>
         >>> dataset = pm.Dataset("ToyDataset", path='data/toy_dataset')
-        >>> dataset.download()# doctest:+ELLIPSIS
+        >>> dataset.download()# doctest:+ELLIPSIS,+REMOTE_DATA
         Downloading https://... to data...toy_dataset...downloads...
         Checking integrity of ...
         Extracting ... to data...toy_dataset...raw
