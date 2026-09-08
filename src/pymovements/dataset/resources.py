@@ -177,6 +177,11 @@ class ResourceDefinition:
             )
         return self.source
 
+    def _websource_attribute(self, attr: str) -> Any:
+        """Return an attribute of the inline ``WebSource``, or ``None`` without a source."""
+        source = self._resolved_websource(attr)
+        return getattr(source, attr) if source else None
+
     @property
     @deprecated(
         reason='Please use ResourceDefinition.source instead. '
@@ -195,8 +200,7 @@ class ResourceDefinition:
         str | None
             The URL to the downloadable resource.
         """
-        source = self._resolved_websource('url')
-        return source.url if source else None
+        return self._websource_attribute('url')
 
     @url.setter
     @deprecated(
@@ -229,8 +233,7 @@ class ResourceDefinition:
         str | None
             The target filename of the downloadable resource. This may be an archive.
         """
-        source = self._resolved_websource('filename')
-        return source.filename if source else None
+        return self._websource_attribute('filename')
 
     @filename.setter
     @deprecated(
@@ -263,8 +266,7 @@ class ResourceDefinition:
         str | None
             The MD5 checksum of the downloadable resource.
         """
-        source = self._resolved_websource('md5')
-        return source.md5 if source else None
+        return self._websource_attribute('md5')
 
     @md5.setter
     @deprecated(
@@ -297,8 +299,7 @@ class ResourceDefinition:
         list[str] | None
             A list of additional mirror URLs to download the resource.
         """
-        source = self._resolved_websource('mirrors')
-        return source.mirrors if source else None
+        return self._websource_attribute('mirrors')
 
     @mirrors.setter
     @deprecated(
