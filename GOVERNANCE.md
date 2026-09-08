@@ -7,10 +7,9 @@ pymovements has many more contributors than the people listed here. The full cre
 ## Core contributors
 
 Core contributors vote on pymovements Enhancement Proposals (see
-`docs/source/pmep/pmep-000-purpose-process-governance.md`). Core contributors are people with
+`docs/source/pmep/pmep-000-purpose-process-governance.md`). Core contributor status reflects
 sustained, design-level involvement across the project (code, review, or research direction),
-not a commit-count threshold. Additions are proposed by any core contributor and accepted like
-a PMEP.
+not a commit count. Additions are proposed by any core contributor and accepted like a PMEP.
 
 A core contributor without repository or governance activity (commit, review, issue or pull
 request comment, vote, design-review attendance) for 12 months becomes emeritus: credit kept,
