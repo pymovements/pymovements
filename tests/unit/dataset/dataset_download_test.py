@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import shutil
-from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
 
@@ -968,25 +967,6 @@ def test_download_dataset_deduplication():
     assert mock_download.call_count == 1
 
 
-def test_download_dataset_conflicting_sources_raises():
-    """Test that sources sharing (url, filename) but differing md5 raise ValueError."""
-    resource1 = ResourceDefinition(
-        content='gaze',
-        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
-    )
-    resource2 = ResourceDefinition(
-        content='precomputed_events',
-        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='def'),
-    )
-    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
-
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
-    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'def'\\)"):
-        download_dataset(definition, paths, extract=False)
-
-
 def test_download_dataset_resolves_named_source_reference():
     """Test that a string source reference is resolved to the named source and downloaded."""
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
@@ -1067,119 +1047,6 @@ def test_download_dataset_named_source_shared_by_multiple_resources_deduplicated
         download_dataset(definition, paths, extract=False)
 
     assert mock_download.call_count == 1
-
-
-def test_download_dataset_conflicting_sources_asymmetric_md5_raises():
-    """Test that a shared (url, filename) with md5 set on only one resource raises ValueError."""
-    resource1 = ResourceDefinition(
-        content='gaze',
-        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
-    )
-    resource2 = ResourceDefinition(
-        content='precomputed_events',
-        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
-    )
-    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
-
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
-    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'None'\\)"):
-        download_dataset(definition, paths, extract=False)
-
-
-def test_download_dataset_conflicting_sources_mirrors_raises():
-    """Test that a shared (url, filename) with differing mirrors raises ValueError."""
-    resource1 = ResourceDefinition(
-        content='gaze',
-        source=WebSource(
-            url='http://example.com/file.zip', filename='file.zip',
-            mirrors=['http://mirror.com/file.zip'],
-        ),
-    )
-    resource2 = ResourceDefinition(
-        content='precomputed_events',
-        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
-    )
-    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
-
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
-    with pytest.raises(ValueError, match='mirrors differ between resources'):
-        download_dataset(definition, paths, extract=False)
-
-
-def test_download_dataset_conflicting_sources_other_field_raises():
-    """Test that a shared (url, filename) with any other field difference raises ValueError."""
-    @dataclass(frozen=True)
-    class ExtendedWebSource(WebSource):
-        sha256: str | None = None
-
-    resource1 = ResourceDefinition(
-        content='gaze',
-        source=ExtendedWebSource(
-            url='http://example.com/file.zip', filename='file.zip', sha256='abc',
-        ),
-    )
-    resource2 = ResourceDefinition(
-        content='precomputed_events',
-        source=ExtendedWebSource(
-            url='http://example.com/file.zip', filename='file.zip', sha256='def',
-        ),
-    )
-    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
-
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
-    with pytest.raises(ValueError, match='sources differ between resources'):
-        download_dataset(definition, paths, extract=False)
-
-
-@pytest.mark.parametrize(
-    ('resources', 'sources'),
-    [
-        pytest.param(
-            [
-                ResourceDefinition(
-                    content='gaze',
-                    source=WebSource(url='http://example.com/a.zip', filename='file.zip'),
-                ),
-                ResourceDefinition(
-                    content='precomputed_events',
-                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
-                ),
-            ],
-            None,
-            id='inline_sources',
-        ),
-        pytest.param(
-            [
-                ResourceDefinition(content='gaze', source='main'),
-                ResourceDefinition(
-                    content='precomputed_events',
-                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
-                ),
-            ],
-            {'main': WebSource(url='http://example.com/a.zip', filename='file.zip')},
-            id='named_and_inline_sources',
-        ),
-    ],
-)
-def test_download_dataset_same_filename_different_urls_raises(resources, sources):
-    """Test that two sources sharing a filename but differing in url raise ValueError."""
-    definition = DatasetDefinition(name='test', resources=resources, sources=sources)
-
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
-    with pytest.raises(
-        ValueError,
-        match=r'the same filename is claimed by different urls '
-              r"\('http://example.com/a.zip' != 'http://example.com/b.zip'\)",
-    ):
-        download_dataset(definition, paths, extract=False)
 
 
 @mock.patch('pymovements.dataset.dataset_download.extract_archive')

@@ -882,6 +882,133 @@ def test_dataset_definition_filename_none_excluded_from_uniqueness():
     assert len(definition.sources) == 2
 
 
+def test_dataset_definition_resolved_sources_deduplicates():
+    """Test that resolved_sources returns a source shared by several resources only once."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resources = [
+        ResourceDefinition(content='gaze', source='main'),
+        ResourceDefinition(content='precomputed_events', source='main'),
+        ResourceDefinition(
+            content='imagestimulus',
+            source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+        ),
+    ]
+    definition = DatasetDefinition(name='test', resources=resources, sources={'main': source})
+
+    assert definition.resolved_sources() == [source]
+
+
+def test_dataset_definition_conflicting_sources_md5_raises():
+    """Test that sources sharing (url, filename) but differing md5 raise ValueError on init."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='def'),
+    )
+
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'def'\\)"):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+def test_dataset_definition_conflicting_sources_asymmetric_md5_raises():
+    """Test that a shared (url, filename) with md5 set on only one resource raises ValueError."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip', md5='abc'),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+
+    with pytest.raises(ValueError, match="md5 differs between resources \\('abc' != 'None'\\)"):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+def test_dataset_definition_conflicting_sources_mirrors_raises():
+    """Test that a shared (url, filename) with differing mirrors raises ValueError on init."""
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=WebSource(
+            url='http://example.com/file.zip', filename='file.zip',
+            mirrors=['http://mirror.com/file.zip'],
+        ),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
+    )
+
+    with pytest.raises(ValueError, match='mirrors differ between resources'):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+def test_dataset_definition_conflicting_sources_other_field_raises():
+    """Test that a shared (url, filename) with any other field difference raises ValueError."""
+    @dataclass(frozen=True)
+    class ExtendedWebSource(WebSource):
+        sha256: str | None = None
+
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=ExtendedWebSource(
+            url='http://example.com/file.zip', filename='file.zip', sha256='abc',
+        ),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=ExtendedWebSource(
+            url='http://example.com/file.zip', filename='file.zip', sha256='def',
+        ),
+    )
+
+    with pytest.raises(ValueError, match='sources differ between resources'):
+        DatasetDefinition(name='test', resources=[resource1, resource2])
+
+
+@pytest.mark.parametrize(
+    ('resources', 'sources'),
+    [
+        pytest.param(
+            [
+                ResourceDefinition(
+                    content='gaze',
+                    source=WebSource(url='http://example.com/a.zip', filename='file.zip'),
+                ),
+                ResourceDefinition(
+                    content='precomputed_events',
+                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
+                ),
+            ],
+            None,
+            id='inline_sources',
+        ),
+        pytest.param(
+            [
+                ResourceDefinition(content='gaze', source='main'),
+                ResourceDefinition(
+                    content='precomputed_events',
+                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
+                ),
+            ],
+            {'main': WebSource(url='http://example.com/a.zip', filename='file.zip')},
+            id='named_and_inline_sources',
+        ),
+    ],
+)
+def test_dataset_definition_same_filename_different_urls_raises(resources, sources):
+    """Test that two sources sharing a filename but differing in url raise ValueError on init."""
+    with pytest.raises(
+        ValueError,
+        match=r'the same filename is claimed by different urls '
+              r"\('http://example.com/a.zip' != 'http://example.com/b.zip'\)",
+    ):
+        DatasetDefinition(name='test', resources=resources, sources=sources)
+
+
 def test_dataset_definition_does_not_mutate_input_resources():
     """Test that the caller's input objects are not mutated."""
     source = WebSource(url='http://example.com', filename='data.zip')

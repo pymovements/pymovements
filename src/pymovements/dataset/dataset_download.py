@@ -25,37 +25,7 @@ import shutil
 from pymovements.dataset._utils._archives import extract_archive
 from pymovements.dataset.dataset_definition import DatasetDefinition
 from pymovements.dataset.dataset_paths import DatasetPaths
-from pymovements.dataset.resources import ResourceDefinition
-from pymovements.dataset.websource import WebSource
 from pymovements.exceptions import UnknownFileType
-
-
-def _resolve_source(
-        sources: dict[str, WebSource],
-        resource: ResourceDefinition,
-) -> WebSource | None:
-    """Resolve a resource's source reference to a ``WebSource``.
-
-    A resource ``source`` may be a ``WebSource`` (inline) or a string that references a key
-    of :py:attr:`~pymovements.DatasetDefinition.sources`.
-
-    Parameters
-    ----------
-    sources: dict[str, WebSource]
-        Mapping of source names to sources referenced by the resource.
-    resource: ResourceDefinition
-        The resource whose source should be resolved.
-
-    Returns
-    -------
-    WebSource | None
-        The resolved source, or ``None`` if the resource has no source.
-    """
-    source = resource.source
-    if isinstance(source, str):
-        # Dangling references are already rejected by DatasetDefinition validation on init.
-        return sources[source]
-    return source
 
 
 def download_dataset(
@@ -110,48 +80,7 @@ def download_dataset(
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
-    # Collect the unique sources referenced by the resources. A single source may be shared by
-    # multiple resources, so we deduplicate to download each file only once.
-    sources: list[WebSource] = []
-    seen: dict[tuple[str | None, str | None], WebSource] = {}
-    filename_urls: dict[str, str] = {}
-    for resource in definition.resources:
-        source = _resolve_source(definition.sources, resource)
-        if source is None:
-            continue
-        key = (source.url, source.filename)
-        existing = seen.get(key)
-        if existing is not None:
-            if existing != source:
-                if existing.md5 != source.md5:
-                    raise ValueError(
-                        f"Conflicting sources for url '{source.url}' and filename "
-                        f"'{source.filename}': md5 differs between resources "
-                        f"('{existing.md5}' != '{source.md5}').",
-                    )
-                if existing.mirrors != source.mirrors:
-                    raise ValueError(
-                        f"Conflicting sources for url '{source.url}' and filename "
-                        f"'{source.filename}': mirrors differ between resources "
-                        f"({existing.mirrors} != {source.mirrors}).",
-                    )
-                raise ValueError(
-                    f"Conflicting sources for url '{source.url}' and filename "
-                    f"'{source.filename}': sources differ between resources "
-                    f'({existing} != {source}).',
-                )
-            continue
-        # A repeated filename with a different url would silently overwrite the first download.
-        if source.filename is not None:
-            if source.filename in filename_urls:
-                raise ValueError(
-                    f"Conflicting sources for filename '{source.filename}': the same filename "
-                    f"is claimed by different urls ('{filename_urls[source.filename]}' != "
-                    f"'{source.url}').",
-                )
-            filename_urls[source.filename] = source.url
-        seen[key] = source
-        sources.append(source)
+    sources = definition.resolved_sources()
 
     if not sources:
         raise AttributeError(
@@ -220,7 +149,7 @@ def extract_dataset(
             destination_dirpath = getattr(paths, content_directory)
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
-                source = _resolve_source(definition.sources, resource)
+                source = definition.resolve_source(resource)
                 if source is None or source.filename is None:
                     continue
 

@@ -35,6 +35,7 @@ from pymovements._utils._html import repr_html
 from pymovements.dataset._utils._yaml import reverse_substitute_types
 from pymovements.dataset._utils._yaml import substitute_types
 from pymovements.dataset._utils._yaml import type_constructor
+from pymovements.dataset.resources import ResourceDefinition
 from pymovements.dataset.resources import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
 from pymovements.gaze.experiment import Experiment
@@ -322,6 +323,7 @@ class DatasetDefinition:
 
         self._validate_sources(self.sources)
         self._validate_resource_sources(self.resources, self.sources)
+        self.resolved_sources()
 
         if trial_columns is not None:
             warn(
@@ -500,6 +502,89 @@ class DatasetDefinition:
             f'resources is of type {type(resources).__name__} but must be of type'
             ' ResourceDefinitions or a list of dicts.',
         )
+
+    def resolve_source(self, resource: ResourceDefinition) -> WebSource | None:
+        """Resolve a resource's source reference to a ``WebSource``.
+
+        A resource ``source`` may be a ``WebSource`` (inline) or a string that references a key
+        of :py:attr:`~pymovements.DatasetDefinition.sources`.
+
+        Parameters
+        ----------
+        resource: ResourceDefinition
+            The resource whose source should be resolved.
+
+        Returns
+        -------
+        WebSource | None
+            The resolved source, or ``None`` if the resource has no source.
+        """
+        source = resource.source
+        if isinstance(source, str):
+            # Dangling references are already rejected by validation on init.
+            return self.sources[source]
+        return source
+
+    def resolved_sources(self) -> list[WebSource]:
+        """Return the unique resolved sources referenced by the resources.
+
+        A single source may be shared by multiple resources, so sources are deduplicated by
+        ``(url, filename)`` to download each file only once.
+
+        Returns
+        -------
+        list[WebSource]
+            The unique resolved sources of all resources with a source.
+
+        Raises
+        ------
+        ValueError
+            If two sources share the same ``url`` and ``filename`` but disagree on any other
+            field, or if two sources share the same ``filename`` but have different ``url``
+            values.
+        """
+        sources: list[WebSource] = []
+        seen: dict[tuple[str | None, str | None], WebSource] = {}
+        filename_urls: dict[str, str] = {}
+        for resource in self.resources:
+            source = self.resolve_source(resource)
+            if source is None:
+                continue
+            key = (source.url, source.filename)
+            existing = seen.get(key)
+            if existing is not None:
+                if existing != source:
+                    if existing.md5 != source.md5:
+                        raise ValueError(
+                            f"Conflicting sources for url '{source.url}' and filename "
+                            f"'{source.filename}': md5 differs between resources "
+                            f"('{existing.md5}' != '{source.md5}').",
+                        )
+                    if existing.mirrors != source.mirrors:
+                        raise ValueError(
+                            f"Conflicting sources for url '{source.url}' and filename "
+                            f"'{source.filename}': mirrors differ between resources "
+                            f"({existing.mirrors} != {source.mirrors}).",
+                        )
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': sources differ between resources "
+                        f'({existing} != {source}).',
+                    )
+                continue
+            # A repeated filename with a different url would silently overwrite the first
+            # download.
+            if source.filename is not None:
+                if source.filename in filename_urls:
+                    raise ValueError(
+                        f"Conflicting sources for filename '{source.filename}': the same "
+                        f"filename is claimed by different urls "
+                        f"('{filename_urls[source.filename]}' != '{source.url}').",
+                    )
+                filename_urls[source.filename] = source.url
+            seen[key] = source
+            sources.append(source)
+        return sources
 
     @staticmethod
     def from_yaml(path: str | Path) -> DatasetDefinition:
