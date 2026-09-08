@@ -30,47 +30,37 @@ from pymovements.gaze.io import from_ipc
 
 _CSV_KWARGS = {'pixel_columns': ['x_left_pix', 'y_left_pix']}
 
-_LOAD_FUNCTION_PARAMS = [
-    pytest.param(from_csv, 'monocular_example.csv', _CSV_KWARGS, id='from_csv'),
-    pytest.param(from_ipc, 'monocular_example.feather', {}, id='from_ipc'),
-    pytest.param(from_asc, 'eyelink_monocular_example.asc', {}, id='from_asc'),
-    pytest.param(from_begaze, 'didec_example.txt', {}, id='from_begaze'),
-]
-
 
 @pytest.mark.parametrize(
-    (
-        'load_function', 'example_filename',
-        'load_kwargs',
-    ), _LOAD_FUNCTION_PARAMS,
+    ('load_function', 'example_filename', 'load_kwargs'),
+    [
+        pytest.param(from_csv, 'monocular_example.csv', _CSV_KWARGS, id='from_csv'),
+        pytest.param(from_ipc, 'monocular_example.feather', {}, id='from_ipc'),
+        pytest.param(from_asc, 'eyelink_monocular_example.asc', {}, id='from_asc'),
+        pytest.param(from_begaze, 'didec_example.txt', {}, id='from_begaze'),
+    ],
 )
-def test_load_function_adds_absolute_source(
-        load_function, example_filename, load_kwargs, make_example_file,
-):
-    filepath = make_example_file(example_filename)
+class TestLoadFunctionSources:
+    def test_adds_absolute_source(
+            self, load_function, example_filename, load_kwargs, make_example_file,
+    ):
+        filepath = make_example_file(example_filename)
 
-    gaze = load_function(filepath, **load_kwargs)
+        gaze = load_function(filepath, **load_kwargs)
 
-    expected_sources = [filepath.resolve().as_posix()]
-    assert gaze.metadata['sources'] == expected_sources
-    # The source files are propagated to the events container.
-    assert gaze.events.metadata['sources'] == expected_sources
+        expected_sources = [filepath.resolve().as_posix()]
+        assert gaze.metadata['sources'] == expected_sources
+        # The source files are propagated to the events container.
+        assert gaze.events.metadata['sources'] == expected_sources
 
+    def test_accepts_str_filepath(
+            self, load_function, example_filename, load_kwargs, make_example_file,
+    ):
+        filepath = make_example_file(example_filename)
 
-@pytest.mark.parametrize(
-    (
-        'load_function', 'example_filename',
-        'load_kwargs',
-    ), _LOAD_FUNCTION_PARAMS,
-)
-def test_load_function_accepts_str_filepath(
-        load_function, example_filename, load_kwargs, make_example_file,
-):
-    filepath = make_example_file(example_filename)
+        gaze = load_function(str(filepath), **load_kwargs)
 
-    gaze = load_function(str(filepath), **load_kwargs)
-
-    assert gaze.metadata['sources'] == [filepath.resolve().as_posix()]
+        assert gaze.metadata['sources'] == [filepath.resolve().as_posix()]
 
 
 def test_from_csv_adds_no_source_for_file_object(make_example_file):
