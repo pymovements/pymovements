@@ -28,13 +28,14 @@ from pymovements.gaze.io import from_csv
 from pymovements.gaze.io import from_ipc
 
 
-_CSV_KWARGS = {'pixel_columns': ['x_left_pix', 'y_left_pix']}
-
-
 @pytest.mark.parametrize(
     ('load_function', 'example_filename', 'load_kwargs'),
     [
-        pytest.param(from_csv, 'monocular_example.csv', _CSV_KWARGS, id='from_csv'),
+        pytest.param(
+            from_csv, 'monocular_example.csv',
+            {'pixel_columns': ['x_left_pix', 'y_left_pix']},
+            id='from_csv',
+        ),
         pytest.param(from_ipc, 'monocular_example.feather', {}, id='from_ipc'),
         pytest.param(from_asc, 'eyelink_monocular_example.asc', {}, id='from_asc'),
         pytest.param(from_begaze, 'didec_example.txt', {}, id='from_begaze'),
@@ -68,7 +69,7 @@ def test_from_csv_adds_no_source_for_file_object(make_example_file):
     with open(filepath, encoding='utf-8') as csv_file:
         buffer = io.StringIO(csv_file.read())
 
-    gaze = from_csv(buffer, **_CSV_KWARGS)
+    gaze = from_csv(buffer, pixel_columns=['x_left_pix', 'y_left_pix'])
 
     assert 'sources' not in gaze.metadata
     assert 'sources' not in gaze.events.metadata
@@ -77,7 +78,11 @@ def test_from_csv_adds_no_source_for_file_object(make_example_file):
 def test_from_csv_respects_user_provided_sources(make_example_file):
     filepath = make_example_file('monocular_example.csv')
 
-    gaze = from_csv(filepath, metadata={'sources': ['my/custom/source.csv']}, **_CSV_KWARGS)
+    gaze = from_csv(
+        filepath,
+        metadata={'sources': ['my/custom/source.csv']},
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
 
     assert gaze.metadata['sources'] == ['my/custom/source.csv']
 
@@ -86,7 +91,11 @@ def test_from_csv_does_not_mutate_passed_metadata(make_example_file):
     filepath = make_example_file('monocular_example.csv')
     metadata = {'subject_id': 42}
 
-    gaze = from_csv(filepath, metadata=metadata, **_CSV_KWARGS)
+    gaze = from_csv(
+        filepath,
+        metadata=metadata,
+        pixel_columns=['x_left_pix', 'y_left_pix'],
+    )
 
     assert metadata == {'subject_id': 42}
     assert gaze.metadata == {
