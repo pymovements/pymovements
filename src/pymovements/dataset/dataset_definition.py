@@ -63,13 +63,11 @@ class DatasetDefinition:
         :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
         (default: {})
     resources: ResourceDefinitions
-        A list of dataset resources. Each list entry must be a dictionary with the following keys:
-
-        - `resource`: The url suffix of the resource.
-        - `filename`: The filename under which the file is saved as.
-        - `md5`: The MD5 checksum of the respective file.
-
-        (default: ResourceDefinitions())
+        A list of dataset resources. Each :py:class:`~pymovements.ResourceDefinition` specifies a
+        ``content`` type and a ``source``, which is either the name of an entry in
+        :py:attr:`~pymovements.DatasetDefinition.sources` or an inline
+        :py:class:`~pymovements.WebSource`. See :py:class:`~pymovements.ResourceDefinition` for
+        details on the available fields. (default: ResourceDefinitions())
     experiment: Experiment | None
         The experiment definition. (default: None)
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -172,13 +170,11 @@ class DatasetDefinition:
         :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
         (default: None)
     resources: ResourceDefinitions | Sequence[dict[str, Any]] | None
-        A list of dataset resources. Each list entry must be a dictionary with the following keys:
-
-        - `source`: The url suffix of the resource.
-        - `filename`: The filename under which the file is saved as.
-        - `md5`: The MD5 checksum of the respective file.
-
-        (default: None)
+        A list of dataset resources. Each list entry is a
+        :py:class:`~pymovements.ResourceDefinition` or a dictionary of its fields, specifying a
+        ``content`` type and a ``source`` that is either the name of an entry in ``sources`` or
+        an inline web source mapping. See :py:class:`~pymovements.ResourceDefinition` for details
+        on the available fields. (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
     custom_read_kwargs: dict[str, dict[str, Any]] | None
