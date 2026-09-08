@@ -28,21 +28,10 @@ import pytest
 from pymovements.gaze import from_asc
 
 
-@pytest.mark.parametrize(
-    'expected_ratio',
-    [
-        pytest.param(
-            # merging the overlapping intervals yields (1101 - 1005 + 1) / 105 = 97 / 105,
-            # the value the removed data_loss_ratio_blinks metadata field reported
-            97 / 105,
-            id='expected_behavior_overlap_merged',
-        ),
-    ],
-)
 @pytest.mark.filterwarnings('ignore:.*No eye tracker vendor found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker model found.*:UserWarning')
 @pytest.mark.filterwarnings('ignore:.*No eye tracker software version found.*:UserWarning')
-def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file, expected_ratio):
+def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file):
     """Overlapping binocular blink events are merged by measure_events_ratio.
 
     Binocular recordings emit separate left-eye and right-eye blink events which
@@ -96,4 +85,6 @@ def test_from_asc_binocular_overlapping_blinks_events_ratio(make_text_file, expe
         gaze.measure_events_ratio('blink_eyelink', sampling_rate=1000.0),
     ).item()
 
-    assert ratio == pytest.approx(expected_ratio)
+    # merging the overlapping intervals yields (1101 - 1005 + 1) / 105 = 97 / 105,
+    # the value the removed data_loss_ratio_blinks metadata field reported
+    assert ratio == pytest.approx(97 / 105)
