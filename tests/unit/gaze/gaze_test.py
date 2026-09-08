@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test all Gaze functionality."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 from copy import deepcopy
@@ -450,6 +451,22 @@ def test_gaze_copy_metadata_default():
 
     assert gaze_copy.metadata is not gaze_obj.metadata
     assert gaze_copy.metadata == gaze_obj.metadata
+
+
+def test_gaze_copy_metadata_sources_deepcopied():
+    gaze_obj = Gaze(
+        pl.DataFrame(schema={'x': pl.Float64, 'y': pl.Float64}),
+        experiment=None,
+        position_columns=['x', 'y'],
+        metadata={'sources': ['raw/sub_1.csv']},
+    )
+    gaze_copy = gaze_obj.clone()
+
+    assert gaze_copy.metadata['sources'] == ['raw/sub_1.csv']
+    assert gaze_copy.events.metadata['sources'] == ['raw/sub_1.csv']
+
+    gaze_copy.metadata['sources'].append('other.csv')
+    assert gaze_obj.metadata['sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_copy_messages():
@@ -1571,6 +1588,28 @@ def test_gaze_split_preserves_n_components():
 
     for split_gaze in split_gazes:
         assert split_gaze.n_components == 2
+
+
+def test_gaze_split_propagates_sources():
+    gaze = Gaze(
+        samples=pl.DataFrame({
+            'trial': [1, 1, 2],
+            'time': [0, 1, 2],
+            'x': [0.1, 0.2, 0.3],
+            'y': [0.1, 0.2, 0.3],
+        }),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        trial_columns='trial',
+        metadata={'sources': ['raw/sub_1.csv']},
+    )
+
+    splits = gaze.split(by='trial')
+
+    assert len(splits) == 2
+    for gaze_split in splits:
+        assert gaze_split.metadata['sources'] == ['raw/sub_1.csv']
+        assert gaze_split.events.metadata['sources'] == ['raw/sub_1.csv']
 
 
 def test_gaze_dataframe_split_default():

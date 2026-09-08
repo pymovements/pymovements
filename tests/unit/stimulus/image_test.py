@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Image stimulus class."""
-from copy import deepcopy
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -48,7 +47,7 @@ def test_image_stimulus_from_file_has_correct_metadata_default(make_example_file
     example_file = 'stimuli/pexels-zoorg-1000498.jpg'
     image_path = make_example_file(example_file)
     image_stimulus = from_file(image_path)
-    assert image_stimulus.metadata == {}
+    assert image_stimulus.metadata == {'sources': [Path(image_path).resolve().as_posix()]}
 
 
 @pytest.mark.parametrize(
@@ -59,17 +58,38 @@ def test_image_stimulus_from_file_has_correct_metadata_default(make_example_file
     ),
 )
 def test_image_stimulus_from_file_has_correct_metadata(metadata, make_example_file):
-    metadata_pre = deepcopy(metadata)
     image_path = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
     image_stimulus = from_file(image_path, metadata=metadata)
-    assert image_stimulus.metadata == metadata_pre
-    assert image_stimulus.metadata is metadata
+    expected_sources = [Path(image_path).resolve().as_posix()]
+    assert image_stimulus.metadata == {**metadata, 'sources': expected_sources}
+
+
+def test_image_stimulus_from_file_does_not_mutate_passed_metadata(make_example_file):
+    image_path = make_example_file('stimuli/pexels-zoorg-1000498.jpg')
+    metadata = {'key': 'value'}
+
+    image_stimulus = from_file(image_path, metadata=metadata)
+
+    assert metadata == {'key': 'value'}
+    assert image_stimulus.metadata == {
+        'key': 'value',
+        'sources': [Path(image_path).resolve().as_posix()],
+    }
 
 
 def test_image_stimulus_from_files(testfiles_dirpath):
     dirpath = testfiles_dirpath / 'stimuli'
     image_stimulus = from_files(dirpath, r'{book_name}-{page_num}-{line_num}.jpg')
     assert image_stimulus.images[0] == dirpath / 'pexels-zoorg-1000498.jpg'
+    assert image_stimulus.metadata['sources'] == [
+        Path(image).resolve().as_posix() for image in image_stimulus.images
+    ]
+
+
+def test_image_stimulus_from_files_no_matching_files_has_empty_metadata(tmp_path):
+    image_stimulus = from_files(tmp_path, r'{book_name}-{page_num}-{line_num}.jpg')
+    assert image_stimulus.images == []
+    assert image_stimulus.metadata == {}
 
 
 def test_image_stimulus_from_files_str(testfiles_dirpath):

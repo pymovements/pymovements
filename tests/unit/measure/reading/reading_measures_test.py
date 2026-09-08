@@ -126,6 +126,18 @@ def test_reading_measures_init_df():
     assert reading_measures.frame['a'].to_list() == [1, 2, 3]
 
 
+def test_reading_measures_metadata_defaults_to_empty_dict():
+    reading_measures = ReadingMeasures()
+    assert reading_measures.metadata == {}
+
+
+def test_reading_measures_metadata_is_stored():
+    reading_measures = ReadingMeasures(
+        metadata={'sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']},
+    )
+    assert reading_measures.metadata == {'sources': ['raw/sub_1.csv', 'stimuli/text_1_aoi.csv']}
+
+
 def test_compute_reading_measures_preserves_zero_based_word_indices():
     aois = pl.DataFrame({
         'word_idx': [0, 0, 1, 1],

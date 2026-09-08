@@ -34,6 +34,8 @@ import polars as pl
 from tqdm.auto import tqdm
 
 from pymovements._utils._html import repr_html
+from pymovements._utils._sources import merge_sources
+from pymovements._utils._sources import relativize_sources
 from pymovements._version import __version__
 from pymovements.dataset import dataset_download
 from pymovements.dataset import dataset_files
@@ -457,6 +459,7 @@ class Dataset:
         self.precomputed_events = dataset_files.load_precomputed_event_files(
             definition=self.definition,
             files=precomputed_event_files,
+            paths=self.paths,
         )
 
     def load_precomputed_reading_measures(self) -> None:
@@ -486,6 +489,7 @@ class Dataset:
         self.precomputed_reading_measures = dataset_files.load_precomputed_reading_measures(
             definition=self.definition,
             files=reading_measure_files,
+            paths=self.paths,
         )
 
     def split_gaze_data(
@@ -526,7 +530,8 @@ class Dataset:
         if isinstance(by, str):
             by = [by]
         self.precomputed_events = [
-            PrecomputedEventDataFrame(new_frame) for _frame in self.precomputed_events
+            PrecomputedEventDataFrame(new_frame, metadata=deepcopy(_frame.metadata))
+            for _frame in self.precomputed_events
             for new_frame in _frame.frame.partition_by(by=by)
         ]
 
@@ -596,6 +601,7 @@ class Dataset:
         self._check_fileinfo()
         self.stimuli = dataset_files.load_stimuli_files(
             files=[file for file in self._files if 'stimulus' in file.definition.content.lower()],
+            paths=self.paths,
         )
 
     def apply(
@@ -1155,8 +1161,12 @@ class Dataset:
         -------
         ReadingMeasures
             Returns a ReadingMeasures object containing the computed reading measures.
+            Its ``metadata['sources']`` entry lists the event source files and AOI files
+            the measures were derived from, with paths below the dataset root recorded
+            relative to it.
         """
         reading_measures_list = []
+        reading_measures_metadata: dict[str, Any] = {}
 
         for events in tqdm(self.events):
             if events.frame.is_empty():
@@ -1175,6 +1185,12 @@ class Dataset:
             )
 
             events.map_to_aois(aoi_text_stimulus)
+
+            # The reading measures are derived from the events and their AOI stimulus files.
+            # AOI files below the dataset root are recorded relative to it, like all other
+            # dataset sources.
+            relativize_sources(events.metadata, self.paths.dataset)
+            merge_sources(reading_measures_metadata, events.metadata)
 
             fixations = events.filter_by_name('fixation')
 
@@ -1210,7 +1226,7 @@ class Dataset:
         else:
             combined_df = pl.DataFrame()
 
-        return ReadingMeasures(combined_df)
+        return ReadingMeasures(combined_df, metadata=reading_measures_metadata)
 
     def clear_events(self) -> Dataset:
         """Clear event DataFrame.
