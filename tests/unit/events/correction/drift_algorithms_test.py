@@ -63,8 +63,7 @@ def test_attach(sample_fixations_and_lines):
 def test_chain(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
     res = corrected_y(fixations, da.chain(line_ys, x_thresh=192, y_thresh=32))
-    assert res[:4] == [100.0] * 4
-    assert res[4:8] == [200.0] * 4
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_cluster(sample_fixations_and_lines):
@@ -81,7 +80,7 @@ def test_compare(sample_fixations_and_lines):
     res = corrected_y(
         fixations, da.compare(word_locations, x_thresh=300, n_nearest_lines=2),
     )
-    assert len(res) == fixations.height
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_compare_clamps_n_nearest_lines_on_two_line_text():
@@ -114,22 +113,32 @@ def test_merge_ltr_and_rtl(sample_fixations_and_lines):
     # RankWarnings from poorly conditioned two-fixation line fits.
     fixations, line_ys = sample_fixations_and_lines
     res_ltr = corrected_y(fixations, da.merge(line_ys, text_right_to_left=False))
+    assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
+
+    # For RTL every within-line step is a sequence boundary, so the twelve one-fixation
+    # sequences must be merged back; only same-line pairs pass the gradient constraint
+    # (any cross-line pair has |gradient| >= 90 / 400 > g_thresh), recovering the lines.
     res_rtl = corrected_y(fixations, da.merge(line_ys, text_right_to_left=True))
-    assert len(res_ltr) == fixations.height
-    assert len(res_rtl) == fixations.height
+    assert res_rtl == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_regress(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
     res = corrected_y(fixations, da.regress(line_ys))
-    assert res[:4] == [100.0] * 4
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_segment_ltr_and_rtl(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
     res_ltr = corrected_y(fixations, da.segment(line_ys, text_right_to_left=False))
+    assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
+
+    # On this left-to-right fixture the RTL return sweep candidates are the within-line
+    # x-steps, which differ from each other only at floating point rounding level (they
+    # come from np.linspace), so which two rank largest is not hand-derivable; the exact
+    # output is therefore not pinned here (see test_segment_single_line_ltr_and_rtl for
+    # a pinned RTL case).
     res_rtl = corrected_y(fixations, da.segment(line_ys, text_right_to_left=True))
-    assert len(res_ltr) == fixations.height
     assert len(res_rtl) == fixations.height
 
 
@@ -149,15 +158,20 @@ def test_segment_single_line_ltr_and_rtl():
 def test_split_ltr_and_rtl(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
     res_ltr = corrected_y(fixations, da.split(line_ys, text_right_to_left=False))
+    assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
+
+    # For RTL the nine positive within-line x-steps are classified as return sweeps and
+    # the two -400 line changes are not, yielding segments 0-4, 5-8 and 9-11: segment
+    # means 105, 105, 105, 150, 195 then 195, 248.5, 302 then 302, 302, 302 snap to
+    # 100 (a 150 tie snaps to the first, upper line), 200 and 300.
     res_rtl = corrected_y(fixations, da.split(line_ys, text_right_to_left=True))
-    assert len(res_ltr) == fixations.height
-    assert len(res_rtl) == fixations.height
+    assert res_rtl == [100.0] * 5 + [200.0] * 4 + [300.0] * 3
 
 
 def test_stretch(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
     res = corrected_y(fixations, da.stretch(line_ys))
-    assert len(res) == fixations.height
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_warp(sample_fixations_and_lines):
@@ -166,13 +180,20 @@ def test_warp(sample_fixations_and_lines):
         np.tile(np.linspace(100, 500, 4), 3), np.repeat(line_ys.to_numpy(), 4),
     )
     res = corrected_y(fixations, da.warp(word_locations))
-    assert len(res) == fixations.height
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_slice(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
-    res = corrected_y(fixations, da.slice(line_ys))
-    assert len(res) == fixations.height
+    # The fixture's 100 px line spacing meets the default n_thresh=90 boundary, so no run
+    # merges into an adjacent proto line and an empty proto line remains above the first
+    # line's fixations: every run is assigned one line too far down.
+    res_default = corrected_y(fixations, da.slice(line_ys))
+    assert res_default == [200.0] * 4 + [300.0] * 8
+
+    # With n_thresh above the line spacing the runs merge onto their own lines.
+    res = corrected_y(fixations, da.slice(line_ys, n_thresh=150))
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
 def test_slice_prune_proto_lines():
