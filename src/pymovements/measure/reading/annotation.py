@@ -253,7 +253,8 @@ def delta_in(
 ) -> pl.Expr:
     """Compute the difference in word index from the previous fixation.
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as :func:`prev_word_idx` reintroduces the need for ``.over(...)``.
 
     Parameters
     ----------
@@ -325,7 +326,8 @@ def delta_out(
 ) -> pl.Expr:
     """Compute the difference in word index to the next fixation.
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as :func:`next_word_idx` reintroduces the need for ``.over(...)``.
 
     Parameters
     ----------
@@ -394,7 +396,9 @@ def delta_out(
 def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
     """Flag fixations that arrive from a higher-index word (regression in).
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as a composed :func:`delta_in` reintroduces the need for
+    ``.over(...)``.
 
     Parameters
     ----------
@@ -460,7 +464,9 @@ def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
 def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
     """Flag fixations that depart to a lower-index word (regression out).
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as a composed :func:`delta_out` reintroduces the need for
+    ``.over(...)``.
 
     Parameters
     ----------
