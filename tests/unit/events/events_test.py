@@ -520,6 +520,12 @@ def test_init_invalid_time_unit_raises_value_error(time_unit):
         Events(name='fixation', onsets=[5], offsets=[10], time_unit=time_unit)
 
 
+def test_init_only_data_is_positional():
+    # All parameters except data are keyword-only; passing name positionally must fail.
+    with pytest.raises(TypeError):
+        Events(pl.DataFrame(), 'fixation')  # pylint: disable=too-many-function-args
+
+
 def test_init_rounds_sub_microsecond_duration_input():
     # Sub-microsecond Duration input is rounded to the nearest microsecond, not truncated.
     events = Events(
