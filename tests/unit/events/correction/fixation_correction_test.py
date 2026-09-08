@@ -554,6 +554,22 @@ def test_correct_fixation_locations_derives_height_and_end_x(sample_events_and_a
     assert locs_derived.to_list() == locs_full.to_list()
 
 
+def test_correct_fixations_no_aois_for_trial_raises(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events_dangling = events_df.with_columns(pl.lit('TRIAL2').alias('trial'))
+    with pytest.raises(ValueError, match=r"no AOIs found for trial \{'trial': 'TRIAL2'\}"):
+        correct_fixations(events_dangling, aois_df, trial_columns='trial')
+
+
+def test_correct_fixation_locations_missing_line_y_columns_raises():
+    events_df = pl.DataFrame({'name': ['fixation'], 'location': [[100.0, 105.0]]})
+    aois_df = pl.DataFrame({'word': ['Word1'], 'height': [40.0]})
+    with pytest.raises(
+        ValueError, match="requires a 'start_y' or 'top_left_y' column",
+    ):
+        correct_fixation_locations(events_df, aois_df, algorithm='attach')
+
+
 def test_correct_fixations_missing_trial_columns_raises():
     events_df = pl.DataFrame({
         'name': ['fixation'],

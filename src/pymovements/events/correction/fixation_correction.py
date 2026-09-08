@@ -76,8 +76,21 @@ def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
     tuple[pl.DataFrame, str]
         AOIs dataframe with an added 'line_center' column in original row order, and the
         name of the column identifying lines.
+
+    Raises
+    ------
+    ValueError
+        If the AOIs dataframe has neither a 'start_y' nor a 'top_left_y' column.
     """
-    y_col = 'start_y' if 'start_y' in aois.columns else 'top_left_y'
+    if 'start_y' in aois.columns:
+        y_col = 'start_y'
+    elif 'top_left_y' in aois.columns:
+        y_col = 'top_left_y'
+    else:
+        raise ValueError(
+            "AOIs dataframe requires a 'start_y' or 'top_left_y' column to derive text "
+            'line positions.',
+        )
     line_key = 'line_idx' if 'line_idx' in aois.columns else y_col
 
     aois_with_line_centers = (
@@ -538,8 +551,9 @@ def correct_fixations(
     Raises
     ------
     ValueError
-        If trial_columns are missing from the events dataframe, or if the fixation events
-        have already been corrected.
+        If trial_columns are missing from the events dataframe, if no AOIs are found for
+        a trial with fixations to correct, or if the fixation events have already been
+        corrected.
     """
     if isinstance(trial_columns, str):
         trial_columns = [trial_columns]
@@ -600,6 +614,12 @@ def correct_fixations(
         fixation_events = trial_events.filter(pl.col('name') == fixation_name)
         if fixation_events.height == 0:
             continue
+
+        if aoi_trial_columns and trial_aois.height == 0:
+            trial_values = {
+                column: trial_events[column][0] for column in aoi_trial_columns
+            }
+            raise ValueError(f'no AOIs found for trial {trial_values}.')
 
         corrected_locs = correct_fixation_locations(
             fixation_events, trial_aois, algorithm=algorithm,
