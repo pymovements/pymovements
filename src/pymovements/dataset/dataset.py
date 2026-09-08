@@ -1251,7 +1251,9 @@ class Dataset:
         word_locations: pl.Series | None
             Series of [x, y] word center coordinates for the DTW-based algorithms
             'compare' and 'warp'. If None, word locations are derived from the aois
-            dataframe. (default: None)
+            dataframe. A user-supplied series is reused unchanged for every trial, so
+            with per-trial AOIs leave it None to derive the word locations of each trial
+            separately. (default: None)
         algorithm_kwargs: dict[str, Any] | None
             Additional tuning parameters passed to underlying drift correction algorithms.
             Warning: in ensemble mode an entry fans out to every candidate algorithm whose
