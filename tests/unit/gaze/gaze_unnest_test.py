@@ -449,6 +449,14 @@ def test_gaze_unnest_errors(init_data, unnest_kwargs, exception, message):
             "cannot infer number of components in empty column 'pixel'",
             id='empty_list_column',
         ),
+        pytest.param(
+            pl.DataFrame(
+                {'pixel': [[1.0, 2.0], [1.0, 2.0, 3.0]]},
+                schema_overrides={'pixel': pl.List(pl.Float64)},
+            ),
+            "number of components inconsistent in column 'pixel'",
+            id='inconsistent_list_lengths',
+        ),
     ],
 )
 def test_gaze_unnest_uninferable_list_column_raises(samples, expected_message):
