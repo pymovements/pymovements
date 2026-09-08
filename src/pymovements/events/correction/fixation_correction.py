@@ -229,6 +229,30 @@ def _normalize_aois(aois: pl.DataFrame) -> pl.DataFrame:
     return aois
 
 
+def _count_text_lines(aois: pl.DataFrame, word_locations: pl.Series | None) -> int | None:
+    """Count the text lines of a trial, or None if no line information is available."""
+    if (
+        ('start_y' in aois.columns or 'top_left_y' in aois.columns)
+        and 'height' in aois.columns
+    ):
+        return len(_get_lines_of_text_from_aois(aois))
+    if word_locations is not None:
+        return word_locations.cast(pl.List(pl.Float64)).list.get(1).n_unique()
+    return None
+
+
+def _min_fixation_count(algorithms: set[str], n_lines: int) -> int:
+    """Minimum number of fixations the given drift algorithms need to run."""
+    minimum = 1
+    if 'cluster' in algorithms:
+        # cluster fits one KMeans cluster per text line.
+        minimum = max(minimum, n_lines)
+    if 'split' in algorithms:
+        # split fits a 2-cluster KMeans on the saccade x-differences between fixations.
+        minimum = max(minimum, 3)
+    return minimum
+
+
 def _select_ensemble_algorithms(
     algorithms: list[str],
     has_word_coords: bool,
@@ -533,6 +557,11 @@ def correct_fixations(
     'location_y_original' for split component columns) and the applied algorithm is
     recorded in a 'correction_algorithm' column, which is null for uncorrected rows.
 
+    Trials with too few fixations for the requested algorithms ('cluster' needs at least
+    one fixation per text line, 'split' at least three fixations) are skipped with a
+    UserWarning: their fixation locations stay uncorrected and their
+    'correction_algorithm' entries stay null.
+
     Parameters
     ----------
     events: pl.DataFrame
@@ -617,11 +646,15 @@ def correct_fixations(
             algo_name = 'wisdom_of_the_crowd'
         else:
             algo_name = algorithm[0]
+        requested_algorithms = set(algorithm)
     elif isinstance(algorithm, str) and algorithm.lower() not in {'wisdom_of_the_crowd', 'woc'}:
         algo_name = algorithm
+        requested_algorithms = {algorithm}
     else:
         algo_name = 'wisdom_of_the_crowd'
+        requested_algorithms = set(ALL_DRIFT_ALGORITHMS)
 
+    aois = _normalize_aois(aois)
     indexed_events = events.with_row_index('__fixation_correction_index')
 
     if trial_columns is not None:
@@ -633,6 +666,7 @@ def correct_fixations(
 
     corrected_indices: list[int] = []
     corrected_locations: list[pl.Series] = []
+    matched_fixation_count = 0
     for trial_events in trial_event_frames:
         if aoi_trial_columns:
             # Each partition holds a single combination of trial column values.
@@ -648,12 +682,34 @@ def correct_fixations(
         fixation_events = trial_events.filter(pl.col('name') == fixation_name)
         if fixation_events.height == 0:
             continue
+        matched_fixation_count += fixation_events.height
 
         if aoi_trial_columns and trial_aois.height == 0:
             trial_values = {
                 column: trial_events[column][0] for column in aoi_trial_columns
             }
             raise ValueError(f'no AOIs found for trial {trial_values}.')
+
+        n_lines = _count_text_lines(trial_aois, word_locations)
+        if n_lines is not None:
+            min_fixations = _min_fixation_count(requested_algorithms, n_lines)
+            if fixation_events.height < min_fixations:
+                if trial_columns:
+                    trial_values = {
+                        column: trial_events[column][0] for column in trial_columns
+                    }
+                    trial_part = f' for trial {trial_values}'
+                else:
+                    trial_part = ''
+                warnings.warn(
+                    f'Skipping fixation correction{trial_part}: '
+                    f'{fixation_events.height} fixations are too few for the requested '
+                    f'algorithms on {n_lines} text lines. The affected fixation '
+                    'locations stay uncorrected.',
+                    UserWarning,
+                    stacklevel=2,
+                )
+                continue
 
         corrected_locs = correct_fixation_locations(
             fixation_events, trial_aois, algorithm=algorithm,
@@ -665,7 +721,7 @@ def correct_fixations(
         corrected_locations.append(corrected_locs)
 
     if not corrected_indices:
-        if events.height > 0:
+        if events.height > 0 and matched_fixation_count == 0:
             event_names = events['name'].unique().sort().to_list()
             warnings.warn(
                 f"No events matched fixation_name '{fixation_name}', so no fixations were "

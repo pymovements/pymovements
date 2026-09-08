@@ -402,6 +402,124 @@ def test_correct_fixations_multiple_trials_corrected_independently(sample_events
         assert trial_locations == expected_locations
 
 
+def test_correct_fixations_skips_short_trial_with_warning(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    short_trial = pl.DataFrame({
+        'trial': ['TRIAL2'] * 2,
+        'name': ['fixation'] * 2,
+        'onset': [0, 100],
+        'location': [[100.0, 105.0], [200.0, 102.0]],
+    })
+    events_two_trials = pl.concat([events_df, short_trial])
+    aois_two_trials = pl.concat([
+        aois_df,
+        aois_df.with_columns(pl.lit('TRIAL2').alias('trial')),
+    ])
+
+    # The default ensemble needs at least three fixations on this three-line text, so
+    # TRIAL2 is skipped while TRIAL1 is corrected.
+    with pytest.warns(
+        UserWarning,
+        match=(
+            r"Skipping fixation correction for trial \{'trial': 'TRIAL2'\}: "
+            r'2 fixations are too few for the requested algorithms on 3 text lines'
+        ),
+    ):
+        res_df = correct_fixations(events_two_trials, aois_two_trials, trial_columns='trial')
+
+    corrected_rows = res_df.filter(pl.col('trial') == 'TRIAL1')
+    assert corrected_rows['correction_algorithm'].to_list() == ['wisdom_of_the_crowd'] * 6
+    skipped_rows = res_df.filter(pl.col('trial') == 'TRIAL2')
+    assert skipped_rows['correction_algorithm'].to_list() == [None, None]
+    assert skipped_rows['location'].to_list() == [[100.0, 105.0], [200.0, 102.0]]
+    assert skipped_rows['location_original'].to_list() == [None, None]
+
+
+def test_correct_fixations_all_trials_skipped_returns_unchanged(sample_events_and_aois):
+    _, aois_df = sample_events_and_aois
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 2,
+        'location': [[100.0, 105.0], [200.0, 102.0]],
+    })
+
+    # cluster needs one fixation per text line; two fixations on three lines are skipped.
+    with pytest.warns(UserWarning) as warning_records:
+        res_df = correct_fixations(events_df, aois_df, algorithm='cluster')
+
+    assert len(warning_records) == 1
+    assert 'Skipping fixation correction: 2 fixations are too few' in str(
+        warning_records[0].message,
+    )
+    assert res_df.equals(events_df)
+
+
+def test_correct_fixations_skips_split_below_three_fixations():
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 2,
+        'location': [[100.0, 105.0], [200.0, 102.0]],
+    })
+    aois_df = pl.DataFrame({
+        'start_y': [80.0, 180.0],
+        'height': [40.0, 40.0],
+    })
+
+    # split clusters the saccades between fixations and needs at least three fixations,
+    # even though the fixation count matches the line count here.
+    with pytest.warns(
+        UserWarning,
+        match='2 fixations are too few for the requested algorithms on 2 text lines',
+    ):
+        res_df = correct_fixations(events_df, aois_df, algorithm='split')
+    assert res_df.equals(events_df)
+
+
+def test_correct_fixations_skips_short_trial_counting_word_location_lines():
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 2,
+        'location': [[100.0, 105.0], [200.0, 102.0]],
+    })
+    aois_df = pl.DataFrame({'word': ['Word1', 'Word2', 'Word3']})
+    word_locations = make_word_locations([
+        [125.0, 100.0], [125.0, 200.0], [125.0, 300.0],
+    ])
+
+    # Without AOI line information the line count comes from the word locations.
+    with pytest.warns(
+        UserWarning,
+        match='2 fixations are too few for the requested algorithms on 3 text lines',
+    ):
+        res_df = correct_fixations(
+            events_df, aois_df, algorithm=['cluster', 'warp'], word_locations=word_locations,
+        )
+    assert res_df.equals(events_df)
+
+
+def test_correct_fixations_without_line_info_and_word_locations_raises():
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 3,
+        'location': [[100.0, 105.0], [200.0, 102.0], [300.0, 198.0]],
+    })
+    aois_df = pl.DataFrame({'word': ['Word1', 'Word2']})
+    with pytest.raises(ValueError, match="requires a 'start_y' or 'top_left_y' column"):
+        correct_fixations(events_df, aois_df, algorithm='attach')
+
+
+def test_correct_fixations_attach_single_fixation_not_skipped():
+    events_df = pl.DataFrame({
+        'name': ['fixation'],
+        'location': [[100.0, 105.0]],
+    })
+    aois_df = pl.DataFrame({
+        'start_y': [80.0, 180.0, 280.0],
+        'height': [40.0, 40.0, 40.0],
+    })
+
+    # attach handles any fixation count, so a single fixation on three lines is corrected.
+    res_df = correct_fixations(events_df, aois_df, algorithm='attach')
+    assert res_df['correction_algorithm'].to_list() == ['attach']
+    assert res_df['location'].to_list() == [[100.0, 100.0]]
+
+
 def test_correct_fixations_rerun_raises(sample_events_and_aois):
     events_df, aois_df = sample_events_and_aois
     once = correct_fixations(events_df, aois_df, algorithm='attach')

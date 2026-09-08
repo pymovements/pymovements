@@ -1038,7 +1038,8 @@ class Events:
         algorithm. Fixation locations
         are replaced with their corrected values; original locations are preserved in a
         ``location_original`` column and the applied algorithm is recorded in a
-        ``correction_algorithm`` column. See
+        ``correction_algorithm`` column. Trials with too few fixations for the requested
+        algorithms are skipped with a UserWarning and stay uncorrected. See
         :py:func:`~pymovements.events.correction.correct_fixations` for details.
 
         Parameters
