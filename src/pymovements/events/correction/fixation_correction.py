@@ -334,7 +334,8 @@ def correct_fixation_locations(
         by none of the candidate algorithms. (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
-        corrected. (default: 'fixation')
+        corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
+        is applied. (default: 'fixation')
 
     Returns
     -------
@@ -525,7 +526,9 @@ def correct_fixations(
         candidate algorithms that accept it. (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
-        corrected. (default: 'fixation')
+        corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
+        is applied. If no events match, a UserWarning is emitted and the events dataframe
+        is returned unchanged. (default: 'fixation')
 
     Returns
     -------
@@ -608,6 +611,14 @@ def correct_fixations(
         corrected_locations.append(corrected_locs)
 
     if not corrected_indices:
+        if events.height > 0:
+            event_names = events['name'].unique().sort().to_list()
+            warnings.warn(
+                f"No events matched fixation_name '{fixation_name}', so no fixations were "
+                f'corrected. Event names present in the events dataframe: {event_names}.',
+                UserWarning,
+                stacklevel=2,
+            )
         return events
 
     updates = pl.DataFrame({

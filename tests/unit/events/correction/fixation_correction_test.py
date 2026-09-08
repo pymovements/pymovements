@@ -567,8 +567,31 @@ def test_correct_fixations_missing_trial_columns_raises():
 def test_correct_fixations_empty_fixations(sample_events_and_aois):
     _, aois_df = sample_events_and_aois
     empty_events_df = pl.DataFrame({'name': ['saccade'], 'trial': ['TRIAL1']})
-    res_df = correct_fixations(empty_events_df, aois_df)
+    with pytest.warns(UserWarning, match="No events matched fixation_name 'fixation'"):
+        res_df = correct_fixations(empty_events_df, aois_df)
     assert res_df.height == 1
+
+
+def test_correct_fixations_no_matching_fixation_name_warns(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    events_ivt = events_df.with_columns(pl.lit('fixation_ivt').alias('name'))
+    with pytest.warns(
+        UserWarning,
+        match=(
+            r"No events matched fixation_name 'fixation', so no fixations were corrected\. "
+            r"Event names present in the events dataframe: \['fixation_ivt'\]\."
+        ),
+    ):
+        res_df = correct_fixations(events_ivt, aois_df, trial_columns='trial')
+    assert res_df.equals(events_ivt)
+
+
+def test_correct_fixations_empty_events_does_not_warn(sample_events_and_aois):
+    # filterwarnings = error turns any unexpected warning into a test failure.
+    _, aois_df = sample_events_and_aois
+    empty_events_df = pl.DataFrame(schema={'name': pl.Utf8, 'trial': pl.Utf8})
+    res_df = correct_fixations(empty_events_df, aois_df)
+    assert res_df.height == 0
 
 
 def test_get_lines_of_text_from_aois_top_left_y():
