@@ -8,6 +8,10 @@ description: "Eye-Tracking Dyslexia Dataset (ETDD70) :cite:p:`ETDD70`.\n\nThis d
   \ MeaningfulText consists of a passage about\n    a young boy who watches a squirrel\
   \ from his window.\n  - Task called PseudoText comprises fictional, meaningless\
   \ words.\n\nCheck the respective paper for details :cite:p:`ETDD70`.\n"
+sources:
+  dataset:
+    url: https://zenodo.org/api/records/13332134/files-archive
+    filename: etdd70.zip
 resources:
 - content: gaze
   source: dataset
@@ -23,10 +27,6 @@ resources:
 - content: precomputed_events
   source: dataset
   filename_pattern: Subject_{subject_id:d}_{task:s}_fixations.csv
-sources:
-  dataset:
-    url: https://zenodo.org/api/records/13332134/files-archive
-    filename: etdd70.zip
 experiment:
   eyetracker:
     sampling_rate: 250

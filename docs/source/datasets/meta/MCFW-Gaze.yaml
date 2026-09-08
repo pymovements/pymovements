@@ -24,6 +24,11 @@ description: 'MCFW-Gaze dataset :cite:p:`MCFW-Gaze-Paper,MCFW-Gaze-Zenodo`.
   for details.
 
   '
+sources:
+  dataset:
+    url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
+    filename: dataset.zip
+    md5: 5e04a7b5e50f7508775e1daea527246b
 resources:
 - content: participants
   source: dataset
@@ -54,11 +59,6 @@ resources:
 - content: imagestimulus
   source: dataset
   filename_pattern: '{stimulus_id:d}.jpg'
-sources:
-  dataset:
-    url: https://zenodo.org/records/20300972/files/dataset.zip?download=1
-    filename: dataset.zip
-    md5: 5e04a7b5e50f7508775e1daea527246b
 experiment:
   eyetracker:
     sampling_rate: 120

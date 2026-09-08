@@ -57,6 +57,10 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
+    sources: dict[str, WebSource]
+        A mapping of names to dataset sources. Entries can be referenced from
+        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
+        (default: {})
     resources: ResourceDefinitions
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
@@ -65,10 +69,6 @@ class DatasetDefinition:
         - `md5`: The MD5 checksum of the respective file.
 
         (default: ResourceDefinitions())
-    sources: dict[str, WebSource]
-        A mapping of names to dataset sources. Entries can be referenced from
-        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
-        (default: {})
     experiment: Experiment | None
         The experiment definition. (default: None)
     custom_read_kwargs: dict[str, dict[str, Any]] | None
@@ -166,6 +166,10 @@ class DatasetDefinition:
     description: str | None
         A fulltext description of the dataset.
         (default: None)
+    sources: dict[str, WebSource | dict[str, Any]] | None
+        A mapping of names to dataset sources. Entries can be referenced from
+        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
+        (default: None)
     resources: ResourceDefinitions | Sequence[dict[str, Any]] | None
         A list of dataset resources. Each list entry must be a dictionary with the following keys:
 
@@ -173,10 +177,6 @@ class DatasetDefinition:
         - `filename`: The filename under which the file is saved as.
         - `md5`: The MD5 checksum of the respective file.
 
-        (default: None)
-    sources: dict[str, WebSource | dict[str, Any]] | None
-        A mapping of names to dataset sources. Entries can be referenced from
-        :py:attr:`~pymovements.ResourceDefinition.source` by passing the name as a string.
         (default: None)
     experiment: Experiment | None
         The experiment definition. (default: None)
@@ -272,9 +272,9 @@ class DatasetDefinition:
 
     description: str | None = None
 
-    resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
-
     sources: dict[str, WebSource] = field(default_factory=dict)
+
+    resources: ResourceDefinitions = field(default_factory=ResourceDefinitions)
 
     experiment: Experiment | None = field(default_factory=Experiment)
 
@@ -297,8 +297,8 @@ class DatasetDefinition:
             *,
             long_name: str | None = None,
             description: str | None = None,
-            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None = None,
             sources: dict[str, WebSource | dict[str, Any]] | None = None,
+            resources: ResourceDefinitions | Sequence[dict[str, Any]] | None = None,
             experiment: Experiment | None = None,
             custom_read_kwargs: dict[str, dict[str, Any]] | None = None,
             column_map: dict[str, str] | None = None,
@@ -317,8 +317,8 @@ class DatasetDefinition:
 
         self.experiment = experiment
 
-        self.resources = self._initialize_resources(resources=resources)
         self.sources = self._initialize_sources(sources=sources)
+        self.resources = self._initialize_resources(resources=resources)
 
         self._validate_sources(self.sources)
         self._validate_resource_sources(self.resources, self.sources)
