@@ -445,7 +445,7 @@ class DatasetDefinition:
 
         Parameters
         ----------
-        sources : dict[str, WebSource]
+        sources: dict[str, WebSource]
             Mapping of source names to sources to validate.
         """
         filenames: set[str] = set()
@@ -464,9 +464,9 @@ class DatasetDefinition:
 
         Parameters
         ----------
-        resources : ResourceDefinitions
+        resources: ResourceDefinitions
             Resource definitions to validate source references against.
-        sources : dict[str, WebSource]
+        sources: dict[str, WebSource]
             Mapping of source names to sources to validate against.
         """
         referenced_names: set[str] = set()
