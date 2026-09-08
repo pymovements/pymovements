@@ -1169,7 +1169,7 @@ def test_resource_definition_to_dict_source_reference():
 @pytest.mark.filterwarnings('ignore:.*ResourceDefinition.source.*:DeprecationWarning')
 def test_resource_definition_deprecated_property_raises_on_reference(attribute):
     resource = ResourceDefinition(content='gaze', source='src1')
-    with pytest.raises(AttributeError, match="resolved to the named reference 'src1'"):
+    with pytest.raises(AttributeError, match=r"is a named reference \('src1'\)"):
         getattr(resource, attribute)
 
 
@@ -1190,5 +1190,5 @@ def test_resource_definition_from_dict_invalid_source_type():
 @pytest.mark.filterwarnings('ignore:.*ResourceDefinition.source.*:DeprecationWarning')
 def test_resource_definition_deprecated_property_setter_raises_on_reference(attribute, value):
     resource = ResourceDefinition(content='gaze', source='src1')
-    with pytest.raises(AttributeError, match="resolved to the named reference 'src1'"):
+    with pytest.raises(AttributeError, match=r"is a named reference \('src1'\)"):
         setattr(resource, attribute, value)

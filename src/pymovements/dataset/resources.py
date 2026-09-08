@@ -168,12 +168,12 @@ class ResourceDefinition:
         self.load_kwargs = load_kwargs
 
     def _resolved_websource(self, attr: str) -> WebSource | None:
-        """Return ``source`` if unresolved, raising if it has been hoisted to a name reference."""
+        """Return the inline ``WebSource``, raising if the source is a named reference."""
         if isinstance(self.source, str):
             raise AttributeError(
                 f"ResourceDefinition.{attr} is not available because this resource's source "
-                f"has been resolved to the named reference '{self.source}'. "
-                'Access DatasetDefinition.sources instead.',
+                f"is a named reference ('{self.source}'). "
+                'Look it up in DatasetDefinition.sources instead.',
             )
         return self.source
 
@@ -332,7 +332,8 @@ class ResourceDefinition:
                 dictionary['source'] = WebSource.from_dict(dictionary['source'])
             elif not isinstance(dictionary['source'], (str, WebSource)):
                 raise TypeError(
-                    f"source must be str, WebSource or dict, but is {type(dictionary['source'])}",
+                    'source must be str, WebSource or dict, '
+                    f"but is {type(dictionary['source']).__name__}",
                 )
 
         return ResourceDefinition(**dictionary)
