@@ -125,6 +125,37 @@ def _nearest_index(values: Sequence[float], target: float) -> int:
     return min(range(len(values)), key=lambda index: abs(values[index] - target))
 
 
+def _is_right_to_left(directionality: str) -> bool:
+    """Validate a directionality value and resolve it to a right-to-left flag.
+
+    Parameters
+    ----------
+    directionality: str
+        Reading direction of the text, either 'left-to-right' or 'right-to-left'.
+
+    Returns
+    -------
+    bool
+        True if the directionality is 'right-to-left', False if 'left-to-right'.
+
+    Raises
+    ------
+    ValueError
+        If the directionality is 'top-to-bottom' or not a known value.
+    """
+    if directionality == 'top-to-bottom':
+        raise ValueError(
+            "directionality 'top-to-bottom' is not supported by the drift correction "
+            'algorithms, which assume horizontal lines of text.',
+        )
+    if directionality not in ('left-to-right', 'right-to-left'):
+        raise ValueError(
+            f"Unknown directionality '{directionality}'. "
+            "Valid values are: 'left-to-right', 'right-to-left'.",
+        )
+    return directionality == 'right-to-left'
+
+
 ######################################################################
 # ATTACH
 ######################################################################
@@ -370,7 +401,7 @@ def merge(
     y_thresh: float = 32,
     g_thresh: float = 0.1,
     e_thresh: float = 20,
-    text_right_to_left: bool = False,
+    directionality: str = 'left-to-right',
     location: str | pl.Expr = 'location',
 ) -> pl.Expr:
     """Form progressive sequences and iteratively merge sequences belonging to the same line.
@@ -387,9 +418,11 @@ def merge(
         Gradient constraint for sequence merging. (default: 0.1)
     e_thresh: float
         Error constraint for sequence merging. (default: 20)
-    text_right_to_left: bool
-        If True, adjusts return sweep detection for Right-to-Left reading scripts.
-        (default: False)
+    directionality: str
+        Reading direction of the text, either 'left-to-right' or 'right-to-left',
+        mirroring the directionality of a text stimulus writing system. For
+        'right-to-left' the return sweep detection is adjusted accordingly.
+        (default: 'left-to-right')
     location: str | pl.Expr
         Column name or expression of [x, y] fixation locations. The returned expression
         operates on the full fixation sequence of a single trial, so it must be evaluated
@@ -399,7 +432,13 @@ def merge(
     -------
     pl.Expr
         Expression computing the corrected y-coordinates.
+
+    Raises
+    ------
+    ValueError
+        If the directionality is 'top-to-bottom' or not a known value.
     """
+    right_to_left = _is_right_to_left(directionality)
     line_values = _line_values(line_ys)
 
     def _fit_line_error(x_values: list[float], y_values: list[float]) -> tuple[float, float]:
@@ -426,7 +465,7 @@ def merge(
         # and at every large vertical jump.
         def _is_boundary(index: int) -> bool:
             x_diff = x_values[index + 1] - x_values[index]
-            regressive = x_diff > 0 if text_right_to_left else x_diff < 0
+            regressive = x_diff > 0 if right_to_left else x_diff < 0
             return regressive or abs(y_values[index + 1] - y_values[index]) > y_thresh
 
         boundaries = [index + 1 for index in range(n - 1) if _is_boundary(index)]
@@ -566,7 +605,7 @@ def regress(
 def segment(
     line_ys: pl.Series | Sequence[float],
     *,
-    text_right_to_left: bool = False,
+    directionality: str = 'left-to-right',
     location: str | pl.Expr = 'location',
 ) -> pl.Expr:
     """Segment fixations into m line subsequences using return sweeps.
@@ -577,9 +616,11 @@ def segment(
     ----------
     line_ys: pl.Series | Sequence[float]
         Vertical y-coordinates (midlines) of lines of text.
-    text_right_to_left: bool
-        If True, identifies return sweeps for Right-to-Left reading scripts.
-        (default: False)
+    directionality: str
+        Reading direction of the text, either 'left-to-right' or 'right-to-left',
+        mirroring the directionality of a text stimulus writing system. For
+        'right-to-left' the return sweeps are identified accordingly.
+        (default: 'left-to-right')
     location: str | pl.Expr
         Column name or expression of [x, y] fixation locations. The returned expression
         operates on the full fixation sequence of a single trial, so it must be evaluated
@@ -589,7 +630,13 @@ def segment(
     -------
     pl.Expr
         Expression computing the corrected y-coordinates.
+
+    Raises
+    ------
+    ValueError
+        If the directionality is 'top-to-bottom' or not a known value.
     """
+    right_to_left = _is_right_to_left(directionality)
     line_values = _line_values(line_ys)
     m = len(line_values)
     x_diff = _location_x(location).diff()
@@ -597,7 +644,7 @@ def segment(
     # The m - 1 largest return sweep candidates mark line changes: the most negative
     # x-differences for left-to-right reading, the most positive ones for right-to-left
     # reading. With a single line no ordinal rank is <= 0, so no line changes occur.
-    sweep_rank = x_diff.rank(method='ordinal', descending=text_right_to_left)
+    sweep_rank = x_diff.rank(method='ordinal', descending=right_to_left)
     line_change = (sweep_rank <= m - 1).fill_null(value=False)
     line_index = line_change.cum_sum()
     return _line_index_to_y(line_index, line_values).alias('y_segment')
@@ -611,7 +658,7 @@ def segment(
 def split(
     line_ys: pl.Series | Sequence[float],
     *,
-    text_right_to_left: bool = False,
+    directionality: str = 'left-to-right',
     location: str | pl.Expr = 'location',
 ) -> pl.Expr:
     """Split fixation sequence into line subsequences using K-Means return sweep identification.
@@ -622,9 +669,11 @@ def split(
     ----------
     line_ys: pl.Series | Sequence[float]
         Vertical y-coordinates (midlines) of lines of text.
-    text_right_to_left: bool
-        If True, identifies return sweeps for Right-to-Left reading scripts.
-        (default: False)
+    directionality: str
+        Reading direction of the text, either 'left-to-right' or 'right-to-left',
+        mirroring the directionality of a text stimulus writing system. For
+        'right-to-left' the return sweeps are identified accordingly.
+        (default: 'left-to-right')
     location: str | pl.Expr
         Column name or expression of [x, y] fixation locations. The returned expression
         operates on the full fixation sequence of a single trial, so it must be evaluated
@@ -634,7 +683,13 @@ def split(
     -------
     pl.Expr
         Expression computing the corrected y-coordinates.
+
+    Raises
+    ------
+    ValueError
+        If the directionality is 'top-to-bottom' or not a known value.
     """
+    right_to_left = _is_right_to_left(directionality)
     line_values = _line_values(line_ys)
 
     def _split_core(locations: pl.Series) -> pl.Series:
@@ -650,7 +705,7 @@ def split(
             fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 0),
             fmean(x_diff for x_diff, label in zip(x_diffs, cluster_labels) if label == 1),
         ]
-        sweep_marker = centers.index(max(centers) if text_right_to_left else min(centers))
+        sweep_marker = centers.index(max(centers) if right_to_left else min(centers))
 
         is_sweep = [False] + [label == sweep_marker for label in cluster_labels]
         frame = pl.DataFrame({'y': y_values, 'is_sweep': is_sweep}).with_row_index()

@@ -1210,7 +1210,7 @@ class Dataset:
             aois: TextStimulus,
             algorithm: str | list[str] = 'wisdom_of_the_crowd',
             *,
-            text_right_to_left: bool | None = None,
+            directionality: str | None = None,
             word_locations: pl.Series | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
@@ -1234,9 +1234,12 @@ class Dataset:
         algorithm: str | list[str]
             Name of drift algorithm or list of algorithm names.
             (default: 'wisdom_of_the_crowd')
-        text_right_to_left: bool | None
-            Whether the text is read from right to left. If None, the reading direction is
-            inferred from the writing system of the text stimulus. (default: None)
+        directionality: str | None
+            Reading direction of the text, either 'left-to-right' or 'right-to-left',
+            mirroring the directionality of a text stimulus writing system;
+            'top-to-bottom' is not supported and raises a ValueError. If None, the
+            reading direction is inferred from the writing system of the text stimulus.
+            (default: None)
         word_locations: pl.Series | None
             Series of [x, y] word center coordinates for the DTW-based algorithms
             'compare' and 'warp'. If None, word locations are derived from the aois
@@ -1264,7 +1267,7 @@ class Dataset:
             events.correct_fixations(
                 aois,
                 algorithm=algorithm,
-                text_right_to_left=text_right_to_left,
+                directionality=directionality,
                 word_locations=word_locations,
                 algorithm_kwargs=algorithm_kwargs,
                 fixation_name=fixation_name,

@@ -59,6 +59,7 @@ from typing import Any
 import polars as pl
 
 import pymovements.events.correction.drift_algorithms as da
+from pymovements.events.correction.drift_algorithms import _is_right_to_left
 from pymovements.events.correction.drift_algorithms import _line_index_to_y
 from pymovements.events.correction.drift_algorithms import _location_x
 from pymovements.events.correction.drift_algorithms import _nearest_line_index
@@ -225,7 +226,7 @@ def _normalize_aois(aois: pl.DataFrame) -> pl.DataFrame:
 def _select_ensemble_algorithms(
     algorithms: list[str],
     has_word_coords: bool,
-    text_right_to_left: bool,
+    right_to_left: bool,
 ) -> list[str]:
     """Select candidate algorithms for the ensemble, excluding unsupported ones.
 
@@ -235,7 +236,7 @@ def _select_ensemble_algorithms(
         Requested algorithm names.
     has_word_coords: bool
         Whether word X coordinates are available for the DTW-based algorithms.
-    text_right_to_left: bool
+    right_to_left: bool
         Whether the text is read from right to left.
 
     Returns
@@ -271,7 +272,7 @@ def _select_ensemble_algorithms(
             stacklevel=3,
         )
 
-    if text_right_to_left and 'compare' in candidate_algos:
+    if right_to_left and 'compare' in candidate_algos:
         warnings.warn(
             "Algorithm 'compare' does not support right-to-left reading and is excluded "
             'from Wisdom of the Crowd ensemble.',
@@ -316,7 +317,7 @@ def correct_fixation_locations(
     events: pl.DataFrame,
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
-    text_right_to_left: bool = False,
+    directionality: str = 'left-to-right',
     word_locations: pl.Series | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
@@ -334,12 +335,14 @@ def correct_fixation_locations(
         the Crowd (WoC) ensemble correction. Default is 'wisdom_of_the_crowd' (or 'woc'), which
         includes all drift algorithms. If word X coordinates ('start_x', 'end_x') are missing in
         aois, 'compare' and 'warp' are automatically excluded from the ensemble with a UserWarning.
-    text_right_to_left: bool
-        Whether the text is read from right to left. Passed to those algorithms with
+    directionality: str
+        Reading direction of the text, either 'left-to-right' or 'right-to-left',
+        mirroring the directionality of a text stimulus writing system; 'top-to-bottom'
+        is not supported and raises a ValueError. Passed to those algorithms with
         direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
         algorithms ignore it. The 'compare' algorithm does not support right-to-left
         reading: it is excluded from ensembles with a UserWarning and raises a ValueError
-        when selected as a single algorithm. (default: False)
+        when selected as a single algorithm. (default: 'left-to-right')
     word_locations: pl.Series | None
         Series of [x, y] word center coordinates for the DTW-based algorithms 'compare'
         and 'warp'. If None, word locations are derived from the aois dataframe. Following
@@ -367,14 +370,16 @@ def correct_fixation_locations(
     Raises
     ------
     ValueError
-        If the algorithm name is unknown, an algorithm_kwargs entry is accepted by no
-        candidate algorithm, or required coordinate data is missing.
+        If the algorithm name is unknown, the directionality is invalid, an
+        algorithm_kwargs entry is accepted by no candidate algorithm, or required
+        coordinate data is missing.
     TypeError
         If algorithm is neither a string nor a list of strings.
     """
+    right_to_left = _is_right_to_left(directionality)
     if algorithm_kwargs is None:
         algorithm_kwargs = {}
-    for reserved_key in ('text_right_to_left', 'word_locations', 'location'):
+    for reserved_key in ('directionality', 'word_locations', 'location'):
         if reserved_key in algorithm_kwargs:
             raise ValueError(
                 f"'{reserved_key}' must be passed as an explicit parameter, "
@@ -393,17 +398,17 @@ def correct_fixation_locations(
             raise ValueError('At least one algorithm must be provided in the algorithm list.')
         if len(algorithm) == 1:
             return correct_fixation_locations(
-                events, aois, algorithm=algorithm[0], text_right_to_left=text_right_to_left,
+                events, aois, algorithm=algorithm[0], directionality=directionality,
                 word_locations=word_locations, algorithm_kwargs=algorithm_kwargs,
                 fixation_name=fixation_name,
             )
         candidate_algos = _select_ensemble_algorithms(
-            list(algorithm), has_word_coords, text_right_to_left,
+            list(algorithm), has_word_coords, right_to_left,
         )
     elif isinstance(algorithm, str):
         if algorithm.lower() in {'wisdom_of_the_crowd', 'woc'}:
             candidate_algos = _select_ensemble_algorithms(
-                list(ALL_DRIFT_ALGORITHMS), has_word_coords, text_right_to_left,
+                list(ALL_DRIFT_ALGORITHMS), has_word_coords, right_to_left,
             )
         else:
             if algorithm not in ALL_DRIFT_ALGORITHMS:
@@ -411,7 +416,7 @@ def correct_fixation_locations(
                     f"Unknown drift algorithm '{algorithm}'. "
                     f'Valid algorithms are: {ALL_DRIFT_ALGORITHMS}',
                 )
-            if algorithm == 'compare' and text_right_to_left:
+            if algorithm == 'compare' and right_to_left:
                 raise ValueError(
                     "Algorithm 'compare' does not support right-to-left reading as its "
                     'line break detection assumes left-to-right reading.',
@@ -431,8 +436,8 @@ def correct_fixation_locations(
 
             func = getattr(da, algorithm)
             call_kwargs = dict(algorithm_kwargs)
-            if 'text_right_to_left' in inspect.signature(func).parameters:
-                call_kwargs['text_right_to_left'] = text_right_to_left
+            if 'directionality' in inspect.signature(func).parameters:
+                call_kwargs['directionality'] = directionality
             corrected_y = func(target, location=location, **call_kwargs)
             return fixations.select(
                 pl.concat_list([_location_x(location), corrected_y]).alias('location'),
@@ -481,8 +486,8 @@ def correct_fixation_locations(
             key: value for key, value in algorithm_kwargs.items()
             if key in candidate_params[candidate_algo]
         }
-        if 'text_right_to_left' in candidate_params[candidate_algo]:
-            call_kwargs['text_right_to_left'] = text_right_to_left
+        if 'directionality' in candidate_params[candidate_algo]:
+            call_kwargs['directionality'] = directionality
         if candidate_algo in {'compare', 'warp'}:
             corrected_y = func(word_locations, location=location, **call_kwargs)
         else:
@@ -507,7 +512,7 @@ def correct_fixations(
     aois: pl.DataFrame,
     algorithm: str | list[str] = 'wisdom_of_the_crowd',
     trial_columns: list[str] | str | None = None,
-    text_right_to_left: bool = False,
+    directionality: str = 'left-to-right',
     word_locations: pl.Series | None = None,
     algorithm_kwargs: dict[str, Any] | None = None,
     fixation_name: str = 'fixation',
@@ -533,11 +538,14 @@ def correct_fixations(
         Column names identifying trials. Each trial is corrected independently. AOIs are
         filtered on those trial columns that are present in the aois dataframe. If None,
         all events are treated as a single trial. (default: None)
-    text_right_to_left: bool
-        Whether the text is read from right to left. Passed to those algorithms with
+    directionality: str
+        Reading direction of the text, either 'left-to-right' or 'right-to-left',
+        mirroring the directionality of a text stimulus writing system; 'top-to-bottom'
+        is not supported and raises a ValueError. Passed to those algorithms with
         direction-specific processing ('merge', 'segment', 'split'); direction-agnostic
         algorithms ignore it. The 'compare' algorithm does not support right-to-left
-        reading and is excluded from ensembles with a UserWarning. (default: False)
+        reading and is excluded from ensembles with a UserWarning.
+        (default: 'left-to-right')
     word_locations: pl.Series | None
         Series of [x, y] word center coordinates for the DTW-based algorithms 'compare'
         and 'warp'. If None, word locations are derived from the aois dataframe.
@@ -565,10 +573,13 @@ def correct_fixations(
     Raises
     ------
     ValueError
-        If trial_columns are missing from the events dataframe, if no AOIs are found for
-        a trial with fixations to correct, or if the fixation events have already been
-        corrected.
+        If the directionality is invalid, if trial_columns are missing from the events
+        dataframe, if no AOIs are found for a trial with fixations to correct, or if the
+        fixation events have already been corrected.
     """
+    # Validate eagerly so an invalid directionality raises even without matching fixations.
+    _is_right_to_left(directionality)
+
     if isinstance(trial_columns, str):
         trial_columns = [trial_columns]
 
@@ -637,7 +648,7 @@ def correct_fixations(
 
         corrected_locs = correct_fixation_locations(
             fixation_events, trial_aois, algorithm=algorithm,
-            text_right_to_left=text_right_to_left, word_locations=word_locations,
+            directionality=directionality, word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs, fixation_name=fixation_name,
         )
 

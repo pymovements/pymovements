@@ -112,13 +112,13 @@ def test_merge_ltr_and_rtl(sample_fixations_and_lines):
     # With filterwarnings=error this test also asserts that merge does not leak
     # RankWarnings from poorly conditioned two-fixation line fits.
     fixations, line_ys = sample_fixations_and_lines
-    res_ltr = corrected_y(fixations, da.merge(line_ys, text_right_to_left=False))
+    res_ltr = corrected_y(fixations, da.merge(line_ys, directionality='left-to-right'))
     assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
     # For RTL every within-line step is a sequence boundary, so the twelve one-fixation
     # sequences must be merged back; only same-line pairs pass the gradient constraint
     # (any cross-line pair has |gradient| >= 90 / 400 > g_thresh), recovering the lines.
-    res_rtl = corrected_y(fixations, da.merge(line_ys, text_right_to_left=True))
+    res_rtl = corrected_y(fixations, da.merge(line_ys, directionality='right-to-left'))
     assert res_rtl == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
@@ -130,7 +130,7 @@ def test_regress(sample_fixations_and_lines):
 
 def test_segment_ltr_and_rtl(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
-    res_ltr = corrected_y(fixations, da.segment(line_ys, text_right_to_left=False))
+    res_ltr = corrected_y(fixations, da.segment(line_ys, directionality='left-to-right'))
     assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
     # On this left-to-right fixture the RTL return sweep candidates are the within-line
@@ -138,7 +138,7 @@ def test_segment_ltr_and_rtl(sample_fixations_and_lines):
     # come from np.linspace), so which two rank largest is not hand-derivable; the exact
     # output is therefore not pinned here (see test_segment_single_line_ltr_and_rtl for
     # a pinned RTL case).
-    res_rtl = corrected_y(fixations, da.segment(line_ys, text_right_to_left=True))
+    res_rtl = corrected_y(fixations, da.segment(line_ys, directionality='right-to-left'))
     assert len(res_rtl) == fixations.height
 
 
@@ -151,20 +151,20 @@ def test_segment_single_line_ltr_and_rtl():
     assert res_ltr == [100.0] * 5
 
     fixations_rtl = make_location_frame(np.linspace(500, 100, 5), np.full(5, 105.0))
-    res_rtl = corrected_y(fixations_rtl, da.segment(line_ys, text_right_to_left=True))
+    res_rtl = corrected_y(fixations_rtl, da.segment(line_ys, directionality='right-to-left'))
     assert res_rtl == [100.0] * 5
 
 
 def test_split_ltr_and_rtl(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
-    res_ltr = corrected_y(fixations, da.split(line_ys, text_right_to_left=False))
+    res_ltr = corrected_y(fixations, da.split(line_ys, directionality='left-to-right'))
     assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
     # For RTL the nine positive within-line x-steps are classified as return sweeps and
     # the two -400 line changes are not, yielding segments 0-4, 5-8 and 9-11: segment
     # means 105, 105, 105, 150, 195 then 195, 248.5, 302 then 302, 302, 302 snap to
     # 100 (a 150 tie snaps to the first, upper line), 200 and 300.
-    res_rtl = corrected_y(fixations, da.split(line_ys, text_right_to_left=True))
+    res_rtl = corrected_y(fixations, da.split(line_ys, directionality='right-to-left'))
     assert res_rtl == [100.0] * 5 + [200.0] * 4 + [300.0] * 3
 
 

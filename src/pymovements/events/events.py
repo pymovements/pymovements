@@ -943,7 +943,7 @@ class Events:
             aois: TextStimulus,
             algorithm: str | list[str] = 'wisdom_of_the_crowd',
             *,
-            text_right_to_left: bool | None = None,
+            directionality: str | None = None,
             word_locations: polars.Series | None = None,
             algorithm_kwargs: dict[str, Any] | None = None,
             fixation_name: str = 'fixation',
@@ -968,9 +968,12 @@ class Events:
         algorithm: str | list[str]
             Name of drift algorithm or list of algorithm names.
             (default: 'wisdom_of_the_crowd')
-        text_right_to_left: bool | None
-            Whether the text is read from right to left. If None, the reading direction is
-            inferred from the writing system of the text stimulus. (default: None)
+        directionality: str | None
+            Reading direction of the text, either 'left-to-right' or 'right-to-left',
+            mirroring the directionality of a text stimulus writing system;
+            'top-to-bottom' is not supported and raises a ValueError. If None, the
+            reading direction is inferred from the writing system of the text stimulus.
+            (default: None)
         word_locations: polars.Series | None
             Series of [x, y] word center coordinates for the DTW-based algorithms
             'compare' and 'warp'. If None, word locations are derived from the aois
@@ -1050,15 +1053,15 @@ class Events:
                 f'aois must be a TextStimulus, but is of type {type(aois).__name__}.',
             )
         aois_frame = _aois_frame_from_text_stimulus(aois)
-        if text_right_to_left is None:
-            text_right_to_left = aois.writing_system.directionality == 'right-to-left'
+        if directionality is None:
+            directionality = aois.writing_system.directionality
 
         corrected_frame = fixation_correction.correct_fixations(
             self.frame,
             aois_frame,
             algorithm=algorithm,
             trial_columns=self.trial_columns,
-            text_right_to_left=text_right_to_left,
+            directionality=directionality,
             word_locations=word_locations,
             algorithm_kwargs=algorithm_kwargs,
             fixation_name=fixation_name,

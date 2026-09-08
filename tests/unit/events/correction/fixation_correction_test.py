@@ -165,7 +165,7 @@ def test_correct_fixation_locations_woc_right_to_left():
     with pytest.warns(
         UserWarning, match="'compare' does not support right-to-left reading",
     ):
-        locs = correct_fixation_locations(events_df, aois_df, text_right_to_left=True)
+        locs = correct_fixation_locations(events_df, aois_df, directionality='right-to-left')
     assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0]
 
 
@@ -177,8 +177,28 @@ def test_correct_fixation_locations_single_compare_right_to_left_raises(
         ValueError, match="'compare' does not support right-to-left reading",
     ):
         correct_fixation_locations(
-            events_df, aois_df, algorithm='compare', text_right_to_left=True,
+            events_df, aois_df, algorithm='compare', directionality='right-to-left',
         )
+
+
+def test_correct_fixation_locations_top_to_bottom_directionality_raises(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(
+        ValueError, match="directionality 'top-to-bottom' is not supported",
+    ):
+        correct_fixation_locations(events_df, aois_df, directionality='top-to-bottom')
+
+
+def test_correct_fixation_locations_unknown_directionality_raises(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    with pytest.raises(
+        ValueError, match="Unknown directionality 'diagonal'",
+    ):
+        correct_fixation_locations(events_df, aois_df, directionality='diagonal')
 
 
 def test_correct_fixation_locations_woc_unknown_kwarg_raises(sample_events_and_aois):
@@ -193,9 +213,9 @@ def test_correct_fixation_locations_reserved_algorithm_kwargs_raise(
     sample_events_and_aois,
 ):
     events_df, aois_df = sample_events_and_aois
-    with pytest.raises(ValueError, match="'text_right_to_left' must be passed as an explicit"):
+    with pytest.raises(ValueError, match="'directionality' must be passed as an explicit"):
         correct_fixation_locations(
-            events_df, aois_df, algorithm_kwargs={'text_right_to_left': True},
+            events_df, aois_df, algorithm_kwargs={'directionality': 'right-to-left'},
         )
 
 
@@ -524,9 +544,9 @@ def test_events_correct_fixations_infers_rtl_from_writing_system():
     ]
     assert corrected_y == [100.0, 100.0, 200.0, 200.0]
 
-    # An explicit text_right_to_left value overrides the writing system.
+    # An explicit directionality value overrides the writing system.
     events_ltr = pm.Events(events_df)
-    events_ltr.correct_fixations(stimulus, algorithm='segment', text_right_to_left=False)
+    events_ltr.correct_fixations(stimulus, algorithm='segment', directionality='left-to-right')
     corrected_y_ltr = [
         location[1]
         for location in events_ltr.frame.filter(
