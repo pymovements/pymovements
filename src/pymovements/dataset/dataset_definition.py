@@ -235,6 +235,18 @@ class DatasetDefinition:
            Please use :py:attr:`~pymovements.ResourceDefinition.load_kwargs` instead.
            This field will be removed in v0.30.0.
 
+    Raises
+    ------
+    ValueError
+        If two named sources share the same target ``filename`` (duplicate source filename), if
+        a resource references a source name that is missing from ``sources`` (dangling source
+        reference), if a named source is not referenced by any resource (unused source), or if
+        the resolved sources of the resources conflict (see
+        :py:meth:`~pymovements.DatasetDefinition.resolved_sources`).
+    TypeError
+        If ``resources`` is neither a :py:class:`~pymovements.ResourceDefinitions` instance nor
+        a list of dictionaries.
+
     Notes
     -----
     .. deprecated:: v0.25.0
