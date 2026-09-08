@@ -43,7 +43,7 @@ from pymovements.gaze.experiment import Experiment
 yaml.add_multi_constructor('!', type_constructor, Loader=yaml.SafeLoader)
 
 
-@repr_html(['name', 'long_name', 'description', 'experiment', 'resources', 'sources'])
+@repr_html(['name', 'long_name', 'description', 'experiment', 'sources', 'resources'])
 @dataclass
 class DatasetDefinition:
     """Definition to initialize a :py:class:`~Dataset`.
