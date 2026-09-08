@@ -1017,6 +1017,21 @@ def test_extract_dataset_skips_resource_without_source(tmp_path):
     Dataset(definition, path=tmp_path).extract()
 
 
+def test_dataset_extract_source_without_filename_raises(tmp_path):
+    """Test that a resolved source without a filename fails extraction loudly."""
+    definition = DatasetDefinition(
+        name='test',
+        resources=[{
+            'content': 'gaze',
+            'source': {'url': 'https://example.com/test.gz.tar', 'filename': None},
+        }],
+    )
+
+    message = "WebSource.filename must not be None for source of resource with content 'gaze'"
+    with pytest.raises(AttributeError, match=message):
+        Dataset(definition, path=tmp_path).extract()
+
+
 def test_dataset_download_named_source_shared_by_multiple_resources_deduplicated(tmp_path):
     """Test that a named source shared by several resources is downloaded only once."""
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')

@@ -130,6 +130,12 @@ def extract_dataset(
         Verbosity levels: (1) Print messages for extracting each dataset resource without printing
         messages for recursive archives. (2) Print messages for extracting each dataset resource and
         each recursive archive extract. (default: 1)
+
+    Raises
+    ------
+    AttributeError
+        If a resource resolves to a source without a filename, since such a file can never have
+        been downloaded.
     """
     content_dirnames = {
         'gaze': 'raw',
@@ -147,8 +153,13 @@ def extract_dataset(
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
                 source = definition.resolve_source(resource)
-                if source is None or source.filename is None:
+                if source is None:
                     continue
+                if source.filename is None:
+                    raise AttributeError(
+                        'WebSource.filename must not be None for source of resource '
+                        f"with content '{resource.content}'",
+                    )
 
                 source_path = paths.downloads / source.filename
 
