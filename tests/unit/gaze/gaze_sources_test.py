@@ -26,8 +26,11 @@ from pymovements import Gaze
 from pymovements.stimulus.text import TextStimulus
 
 
-def _detect_fixation() -> Events:
-    return Events(name='fixation', onsets=[0], offsets=[1])
+@pytest.fixture(name='detect_fixation')
+def fixture_detect_fixation():
+    def detect_fixation() -> Events:
+        return Events(name='fixation', onsets=[0], offsets=[1])
+    return detect_fixation
 
 
 @pytest.fixture(name='gaze')
@@ -115,20 +118,20 @@ def test_gaze_init_raises_on_non_path_sources_entry():
     )
 
 
-def test_gaze_detect_keeps_sources_on_events(gaze):
-    gaze.detect(_detect_fixation)
+def test_gaze_detect_keeps_sources_on_events(gaze, detect_fixation):
+    gaze.detect(detect_fixation)
     assert gaze.events.metadata['sources'] == ['raw/sub_1.csv']
 
 
-def test_gaze_detect_clear_repropagates_sources(gaze):
-    gaze.detect(_detect_fixation, clear=True)
+def test_gaze_detect_clear_repropagates_sources(gaze, detect_fixation):
+    gaze.detect(detect_fixation, clear=True)
     assert gaze.events.metadata['sources'] == ['raw/sub_1.csv']
 
 
-def test_gaze_detect_after_events_reset_repropagates_sources(gaze):
+def test_gaze_detect_after_events_reset_repropagates_sources(gaze, detect_fixation):
     # Simulates Dataset.clear_events(), which replaces the events container.
     gaze.events = Events()
-    gaze.detect(_detect_fixation)
+    gaze.detect(detect_fixation)
     assert gaze.events.metadata['sources'] == ['raw/sub_1.csv']
 
 
