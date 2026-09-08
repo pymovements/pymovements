@@ -1213,12 +1213,14 @@ class Gaze:
         if self.events is None or clear:
             self.clear_events()
 
-        # Events detected from this gaze object share its source files. This also covers
-        # events containers replaced after construction, e.g. by Dataset.clear_events().
-        merge_sources(self.events.metadata, self.metadata)
-
         if isinstance(method, str):
             method = EventDetectionLibrary.get(method)
+
+        # Events detected from this gaze object share its source files. This also covers
+        # events containers replaced after construction, e.g. by Dataset.clear_events().
+        # Merging after method resolution keeps detect free of side effects when the
+        # method name is invalid.
+        merge_sources(self.events.metadata, self.metadata)
 
         if self.n_components is not None:
             eye_components = self._infer_eye_components(eye)

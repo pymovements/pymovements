@@ -104,6 +104,13 @@ def test_gaze_detect_after_events_reset_repropagates_sources(gaze):
     assert gaze.events.metadata['sources'] == ['raw/sub_1.csv']
 
 
+def test_gaze_detect_unknown_method_leaves_events_metadata_unchanged(gaze):
+    gaze.events = Events()
+    with pytest.raises(KeyError):
+        gaze.detect('unknown_method')
+    assert gaze.events.metadata == {}
+
+
 def test_gaze_map_to_aois_merges_stimulus_sources(gaze, text_stimulus):
     gaze.map_to_aois(text_stimulus, verbose=False)
 
