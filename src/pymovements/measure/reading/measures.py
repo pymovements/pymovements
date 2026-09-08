@@ -80,6 +80,26 @@ def total_fixation_count() -> pl.Expr:
     │ 1        ┆ 2   │
     │ 2        ┆ 1   │
     └──────────┴─────┘
+
+    Grouping by trial and word keeps the counts per reading sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 0, 0, 1, 1],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     total_fixation_count(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (3, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ TFC │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ u64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 2   │
+    │ 2     ┆ 0        ┆ 1   │
+    │ 2     ┆ 1        ┆ 2   │
+    └───────┴──────────┴─────┘
     """
     return pl.len().cast(pl.UInt64).alias('TFC')
 
@@ -117,6 +137,30 @@ def first_pass_fixation_count(is_first_pass: str | pl.Expr = 'is_first_pass') ->
     │ 1        ┆ 2    │
     │ 2        ┆ 1    │
     └──────────┴──────┘
+
+    Grouping by trial and word keeps the counts per reading sequence. In trial 2, word 1 was
+    skipped and only entered by a regression, so it has no first-pass fixations:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_pass_fixation_count(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬──────┐
+    │ trial ┆ word_idx ┆ FPFC │
+    │ ---   ┆ ---      ┆ ---  │
+    │ i64   ┆ i64      ┆ u64  │
+    ╞═══════╪══════════╪══════╡
+    │ 1     ┆ 0        ┆ 1    │
+    │ 1     ┆ 1        ┆ 1    │
+    │ 2     ┆ 0        ┆ 1    │
+    │ 2     ┆ 1        ┆ 0    │
+    │ 2     ┆ 2        ┆ 1    │
+    └───────┴──────────┴──────┘
     """
     is_first_pass_expr = as_expr(is_first_pass)
     return is_first_pass_expr.sum().cast(pl.UInt64).alias('FPFC')
@@ -157,6 +201,27 @@ def first_duration(duration: str | pl.Expr = 'duration') -> pl.Expr:
     │ 1        ┆ 200 │
     │ 2        ┆ 130 │
     └──────────┴─────┘
+
+    Grouping by trial and word yields a first fixation per reading sequence, so the same word
+    gets a fresh FD in every trial:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2],
+    ...     'word_idx': [0, 0, 0],
+    ...     'duration': [100, 120, 90],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_duration(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (2, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ FD  │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 100 │
+    │ 2     ┆ 0        ┆ 90  │
+    └───────┴──────────┴─────┘
     """
     duration_expr = as_expr(duration)
     return duration_expr.first().alias('FD')
@@ -208,6 +273,30 @@ def first_reading_time(
     │ 1        ┆ 350 │
     │ 2        ┆ 130 │
     └──────────┴─────┘
+
+    Grouping by trial and word evaluates the first run per reading sequence; the run IDs restart
+    with each trial when :func:`~pymovements.measure.reading.run_id` is applied with
+    ``.over('trial')``:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 0, 1, 0, 0],
+    ...     'duration': [100, 150, 200, 120, 130],
+    ...     'run_id': [1, 1, 2, 1, 1],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_reading_time(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (3, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ FRT │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 250 │
+    │ 1     ┆ 1        ┆ 200 │
+    │ 2     ┆ 0        ┆ 250 │
+    └───────┴──────────┴─────┘
     """
     duration_expr = as_expr(duration)
     run_id_expr = as_expr(run_id)
@@ -261,6 +350,32 @@ def first_fixation_duration(
     │ 1        ┆ 200 │
     │ 2        ┆ 130 │
     └──────────┴─────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own. In trial 2, word 1 was
+    skipped and only entered by a regression, so it has no first-pass fixation at all and its FFD
+    is null (unlike its FD, see :func:`first_duration`):
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'duration': [100, 200, 150, 180, 120],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_fixation_duration(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬──────┐
+    │ trial ┆ word_idx ┆ FFD  │
+    │ ---   ┆ ---      ┆ ---  │
+    │ i64   ┆ i64      ┆ i64  │
+    ╞═══════╪══════════╪══════╡
+    │ 1     ┆ 0        ┆ 100  │
+    │ 1     ┆ 1        ┆ 200  │
+    │ 2     ┆ 0        ┆ 150  │
+    │ 2     ┆ 1        ┆ null │
+    │ 2     ┆ 2        ┆ 180  │
+    └───────┴──────────┴──────┘
     """
     duration_expr = as_expr(duration)
     is_first_pass_expr = as_expr(is_first_pass)
@@ -307,6 +422,32 @@ def first_pass_reading_time(
     │ 1        ┆ 350  │
     │ 2        ┆ 130  │
     └──────────┴──────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own. In trial 2, word 1 was
+    skipped and only entered by a regression, so no first-pass time accumulates and the sum over
+    the empty selection is 0 (while its FFD is null, see :func:`first_fixation_duration`):
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'duration': [100, 200, 150, 180, 120],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     first_pass_reading_time(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬──────┐
+    │ trial ┆ word_idx ┆ FPRT │
+    │ ---   ┆ ---      ┆ ---  │
+    │ i64   ┆ i64      ┆ i64  │
+    ╞═══════╪══════════╪══════╡
+    │ 1     ┆ 0        ┆ 100  │
+    │ 1     ┆ 1        ┆ 200  │
+    │ 2     ┆ 0        ┆ 150  │
+    │ 2     ┆ 1        ┆ 0    │
+    │ 2     ┆ 2        ┆ 180  │
+    └───────┴──────────┴──────┘
     """
     duration_expr = as_expr(duration)
     is_first_pass_expr = as_expr(is_first_pass)
@@ -356,6 +497,31 @@ def rereading_time(
     │ 1        ┆ 0   │
     │ 2        ┆ 0   │
     └──────────┴─────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own. In trial 2, word 1 was
+    only entered by a regression, so its whole fixation time counts as rereading:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 1],
+    ...     'duration': [100, 200, 150, 180, 120],
+    ...     'is_first_pass': [True, True, True, True, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     rereading_time(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (5, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ RRT │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 0   │
+    │ 1     ┆ 1        ┆ 0   │
+    │ 2     ┆ 0        ┆ 0   │
+    │ 2     ┆ 1        ┆ 120 │
+    │ 2     ┆ 2        ┆ 0   │
+    └───────┴──────────┴─────┘
     """
     duration_expr = as_expr(duration)
     is_first_pass_expr = as_expr(is_first_pass)
@@ -400,6 +566,29 @@ def regression_count_in(is_reg_in: str | pl.Expr = 'is_reg_in') -> pl.Expr:
     │ 1        ┆ 0      │
     │ 2        ┆ 0      │
     └──────────┴────────┘
+
+    Grouping by trial and word keeps the counts per reading sequence, so the regression into
+    word 0 of trial 1 does not leak into trial 2:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'is_reg_in': [None, False, True, None, False],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     regression_count_in(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬────────┐
+    │ trial ┆ word_idx ┆ TRC_in │
+    │ ---   ┆ ---      ┆ ---    │
+    │ i64   ┆ i64      ┆ u64    │
+    ╞═══════╪══════════╪════════╡
+    │ 1     ┆ 0        ┆ 1      │
+    │ 1     ┆ 1        ┆ 0      │
+    │ 2     ┆ 0        ┆ 0      │
+    │ 2     ┆ 1        ┆ 0      │
+    └───────┴──────────┴────────┘
     """
     is_reg_in_expr = as_expr(is_reg_in)
     return is_reg_in_expr.sum().cast(pl.UInt64).alias('TRC_in')
@@ -438,6 +627,29 @@ def regression_count_out(is_reg_out: str | pl.Expr = 'is_reg_out') -> pl.Expr:
     │ 1        ┆ 1       │
     │ 2        ┆ 0       │
     └──────────┴─────────┘
+
+    Grouping by trial and word keeps the counts per reading sequence, so the regression out of
+    word 1 of trial 1 does not leak into trial 2:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'is_reg_out': [False, True, None, False, None],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     regression_count_out(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬─────────┐
+    │ trial ┆ word_idx ┆ TRC_out │
+    │ ---   ┆ ---      ┆ ---     │
+    │ i64   ┆ i64      ┆ u64     │
+    ╞═══════╪══════════╪═════════╡
+    │ 1     ┆ 0        ┆ 0       │
+    │ 1     ┆ 1        ┆ 1       │
+    │ 2     ┆ 0        ┆ 0       │
+    │ 2     ┆ 1        ┆ 0       │
+    └───────┴──────────┴─────────┘
     """
     is_reg_out_expr = as_expr(is_reg_out)
     return is_reg_out_expr.sum().cast(pl.UInt64).alias('TRC_out')
@@ -489,6 +701,28 @@ def landing_position(char_idx: str | pl.Expr = 'char_idx') -> pl.Expr:
     │ 1        ┆ 5   │
     │ 2        ┆ 9   │
     └──────────┴─────┘
+
+    Grouping by trial and word evaluates the first fixation per reading sequence, so the same
+    word gets a fresh landing position in every trial:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2],
+    ...     'word_idx': [0, 1, 0],
+    ...     'char_idx': [0, 4, 2],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     landing_position(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (3, 3)
+    ┌───────┬──────────┬─────┐
+    │ trial ┆ word_idx ┆ LP  │
+    │ ---   ┆ ---      ┆ --- │
+    │ i64   ┆ i64      ┆ i64 │
+    ╞═══════╪══════════╪═════╡
+    │ 1     ┆ 0        ┆ 1   │
+    │ 1     ┆ 1        ┆ 5   │
+    │ 2     ┆ 0        ┆ 3   │
+    └───────┴──────────┴─────┘
     """
     char_idx_expr = as_expr(char_idx)
     return (char_idx_expr.first() + 1).alias('LP')
@@ -545,6 +779,30 @@ def saccade_length_in(
     │ 1        ┆ 1     │
     │ 2        ┆ 2     │
     └──────────┴───────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own, so the first word of
+    every trial has a null entry saccade:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2],
+    ...     'prev_word_idx': [None, 0, None, 0],
+    ...     'is_first_fix': [True, True, True, True],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     saccade_length_in(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬───────┐
+    │ trial ┆ word_idx ┆ SL_in │
+    │ ---   ┆ ---      ┆ ---   │
+    │ i64   ┆ i64      ┆ i64   │
+    ╞═══════╪══════════╪═══════╡
+    │ 1     ┆ 0        ┆ null  │
+    │ 1     ┆ 1        ┆ 1     │
+    │ 2     ┆ 0        ┆ null  │
+    │ 2     ┆ 2        ┆ 2     │
+    └───────┴──────────┴───────┘
     """
     word_idx_expr = as_expr(word_idx)
     prev_word_idx_expr = as_expr(prev_word_idx)
@@ -608,6 +866,30 @@ def saccade_length_out(
     │ 1        ┆ -1     │
     │ 2        ┆ 0      │
     └──────────┴────────┘
+
+    Grouping by trial and word evaluates each reading sequence on its own, so the last word of
+    every trial gets a 0 exit saccade:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2],
+    ...     'next_word_idx': [1, None, 2, None],
+    ...     'run_id': [1, 2, 1, 2],
+    ... })
+    >>> fixations.group_by(['trial', 'word_idx']).agg(
+    ...     saccade_length_out(),
+    ... ).sort(['trial', 'word_idx'])
+    shape: (4, 3)
+    ┌───────┬──────────┬────────┐
+    │ trial ┆ word_idx ┆ SL_out │
+    │ ---   ┆ ---      ┆ ---    │
+    │ i64   ┆ i64      ┆ i64    │
+    ╞═══════╪══════════╪════════╡
+    │ 1     ┆ 0        ┆ 1      │
+    │ 1     ┆ 1        ┆ 0      │
+    │ 2     ┆ 0        ┆ 2      │
+    │ 2     ┆ 2        ┆ 0      │
+    └───────┴──────────┴────────┘
     """
     word_idx_expr = as_expr(word_idx)
     next_word_idx_expr = as_expr(next_word_idx)
@@ -669,6 +951,28 @@ def regression_path_duration_inclusive(duration: str | pl.Expr = 'duration') -> 
     │ 1                    ┆ 470     │
     │ 2                    ┆ 130     │
     └──────────────────────┴─────────┘
+
+    Grouping by trial and regression-path word keeps the windows per reading sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'regression_path_word': [0, 1, 1, 0, 1],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by(['trial', 'regression_path_word']).agg(
+    ...     regression_path_duration_inclusive(),
+    ... ).sort(['trial', 'regression_path_word'])
+    shape: (4, 3)
+    ┌───────┬──────────────────────┬─────────┐
+    │ trial ┆ regression_path_word ┆ RPD_inc │
+    │ ---   ┆ ---                  ┆ ---     │
+    │ i64   ┆ i64                  ┆ i64     │
+    ╞═══════╪══════════════════════╪═════════╡
+    │ 1     ┆ 0                    ┆ 100     │
+    │ 1     ┆ 1                    ┆ 350     │
+    │ 2     ┆ 0                    ┆ 120     │
+    │ 2     ┆ 1                    ┆ 130     │
+    └───────┴──────────────────────┴─────────┘
     """
     duration_expr = as_expr(duration)
     return duration_expr.sum().alias('RPD_inc')
@@ -727,6 +1031,30 @@ def regression_path_duration_exclusive(
     │ 1                    ┆ 120     │
     │ 2                    ┆ 0       │
     └──────────────────────┴─────────┘
+
+    Grouping by trial and regression-path word keeps the windows per reading sequence; only
+    trial 1 contains a regression (to word 0, inside word 1's window):
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'regression_path_word': [0, 1, 1, 0, 1],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by(['trial', 'regression_path_word']).agg(
+    ...     regression_path_duration_exclusive(),
+    ... ).sort(['trial', 'regression_path_word'])
+    shape: (4, 3)
+    ┌───────┬──────────────────────┬─────────┐
+    │ trial ┆ regression_path_word ┆ RPD_exc │
+    │ ---   ┆ ---                  ┆ ---     │
+    │ i64   ┆ i64                  ┆ i64     │
+    ╞═══════╪══════════════════════╪═════════╡
+    │ 1     ┆ 0                    ┆ 0       │
+    │ 1     ┆ 1                    ┆ 150     │
+    │ 2     ┆ 0                    ┆ 0       │
+    │ 2     ┆ 1                    ┆ 0       │
+    └───────┴──────────────────────┴─────────┘
     """
     duration_expr = as_expr(duration)
     word_idx_expr = as_expr(word_idx)
@@ -791,6 +1119,30 @@ def right_bounded_reading_time(
     │ 1                    ┆ 350  │
     │ 2                    ┆ 130  │
     └──────────────────────┴──────┘
+
+    Grouping by trial and regression-path word keeps the windows per reading sequence; the
+    regressed time on word 0 of trial 1 is excluded from word 1's RBRT:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'regression_path_word': [0, 1, 1, 0, 1],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'duration': [100, 200, 150, 120, 130],
+    ... })
+    >>> fixations.group_by(['trial', 'regression_path_word']).agg(
+    ...     right_bounded_reading_time(),
+    ... ).sort(['trial', 'regression_path_word'])
+    shape: (4, 3)
+    ┌───────┬──────────────────────┬──────┐
+    │ trial ┆ regression_path_word ┆ RBRT │
+    │ ---   ┆ ---                  ┆ ---  │
+    │ i64   ┆ i64                  ┆ i64  │
+    ╞═══════╪══════════════════════╪══════╡
+    │ 1     ┆ 0                    ┆ 100  │
+    │ 1     ┆ 1                    ┆ 200  │
+    │ 2     ┆ 0                    ┆ 120  │
+    │ 2     ┆ 1                    ┆ 130  │
+    └───────┴──────────────────────┴──────┘
     """
     duration_expr = as_expr(duration)
     word_idx_expr = as_expr(word_idx)
@@ -852,6 +1204,23 @@ def non_aoi_fixation_count_ratio(word_idx: str | pl.Expr = 'word_idx') -> pl.Exp
     ╞═══════╡
     │ 0.25  │
     └───────┘
+
+    Grouping by the reading-sequence columns yields one ratio per sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, None, 1, 2],
+    ... })
+    >>> fixations.group_by('trial').agg(non_aoi_fixation_count_ratio()).sort('trial')
+    shape: (2, 2)
+    ┌───────┬───────┐
+    │ trial ┆ NAFCR │
+    │ ---   ┆ ---   │
+    │ i64   ┆ f64   │
+    ╞═══════╪═══════╡
+    │ 1     ┆ 0.5   │
+    │ 2     ┆ 0.0   │
+    └───────┴───────┘
     """
     word_idx_expr = as_expr(word_idx)
     return word_idx_expr.is_null().mean().alias('NAFCR')
@@ -911,6 +1280,24 @@ def non_aoi_fixation_duration_ratio(
     ╞═══════╡
     │ 0.1   │
     └───────┘
+
+    Grouping by the reading-sequence columns yields one ratio per sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 2, 2],
+    ...     'word_idx': [0, None, 1, 2],
+    ...     'duration': [150, 50, 100, 100],
+    ... })
+    >>> fixations.group_by('trial').agg(non_aoi_fixation_duration_ratio()).sort('trial')
+    shape: (2, 2)
+    ┌───────┬───────┐
+    │ trial ┆ NAFDR │
+    │ ---   ┆ ---   │
+    │ i64   ┆ f64   │
+    ╞═══════╪═══════╡
+    │ 1     ┆ 0.25  │
+    │ 2     ┆ 0.0   │
+    └───────┴───────┘
     """
     duration_expr = as_expr(duration)
     word_idx_expr = as_expr(word_idx)
