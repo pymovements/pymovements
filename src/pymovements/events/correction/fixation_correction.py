@@ -348,7 +348,12 @@ def correct_fixation_locations(
         Additional tuning parameters passed to underlying drift correction algorithms, e.g.
         ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
         candidate algorithms that accept it; a ValueError is raised if an entry is accepted
-        by none of the candidate algorithms. (default: None)
+        by none of the candidate algorithms. Warning: an entry fans out to every candidate
+        algorithm whose signature accepts the key, even where defaults and semantics
+        differ. For example, ``x_thresh`` is accepted by 'chain' (default 192, chain
+        breaking), 'compare' (default 512, line break detection) and 'slice' (default 192,
+        run segmentation), so ``{'x_thresh': 250.0}`` reconfigures all three at once.
+        (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
         corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching
@@ -540,7 +545,12 @@ def correct_fixations(
     algorithm_kwargs: dict[str, Any] | None
         Additional tuning parameters passed to underlying drift correction algorithms, e.g.
         ``{'x_thresh': 250.0}``. In ensemble mode, each entry is only passed to those
-        candidate algorithms that accept it. (default: None)
+        candidate algorithms that accept it. Warning: an entry fans out to every candidate
+        algorithm whose signature accepts the key, even where defaults and semantics
+        differ. For example, ``x_thresh`` is accepted by 'chain' (default 192, chain
+        breaking), 'compare' (default 512, line break detection) and 'slice' (default 192,
+        run segmentation), so ``{'x_thresh': 250.0}`` reconfigures all three at once.
+        (default: None)
     fixation_name: str
         Name of the fixation events to correct. Only events matching this name exactly are
         corrected; unlike :py:meth:`~pymovements.Events.map_to_aois`, no prefix matching

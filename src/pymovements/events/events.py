@@ -977,7 +977,10 @@ class Events:
             dataframe. (default: None)
         algorithm_kwargs: dict[str, Any] | None
             Additional tuning parameters passed to underlying drift correction algorithms.
-            (default: None)
+            Warning: in ensemble mode an entry fans out to every candidate algorithm whose
+            signature accepts the key, even where defaults and semantics differ. For
+            example, ``{'x_thresh': 250.0}`` reconfigures 'chain', 'compare' and 'slice'
+            at once. (default: None)
         fixation_name: str
             Name of the fixation events to correct. (default: 'fixation')
         inplace: bool
