@@ -25,9 +25,6 @@ import polars as pl
 import pytest
 
 import pymovements as pm
-from pymovements.events.correction.fixation_correction import _get_lines_of_text_from_aois
-from pymovements.events.correction.fixation_correction import _get_word_locations_from_aois
-from pymovements.events.correction.fixation_correction import _has_word_x_coords
 from pymovements.events.correction.fixation_correction import correct_fixation_locations
 from pymovements.events.correction.fixation_correction import correct_fixations
 
@@ -83,18 +80,11 @@ def make_text_stimulus(aois_df, **kwargs):
     return pm.stimulus.TextStimulus(aois=aois_df, **stimulus_kwargs)
 
 
-def test_get_lines_of_text_from_aois(sample_events_and_aois):
-    _, aois_df = sample_events_and_aois
-    line_Y = _get_lines_of_text_from_aois(aois_df)
-    assert line_Y == [100.0, 200.0, 300.0]
-
-
-def test_has_word_x_coords(sample_events_and_aois):
-    _, aois_df = sample_events_and_aois
-    aois_no_x = aois_df.drop(['start_x', 'end_x'])
-
-    assert _has_word_x_coords(aois_df) is True
-    assert _has_word_x_coords(aois_no_x) is False
+def test_correct_fixation_locations_attach_uses_aoi_line_centers(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    # attach snaps each fixation to the nearest AOI line center (100, 200 and 300).
+    locs = correct_fixation_locations(events_df, aois_df, algorithm='attach')
+    assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
 
 
 def test_correct_fixation_locations_default_woc(sample_events_and_aois):
@@ -610,36 +600,58 @@ def test_correct_fixations_empty_events_does_not_warn(sample_events_and_aois):
     assert res_df.height == 0
 
 
-def test_get_lines_of_text_from_aois_top_left_y():
+def test_correct_fixation_locations_attach_top_left_y_line_centers():
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location': [[100.0, 95.0], [100.0, 205.0]],
+    })
     aois_df = pl.DataFrame({
         'top_left_y': [80.0, 180.0],
         'height': [40.0, 40.0],
     })
-    line_Y = _get_lines_of_text_from_aois(aois_df)
-    assert line_Y == [100.0, 200.0]
+    # Line centers derived from top_left_y and height are 100 and 200, so the fixation
+    # at y=95 snaps upward to 100 rather than to the AOI top at 80.
+    locs = correct_fixation_locations(events_df, aois_df, algorithm='attach')
+    assert corrected_ys(locs) == [100.0, 200.0]
 
 
-def test_get_lines_of_text_from_aois_varying_heights():
+def test_correct_fixation_locations_attach_varying_aoi_heights():
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location': [[100.0, 104.0], [100.0, 201.0]],
+    })
     aois_df = pl.DataFrame({
         'start_y': [80.0, 80.0, 180.0],
         'height': [40.0, 60.0, 40.0],
     })
-    line_Y = _get_lines_of_text_from_aois(aois_df)
-    assert line_Y == [105.0, 200.0]
+    # The first line's center is the mean of its AOI centers (100 and 110), so the
+    # fixation at y=104 snaps to 105, not to 100.
+    locs = correct_fixation_locations(events_df, aois_df, algorithm='attach')
+    assert corrected_ys(locs) == [105.0, 200.0]
 
 
-def test_get_lines_of_text_from_aois_with_line_idx():
+def test_correct_fixation_locations_attach_line_idx_grouping():
+    events_df = pl.DataFrame({
+        'name': ['fixation', 'fixation'],
+        'location': [[100.0, 103.0], [100.0, 201.0]],
+    })
     aois_df = pl.DataFrame({
         'line_idx': [0, 0, 1],
         'top_left_y': [80.0, 80.0, 180.0],
         'height': [40.0, 50.0, 40.0],
     })
-    line_Y = _get_lines_of_text_from_aois(aois_df)
-    assert line_Y == [102.5, 200.0]
+    # AOIs grouped per line_idx yield line centers mean(100, 105) = 102.5 and 200.
+    locs = correct_fixation_locations(events_df, aois_df, algorithm='attach')
+    assert corrected_ys(locs) == [102.5, 200.0]
 
 
-def test_get_word_locations_from_aois_aggregates_character_level_aois():
-    # Two lines with two words of three characters each, 20 px per character.
+def test_correct_fixation_locations_warp_character_level_aois():
+    # Two lines with two words of three characters each, 20 px per character; word
+    # centers are at x=130 ('The') and x=230 ('cat') on each line.
+    events_df = pl.DataFrame({
+        'name': ['fixation'] * 4,
+        'location': [[130.0, 105.0], [230.0, 103.0], [130.0, 197.0], [230.0, 201.0]],
+    })
     characters = ['T', 'h', 'e', 'c', 'a', 't'] * 2
     words = ['The'] * 3 + ['cat'] * 3 + ['The'] * 3 + ['cat'] * 3
     start_x = [100.0, 120.0, 140.0, 200.0, 220.0, 240.0] * 2
@@ -651,12 +663,10 @@ def test_get_word_locations_from_aois_aggregates_character_level_aois():
         'start_y': [80.0] * 6 + [180.0] * 6,
         'height': [40.0] * 12,
     })
-    word_locations = _get_word_locations_from_aois(aois_char_level)
-    assert word_locations.to_list() == [
-        [130.0, 100.0], [230.0, 100.0], [130.0, 200.0], [230.0, 200.0],
-    ]
+    locs_char = correct_fixation_locations(events_df, aois_char_level, algorithm='warp')
+    assert corrected_ys(locs_char) == [100.0, 100.0, 200.0, 200.0]
 
-    # The aggregated locations equal those of an equivalent word-level frame.
+    # Character-level AOIs aggregated per word must behave like a word-level frame.
     aois_word_level = pl.DataFrame({
         'word': ['The', 'cat'] * 2,
         'start_x': [100.0, 200.0] * 2,
@@ -664,24 +674,8 @@ def test_get_word_locations_from_aois_aggregates_character_level_aois():
         'start_y': [80.0] * 2 + [180.0] * 2,
         'height': [40.0] * 4,
     })
-    assert word_locations.to_list() == _get_word_locations_from_aois(aois_word_level).to_list()
-
-
-def test_get_word_locations_from_aois_uses_line_center_y():
-    # Word bounding box centers differ from line centers due to varying AOI heights.
-    aois_df = pl.DataFrame({
-        'line_idx': [0, 0, 1],
-        'start_x': [50.0, 250.0, 50.0],
-        'end_x': [200.0, 400.0, 200.0],
-        'start_y': [80.0, 80.0, 180.0],
-        'end_y': [120.0, 130.0, 220.0],
-        'height': [40.0, 50.0, 40.0],
-    })
-    word_locations = _get_word_locations_from_aois(aois_df)
-    assert [location[0] for location in word_locations.to_list()] == [125.0, 325.0, 125.0]
-    # Word y-coordinates are the line centers, identical to _get_lines_of_text_from_aois.
-    line_Y = _get_lines_of_text_from_aois(aois_df)
-    assert sorted({location[1] for location in word_locations.to_list()}) == line_Y
+    locs_word = correct_fixation_locations(events_df, aois_word_level, algorithm='warp')
+    assert locs_char.to_list() == locs_word.to_list()
 
 
 def test_correct_fixation_locations_warp_returns_line_centers():
@@ -689,7 +683,8 @@ def test_correct_fixation_locations_warp_returns_line_centers():
         'name': ['fixation', 'fixation'],
         'location': [[100.0, 105.0], [200.0, 198.0]],
     })
-    # end_y offsets make word bounding box centers deviate from line centers.
+    # end_y offsets make the word bounding box centers (100.5 and 200.5) deviate from
+    # the line centers (100 and 200) derived from start_y and height.
     aois_df = pl.DataFrame({
         'start_x': [50.0, 250.0, 50.0, 250.0],
         'end_x': [200.0, 400.0, 200.0, 400.0],
@@ -697,9 +692,8 @@ def test_correct_fixation_locations_warp_returns_line_centers():
         'end_y': [121.0, 121.0, 221.0, 221.0],
         'height': [40.0, 40.0, 40.0, 40.0],
     })
-    line_Y = _get_lines_of_text_from_aois(aois_df)
     locs = correct_fixation_locations(events_df, aois_df, algorithm='warp')
-    assert set(corrected_ys(locs)).issubset(set(line_Y))
+    assert corrected_ys(locs) == [100.0, 200.0]
 
 
 def test_correct_fixation_locations_compare_varying_word_centers():
@@ -709,7 +703,8 @@ def test_correct_fixation_locations_compare_varying_word_centers():
             [100.0, 105.0], [300.0, 102.0], [100.0, 198.0], [300.0, 201.0],
         ],
     })
-    # Varying AOI heights within a line must not create spurious extra lines for compare.
+    # Varying AOI heights within a line must not create spurious extra lines for
+    # compare: grouped per line_idx, the line centers are exactly 100 and 200.
     aois_df = pl.DataFrame({
         'line_idx': [0, 0, 1, 1],
         'start_x': [50.0, 250.0, 50.0, 250.0],
@@ -718,12 +713,11 @@ def test_correct_fixation_locations_compare_varying_word_centers():
         'end_y': [120.0, 125.0, 220.0, 225.0],
         'height': [40.0, 50.0, 40.0, 50.0],
     })
-    line_Y = _get_lines_of_text_from_aois(aois_df)
-    assert len(line_Y) == 2
     locs = correct_fixation_locations(
-        events_df, aois_df, algorithm='compare', algorithm_kwargs={'n_nearest_lines': 2},
+        events_df, aois_df, algorithm='compare',
+        algorithm_kwargs={'n_nearest_lines': 2, 'x_thresh': 150.0},
     )
-    assert set(corrected_ys(locs)).issubset(set(line_Y))
+    assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0]
 
 
 def test_correct_fixation_locations_split_columns():
