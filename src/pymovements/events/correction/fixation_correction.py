@@ -19,6 +19,10 @@
 # SOFTWARE.
 """Module for fixation drift correction routines.
 
+All coordinates and distance thresholds are expressed in pixels in the coordinate system of
+the fixation locations, with the y-axis pointing downward: lines of text are ordered top to
+bottom by increasing y-coordinate.
+
 Supported Drift Correction Algorithms
 -------------------------------------
 - **wisdom_of_the_crowd** (or **woc**) : *(Default)* Ensemble correction method combining

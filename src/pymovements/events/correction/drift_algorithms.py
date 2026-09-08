@@ -20,8 +20,10 @@
 """Algorithms for vertical drift correction in gaze data recorded during reading tasks.
 
 Each algorithm function returns a :py:class:`polars.Expr` that computes the corrected
-y-coordinates from a column of ``[x, y]`` fixation locations. The expressions operate on the
-full fixation sequence of a trial, so they must be evaluated per trial.
+y-coordinates from a column of ``[x, y]`` fixation locations. All coordinates and distance
+thresholds are expressed in pixels in the coordinate system of the fixation locations, with
+the y-axis pointing downward: lines of text are ordered top to bottom by increasing
+y-coordinate.
 
 The implementations follow the reference implementation of Carr et al. :cite:p:`Carr2022`.
 Algorithms that build on k-means clustering, numerical optimization or line fitting
@@ -142,7 +144,9 @@ def attach(
     line_ys: pl.Series | Sequence[float]
         Vertical y-coordinates (midlines) of lines of text.
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -178,7 +182,9 @@ def chain(
     y_thresh: float
         Vertical distance threshold to break a chain. (default: 32)
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -215,7 +221,9 @@ def cluster(
     line_ys: pl.Series | Sequence[float]
         Vertical y-coordinates (midlines) of lines of text.
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -276,7 +284,9 @@ def compare(
         Number of candidate nearest lines to evaluate with DTW. Values larger than the
         number of text lines are clamped. (default: 3)
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -381,7 +391,9 @@ def merge(
         If True, adjusts return sweep detection for Right-to-Left reading scripts.
         (default: False)
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -498,7 +510,9 @@ def regress(
     s_bounds: tuple[float, float]
         Standard deviation bounds. (default: (1, 20))
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -567,7 +581,9 @@ def segment(
         If True, identifies return sweeps for Right-to-Left reading scripts.
         (default: False)
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -610,7 +626,9 @@ def split(
         If True, identifies return sweeps for Right-to-Left reading scripts.
         (default: False)
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -675,7 +693,9 @@ def stretch(
     offset_bounds: tuple[float, float]
         Vertical offset bounds. (default: (-50, 50))
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -731,7 +751,9 @@ def warp(
         Series of [x, y] word center coordinates, where y is the line position of the
         word's line.
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------
@@ -871,7 +893,9 @@ def slice(
     n_thresh: float
         Adjacent proto-line merger threshold. (default: 90)
     location: str | pl.Expr
-        Column name or expression of [x, y] fixation locations. (default: 'location')
+        Column name or expression of [x, y] fixation locations. The returned expression
+        operates on the full fixation sequence of a single trial, so it must be evaluated
+        per trial. (default: 'location')
 
     Returns
     -------

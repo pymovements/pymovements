@@ -68,7 +68,10 @@ can be applied to the fixations using the
 :func:`~pymovements.events.correction.correct_fixations` function will use the
 :func:`~pymovements.events.correction.drift_algorithms.wisdom_of_the_crowd` algorithm which is an
 ensemble method that combines the results of the other algorithms to produce a more robust
-correction. Further drift correction approaches from the literature that are not yet available
+correction. Each algorithm operates on the fixation sequence of a single trial and must be
+applied per trial; the :func:`~pymovements.events.correction.correct_fixations` function and
+the :py:meth:`~pymovements.Events.correct_fixations` method take care of this per-trial
+application. Further drift correction approaches from the literature that are not yet available
 in pymovements include the Dual Input Stream Transformer :cite:p:`Mercier2024a` and adaptive
 algorithm selection based on eye movement patterns :cite:p:`AlMadi2025`.
 
