@@ -35,7 +35,7 @@ class TestDataLossHistogram:
     def sample_gaze_no_loss(self):
         """Create sample gaze data with no data loss."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 3.0, 4.0],
+            'time': [0, 1, 2, 3, 4],
             'x': [1.0, 1.0, 1.0, 1.0, 1.0],
             'y': [1.0, 1.0, 1.0, 1.0, 1.0],
         })
@@ -45,7 +45,7 @@ class TestDataLossHistogram:
     def sample_gaze_with_loss(self):
         """Create sample gaze data with consecutive data loss."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            'time': [0, 1, 2, 3, 4, 5, 6],
             'x': [1.0, None, None, 1.0, 1.0, None, 1.0],
             'y': [1.0, None, None, 1.0, 1.0, None, 1.0],
         })
@@ -55,7 +55,7 @@ class TestDataLossHistogram:
     def sample_gaze_with_time_gaps(self):
         """Create sample gaze data with time gaps."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0, 5.0, 6.0],
+            'time': [0, 1, 2, 5, 6],
             'x': [1.0, 1.0, 1.0, 1.0, 1.0],
             'y': [1.0, 1.0, 1.0, 1.0, 1.0],
         })
@@ -65,7 +65,7 @@ class TestDataLossHistogram:
     def sample_gaze_ends_with_loss(self):
         """Create sample gaze data ending with data loss."""
         df = pl.DataFrame({
-            'time': [0.0, 1.0, 2.0],
+            'time': [0, 1, 2],
             'x': [1.0, 1.0, None],
             'y': [1.0, 1.0, None],
         })
@@ -148,6 +148,23 @@ class TestDataLossHistogram:
         )
         assert len(ax.patches) == 1
         assert ax.get_xticks().tolist() == [1.0]
+
+        plt.close(fig)
+
+    def test_numeric_time_column(self, sample_gaze_with_time_gaps):
+        """Test histogram with a numeric time column set via direct samples mutation."""
+        sample_gaze_with_time_gaps.samples = sample_gaze_with_time_gaps.samples.with_columns(
+            pl.col('time').dt.total_milliseconds(),
+        )
+        fig, ax = data_loss_histogram(
+            sample_gaze_with_time_gaps,
+            column='pixel',
+            unit='count',
+            sampling_rate=1000.0,
+        )
+
+        # Same time gap as in test_with_time_gaps must be detected on numeric times.
+        assert len(ax.patches) == 1
 
         plt.close(fig)
 

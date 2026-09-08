@@ -18,8 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test read from csv."""
+import io
+
 import polars as pl
 import pytest
+from polars.testing import assert_frame_equal
 
 from pymovements import DatasetLibrary
 from pymovements.gaze import from_csv
@@ -36,7 +39,7 @@ from pymovements.gaze import from_csv
                 'pixel_columns': ['x_left_pix', 'y_left_pix'],
             },
             (10, 2),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape',
         ),
 
@@ -50,7 +53,7 @@ from pymovements.gaze import from_csv
                 'auto_column_detect': True,
             },
             (10, 2),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_auto_column_detect',
         ),
 
@@ -64,7 +67,7 @@ from pymovements.gaze import from_csv
                 'column_schema_overrides': {'test': pl.Float64},
             },
             (10, 3),
-            {'time': pl.Int64, 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
+            {'time': pl.Duration('us'), 'test': pl.Float64, 'pixel': pl.List(pl.Int64)},
             id='csv_mono_shape_add_columns',
         ),
 
@@ -77,7 +80,10 @@ from pymovements.gaze import from_csv
                 'position_columns': ['x_left_pos', 'y_left_pos', 'x_right_pos', 'y_right_pos'],
             },
             (10, 3),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
+            {
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64),
+                'position': pl.List(pl.Float64),
+            },
             id='csv_bino_shape',
         ),
 
@@ -97,7 +103,10 @@ from pymovements.gaze import from_csv
                 'auto_column_detect': True,
             },
             (10, 3),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Int64), 'position': pl.List(pl.Float64)},
+            {
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Int64),
+                'position': pl.List(pl.Float64),
+            },
             id='csv_bino_shape_auto_column_detect',
         ),
 
@@ -110,7 +119,10 @@ from pymovements.gaze import from_csv
                 'position_columns': ['position_x', 'position_y'],
             },
             (103, 3),
-            {'time': pl.Int64, 'pixel': pl.List(pl.Float64), 'position': pl.List(pl.Float64)},
+            {
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Float64),
+                'position': pl.List(pl.Float64),
+            },
             id='csv_missing_values',
         ),
 
@@ -121,7 +133,7 @@ from pymovements.gaze import from_csv
                 **DatasetLibrary.get('GazeOnFaces').resources[0].load_kwargs,
             },
             (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32)},
             id='gaze_on_faces_example',
         ),
 
@@ -133,7 +145,7 @@ from pymovements.gaze import from_csv
             },
             (10, 7),
             {
-                'time': pl.Int64, 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
+                'time': pl.Duration('us'), 'validity': pl.Int64, 'dP': pl.Float32, 'lab': pl.Int64,
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32,
                 'position': pl.List(pl.Float32),
             },
@@ -148,7 +160,7 @@ from pymovements.gaze import from_csv
             },
             (10, 11),
             {
-                'time': pl.Float32,
+                'time': pl.Duration('us'),
                 'x_target_pos': pl.Float32, 'y_target_pos': pl.Float32, 'z_target_pos': pl.Float32,
                 'clx': pl.Float32, 'cly': pl.Float32, 'clz': pl.Float32,
                 'crx': pl.Float32, 'cry': pl.Float32, 'crz': pl.Float32,
@@ -164,7 +176,7 @@ from pymovements.gaze import from_csv
                 **DatasetLibrary.get('HBN').resources[0].load_kwargs,
             },
             (10, 2),
-            {'time': pl.Float64, 'pixel': pl.List(pl.Float32)},
+            {'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32)},
             id='hbn_example',
         ),
 
@@ -177,7 +189,7 @@ from pymovements.gaze import from_csv
             (10, 4),
             {
                 'trial_id': pl.Int64, 'point_id': pl.Int64,
-                'time': pl.Int64, 'pixel': pl.List(pl.Float32),
+                'time': pl.Duration('us'), 'pixel': pl.List(pl.Float32),
             },
             id='judo1000_example',
         ),
@@ -190,7 +202,9 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Int64, 'pupil_diameter': pl.Float32, 'pixel': pl.List(pl.Float32),
+                'time': pl.Duration('us'),
+                'pupil_diameter': pl.Float32,
+                'pixel': pl.List(pl.Float32),
             },
             id='potec_example',
         ),
@@ -203,7 +217,7 @@ from pymovements.gaze import from_csv
                 'time_unit': 'ms',
                 'pixel_columns': ['x', 'y'],
                 'schema_overrides': {
-                    'time': pl.Int64,
+                    'time': pl.Duration('ms'),
                     'x': pl.Float64,
                     'y': pl.Float64,
                     'pupil_diameter': pl.Float64,
@@ -212,7 +226,9 @@ from pymovements.gaze import from_csv
             },
             (10, 3),
             {
-                'time': pl.Int64, 'pupil_diameter': pl.Float64, 'pixel': pl.List(pl.Float64),
+                'time': pl.Duration('us'),
+                'pupil_diameter': pl.Float64,
+                'pixel': pl.List(pl.Float64),
             },
             marks=pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning'),
             id='potec_example_deprecated_kwargs',
@@ -226,7 +242,7 @@ from pymovements.gaze import from_csv
             },
             (10, 5),
             {
-                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Int64,
+                'book_name': pl.String, 'screen_id': pl.Int64, 'time': pl.Duration('us'),
                 'pupil_left': pl.Float32, 'pixel': pl.List(pl.Float32),
             },
             id='sbsat_example',
@@ -272,6 +288,30 @@ def test_from_asc_parameter_is_deprecated(
     )
 
 
+@pytest.mark.parametrize(
+    ('buffer_class', 'mode', 'encoding'), [
+        pytest.param(io.StringIO, 'r', 'utf-8', id='io_stringio'),
+        pytest.param(io.BytesIO, 'rb', None, id='io_bytesio'),
+    ],
+)
+def test_from_csv_accepts_file_object(buffer_class, mode, encoding, make_example_file):
+    """Test that from_csv reads a file object equivalently to a path and keeps it open."""
+    filepath = make_example_file('monocular_example.csv')
+    kwargs = {
+        'time_column': 'time',
+        'time_unit': 'ms',
+        'pixel_columns': ['x_left_pix', 'y_left_pix'],
+    }
+    expected_gaze = from_csv(file=filepath, **kwargs)
+
+    with open(filepath, mode, encoding=encoding) as csv_file:
+        buffer = buffer_class(csv_file.read())
+    gaze = from_csv(file=buffer, **kwargs)
+
+    assert not buffer.closed
+    assert_frame_equal(gaze.samples, expected_gaze.samples)
+
+
 @pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
 def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     p = tmp_path / 'mini.csv'
@@ -285,3 +325,23 @@ def test_from_csv_decimal_overrides_with_precision_and_scale(tmp_path):
     )
 
     assert gaze.samples.schema['pupil'] == pl.Decimal(38, 10)
+
+
+@pytest.mark.filterwarnings('ignore:from_csv.*kwargs.*:DeprecationWarning')
+@pytest.mark.filterwarnings('ignore:Gaze contains samples but no components could be inferred.')
+def test_from_csv_deprecated_schema_overrides_merged_with_column_schema_overrides(tmp_path):
+    p = tmp_path / 'mini.csv'
+    p.write_text('time,pupil,extra\n0,1.23,1\n1,4.56,2\n')
+
+    gaze = from_csv(
+        file=str(p),
+        time_column='time',
+        time_unit='ms',
+        column_schema_overrides={'pupil': pl.Float32},
+        schema_overrides={'pupil': pl.Float64, 'extra': pl.Float64},
+    )
+
+    # The explicit argument wins over the deprecated kwarg on conflicts,
+    # while non-conflicting deprecated overrides are still applied.
+    assert gaze.samples.schema['pupil'] == pl.Float32
+    assert gaze.samples.schema['extra'] == pl.Float64

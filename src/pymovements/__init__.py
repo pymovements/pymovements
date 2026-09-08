@@ -34,11 +34,11 @@ from pymovements.dataset import DatasetFile
 from pymovements.dataset import DatasetLibrary
 from pymovements.dataset import DatasetPaths
 from pymovements.dataset import Participants
+from pymovements.dataset import Phenotype
 from pymovements.dataset import register_dataset
 from pymovements.dataset import ResourceDefinition
 from pymovements.dataset import ResourceDefinitions
 from pymovements.dataset.websource import WebSource
-from pymovements.events import EventDataFrame
 from pymovements.events import Events
 from pymovements.exceptions import ChecksumError
 from pymovements.exceptions import UnknownFileType
@@ -46,7 +46,6 @@ from pymovements.exceptions import UnknownMeasure
 from pymovements.gaze import Experiment
 from pymovements.gaze import EyeTracker
 from pymovements.gaze import Gaze
-from pymovements.gaze import GazeDataFrame
 from pymovements.gaze import Screen
 from pymovements.gaze.quality import CheckResult
 from pymovements.gaze.quality import DataQualityReport
@@ -74,6 +73,7 @@ __all__ = [
     'datasets',
     'ValidationError',
     'Participants',
+    'Phenotype',
     'register_dataset',
     'ResourceDefinition',
     'ResourceDefinitions',
@@ -81,7 +81,6 @@ __all__ = [
 
     'events',
     'Events',
-    'EventDataFrame',
     'EventSamplesProcessor',
     'EventProcessor',
 
@@ -90,7 +89,6 @@ __all__ = [
     'EyeTracker',
     'Screen',
     'Gaze',
-    'GazeDataFrame',
 
     'measure',
     'EVENT_MEASURES',

@@ -1,0 +1,39 @@
+# Copyright (c) 2026 The pymovements Project Authors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+"""Retry network tests to absorb transient connectivity issues and rate limiting."""
+from __future__ import annotations
+
+import pytest
+from pytest_doctestplus.output_checker import REMOTE_DATA
+
+
+def _is_network_doctest(item):
+    """Detect doctests declaring network usage via the REMOTE_DATA doctest option flag."""
+    dtest = getattr(item, 'dtest', None)
+    return dtest is not None and any(example.options.get(REMOTE_DATA) for example in dtest.examples)
+
+
+def pytest_collection_modifyitems(items):
+    """Apply the network marker to downloading doctests and a retry marker to all network tests."""
+    for item in items:
+        if _is_network_doctest(item):
+            item.add_marker(pytest.mark.network)
+        if item.get_closest_marker('network'):
+            item.add_marker(pytest.mark.flaky(reruns=2, reruns_delay=30))

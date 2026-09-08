@@ -280,6 +280,18 @@ def test_scanpathplot_filter_events_plots_expected_circles(
     assert len(ax.patches) == expected_n_circles
 
 
+def test_scanpathplot_numeric_duration_events(make_gaze):
+    # Events mutated to numeric millisecond columns must still be plottable.
+    gaze = make_gaze('1_fixation')
+    gaze.events.frame = gaze.events.frame.with_columns(
+        pl.col('onset', 'offset', 'duration').dt.total_milliseconds(),
+    )
+
+    _, ax = scanpathplot(gaze=gaze, event_name='fixation')
+
+    assert len(ax.patches) == 1
+
+
 def test_scanpathplot_save(gaze, tmp_path):
     filepath = tmp_path / 'test.svg'
     assert not filepath.is_file()
@@ -310,33 +322,21 @@ def test_scanpathplot_exceptions(gaze, kwargs, exception):
         scanpathplot(gaze=gaze, **kwargs)
 
 
-def test_scanpathplot_gaze_events_all_none_exception():
-    with pytest.raises(TypeError, match='must not be both None'):
-        scanpathplot(gaze=None, events=None)
+def test_scanpathplot_gaze_none_exception():
+    with pytest.raises(TypeError, match='must not be None'):
+        scanpathplot()
 
 
 def test_scanpathplot_traceplot_gaze_samples_none_exception(gaze):
     gaze.samples = None
     with pytest.raises(TypeError, match='must not be None'):
-        scanpathplot(events=None, gaze=gaze, add_traceplot=True)
+        scanpathplot(gaze=gaze, add_traceplot=True)
 
 
 def test_scanpathplot_gaze_events_none_exception(gaze):
     gaze.events = None
     with pytest.raises(TypeError, match='must not be None'):
         scanpathplot(gaze=gaze)
-
-
-def test_scanpathplot_events_is_deprecated(gaze, assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        scanpathplot(events=gaze.events)
-
-    assert_deprecation_is_removed(
-        function_name='scanpathplot() argument events',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
 
 
 def test_scanpathplot_no_experiment(gaze):
