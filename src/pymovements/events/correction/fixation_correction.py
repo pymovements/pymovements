@@ -405,6 +405,34 @@ def correct_fixation_locations(
         coordinate data is missing.
     TypeError
         If algorithm is neither a string nor a list of strings.
+
+    Examples
+    --------
+    Correcting fixations that drift away from three lines of text with their centers at
+    y = 100, 200 and 300 snaps each y-coordinate onto its line center:
+
+    >>> import polars as pl
+    >>> from pymovements.events.correction import correct_fixation_locations
+    >>> events = pl.DataFrame({
+    ...     'name': ['fixation', 'fixation', 'fixation'],
+    ...     'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+    ... })
+    >>> aois = pl.DataFrame({
+    ...     'start_y': [80.0, 180.0, 280.0],
+    ...     'height': [40.0, 40.0, 40.0],
+    ... })
+    >>> correct_fixation_locations(events, aois, algorithm='attach')
+    shape: (3,)
+    Series: 'location' [list[f64]]
+    [
+        [100.0, 100.0]
+        [110.0, 200.0]
+        [120.0, 300.0]
+    ]
+
+    For updating an events dataframe in place, including per-trial processing and the
+    'location_original' and 'correction_algorithm' bookkeeping columns, see
+    :py:func:`~pymovements.events.correction.correct_fixations`.
     """
     right_to_left = _is_right_to_left(directionality)
     if algorithm_kwargs is None:
@@ -616,6 +644,34 @@ def correct_fixations(
         If the directionality is invalid, if trial_columns are missing from the events
         dataframe, if no AOIs are found for a trial with fixations to correct, or if the
         fixation events have already been corrected.
+
+    Examples
+    --------
+    Correcting fixations that drift away from three lines of text with their centers at
+    y = 100, 200 and 300 snaps each y-coordinate onto its line center and preserves the
+    original locations:
+
+    >>> import polars as pl
+    >>> from pymovements.events.correction import correct_fixations
+    >>> events = pl.DataFrame({
+    ...     'name': ['fixation', 'fixation', 'fixation'],
+    ...     'location': [[100.0, 105.0], [110.0, 195.0], [120.0, 302.0]],
+    ... })
+    >>> aois = pl.DataFrame({
+    ...     'start_y': [80.0, 180.0, 280.0],
+    ...     'height': [40.0, 40.0, 40.0],
+    ... })
+    >>> correct_fixations(events, aois, algorithm='attach')
+    shape: (3, 4)
+    ┌──────────┬────────────────┬───────────────────┬──────────────────────┐
+    │ name     ┆ location       ┆ location_original ┆ correction_algorithm │
+    │ ---      ┆ ---            ┆ ---               ┆ ---                  │
+    │ str      ┆ list[f64]      ┆ list[f64]         ┆ str                  │
+    ╞══════════╪════════════════╪═══════════════════╪══════════════════════╡
+    │ fixation ┆ [100.0, 100.0] ┆ [100.0, 105.0]    ┆ attach               │
+    │ fixation ┆ [110.0, 200.0] ┆ [110.0, 195.0]    ┆ attach               │
+    │ fixation ┆ [120.0, 300.0] ┆ [120.0, 302.0]    ┆ attach               │
+    └──────────┴────────────────┴───────────────────┴──────────────────────┘
     """
     # Validate eagerly so an invalid directionality raises even without matching fixations.
     _is_right_to_left(directionality)
