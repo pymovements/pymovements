@@ -82,6 +82,32 @@ def test_location_exceptions(init_kwargs, exception, message):
             ),
             id='position_three_samples_median',
         ),
+
+        pytest.param(
+            {'method': 'first'},
+            pl.DataFrame(
+                {'position': [[0, 0], [2, 1], [3, 3]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'location': [[0, 0]]},
+                schema={'location': pl.List(pl.Float64)},
+            ),
+            id='position_three_samples_first',
+        ),
+
+        pytest.param(
+            {'method': 'last'},
+            pl.DataFrame(
+                {'position': [[0, 0], [2, 1], [3, 3]]},
+                schema={'position': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {'location': [[3, 3]]},
+                schema={'location': pl.List(pl.Float64)},
+            ),
+            id='position_three_samples_last',
+        ),
     ],
 )
 def test_location_has_expected_result(init_kwargs, input_df, expected_df):
