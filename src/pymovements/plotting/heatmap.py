@@ -28,8 +28,8 @@ import numpy as np
 from matplotlib import colors
 
 from pymovements.gaze import Gaze
-from pymovements.plotting._matplotlib import _set_screen_axes
 from pymovements.plotting._matplotlib import prepare_figure
+from pymovements.plotting.screen import screen as screen_canvas
 from pymovements.stimulus.image import _draw_image_stimulus
 
 
@@ -220,7 +220,8 @@ def heatmap(
     heatmap_plot.set_alpha(np.where(heatmap_plot.get_array().data > 0, alpha, 0.0))
 
     # Apply screen-based axis limits and aspect ratio
-    _set_screen_axes(ax, gaze.experiment.screen, func_name='heatmap')
+    display = gaze.experiment.screen
+    screen_canvas(display.width_px, display.height_px, origin=display.origin, ax=ax)
 
     # Set the plot title and axis labels
     if title:
