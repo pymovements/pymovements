@@ -167,7 +167,7 @@ class ResourceDefinition:
             load_kwargs = {}
         self.load_kwargs = load_kwargs
 
-    def _resolved_websource(self, attr: str) -> WebSource | None:
+    def _inline_websource(self, attr: str) -> WebSource | None:
         """Return the inline ``WebSource``, raising if the source is a named reference."""
         if isinstance(self.source, str):
             raise AttributeError(
@@ -179,12 +179,12 @@ class ResourceDefinition:
 
     def _get_websource_attribute(self, attr: str) -> Any:
         """Return an attribute of the inline ``WebSource``, or ``None`` without a source."""
-        source = self._resolved_websource(attr)
+        source = self._inline_websource(attr)
         return getattr(source, attr) if source else None
 
     def _set_websource_attribute(self, attr: str, value: Any) -> None:
         """Set an attribute of the inline ``WebSource``, creating one without a source."""
-        source = self._resolved_websource(attr)
+        source = self._inline_websource(attr)
         if source is None:
             self.source = WebSource(**{'url': None, attr: value})
         else:
