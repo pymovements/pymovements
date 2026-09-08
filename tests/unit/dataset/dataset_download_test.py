@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
 
@@ -1106,6 +1107,78 @@ def test_download_dataset_conflicting_sources_mirrors_raises():
     paths.downloads = '/tmp/downloads'
 
     with pytest.raises(ValueError, match='mirrors differ between resources'):
+        download_dataset(definition, paths, extract=False)
+
+
+def test_download_dataset_conflicting_sources_other_field_raises():
+    """Test that a shared (url, filename) with any other field difference raises ValueError."""
+    @dataclass(frozen=True)
+    class ExtendedWebSource(WebSource):
+        sha256: str | None = None
+
+    resource1 = ResourceDefinition(
+        content='gaze',
+        source=ExtendedWebSource(
+            url='http://example.com/file.zip', filename='file.zip', sha256='abc',
+        ),
+    )
+    resource2 = ResourceDefinition(
+        content='precomputed_events',
+        source=ExtendedWebSource(
+            url='http://example.com/file.zip', filename='file.zip', sha256='def',
+        ),
+    )
+    definition = DatasetDefinition(name='test', resources=[resource1, resource2])
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with pytest.raises(ValueError, match='sources differ between resources'):
+        download_dataset(definition, paths, extract=False)
+
+
+@pytest.mark.parametrize(
+    ('resources', 'sources'),
+    [
+        pytest.param(
+            [
+                ResourceDefinition(
+                    content='gaze',
+                    source=WebSource(url='http://example.com/a.zip', filename='file.zip'),
+                ),
+                ResourceDefinition(
+                    content='precomputed_events',
+                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
+                ),
+            ],
+            None,
+            id='inline_sources',
+        ),
+        pytest.param(
+            [
+                ResourceDefinition(content='gaze', source='main'),
+                ResourceDefinition(
+                    content='precomputed_events',
+                    source=WebSource(url='http://example.com/b.zip', filename='file.zip'),
+                ),
+            ],
+            {'main': WebSource(url='http://example.com/a.zip', filename='file.zip')},
+            id='named_and_inline_sources',
+        ),
+    ],
+)
+def test_download_dataset_same_filename_different_urls_raises(resources, sources):
+    """Test that two sources sharing a filename but differing in url raise ValueError."""
+    definition = DatasetDefinition(name='test', resources=resources, sources=sources)
+
+    paths = mock.Mock()
+    paths.downloads = '/tmp/downloads'
+
+    with pytest.raises(
+        ValueError,
+        match=r'the same filename is claimed by different urls '
+              r"\('http://example.com/a.zip' != 'http://example.com/b.zip'\)",
+    ):
         download_dataset(definition, paths, extract=False)
 
 

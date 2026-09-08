@@ -105,8 +105,8 @@ def download_dataset(
     AttributeError
         If no downloadable sources are found in the dataset definition.
     ValueError
-        If two sources share the same ``url`` and ``filename`` but disagree on ``md5`` or
-        ``mirrors``.
+        If two sources share the same ``url`` and ``filename`` but disagree on any other field,
+        or if two sources share the same ``filename`` but have different ``url`` values.
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
@@ -114,6 +114,7 @@ def download_dataset(
     # multiple resources, so we deduplicate to download each file only once.
     sources: list[WebSource] = []
     seen: dict[tuple[str | None, str | None], WebSource] = {}
+    filename_urls: dict[str, str] = {}
     for resource in definition.resources:
         source = _resolve_source(definition.sources, resource)
         if source is None:
@@ -121,19 +122,34 @@ def download_dataset(
         key = (source.url, source.filename)
         existing = seen.get(key)
         if existing is not None:
-            if existing.md5 != source.md5:
+            if existing != source:
+                if existing.md5 != source.md5:
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': md5 differs between resources "
+                        f"('{existing.md5}' != '{source.md5}').",
+                    )
+                if existing.mirrors != source.mirrors:
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': mirrors differ between resources "
+                        f"({existing.mirrors} != {source.mirrors}).",
+                    )
                 raise ValueError(
                     f"Conflicting sources for url '{source.url}' and filename "
-                    f"'{source.filename}': md5 differs between resources "
-                    f"('{existing.md5}' != '{source.md5}').",
-                )
-            if existing.mirrors != source.mirrors:
-                raise ValueError(
-                    f"Conflicting sources for url '{source.url}' and filename "
-                    f"'{source.filename}': mirrors differ between resources "
-                    f"({existing.mirrors} != {source.mirrors}).",
+                    f"'{source.filename}': sources differ between resources "
+                    f'({existing} != {source}).',
                 )
             continue
+        # A repeated filename with a different url would silently overwrite the first download.
+        if source.filename is not None:
+            if source.filename in filename_urls:
+                raise ValueError(
+                    f"Conflicting sources for filename '{source.filename}': the same filename "
+                    f"is claimed by different urls ('{filename_urls[source.filename]}' != "
+                    f"'{source.url}').",
+                )
+            filename_urls[source.filename] = source.url
         seen[key] = source
         sources.append(source)
 
