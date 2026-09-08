@@ -1613,9 +1613,6 @@ class Dataset:
         ------
         AttributeError
             If no downloadable sources are found in the dataset definition.
-        ValueError
-            If two sources share the same ``url`` and ``filename`` but disagree on any other field,
-            or if two sources share the same ``filename`` but have different ``url`` values.
         RuntimeError
             If downloading a resource failed for all given mirrors.
         """
