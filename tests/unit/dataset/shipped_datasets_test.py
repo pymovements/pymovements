@@ -41,3 +41,9 @@ def test_shipped_definition_sources_no_duplicate_url_filename(definition):
     urls_filenames = [(s.url, s.filename) for s in definition.sources.values()]
     assert len(urls_filenames) == len(set(urls_filenames)), \
         f'Duplicate (url, filename) pairs in sources of {definition.name}: {urls_filenames}'
+
+
+@pytest.mark.parametrize('name', DatasetLibrary.names())
+def test_shipped_definition_resolves_sources_without_conflicts(definition):
+    """Test that all resource sources resolve to downloadable sources without conflicts."""
+    assert definition.resolved_sources()

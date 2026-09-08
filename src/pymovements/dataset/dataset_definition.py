@@ -323,7 +323,7 @@ class DatasetDefinition:
 
         self._validate_sources(self.sources)
         self._validate_resource_sources(self.resources, self.sources)
-        self.resolved_sources()
+        self._validate_resolved_sources()
 
         if trial_columns is not None:
             warn(
@@ -525,6 +525,56 @@ class DatasetDefinition:
             return self.sources[source]
         return source
 
+    def _validate_resolved_sources(self) -> None:
+        """Validate that the resolved sources of all resources do not conflict.
+
+        Raises
+        ------
+        ValueError
+            If two sources share the same ``url`` and ``filename`` but disagree on any other
+            field, or if two sources share the same ``filename`` but have different ``url``
+            values.
+        """
+        seen: dict[tuple[str | None, str | None], WebSource] = {}
+        filename_urls: dict[str, str] = {}
+        for resource in self.resources:
+            source = self.resolve_source(resource)
+            if source is None:
+                continue
+            key = (source.url, source.filename)
+            existing = seen.get(key)
+            if existing is not None:
+                if existing == source:
+                    continue
+                if existing.md5 != source.md5:
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': md5 differs between resources "
+                        f"('{existing.md5}' != '{source.md5}').",
+                    )
+                if existing.mirrors != source.mirrors:
+                    raise ValueError(
+                        f"Conflicting sources for url '{source.url}' and filename "
+                        f"'{source.filename}': mirrors differ between resources "
+                        f"({existing.mirrors} != {source.mirrors}).",
+                    )
+                raise ValueError(
+                    f"Conflicting sources for url '{source.url}' and filename "
+                    f"'{source.filename}': sources differ between resources "
+                    f'({existing} != {source}).',
+                )
+            # A repeated filename with a different url would silently overwrite the first
+            # download.
+            if source.filename is not None:
+                if source.filename in filename_urls:
+                    raise ValueError(
+                        f"Conflicting sources for filename '{source.filename}': the same "
+                        f"filename is claimed by different urls "
+                        f"('{filename_urls[source.filename]}' != '{source.url}').",
+                    )
+                filename_urls[source.filename] = source.url
+            seen[key] = source
+
     def resolved_sources(self) -> list[WebSource]:
         """Return the unique resolved sources referenced by the resources.
 
@@ -543,46 +593,18 @@ class DatasetDefinition:
             field, or if two sources share the same ``filename`` but have different ``url``
             values.
         """
+        self._validate_resolved_sources()
+
         sources: list[WebSource] = []
-        seen: dict[tuple[str | None, str | None], WebSource] = {}
-        filename_urls: dict[str, str] = {}
+        seen: set[tuple[str | None, str | None]] = set()
         for resource in self.resources:
             source = self.resolve_source(resource)
             if source is None:
                 continue
             key = (source.url, source.filename)
-            existing = seen.get(key)
-            if existing is not None:
-                if existing != source:
-                    if existing.md5 != source.md5:
-                        raise ValueError(
-                            f"Conflicting sources for url '{source.url}' and filename "
-                            f"'{source.filename}': md5 differs between resources "
-                            f"('{existing.md5}' != '{source.md5}').",
-                        )
-                    if existing.mirrors != source.mirrors:
-                        raise ValueError(
-                            f"Conflicting sources for url '{source.url}' and filename "
-                            f"'{source.filename}': mirrors differ between resources "
-                            f"({existing.mirrors} != {source.mirrors}).",
-                        )
-                    raise ValueError(
-                        f"Conflicting sources for url '{source.url}' and filename "
-                        f"'{source.filename}': sources differ between resources "
-                        f'({existing} != {source}).',
-                    )
+            if key in seen:
                 continue
-            # A repeated filename with a different url would silently overwrite the first
-            # download.
-            if source.filename is not None:
-                if source.filename in filename_urls:
-                    raise ValueError(
-                        f"Conflicting sources for filename '{source.filename}': the same "
-                        f"filename is claimed by different urls "
-                        f"('{filename_urls[source.filename]}' != '{source.url}').",
-                    )
-                filename_urls[source.filename] = source.url
-            seen[key] = source
+            seen.add(key)
             sources.append(source)
         return sources
 
