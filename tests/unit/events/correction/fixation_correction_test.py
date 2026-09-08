@@ -94,15 +94,17 @@ def test_correct_fixation_locations_default_woc(sample_events_and_aois):
     assert corrected_ys(locs) == [100.0, 100.0, 200.0, 200.0, 300.0, 300.0]
 
 
-def test_correct_fixation_locations_specific_algos(sample_events_and_aois):
-    events_df, aois_df = sample_events_and_aois
-    algos = (
+@pytest.mark.parametrize(
+    'algorithm',
+    [
         'attach', 'chain', 'cluster', 'compare', 'merge',
         'regress', 'segment', 'slice', 'split', 'stretch', 'warp',
-    )
-    for algo in algos:
-        locs = correct_fixation_locations(events_df, aois_df, algorithm=algo)
-        assert locs.len() == 6
+    ],
+)
+def test_correct_fixation_locations_specific_algos(sample_events_and_aois, algorithm):
+    events_df, aois_df = sample_events_and_aois
+    locs = correct_fixation_locations(events_df, aois_df, algorithm=algorithm)
+    assert locs.len() == 6
 
 
 def test_correct_fixation_locations_woc_custom_list(sample_events_and_aois):
