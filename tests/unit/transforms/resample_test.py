@@ -702,6 +702,79 @@ def test_resample_returns(kwargs, df, expected_df):
 
 
 @pytest.mark.parametrize(
+    ('kwargs', 'df', 'expected_df'),
+    [
+        pytest.param(
+            {'resampling_rate': 2000, 'columns': None},
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 1000, 2000, 3000, 4000, 5000], dtype=pl.Duration('us')),
+                    'pixel': [1, 2, 3, 4, 5, 6],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': pl.Series(
+                        [0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000],
+                        dtype=pl.Duration('us'),
+                    ),
+                    'pixel': [1, None, 2, None, 3, None, 4, None, 5, None, 6],
+                },
+                schema={'time': pl.Duration('us'), 'pixel': pl.Int64},
+            ),
+            id='duration_time_upsample_1000_to_2000_no_interpolation',
+        ),
+        pytest.param(
+            {'resampling_rate': 500, 'columns': None},
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 1000, 2000, 3000, 4000, 5000], dtype=pl.Duration('us')),
+                    'pixel': [1, 2, 3, 4, 5, 6],
+                },
+            ),
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 2000, 4000], dtype=pl.Duration('us')),
+                    'pixel': [1, 3, 5],
+                },
+                schema={'time': pl.Duration('us'), 'pixel': pl.Int64},
+            ),
+            id='duration_time_downsample_1000_to_500_no_interpolation',
+        ),
+        pytest.param(
+            {
+                'resampling_rate': 1000,
+                'fill_null_strategy': 'interpolate_linear',
+                'columns': ['pixel'],
+                'n_components': 2,
+            },
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 2000, 4000], dtype=pl.Duration('us')),
+                    'pixel': [[1.0, 1.0], [3.0, 3.0], [5.0, 5.0]],
+                },
+                schema={'time': pl.Duration('us'), 'pixel': pl.List(pl.Float64)},
+            ),
+            pl.DataFrame(
+                {
+                    'time': pl.Series([0, 1000, 2000, 3000, 4000], dtype=pl.Duration('us')),
+                    'pixel': [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0], [5.0, 5.0]],
+                },
+                schema={'time': pl.Duration('us'), 'pixel': pl.List(pl.Float64)},
+            ),
+            id='duration_time_interpolate_linear_list_column',
+        ),
+    ],
+)
+def test_resample_duration_time_column(kwargs, df, expected_df):
+    """Resampling a ``Duration`` time column keeps microsecond precision and interpolates."""
+    result_df = resample(df, **kwargs)
+
+    assert result_df.schema['time'] == pl.Duration('us')
+    assert_frame_equal(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
     ('kwargs', 'exception', 'msg_substrings'),
     [
         # Invalid fill_null_strategy

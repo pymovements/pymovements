@@ -27,6 +27,7 @@ import numpy
 import polars
 
 from pymovements._utils import _checks
+from pymovements._utils._time import timesteps_to_numpy
 from pymovements.events.detection.library import register_event_detection
 from pymovements.events.events import Events
 from pymovements.transforms.numpy import norm
@@ -1062,13 +1063,16 @@ def ihmm(
         Must have shape (T, 2). Will be converted to velocity magnitudes via Euclidean norm.
 
     timesteps : list[int] | numpy.ndarray | polars.Series | None
-        Timestamp for each velocity sample. May be integer or float valued.
-        If None, uses sequential indices (0, 1, 2, ..., T-1). (default: None)
+        Timestamp for each velocity sample. May be integer or float valued, or a
+        ``polars.Duration`` series, which is converted to milliseconds. If None, uses
+        sequential indices (0, 1, 2, ..., T-1). (default: None)
 
     minimum_duration: int
-        Minimum fixation duration. The duration should be the same unit as the timesteps array.
-        Must be an integer, so with float-valued ``timesteps`` (e.g. seconds) only
-        whole-unit thresholds can be expressed. (default: 100)
+        Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
+        for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
+        None, then ``minimum_duration`` is specified in numbers of samples. Must be an integer,
+        so with float-valued ``timesteps`` only whole-unit thresholds can be expressed.
+        (default: 100)
 
     mu : list[float] | numpy.ndarray | None
         Mean velocity for each state (Gaussian emissions).
@@ -1167,7 +1171,7 @@ def ihmm(
     ------
     TypeError
         If velocities is a polars Series whose dtype is not List.
-        If timesteps is a polars Series with a non-numeric dtype.
+        If timesteps is a polars Series whose dtype is neither numeric nor Duration.
         If minimum_duration is not an integer.
     ValueError
         If velocities does not have shape (T, 2).
@@ -1206,14 +1210,14 @@ def ihmm(
 
     >>> ihmm(velocities)
     shape: (2, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation ┆ 252   ┆ 447    ┆ 195      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Run fixation detection with custom HMM parameters:
 
@@ -1223,14 +1227,14 @@ def ihmm(
     ...         'trans': [[0.97360507, 0.02639493],[0.07593547, 0.92406453]]}
     >>> ihmm(velocities, hmm_parameters_dict = hmm_parameters)
     shape: (2, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation ┆ 252   ┆ 447    ┆ 195      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     We can also apply the detection on a :py:class:`~pymovements.Gaze` object.
 
@@ -1240,51 +1244,51 @@ def ihmm(
     ...         time=np.arange(len(velocities)),)
     >>> gaze
     shape: (500, 2)
-    ┌──────┬────────────┐
-    │ time ┆ velocity   │
-    │ ---  ┆ ---        │
-    │ i64  ┆ list[f64]  │
-    ╞══════╪════════════╡
-    │ 0    ┆ [0.0, 0.0] │
-    │ 1    ┆ [0.0, 0.0] │
-    │ 2    ┆ [0.0, 0.0] │
-    │ 3    ┆ [0.0, 0.0] │
-    │ 4    ┆ [0.0, 0.0] │
-    │ …    ┆ …          │
-    │ 495  ┆ [0.0, 0.0] │
-    │ 496  ┆ [0.0, 0.0] │
-    │ 497  ┆ [0.0, 0.0] │
-    │ 498  ┆ [0.0, 0.0] │
-    │ 499  ┆ [0.0, 0.0] │
-    └──────┴────────────┘
+    ┌──────────────┬────────────┐
+    │ time         ┆ velocity   │
+    │ ---          ┆ ---        │
+    │ duration[μs] ┆ list[f64]  │
+    ╞══════════════╪════════════╡
+    │ 0µs          ┆ [0.0, 0.0] │
+    │ 1ms          ┆ [0.0, 0.0] │
+    │ 2ms          ┆ [0.0, 0.0] │
+    │ 3ms          ┆ [0.0, 0.0] │
+    │ 4ms          ┆ [0.0, 0.0] │
+    │ …            ┆ …          │
+    │ 495ms        ┆ [0.0, 0.0] │
+    │ 496ms        ┆ [0.0, 0.0] │
+    │ 497ms        ┆ [0.0, 0.0] │
+    │ 498ms        ┆ [0.0, 0.0] │
+    │ 499ms        ┆ [0.0, 0.0] │
+    └──────────────┴────────────┘
 
     Run fixation detection by using the :py:meth:`~pymovements.Gaze.detect` method.
 
     >>> gaze.detect('ihmm')
     >>> gaze.events
     shape: (2, 4)
-    ┌──────────┬───────┬────────┬──────────┐
-    │ name     ┆ onset ┆ offset ┆ duration │
-    │ ---      ┆ ---   ┆ ---    ┆ ---      │
-    │ str      ┆ i64   ┆ i64    ┆ i64      │
-    ╞══════════╪═══════╪════════╪══════════╡
-    │ fixation ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation ┆ 252   ┆ 447    ┆ 195      │
-    └──────────┴───────┴────────┴──────────┘
+    ┌──────────┬──────────────┬──────────────┬──────────────┐
+    │ name     ┆ onset        ┆ offset       ┆ duration     │
+    │ ---      ┆ ---          ┆ ---          ┆ ---          │
+    │ str      ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞══════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └──────────┴──────────────┴──────────────┴──────────────┘
 
     Passing parameters to :py:meth:`~pymovements.Gaze.detect`:
 
     >>> gaze.detect('ihmm', reestimation=True, name='fixation_ihmm')
     >>> gaze.events.filter_by_name('fixation_ihmm')
     shape: (2, 4)
-    ┌───────────────┬───────┬────────┬──────────┐
-    │ name          ┆ onset ┆ offset ┆ duration │
-    │ ---           ┆ ---   ┆ ---    ┆ ---      │
-    │ str           ┆ i64   ┆ i64    ┆ i64      │
-    ╞═══════════════╪═══════╪════════╪══════════╡
-    │ fixation_ihmm ┆ 52    ┆ 247    ┆ 195      │
-    │ fixation_ihmm ┆ 252   ┆ 447    ┆ 195      │
-    └───────────────┴───────┴────────┴──────────┘
+    ┌───────────────┬──────────────┬──────────────┬──────────────┐
+    │ name          ┆ onset        ┆ offset       ┆ duration     │
+    │ ---           ┆ ---          ┆ ---          ┆ ---          │
+    │ str           ┆ duration[μs] ┆ duration[μs] ┆ duration[μs] │
+    ╞═══════════════╪══════════════╪══════════════╪══════════════╡
+    │ fixation_ihmm ┆ 52ms         ┆ 247ms        ┆ 195ms        │
+    │ fixation_ihmm ┆ 252ms        ┆ 447ms        ┆ 195ms        │
+    └───────────────┴──────────────┴──────────────┴──────────────┘
     """
     if isinstance(velocities, polars.Series):
         if not isinstance(velocities.dtype, polars.List):
@@ -1305,11 +1309,8 @@ def ihmm(
     if transition_probabilities is not None:
         transition_probabilities = numpy.array(transition_probabilities)
 
-    numeric_dtypes = polars.datatypes.FloatType, polars.datatypes.IntegerType
     if isinstance(timesteps, polars.Series):
-        if not isinstance(timesteps.dtype, numeric_dtypes):
-            raise TypeError(f'timesteps dtype must be float or int but is {timesteps.dtype}')
-        timesteps = timesteps.to_numpy()
+        timesteps = timesteps_to_numpy(timesteps)
     elif timesteps is not None:
         timesteps = numpy.array(timesteps)
     else:

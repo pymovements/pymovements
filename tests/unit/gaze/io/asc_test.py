@@ -68,6 +68,10 @@ def test_from_asc_has_expected_samples(
     filepath = make_text_file('test_eyelink.asc', header=header, body=body)
     gaze = from_asc(filepath, **kwargs)
 
+    if 'time' in expected_samples.columns:
+        expected_samples = expected_samples.with_columns(
+            (pl.col('time') * 1000).round().cast(pl.Duration('us')),
+        )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
 
@@ -95,7 +99,7 @@ def test_from_asc_has_expected_samples(
                     ],
                 },
                 schema={
-                    'time': pl.Int64,
+                    'time': pl.Float64,
                     'pupil': pl.Float64,
                     'pixel': pl.List(pl.Float64),
                 },
@@ -131,7 +135,7 @@ def test_from_asc_has_expected_samples(
                     'task': [None] + 2 * ['reading'] + 12 * ['judo'] + [None],
                 },
                 schema={
-                    'time': pl.Int64,
+                    'time': pl.Float64,
                     'pupil': pl.Float64,
                     'task': pl.Utf8,
                     'screen_id': pl.Int64,
@@ -179,6 +183,10 @@ def test_from_asc_example_file_has_expected_samples(
 ):
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
+    if 'time' in expected_samples.columns:
+        expected_samples = expected_samples.with_columns(
+            (pl.col('time') * 1000).round().cast(pl.Duration('us')),
+        )
     assert_frame_equal(gaze.samples, expected_samples, check_column_order=False)
 
 
@@ -190,7 +198,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -202,7 +210,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink', 'add_columns': {'test': 'A'}},
             (16, 4),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.String,
@@ -218,7 +226,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 4),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
                 'test': pl.Float64,
@@ -234,7 +242,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (16, 7),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'task': pl.Utf8,
                 'screen_id': pl.Int64,
@@ -250,7 +258,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (16, 3),
             {
-                'time': pl.Float64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -265,7 +273,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -280,7 +288,7 @@ def test_from_asc_example_file_has_expected_samples(
             },
             (297, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pupil': pl.Float64,
                 'pixel': pl.List(pl.Float64),
             },
@@ -291,7 +299,7 @@ def test_from_asc_example_file_has_expected_samples(
             {'patterns': 'eyelink'},
             (368, 3),
             {
-                'time': pl.Int64,
+                'time': pl.Duration('us'),
                 'pixel': pl.List(pl.Float64),
                 'pupil': pl.List(pl.Float64),
             },
@@ -694,7 +702,7 @@ def test_from_asc_sets_public_cal_interfaces(filename, make_example_file):
     # Calibrations DataFrame present with the expected schema
     assert isinstance(gaze.calibrations, pl.DataFrame)
     assert gaze.calibrations.schema == {
-        'time': pl.Float64,
+        'time': pl.Duration('us'),
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'tracking_mode': pl.Utf8,
@@ -716,7 +724,7 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
     # Validations DataFrame present with the expected schema
     assert isinstance(gaze.validations, pl.DataFrame)
     assert gaze.validations.schema == {
-        'time': pl.Float64,
+        'time': pl.Duration('us'),
         'num_points': pl.Int64,
         'eye': pl.Utf8,
         'accuracy_avg': pl.Float64,
@@ -742,9 +750,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 },
                 schema={
                     'name': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_without_events',
@@ -767,9 +775,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_with_events',
@@ -792,9 +800,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_mono_2khz_with_events',
@@ -826,9 +834,9 @@ def test_from_asc_sets_public_val_interfaces(filename, make_example_file):
                 schema={
                     'name': pl.Utf8,
                     'eye': pl.Utf8,
-                    'onset': pl.Int64,
-                    'offset': pl.Int64,
-                    'duration': pl.Int64,
+                    'onset': pl.Duration('ms'),
+                    'offset': pl.Duration('ms'),
+                    'duration': pl.Duration('ms'),
                 },
             ),
             id='eyelink_asc_bino_with_events',
@@ -841,6 +849,9 @@ def test_from_asc_example_file_has_expected_events(
     filepath = make_example_file(filename)
     gaze = from_asc(filepath, **kwargs)
 
+    expected_event_frame = expected_event_frame.with_columns(
+        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
+    )
     assert_frame_equal(gaze.events.frame, expected_event_frame, check_column_order=False)
 
 
@@ -912,13 +923,13 @@ def test_from_asc_corrupted_file_warning_contains_full_path(make_text_file):
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             True,
-            [(123, 152), ('message here', 'TEST 1')],
+            [(123_000, 152_000), ('message here', 'TEST 1')],
             id='multiple_messages',
         ),
         pytest.param(
             'MSG 123 message here\nMSG 152 TEST 1',
             [r'^.*TEST.*$'],
-            [(152,), ('TEST 1',)],
+            [(152_000,), ('TEST 1',)],
             id='filter_messages',
         ),
         pytest.param(
@@ -946,7 +957,7 @@ def test_from_asc_messages(make_text_file, body, messages, expected_data):
         assert_frame_equal(
             gaze.messages,
             pl.DataFrame(
-                schema={'time': pl.Float64, 'content': pl.String},
+                schema={'time': pl.Duration('us'), 'content': pl.String},
                 data=expected_data,
             ),
         )
@@ -1006,11 +1017,14 @@ def test_from_asc_orphaned_event_end_marker_with_custom_patterns_does_not_raise_
         schema={
             'name': pl.Utf8,
             'eye': pl.Utf8,
-            'onset': pl.Int64,
-            'offset': pl.Int64,
-            'duration': pl.Int64,
+            'onset': pl.Duration('ms'),
+            'offset': pl.Duration('ms'),
+            'duration': pl.Duration('ms'),
             'trial_id': pl.Null,
         },
+    )
+    expected_events = expected_events.with_columns(
+        pl.col('onset', 'offset', 'duration').cast(pl.Duration('us')),
     )
 
     assert_frame_equal(gaze.events.frame, expected_events, check_column_order=False)

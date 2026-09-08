@@ -22,6 +22,7 @@ import polars as pl
 import pytest
 from polars.testing import assert_frame_equal
 
+from pymovements._utils._time import durations_to_ms
 from pymovements.events import Events
 from pymovements.measure.reading import ReadingMeasures
 from pymovements.measure.reading.annotation import annotate_fixations
@@ -89,7 +90,9 @@ def fixture_mapped_events(stimulus):
     })
     events = Events(data=events_df)
     events.map_to_aois(stimulus)
-    return events.frame
+    # The measure expressions operate on numeric milliseconds, matching the conversion
+    # compute_reading_measures applies to its fixation input.
+    return durations_to_ms(events.frame)
 
 
 @pytest.fixture(name='annotated_events', scope='function')

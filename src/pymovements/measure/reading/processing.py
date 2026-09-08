@@ -25,6 +25,7 @@ from typing import Any
 
 import polars as pl
 
+from pymovements._utils._time import durations_to_ms
 from pymovements.measure.reading.annotation import annotate_fixations
 from pymovements.measure.reading.measures import first_duration
 from pymovements.measure.reading.measures import first_fixation_duration
@@ -280,6 +281,10 @@ def compute_reading_measures(
     }
     if reserved := reserved_columns.intersection(group_columns):
         raise ValueError(f'group_columns must not contain the reserved columns {sorted(reserved)}.')
+
+    # Convert Duration columns (onset, duration) to numeric milliseconds; the measure
+    # expressions operate on numeric time values.
+    fixations = durations_to_ms(fixations)
 
     fixations = _normalize_fixations(
         fixations, word_index_column=word_index_column, event_name=event_name,
