@@ -19,10 +19,14 @@
 # SOFTWARE.
 """Provides utilities for recording source files in metadata dictionaries.
 
-The ``sources`` metadata entry lists the files an object was generated from,
-analogous to the BIDS ``Sources`` sidecar field. Entries are POSIX-style path
-strings: absolute for standalone loading, relative to the dataset root when
-loaded via :py:class:`~pymovements.Dataset`.
+The ``sources`` metadata entry lists the files an object was directly read or
+generated from, analogous to the BIDS ``Sources`` sidecar field. Like BIDS
+``Sources``, it records proximate provenance only: reloading a previously
+saved file records the file that was actually read, not the sources of the
+original data. Full provenance chains are recovered hop by hop through the
+metadata saved alongside each file. Entries are POSIX-style path strings:
+absolute for standalone loading, relative to the dataset root when loaded via
+:py:class:`~pymovements.Dataset`.
 """
 from __future__ import annotations
 
@@ -34,7 +38,11 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
     """Return a metadata dictionary with the loaded file recorded in ``sources``.
 
     The passed metadata dictionary is copied, not mutated. A ``sources`` entry
-    already present in the passed metadata is respected and left unchanged.
+    already present in the passed metadata is respected and left unchanged, as
+    it expresses explicit user intent. Loaders reading metadata from a file
+    saved alongside the data must not forward that file's ``sources`` entry
+    here: it describes the saved file's own provenance, while the proximate
+    source of the loaded object is the file that was actually read.
 
     Parameters
     ----------

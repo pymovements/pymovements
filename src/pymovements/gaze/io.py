@@ -119,7 +119,9 @@ def from_csv(
         for columns. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``sources``
-        entry holding its resolved path is added unless already present. (default: None)
+        entry holding its resolved path is added unless already present. When reloading a
+        file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
+        itself is recorded, not the sources of the original data. (default: None)
     **kwargs: Any
         Additional keyword arguments to be passed to :py:func:`polars.read_csv` to read in the csv.
         These can include custom separators, a subset of columns, or specific data types
@@ -677,7 +679,9 @@ def from_ipc(
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`. (default: None)
     metadata: dict[str, Any] | None
         Dictionary containing additional metadata. When ``file`` is a path, a ``sources``
-        entry holding its resolved path is added unless already present. (default: None)
+        entry holding its resolved path is added unless already present. When reloading a
+        file previously saved with :py:meth:`~pymovements.Gaze.save`, the reloaded file
+        itself is recorded, not the sources of the original data. (default: None)
     **kwargs: Any
             Additional keyword arguments to be passed to :py:func:`polars.read_ipc`.
 
