@@ -557,8 +557,9 @@ class DatasetDefinition:
         ------
         ValueError
             If two sources share the same ``url`` and ``filename`` but disagree on any other
-            field, or if two sources share the same ``filename`` but have different ``url``
-            values.
+            field, if two sources share the same ``filename`` but have different ``url``
+            values, or if a resource references a source name that is missing from
+            :py:attr:`~pymovements.DatasetDefinition.sources`.
         """
         seen: dict[tuple[str | None, str | None], WebSource] = {}
         filename_urls: dict[str, str] = {}
@@ -615,8 +616,9 @@ class DatasetDefinition:
         ------
         ValueError
             If two sources share the same ``url`` and ``filename`` but disagree on any other
-            field, or if two sources share the same ``filename`` but have different ``url``
-            values.
+            field, if two sources share the same ``filename`` but have different ``url``
+            values, or if a resource references a source name that is missing from
+            :py:attr:`~pymovements.DatasetDefinition.sources`.
         """
         self._validate_resolved_sources()
 
