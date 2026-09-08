@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test sources metadata population in gaze I/O functions."""
+import io
+
 import pytest
 
 from pymovements.gaze.io import from_asc
@@ -69,6 +71,17 @@ def test_load_function_accepts_str_filepath(
     gaze = load_function(str(filepath), **load_kwargs)
 
     assert gaze.metadata['sources'] == [filepath.resolve().as_posix()]
+
+
+def test_from_csv_adds_no_source_for_file_object(make_example_file):
+    filepath = make_example_file('monocular_example.csv')
+    with open(filepath, encoding='utf-8') as csv_file:
+        buffer = io.StringIO(csv_file.read())
+
+    gaze = from_csv(buffer, **_CSV_KWARGS)
+
+    assert 'sources' not in gaze.metadata
+    assert 'sources' not in gaze.events.metadata
 
 
 def test_from_csv_respects_user_provided_sources(make_example_file):
