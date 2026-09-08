@@ -108,18 +108,31 @@ def test_compare_invalid_n_nearest_lines_raises():
         da.compare(word_locations, n_nearest_lines=0)
 
 
-def test_merge_ltr_and_rtl(sample_fixations_and_lines):
+@pytest.mark.parametrize(
+    ('directionality', 'expected'),
+    [
+        pytest.param(
+            'left-to-right',
+            [100.0] * 4 + [200.0] * 4 + [300.0] * 4,
+            id='left-to-right',
+        ),
+        # For RTL every within-line step is a sequence boundary, so the twelve
+        # one-fixation sequences must be merged back; only same-line pairs pass the
+        # gradient constraint (any cross-line pair has |gradient| >= 90 / 400 >
+        # g_thresh), recovering the lines.
+        pytest.param(
+            'right-to-left',
+            [100.0] * 4 + [200.0] * 4 + [300.0] * 4,
+            id='right-to-left',
+        ),
+    ],
+)
+def test_merge(sample_fixations_and_lines, directionality, expected):
     # With filterwarnings=error this test also asserts that merge does not leak
     # RankWarnings from poorly conditioned two-fixation line fits.
     fixations, line_ys = sample_fixations_and_lines
-    res_ltr = corrected_y(fixations, da.merge(line_ys, directionality='left-to-right'))
-    assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
-
-    # For RTL every within-line step is a sequence boundary, so the twelve one-fixation
-    # sequences must be merged back; only same-line pairs pass the gradient constraint
-    # (any cross-line pair has |gradient| >= 90 / 400 > g_thresh), recovering the lines.
-    res_rtl = corrected_y(fixations, da.merge(line_ys, directionality='right-to-left'))
-    assert res_rtl == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
+    res = corrected_y(fixations, da.merge(line_ys, directionality=directionality))
+    assert res == expected
 
 
 def test_regress(sample_fixations_and_lines):
@@ -128,44 +141,71 @@ def test_regress(sample_fixations_and_lines):
     assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
 
-def test_segment_ltr_and_rtl(sample_fixations_and_lines):
+def test_segment_ltr(sample_fixations_and_lines):
     fixations, line_ys = sample_fixations_and_lines
-    res_ltr = corrected_y(fixations, da.segment(line_ys, directionality='left-to-right'))
-    assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
+    res = corrected_y(fixations, da.segment(line_ys, directionality='left-to-right'))
+    assert res == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
 
+
+def test_segment_rtl(sample_fixations_and_lines):
     # On this left-to-right fixture the RTL return sweep candidates are the within-line
     # x-steps, which differ from each other only at floating point rounding level (they
     # come from np.linspace), so which two rank largest is not hand-derivable; the exact
-    # output is therefore not pinned here (see test_segment_single_line_ltr_and_rtl for
-    # a pinned RTL case).
-    res_rtl = corrected_y(fixations, da.segment(line_ys, directionality='right-to-left'))
-    assert len(res_rtl) == fixations.height
+    # output is therefore not pinned here (see test_segment_single_line for a pinned
+    # RTL case).
+    fixations, line_ys = sample_fixations_and_lines
+    res = corrected_y(fixations, da.segment(line_ys, directionality='right-to-left'))
+    assert len(res) == fixations.height
 
 
-def test_segment_single_line_ltr_and_rtl():
+@pytest.mark.parametrize(
+    ('directionality', 'x_values', 'expected'),
+    [
+        pytest.param(
+            'left-to-right',
+            np.linspace(100, 500, 5),
+            [100.0] * 5,
+            id='left-to-right',
+        ),
+        pytest.param(
+            'right-to-left',
+            np.linspace(500, 100, 5),
+            [100.0] * 5,
+            id='right-to-left',
+        ),
+    ],
+)
+def test_segment_single_line(directionality, x_values, expected):
     """Segment must assign all fixations to the single line, also for RTL reading."""
     line_ys = pl.Series([100.0])
-
-    fixations_ltr = make_location_frame(np.linspace(100, 500, 5), np.full(5, 105.0))
-    res_ltr = corrected_y(fixations_ltr, da.segment(line_ys))
-    assert res_ltr == [100.0] * 5
-
-    fixations_rtl = make_location_frame(np.linspace(500, 100, 5), np.full(5, 105.0))
-    res_rtl = corrected_y(fixations_rtl, da.segment(line_ys, directionality='right-to-left'))
-    assert res_rtl == [100.0] * 5
+    fixations = make_location_frame(x_values, np.full(5, 105.0))
+    res = corrected_y(fixations, da.segment(line_ys, directionality=directionality))
+    assert res == expected
 
 
-def test_split_ltr_and_rtl(sample_fixations_and_lines):
+@pytest.mark.parametrize(
+    ('directionality', 'expected'),
+    [
+        pytest.param(
+            'left-to-right',
+            [100.0] * 4 + [200.0] * 4 + [300.0] * 4,
+            id='left-to-right',
+        ),
+        # For RTL the nine positive within-line x-steps are classified as return sweeps
+        # and the two -400 line changes are not, yielding segments 0-4, 5-8 and 9-11:
+        # segment means 105, 105, 105, 150, 195 then 195, 248.5, 302 then 302, 302, 302
+        # snap to 100 (a 150 tie snaps to the first, upper line), 200 and 300.
+        pytest.param(
+            'right-to-left',
+            [100.0] * 5 + [200.0] * 4 + [300.0] * 3,
+            id='right-to-left',
+        ),
+    ],
+)
+def test_split(sample_fixations_and_lines, directionality, expected):
     fixations, line_ys = sample_fixations_and_lines
-    res_ltr = corrected_y(fixations, da.split(line_ys, directionality='left-to-right'))
-    assert res_ltr == [100.0] * 4 + [200.0] * 4 + [300.0] * 4
-
-    # For RTL the nine positive within-line x-steps are classified as return sweeps and
-    # the two -400 line changes are not, yielding segments 0-4, 5-8 and 9-11: segment
-    # means 105, 105, 105, 150, 195 then 195, 248.5, 302 then 302, 302, 302 snap to
-    # 100 (a 150 tie snaps to the first, upper line), 200 and 300.
-    res_rtl = corrected_y(fixations, da.split(line_ys, directionality='right-to-left'))
-    assert res_rtl == [100.0] * 5 + [200.0] * 4 + [300.0] * 3
+    res = corrected_y(fixations, da.split(line_ys, directionality=directionality))
+    assert res == expected
 
 
 def test_stretch(sample_fixations_and_lines):
