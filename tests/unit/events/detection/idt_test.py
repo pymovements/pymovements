@@ -418,6 +418,20 @@ def test_idt_raises_error(kwargs, expected_error, expected_message):
         ),
         pytest.param(
             {
+                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
+                'timesteps': pl.Series(np.arange(0, 50_000, 500)).cast(pl.Duration('us')),
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            Events(
+                name='fixation',
+                onsets=[0],
+                offsets=[49.5],
+            ),
+            id='constant_position_single_fixation_with_2khz_duration_timesteps',
+        ),
+        pytest.param(
+            {
                 'positions': pl.from_numpy(
                     step_function(length=100, steps=[0], values=[(0, 0)]),
                     schema=['x', 'y'],
@@ -549,14 +563,14 @@ def test_idt_detects_fixations(kwargs, expected):
         ),
         pytest.param(
             {
-                'positions': step_function(length=100, steps=[0], values=[(0, 0)]),
-                'timesteps': np.linspace(0, 1, 100),
+                'positions': step_function(length=40, steps=[0], values=[(0, 0)]),
+                'timesteps': np.arange(0, 30, 0.75),
                 'dispersion_threshold': 1,
                 'minimum_duration': 1,
             },
-            TypeError,
-            'timesteps .* int',
-            id='constant_position_single_fixation_with_timesteps_float_with_fractions',
+            ValueError,
+            'minimum_duration must be divisible by the constant interval between timesteps',
+            id='minimum_duration_not_divisible_by_fractional_timesteps_interval',
         ),
         pytest.param(
             {

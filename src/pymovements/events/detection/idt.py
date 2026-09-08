@@ -53,7 +53,7 @@ def dispersion(positions: list[list[float]] | numpy.ndarray) -> float:
 @register_event_detection
 def idt(
         positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series,
-        timesteps: list[int] | numpy.ndarray | polars.Series | None = None,
+        timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None = None,
         minimum_duration: int = 100,
         dispersion_threshold: float = 1.0,
         include_nan: bool = False,
@@ -75,10 +75,10 @@ def idt(
     positions: list[list[float]] | list[tuple[float, float]] | numpy.ndarray | polars.Series
         shape (N, 2)
         Continuous 2D position time series
-    timesteps: list[int] | numpy.ndarray | polars.Series | None
+    timesteps: list[int] | list[float] | numpy.ndarray | polars.Series | None
         shape (N, )
-        Corresponding continuous 1D timestep time series. If None, sample based timesteps are
-        assumed. (default: None)
+        Corresponding continuous 1D timestep time series. Fractional (float) timesteps are
+        accepted. If None, sample based timesteps are assumed. (default: None)
     minimum_duration: int
         Minimum fixation duration. The duration is specified in the units used in ``timesteps``;
         for a ``polars.Duration`` timesteps series the unit is milliseconds. If ``timesteps`` is
@@ -102,7 +102,7 @@ def idt(
     ------
     TypeError
         If pixels is a polars Series and dtype not List
-        If minimum_duration is not of type ``int`` or timesteps
+        If minimum_duration is not of type ``int``
     ValueError
         If positions is not shaped (N, 2)
         If dispersion_threshold is not greater than 0
@@ -254,12 +254,6 @@ def idt(
         timesteps = numpy.arange(len(positions), dtype=numpy.int64)
     timesteps = numpy.array(timesteps).flatten()
     _checks.check_is_length_matching(positions=positions, timesteps=timesteps)
-
-    # Check that timesteps are integers or are floats without a fractional part.
-    timesteps_int = timesteps.astype(int)
-    if numpy.any((timesteps - timesteps_int) != 0):
-        raise TypeError('timesteps must be of type int')
-    timesteps = timesteps_int
 
     if dispersion_threshold <= 0:
         raise ValueError('dispersion_threshold must be greater than 0')
