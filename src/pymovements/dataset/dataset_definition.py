@@ -463,7 +463,10 @@ class DatasetDefinition:
             # A string source is a reference to a named entry in ``sources``.
             if isinstance(resource.source, str):
                 if resource.source not in sources:
-                    raise ValueError(f"Dangling source reference: '{resource.source}'")
+                    raise ValueError(
+                        f"Dangling source reference: '{resource.source}' "
+                        f"in resource '{resource.content}'",
+                    )
                 referenced_names.add(resource.source)
 
         unused_names = sources.keys() - referenced_names
@@ -518,10 +521,20 @@ class DatasetDefinition:
         -------
         WebSource | None
             The resolved source, or ``None`` if the resource has no source.
+
+        Raises
+        ------
+        ValueError
+            If the resource references a source name that is missing from
+            :py:attr:`~pymovements.DatasetDefinition.sources`.
         """
         source = resource.source
         if isinstance(source, str):
-            # Dangling references are already rejected by validation on init.
+            # Guard against dangling references introduced by post-init mutation.
+            if source not in self.sources:
+                raise ValueError(
+                    f"Dangling source reference: '{source}' in resource '{resource.content}'",
+                )
             return self.sources[source]
         return source
 

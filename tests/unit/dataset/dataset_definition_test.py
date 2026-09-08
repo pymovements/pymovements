@@ -857,8 +857,22 @@ def test_dataset_definition_validation_duplicate_filenames():
 def test_dataset_definition_validation_dangling_reference():
     """Test that dangling source references raise ValueError."""
     resource = ResourceDefinition(content='gaze', source='nonexistent')
-    with pytest.raises(ValueError, match="Dangling source reference: 'nonexistent'"):
+    with pytest.raises(
+        ValueError, match="Dangling source reference: 'nonexistent' in resource 'gaze'",
+    ):
         DatasetDefinition(name='test', resources=[resource])
+
+
+def test_dataset_definition_resolved_sources_dangling_reference_after_mutation():
+    """Test that a dangling source reference introduced after init raises ValueError."""
+    source = WebSource(url='http://example.com/file.zip', filename='file.zip')
+    resource = ResourceDefinition(content='gaze', source='main')
+    definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
+
+    definition.resources[0].source = 'typo'
+
+    with pytest.raises(ValueError, match="Dangling source reference: 'typo' in resource 'gaze'"):
+        definition.resolved_sources()
 
 
 def test_dataset_definition_validation_unused_named_source():
