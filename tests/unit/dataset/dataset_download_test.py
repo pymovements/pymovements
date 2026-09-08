@@ -31,7 +31,6 @@ from pymovements import DatasetDefinition
 from pymovements import DatasetPaths
 from pymovements import ResourceDefinition
 from pymovements import WebSource
-from pymovements.dataset.dataset_download import download_dataset
 
 
 @pytest.fixture(
@@ -944,8 +943,8 @@ def test_extract_dataset_precomputed_rm_move_single_file(tmp_path, testfiles_dir
     Dataset(definition, path=tmp_path).extract()
 
 
-def test_download_dataset_deduplication():
-    """Test that download_dataset calls download on each unique source only once."""
+def test_dataset_download_deduplicates_equal_inline_sources(tmp_path):
+    """Test that downloading calls download on each unique source only once."""
     resource1 = ResourceDefinition(
         content='gaze',
         source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
@@ -956,33 +955,27 @@ def test_download_dataset_deduplication():
     )
     definition = DatasetDefinition(name='test', resources=[resource1, resource2])
 
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
     with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
-        download_dataset(definition, paths, extract=False)
+        Dataset(definition, path=tmp_path).download(extract=False)
 
     # Even though there are 2 resources, there should be only 1 download call
     # because they share the same source (deduplicated by url and filename).
     assert mock_download.call_count == 1
 
 
-def test_download_dataset_resolves_named_source_reference():
+def test_dataset_download_resolves_named_source_reference(tmp_path):
     """Test that a string source reference is resolved to the named source and downloaded."""
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
     resource = ResourceDefinition(content='gaze', source='main')
     definition = DatasetDefinition(name='test', resources=[resource], sources={'main': source})
 
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
     with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
-        download_dataset(definition, paths, extract=False)
+        Dataset(definition, path=tmp_path).download(extract=False)
 
     assert mock_download.call_count == 1
 
 
-def test_download_dataset_skips_resource_without_source():
+def test_dataset_download_skips_resource_without_source(tmp_path):
     """Test that resources without a source are skipped when collecting downloads."""
     resource_with = ResourceDefinition(
         content='gaze',
@@ -991,29 +984,23 @@ def test_download_dataset_skips_resource_without_source():
     resource_without = ResourceDefinition(content='precomputed_events')
     definition = DatasetDefinition(name='test', resources=[resource_with, resource_without])
 
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
     with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
-        download_dataset(definition, paths, extract=False)
+        Dataset(definition, path=tmp_path).download(extract=False)
 
     assert mock_download.call_count == 1
 
 
-def test_download_dataset_triggers_extract():
-    """Test that download_dataset extracts by default after downloading."""
+def test_dataset_download_triggers_extract(tmp_path):
+    """Test that downloading extracts by default afterwards."""
     resource = ResourceDefinition(
         content='gaze',
         source=WebSource(url='http://example.com/file.zip', filename='file.zip'),
     )
     definition = DatasetDefinition(name='test', resources=[resource])
 
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
     with mock.patch('pymovements.dataset.websource.WebSource.download'), \
             mock.patch('pymovements.dataset.dataset_download.extract_dataset') as mock_extract:
-        download_dataset(definition, paths)
+        Dataset(definition, path=tmp_path).download()
 
     assert mock_extract.call_count == 1
 
@@ -1030,7 +1017,7 @@ def test_extract_dataset_skips_resource_without_source(tmp_path):
     Dataset(definition, path=tmp_path).extract()
 
 
-def test_download_dataset_named_source_shared_by_multiple_resources_deduplicated():
+def test_dataset_download_named_source_shared_by_multiple_resources_deduplicated(tmp_path):
     """Test that a named source shared by several resources is downloaded only once."""
     source = WebSource(url='http://example.com/file.zip', filename='file.zip')
     resources = [
@@ -1040,11 +1027,8 @@ def test_download_dataset_named_source_shared_by_multiple_resources_deduplicated
     ]
     definition = DatasetDefinition(name='test', resources=resources, sources={'main': source})
 
-    paths = mock.Mock()
-    paths.downloads = '/tmp/downloads'
-
     with mock.patch('pymovements.dataset.websource.WebSource.download') as mock_download:
-        download_dataset(definition, paths, extract=False)
+        Dataset(definition, path=tmp_path).download(extract=False)
 
     assert mock_download.call_count == 1
 
