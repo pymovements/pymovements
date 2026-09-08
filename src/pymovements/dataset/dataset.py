@@ -1657,6 +1657,12 @@ class Dataset:
         -------
         Dataset
             Returns self, useful for method cascading.
+
+        Raises
+        ------
+        AttributeError
+            If a resource resolves to a source without a filename, since such a file can never
+            have been downloaded.
         """
         dataset_download.extract_dataset(
             definition=self.definition,
