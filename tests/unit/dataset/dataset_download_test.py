@@ -30,8 +30,8 @@ from pymovements import Dataset
 from pymovements import DatasetDefinition
 from pymovements import DatasetPaths
 from pymovements import ResourceDefinition
+from pymovements import WebSource
 from pymovements.dataset.dataset_download import download_dataset
-from pymovements.dataset.websource import WebSource
 
 
 @pytest.fixture(
