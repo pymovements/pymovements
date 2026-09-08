@@ -79,6 +79,14 @@ def _as_posix_string(source: str | Path) -> str:
     return source if isinstance(source, str) else source.as_posix()
 
 
+def _relativize_source(source: str | Path, resolved_root: Path) -> str:
+    """Return the source entry as a POSIX-style path string, root-relative if below the root."""
+    try:
+        return Path(source).relative_to(resolved_root).as_posix()
+    except ValueError:
+        return _as_posix_string(source)
+
+
 def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
     """Rewrite absolute ``sources`` entries below ``root`` as root-relative paths.
 
@@ -98,18 +106,10 @@ def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
         If the ``sources`` entry is not a list of path strings.
     """
     _check_sources(metadata)
-    if not metadata or not metadata.get('sources'):
-        return
 
     resolved_root = root.resolve()
-
-    sources = []
-    for source in metadata['sources']:
-        try:
-            sources.append(Path(source).relative_to(resolved_root).as_posix())
-        except ValueError:
-            sources.append(_as_posix_string(source))
-    metadata['sources'] = sources
+    sources = (metadata or {}).get('sources') or []
+    sources[:] = [_relativize_source(source, resolved_root) for source in sources]
 
 
 def merge_sources(metadata: dict[str, Any], other: dict[str, Any] | None) -> None:
