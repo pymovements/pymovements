@@ -1439,21 +1439,21 @@ class Gaze:
 
         This method computes the ratio of time that is associated with events
         having a specific name. It calculates the ratio from event durations (offset - onset).
+        Overlapping intervals of events with the matching ``name`` are merged before their
+        durations are summed, so each time point is counted only once and the resulting ratio
+        never exceeds 1.0.
 
-        If `sampling_rate` is provided, the ratio is calculated inclusively as:
+        The ratio is calculated inclusively as:
 
         .. math::
-            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} -
+            \frac{\sum_{i=1}^{m} (t_{\mathrm{offset},i} -
             t_{\mathrm{onset},i} + \Delta t)}{t_{\mathrm{max}} -
             t_{\mathrm{min}} + \Delta t}
 
-        where :math:`\Delta t = 1000 / f_s`.
-
-        If `sampling_rate` is not provided, the ratio is calculated as:
-
-        .. math::
-            \frac{\sum_{i=1}^{n} (t_{\mathrm{offset},i} - t_{\mathrm{onset},i})}{t_{\mathrm{max}} -
-            t_{\mathrm{min}}}
+        where the sum runs over the :math:`m` merged (non-overlapping) intervals and
+        :math:`\Delta t = 1000 / f_s`. If no sampling rate is available (neither
+        passed as `sampling_rate` nor via the experiment), :math:`\Delta t` is
+        estimated as the mode of the sample time differences.
 
         Parameters
         ----------

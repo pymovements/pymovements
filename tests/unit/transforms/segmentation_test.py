@@ -841,6 +841,26 @@ def test_events2timeratio_missing_column(events_data, samples_data, error_match)
             {(1, 1): 2 / 3, (1, 2): 2 / 3},
             id='two_trial_columns',
         ),
+        pytest.param(
+            {
+                'name': ['blink', 'blink', 'blink'],
+                'onset': [0.0, 1.0, 4.0],
+                'offset': [6.0, 2.0, 5.0],
+                'trial': [1, 2, 2],
+            },
+            {
+                'time': [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+                'trial': [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
+            },
+            ['trial'],
+            # trial 1 event [0, 6] covers all 7 samples: ratio 1.0
+            # trial 2 events [1, 2] and [4, 5] are disjoint and stay separate:
+            # ((2 - 1 + 1) + (5 - 4 + 1)) / (6 - 0 + 1) = 4 / 7
+            # trial 1's running offset 6 must not leak into trial 2, which would
+            # wrongly merge [1, 2] and [4, 5] into [1, 5] and yield 5 / 7
+            {1: 1.0, 2: 4 / 7},
+            id='per_trial_merge_isolation',
+        ),
     ],
 )
 def test_events2timeratio_with_trials(
@@ -862,44 +882,50 @@ def test_events2timeratio_with_trials(
 
 
 @pytest.mark.parametrize(
-    'expected_ratio',
+    ('events_data', 'expected_ratio'),
     [
         pytest.param(
-            # durations are summed: ((96 - 0 + 1) + (85 - 6 + 1)) / (104 - 0 + 1) = 177 / 105
-            177 / 105,
-            id='current_behavior_overlap_double_counted',
+            {
+                'name': ['blink', 'blink'],
+                'onset': [0.0, 6.0],
+                'offset': [96.0, 85.0],
+            },
+            # left-eye blink [0, 96] fully contains right-eye blink [6, 85],
+            # merging yields [0, 96]: (96 - 0 + 1) / 105 = 97 / 105
+            97 / 105,
+            id='contained_event_merged',
         ),
         pytest.param(
-            # merging the overlapping intervals yields (96 - 0 + 1) / 105 = 97 / 105
-            97 / 105,
-            marks=pytest.mark.xfail(
-                reason='overlapping events are not merged before summing durations (#1584)',
-                strict=True,
-            ),
-            id='expected_behavior_overlap_merged',
+            {
+                'name': ['blink', 'blink', 'blink'],
+                'onset': [0.0, 6.0, 90.0],
+                'offset': [96.0, 85.0, 100.0],
+            },
+            # the third event [90, 100] overlaps the running maximum offset 96,
+            # not the previous row's offset 85, so all three events merge into
+            # [0, 100]: (100 - 0 + 1) / 105 = 101 / 105
+            101 / 105,
+            id='three_events_merged_via_running_max',
         ),
     ],
 )
-def test_events2timeratio_overlapping_events(expected_ratio):
-    """Overlapping same-name events are summed without merging their intervals.
+def test_events2timeratio_overlapping_events(events_data, expected_ratio):
+    """Overlapping same-name events are merged before summing durations.
 
     Binocular EyeLink recordings emit separate left-eye and right-eye blink events
-    which typically overlap in time. ``events2timeratio`` sums the durations of all
-    matching events without merging overlapping intervals, so the overlap is counted
-    twice and the resulting ratio can exceed 1.0.
+    which typically overlap in time. ``events2timeratio`` merges overlapping
+    intervals of the matching events before summing durations, so the overlap is
+    counted only once and the resulting ratio cannot exceed 1.0.
 
-    This documents the behavioral difference to the removed
-    ``data_loss_ratio_blinks`` metadata field of the EyeLink parser, which merged
-    overlapping blink intervals before counting (see issue #1584). The xfailing
-    parametrization asserts the correct merged result and is to be addressed in a
-    follow-up PR.
+    Merging tracks the running maximum offset across all events seen so far, not
+    just the previous event's offset, so a later event overlapping an earlier,
+    longer event is absorbed even when it starts after an intermediate event ends.
+
+    This matches the behavior of the removed ``data_loss_ratio_blinks`` metadata
+    field of the EyeLink parser, which merged overlapping blink intervals before
+    counting (see issues #1584 and #1661).
     """
-    # left-eye blink [0, 96] fully contains right-eye blink [6, 85]
-    events = pl.DataFrame({
-        'name': ['blink', 'blink'],
-        'onset': [0.0, 6.0],
-        'offset': [96.0, 85.0],
-    })
+    events = pl.DataFrame(events_data)
     samples = pl.DataFrame({'time': [float(t) for t in range(105)]})
 
     result = samples.select(events2timeratio(events, samples, 'blink', sampling_rate=1000.0))
