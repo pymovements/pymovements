@@ -1294,6 +1294,18 @@ def test_gaze_detect_custom_method_no_arguments():
             id='blink_no_pupil_raises_column_not_found_error',
         ),
 
+        pytest.param(
+            'idt',
+            {
+                'dispersion_threshold': 1,
+                'minimum_duration': 2,
+            },
+            pm.gaze.Gaze(None, pm.Experiment(1024, 768, 38, 30, 60, 'center', 10)),
+            pl.exceptions.ColumnNotFoundError,
+            "Column 'position' not found. Available columns are: ['time']",
+            id='idt_no_position_raises_column_not_found_error',
+        ),
+
     ],
 )
 def test_gaze_detect_raises_exception(method, kwargs, gaze, exception, exception_msg):

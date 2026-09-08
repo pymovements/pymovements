@@ -1,4 +1,4 @@
-# Copyright (c) 2025-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,13 +17,23 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Fixtures for datasets."""
+"""Polars expression utilities."""
+from __future__ import annotations
 
-pytest_plugins = [
-    'tests.fixtures.deprecation_fixtures',
-    'tests.fixtures.file_fixtures',
-    'tests.fixtures.gaze_fixtures',
-    'tests.fixtures.plotting_fixtures',
-    'tests.fixtures.text_stimulus_fixtures',
-    'tests.plugins.rerun_network',
-]
+import polars as pl
+
+
+def as_expr(column: str | pl.Expr) -> pl.Expr:
+    """Coerce a column name into a column expression, passing expressions through as is.
+
+    Parameters
+    ----------
+    column : str | pl.Expr
+        Column name or expression.
+
+    Returns
+    -------
+    pl.Expr
+        ``pl.col(column)`` if a column name was given, otherwise the expression unchanged.
+    """
+    return pl.col(column) if isinstance(column, str) else column

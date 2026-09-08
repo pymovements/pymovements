@@ -1,4 +1,4 @@
-# Copyright (c) 2025-2026 The pymovements Project Authors
+# Copyright (c) 2026 The pymovements Project Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,13 +17,28 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-"""Fixtures for datasets."""
+"""Test pymovements polars expression utilities."""
+from __future__ import annotations
 
-pytest_plugins = [
-    'tests.fixtures.deprecation_fixtures',
-    'tests.fixtures.file_fixtures',
-    'tests.fixtures.gaze_fixtures',
-    'tests.fixtures.plotting_fixtures',
-    'tests.fixtures.text_stimulus_fixtures',
-    'tests.plugins.rerun_network',
-]
+import polars as pl
+import pytest
+
+from pymovements._utils._expressions import as_expr
+
+
+@pytest.mark.parametrize(
+    ('column', 'expected'),
+    [
+        pytest.param('column', pl.col('column'), id='column_name'),
+        pytest.param(pl.col('column') + 1, pl.col('column') + 1, id='expression'),
+    ],
+)
+def test_as_expr(column, expected):
+    result = as_expr(column)
+    assert isinstance(result, pl.Expr)
+    assert result.meta.eq(expected)
+
+
+def test_as_expr_passes_expression_through_unchanged():
+    expression = pl.col('column') + 1
+    assert as_expr(expression) is expression
