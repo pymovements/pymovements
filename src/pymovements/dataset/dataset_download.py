@@ -73,23 +73,20 @@ def download_dataset(
     Raises
     ------
     AttributeError
-        If number of mirrors or number of resources specified for dataset is zero.
+        If no downloadable sources are found in the dataset definition.
     RuntimeError
         If downloading a resource failed for all given mirrors.
     """
-    if not definition.resources:
-        raise AttributeError('resources must be specified to download a dataset.')
+    sources = definition.resolved_sources()
 
-    downloadable_resources = [resource for resource in definition.resources if resource.source]
-
-    if not downloadable_resources:
+    if not sources:
         raise AttributeError(
             'No downloadable resources found in DatasetDefinition. '
             'ResourceDefinition.source must be specified to download a dataset.',
         )
 
-    for resource in downloadable_resources:
-        resource.source.download(
+    for source in sources:
+        source.download(
             target_dirpath=paths.downloads,
             verbose=verbose,
             verify_checksum=verify_checksum,
@@ -133,6 +130,12 @@ def extract_dataset(
         Verbosity levels: (1) Print messages for extracting each dataset resource without printing
         messages for recursive archives. (2) Print messages for extracting each dataset resource and
         each recursive archive extract. (default: 1)
+
+    Raises
+    ------
+    AttributeError
+        If a resource resolves to a source without a filename, since such a file can never have
+        been downloaded.
     """
     content_dirnames = {
         'gaze': 'raw',
@@ -149,7 +152,16 @@ def extract_dataset(
             destination_dirpath = getattr(paths, content_directory)
             destination_dirpath.mkdir(parents=True, exist_ok=True)
             for resource in definition.resources.filter(content):
-                source_path = paths.downloads / resource.source.filename
+                source = definition.resolve_source(resource)
+                if source is None:
+                    continue
+                if source.filename is None:
+                    raise AttributeError(
+                        'WebSource.filename must not be None for source of resource '
+                        f"with content '{resource.content}'",
+                    )
+
+                source_path = paths.downloads / source.filename
 
                 try:
                     extract_archive(
@@ -162,4 +174,4 @@ def extract_dataset(
                         verbose=verbose,
                     )
                 except UnknownFileType:  # just copy file to target if not an archive.
-                    shutil.copy(source_path, destination_dirpath / resource.source.filename)
+                    shutil.copy(source_path, destination_dirpath / source.filename)
