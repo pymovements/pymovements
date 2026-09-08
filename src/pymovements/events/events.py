@@ -1084,6 +1084,10 @@ class Events:
         ------
         TypeError
             If ``aois`` is not a :py:class:`~pymovements.stimulus.TextStimulus`.
+        ValueError
+            If the trial or page column of the stimulus holds multiple unique values
+            without being part of :py:attr:`~pymovements.Events.trial_columns`, as the
+            AOIs of all trials or pages would be pooled into a single text.
 
         Examples
         --------
@@ -1138,6 +1142,24 @@ class Events:
         aois_frame = _aois_frame_from_text_stimulus(aois)
         if directionality is None:
             directionality = aois.writing_system.directionality
+
+        for column_kind, column_name in (
+                ('trial', aois.trial_column), ('page', aois.page_column),
+        ):
+            if column_name is None:
+                continue
+            if self.trial_columns is not None and column_name in self.trial_columns:
+                continue
+            n_unique = aois.aois[column_name].n_unique()
+            if n_unique > 1:
+                raise ValueError(
+                    f"the stimulus {column_kind} column '{column_name}' holds "
+                    f'{n_unique} unique values, but is not part of Events.trial_columns '
+                    f'({self.trial_columns}), so the AOIs of all {column_kind}s would '
+                    f"be pooled into a single text. Add '{column_name}' to "
+                    'Events.trial_columns or pass a stimulus holding a single '
+                    f'{column_kind}.',
+                )
 
         corrected_frame = fixation_correction.correct_fixations(
             self.frame,

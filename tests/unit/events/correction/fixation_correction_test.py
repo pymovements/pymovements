@@ -597,6 +597,54 @@ def test_events_correct_fixations_dataframe_raises(sample_events_and_aois):
         events.correct_fixations(aois_df, algorithm='attach')
 
 
+@pytest.mark.parametrize(
+    ('column_kwarg', 'column_kind'),
+    [
+        ('trial_column', 'trial'),
+        ('page_column', 'page'),
+    ],
+)
+def test_events_correct_fixations_unpartitioned_multi_text_stimulus_raises(
+    sample_events_and_aois, column_kwarg, column_kind,
+):
+    events_df, aois_df = sample_events_and_aois
+    aois_two_texts = pl.concat([
+        aois_df.with_columns(pl.lit('TEXT1').alias('text_id')),
+        aois_df.with_columns(pl.lit('TEXT2').alias('text_id')),
+    ])
+    stimulus = make_text_stimulus(aois_two_texts, **{column_kwarg: 'text_id'})
+    events = pm.Events(events_df)
+    with pytest.raises(
+        ValueError,
+        match=f"stimulus {column_kind} column 'text_id' holds 2 unique values",
+    ):
+        events.correct_fixations(stimulus, algorithm='attach')
+
+
+def test_events_correct_fixations_multi_trial_stimulus_partitioned(sample_events_and_aois):
+    events_df, aois_df = sample_events_and_aois
+    aois_two_trials = pl.concat([
+        aois_df,
+        aois_df.with_columns(pl.lit('TRIAL2').alias('trial')),
+    ])
+    stimulus = make_text_stimulus(aois_two_trials, trial_column='trial')
+    events = pm.Events(events_df, trial_columns='trial')
+    events.correct_fixations(stimulus, algorithm='attach')
+    assert events.frame.filter(pl.col('correction_algorithm') == 'attach').height == 6
+
+
+def test_events_correct_fixations_constant_trial_column_stimulus_allowed(
+    sample_events_and_aois,
+):
+    events_df, aois_df = sample_events_and_aois
+    # A single-text stimulus with a constant trial column stays legal without any
+    # trial partitioning on the events.
+    stimulus = make_text_stimulus(aois_df, trial_column='trial')
+    events = pm.Events(events_df.drop('trial'))
+    events.correct_fixations(stimulus, algorithm='attach')
+    assert events.frame.filter(pl.col('correction_algorithm') == 'attach').height == 6
+
+
 def test_events_correct_fixations_with_text_stimulus_custom_column_names(
     sample_events_and_aois,
 ):
