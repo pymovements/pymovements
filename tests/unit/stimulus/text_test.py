@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """Test Text stimulus class."""
-from copy import deepcopy
 from dataclasses import replace
 
 import polars as pl
@@ -276,7 +275,6 @@ def test_text_stimulus_from_file_has_correct_metadata_default(make_example_file)
     ],
 )
 def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
-    metadata_pre = deepcopy(metadata)
     aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
 
     stimulus = text.from_file(
@@ -291,9 +289,29 @@ def test_text_stimulus_has_correct_metadata(metadata, make_example_file):
     )
 
     expected_sources = [aoi_path.resolve().as_posix()]
-    assert stimulus.metadata == {**metadata_pre, 'sources': expected_sources}
-    # The passed metadata dictionary is copied, not mutated.
-    assert metadata == metadata_pre
+    assert stimulus.metadata == {**metadata, 'sources': expected_sources}
+
+
+def test_text_stimulus_from_file_does_not_mutate_passed_metadata(make_example_file):
+    aoi_path = make_example_file('stimuli/toy_text_aoi.csv')
+    metadata = {'key': 'value'}
+
+    stimulus = text.from_file(
+        aoi_path,
+        aoi_column='char',
+        start_x_column='top_left_x',
+        start_y_column='top_left_y',
+        width_column='width',
+        height_column='height',
+        page_column='page',
+        metadata=metadata,
+    )
+
+    assert metadata == {'key': 'value'}
+    assert stimulus.metadata == {
+        'key': 'value',
+        'sources': [aoi_path.resolve().as_posix()],
+    }
 
 
 def test_text_stimulus_unsupported_format(make_example_file):
