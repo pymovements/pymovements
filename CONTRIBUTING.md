@@ -226,6 +226,11 @@ tox -e py310 -- -m "not network"
 Make sure to add docstrings to every class, method, and function that you add to the codebase.
 Docstrings should include a description of all parameters, returns, and exceptions. Use the existing
 documentation as an example.
+
+Runnable examples in docstrings are executed as doctests by pytest. If an example writes files,
+request the `doctest_tmp_cwd` fixture in a hidden `.. testsetup::` block; see its docstring in
+`tests/doctest/doctest_fixtures.py` for details.
+
 To generate documentation pages, you can install the necessary dependencies using:
 
 ```bash

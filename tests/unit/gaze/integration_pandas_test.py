@@ -73,12 +73,14 @@ def test_from_pandas_explicit_columns():
         position_columns=['x_pos', 'y_pos'],
     )
 
-    expected = pl.DataFrame({
-        'time': [101, 102, 103, 104],
-        'distance': [100, 100, 100, 100],
-        'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-        'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
-    })
+    expected = pl.DataFrame(
+        {
+            'time': [101000, 102000, 103000, 104000],
+            'distance': [100, 100, 100, 100],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+            'position': [[9, 5], [8, 4], [7, 3], [6, 2]],
+        }, schema_overrides={'time': pl.Duration('us')},
+    )
 
     assert_frame_equal(gaze.samples, expected)
 
@@ -103,11 +105,13 @@ def test_from_pandas_with_trial_columnms():
         pixel_columns=['x_pix', 'y_pix'],
     )
 
-    expected = pl.DataFrame({
-        'trial_id': [1, 1, 2, 2],
-        'time': [101, 102, 103, 104],
-        'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
-    })
+    expected = pl.DataFrame(
+        {
+            'trial_id': [1, 1, 2, 2],
+            'time': [101000, 102000, 103000, 104000],
+            'pixel': [[0, 4], [1, 5], [2, 6], [3, 7]],
+        }, schema_overrides={'time': pl.Duration('us')},
+    )
 
     assert_frame_equal(gaze.samples, expected)
     assert gaze.trial_columns == ['trial_id']
@@ -153,32 +157,3 @@ def test_from_pandas_events(samples, events):
     assert_frame_equal(gaze.events.frame, expected_events)
     # We don't want the events point to the same reference.
     assert gaze.events.frame is not expected_events
-
-
-@pytest.mark.filterwarnings('ignore:Gaze contains samples but no.*:UserWarning')
-def test_from_pandas_data_argument_is_deprecated():
-    pandas_df = pd.DataFrame(
-        {
-            'x_pix': [0, 1, 2, 3],
-            'y_pix': [0, 1, 2, 3],
-            'x_pos': [0, 1, 2, 3],
-            'y_pos': [0, 1, 2, 3],
-        },
-    )
-
-    with pytest.warns(DeprecationWarning):
-        gaze = from_pandas(samples=None, data=pandas_df)
-
-    assert gaze.samples.shape == (4, 4)
-
-
-def test_from_pandas_data_argument_is_removed(assert_deprecation_is_removed):
-    with pytest.raises(DeprecationWarning) as info:
-        from_pandas(samples=None, data=pd.DataFrame())
-
-    assert_deprecation_is_removed(
-        function_name='from_pandas() keyword argument data',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )

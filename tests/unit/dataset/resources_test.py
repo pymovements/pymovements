@@ -368,24 +368,6 @@ def test_resource_is_not_equal(resource1, resource2):
         pytest.param(
             {
                 'content': 'gaze',
-                'filename': 'test.csv',
-                'resource': 'https://example.com',
-            },
-            ResourceDefinition(
-                content='gaze',
-                source=WebSource(
-                    url='https://example.com',
-                    filename='test.csv',
-                    md5=None,
-                ),
-            ),
-            marks=pytest.mark.filterwarnings('ignore::DeprecationWarning'),
-            id='deprecated_resource_key',
-        ),
-
-        pytest.param(
-            {
-                'content': 'gaze',
                 'filename_pattern': 'test.csv',
             },
             ResourceDefinition(
@@ -1066,19 +1048,6 @@ def test_resources_has_content_expected(resources, expected_has_content):
 )
 def test_resources_from_dicts_expected(dicts, expected_resources):
     assert ResourceDefinitions.from_dicts(dicts) == expected_resources
-
-
-def test_resource_definition_from_dict_resource_key_deprecated(assert_deprecation_is_removed):
-    resource_dict = {'content': 'samples', 'resource': 'http://www.example.com'}
-    with pytest.raises(DeprecationWarning) as info:
-        ResourceDefinition.from_dict(resource_dict)
-
-    assert_deprecation_is_removed(
-        function_name='from_dict() key "resources"',
-        warning_message=info.value.args[0],
-        scheduled_version='0.28.0',
-
-    )
 
 
 def test_resource_definition_source_only():
