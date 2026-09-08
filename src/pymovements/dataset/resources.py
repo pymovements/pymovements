@@ -177,10 +177,18 @@ class ResourceDefinition:
             )
         return self.source
 
-    def _websource_attribute(self, attr: str) -> Any:
+    def _get_websource_attribute(self, attr: str) -> Any:
         """Return an attribute of the inline ``WebSource``, or ``None`` without a source."""
         source = self._resolved_websource(attr)
         return getattr(source, attr) if source else None
+
+    def _set_websource_attribute(self, attr: str, value: Any) -> None:
+        """Set an attribute of the inline ``WebSource``, creating one without a source."""
+        source = self._resolved_websource(attr)
+        if source is None:
+            self.source = WebSource(**{'url': None, attr: value})
+        else:
+            self.source = replace(source, **{attr: value})
 
     @property
     @deprecated(
@@ -200,7 +208,7 @@ class ResourceDefinition:
         str | None
             The URL to the downloadable resource.
         """
-        return self._websource_attribute('url')
+        return self._get_websource_attribute('url')
 
     @url.setter
     @deprecated(
@@ -209,11 +217,7 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def url(self, data: str) -> None:
-        source = self._resolved_websource('url')
-        if source is None:
-            self.source = WebSource(url=data)
-        else:
-            self.source = replace(source, url=data)
+        self._set_websource_attribute('url', data)
 
     @property
     @deprecated(
@@ -233,7 +237,7 @@ class ResourceDefinition:
         str | None
             The target filename of the downloadable resource. This may be an archive.
         """
-        return self._websource_attribute('filename')
+        return self._get_websource_attribute('filename')
 
     @filename.setter
     @deprecated(
@@ -242,11 +246,7 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def filename(self, data: str) -> None:
-        source = self._resolved_websource('filename')
-        if source is None:
-            self.source = WebSource(url=None, filename=data)  # type: ignore[arg-type]
-        else:
-            self.source = replace(source, filename=data)
+        self._set_websource_attribute('filename', data)
 
     @property
     @deprecated(
@@ -266,7 +266,7 @@ class ResourceDefinition:
         str | None
             The MD5 checksum of the downloadable resource.
         """
-        return self._websource_attribute('md5')
+        return self._get_websource_attribute('md5')
 
     @md5.setter
     @deprecated(
@@ -275,11 +275,7 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def md5(self, data: str) -> None:
-        source = self._resolved_websource('md5')
-        if source is None:
-            self.source = WebSource(url=None, md5=data)  # type: ignore[arg-type]
-        else:
-            self.source = replace(source, md5=data)
+        self._set_websource_attribute('md5', data)
 
     @property
     @deprecated(
@@ -299,7 +295,7 @@ class ResourceDefinition:
         list[str] | None
             A list of additional mirror URLs to download the resource.
         """
-        return self._websource_attribute('mirrors')
+        return self._get_websource_attribute('mirrors')
 
     @mirrors.setter
     @deprecated(
@@ -308,11 +304,7 @@ class ResourceDefinition:
         version='v0.26.2',
     )
     def mirrors(self, data: list[str]) -> None:
-        source = self._resolved_websource('mirrors')
-        if source is None:
-            self.source = WebSource(url=None, mirrors=data)  # type: ignore[arg-type]
-        else:
-            self.source = replace(source, mirrors=data)
+        self._set_websource_attribute('mirrors', data)
 
     @staticmethod
     def from_dict(dictionary: dict[str, Any]) -> ResourceDefinition:
