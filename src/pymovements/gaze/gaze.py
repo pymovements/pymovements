@@ -1443,7 +1443,7 @@ class Gaze:
         durations are summed, so each time point is counted only once and the resulting ratio
         never exceeds 1.0.
 
-        If `sampling_rate` is provided, the ratio is calculated inclusively as:
+        The ratio is calculated inclusively as:
 
         .. math::
             \frac{\sum_{i=1}^{m} (t_{\mathrm{offset},i} -
@@ -1451,15 +1451,9 @@ class Gaze:
             t_{\mathrm{min}} + \Delta t}
 
         where the sum runs over the :math:`m` merged (non-overlapping) intervals and
-        :math:`\Delta t = 1000 / f_s`.
-
-        If `sampling_rate` is not provided, the ratio is calculated as:
-
-        .. math::
-            \frac{\sum_{i=1}^{m} (t_{\mathrm{offset},i} - t_{\mathrm{onset},i})}{t_{\mathrm{max}} -
-            t_{\mathrm{min}}}
-
-        where the sum runs over the :math:`m` merged (non-overlapping) intervals.
+        :math:`\Delta t = 1000 / f_s`. If no sampling rate is available (neither
+        passed as `sampling_rate` nor via the experiment), :math:`\Delta t` is
+        estimated as the mode of the sample time differences.
 
         Parameters
         ----------
