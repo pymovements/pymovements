@@ -77,6 +77,12 @@ def test_image_stimulus_from_files(testfiles_dirpath):
     ]
 
 
+def test_image_stimulus_from_files_no_matching_files_has_empty_metadata(tmp_path):
+    image_stimulus = from_files(tmp_path, r'{book_name}-{page_num}-{line_num}.jpg')
+    assert image_stimulus.images == []
+    assert image_stimulus.metadata == {}
+
+
 def test_image_stimulus_from_files_str(testfiles_dirpath):
     dirpath = testfiles_dirpath / 'stimuli'
     image_stimulus = from_files(dirpath, r'{book_name}-{page_num}-{line_num}.jpg')

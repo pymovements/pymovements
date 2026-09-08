@@ -173,9 +173,9 @@ def from_files(path: str | Path, filename_format: str) -> ImageStimulus:
         Returns the image stimulus file.
     """
     filenames = list(get_filepaths(path, regex=curly_to_regex(filename_format)))
-    metadata = {
-        'sources': [Path(filename).resolve().as_posix() for filename in filenames],
-    }
+    metadata = {}
+    if filenames:
+        metadata['sources'] = [Path(filename).resolve().as_posix() for filename in filenames]
     return ImageStimulus(filenames, metadata=metadata)
 
 
