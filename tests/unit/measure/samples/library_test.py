@@ -32,6 +32,7 @@ from pymovements.measure import samples
         pytest.param(samples.amplitude, 'amplitude', id='amplitude'),
         pytest.param(samples.dispersion, 'dispersion', id='dispersion'),
         pytest.param(samples.disposition, 'disposition', id='disposition'),
+        pytest.param(samples.duration, 'duration', id='duration'),
         pytest.param(samples.location, 'location', id='location'),
         pytest.param(samples.null_ratio, 'null_ratio', id='null_ratio'),
         pytest.param(samples.peak_velocity, 'peak_velocity', id='peak_velocity'),

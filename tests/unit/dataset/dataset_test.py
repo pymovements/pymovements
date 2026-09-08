@@ -990,6 +990,20 @@ def test_load_subset(subset, fileinfo_idx, gaze_dataset_configuration):
     assert_frame_equal(dataset.fileinfo['gaze'], expected_fileinfo)
 
 
+@pytest.mark.filterwarnings('ignore:Stimulus support:pymovements.ExperimentalWarning')
+@pytest.mark.parametrize(
+    'gaze_dataset_configuration',
+    ['ToyAOI'],
+    indirect=['gaze_dataset_configuration'],
+)
+def test_load_subset_loads_stimuli(gaze_dataset_configuration):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(subset={'subject_id': 1})
+
+    assert len(dataset.stimuli) == 3
+    assert all(isinstance(stimulus, TextStimulus) for stimulus in dataset.stimuli)
+
+
 @pytest.mark.parametrize(
     ('init_kwargs', 'load_kwargs', 'exception'),
     [
@@ -2264,6 +2278,75 @@ def test_compute_event_properties_alias(gaze_dataset_configuration, property_kwa
 
     dataset.compute_properties(**property_kwargs)
     mock.assert_called_with(**property_kwargs)
+
+
+@pytest.mark.parametrize(
+    ['kwargs', 'expected_samples_dropped', 'expected_events_dropped'],
+    [
+        pytest.param(
+            {
+                'subset': ['time'],
+                'events': False,
+            },
+            1,
+            0,
+            id='samples_only',
+        ),
+        pytest.param(
+            {
+                'subset': ['onset', 'offset'],
+                'samples': False,
+            },
+            0,
+            1,
+            id='events_only',
+        ),
+        pytest.param(
+            {
+                'samples': False,
+                'events': False,
+            },
+            0,
+            0,
+            id='none',
+        ),
+        pytest.param(
+            {},
+            1,
+            1,
+            id='samples_and_events_default',
+        ),
+    ],
+)
+def test_drop_nulls(
+        gaze_dataset_configuration, kwargs, expected_samples_dropped, expected_events_dropped,
+):
+    dataset = Dataset(**gaze_dataset_configuration['init_kwargs'])
+    dataset.load(preprocessed=True, events=True, stimuli=False)
+
+    # Append rows with null values
+    gaze = dataset.gaze[0]
+    events = dataset.events[0]
+    gaze.samples = pl.concat([
+        gaze.samples, pl.DataFrame({
+            column.name: [None] for column in gaze.samples
+        }),
+    ])
+    events.frame = pl.concat([
+        events.frame, pl.DataFrame({
+            column.name: [None] for column in events.frame
+        }),
+    ])
+
+    samples_before = len(dataset.gaze[0].samples)
+    events_before = len(dataset.events[0].frame)
+    result = dataset.drop_nulls(**kwargs)
+    samples_after = len(dataset.gaze[0].samples)
+    events_after = len(dataset.events[0].frame)
+
+    assert result is dataset
+    assert samples_before - samples_after == expected_samples_dropped
+    assert events_before - events_after == expected_events_dropped
 
 
 @pytest.fixture(

@@ -24,6 +24,7 @@ import math
 import warnings
 from pathlib import Path
 from typing import Any
+from typing import IO
 
 import polars as pl
 
@@ -35,7 +36,7 @@ from pymovements.gaze.gaze import Gaze
 
 
 def from_csv(
-        file: str | Path,
+        file: str | Path | IO[str] | IO[bytes],
         experiment: Experiment | None = None,
         *,
         trial_columns: str | list[str] | None = None,
@@ -58,8 +59,8 @@ def from_csv(
 
     Parameters
     ----------
-    file: str | Path
-        Path of gaze file.
+    file: str | Path | IO[str] | IO[bytes]
+        Path of gaze file or file-like object.
     experiment : Experiment | None
         The experiment definition. (default: None)
     trial_columns: str | list[str] | None
@@ -396,7 +397,7 @@ def metadata_to_val_frame(metadata: dict[str, Any]) -> pl.DataFrame:
 
 
 def from_asc(
-        file: str | Path,
+        file: str | Path | IO[str] | IO[bytes],
         *,
         patterns: str | list[dict[str, Any] | str] | None = None,
         metadata_patterns: list[dict[str, Any] | str] | None = None,
@@ -415,8 +416,10 @@ def from_asc(
 
     Parameters
     ----------
-    file: str | Path
-        Path of ASC file.
+    file: str | Path | IO[str] | IO[bytes]
+        Path of ASC file or file-like object. Accepted file objects are text streams
+        inheriting from :class:`io.TextIOBase` and binary streams inheriting from
+        :class:`io.RawIOBase` or :class:`io.BufferedIOBase`.
     patterns: str | list[dict[str, Any] | str] | None
         List of patterns to match for additional columns or a key identifier of eye tracker specific
         default patterns. Supported values are: `'eyelink'`. If `None` is passed, `'eyelink'` is
@@ -442,7 +445,9 @@ def from_asc(
         values in that Duration unit; its unit must match the file's stored values.
         (default: None)
     encoding: str | None
-        Text encoding of the file. If None, the locale encoding is used. (default: None)
+        Text encoding of the file. If None, the locale encoding is used.
+        Only applies to file paths and binary file objects; text file objects
+        are already decoded. (default: None)
     events: bool
         Flag indicating if events should be parsed from the asc file. (default: False)
     messages: bool | list[str]
@@ -541,6 +546,14 @@ def from_asc(
     └───────────────┴───────┴────────────────┘
     >>> gaze.experiment.eyetracker.sampling_rate
     1000.0
+
+    Instead of a path, we can also pass an open file object, for example an upload
+    received by a web application:
+
+    >>> with open('tests/files/eyelink_monocular_example.asc', 'rb') as asc_file:
+    ...     gaze = from_asc(asc_file)
+    >>> gaze.samples.height
+    16
     """
     if isinstance(patterns, str):
         if patterns == 'eyelink':
@@ -621,7 +634,7 @@ def from_asc(
 
 
 def from_ipc(
-        file: str | Path,
+        file: str | Path | IO[bytes],
         experiment: Experiment | None = None,
         *,
         trial_columns: str | list[str] | None = None,
@@ -636,8 +649,8 @@ def from_ipc(
 
     Parameters
     ----------
-    file: str | Path
-        Path of IPC/feather file.
+    file: str | Path | IO[bytes]
+        Path of IPC/feather file or file-like object.
     experiment : Experiment | None
         The experiment definition.
         (default: None)

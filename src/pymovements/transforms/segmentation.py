@@ -317,7 +317,9 @@ def events2timeratio(
     """Create an expression to calculate time-based event ratio.
 
     This function creates an expression that calculates the ratio of time covered by events
-    relative to the total time span.
+    relative to the total time span. Overlapping intervals of events with the matching
+    ``name`` are merged before their durations are summed, so each time point is counted
+    only once and the resulting ratio never exceeds 1.0.
 
     Parameters
     ----------
@@ -431,12 +433,23 @@ def events2timeratio(
         time_diffs = samples.select(time_ms.alias(time_column))[time_column].diff().drop_nulls()
         dt_ms = float(time_diffs.mode().item())
 
+    # Coerce event onsets and offsets to fractional milliseconds so the merge helper
+    # can combine them with the numeric dt_ms sampling interval.
+    events_ms = relevant_events.with_columns(
+        onset_ms.alias(onset_column),
+        offset_ms.alias(offset_column),
+    )
+
     # Event ratio considering trial columns
     if trial_columns:
-        event_durations = (
-            relevant_events.group_by(trial_columns, maintain_order=True)
-            .agg((offset_ms - onset_ms + dt_ms).alias('duration'))
-            .with_columns(pl.col('duration').list.sum())
+        # Merge overlapping same-name event intervals within each trial before
+        # summing durations, so that overlapping intervals are not double-counted.
+        event_durations = _merged_event_durations(
+            events=events_ms,
+            onset_column=onset_column,
+            offset_column=offset_column,
+            dt_ms=dt_ms,
+            trial_columns=trial_columns,
         )
 
         sample_time_ranges = samples.group_by(trial_columns, maintain_order=True).agg(
@@ -479,8 +492,13 @@ def events2timeratio(
             f'event_ratio_{name}',
         )
 
-    total_duration = (
-        relevant_events.select(offset_ms - onset_ms + dt_ms).sum()
+    # Merge overlapping same-name event intervals before summing durations, so that
+    # overlapping intervals are not double-counted.
+    total_duration = _merged_event_durations(
+        events=events_ms,
+        onset_column=onset_column,
+        offset_column=offset_column,
+        dt_ms=dt_ms,
     ).item()
 
     time_range = samples.select(
@@ -661,6 +679,60 @@ def segmentation2events(
         return pl.DataFrame(None, schema=schema)
 
     return events_df.select(final_cols)
+
+
+def _merged_event_durations(
+    events: pl.DataFrame,
+    onset_column: str,
+    offset_column: str,
+    dt_ms: float,
+    trial_columns: list[str] | None = None,
+) -> pl.DataFrame:
+    """Sum merged durations of overlapping intervals, optionally per trial.
+
+    Intervals are defined with inclusive onsets and offsets, so two intervals are
+    considered overlapping when one's onset is less than or equal to the other's
+    offset. Overlapping intervals are merged before their durations are summed, so
+    that each time point is counted only once.
+
+    Merging is done by sorting events by onset and tracking the running maximum
+    offset: a new merged interval starts whenever an onset exceeds the running
+    offset of the previous event. When ``trial_columns`` is provided, merging and
+    duration sums are computed within each trial group.
+    """
+    sort_columns = (trial_columns or []) + [onset_column]
+    group_columns = (trial_columns or []) + ['_interval_id']
+
+    running_offset = pl.col(offset_column).cum_max()
+    shifted_offset = pl.col('_running_offset').shift(1)
+    interval_id = pl.col('_new_interval').cum_sum()
+
+    if trial_columns:
+        running_offset = running_offset.over(trial_columns)
+        shifted_offset = shifted_offset.over(trial_columns)
+        interval_id = interval_id.over(trial_columns)
+
+    merged = (
+        events.sort(sort_columns)
+        .with_columns(running_offset.alias('_running_offset'))
+        .with_columns(
+            (pl.col(onset_column) > shifted_offset).fill_null(False).alias('_new_interval'),
+        )
+        .with_columns(interval_id.alias('_interval_id'))
+        .group_by(group_columns, maintain_order=True)
+        .agg(
+            pl.col(onset_column).min().alias('_merged_onset'),
+            pl.col(offset_column).max().alias('_merged_offset'),
+        )
+    )
+
+    durations = (
+        pl.col('_merged_offset') - pl.col('_merged_onset') + dt_ms
+    ).sum().alias('duration')
+
+    if trial_columns:
+        return merged.group_by(trial_columns, maintain_order=True).agg(durations)
+    return merged.select(durations)
 
 
 def _has_overlap(onsets: np.ndarray, offsets: np.ndarray) -> bool:

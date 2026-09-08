@@ -31,6 +31,7 @@ import pytest
 from polars.testing import assert_frame_equal
 
 from pymovements import DatasetDefinition
+from pymovements import DatasetPaths
 from pymovements import Events
 from pymovements import Experiment
 from pymovements import Gaze
@@ -45,7 +46,7 @@ from pymovements.dataset.dataset_files import load_stimuli_files
 from pymovements.dataset.dataset_files import load_stimulus_file
 from pymovements.dataset.dataset_files import save_events
 from pymovements.dataset.dataset_files import save_preprocessed
-from pymovements.dataset.dataset_paths import DatasetPaths
+from pymovements.dataset.dataset_files import scan_dataset
 from pymovements.stimulus import ImageStimulus
 from pymovements.stimulus import TextStimulus
 
@@ -1529,3 +1530,35 @@ def test_save_events_and_preprocessed_round_trip_preserves_duration_values(tmp_p
     # Sub-millisecond precision must survive the save/load round trip.
     assert_frame_equal(loaded_events.frame, events.frame)
     assert loaded_time.to_list() == gaze.samples['time'].to_list()
+
+
+def test_scan_dataset_optional_pattern_field_missing_in_first_rows(tmp_path):
+    raw_dirpath = tmp_path / 'raw'
+    raw_dirpath.mkdir()
+    for subject_id in range(100, 210):
+        (raw_dirpath / f'{subject_id}.csv').touch()
+    (raw_dirpath / '900_extra.csv').touch()
+
+    definition = DatasetDefinition(
+        name='test',
+        resources=[{
+            'content': 'gaze',
+            'filename_pattern': '{subject_id:d}(_{session_name})?.csv',
+        }],
+    )
+    paths = DatasetPaths(root=tmp_path, dataset='.')
+
+    fileinfo_dicts, files = scan_dataset(definition=definition, paths=paths)
+
+    fileinfo_df = fileinfo_dicts['gaze']
+    assert fileinfo_df.height == 111
+    assert fileinfo_df.schema['session_name'] == pl.String
+    assert fileinfo_df['session_name'].null_count() == 110
+    assert fileinfo_df.row(0, named=True) == {
+        'subject_id': '100', 'session_name': None, 'filepath': '100.csv',
+    }
+    assert fileinfo_df.row(110, named=True) == {
+        'subject_id': '900', 'session_name': 'extra', 'filepath': '900_extra.csv',
+    }
+    assert len(files) == 111
+    assert files[110].metadata == {'subject_id': '900', 'session_name': 'extra'}
