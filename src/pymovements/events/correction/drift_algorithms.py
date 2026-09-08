@@ -963,6 +963,10 @@ def slice(
             next_line - line for line, next_line in zip(line_values, line_values[1:])
         )
     else:
+        # The fallback only extends behavior to single-line texts, on which the reference
+        # implementation of Carr et al. degenerates (the mean spacing of one line is NaN);
+        # 32 pixels matches the default y_thresh, so phantom proto lines are placed one
+        # plausible line height away.
         line_height = 32.0
 
     def _slice_core(locations: pl.Series) -> pl.Series:
