@@ -45,7 +45,7 @@ from pymovements.dataset._bids_dataset import _verify_bids_handler
 @dataclass
 @repr_html()
 class Participants:
-    """Participant table with additional metadadata.
+    """Participant table with additional metadata.
 
     Data and metadata follow the Brain Imaging Data Structure (BIDS)
     `participants file specification`_.
