@@ -72,6 +72,48 @@ def run_id(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``run_id`` column.
+
+    Examples
+    --------
+    The id increments on every word change, so the two consecutive fixations on word 1 share a
+    run and the later return to word 0 opens a new one:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import run_id
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, 1, 0, 2]})
+    >>> fixations.with_columns(run_id())
+    shape: (5, 2)
+    ┌──────────┬────────┐
+    │ word_idx ┆ run_id │
+    │ ---      ┆ ---    │
+    │ i64      ┆ i64    │
+    ╞══════════╪════════╡
+    │ 0        ┆ 1      │
+    │ 1        ┆ 2      │
+    │ 1        ┆ 2      │
+    │ 0        ┆ 3      │
+    │ 2        ┆ 4      │
+    └──────────┴────────┘
+
+    Partitioned with ``.over(...)``, the numbering restarts for each reading sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 1, 0, 0],
+    ... })
+    >>> fixations.with_columns(run_id().over('trial'))
+    shape: (5, 3)
+    ┌───────┬──────────┬────────┐
+    │ trial ┆ word_idx ┆ run_id │
+    │ ---   ┆ ---      ┆ ---    │
+    │ i64   ┆ i64      ┆ i64    │
+    ╞═══════╪══════════╪════════╡
+    │ 1     ┆ 0        ┆ 1      │
+    │ 1     ┆ 1        ┆ 2      │
+    │ 1     ┆ 1        ┆ 2      │
+    │ 2     ┆ 0        ┆ 1      │
+    │ 2     ┆ 0        ┆ 1      │
+    └───────┴──────────┴────────┘
     """
     word_idx_expr = as_expr(word_idx)
     return (
@@ -100,6 +142,45 @@ def prev_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``prev_word_idx`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import prev_word_idx
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, 1, 0, 2]})
+    >>> fixations.with_columns(prev_word_idx())
+    shape: (5, 2)
+    ┌──────────┬───────────────┐
+    │ word_idx ┆ prev_word_idx │
+    │ ---      ┆ ---           │
+    │ i64      ┆ i64           │
+    ╞══════════╪═══════════════╡
+    │ 0        ┆ null          │
+    │ 1        ┆ 0             │
+    │ 1        ┆ 1             │
+    │ 0        ┆ 1             │
+    │ 2        ┆ 0             │
+    └──────────┴───────────────┘
+
+    Partitioned with ``.over(...)``, each reading sequence starts fresh with a null:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 1, 0, 1],
+    ... })
+    >>> fixations.with_columns(prev_word_idx().over('trial'))
+    shape: (5, 3)
+    ┌───────┬──────────┬───────────────┐
+    │ trial ┆ word_idx ┆ prev_word_idx │
+    │ ---   ┆ ---      ┆ ---           │
+    │ i64   ┆ i64      ┆ i64           │
+    ╞═══════╪══════════╪═══════════════╡
+    │ 1     ┆ 0        ┆ null          │
+    │ 1     ┆ 1        ┆ 0             │
+    │ 1     ┆ 1        ┆ 1             │
+    │ 2     ┆ 0        ┆ null          │
+    │ 2     ┆ 1        ┆ 0             │
+    └───────┴──────────┴───────────────┘
     """
     word_idx_expr = as_expr(word_idx)
     return word_idx_expr.shift().alias('prev_word_idx')
@@ -122,6 +203,45 @@ def next_word_idx(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``next_word_idx`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import next_word_idx
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, 1, 0, 2]})
+    >>> fixations.with_columns(next_word_idx())
+    shape: (5, 2)
+    ┌──────────┬───────────────┐
+    │ word_idx ┆ next_word_idx │
+    │ ---      ┆ ---           │
+    │ i64      ┆ i64           │
+    ╞══════════╪═══════════════╡
+    │ 0        ┆ 1             │
+    │ 1        ┆ 1             │
+    │ 1        ┆ 0             │
+    │ 0        ┆ 2             │
+    │ 2        ┆ null          │
+    └──────────┴───────────────┘
+
+    Partitioned with ``.over(...)``, each reading sequence ends with a null:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 1, 0, 1],
+    ... })
+    >>> fixations.with_columns(next_word_idx().over('trial'))
+    shape: (5, 3)
+    ┌───────┬──────────┬───────────────┐
+    │ trial ┆ word_idx ┆ next_word_idx │
+    │ ---   ┆ ---      ┆ ---           │
+    │ i64   ┆ i64      ┆ i64           │
+    ╞═══════╪══════════╪═══════════════╡
+    │ 1     ┆ 0        ┆ 1             │
+    │ 1     ┆ 1        ┆ 1             │
+    │ 1     ┆ 1        ┆ null          │
+    │ 2     ┆ 0        ┆ 1             │
+    │ 2     ┆ 1        ┆ null          │
+    └───────┴──────────┴───────────────┘
     """
     word_idx_expr = as_expr(word_idx)
     return word_idx_expr.shift(-1).alias('next_word_idx')
@@ -133,7 +253,8 @@ def delta_in(
 ) -> pl.Expr:
     """Compute the difference in word index from the previous fixation.
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as :func:`prev_word_idx` reintroduces the need for ``.over(...)``.
 
     Parameters
     ----------
@@ -148,6 +269,51 @@ def delta_in(
     -------
     pl.Expr
         Expression producing the ``delta_in`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import delta_in
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'prev_word_idx': [None, 0, 1, 1, 0],
+    ... })
+    >>> fixations.with_columns(delta_in())
+    shape: (5, 3)
+    ┌──────────┬───────────────┬──────────┐
+    │ word_idx ┆ prev_word_idx ┆ delta_in │
+    │ ---      ┆ ---           ┆ ---      │
+    │ i64      ┆ i64           ┆ i64      │
+    ╞══════════╪═══════════════╪══════════╡
+    │ 0        ┆ null          ┆ null     │
+    │ 1        ┆ 0             ┆ 1        │
+    │ 1        ┆ 1             ┆ 0        │
+    │ 0        ┆ 1             ┆ -1       │
+    │ 2        ┆ 0             ┆ 2        │
+    └──────────┴───────────────┴──────────┘
+
+    The previous word index need not be materialized as a column: any expression works, e.g.
+    composing the :func:`prev_word_idx` factory directly. The composed expression then contains
+    a window and needs ``.over(...)`` to partition into reading sequences:
+
+    >>> from pymovements.measure.reading import prev_word_idx
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ... })
+    >>> fixations.with_columns(delta_in(prev_word_idx=prev_word_idx()).over('trial'))
+    shape: (5, 3)
+    ┌───────┬──────────┬──────────┐
+    │ trial ┆ word_idx ┆ delta_in │
+    │ ---   ┆ ---      ┆ ---      │
+    │ i64   ┆ i64      ┆ i64      │
+    ╞═══════╪══════════╪══════════╡
+    │ 1     ┆ 0        ┆ null     │
+    │ 1     ┆ 1        ┆ 1        │
+    │ 1     ┆ 0        ┆ -1       │
+    │ 2     ┆ 0        ┆ null     │
+    │ 2     ┆ 1        ┆ 1        │
+    └───────┴──────────┴──────────┘
     """
     word_idx_expr = as_expr(word_idx)
     prev_word_idx_expr = as_expr(prev_word_idx)
@@ -160,7 +326,8 @@ def delta_out(
 ) -> pl.Expr:
     """Compute the difference in word index to the next fixation.
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as :func:`next_word_idx` reintroduces the need for ``.over(...)``.
 
     Parameters
     ----------
@@ -175,6 +342,51 @@ def delta_out(
     -------
     pl.Expr
         Expression producing the ``delta_out`` column.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import delta_out
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 1, 0, 2],
+    ...     'next_word_idx': [1, 1, 0, 2, None],
+    ... })
+    >>> fixations.with_columns(delta_out())
+    shape: (5, 3)
+    ┌──────────┬───────────────┬───────────┐
+    │ word_idx ┆ next_word_idx ┆ delta_out │
+    │ ---      ┆ ---           ┆ ---       │
+    │ i64      ┆ i64           ┆ i64       │
+    ╞══════════╪═══════════════╪═══════════╡
+    │ 0        ┆ 1             ┆ 1         │
+    │ 1        ┆ 1             ┆ 0         │
+    │ 1        ┆ 0             ┆ -1        │
+    │ 0        ┆ 2             ┆ 2         │
+    │ 2        ┆ null          ┆ null      │
+    └──────────┴───────────────┴───────────┘
+
+    The next word index need not be materialized as a column: any expression works, e.g.
+    composing the :func:`next_word_idx` factory directly. The composed expression then contains
+    a window and needs ``.over(...)`` to partition into reading sequences:
+
+    >>> from pymovements.measure.reading import next_word_idx
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ... })
+    >>> fixations.with_columns(delta_out(next_word_idx=next_word_idx()).over('trial'))
+    shape: (5, 3)
+    ┌───────┬──────────┬───────────┐
+    │ trial ┆ word_idx ┆ delta_out │
+    │ ---   ┆ ---      ┆ ---       │
+    │ i64   ┆ i64      ┆ i64       │
+    ╞═══════╪══════════╪═══════════╡
+    │ 1     ┆ 0        ┆ 1         │
+    │ 1     ┆ 1        ┆ -1        │
+    │ 1     ┆ 0        ┆ null      │
+    │ 2     ┆ 0        ┆ 1         │
+    │ 2     ┆ 1        ┆ null      │
+    └───────┴──────────┴───────────┘
     """
     word_idx_expr = as_expr(word_idx)
     next_word_idx_expr = as_expr(next_word_idx)
@@ -184,7 +396,9 @@ def delta_out(
 def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
     """Flag fixations that arrive from a higher-index word (regression in).
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as a composed :func:`delta_in` reintroduces the need for
+    ``.over(...)``.
 
     Parameters
     ----------
@@ -196,6 +410,52 @@ def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``is_reg_in`` column.
+
+    Examples
+    --------
+    The first fixation has no predecessor, so its ``delta_in`` (and thus ``is_reg_in``) is null:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import is_reg_in
+    >>> fixations = pl.DataFrame({'delta_in': [None, 1, 0, -1, 2]})
+    >>> fixations.with_columns(is_reg_in())
+    shape: (5, 2)
+    ┌──────────┬───────────┐
+    │ delta_in ┆ is_reg_in │
+    │ ---      ┆ ---       │
+    │ i64      ┆ bool      │
+    ╞══════════╪═══════════╡
+    │ null     ┆ null      │
+    │ 1        ┆ false     │
+    │ 0        ┆ false     │
+    │ -1       ┆ true      │
+    │ 2        ┆ false     │
+    └──────────┴───────────┘
+
+    Composing the :func:`delta_in` and :func:`prev_word_idx` factories computes the flag straight
+    from the word indices; the composed expression then contains a window and needs ``.over(...)``
+    to partition into reading sequences:
+
+    >>> from pymovements.measure.reading import delta_in, prev_word_idx
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ... })
+    >>> fixations.with_columns(
+    ...     is_reg_in(delta_in(prev_word_idx=prev_word_idx())).over('trial'),
+    ... )
+    shape: (5, 3)
+    ┌───────┬──────────┬───────────┐
+    │ trial ┆ word_idx ┆ is_reg_in │
+    │ ---   ┆ ---      ┆ ---       │
+    │ i64   ┆ i64      ┆ bool      │
+    ╞═══════╪══════════╪═══════════╡
+    │ 1     ┆ 0        ┆ null      │
+    │ 1     ┆ 1        ┆ false     │
+    │ 1     ┆ 0        ┆ true      │
+    │ 2     ┆ 0        ┆ null      │
+    │ 2     ┆ 1        ┆ false     │
+    └───────┴──────────┴───────────┘
     """
     delta_in_expr = as_expr(delta_in)
     return (delta_in_expr < 0).alias('is_reg_in')
@@ -204,7 +464,9 @@ def is_reg_in(delta_in: str | pl.Expr = 'delta_in') -> pl.Expr:
 def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
     """Flag fixations that depart to a lower-index word (regression out).
 
-    Row-wise, no window needed.
+    Row-wise on materialized input columns, so no window is needed then. A window-dependent
+    input expression such as a composed :func:`delta_out` reintroduces the need for
+    ``.over(...)``.
 
     Parameters
     ----------
@@ -216,6 +478,52 @@ def is_reg_out(delta_out: str | pl.Expr = 'delta_out') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``is_reg_out`` column.
+
+    Examples
+    --------
+    The last fixation has no successor, so its ``delta_out`` (and thus ``is_reg_out``) is null:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import is_reg_out
+    >>> fixations = pl.DataFrame({'delta_out': [1, 0, -1, 2, None]})
+    >>> fixations.with_columns(is_reg_out())
+    shape: (5, 2)
+    ┌───────────┬────────────┐
+    │ delta_out ┆ is_reg_out │
+    │ ---       ┆ ---        │
+    │ i64       ┆ bool       │
+    ╞═══════════╪════════════╡
+    │ 1         ┆ false      │
+    │ 0         ┆ false      │
+    │ -1        ┆ true       │
+    │ 2         ┆ false      │
+    │ null      ┆ null       │
+    └───────────┴────────────┘
+
+    Composing the :func:`delta_out` and :func:`next_word_idx` factories computes the flag straight
+    from the word indices; the composed expression then contains a window and needs ``.over(...)``
+    to partition into reading sequences:
+
+    >>> from pymovements.measure.reading import delta_out, next_word_idx
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ... })
+    >>> fixations.with_columns(
+    ...     is_reg_out(delta_out(next_word_idx=next_word_idx())).over('trial'),
+    ... )
+    shape: (5, 3)
+    ┌───────┬──────────┬────────────┐
+    │ trial ┆ word_idx ┆ is_reg_out │
+    │ ---   ┆ ---      ┆ ---        │
+    │ i64   ┆ i64      ┆ bool       │
+    ╞═══════╪══════════╪════════════╡
+    │ 1     ┆ 0        ┆ false      │
+    │ 1     ┆ 1        ┆ true       │
+    │ 1     ┆ 0        ┆ null       │
+    │ 2     ┆ 0        ┆ false      │
+    │ 2     ┆ 1        ┆ null       │
+    └───────┴──────────┴────────────┘
     """
     delta_out_expr = as_expr(delta_out)
     return (delta_out_expr < 0).alias('is_reg_out')
@@ -239,6 +547,49 @@ def is_first_fixation(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``is_first_fix`` column.
+
+    Examples
+    --------
+    Apply ``.over('word_idx')`` (or ``.over(group_columns + ['word_idx'])``) so the flag marks the
+    first fixation of each word rather than only the first row overall:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import is_first_fixation
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, 1, 0, 2]})
+    >>> fixations.with_columns(is_first_fixation().over('word_idx'))
+    shape: (5, 2)
+    ┌──────────┬──────────────┐
+    │ word_idx ┆ is_first_fix │
+    │ ---      ┆ ---          │
+    │ i64      ┆ bool         │
+    ╞══════════╪══════════════╡
+    │ 0        ┆ true         │
+    │ 1        ┆ true         │
+    │ 1        ┆ false        │
+    │ 0        ┆ false        │
+    │ 2        ┆ true         │
+    └──────────┴──────────────┘
+
+    With group columns in the window, refixations only count within their own sequence, so the
+    same word is flagged again in a new trial:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 0, 1, 0, 0],
+    ... })
+    >>> fixations.with_columns(is_first_fixation().over(['trial', 'word_idx']))
+    shape: (5, 3)
+    ┌───────┬──────────┬──────────────┐
+    │ trial ┆ word_idx ┆ is_first_fix │
+    │ ---   ┆ ---      ┆ ---          │
+    │ i64   ┆ i64      ┆ bool         │
+    ╞═══════╪══════════╪══════════════╡
+    │ 1     ┆ 0        ┆ true         │
+    │ 1     ┆ 0        ┆ false        │
+    │ 1     ┆ 1        ┆ true         │
+    │ 2     ┆ 0        ┆ true         │
+    │ 2     ┆ 0        ┆ false        │
+    └───────┴──────────┴──────────────┘
     """
     word_idx_expr = as_expr(word_idx)
     return word_idx_expr.cum_count().eq(1).alias('is_first_fix')
@@ -279,6 +630,56 @@ def is_first_pass(
     -------
     pl.Expr
         Expression producing the ``is_first_pass`` column.
+
+    Examples
+    --------
+    Refixating the rightmost word read so far stays first-pass (the two ``word_idx == 2`` rows
+    sharing run 3), while returning to it after a word further right has been read does not (the
+    last row, run 5). The input must already carry ``run_id`` (see :func:`run_id`) and be
+    onset-sorted:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import is_first_pass
+    >>> fixations = pl.DataFrame({
+    ...     'word_idx': [0, 1, 2, 2, 3, 2],
+    ...     'run_id':   [1, 2, 3, 3, 4, 5],
+    ... })
+    >>> fixations.with_columns(is_first_pass())
+    shape: (6, 3)
+    ┌──────────┬────────┬───────────────┐
+    │ word_idx ┆ run_id ┆ is_first_pass │
+    │ ---      ┆ ---    ┆ ---           │
+    │ i64      ┆ i64    ┆ bool          │
+    ╞══════════╪════════╪═══════════════╡
+    │ 0        ┆ 1      ┆ true          │
+    │ 1        ┆ 2      ┆ true          │
+    │ 2        ┆ 3      ┆ true          │
+    │ 2        ┆ 3      ┆ true          │
+    │ 3        ┆ 4      ┆ true          │
+    │ 2        ┆ 5      ┆ false         │
+    └──────────┴────────┴───────────────┘
+
+    With ``group_columns``, each sequence is evaluated independently, so the regressed-to word 0
+    of trial 1 is first-pass again in trial 2:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial':    [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 0, 1],
+    ...     'run_id':   [1, 2, 3, 1, 2],
+    ... })
+    >>> fixations.with_columns(is_first_pass(group_columns=['trial']))
+    shape: (5, 4)
+    ┌───────┬──────────┬────────┬───────────────┐
+    │ trial ┆ word_idx ┆ run_id ┆ is_first_pass │
+    │ ---   ┆ ---      ┆ ---    ┆ ---           │
+    │ i64   ┆ i64      ┆ i64    ┆ bool          │
+    ╞═══════╪══════════╪════════╪═══════════════╡
+    │ 1     ┆ 0        ┆ 1      ┆ true          │
+    │ 1     ┆ 1        ┆ 2      ┆ true          │
+    │ 1     ┆ 0        ┆ 3      ┆ false         │
+    │ 2     ┆ 0        ┆ 1      ┆ true          │
+    │ 2     ┆ 1        ┆ 2      ┆ true          │
+    └───────┴──────────┴────────┴───────────────┘
     """
     group_columns = list(group_columns or [])
     word_idx_expr = as_expr(word_idx)
@@ -319,6 +720,48 @@ def regression_path_word(word_idx: str | pl.Expr = 'word_idx') -> pl.Expr:
     -------
     pl.Expr
         Expression producing the ``regression_path_word`` column.
+
+    Examples
+    --------
+    Every fixation is attributed to the current running maximum of fixated word indices, so the
+    regression to word 0 still belongs to word 1's regression path:
+
+    >>> import polars as pl
+    >>> from pymovements.measure.reading import regression_path_word
+    >>> fixations = pl.DataFrame({'word_idx': [0, 1, 1, 0, 2]})
+    >>> fixations.with_columns(regression_path_word())
+    shape: (5, 2)
+    ┌──────────┬──────────────────────┐
+    │ word_idx ┆ regression_path_word │
+    │ ---      ┆ ---                  │
+    │ i64      ┆ i64                  │
+    ╞══════════╪══════════════════════╡
+    │ 0        ┆ 0                    │
+    │ 1        ┆ 1                    │
+    │ 1        ┆ 1                    │
+    │ 0        ┆ 1                    │
+    │ 2        ┆ 2                    │
+    └──────────┴──────────────────────┘
+
+    Partitioned with ``.over(...)``, the running maximum restarts for each reading sequence:
+
+    >>> fixations = pl.DataFrame({
+    ...     'trial': [1, 1, 1, 2, 2],
+    ...     'word_idx': [0, 1, 0, 2, 0],
+    ... })
+    >>> fixations.with_columns(regression_path_word().over('trial'))
+    shape: (5, 3)
+    ┌───────┬──────────┬──────────────────────┐
+    │ trial ┆ word_idx ┆ regression_path_word │
+    │ ---   ┆ ---      ┆ ---                  │
+    │ i64   ┆ i64      ┆ i64                  │
+    ╞═══════╪══════════╪══════════════════════╡
+    │ 1     ┆ 0        ┆ 0                    │
+    │ 1     ┆ 1        ┆ 1                    │
+    │ 1     ┆ 0        ┆ 1                    │
+    │ 2     ┆ 2        ┆ 2                    │
+    │ 2     ┆ 0        ┆ 2                    │
+    └───────┴──────────┴──────────────────────┘
     """
     word_idx_expr = as_expr(word_idx)
     return word_idx_expr.cum_max().alias('regression_path_word')
@@ -397,6 +840,30 @@ def annotate_fixations(
     │ 0        ┆ 3      ┆ false         ┆ 1                    │
     │ 2        ┆ 4      ┆ true          ┆ 2                    │
     └──────────┴────────┴───────────────┴──────────────────────┘
+
+    With ``group_columns``, each trial is annotated independently: run IDs restart, and word 1
+    of trial 2 counts as first-pass even though trial 1 already fixated it. Within trial 2 the
+    later fixation on word 0 arrives from the right and is thus not first-pass:
+
+    >>> fixations = pl.DataFrame({
+    ...     'name': ['fixation'] * 4,
+    ...     'onset': [0, 250, 0, 250],
+    ...     'word_idx': [0, 1, 1, 0],
+    ...     'trial': [1, 1, 2, 2],
+    ... })
+    >>> annotated = annotate_fixations(fixations, group_columns=['trial'])
+    >>> annotated.select('trial', 'word_idx', 'run_id', 'is_first_pass')
+    shape: (4, 4)
+    ┌───────┬──────────┬────────┬───────────────┐
+    │ trial ┆ word_idx ┆ run_id ┆ is_first_pass │
+    │ ---   ┆ ---      ┆ ---    ┆ ---           │
+    │ i64   ┆ i64      ┆ i64    ┆ bool          │
+    ╞═══════╪══════════╪════════╪═══════════════╡
+    │ 1     ┆ 0        ┆ 1      ┆ true          │
+    │ 1     ┆ 1        ┆ 2      ┆ true          │
+    │ 2     ┆ 1        ┆ 1      ┆ true          │
+    │ 2     ┆ 0        ┆ 2      ┆ false         │
+    └───────┴──────────┴────────┴───────────────┘
     """
     group_columns = list(group_columns or [])
     word_idx_expr = as_expr(word_idx)
