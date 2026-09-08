@@ -55,6 +55,30 @@ def add_source(metadata: dict[str, Any] | None, file: Any) -> dict[str, Any]:
     return metadata
 
 
+def _check_sources(metadata: dict[str, Any] | None) -> None:
+    """Raise if a present ``sources`` entry is not a list of path strings."""
+    if not metadata or not metadata.get('sources'):
+        return
+
+    if not isinstance(metadata['sources'], list):
+        raise TypeError(
+            "metadata['sources'] must be a list of path strings "
+            f'but is of type {type(metadata["sources"]).__name__}: {metadata["sources"]!r}',
+        )
+
+    for source in metadata['sources']:
+        if not isinstance(source, (str, Path)):
+            raise TypeError(
+                "metadata['sources'] entries must be path strings "
+                f'but found entry of type {type(source).__name__}: {source!r}',
+            )
+
+
+def _as_posix_string(source: str | Path) -> str:
+    """Return the source entry as a POSIX-style path string."""
+    return source if isinstance(source, str) else source.as_posix()
+
+
 def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
     """Rewrite absolute ``sources`` entries below ``root`` as root-relative paths.
 
@@ -73,36 +97,29 @@ def relativize_sources(metadata: dict[str, Any] | None, root: Path) -> None:
     TypeError
         If the ``sources`` entry is not a list of path strings.
     """
+    _check_sources(metadata)
     if not metadata or not metadata.get('sources'):
         return
-
-    if not isinstance(metadata['sources'], list):
-        raise TypeError(
-            "metadata['sources'] must be a list of path strings "
-            f'but is of type {type(metadata["sources"]).__name__}: {metadata["sources"]!r}',
-        )
 
     resolved_root = root.resolve()
 
     sources = []
     for source in metadata['sources']:
-        if not isinstance(source, (str, Path)):
-            raise TypeError(
-                "metadata['sources'] entries must be path strings "
-                f'but found entry of type {type(source).__name__}: {source!r}',
-            )
         try:
             sources.append(Path(source).relative_to(resolved_root).as_posix())
         except ValueError:
-            sources.append(source if isinstance(source, str) else source.as_posix())
+            sources.append(_as_posix_string(source))
     metadata['sources'] = sources
 
 
 def merge_sources(metadata: dict[str, Any], other: dict[str, Any] | None) -> None:
     """Append the ``sources`` entries of another metadata dictionary.
 
-    Duplicate entries are dropped while the original order is preserved. The
-    metadata dictionary is modified in place.
+    Duplicate entries are dropped while the original order is preserved.
+    Entries are compared as POSIX-style path strings, so equal :py:class:`str`
+    and :py:class:`~pathlib.Path` entries deduplicate; appended entries are
+    recorded as POSIX-style path strings. The metadata dictionary is modified
+    in place.
 
     Parameters
     ----------
@@ -110,11 +127,24 @@ def merge_sources(metadata: dict[str, Any], other: dict[str, Any] | None) -> Non
         Metadata dictionary to extend.
     other: dict[str, Any] | None
         Metadata dictionary to merge the ``sources`` entries from. May be ``None``.
+
+    Raises
+    ------
+    TypeError
+        If a ``sources`` entry of either dictionary is not a list of path strings.
     """
+    _check_sources(metadata)
+    _check_sources(other)
+
     other_sources = (other or {}).get('sources') or []
     if not other_sources:
         return
 
     sources = list(metadata.get('sources') or [])
-    sources.extend(source for source in other_sources if source not in sources)
+    seen = {_as_posix_string(source) for source in sources}
+    for source in other_sources:
+        key = _as_posix_string(source)
+        if key not in seen:
+            sources.append(key)
+            seen.add(key)
     metadata['sources'] = sources

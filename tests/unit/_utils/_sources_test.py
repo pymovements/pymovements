@@ -120,6 +120,62 @@ def test_merge_sources_appends_and_deduplicates():
     assert metadata['sources'] == ['a.csv', 'b.csv', 'c.csv']
 
 
+def test_merge_sources_deduplicates_path_entry_equal_to_existing_str():
+    metadata = {'sources': ['raw/sub_1.csv']}
+    merge_sources(metadata, {'sources': [Path('raw/sub_1.csv'), Path('raw/sub_2.csv')]})
+    assert metadata['sources'] == ['raw/sub_1.csv', 'raw/sub_2.csv']
+
+
+def test_merge_sources_deduplicates_str_entry_equal_to_existing_path():
+    metadata = {'sources': [Path('raw/sub_1.csv')]}
+    merge_sources(metadata, {'sources': ['raw/sub_1.csv']})
+    assert metadata['sources'] == [Path('raw/sub_1.csv')]
+
+
+def test_merge_sources_raises_on_string_metadata_sources():
+    metadata = {'sources': 'raw/sub_1.csv'}
+    with pytest.raises(TypeError) as excinfo:
+        merge_sources(metadata, {'sources': ['a.csv']})
+    assert str(excinfo.value) == (
+        "metadata['sources'] must be a list of path strings "
+        "but is of type str: 'raw/sub_1.csv'"
+    )
+
+
+def test_merge_sources_raises_on_string_other_sources():
+    metadata = {'sources': ['a.csv']}
+    with pytest.raises(TypeError) as excinfo:
+        merge_sources(metadata, {'sources': 'raw/sub_1.csv'})
+    assert str(excinfo.value) == (
+        "metadata['sources'] must be a list of path strings "
+        "but is of type str: 'raw/sub_1.csv'"
+    )
+    assert metadata == {'sources': ['a.csv']}
+
+
+def test_merge_sources_raises_on_path_sources_value():
+    metadata = {'sources': Path('raw/sub_1.csv')}
+    with pytest.raises(
+        TypeError,
+        match=(
+            r"metadata\['sources'\] must be a list of path strings "
+            r"but is of type (Posix|Windows)Path: (Posix|Windows)Path\('raw/sub_1\.csv'\)"
+        ),
+    ):
+        merge_sources(metadata, {'sources': ['a.csv']})
+
+
+def test_merge_sources_raises_on_non_path_entry():
+    metadata = {'sources': ['a.csv']}
+    with pytest.raises(TypeError) as excinfo:
+        merge_sources(metadata, {'sources': ['b.csv', 123]})
+    assert str(excinfo.value) == (
+        "metadata['sources'] entries must be path strings "
+        'but found entry of type int: 123'
+    )
+    assert metadata == {'sources': ['a.csv']}
+
+
 def test_merge_sources_into_metadata_without_sources():
     metadata = {'key': 'value'}
     merge_sources(metadata, {'sources': ['a.csv']})
