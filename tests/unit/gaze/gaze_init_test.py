@@ -1859,6 +1859,68 @@ def test_gaze_has_correct_metadata(metadata, expected_metadata):
     assert gaze.metadata == expected_metadata
 
 
+def test_gaze_init_propagates_sources_to_events():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        metadata={'sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['sources'] == ['raw/sub_1.csv']
+
+
+def test_gaze_init_without_sources_leaves_events_metadata_empty():
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+    )
+    assert gaze.events.metadata == {}
+
+
+def test_gaze_init_merges_sources_into_passed_events():
+    events = Events(
+        name='fixation', onsets=[0], offsets=[1],
+        metadata={'sources': ['events/sub_1.feather']},
+    )
+    gaze = Gaze(
+        samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+        time_column='time',
+        pixel_columns=['x', 'y'],
+        events=events,
+        metadata={'sources': ['raw/sub_1.csv']},
+    )
+    assert gaze.events.metadata['sources'] == ['events/sub_1.feather', 'raw/sub_1.csv']
+
+
+def test_gaze_init_raises_on_non_list_sources():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'sources': 'raw/sub_1.csv'},
+        )
+    assert str(excinfo.value) == (
+        "metadata['sources'] must be a list of path strings "
+        "but is of type str: 'raw/sub_1.csv'"
+    )
+
+
+def test_gaze_init_raises_on_non_path_sources_entry():
+    with pytest.raises(TypeError) as excinfo:
+        Gaze(
+            samples=pl.DataFrame({'time': [0, 1, 2], 'x': [0.1, 0.2, 0.3], 'y': [0.1, 0.2, 0.3]}),
+            time_column='time',
+            pixel_columns=['x', 'y'],
+            metadata={'sources': ['raw/sub_1.csv', 123]},
+        )
+    assert str(excinfo.value) == (
+        "metadata['sources'] entries must be path strings "
+        'but found entry of type int: 123'
+    )
+
+
 def test_gaze_init_warnings():
     with pytest.warns(UserWarning) as record:
         Gaze(samples=pl.from_dict({'a': [1, 2, 3]}))
