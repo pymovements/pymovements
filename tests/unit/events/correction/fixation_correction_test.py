@@ -580,6 +580,23 @@ def test_correct_fixation_locations_missing_line_y_columns_raises():
         correct_fixation_locations(events_df, aois_df, algorithm='attach')
 
 
+def test_correct_fixation_locations_missing_height_single_algorithm_raises():
+    events_df = pl.DataFrame({'name': ['fixation'], 'location': [[100.0, 105.0]]})
+    aois_df = pl.DataFrame({'word': ['Word1'], 'start_y': [80.0]})
+    with pytest.raises(ValueError, match="requires a 'height' column"):
+        correct_fixation_locations(events_df, aois_df, algorithm='attach')
+
+
+def test_correct_fixation_locations_missing_height_default_woc_raises():
+    events_df = pl.DataFrame({'name': ['fixation'], 'location': [[100.0, 105.0]]})
+    aois_df = pl.DataFrame({'word': ['Word1'], 'start_y': [80.0]})
+    with pytest.warns(
+        UserWarning, match=r"Word X coordinates \('start_x', 'end_x'\) are missing",
+    ):
+        with pytest.raises(ValueError, match="requires a 'height' column"):
+            correct_fixation_locations(events_df, aois_df)
+
+
 def test_correct_fixations_missing_trial_columns_raises():
     events_df = pl.DataFrame({
         'name': ['fixation'],

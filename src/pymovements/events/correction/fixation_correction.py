@@ -85,7 +85,8 @@ def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
     Raises
     ------
     ValueError
-        If the AOIs dataframe has neither a 'start_y' nor a 'top_left_y' column.
+        If the AOIs dataframe has neither a 'start_y' nor a 'top_left_y' column, or no
+        'height' column.
     """
     if 'start_y' in aois.columns:
         y_col = 'start_y'
@@ -95,6 +96,11 @@ def _with_line_centers(aois: pl.DataFrame) -> tuple[pl.DataFrame, str]:
         raise ValueError(
             "AOIs dataframe requires a 'start_y' or 'top_left_y' column to derive text "
             'line positions.',
+        )
+    if 'height' not in aois.columns:
+        raise ValueError(
+            "AOIs dataframe requires a 'height' column, or 'start_y' and 'end_y' columns "
+            'to derive it, to compute text line centers.',
         )
     line_key = 'line_idx' if 'line_idx' in aois.columns else y_col
 
@@ -456,12 +462,15 @@ def correct_fixation_locations(
     )
     if has_line_info:
         line_values = _get_lines_of_text_from_aois(aois)
-    else:
-        assert word_locations is not None
+    elif word_locations is not None:
         line_values = (
             word_locations.cast(pl.List(pl.Float64))
             .list.get(1).unique().sort().to_list()
         )
+    else:
+        # Neither complete line information nor word locations are available: derive from
+        # the AOIs anyway so the resulting ValueError names the missing columns.
+        line_values = _get_lines_of_text_from_aois(aois)
 
     # Route tuning parameters to those candidate algorithms that accept them, so that
     # algorithm-specific parameters do not break the other algorithms in the ensemble.
