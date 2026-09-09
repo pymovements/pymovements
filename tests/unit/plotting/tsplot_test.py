@@ -304,6 +304,18 @@ def test_tsplot_numeric_time_column_plotted_as_is(gaze):
     assert list(ax.get_lines()[0].get_xdata()) == gaze.samples['time'].to_list()
 
 
+def test_tsplot_explicit_duration_channel_converted_to_ms(gaze):
+    # 'time' is excluded only from the auto-selected channel list; requesting
+    # it explicitly must still convert it from Duration like any other
+    # Duration-typed channel would be.
+    assert isinstance(gaze.samples.schema['time'], pl.Duration)
+
+    _, ax = tsplot(gaze=gaze, channels=['time'])
+
+    expected = (gaze.samples['time'].dt.total_microseconds() / 1000).to_list()
+    assert list(ax.get_lines()[0].get_ydata()) == expected
+
+
 def test_tsplot_events_cycles_colors_beyond_ten_event_names():
     event_names = [f'event_{i:02d}' for i in range(11)]
     events = Events(
@@ -376,7 +388,7 @@ def test_tsplot_does_not_plot_time_column_as_channel():
 
 def test_tsplot_breaks_line_at_gap_from_absent_rows():
     # samples 30..59 are missing as absent rows (tracker gap / drop_nulls())
-    times = [i for i in range(100) if not (30 <= i < 60)]
+    times = [i for i in range(100) if not 30 <= i < 60]
     gaze = Gaze(
         samples=pl.DataFrame(
             {
@@ -405,7 +417,7 @@ def test_tsplot_breaks_line_at_gap_from_absent_rows():
 def test_tsplot_keeps_gap_from_null_rows_visible():
     # samples 30..59 present as rows but null -> already NaN, must stay NaN
     pixel = [
-        [float(i), 2.0 * i] if not (30 <= i < 60) else None
+        [float(i), 2.0 * i] if not 30 <= i < 60 else None
         for i in range(100)
     ]
     gaze = Gaze(
@@ -436,3 +448,23 @@ def test_tsplot_no_gap_leaves_samples_untouched():
     xdata = np.asarray(ax.get_lines()[0].get_xdata(), dtype='float64')
     assert xdata.shape == (n,)
     assert not np.isnan(np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')).any()
+
+
+def test_tsplot_constant_time_has_no_positive_step_to_size_a_gap_from():
+    # Every step is <= 0, so there is no positive step to compute a gap
+    # threshold from; samples must be returned unchanged rather than raising.
+    gaze = Gaze(
+        samples=pl.DataFrame(
+            {
+                'time': [0.0, 0.0, 0.0],
+                'pixel': [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]],
+            },
+        ),
+    )
+
+    _, ax = tsplot(gaze=gaze, channels='pixel')
+
+    xdata = np.asarray(ax.get_lines()[0].get_xdata(), dtype='float64')
+    ydata = np.asarray(ax.get_lines()[0].get_ydata(), dtype='float64')
+    assert xdata.shape == (3,)
+    assert not np.isnan(ydata).any()
