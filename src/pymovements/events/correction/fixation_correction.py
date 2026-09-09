@@ -398,7 +398,7 @@ def _correct_ensemble(
         )
 
     votes = fixations.select(
-        [location_x(location).alias('__location_x')] + vote_exprs,  # noqa: SLF001
+        [location_x(location).alias('__location_x')] + vote_exprs,
     )
     return votes.select(
         pl.concat_list([
